@@ -74,7 +74,7 @@ auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 
     auto proto = require_refcount_ptr(_proto.dyn_cast<const ProtoItem>());
 
-    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine, ident_t {}, proto, GetProperties());
+    auto ref_item = safe_alloc::make_refcounted<ItemView>(_engine, ident_t {}, proto, GetProperties());
 
     ref_item->SetId(GetId(), false);
 
@@ -85,7 +85,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, props);
+    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
@@ -99,7 +99,7 @@ auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, nullptr);
+    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
     item->SetContainerStack(stack_id);

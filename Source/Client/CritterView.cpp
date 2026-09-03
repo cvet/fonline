@@ -106,7 +106,7 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, props);
+    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props);
     auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
 
     item->SetStatic(false);
@@ -121,7 +121,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, Cri
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, nullptr);
+    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr);
     auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
 
     item->RestoreData(props_data);
@@ -200,16 +200,16 @@ auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::NonDead) && IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::NonDead) && IsDead()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::Dead) && !IsDead()) {
         return false;
     }
 

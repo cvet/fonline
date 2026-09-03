@@ -49,14 +49,14 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+        return safe_alloc::malloc_aligned_raw(size, alignment).get();
     }
 
     void Deallocate(void* block) override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        SafeAlloc::FreeAlignedRaw(block);
+        safe_alloc::free_aligned_raw(block);
     }
 };
 

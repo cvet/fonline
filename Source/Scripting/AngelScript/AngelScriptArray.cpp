@@ -207,21 +207,21 @@ auto ScriptArray::Create(ptr<AngelScript::asITypeInfo> ti, int32_t length) -> re
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeRefCounted<ScriptArray>(length, ti);
+    return safe_alloc::make_refcounted<ScriptArray>(length, ti);
 }
 
 auto ScriptArray::Create(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) -> refcount_ptr<ScriptArray>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeRefCounted<ScriptArray>(ti, init_list);
+    return safe_alloc::make_refcounted<ScriptArray>(ti, init_list);
 }
 
 auto ScriptArray::Create(ptr<AngelScript::asITypeInfo> ti, int32_t length, ptr<void> def_val) -> refcount_ptr<ScriptArray>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeRefCounted<ScriptArray>(length, def_val, ti);
+    return safe_alloc::make_refcounted<ScriptArray>(length, def_val, ti);
 }
 
 auto ScriptArray::Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptArray>
@@ -232,7 +232,7 @@ auto ScriptArray::Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<Scrip
 }
 
 ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _subTypeId {ti->GetSubTypeId()}
 {
     FO_STACK_TRACE_ENTRY();
@@ -261,7 +261,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 
         if (length != 0) {
             ptr<AngelScript::asBYTE> init_payload = init_bytes.offset(_elementSize >= 8 ? sizeof(int64_t) : sizeof(int32_t));
-            MemCopy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
+            memory::copy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
         }
     }
     else if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -269,8 +269,8 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 
         if (length != 0) {
             ptr<AngelScript::asBYTE> init_payload = init_bytes.offset(sizeof(int32_t));
-            MemCopy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
-            MemFill(init_payload, 0, numeric_cast<size_t>(length * _elementSize));
+            memory::copy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
+            memory::fill(init_payload, 0, numeric_cast<size_t>(length * _elementSize));
         }
     }
     else {
@@ -297,7 +297,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 }
 
 ScriptArray::ScriptArray(int32_t length, ptr<AngelScript::asITypeInfo> ti) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _subTypeId {ti->GetSubTypeId()}
 {
     FO_STACK_TRACE_ENTRY();
@@ -324,7 +324,7 @@ ScriptArray::ScriptArray(int32_t length, ptr<AngelScript::asITypeInfo> ti) :
 }
 
 ScriptArray::ScriptArray(int32_t length, ptr<void> def_val, ptr<AngelScript::asITypeInfo> ti) :
-    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_add_ref(ti.get())},
+    _typeInfo {refcount_ptr<AngelScript::asITypeInfo>::from_addref(ti.get())},
     _subTypeId {ti->GetSubTypeId()}
 {
     FO_STACK_TRACE_ENTRY();
@@ -415,9 +415,9 @@ void ScriptArray::SetValue(int32_t index, ptr<void> value)
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
         // dst (array element) and value (incoming AngelScript stack slot) are only asDWORD-aligned, so read/
         // write the handles through aligned locals to avoid a misaligned 8-byte pointer access (UBSan)
-        nptr<void> old_obj = MemReadUnaligned<void*>(dst);
-        nptr<void> new_obj = MemReadUnaligned<void*>(value);
-        MemWriteUnaligned<void*>(dst, new_obj.get_no_const());
+        nptr<void> old_obj = memory::read_unaligned<void*>(dst);
+        nptr<void> new_obj = memory::read_unaligned<void*>(value);
+        memory::write_unaligned<void*>(dst, new_obj.get_no_const());
 
         if (new_obj) {
             engine->AddRefScriptObject(new_obj.get_no_const(), sub_type.get());
@@ -439,7 +439,7 @@ void ScriptArray::SetValue(int32_t index, ptr<void> value)
         *cast_from_void<double*>(dst.get()) = *cast_from_void<const double*>(value.get());
     }
     else if (_subTypeId > AngelScript::asTYPEID_DOUBLE) { // Enums - copy actual size
-        MemCopy(dst, value, _elementSize);
+        memory::copy(dst, value, _elementSize);
     }
 }
 
@@ -1069,7 +1069,7 @@ void ScriptArray::Copy(ptr<void> dst, ptr<void> src) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    MemCopy(dst, src, numeric_cast<size_t>(_elementSize));
+    memory::copy(dst, src, numeric_cast<size_t>(_elementSize));
 }
 
 auto ScriptArray::GetBuffer() -> nptr<void>
@@ -1270,7 +1270,7 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
         FO_VERIFY_AND_THROW(dst_buffer, "Destination buffer is null");
         auto src_buffer = src.GetBuffer();
         FO_VERIFY_AND_THROW(src_buffer, "Source buffer is null");
-        MemCopy(dst_buffer, src_buffer, numeric_cast<size_t>(count * _elementSize));
+        memory::copy(dst_buffer, src_buffer, numeric_cast<size_t>(count * _elementSize));
     }
 }
 
@@ -1297,7 +1297,7 @@ void ScriptArray::PrecacheSubTypeData()
         return;
     }
 
-    auto sub_type_data = SafeAlloc::MakeUnique<ScriptArrayTypeData>();
+    auto sub_type_data = safe_alloc::make_unique<ScriptArrayTypeData>();
 
     bool must_be_const = (_subTypeId & AngelScript::asTYPEID_HANDLETOCONST) != 0;
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();

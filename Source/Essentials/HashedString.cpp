@@ -35,24 +35,24 @@
 
 FO_BEGIN_NAMESPACE
 
-hstring::entry hstring::_zeroEntry;
+hstring::entry hstring::_zero_entry;
 
-HashStorage::HashStorage(HashFunc hash_func) :
-    _hashFunc {hash_func}
+hash_storage::hash_storage(hash_func func) :
+    _hash_func {func}
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(_hashFunc, "Hash function is null");
+    FO_VERIFY_AND_THROW(_hash_func, "Hash function is null");
 }
 
-auto HashStorage::DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t
+auto hash_storage::default_hash(const_span<uint8_t> data) noexcept -> uint64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return hashing_ex::hash(data.data(), data.size());
 }
 
-auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
+auto hash_storage::check_hashed_string(string_view s) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -60,38 +60,38 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
         return false;
     }
 
-    uint64_t hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    uint64_t hash_value = _hash_func(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
 
-    shared_lock locker {_hashStorageLocker};
+    shared_lock locker {_hash_storage_locker};
 
-    return _hashStorage.find(hash_value) != _hashStorage.end();
+    return _hash_storage.find(hash_value) != _hash_storage.end();
 }
 
-auto HashStorage::ToHashedString(string_view s) -> hstring
+auto hash_storage::to_hashed_string(string_view s) -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    static_assert(std::same_as<hstring::hash_t, decltype(_hashFunc({}))>);
+    static_assert(std::same_as<hstring::hash_t, decltype(_hash_func({}))>);
 
     if (s.empty()) {
         return {};
     }
 
-    uint64_t hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    uint64_t hash_value = _hash_func(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
-        shared_lock locker {_hashStorageLocker};
+        shared_lock locker {_hash_storage_locker};
 
-        if (auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+        if (auto it = _hash_storage.find(hash_value); it != _hash_storage.end()) {
 #if FO_DEBUG
-            bool collision_detected = s != it->second->Str;
+            bool collision_detected = s != it->second->str;
 #else
-            bool collision_detected = s.length() != it->second->Str.length();
+            bool collision_detected = s.length() != it->second->str.length();
 #endif
 
             if (collision_detected) {
-                throw HashCollisionException("Hash collision", s, it->second->Str, hash_value);
+                throw HashCollisionException("Hash collision", s, it->second->str, hash_value);
             }
 
             return hstring(it->second.get());
@@ -100,20 +100,20 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
     {
         // Add new entry
-        auto entry = SafeAlloc::MakeUnique<hstring::entry>();
-        entry->Hash = hash_value;
-        entry->Str = string(s);
+        auto entry = safe_alloc::make_unique<hstring::entry>();
+        entry->hash = hash_value;
+        entry->str = string(s);
 
-        scoped_lock locker {_hashStorageLocker};
+        scoped_lock locker {_hash_storage_locker};
 
-        const auto [it, inserted] = _hashStorage.emplace(hash_value, std::move(entry));
+        const auto [it, inserted] = _hash_storage.emplace(hash_value, std::move(entry));
         ignore_unused(inserted); // Do not assert because somebody else can insert it already
 
         return hstring(it->second.get());
     }
 }
 
-auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
+auto hash_storage::resolve_hash(hstring::hash_t h) const -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -122,21 +122,21 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
     }
 
     {
-        shared_lock locker {_hashStorageLocker};
+        shared_lock locker {_hash_storage_locker};
 
-        if (auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        if (auto it = _hash_storage.find(h); it != _hash_storage.end()) {
             return hstring(it->second.get());
         }
     }
 
-    HandleResolveHashFailure(h);
+    handle_resolve_hash_failure(h);
 
-    BreakIntoDebugger();
+    break_into_debugger();
 
     throw HashResolveException("Can't resolve hash", h);
 }
 
-auto HashStorage::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring
+auto hash_storage::resolve_hash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -145,16 +145,16 @@ auto HashStorage::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexce
     }
 
     {
-        shared_lock locker {_hashStorageLocker};
+        shared_lock locker {_hash_storage_locker};
 
-        if (auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        if (auto it = _hash_storage.find(h); it != _hash_storage.end()) {
             return hstring(it->second.get());
         }
     }
 
-    HandleResolveHashFailure(h);
+    handle_resolve_hash_failure(h);
 
-    BreakIntoDebugger();
+    break_into_debugger();
 
     if (failed) {
         *failed = true;
@@ -163,30 +163,30 @@ auto HashStorage::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexce
     return {};
 }
 
-void HashStorage::SetResolveHashFailureHandler(ResolveHashFailureHandler handler)
+void hash_storage::set_resolve_hash_failure_handler(resolve_hash_failure_handler handler)
 {
     FO_STACK_TRACE_ENTRY();
 
-    scoped_lock locker {_resolveHashFailureHandlerLocker};
+    scoped_lock locker {_resolve_hash_failure_handler_locker};
 
-    _resolveHashFailureHandler = std::move(handler);
+    _resolve_hash_failure_handler = std::move(handler);
 }
 
-void HashStorage::HandleResolveHashFailure(hstring::hash_t h) const noexcept
+void hash_storage::handle_resolve_hash_failure(hstring::hash_t h) const noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    shared_lock locker {_resolveHashFailureHandlerLocker};
+    shared_lock locker {_resolve_hash_failure_handler_locker};
 
-    if (!_resolveHashFailureHandler) {
+    if (!_resolve_hash_failure_handler) {
         return;
     }
 
     try {
-        _resolveHashFailureHandler(h);
+        _resolve_hash_failure_handler(h);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

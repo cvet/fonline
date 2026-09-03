@@ -43,7 +43,7 @@
 
 FO_BEGIN_NAMESPACE
 
-void Platform::InfoLog(const string& str) noexcept
+void platform::info_log(const string& str) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -58,7 +58,7 @@ void Platform::InfoLog(const string& str) noexcept
 #endif
 }
 
-void Platform::SetThreadName(const string& str) noexcept
+void platform::set_thread_name(const string& str) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -69,7 +69,7 @@ void Platform::SetThreadName(const string& str) noexcept
 #endif
 }
 
-auto Platform::GetExePath() noexcept -> optional<string>
+auto platform::get_exe_path() noexcept -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -80,7 +80,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #endif
 }
 
-auto Platform::GetUserDataBase() noexcept -> string
+auto platform::get_user_data_base() noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -108,7 +108,7 @@ auto Platform::GetUserDataBase() noexcept -> string
 #endif
 }
 
-auto Platform::ForkProcess() noexcept -> bool
+auto platform::fork_process() noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -119,7 +119,7 @@ auto Platform::ForkProcess() noexcept -> bool
 #endif
 }
 
-auto Platform::GetCurrentProcessIdStr() noexcept -> string
+auto platform::get_current_process_id_str() noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -130,7 +130,7 @@ auto Platform::GetCurrentProcessIdStr() noexcept -> string
 #endif
 }
 
-auto Platform::GetProcessMemoryUsage() noexcept -> size_t
+auto platform::get_process_memory_usage() noexcept -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -141,7 +141,7 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #endif
 }
 
-auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
+auto platform::get_process_private_memory_usage() noexcept -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -152,44 +152,44 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
 #endif
 }
 
-auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
+auto platform::get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot
 {
     FO_STACK_TRACE_ENTRY();
 
-    CpuUsageSnapshot result;
+    cpu_usage_snapshot result;
 
 #if FO_WINDOWS
-    result.ProcessTimeNs = winapi::get_process_cpu_time_ns().value_or(0);
-    result.LogicalCoreCount = winapi::get_active_processor_count();
+    result.process_time_ns = winapi::get_process_cpu_time_ns().value_or(0);
+    result.logical_core_count = winapi::get_active_processor_count();
 
     // Windows reports one system-wide figure rather than a row per core
     if (optional<winapi::cpu_core_times> system_times = winapi::get_system_cpu_times(); system_times.has_value()) {
-        result.Cores.emplace_back(CpuUsageCoreSnapshot {
-            .IdleTime = system_times->idle_time,
-            .TotalTime = system_times->total_time,
+        result.cores.emplace_back(cpu_usage_core_snapshot {
+            .idle_time = system_times->idle_time,
+            .total_time = system_times->total_time,
         });
     }
 #else
     vector<posix::cpu_core_times> core_times = posix::get_system_cpu_times();
 
-    result.Cores.reserve(core_times.size());
+    result.cores.reserve(core_times.size());
 
     for (const posix::cpu_core_times& core : core_times) {
-        result.Cores.emplace_back(CpuUsageCoreSnapshot {
-            .IdleTime = core.idle_time,
-            .TotalTime = core.total_time,
+        result.cores.emplace_back(cpu_usage_core_snapshot {
+            .idle_time = core.idle_time,
+            .total_time = core.total_time,
         });
     }
 
     // The kernel lists one row per online core, so the rows are the count when it produced any
-    result.LogicalCoreCount = !result.Cores.empty() ? static_cast<uint32_t>(result.Cores.size()) : posix::get_logical_core_count();
-    result.ProcessTimeNs = posix::get_process_cpu_time_ns().value_or(0);
+    result.logical_core_count = !result.cores.empty() ? static_cast<uint32_t>(result.cores.size()) : posix::get_logical_core_count();
+    result.process_time_ns = posix::get_process_cpu_time_ns().value_or(0);
 #endif
 
     return result;
 }
 
-auto Platform::LoadModule(const string& module_name) noexcept -> nptr<void>
+auto platform::load_module(const string& module_name) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -206,7 +206,7 @@ auto Platform::LoadModule(const string& module_name) noexcept -> nptr<void>
 #endif
 }
 
-void Platform::UnloadModule(nptr<void> module_handle) noexcept
+void platform::unload_module(nptr<void> module_handle) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -221,7 +221,7 @@ void Platform::UnloadModule(nptr<void> module_handle) noexcept
 #endif
 }
 
-auto Platform::GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*
+auto platform::get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 

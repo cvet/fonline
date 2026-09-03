@@ -112,7 +112,7 @@ private:
     DisconnectCallback _disconnectCallback {};
     NetInBuffer _netIn;
     NetOutBuffer _netOut;
-    StreamDecompressor _decompressor {};
+    stream_decompressor _decompressor {};
     vector<uint8_t> _unpackedReceivedBuf {};
     size_t _bytesSend {};
     size_t _bytesReceived {};

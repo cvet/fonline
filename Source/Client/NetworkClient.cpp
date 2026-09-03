@@ -115,13 +115,13 @@ void NetworkClientConnection::Disconnect() noexcept
     }
 
     if (_isConnecting) {
-        WriteLog("Can't connect to the server");
+        logging::write("Can't connect to the server");
 
         _isConnecting = false;
     }
 
     if (_isConnected) {
-        WriteLog("Disconnect from the server");
+        logging::write("Disconnect from the server");
 
         _isConnected = false;
     }

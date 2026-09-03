@@ -73,7 +73,7 @@ namespace
             REQUIRE(_readPos + size <= _buf->size());
             auto target = make_ptr(raw_data);
             auto source = make_ptr(&_buf->at(_readPos));
-            MemCopy(target, source, size);
+            memory::copy(target, source, size);
             _readPos += size;
             return 0;
         }
@@ -91,7 +91,7 @@ namespace
             _buf->resize(_writePos + size);
             auto target = make_ptr(&_buf->at(_writePos));
             auto source = make_ptr(raw_data);
-            MemCopy(target, source, size);
+            memory::copy(target, source, size);
             _writePos += size;
             return 0;
         }
@@ -487,7 +487,7 @@ namespace
     static auto MakeInboundRemoteCall(EngineMetadata& meta, string_view name, string_view subsystem_hint, std::initializer_list<ArgDesc> args) -> RemoteCallDesc
     {
         RemoteCallDesc call {};
-        call.Name = meta.Hashes.ToHashedString(name);
+        call.Name = meta.Hashes.to_hashed_string(name);
         call.SubsystemHint = string(subsystem_hint);
         call.Args.assign(args.begin(), args.end());
         return call;
@@ -1388,7 +1388,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         ComplexTypeDesc int_dict {.Kind = ComplexTypeKind::Dict, .BaseType = int_type, .KeyType = string_type};
         ComplexTypeDesc int_array_dict {.Kind = ComplexTypeKind::DictOfArray, .BaseType = int_type, .KeyType = string_type};
 
-        auto callback_args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
+        auto callback_args = safe_alloc::make_shared<vector<ComplexTypeDesc>>();
         callback_args->emplace_back();
         callback_args->emplace_back(int_array_dict);
         callback_args->emplace_back(int_dict);
@@ -1612,8 +1612,8 @@ void NamespacedCall()
         auto mod = BuildModule(engine, "HelperFuncNames", Script, messages);
 
         EngineMetadata meta {[] { }};
-        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()"), meta.Hashes) == meta.Hashes.ToHashedString("FreeCall"));
-        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()"), meta.Hashes) == meta.Hashes.ToHashedString("HelperNs::NamespacedCall"));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()"), meta.Hashes) == meta.Hashes.to_hashed_string("FreeCall"));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()"), meta.Hashes) == meta.Hashes.to_hashed_string("HelperNs::NamespacedCall"));
     }
 
     SECTION("BindsAndStripsAttributes")
@@ -1744,7 +1744,7 @@ void NamespacedCall()
         REQUIRE(mod->SaveByteCode(&stream) >= 0);
 
         vector<uint8_t> payload;
-        auto writer = DataWriter {payload};
+        auto writer = data_writer {payload};
         SerializeFunctionAttributeRecords(writer, parsed.Records);
 
         ScriptMessages load_messages;
@@ -1757,9 +1757,9 @@ void NamespacedCall()
         auto load_stream = BytecodeStream {bytecode};
         REQUIRE(load_mod->LoadByteCode(&load_stream) >= 0);
 
-        auto reader = DataReader {payload};
+        auto reader = data_reader {payload};
         auto records = DeserializeFunctionAttributeRecords(reader);
-        reader.VerifyEnd();
+        reader.verify_end();
 
         string bind_error = BindFunctionAttributeRecords(load_mod, records);
         INFO(bind_error);

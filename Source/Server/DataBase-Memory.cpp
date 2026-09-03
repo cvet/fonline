@@ -265,7 +265,7 @@ private:
 
 auto CreateMemoryDataBase(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    return SafeAlloc::MakeUnique<DbMemory>(db_settings, std::move(panic_callback));
+    return safe_alloc::make_unique<DbMemory>(db_settings, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE

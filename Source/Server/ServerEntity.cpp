@@ -279,7 +279,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
             result = cb.Callback(call);
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             had_exception = true;
 
             if (cb.HasExplicitResult) {

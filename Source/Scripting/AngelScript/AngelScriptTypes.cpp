@@ -146,7 +146,7 @@ static void DefaultInitStructFields(ptr<void> obj, const BaseTypeDesc& type)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    MemFill(obj, 0, type.Size);
+    memory::fill(obj, 0, type.Size);
 
     if (type.StructLayout) {
         for (const auto& field : type.StructLayout->Fields) {
@@ -180,7 +180,7 @@ static void GenericType_ConstructCopy(AngelScript::asIScriptGeneric* gen)
     auto obj = GetGenericObjectAs<void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
-    MemCopy(obj, other, type->Size);
+    memory::copy(obj, other, type->Size);
 }
 
 static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
@@ -193,7 +193,7 @@ static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
 
     VisitBaseTypePrimitive(obj.get(), *type, [&index, &gen](auto&& v) {
         auto arg = GetGenericAddressArgAs<const void>(gen, index);
-        MemCopy(&v, arg, sizeof(v));
+        memory::copy(&v, arg, sizeof(v));
         index++;
     });
 }
@@ -275,7 +275,7 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
             }
         }
         else if constexpr (std::is_same_v<T, hstring>) {
-            v = meta->Hashes.ToHashedString(tokens[index]);
+            v = meta->Hashes.to_hashed_string(tokens[index]);
         }
 
         index++;
@@ -314,7 +314,7 @@ static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
     auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
-    bool equals = MemCompare(obj, other, type->Size);
+    bool equals = memory::compare(obj, other, type->Size);
     new (gen->GetAddressOfReturnLocation()) bool(equals);
 }
 
@@ -387,7 +387,7 @@ static void HstringWrapper_AnyConvRev(AngelScript::asIScriptGeneric* gen)
     auto self = GetGenericObjectAs<const any_t>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
-    new (gen->GetAddressOfReturnLocation()) T(meta->Hashes.ToHashedString(*self));
+    new (gen->GetAddressOfReturnLocation()) T(meta->Hashes.to_hashed_string(*self));
 }
 
 static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, bool hstring_key1)
@@ -509,7 +509,7 @@ static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
     auto str = GetGenericObjectAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
-    hstring hstr = meta->Hashes.ToHashedString(*str);
+    hstring hstr = meta->Hashes.to_hashed_string(*str);
     new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 }
 
@@ -707,7 +707,7 @@ static void Any_ConvGen(AngelScript::asIScriptGeneric* gen)
         new (gen->GetAddressOfReturnLocation()) T(result);
     }
     else if constexpr (std::same_as<T, hstring>) {
-        new (gen->GetAddressOfReturnLocation()) hstring(meta->Hashes.ToHashedString(*self));
+        new (gen->GetAddressOfReturnLocation()) hstring(meta->Hashes.to_hashed_string(*self));
     }
     else {
         static_assert(always_false_v<T>, "Unsupported type for any conversion");
@@ -1072,7 +1072,7 @@ static void DynamicRefType_AddRef(const DynamicRefTypeInstance* self)
 
     FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
     ptr<const DynamicRefTypeInstance> self_ref = self;
-    self_ref->AddRef();
+    self_ref->addref();
 }
 
 static void DynamicRefType_Release(const DynamicRefTypeInstance* self)
@@ -1081,7 +1081,7 @@ static void DynamicRefType_Release(const DynamicRefTypeInstance* self)
 
     FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
     ptr<const DynamicRefTypeInstance> self_ref = self;
-    self_ref->Release();
+    self_ref->release();
 }
 
 static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
@@ -1090,7 +1090,7 @@ static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
 
     auto registrar = GetGenericAuxiliaryAs<const PropertyRegistrar>(gen);
 
-    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(registrar);
+    auto ref_instance = safe_alloc::make_refcounted<DynamicRefTypeInstance>(registrar);
 
     new (gen->GetAddressOfReturnLocation()) void*(ref_instance.release_ownership());
 }

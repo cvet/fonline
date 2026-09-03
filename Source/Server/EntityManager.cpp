@@ -44,17 +44,17 @@ FO_BEGIN_NAMESPACE
 
 EntityManager::EntityManager(ptr<ServerEngine> engine) :
     _engine {engine},
-    _playerTypeName {engine->Hashes.ToHashedString(Player::ENTITY_TYPE_NAME)},
-    _locationTypeName {engine->Hashes.ToHashedString(Location::ENTITY_TYPE_NAME)},
-    _mapTypeName {engine->Hashes.ToHashedString(Map::ENTITY_TYPE_NAME)},
-    _critterTypeName {engine->Hashes.ToHashedString(Critter::ENTITY_TYPE_NAME)},
-    _itemTypeName {engine->Hashes.ToHashedString(Item::ENTITY_TYPE_NAME)},
-    _playerCollectionName {engine->Hashes.ToHashedString(strex("{}s", Player::ENTITY_TYPE_NAME))},
-    _locationCollectionName {engine->Hashes.ToHashedString(strex("{}s", Location::ENTITY_TYPE_NAME))},
-    _mapCollectionName {engine->Hashes.ToHashedString(strex("{}s", Map::ENTITY_TYPE_NAME))},
-    _critterCollectionName {engine->Hashes.ToHashedString(strex("{}s", Critter::ENTITY_TYPE_NAME))},
-    _itemCollectionName {engine->Hashes.ToHashedString(strex("{}s", Item::ENTITY_TYPE_NAME))},
-    _protoMigrationRuleName {engine->Hashes.ToHashedString("Proto")}
+    _playerTypeName {engine->Hashes.to_hashed_string(Player::ENTITY_TYPE_NAME)},
+    _locationTypeName {engine->Hashes.to_hashed_string(Location::ENTITY_TYPE_NAME)},
+    _mapTypeName {engine->Hashes.to_hashed_string(Map::ENTITY_TYPE_NAME)},
+    _critterTypeName {engine->Hashes.to_hashed_string(Critter::ENTITY_TYPE_NAME)},
+    _itemTypeName {engine->Hashes.to_hashed_string(Item::ENTITY_TYPE_NAME)},
+    _playerCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Player::ENTITY_TYPE_NAME))},
+    _locationCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Location::ENTITY_TYPE_NAME))},
+    _mapCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Map::ENTITY_TYPE_NAME))},
+    _critterCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Critter::ENTITY_TYPE_NAME))},
+    _itemCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Item::ENTITY_TYPE_NAME))},
+    _protoMigrationRuleName {engine->Hashes.to_hashed_string("Proto")}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -371,7 +371,7 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Load entities");
+    logging::write("Load entities");
 
     int64_t last = _engine->GetLastEntityId().underlying_value();
     int64_t start = _engine->Settings->EntityStartId;
@@ -399,13 +399,13 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
         throw ServerInitException("Load entities failed");
     }
 
-    WriteLog("Loaded {} locations", _allLocations.size());
-    WriteLog("Loaded {} maps", _allMaps.size());
-    WriteLog("Loaded {} critters", _allCritters.size());
-    WriteLog("Loaded {} items", _allItems.size());
-    WriteLog("Loaded {} other entities", _allEntities.size() - _allLocations.size() - _allMaps.size() - _allCritters.size() - _allItems.size());
+    logging::write("Loaded {} locations", _allLocations.size());
+    logging::write("Loaded {} maps", _allMaps.size());
+    logging::write("Loaded {} critters", _allCritters.size());
+    logging::write("Loaded {} items", _allItems.size());
+    logging::write("Loaded {} other entities", _allEntities.size() - _allLocations.size() - _allMaps.size() - _allCritters.size() - _allItems.size());
 
-    WriteLog("Init entities");
+    logging::write("Init entities");
 
     for (ptr<Location> loc : copy_hold_ref(_allLocations)) {
         if (!loc->IsDestroyed()) {
@@ -448,15 +448,15 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
     auto loc_proto = _engine->GetProtoLocation(loc_pid);
 
     if (!loc_proto) {
-        WriteLog(LogType::Warning, "Location {} proto {} not found", loc_id, loc_pid);
+        logging::write(logging::type::warning, "Location {} proto {} not found", loc_id, loc_pid);
         is_error = true;
         return nullptr;
     }
 
-    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto);
+    auto loc = safe_alloc::make_refcounted<Location>(_engine, loc_id, loc_proto);
 
     if (!PropertiesSerializer::LoadFromDocument(loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
-        WriteLog(LogType::Warning, "Failed to restore location {} {} properties", loc_pid, loc_id);
+        logging::write(logging::type::warning, "Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
         return nullptr;
     }
@@ -466,8 +466,8 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
         loc->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed to register location {} {}", loc_pid, loc_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed to register location {} {}", loc_pid, loc_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
         return nullptr;
     }
@@ -506,8 +506,8 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
         LoadInnerEntities(loc, is_error);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during restore location content {} {}", loc_pid, loc_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during restore location content {} {}", loc_pid, loc_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
     }
 
@@ -527,16 +527,16 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
     auto map_proto = _engine->GetProtoMap(map_pid);
 
     if (!map_proto) {
-        WriteLog(LogType::Warning, "Map {} proto {} not found", map_id, map_pid);
+        logging::write(logging::type::warning, "Map {} proto {} not found", map_id, map_pid);
         is_error = true;
         return nullptr;
     }
 
     auto static_map = _engine->MapMngr.GetStaticMap(map_proto);
-    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
+    auto map = safe_alloc::make_refcounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
 
     if (!PropertiesSerializer::LoadFromDocument(map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
-        WriteLog(LogType::Warning, "Failed to restore map {} {} properties", map_pid, map_id);
+        logging::write(logging::type::warning, "Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
         return nullptr;
     }
@@ -546,8 +546,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         map->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed to register map {} {}", map_pid, map_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed to register map {} {}", map_pid, map_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
         return nullptr;
     }
@@ -611,8 +611,8 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         LoadInnerEntities(map, is_error);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during restore map content {} {}", map_pid, map_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during restore map content {} {}", map_pid, map_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
     }
 
@@ -632,15 +632,15 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
     auto proto = _engine->GetProtoCritter(cr_pid);
 
     if (!proto) {
-        WriteLog(LogType::Warning, "Critter {} proto {} not found", cr_id, cr_pid);
+        logging::write(logging::type::warning, "Critter {} proto {} not found", cr_id, cr_pid);
         is_error = true;
         return nullptr;
     }
 
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto);
+    auto cr = safe_alloc::make_refcounted<Critter>(_engine, cr_id, proto);
 
     if (!PropertiesSerializer::LoadFromDocument(cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
-        WriteLog(LogType::Warning, "Failed to restore critter {} {} properties", cr_pid, cr_id);
+        logging::write(logging::type::warning, "Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
         return nullptr;
     }
@@ -651,8 +651,8 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
         cr->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed to register critter {} {}", cr_pid, cr_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed to register critter {} {}", cr_pid, cr_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
         return nullptr;
     }
@@ -697,20 +697,20 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
             auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
             if (_engine->OnCritterPreLoad.Fire(cr) == Entity::EventResult::StopChain) {
-                WriteLog(LogType::Warning, "Critter {} {} pre-load failed", cr_pid, cr_id);
+                logging::write(logging::type::warning, "Critter {} {} pre-load failed", cr_pid, cr_id);
                 is_error = true;
             }
         }
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during restore critter content {} {}", cr_pid, cr_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during restore critter content {} {}", cr_pid, cr_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
     }
 
     if (cr->IsDestroyed()) {
         if (!is_error) {
-            WriteLog(LogType::Info, "Critter {} {} dropped during pre-load", cr_pid, cr_id);
+            logging::write(logging::type::info, "Critter {} {} dropped during pre-load", cr_pid, cr_id);
         }
 
         return nullptr;
@@ -732,15 +732,15 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
     auto proto = _engine->GetProtoItem(item_pid);
 
     if (!proto) {
-        WriteLog(LogType::Warning, "Item {} proto {} not found", item_id, item_pid);
+        logging::write(logging::type::warning, "Item {} proto {} not found", item_id, item_pid);
         is_error = true;
         return nullptr;
     }
 
-    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto);
+    auto item = safe_alloc::make_refcounted<Item>(_engine, item_id, proto);
 
     if (!PropertiesSerializer::LoadFromDocument(item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
-        WriteLog(LogType::Warning, "Failed to restore item {} {} properties", item_pid, item_id);
+        logging::write(logging::type::warning, "Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
         return nullptr;
     }
@@ -751,8 +751,8 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
         item->SetPersistent(true);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed to register item {} {}", item_pid, item_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed to register item {} {}", item_pid, item_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
         return nullptr;
     }
@@ -790,8 +790,8 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
         LoadInnerEntities(item, is_error);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during restore item content {} {}", item_pid, item_id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during restore item content {} {}", item_pid, item_id);
+        exceptions::report_and_continue(ex);
         is_error = true;
     }
 
@@ -810,8 +810,8 @@ void EntityManager::LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexce
         }
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during restore inner entities for {}", holder->GetTypeName());
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during restore inner entities for {}", holder->GetTypeName());
+        exceptions::report_and_continue(ex);
         is_error = true;
     }
 }
@@ -870,8 +870,8 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         }
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during restore inner entities for {}", holder->GetTypeName());
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during restore inner entities for {}", holder->GetTypeName());
+        exceptions::report_and_continue(ex);
         is_error = true;
     }
 }
@@ -886,14 +886,14 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         auto doc = _engine->DbStorage.Get(collection_name, id);
 
         if (doc.Empty()) {
-            WriteLog(LogType::Warning, "{} document {} not found", collection_name, id);
+            logging::write(logging::type::warning, "{} document {} not found", collection_name, id);
             is_error = true;
             return {};
         }
 
         if (!doc.Contains("_Proto")) {
             if (expect_proto) {
-                WriteLog(LogType::Warning, "{} '_Proto' section not found in entity {}", collection_name, id);
+                logging::write(logging::type::warning, "{} '_Proto' section not found in entity {}", collection_name, id);
                 is_error = true;
             }
 
@@ -903,7 +903,7 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         const auto& proto_value = doc["_Proto"];
 
         if (proto_value.Type() != AnyData::ValueType::String) {
-            WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_value.Type());
+            logging::write(logging::type::warning, "{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_value.Type());
             is_error = true;
             return {};
         }
@@ -911,25 +911,25 @@ auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, id
         string_view proto_name = proto_value.AsString();
 
         if (proto_name.empty()) {
-            WriteLog(LogType::Warning, "{} '_Proto' section of entity {} is empty", collection_name, id);
+            logging::write(logging::type::warning, "{} '_Proto' section of entity {} is empty", collection_name, id);
             is_error = true;
             return {};
         }
 
-        hstring proto_id = _engine->Hashes.ToHashedString(proto_name);
+        hstring proto_id = _engine->Hashes.to_hashed_string(proto_name);
 
         // A proto removed on purpose by a migration rule skips cleanly so callers drop the entity, while a
         // genuinely missing one keeps its id and surfaces later as proto-not-found
         if (optional<hstring> migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && !migrated.value()) {
-            WriteLog(LogType::Info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
+            logging::write(logging::type::info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
         }
 
         return {std::move(doc), proto_id};
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during load document {} {}", collection_name, id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during load document {} {}", collection_name, id);
+        exceptions::report_and_continue(ex);
         is_error = true;
         return {};
     }
@@ -1481,7 +1481,7 @@ void EntityManager::DestroyEntity(ptr<Entity> entity)
     }
     else {
         auto proto_entity = entity.dyn_cast<ProtoEntity>();
-        WriteLog(LogType::Warning, "Trying to destroy entity: {}{}", proto_entity ? "Proto" : "", entity->GetTypeName());
+        logging::write(logging::type::warning, "Trying to destroy entity: {}{}", proto_entity ? "Proto" : "", entity->GetTypeName());
     }
 }
 
@@ -1637,10 +1637,10 @@ auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> ref
 
     refcount_ptr<CustomEntity> entity = [&]() -> refcount_ptr<CustomEntity> {
         if (proto) {
-            return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, ident_t {}, registrar, proto);
+            return safe_alloc::make_refcounted<CustomEntityWithProto>(_engine, ident_t {}, registrar, proto);
         }
 
-        return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrar, nullptr);
+        return safe_alloc::make_refcounted<CustomEntity>(_engine, ident_t {}, registrar, nullptr);
     }();
 
     return entity;
@@ -1654,7 +1654,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
         FO_VERIFY_AND_THROW(id.underlying_value() != 0, "Generated entity id is zero");
 
         if (!_engine->IsValidEntityType(type_name)) {
-            WriteLog(LogType::Warning, "Custom entity {} type {} not valid", id, type_name);
+            logging::write(logging::type::warning, "Custom entity {} type {} not valid", id, type_name);
             is_error = true;
             return nullptr;
         }
@@ -1666,11 +1666,11 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
             FO_VERIFY_AND_THROW(type_it == _allCustomEntities.end() || type_it->second.count(id) == 0, "Custom entity id is already registered for this type while loading from storage", type_name, id);
         }
 
-        hstring collection_name = _engine->Hashes.ToHashedString(strex("{}s", type_name));
+        hstring collection_name = _engine->Hashes.to_hashed_string(strex("{}s", type_name));
         auto&& [doc, pid] = LoadEntityDoc(type_name, collection_name, id, false, is_error);
 
         if (doc.Empty()) {
-            WriteLog(LogType::Warning, "Custom entity {} with type {} invalid document", id, type_name);
+            logging::write(logging::type::warning, "Custom entity {} with type {} invalid document", id, type_name);
             is_error = true;
             return nullptr;
         }
@@ -1683,11 +1683,11 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
                 proto = _engine->GetProtoEntity(type_name, pid);
             }
             else {
-                proto = _engine->GetProtoEntity(type_name, _engine->Hashes.ToHashedString("Default"));
+                proto = _engine->GetProtoEntity(type_name, _engine->Hashes.to_hashed_string("Default"));
             }
 
             if (!proto) {
-                WriteLog(LogType::Warning, "Proto {} for custom entity {} with type {} not found", pid, id, type_name);
+                logging::write(logging::type::warning, "Proto {} for custom entity {} with type {} not found", pid, id, type_name);
                 is_error = true;
                 return nullptr;
             }
@@ -1697,14 +1697,14 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
         FO_VERIFY_AND_THROW(registrar, "Missing property registrar for custom entity type");
         refcount_ptr<CustomEntity> entity = [&]() -> refcount_ptr<CustomEntity> {
             if (proto) {
-                return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, id, registrar, proto);
+                return safe_alloc::make_refcounted<CustomEntityWithProto>(_engine, id, registrar, proto);
             }
 
-            return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrar, nullptr);
+            return safe_alloc::make_refcounted<CustomEntity>(_engine, id, registrar, nullptr);
         }();
 
         if (!PropertiesSerializer::LoadFromDocument(entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
-            WriteLog(LogType::Warning, "Failed to load properties for custom entity {} with type {}", id, type_name);
+            logging::write(logging::type::warning, "Failed to load properties for custom entity {} with type {}", id, type_name);
             is_error = true;
             return nullptr;
         }
@@ -1718,8 +1718,8 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
         return std::move(entity);
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Failed during load custom entity {}", id);
-        ReportExceptionAndContinue(ex);
+        logging::write(logging::type::warning, "Failed during load custom entity {}", id);
+        exceptions::report_and_continue(ex);
         is_error = true;
         return nullptr;
     }

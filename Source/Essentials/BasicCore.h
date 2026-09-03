@@ -327,19 +327,19 @@ struct fixed_string
 // Generic helpers
 
 // Mechanical process termination only; failure callers own any diagnostics they require
-[[noreturn]] extern void ExitApp(bool success) noexcept;
+[[noreturn]] void exit_app(bool success) noexcept;
 
-extern auto IsRunInDebugger() noexcept -> bool;
-extern auto BreakIntoDebugger() noexcept -> bool;
+auto is_run_in_debugger() noexcept -> bool;
+auto break_into_debugger() noexcept -> bool;
 
-extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
+auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
 
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 {
 }
 
-FO_FORCE_INLINE void TSanAcquire(void* addr) noexcept
+FO_FORCE_INLINE void tsan_acquire(void* addr) noexcept
 {
 #if FO_THREAD_SANITIZER
     __tsan_acquire(addr);
@@ -348,7 +348,7 @@ FO_FORCE_INLINE void TSanAcquire(void* addr) noexcept
 #endif
 }
 
-FO_FORCE_INLINE void TSanRelease(void* addr) noexcept
+FO_FORCE_INLINE void tsan_release(void* addr) noexcept
 {
 #if FO_THREAD_SANITIZER
     __tsan_release(addr);
@@ -462,10 +462,10 @@ public:
     auto operator=(const stack_unwind_detector&) = delete;
     auto operator=(stack_unwind_detector&&) noexcept = delete;
     ~stack_unwind_detector() = default;
-    [[nodiscard]] explicit operator bool() const noexcept { return _initCount != std::uncaught_exceptions(); }
+    [[nodiscard]] explicit operator bool() const noexcept { return _init_count != std::uncaught_exceptions(); }
 
 private:
-    decltype(std::uncaught_exceptions()) _initCount {std::uncaught_exceptions()};
+    decltype(std::uncaught_exceptions()) _init_count {std::uncaught_exceptions()};
 };
 
 // End of scope callbacks
@@ -515,7 +515,7 @@ public:
 
     ~scope_success()
     {
-        if (!_released && !_stackUnwind) {
+        if (!_released && !_stack_unwind) {
             _callback();
         }
     }
@@ -524,7 +524,7 @@ public:
 
 private:
     T _callback;
-    stack_unwind_detector _stackUnwind {};
+    stack_unwind_detector _stack_unwind {};
     bool _released {};
 };
 
@@ -546,7 +546,7 @@ public:
 
     ~scope_fail() noexcept
     {
-        if (!_released && _stackUnwind) {
+        if (!_released && _stack_unwind) {
             _callback();
         }
     }
@@ -555,42 +555,42 @@ public:
 
 private:
     T _callback;
-    stack_unwind_detector _stackUnwind {};
+    stack_unwind_detector _stack_unwind {};
     bool _released {};
 };
 
 // Refcount base class
 template<typename T>
-class RefCounted
+class refcounted
 {
 public:
-    RefCounted() noexcept = default;
-    RefCounted(const RefCounted&) = delete;
-    RefCounted(RefCounted&&) noexcept = delete;
-    auto operator=(const RefCounted&) = delete;
-    auto operator=(RefCounted&&) noexcept = delete;
-    ~RefCounted() = default;
+    refcounted() noexcept = default;
+    refcounted(const refcounted&) = delete;
+    refcounted(refcounted&&) noexcept = delete;
+    auto operator=(const refcounted&) = delete;
+    auto operator=(refcounted&&) noexcept = delete;
+    ~refcounted() = default;
 
-    [[nodiscard]] auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(std::memory_order_relaxed); }
+    [[nodiscard]] auto get_refcount() const noexcept -> int32_t { return _ref_counter.load(std::memory_order_relaxed); }
 
-    void AddRef() const noexcept { _refCounter.fetch_add(1, std::memory_order_relaxed); }
+    void addref() const noexcept { _ref_counter.fetch_add(1, std::memory_order_relaxed); }
 
-    void Release() const noexcept
+    void release() const noexcept
     {
-        if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
+        if (_ref_counter.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
             delete static_cast<const T*>(this);
         }
     }
 
 private:
-    mutable std::atomic_int _refCounter {1};
+    mutable std::atomic_int _ref_counter {1};
 };
 
 // Enum operation helpers
 template<typename T>
     requires(std::is_enum_v<T>)
-constexpr auto IsEnumSet(T value, T check) noexcept -> bool
+constexpr auto is_enum_set(T value, T check) noexcept -> bool
 {
     using U = std::underlying_type_t<T>;
     return (static_cast<U>(value) & static_cast<U>(check)) != 0;
@@ -598,7 +598,7 @@ constexpr auto IsEnumSet(T value, T check) noexcept -> bool
 
 template<typename T, typename... Args>
     requires(std::is_enum_v<T> && (std::is_same_v<T, Args> && ...))
-constexpr auto CombineEnum(T first, Args... rest) noexcept -> T
+constexpr auto combine_enum(T first, Args... rest) noexcept -> T
 {
     using U = std::underlying_type_t<T>;
     return static_cast<T>((static_cast<U>(first) | ... | static_cast<U>(rest)));

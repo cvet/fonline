@@ -238,7 +238,7 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
             result = cb.Callback(call);
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             had_exception = true;
 
             // If callback has explicit result, then exception means that it failed to process event, so we should stop chain

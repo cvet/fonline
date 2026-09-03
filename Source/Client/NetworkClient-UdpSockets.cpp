@@ -76,7 +76,7 @@ auto NetworkClientConnection::CreateUdpSocketsConnection(ptr<ClientNetworkSettin
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<NetworkClientConnection_UdpSockets>(settings);
+    return safe_alloc::make_unique<NetworkClientConnection_UdpSockets>(settings);
 }
 
 NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<ClientNetworkSettings> settings) :
@@ -108,7 +108,7 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
     }
 
     _connectStartTime = nanotime::now();
-    WriteLog("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
+    logging::write("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
 }
 
 NetworkClientConnection_UdpSockets::~NetworkClientConnection_UdpSockets()
@@ -249,7 +249,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
                 _remotePort = port;
                 _isConnecting = false;
                 _isConnected = true;
-                WriteLog("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
+                logging::write("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
             }
 
             continue;
@@ -296,7 +296,7 @@ void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
     uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->UdpConnectTimeout, _settings->UdpConnectRetry));
 
     if (_connectStartTime != nanotime::zero && now - _connectStartTime >= std::chrono::milliseconds {connect_timeout_ms}) {
-        WriteLog("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
+        logging::write("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
         Disconnect();
         return;
     }

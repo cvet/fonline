@@ -73,28 +73,28 @@ static auto BsonMalloc(size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MallocRaw(size).get();
+    return safe_alloc::malloc_raw(size).get();
 }
 
 static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::CallocRaw(num, size).get();
+    return safe_alloc::calloc_raw(num, size).get();
 }
 
 static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::ReallocRaw(mem, size).get();
+    return safe_alloc::realloc_raw(mem, size).get();
 }
 
 static void BsonFree(void* mem) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    SafeAlloc::FreeRaw(mem);
+    safe_alloc::free_raw(mem);
 }
 
 // bson frees every block through the plain free member, so the aligned path must stay free()-compatible — on
@@ -104,11 +104,11 @@ static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC || !FO_WINDOWS
-    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+    return safe_alloc::malloc_aligned_raw(size, alignment).get();
 #else
     ignore_unused(alignment);
 
-    return SafeAlloc::MallocRaw(size).get();
+    return safe_alloc::malloc_raw(size).get();
 #endif
 }
 
@@ -373,7 +373,7 @@ void DataBaseImpl::InitializeOpLogs()
 
         string dir = strex(file_path).extract_dir().str();
 
-        if (!dir.empty() && !fs_create_directories(dir)) {
+        if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("Oplog directory can't be created", file_desc, dir);
         }
 
@@ -539,7 +539,7 @@ void DataBaseImpl::RestorePendingChanges()
             }
 
             if (++replayed_commands % 100 == 0) {
-                WriteLog("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
+                logging::write("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
             }
         }
     }
@@ -552,7 +552,7 @@ void DataBaseImpl::RestorePendingChanges()
 
     FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
     FO_VERIFY_AND_THROW(std::ranges::equal(_pendingChangesLog->GetContent(), _committedChangesLog->GetContent()), "Pending and committed database logs contain different command payloads");
-    WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
+    logging::write("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_committedChangesLog->Truncate()) {
         throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str());
@@ -611,7 +611,7 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
             doc = GetRecord(collection_name, storage_id);
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             _backendFailed = true;
             throw DataBaseException("Database backend failed to get document", ex.what());
         }
@@ -667,7 +667,7 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
     {
         scoped_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Insert;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -688,7 +688,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
     {
         scoped_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Update;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -708,7 +708,7 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
     {
         scoped_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Delete;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -743,7 +743,7 @@ void DataBaseImpl::WaitCommitChanges()
 
     while (!_pendingCommitOperations.empty()) {
         if (!InValidState()) {
-            WriteLog("Database is not in valid state, pending commit operations can't be guaranteed to be durably committed");
+            logging::write("Database is not in valid state, pending commit operations can't be guaranteed to be durably committed");
             break;
         }
 
@@ -887,7 +887,7 @@ void DataBaseImpl::StopCommitThread() noexcept
         _commitThread = {};
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -948,7 +948,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                     }
                 }
                 catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
+                    exceptions::report_and_continue(ex);
                     StartPanic("Failed to restore pending changes after successful backend reconnection");
                 }
             }
@@ -960,7 +960,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 
@@ -1001,7 +1001,7 @@ void DataBaseImpl::CommitNextChange() noexcept
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             _backendFailed = true;
             _reconnectRetryTime = nanotime::now() + _reconnectRetryPeriod;
         }
@@ -1046,7 +1046,7 @@ void DataBaseImpl::CommitNextChange() noexcept
             OnCommitOperationWrittenToOpLog();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             StartPanic("Exception during commit failure handling");
             return;
         }
@@ -1056,7 +1056,7 @@ void DataBaseImpl::CommitNextChange() noexcept
         RegisterDbRequests(1);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 
     try {
@@ -1065,7 +1065,7 @@ void DataBaseImpl::CommitNextChange() noexcept
         _pendingCommitOperations.pop_front();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
         StartPanic("Exception during post-commit bookkeeping");
     }
 }
@@ -1125,7 +1125,7 @@ void DataBaseImpl::StartPanic(string_view message)
         return;
     }
 
-    WriteLog("Critical database failure: {}", message);
+    logging::write("Critical database failure: {}", message);
     _panicStarted = true;
 
     if (_panicCallback) {
@@ -1134,7 +1134,7 @@ void DataBaseImpl::StartPanic(string_view message)
 
     run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
         coarse_sleep(timeout);
-        ReportFatalAndExit("Database panic shutdown timed out");
+        fatal::report_and_exit("Database panic shutdown timed out");
     }).detach();
 }
 
@@ -1356,7 +1356,7 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
     };
 
     if (auto options = strvex(connection_info).split(' '); !options.empty()) {
-        WriteLog("Connect to {} data base", options.front());
+        logging::write("Connect to {} data base", options.front());
 
         if (options.front() == "JSON" && options.size() == 2) {
             return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));

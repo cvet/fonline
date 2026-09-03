@@ -130,7 +130,7 @@ public:
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void FinalizeRegistration();
 
-    mutable HashStorage Hashes {};
+    mutable hash_storage Hashes {};
 
 private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;

@@ -325,7 +325,7 @@ TEST_CASE("EntityLock")
             lock.Release();
         });
 
-        // Wait until both waiters are fully enqueued before releasing, so the grant order is
+        // wait until both waiters are fully enqueued before releasing, so the grant order is
         // determined purely by ticket value and not by thread-startup timing under load
         while (lock.WaiterCount() != 2) {
             std::this_thread::yield();
@@ -364,7 +364,7 @@ TEST_CASE("EntityLock")
         auto t2 = make_waiter(50, 2);
         auto t3 = make_waiter(75, 3);
 
-        // Wait until all three waiters are fully enqueued before releasing, so the grant order is
+        // wait until all three waiters are fully enqueued before releasing, so the grant order is
         // determined purely by ticket value and not by thread-startup timing under load
         while (lock.WaiterCount() != 3) {
             std::this_thread::yield();
@@ -1043,9 +1043,9 @@ TEST_CASE("SyncContext")
         });
         auto join_releaser = scope_exit([&releaser]() noexcept { releaser.join(); });
 
-        TimeMeter wait_only_time;
+        time_meter wait_only_time;
         inner.LockSingleton(make_ptr(&singleton));
-        timespan wait_only_total = wait_only_time.GetDuration();
+        timespan wait_only_total = wait_only_time.get_duration();
         inner.UnlockSingleton(make_ptr(&singleton));
 
         releaser.join();
@@ -1060,10 +1060,10 @@ TEST_CASE("SyncContext")
         CHECK(inner_lock_wait.div<float64_t>(wait_only_total) >= 0.75);
         CHECK(outer_lock_wait == inner_lock_wait);
 
-        TimeMeter compute_only_time;
+        time_meter compute_only_time;
         uint64_t checksum = 1;
 
-        while (compute_only_time.GetDuration() < timespan {std::chrono::milliseconds {25}}) {
+        while (compute_only_time.get_duration() < timespan {std::chrono::milliseconds {25}}) {
             checksum = checksum * 6364136223846793005ULL + 1442695040888963407ULL;
         }
 

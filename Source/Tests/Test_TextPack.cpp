@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    HashStorage TestHashes;
+    hash_storage TestHashes;
 
     auto MakeKey(string_view collection, string_view key1, string_view key2 = {}) -> TextPackKey
     {

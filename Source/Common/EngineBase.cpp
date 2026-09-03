@@ -185,7 +185,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    auto it = _entityTypes.find(Hashes.ToHashedString(name));
+    auto it = _entityTypes.find(Hashes.to_hashed_string(name));
     FO_VERIFY_AND_THROW(it == _entityTypes.end(), "Unexpected entry found in entity types");
     FO_VERIFY_AND_THROW(!_fixedTypesByStr.contains(name), "Entity type name conflicts with an already registered fixed type", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Entity type name conflicts with an already registered base type", name);
@@ -195,7 +195,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     FO_VERIFY_AND_THROW(exported || _enums.count(strex("{}Property", name)) == 0, "Entity property enum type is already registered", name);
     FO_VERIFY_AND_THROW(exported || !_baseTypes.contains(strex("{}Property", name)), "Entity property type name conflicts with an already registered base type", name);
 
-    auto registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(name, _side, &Hashes, this);
+    auto registrar = safe_alloc::make_unique<PropertyRegistrar>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc {
         .Exported = exported,
@@ -206,7 +206,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         .PropRegistrar = std::move(registrar),
     };
 
-    auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
+    auto entry = _entityTypes.emplace(Hashes.to_hashed_string(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
 
     if (has_protos) {
@@ -246,7 +246,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    auto it = _fixedTypes.find(Hashes.ToHashedString(name));
+    auto it = _fixedTypes.find(Hashes.to_hashed_string(name));
     FO_VERIFY_AND_THROW(it == _fixedTypes.end(), "Unexpected entry found in fixed types");
     FO_VERIFY_AND_THROW(!_entityTypesByStr.contains(name), "Fixed type name conflicts with an already registered entity type", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Fixed type name conflicts with an already registered base type", name);
@@ -255,7 +255,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
     }
 
-    auto registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(name, _side, &Hashes, this);
+    auto registrar = safe_alloc::make_unique<PropertyRegistrar>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc {
         .Exported = exported,
@@ -266,7 +266,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
         .PropRegistrar = std::move(registrar),
     };
 
-    auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
+    auto entry = _fixedTypes.emplace(Hashes.to_hashed_string(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
 
     RegisterBaseType(name);
@@ -282,7 +282,7 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
 
     auto it = _entityTypesByStr.find(holder_type);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Holder entry registration references an unknown holder entity type", holder_type, target_type, entry);
-    FO_VERIFY_AND_THROW(it->second->HolderEntries.count(Hashes.ToHashedString(entry)) == 0, "Holder entity type already has an entry with this name", holder_type, target_type, entry);
+    FO_VERIFY_AND_THROW(it->second->HolderEntries.count(Hashes.to_hashed_string(entry)) == 0, "Holder entity type already has an entry with this name", holder_type, target_type, entry);
 
     auto registrar = GetPropertyRegistrarForEdit(holder_type);
     ptr<const Property> prop = persistent ? //
@@ -290,7 +290,7 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
         registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
     RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
 
-    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync, .Persistent = persistent});
+    it->second->HolderEntries.emplace(Hashes.to_hashed_string(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.to_hashed_string(target_type), .Sync = sync, .Persistent = persistent});
 }
 
 void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values)
@@ -425,7 +425,7 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
     FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType layout registration found an existing fields registrar", name);
     FO_VERIFY_AND_THROW(_dynamicRefTypeRegistrars.count(string(name)) == 0, "Dynamic RefType registrar is already registered", name);
 
-    auto fields_registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(strex("{}RefType", name), _side, &Hashes, this);
+    auto fields_registrar = safe_alloc::make_unique<PropertyRegistrar>(strex("{}RefType", name), _side, &Hashes, this);
 
     for (const auto& field_tokens : layout) {
         FO_VERIFY_AND_THROW(field_tokens.size() >= 2, "RefType field needs at least name and type tokens", name);
@@ -603,10 +603,10 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    hstring hrule_name = Hashes.ToHashedString(rule_name);
-    hstring hextra_info = Hashes.ToHashedString(extra_info);
-    hstring htarget = Hashes.ToHashedString(target);
-    hstring hreplacement = Hashes.ToHashedString(replacement);
+    hstring hrule_name = Hashes.to_hashed_string(rule_name);
+    hstring hextra_info = Hashes.to_hashed_string(extra_info);
+    hstring htarget = Hashes.to_hashed_string(target);
+    hstring hreplacement = Hashes.to_hashed_string(replacement);
 
     auto& rules = _migrationRules[hrule_name][hextra_info];
 
@@ -651,7 +651,7 @@ auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
 
     BaseTypeDesc type;
     type.Name = type_str;
-    type.HashedName = Hashes.ToHashedString(type_str);
+    type.HashedName = Hashes.to_hashed_string(type_str);
 
     if (auto it = Data->BuiltinTypes.find(type_str); it != Data->BuiltinTypes.end()) {
         it->second(type);
@@ -727,7 +727,7 @@ auto EngineMetadata::GetPropertyRegistrar(string_view type_name) const noexcept 
 {
     FO_STACK_TRACE_ENTRY();
 
-    hstring type_name_hashed = Hashes.ToHashedString(type_name);
+    hstring type_name_hashed = Hashes.to_hashed_string(type_name);
 
     return GetPropertyRegistrar(type_name_hashed);
 }
@@ -822,7 +822,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    hstring prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
+    hstring prop_name = Hashes.to_hashed_string(strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrar()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 
@@ -917,7 +917,7 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
         }
 
         tokens_len += 2;
-        auto args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
+        auto args = safe_alloc::make_shared<vector<ComplexTypeDesc>>();
 
         while (true) {
             bool is_first_arg = tokens_len == 2; // First argument is return type
@@ -1195,7 +1195,7 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     Resources {std::move(resources)},
     GameTime(Settings),
     TimeEventMngr(make_ptr(this)),
-    _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(make_ptr(this))}
+    _imgui {safe_alloc::make_refcounted<ScriptImGui>(make_ptr(this))}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1216,7 +1216,7 @@ void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();
 
-    GameTime.FrameAdvance(IsRunInDebugger() || Settings->DisableNetworking);
+    GameTime.FrameAdvance(is_run_in_debugger() || Settings->DisableNetworking);
 
     LockForPropertyAccess();
     auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });

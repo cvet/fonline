@@ -129,8 +129,8 @@ TEST_CASE("NetBuffer")
 
     SECTION("HashedStringRoundtrip")
     {
-        HashStorage hashes {};
-        hstring value = hashes.ToHashedString("net_hash_value");
+        hash_storage hashes {};
+        hstring value = hashes.to_hashed_string("net_hash_value");
 
         NetOutBuffer out_buf {8};
         out_buf.Write<hstring>(value);
@@ -145,16 +145,16 @@ TEST_CASE("NetBuffer")
 
     SECTION("UnresolvedHashReportsWithHandlerAndCanBeLearned")
     {
-        HashStorage sender {};
-        hstring value = sender.ToHashedString("runtime_only_hash");
+        hash_storage sender {};
+        hstring value = sender.to_hashed_string("runtime_only_hash");
 
         NetOutBuffer out_buf {8};
         out_buf.Write<hstring>(value);
 
         // A receiver that doesn't know this hash yet fails and reports the raw hash
-        HashStorage receiver {};
+        hash_storage receiver {};
         hstring::hash_t reported_hash = 0;
-        receiver.SetResolveHashFailureHandler([&reported_hash](hstring::hash_t hash) { reported_hash = hash; });
+        receiver.set_resolve_hash_failure_handler([&reported_hash](hstring::hash_t hash) { reported_hash = hash; });
 
         NetInBuffer in_buf {8};
         in_buf.AddData(out_buf.GetData());
@@ -163,7 +163,7 @@ TEST_CASE("NetBuffer")
         CHECK(reported_hash == value.as_hash());
 
         // Learning the string (as the client does from the server's HashList) makes the same hash resolve
-        hstring learned = receiver.ToHashedString("runtime_only_hash");
+        hstring learned = receiver.to_hashed_string("runtime_only_hash");
         CHECK(learned.as_hash() == value.as_hash());
 
         NetInBuffer in_buf_again {8};

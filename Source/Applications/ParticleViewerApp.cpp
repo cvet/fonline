@@ -109,10 +109,10 @@ static void ParticleViewerEntry([[maybe_unused]] void* data)
         if (!Data->Engine) {
             try {
                 auto settings = make_ptr(&GetApp()->Settings);
-                Data->Engine = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
+                Data->Engine = safe_alloc::make_refcounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
 
                 auto engine = GetEngine();
-                Data->Viewer = SafeAlloc::MakeUnique<ParticleViewer>(engine, &engine->SprMngr);
+                Data->Viewer = safe_alloc::make_unique<ParticleViewer>(engine, &engine->SprMngr);
 
                 // The window is the whole application here: it starts open and
                 // fills the viewport instead of floating inside an empty frame
@@ -120,7 +120,7 @@ static void ParticleViewerEntry([[maybe_unused]] void* data)
                 Data->Viewer->SetFillViewport(true);
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
                 GetApp()->RequestQuit();
                 GetApp()->EndFrame();
                 return;
@@ -131,13 +131,13 @@ static void ParticleViewerEntry([[maybe_unused]] void* data)
             DrawViewerFrame();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         GetApp()->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -193,10 +193,10 @@ int main(int argc, char** argv) // Handled by SDL
             Data->Engine.reset();
         }
 
-        ExitApp(true);
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -215,7 +215,7 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
     }
     else {
         FileSystem resources;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(&settings));
+        resources.AddCustomSource(safe_alloc::make_unique<BakerDataSource>(&settings));
         return resources;
     }
 }

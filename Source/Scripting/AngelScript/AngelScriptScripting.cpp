@@ -50,7 +50,7 @@ struct AngelScriptAllocator
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        constexpr SafeAllocator<uint8_t> allocator;
+        constexpr safe_allocator<uint8_t> allocator;
         return allocator.allocate(size);
     }
 
@@ -64,7 +64,7 @@ struct AngelScriptAllocator
             return;
         }
 
-        constexpr SafeAllocator<uint8_t> allocator;
+        constexpr safe_allocator<uint8_t> allocator;
         allocator.deallocate(address.reinterpret_as<uint8_t>().get(), 0);
     }
 };
@@ -89,7 +89,7 @@ void InitAngelScriptScripting(ptr<EngineMetadata> meta, const ScriptSettings& se
 
     PrepareAngelScriptRuntime();
 
-    auto as_backend_holder = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
+    auto as_backend_holder = safe_alloc::make_unique<AngelScriptBackend>(&settings);
     auto as_backend = as_backend_holder.as_ptr();
 
     if (auto script_sys = meta.dyn_cast<ScriptSystem>()) {
@@ -107,7 +107,7 @@ auto CompileAngelScript(ptr<EngineMetadata> meta, const ScriptSettings& settings
 
     PrepareAngelScriptRuntime();
 
-    auto as_backend_holder = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
+    auto as_backend_holder = safe_alloc::make_unique<AngelScriptBackend>(&settings);
     auto as_backend = as_backend_holder.as_ptr();
 
     if (auto script_sys = meta.dyn_cast<ScriptSystem>()) {

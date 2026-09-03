@@ -104,8 +104,8 @@ auto winapi::set_thread_description(const string& name) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    using SetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
-    auto entry = reinterpret_cast<SetThreadDescriptionFn>(resolve_kernel_entry("SetThreadDescription")); // NOLINT(clang-diagnostic-cast-function-type-strict)
+    using set_thread_description_fn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
+    auto entry = reinterpret_cast<set_thread_description_fn>(resolve_kernel_entry("SetThreadDescription")); // NOLINT(clang-diagnostic-cast-function-type-strict)
 
     if (entry == nullptr) {
         return false;

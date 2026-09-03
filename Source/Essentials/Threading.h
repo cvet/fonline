@@ -237,13 +237,13 @@ private:
 // Pool workers live until process teardown so rpmalloc thread heaps remain adoptable
 
 // Set or query the calling thread's Tracy, OS, and log name
-extern void set_this_thread_name(const string& name) noexcept;
-extern auto get_this_thread_name() noexcept -> string_view;
+void set_this_thread_name(const string& name) noexcept;
+auto get_this_thread_name() noexcept -> string_view;
 
 // Sleep without std::this_thread::sleep_for, which rounds up to the OS timer tick and parks a sub-millisecond wait
 // for a full one. coarse_sleep parks and spends no CPU; precise_sleep hits the deadline by spinning the tail out
-extern void coarse_sleep(std::chrono::nanoseconds duration) noexcept;
-extern void precise_sleep(std::chrono::nanoseconds duration) noexcept;
+void coarse_sleep(std::chrono::nanoseconds duration) noexcept;
+void precise_sleep(std::chrono::nanoseconds duration) noexcept;
 
 // Move-only run_thread completion handle exposing join, detach, and get_id without the future type.
 // Destruction detaches rather than terminating; call join when completion is required
@@ -258,7 +258,7 @@ public:
     ~thread() noexcept = default;
 
     [[nodiscard]] auto joinable() const noexcept -> bool { return _future.valid(); }
-    [[nodiscard]] auto get_id() const noexcept -> std::thread::id { return _runningThreadId ? _runningThreadId->load(std::memory_order_acquire) : std::thread::id {}; }
+    [[nodiscard]] auto get_id() const noexcept -> std::thread::id { return _running_thread_id ? _running_thread_id->load(std::memory_order_acquire) : std::thread::id {}; }
 
     void join();
     void detach() noexcept;
@@ -268,17 +268,17 @@ private:
 
     thread(std::future<void> fut, shared_ptr<std::atomic<std::thread::id>> running_thread_id) noexcept :
         _future {std::move(fut)},
-        _runningThreadId {std::move(running_thread_id)}
+        _running_thread_id {std::move(running_thread_id)}
     {
     }
 
     std::future<void> _future {};
-    shared_ptr<std::atomic<std::thread::id>> _runningThreadId {};
+    shared_ptr<std::atomic<std::thread::id>> _running_thread_id {};
 };
 
 // Submit to the unbounded run-thread pool and return a joinable or discardable handle.
 // Workers persist for process lifetime so rpmalloc thread heaps remain adoptable
-[[nodiscard]] extern auto run_thread(string_view task_name, function<void()> task) -> thread;
+[[nodiscard]] auto run_thread(string_view task_name, function<void()> task) -> thread;
 
 // Launch mode for `run_async`. There are three meaningful modes, exposed as the named constants below — pass one of
 // them to `run_async(mode, ...)`
@@ -296,15 +296,15 @@ inline constexpr async_launch_mode launch_deferred_only {.use_async = false, .us
 inline constexpr async_launch_mode launch_async_and_deferred {.use_async = true, .use_deferred = true};
 
 // submit_async always queues; try_submit_async returns false at a fully busy cap for inline fallback
-extern void submit_async(string_view task_name, function<void()> task);
-extern auto try_submit_async(string_view task_name, function<void()> task) -> bool;
+void submit_async(string_view task_name, function<void()> task);
+auto try_submit_async(string_view task_name, function<void()> task) -> bool;
 
 // Run under the selected launch mode and propagate task exceptions through future.get().
 // The bounded pool is for short jobs; use run_thread for long-lived loops
 template<typename Func>
 [[nodiscard]] auto run_async(async_launch_mode mode, string_view task_name, Func&& task) -> std::future<std::invoke_result_t<std::decay_t<Func>>>
 {
-    using ResultType = std::invoke_result_t<std::decay_t<Func>>;
+    using result_type = std::invoke_result_t<std::decay_t<Func>>;
 
     // Pure deferred: skip the pool entirely. std::async(std::launch::deferred, ...) returns a future whose .get()
     // invokes the task on the calling thread — lazy synchronous, exactly what launch_deferred_only specifies
@@ -312,7 +312,7 @@ template<typename Func>
         return std::async(std::launch::deferred, std::forward<Func>(task));
     }
 
-    auto packaged = SafeAlloc::MakeShared<std::packaged_task<ResultType()>>(std::forward<Func>(task));
+    auto packaged = safe_alloc::make_shared<std::packaged_task<result_type()>>(std::forward<Func>(task));
     auto future = packaged->get_future();
 
     if (mode.use_deferred) {

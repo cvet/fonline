@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 
 struct BakerModelDescriptionCut
 {
-    void Save(DataWriter& writer) const;
+    void Save(data_writer& writer) const;
 
     string FileName {};
     vector<int32_t> Layers {};
@@ -57,7 +57,7 @@ struct BakerModelDescriptionCut
 
 struct BakerModelDescriptionLink
 {
-    void Save(DataWriter& writer) const;
+    void Save(data_writer& writer) const;
 
     int32_t Layer {};
     int32_t LayerValue {};
@@ -85,7 +85,7 @@ struct BakerModelDescriptionLink
 
 struct BakerModelDescriptionAnimationEntry
 {
-    void Save(DataWriter& writer) const;
+    void Save(data_writer& writer) const;
 
     int32_t StateAnim {};
     int32_t ActionAnim {};
@@ -95,7 +95,7 @@ struct BakerModelDescriptionAnimationEntry
 
 struct BakerModelDescriptionAnimLayerValue
 {
-    void Save(DataWriter& writer) const;
+    void Save(data_writer& writer) const;
 
     int32_t StateAnim {};
     int32_t ActionAnim {};
@@ -105,7 +105,7 @@ struct BakerModelDescriptionAnimLayerValue
 
 struct BakerModelDescription
 {
-    void Save(DataWriter& writer) const;
+    void Save(data_writer& writer) const;
 
     string Model {};
     bool DisableAnimationInterpolation {};
@@ -425,14 +425,14 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             }
 
             vector<uint8_t> data;
-            DataWriter writer(data);
-            writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-            writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
-            writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+            data_writer writer(data);
+            writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+            writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
+            writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
             description.Save(writer);
             vector<uint8_t> animation_rig_data = WriteModelAnimationRigData(validated.AnimationRigData, file.GetPath());
-            writer.Write<uint64_t>(numeric_cast<uint64_t>(animation_rig_data.size()));
-            writer.WriteBytes(animation_rig_data);
+            writer.write<uint64_t>(numeric_cast<uint64_t>(animation_rig_data.size()));
+            writer.write_bytes(animation_rig_data);
             _context->WriteData(file.GetPath(), data);
         }));
     }
@@ -444,7 +444,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            WriteLog("Model description baking error: {}", ex.what());
+            logging::write("Model description baking error: {}", ex.what());
             errors++;
         }
     }
@@ -642,7 +642,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
     }
     else if (token == "Subset") {
         (void)TakeModelDescriptionToken(tokens, index, token, fname, line);
-        WriteLog("Tag 'Subset' obsolete, use 'Mesh' instead");
+        logging::write("Tag 'Subset' obsolete, use 'Mesh' instead");
     }
     else if (token == "Layer" || token == "Value") {
         string value = TakeModelDescriptionToken(tokens, index, token, fname, line);
@@ -1229,7 +1229,7 @@ static auto ReadBakedModelMeshForBounds(const FileSystem& baked_files, const Bak
     }
 
     try {
-        auto model_reader = DataReader(model_file.GetDataSpan());
+        auto model_reader = data_reader(model_file.GetDataSpan());
         return ReadModelMeshData(model_reader, description.Model);
     }
     catch (const std::exception& ex) {
@@ -1290,68 +1290,68 @@ auto DescriptionBoundsSampler::CalculateStaticBounds(string_view fname) const ->
     return *model_bounds;
 }
 
-static auto ReadBakedModelDescriptionCutForBounds(DataReader& reader) -> BakerModelDescriptionCut
+static auto ReadBakedModelDescriptionCutForBounds(data_reader& reader) -> BakerModelDescriptionCut
 {
     FO_STACK_TRACE_ENTRY();
 
     BakerModelDescriptionCut cut;
-    cut.FileName = reader.ReadString();
-    cut.Layers = reader.ReadSizedObjectVector<int32_t>();
-    cut.Shapes = reader.ReadStringVector();
-    cut.UnskinBone1 = reader.ReadString();
-    cut.UnskinBone2 = reader.ReadString();
-    cut.UnskinShape = reader.ReadString();
-    cut.RevertUnskinShape = reader.Read<uint8_t>() != 0;
+    cut.FileName = reader.read_string();
+    cut.Layers = reader.read_sized_object_vector<int32_t>();
+    cut.Shapes = reader.read_string_vector();
+    cut.UnskinBone1 = reader.read_string();
+    cut.UnskinBone2 = reader.read_string();
+    cut.UnskinShape = reader.read_string();
+    cut.RevertUnskinShape = reader.read<uint8_t>() != 0;
     return cut;
 }
 
-static auto ReadBakedModelDescriptionLinkForBounds(DataReader& reader) -> BakerModelDescriptionLink
+static auto ReadBakedModelDescriptionLinkForBounds(data_reader& reader) -> BakerModelDescriptionLink
 {
     FO_STACK_TRACE_ENTRY();
 
     BakerModelDescriptionLink link;
-    link.Layer = reader.Read<int32_t>();
-    link.LayerValue = reader.Read<int32_t>();
-    link.LinkBone = reader.ReadString();
-    link.ChildName = reader.ReadString();
-    link.IsParticles = reader.Read<uint8_t>() != 0;
-    link.RotX = reader.Read<float32_t>();
-    link.RotY = reader.Read<float32_t>();
-    link.RotZ = reader.Read<float32_t>();
-    link.MoveX = reader.Read<float32_t>();
-    link.MoveY = reader.Read<float32_t>();
-    link.MoveZ = reader.Read<float32_t>();
-    link.ScaleX = reader.Read<float32_t>();
-    link.ScaleY = reader.Read<float32_t>();
-    link.ScaleZ = reader.Read<float32_t>();
-    link.SpeedAjust = reader.Read<float32_t>();
-    link.DisabledLayer = reader.ReadSizedObjectVector<int32_t>();
-    link.DisabledMesh = reader.ReadStringVector();
+    link.Layer = reader.read<int32_t>();
+    link.LayerValue = reader.read<int32_t>();
+    link.LinkBone = reader.read_string();
+    link.ChildName = reader.read_string();
+    link.IsParticles = reader.read<uint8_t>() != 0;
+    link.RotX = reader.read<float32_t>();
+    link.RotY = reader.read<float32_t>();
+    link.RotZ = reader.read<float32_t>();
+    link.MoveX = reader.read<float32_t>();
+    link.MoveY = reader.read<float32_t>();
+    link.MoveZ = reader.read<float32_t>();
+    link.ScaleX = reader.read<float32_t>();
+    link.ScaleY = reader.read<float32_t>();
+    link.ScaleZ = reader.read<float32_t>();
+    link.SpeedAjust = reader.read<float32_t>();
+    link.DisabledLayer = reader.read_sized_object_vector<int32_t>();
+    link.DisabledMesh = reader.read_string_vector();
 
-    uint32_t texture_count = reader.Read<uint32_t>();
+    uint32_t texture_count = reader.read<uint32_t>();
 
     for (uint32_t i = 0; i < texture_count; i++) {
-        string texture_name = reader.ReadString();
-        string mesh_name = reader.ReadString();
-        int32_t texture_index = reader.Read<int32_t>();
+        string texture_name = reader.read_string();
+        string mesh_name = reader.read_string();
+        int32_t texture_index = reader.read<int32_t>();
         link.TextureInfo.emplace_back(std::move(texture_name), std::move(mesh_name), texture_index);
     }
 
-    uint32_t effect_count = reader.Read<uint32_t>();
+    uint32_t effect_count = reader.read<uint32_t>();
 
     for (uint32_t i = 0; i < effect_count; i++) {
-        string effect_name = reader.ReadString();
-        string mesh_name = reader.ReadString();
+        string effect_name = reader.read_string();
+        string mesh_name = reader.read_string();
         link.EffectInfo.emplace_back(std::move(effect_name), std::move(mesh_name));
     }
 
-    uint32_t cut_count = reader.Read<uint32_t>();
+    uint32_t cut_count = reader.read<uint32_t>();
 
     for (uint32_t i = 0; i < cut_count; i++) {
         link.CutInfo.emplace_back(ReadBakedModelDescriptionCutForBounds(reader));
     }
 
-    uint8_t has_geometry_value = reader.Read<uint8_t>();
+    uint8_t has_geometry_value = reader.read<uint8_t>();
     FO_VERIFY_AND_THROW(has_geometry_value <= uint8_t {1}, "Baked model link geometry flag is not 0 or 1", link.ChildName, has_geometry_value);
     bool has_geometry = has_geometry_value != 0;
     bool expected_geometry = !link.ChildName.empty() && !link.IsParticles;
@@ -1359,8 +1359,8 @@ static auto ReadBakedModelDescriptionLinkForBounds(DataReader& reader) -> BakerM
 
     if (has_geometry) {
         link.Bounds = ModelBounds3D {
-            .Min = reader.Read<vec3>(),
-            .Max = reader.Read<vec3>(),
+            .Min = reader.read<vec3>(),
+            .Max = reader.read<vec3>(),
         };
     }
 
@@ -1378,46 +1378,46 @@ static auto ReadBakedModelDescriptionForBounds(const FileSystem& baked_files, st
     }
 
     try {
-        DataReader reader {file.GetDataSpan()};
-        const_span<uint8_t> magic = reader.ReadBytes(MODEL_DESCRIPTION_MAGIC.size());
+        data_reader reader {file.GetDataSpan()};
+        const_span<uint8_t> magic = reader.read_bytes(MODEL_DESCRIPTION_MAGIC.size());
 
         if (!std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin())) {
             throw ModelInfoBakerException("Invalid baked model description magic while calculating bounds", fname);
         }
 
-        uint16_t schema = reader.Read<uint16_t>();
-        uint16_t flags = reader.Read<uint16_t>();
+        uint16_t schema = reader.read<uint16_t>();
+        uint16_t flags = reader.read<uint16_t>();
 
         if (schema != MODEL_DESCRIPTION_SCHEMA_VERSION || (flags & ~MODEL_DESCRIPTION_SUPPORTED_FLAGS) != 0) {
             throw ModelInfoBakerException("Unsupported baked model description while calculating bounds", fname, schema, flags);
         }
 
         BakerModelDescription description;
-        description.Model = reader.ReadString();
-        description.DisableAnimationInterpolation = reader.Read<uint8_t>() != 0;
-        description.DisableBackwardAnim = reader.Read<uint8_t>() != 0;
-        description.ShadowDisabled = reader.Read<uint8_t>() != 0;
-        (void)reader.Read<int32_t>();
-        (void)reader.Read<int32_t>();
-        (void)reader.Read<int32_t>();
-        (void)reader.Read<int32_t>();
-        description.RotationBone = reader.ReadString();
+        description.Model = reader.read_string();
+        description.DisableAnimationInterpolation = reader.read<uint8_t>() != 0;
+        description.DisableBackwardAnim = reader.read<uint8_t>() != 0;
+        description.ShadowDisabled = reader.read<uint8_t>() != 0;
+        (void)reader.read<int32_t>();
+        (void)reader.read<int32_t>();
+        (void)reader.read<int32_t>();
+        (void)reader.read<int32_t>();
+        description.RotationBone = reader.read_string();
         description.DefaultLink = ReadBakedModelDescriptionLinkForBounds(reader);
 
-        uint32_t link_count = reader.Read<uint32_t>();
+        uint32_t link_count = reader.read<uint32_t>();
 
         for (uint32_t i = 0; i < link_count; i++) {
             description.Links.emplace_back(ReadBakedModelDescriptionLinkForBounds(reader));
         }
 
-        uint32_t animation_count = reader.Read<uint32_t>();
+        uint32_t animation_count = reader.read<uint32_t>();
 
         for (uint32_t i = 0; i < animation_count; i++) {
             description.AnimationEntries.emplace_back(BakerModelDescriptionAnimationEntry {
-                .StateAnim = reader.Read<int32_t>(),
-                .ActionAnim = reader.Read<int32_t>(),
-                .FileName = reader.ReadString(),
-                .Name = reader.ReadString(),
+                .StateAnim = reader.read<int32_t>(),
+                .ActionAnim = reader.read<int32_t>(),
+                .FileName = reader.read_string(),
+                .Name = reader.read_string(),
             });
         }
 
@@ -2070,7 +2070,7 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
     info.Skeleton.FileName = path;
 
     try {
-        auto reader = DataReader(file.GetDataSpan());
+        auto reader = data_reader(file.GetDataSpan());
         ModelMeshData mesh_data = ReadModelMeshData(reader, path);
         FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", path);
         CollectBakedModelMeshInfo(*mesh_data.RootBone, info, {});
@@ -2631,137 +2631,137 @@ static void CollectBakedModelMeshInfo(const ModelMeshBoneData& bone, BakedModelM
     }
 }
 
-void BakerModelDescription::Save(DataWriter& writer) const
+void BakerModelDescription::Save(data_writer& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.WriteString(Model);
-    writer.Write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
-    writer.Write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
-    writer.Write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
+    writer.write_string(Model);
+    writer.write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
+    writer.write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
+    writer.write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
     // Reserved legacy sprite-size fields. Runtime dimensions are calculated from baked model bounds
-    writer.Write<int32_t>(0);
-    writer.Write<int32_t>(0);
-    writer.Write<int32_t>(0);
-    writer.Write<int32_t>(0);
-    writer.WriteString(RotationBone);
+    writer.write<int32_t>(0);
+    writer.write<int32_t>(0);
+    writer.write<int32_t>(0);
+    writer.write<int32_t>(0);
+    writer.write_string(RotationBone);
     DefaultLink.Save(writer);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(Links.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(Links.size()));
     for (const BakerModelDescriptionLink& link : Links) {
         link.Save(writer);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(AnimationEntries.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(AnimationEntries.size()));
     for (const BakerModelDescriptionAnimationEntry& anim_entry : AnimationEntries) {
         anim_entry.Save(writer);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(AnimSpeed.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(AnimSpeed.size()));
     for (const auto& [anim_pair, speed] : AnimSpeed) {
-        writer.Write<int32_t>(anim_pair.first);
-        writer.Write<int32_t>(anim_pair.second);
-        writer.Write<float32_t>(speed);
+        writer.write<int32_t>(anim_pair.first);
+        writer.write<int32_t>(anim_pair.second);
+        writer.write<float32_t>(speed);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(AnimLayerValues.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(AnimLayerValues.size()));
     for (const BakerModelDescriptionAnimLayerValue& value : AnimLayerValues) {
         value.Save(writer);
     }
-    writer.WriteStringVector(FastTransitionBones);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(StateAnimEquals.size()));
+    writer.write_string_vector(FastTransitionBones);
+    writer.write<uint32_t>(numeric_cast<uint32_t>(StateAnimEquals.size()));
     for (const auto& [from, to] : StateAnimEquals) {
-        writer.Write<int32_t>(from);
-        writer.Write<int32_t>(to);
+        writer.write<int32_t>(from);
+        writer.write<int32_t>(to);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(ActionAnimEquals.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(ActionAnimEquals.size()));
     for (const auto& [from, to] : ActionAnimEquals) {
-        writer.Write<int32_t>(from);
-        writer.Write<int32_t>(to);
+        writer.write<int32_t>(from);
+        writer.write<int32_t>(to);
     }
 }
 
-void BakerModelDescriptionLink::Save(DataWriter& writer) const
+void BakerModelDescriptionLink::Save(data_writer& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.Write<int32_t>(Layer);
-    writer.Write<int32_t>(LayerValue);
-    writer.WriteString(LinkBone);
-    writer.WriteString(ChildName);
-    writer.Write<uint8_t>(IsParticles ? uint8_t {1} : uint8_t {0});
-    writer.Write<float32_t>(RotX);
-    writer.Write<float32_t>(RotY);
-    writer.Write<float32_t>(RotZ);
-    writer.Write<float32_t>(MoveX);
-    writer.Write<float32_t>(MoveY);
-    writer.Write<float32_t>(MoveZ);
-    writer.Write<float32_t>(ScaleX);
-    writer.Write<float32_t>(ScaleY);
-    writer.Write<float32_t>(ScaleZ);
-    writer.Write<float32_t>(SpeedAjust);
-    writer.WriteSizedObjectVector(DisabledLayer);
-    writer.WriteStringVector(DisabledMesh);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(TextureInfo.size()));
+    writer.write<int32_t>(Layer);
+    writer.write<int32_t>(LayerValue);
+    writer.write_string(LinkBone);
+    writer.write_string(ChildName);
+    writer.write<uint8_t>(IsParticles ? uint8_t {1} : uint8_t {0});
+    writer.write<float32_t>(RotX);
+    writer.write<float32_t>(RotY);
+    writer.write<float32_t>(RotZ);
+    writer.write<float32_t>(MoveX);
+    writer.write<float32_t>(MoveY);
+    writer.write<float32_t>(MoveZ);
+    writer.write<float32_t>(ScaleX);
+    writer.write<float32_t>(ScaleY);
+    writer.write<float32_t>(ScaleZ);
+    writer.write<float32_t>(SpeedAjust);
+    writer.write_sized_object_vector(DisabledLayer);
+    writer.write_string_vector(DisabledMesh);
+    writer.write<uint32_t>(numeric_cast<uint32_t>(TextureInfo.size()));
     for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo) {
-        writer.WriteString(texture_name);
-        writer.WriteString(mesh_name);
-        writer.Write<int32_t>(texture_index);
+        writer.write_string(texture_name);
+        writer.write_string(mesh_name);
+        writer.write<int32_t>(texture_index);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(EffectInfo.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(EffectInfo.size()));
     for (const auto& [effect_name, mesh_name] : EffectInfo) {
-        writer.WriteString(effect_name);
-        writer.WriteString(mesh_name);
+        writer.write_string(effect_name);
+        writer.write_string(mesh_name);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(CutInfo.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(CutInfo.size()));
     for (const BakerModelDescriptionCut& cut : CutInfo) {
         cut.Save(writer);
     }
     bool has_geometry = !ChildName.empty() && !IsParticles;
     FO_VERIFY_AND_THROW(Bounds.has_value() == has_geometry, "Model description link geometry and bounds do not match", ChildName, IsParticles, Bounds.has_value());
-    writer.Write<uint8_t>(has_geometry ? uint8_t {1} : uint8_t {0});
+    writer.write<uint8_t>(has_geometry ? uint8_t {1} : uint8_t {0});
 
     if (has_geometry) {
-        writer.Write<vec3>(Bounds->Min);
-        writer.Write<vec3>(Bounds->Max);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(AnimationBounds.size()));
+        writer.write<vec3>(Bounds->Min);
+        writer.write<vec3>(Bounds->Max);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(AnimationBounds.size()));
 
         for (const auto& [state_anim, action_anim, bounds] : AnimationBounds) {
-            writer.Write<int32_t>(state_anim);
-            writer.Write<int32_t>(action_anim);
-            writer.Write<vec3>(bounds.Min);
-            writer.Write<vec3>(bounds.Max);
+            writer.write<int32_t>(state_anim);
+            writer.write<int32_t>(action_anim);
+            writer.write<vec3>(bounds.Min);
+            writer.write<vec3>(bounds.Max);
         }
     }
 }
 
-void BakerModelDescriptionCut::Save(DataWriter& writer) const
+void BakerModelDescriptionCut::Save(data_writer& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.WriteString(FileName);
-    writer.WriteSizedObjectVector(Layers);
-    writer.WriteStringVector(Shapes);
-    writer.WriteString(UnskinBone1);
-    writer.WriteString(UnskinBone2);
-    writer.WriteString(UnskinShape);
-    writer.Write<uint8_t>(RevertUnskinShape ? uint8_t {1} : uint8_t {0});
+    writer.write_string(FileName);
+    writer.write_sized_object_vector(Layers);
+    writer.write_string_vector(Shapes);
+    writer.write_string(UnskinBone1);
+    writer.write_string(UnskinBone2);
+    writer.write_string(UnskinShape);
+    writer.write<uint8_t>(RevertUnskinShape ? uint8_t {1} : uint8_t {0});
 }
 
-void BakerModelDescriptionAnimationEntry::Save(DataWriter& writer) const
+void BakerModelDescriptionAnimationEntry::Save(data_writer& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.Write<int32_t>(StateAnim);
-    writer.Write<int32_t>(ActionAnim);
-    writer.WriteString(FileName);
-    writer.WriteString(Name);
+    writer.write<int32_t>(StateAnim);
+    writer.write<int32_t>(ActionAnim);
+    writer.write_string(FileName);
+    writer.write_string(Name);
 }
 
-void BakerModelDescriptionAnimLayerValue::Save(DataWriter& writer) const
+void BakerModelDescriptionAnimLayerValue::Save(data_writer& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.Write<int32_t>(StateAnim);
-    writer.Write<int32_t>(ActionAnim);
-    writer.Write<int32_t>(Layer);
-    writer.Write<int32_t>(LayerValue);
+    writer.write<int32_t>(StateAnim);
+    writer.write<int32_t>(ActionAnim);
+    writer.write<int32_t>(Layer);
+    writer.write<int32_t>(LayerValue);
 }
 
 static auto TokenizeModelDescriptionLine(string_view line) -> vector<string>

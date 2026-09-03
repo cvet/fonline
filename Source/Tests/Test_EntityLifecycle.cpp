@@ -148,7 +148,7 @@ namespace
 
                 const_span<uint8_t> data = encoded_data;
                 if (!_settings->DisableZlibCompression) {
-                    _decompressor.Decompress(encoded_data, _unpackedData);
+                    _decompressor.decompress(encoded_data, _unpackedData);
                     data = _unpackedData;
                 }
 
@@ -161,9 +161,9 @@ namespace
                     uint32_t signature {};
                     uint32_t message_size {};
                     NetMessage message {};
-                    MemCopy(&signature, data.data() + offset, sizeof(signature));
-                    MemCopy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
-                    MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+                    memory::copy(&signature, data.data() + offset, sizeof(signature));
+                    memory::copy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
+                    memory::copy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
 
                     FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
                     FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
@@ -178,7 +178,7 @@ namespace
                         FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(EngineInfoMessage), "Truncated outgoing info message", message_size);
 
                         EngineInfoMessage info_message {};
-                        MemCopy(&info_message, data.data() + offset + header_size, sizeof(info_message));
+                        memory::copy(&info_message, data.data() + offset + header_size, sizeof(info_message));
                         _lastSentInfoMessage.store(info_message, std::memory_order_relaxed);
                         _sentInfoMessageCount.fetch_add(1, std::memory_order_relaxed);
                     }
@@ -210,7 +210,7 @@ namespace
         std::atomic<size_t> _sentInfoMessageCount {};
         std::atomic<size_t> _sentDisconnectCount {};
         std::atomic<EngineInfoMessage> _lastSentInfoMessage {};
-        StreamDecompressor _decompressor {};
+        stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
         std::atomic<size_t> _sentTrackedMessageCount {};
         std::atomic<NetMessage> _firstSentTrackedMessage {};
@@ -553,12 +553,12 @@ namespace EntityLifecycle
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0}); // hashes_count
-        writer.Write<uint32_t>(uint32_t {0}); // cr_count
-        writer.Write<uint32_t>(uint32_t {0}); // item_count
+        auto writer = data_writer(map_data);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0}); // hashes_count
+        writer.write<uint32_t>(uint32_t {0}); // cr_count
+        writer.write<uint32_t>(uint32_t {0}); // item_count
         return map_data;
     }
 
@@ -570,24 +570,24 @@ namespace EntityLifecycle
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -597,17 +597,17 @@ namespace EntityLifecycle
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
@@ -615,7 +615,7 @@ namespace EntityLifecycle
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityLifecycleCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("EntityLifecycleItem.fopro-bin-server", item_blob);
@@ -648,7 +648,7 @@ namespace EntityLifecycle
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 
     static auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>
@@ -672,9 +672,9 @@ namespace EntityLifecycle
     static auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
 
-        return SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        return safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
     }
 
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>;
@@ -771,7 +771,7 @@ TEST_CASE("EntityInitEvents")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CritterInitEventFires")
     {
@@ -1148,7 +1148,7 @@ TEST_CASE("EntityManagerCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetEntitiesReturnsCorrectCollections")
     {
@@ -1283,7 +1283,7 @@ TEST_CASE("CritterCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CritterStateChecks")
     {
@@ -1410,7 +1410,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    const auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GlobalMapGroupIdsReportEveryMemberWithAStableRevision")
     {
@@ -1489,7 +1489,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
     SECTION("InitialInfoLeavesTheGlobalGroupFanOutToTheScript")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "GlobalGroupInitialInfo");
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
@@ -1525,7 +1525,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
     SECTION("SendGlobalMapGroupInfoRequiresTheCallerToCoverEveryGroupMember")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "GlobalGroupFanOut");
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
@@ -1624,7 +1624,7 @@ TEST_CASE("ItemCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("ItemCreationAndDestruction")
     {
@@ -1715,7 +1715,7 @@ TEST_CASE("LocationCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CreateAndDestroyLocation")
     {
@@ -1813,7 +1813,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         }
     });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("LoginPlayerToNewRecordAllocatesNonZeroId")
     {
@@ -1841,8 +1841,8 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto registered_player = CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref();
         ident_t registered_id = registered_player->GetId();
         auto net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
-        auto candidate = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto candidate = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
         server->RequireCurrentSyncContext()->SyncEntity(candidate);
 
         CHECK_THROWS_WITH(server->EntityMngr.RegisterPlayer(candidate, registered_id), Catch::Matchers::ContainsSubstring("Player id is already registered"));
@@ -1898,7 +1898,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(6));
 
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, test_connection, "FailingReconnectNext");
         small_vector<ptr<ServerEntity>, 2> reconnect_cover {player, not_logged_in_player};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
@@ -1914,12 +1914,10 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("LoginPlayerToExistentRecordKeepsHardDisconnectForCompletionFailure")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, test_connection, "MissingRecord");
 
-        CHECK_THROWS_WITH(
-            server->LoginPlayerToExistentRecord(not_logged_in_player, ident_t {999999}),
-            Catch::Matchers::ContainsSubstring("Player data not found"));
+        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, ident_t {999999}), Catch::Matchers::ContainsSubstring("Player data not found"));
 
         test_connection->Dispatch();
 
@@ -2129,7 +2127,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("DetachPlayerCritterResendsPreviousChosenAsOrdinaryCritter")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "ChosenDetach");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2173,7 +2171,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMoveDetach");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2232,7 +2230,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("StopMoveFailedReconciliationSendsAuthoritativePosition")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMoveCorrection");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2290,7 +2288,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("StopMoveKeepsPassableHexWhenOffsetRoundsIntoBlockedNeighbour")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMoveBlockedOffset");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2354,7 +2352,7 @@ TEST_CASE("PlayerRegistrationCppApi")
     // into a passable neighbour still has to advance the logical hex instead of piling up as a sub-hex offset
     SECTION("StopMoveNormalizesOffsetIntoPassableNeighbour")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMovePassableOffset");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2432,7 +2430,7 @@ TEST_CASE("CritterManagerCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetNonPlayerCritters")
     {
@@ -2495,7 +2493,7 @@ TEST_CASE("ProtoAccessCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetProtoCritter")
     {
@@ -2554,7 +2552,7 @@ TEST_CASE("ScriptFunctionCalls")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CallFuncWithReturnValue")
     {

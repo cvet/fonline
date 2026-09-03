@@ -134,7 +134,7 @@ auto posix::fork_into_background() noexcept -> bool // NOLINT(clang-diagnostic-m
         return false;
     }
     else if (pid != 0) {
-        ExitApp(true);
+        exit_app(true);
     }
 
     ::close(STDIN_FILENO);

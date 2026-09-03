@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto GetServerSettings() -> unordered_set<string>;
-extern auto GetClientSettings() -> unordered_set<string>;
+auto GetServerSettings() -> unordered_set<string>;
+auto GetClientSettings() -> unordered_set<string>;
 
 ConfigBaker::ConfigBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
@@ -168,16 +168,16 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 }
 
                 if (!is_server_setting && !is_client_setting && !is_game_setting) {
-                    WriteLog("Unknown setting {} = {}", key, value);
+                    logging::write("Unknown setting {} = {}", key, value);
                 }
             }
 
             for (const auto& key : server_settings) {
-                WriteLog("Uninitialized server setting {}", key);
+                logging::write("Uninitialized server setting {}", key);
                 settings_errors++;
             }
             for (const auto& key : client_settings) {
-                WriteLog("Uninitialized client setting {}", key);
+                logging::write("Uninitialized client setting {}", key);
                 settings_errors++;
             }
 

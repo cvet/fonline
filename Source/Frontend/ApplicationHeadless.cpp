@@ -54,7 +54,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Render {make_ptr(this)},
     Input {make_ptr(this)},
     Audio {make_ptr(this)},
-    _ctx {SafeAlloc::MakeUnique<Context>()}
+    _ctx {safe_alloc::make_unique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -125,7 +125,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
     }
 
-    auto window = SafeAlloc::MakeUnique<AppWindow>(this);
+    auto window = safe_alloc::make_unique<AppWindow>(this);
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
@@ -326,7 +326,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+    auto handle = safe_alloc::make_unique<HeadlessWindowStub>();
     handle->Size = size;
 
     auto headless_window = handle.as_ptr();
@@ -495,7 +495,7 @@ void Application::RequestQuit(bool success) noexcept
     }
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
-        WriteLog("Quit requested");
+        logging::write("Quit requested");
 
         _quitEvent.notify_all();
     }

@@ -347,9 +347,9 @@ void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds>
 ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
     _settings {settings},
-    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(
+    _modelMngr {safe_alloc::make_unique<ModelManager>(
         settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
-        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.ToHashedString(path)); }, //
+        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.to_hashed_string(path)); }, //
         [spr_mngr]() mutable FO_DEFERRED {
             nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
@@ -380,7 +380,7 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     model->PrepareFrameLayout();
     isize32 draw_size = model->GetDrawSize();
     auto model_owner = model.take_not_null();
-    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
+    auto model_spr = safe_alloc::make_shared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
     model_spr->ApplyFrameCrop(draw_size, model_spr->_model->GetSpriteBounds());
 
     return model_spr;
@@ -401,8 +401,8 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
             result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
         }
         else {
-            BreakIntoDebugger();
-            WriteLog("Texture '{}' not found", path);
+            break_into_debugger();
+            logging::write("Texture '{}' not found", path);
             _loadedMeshTextures[path] = nullptr;
         }
     }

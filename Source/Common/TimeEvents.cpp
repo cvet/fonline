@@ -94,7 +94,7 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     auto event_id = ++_timeEventCounter;
     auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
 
-    auto te = SafeAlloc::MakeShared<Entity::TimeEventData>();
+    auto te = safe_alloc::make_shared<Entity::TimeEventData>();
     te->Id = event_id;
     te->FuncName = std::visit([](auto&& f) -> ScriptFuncName { return f.GetName(); }, func);
     te->Func = std::move(func);
@@ -526,7 +526,7 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
         return {};
     }
 
-    auto context = SafeAlloc::MakeRefCounted<TimeEventContext>(event_id, repeat_duration, data);
+    auto context = safe_alloc::make_refcounted<TimeEventContext>(event_id, repeat_duration, data);
     bool call_result = false;
 
     if (auto func1 = std::get_if<ScriptFunc<void>>(&te->Func); func1) {
@@ -566,7 +566,7 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
     }
 
     if (!call_result && repeat_duration) {
-        WriteLog("Time event {}{} stopped due to exception", te->FuncName.first, te->FuncName.second != 0 ? " (delegate)" : "");
+        logging::write("Time event {}{} stopped due to exception", te->FuncName.first, te->FuncName.second != 0 ? " (delegate)" : "");
     }
 
     return FiredTimeEvent {.CallResult = call_result, .Context = std::move(context)};
@@ -644,7 +644,7 @@ void TimeEventManager::CancelAllForEntity(ptr<Entity> entity) noexcept
             NotifyCancel(cid);
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
         catch (...) {
             FO_UNKNOWN_EXCEPTION();

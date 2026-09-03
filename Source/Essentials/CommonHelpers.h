@@ -76,7 +76,7 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
         std::invoke(callable, std::forward<Args>(args)...);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -128,13 +128,13 @@ public:
     ~ref_hold_vector()
     {
         for (T& ref : _vec) {
-            release_ref(ref);
+            release(ref);
         }
     }
 
     void add(T ref)
     {
-        add_ref(ref);
+        addref(ref);
         _vec.emplace_back(std::move(ref));
     }
 
@@ -154,18 +154,18 @@ private:
         }
     }
 
-    static void add_ref(T& ref)
+    static void addref(T& ref)
     {
         auto ref_ptr = get_ref(ref);
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
-        ref_ptr->AddRef();
+        details::call_addref(ref_ptr);
     }
 
-    static void release_ref(T& ref)
+    static void release(T& ref)
     {
         auto ref_ptr = get_ref(ref);
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
-        ref_ptr->Release();
+        details::call_release(ref_ptr);
     }
 
     small_vector<T, 8> _vec {};

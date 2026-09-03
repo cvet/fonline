@@ -37,47 +37,47 @@
 
 FO_BEGIN_NAMESPACE
 
-[[noreturn]] extern void ReportFatalAndExit(string_view message) noexcept
+[[noreturn]] void fatal::report_and_exit(string_view message) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    SuspendAsyncLogWriting();
+    logging::suspend_async_writing();
 
-    WriteBaseLog("\nFATAL ERROR!\n");
-    WriteBaseLog(message);
-    WriteBaseLog("\n\n");
+    logging::write_base("\nFATAL ERROR!\n");
+    logging::write_base(message);
+    logging::write_base("\n\n");
 
-    StackTraceData st;
-    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 2);
-    SafeWriteStackTrace(st);
+    stack_trace::data st;
+    stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 2);
+    logging::safe_write_stack_trace(st);
 
-    BreakIntoDebugger();
-    ExitApp(false);
+    break_into_debugger();
+    exit_app(false);
 }
 
-[[noreturn]] extern void ReportStrongAssertAndExit(string_view expression, string_view file, int32_t line) noexcept
+[[noreturn]] void fatal::report_strong_assert_and_exit(string_view expression, string_view file, int32_t line) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    SuspendAsyncLogWriting();
+    logging::suspend_async_writing();
 
     char line_buf[64] = {};
 
-    WriteBaseLog("\nSTRONG ASSERTION FAILED!\n");
-    WriteBaseLog("Expression: ");
-    WriteBaseLog(expression);
-    WriteBaseLog("\nFile: ");
-    WriteBaseLog(file);
-    WriteBaseLog("\nLine: ");
-    WriteBaseLog(ItoA(line, line_buf, 10));
-    WriteBaseLog("\n\n");
+    logging::write_base("\nSTRONG ASSERTION FAILED!\n");
+    logging::write_base("Expression: ");
+    logging::write_base(expression);
+    logging::write_base("\nFile: ");
+    logging::write_base(file);
+    logging::write_base("\nLine: ");
+    logging::write_base(itoa(line, line_buf, 10));
+    logging::write_base("\n\n");
 
-    StackTraceData st;
-    CaptureNativeStackFrames(st.NativeFrames, st.NativeFrameCount, st.NativeTruncated, 2);
-    SafeWriteStackTrace(st);
+    stack_trace::data st;
+    stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 2);
+    logging::safe_write_stack_trace(st);
 
-    BreakIntoDebugger();
-    ExitApp(false);
+    break_into_debugger();
+    exit_app(false);
 }
 
 FO_END_NAMESPACE

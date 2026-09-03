@@ -70,15 +70,15 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        hstring item_type = meta.Hashes.ToHashedString("Item");
-        hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
-        hstring critter_type = meta.Hashes.ToHashedString("Critter");
-        hstring proto_critter_type = meta.Hashes.ToHashedString("ProtoCritter");
-        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        hstring raider_pid = meta.Hashes.ToHashedString("Raider");
+        hstring item_type = meta.Hashes.to_hashed_string("Item");
+        hstring proto_item_type = meta.Hashes.to_hashed_string("ProtoItem");
+        hstring critter_type = meta.Hashes.to_hashed_string("Critter");
+        hstring proto_critter_type = meta.Hashes.to_hashed_string("ProtoCritter");
+        hstring knife_pid = meta.Hashes.to_hashed_string("Knife");
+        hstring raider_pid = meta.Hashes.to_hashed_string("Raider");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, GetTestRegistrar(meta, critter_type));
+        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
+        auto critter_proto = safe_alloc::make_refcounted<ProtoCritter>(raider_pid, GetTestRegistrar(meta, critter_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(critter_type, critter_proto);
 
@@ -106,20 +106,20 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        hstring item_type = meta.Hashes.ToHashedString("Item");
-        hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
-        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        hstring legacy_pid = meta.Hashes.ToHashedString("LegacyKnife");
-        hstring map_type = meta.Hashes.ToHashedString("Map");
-        hstring proto_map_type = meta.Hashes.ToHashedString("ProtoMap");
-        hstring location_type = meta.Hashes.ToHashedString("Location");
-        hstring proto_location_type = meta.Hashes.ToHashedString("ProtoLocation");
-        hstring rest_stop_day_pid = meta.Hashes.ToHashedString("RestStop_Day");
-        hstring rest_stop_day_time_pid = meta.Hashes.ToHashedString("RestStop_DayTime");
+        hstring item_type = meta.Hashes.to_hashed_string("Item");
+        hstring proto_item_type = meta.Hashes.to_hashed_string("ProtoItem");
+        hstring knife_pid = meta.Hashes.to_hashed_string("Knife");
+        hstring legacy_pid = meta.Hashes.to_hashed_string("LegacyKnife");
+        hstring map_type = meta.Hashes.to_hashed_string("Map");
+        hstring proto_map_type = meta.Hashes.to_hashed_string("ProtoMap");
+        hstring location_type = meta.Hashes.to_hashed_string("Location");
+        hstring proto_location_type = meta.Hashes.to_hashed_string("ProtoLocation");
+        hstring rest_stop_day_pid = meta.Hashes.to_hashed_string("RestStop_Day");
+        hstring rest_stop_day_time_pid = meta.Hashes.to_hashed_string("RestStop_DayTime");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
-        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrar(meta, map_type));
-        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, GetTestRegistrar(meta, location_type));
+        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(knife_pid, GetTestRegistrar(meta, item_type));
+        auto map_proto = safe_alloc::make_refcounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrar(meta, map_type));
+        auto location_proto = safe_alloc::make_refcounted<ProtoLocation>(rest_stop_day_time_pid, GetTestRegistrar(meta, location_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(map_type, map_proto);
         meta.RegisterProto(location_type, location_proto);
@@ -141,9 +141,9 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        hstring proto_rule = meta.Hashes.ToHashedString("Proto");
-        hstring item_type = meta.Hashes.ToHashedString("Item");
-        hstring removed_pid = meta.Hashes.ToHashedString("RemovedKnife");
+        hstring proto_rule = meta.Hashes.to_hashed_string("Proto");
+        hstring item_type = meta.Hashes.to_hashed_string("Item");
+        hstring removed_pid = meta.Hashes.to_hashed_string("RemovedKnife");
 
         meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "__remove__");
 
@@ -159,9 +159,9 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        hstring map_type = meta.Hashes.ToHashedString("Map");
+        hstring map_type = meta.Hashes.to_hashed_string("Map");
 
-        CHECK_FALSE(static_cast<bool>(meta.GetProtoEntity(map_type, meta.Hashes.ToHashedString("Missing"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetProtoEntity(map_type, meta.Hashes.to_hashed_string("Missing"))));
         CHECK(meta.GetProtoEntities(map_type).empty());
     }
 
@@ -170,16 +170,16 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ProtoTestPack");
-        source->AddFile("test.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(meta, meta.Hashes.ToHashedString("Item"), "LoadedKnife"));
+        auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ProtoTestPack");
+        source->AddFile("test.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(meta, meta.Hashes.to_hashed_string("Item"), "LoadedKnife"));
 
         FileSystem resources;
         resources.AddCustomSource(std::move(source));
         meta.RegisterProtos(resources);
 
-        hstring loaded_pid = meta.Hashes.ToHashedString("LoadedKnife");
-        hstring item_type = meta.Hashes.ToHashedString("Item");
-        hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
+        hstring loaded_pid = meta.Hashes.to_hashed_string("LoadedKnife");
+        hstring item_type = meta.Hashes.to_hashed_string("Item");
+        hstring proto_item_type = meta.Hashes.to_hashed_string("ProtoItem");
 
         REQUIRE(static_cast<bool>(meta.GetProtoItem(loaded_pid)));
         CHECK(meta.GetProtoItem(loaded_pid)->GetName() == string_view {"LoadedKnife"});

@@ -197,6 +197,8 @@ public:
     auto operator=(BakingReport&&) noexcept = delete;
     ~BakingReport() = default;
 
+    [[nodiscard]] auto IsFullRebuild() const -> bool;
+
     void SetRebuildMode(bool effective, string_view reason);
     void RecordPackInput(string_view pack_name, string_view path, size_t size);
     void RecordBakerRegistration(string_view pack_name, string_view baker_name, int32_t order);
@@ -211,12 +213,11 @@ public:
     void RecordSpriteMeshFrame(string_view pack_name, string_view baker_name, const SpriteMeshBakingFrameReport& frame);
     void RecordSharedSpriteMeshFrames(string_view pack_name, string_view baker_name, uint64_t count);
     void Complete(bool success, string_view failure_message);
-    [[nodiscard]] auto IsFullRebuild() const -> bool;
-    [[nodiscard]] auto Serialize() const -> string;
+    auto Serialize() const -> string;
 
 private:
-    [[nodiscard]] auto GetPackBaker(string_view pack_name, string_view baker_name) -> BakingReportBakerStats&;
-    [[nodiscard]] auto GetAggregateBaker(string_view baker_name) -> BakingReportBakerStats&;
+    auto GetPackBaker(string_view pack_name, string_view baker_name) -> BakingReportBakerStats&;
+    auto GetAggregateBaker(string_view baker_name) -> BakingReportBakerStats&;
 
     mutable mutex _locker {};
     string _bakeOutput {};
@@ -226,7 +227,7 @@ private:
     string _rebuildReason {"incremental"};
     string _status {"running"};
     string _failureMessage {};
-    TimeMeter _duration {};
+    time_meter _duration {};
     int64_t _completedDurationMs {};
     uint64_t _outdatedFilesDeleted {};
     map<string, BakingReportPackStats> _packs {};

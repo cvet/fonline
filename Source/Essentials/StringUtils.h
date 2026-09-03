@@ -143,7 +143,7 @@ public:
     }
 
     // Never switch to std::format / std::vformat: they return a std::allocator string, which bypasses
-    // the SafeAllocator out-of-memory contract and costs a copy into _s on every call
+    // the safe_allocator out-of-memory contract and costs a copy into _s on every call
     template<typename... Args>
     explicit strex(std::format_string<Args...>&& format, Args&&... args) :
         strvex()
@@ -160,7 +160,7 @@ public:
             (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
-            BreakIntoDebugger();
+            break_into_debugger();
 
             try {
                 // Formatting appends incrementally, so drop whatever partial output was produced
@@ -282,12 +282,12 @@ static_assert(!std::is_polymorphic_v<strex>);
 
 namespace utf8
 {
-    auto IsValid(uint32_t ucs) noexcept -> bool;
-    auto DecodeStrNtLen(ptr<const char> str) noexcept -> size_t;
-    auto Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
-    auto Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
-    auto Lower(uint32_t ucs) noexcept -> uint32_t;
-    auto Upper(uint32_t ucs) noexcept -> uint32_t;
+    auto is_valid(uint32_t ucs) noexcept -> bool;
+    auto decode_str_nt_len(ptr<const char> str) noexcept -> size_t;
+    auto decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
+    auto encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
+    auto lower(uint32_t ucs) noexcept -> uint32_t;
+    auto upper(uint32_t ucs) noexcept -> uint32_t;
 }
 
 FO_END_NAMESPACE

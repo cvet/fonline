@@ -50,7 +50,7 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
         static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
         array<uint8_t, sizeof(scalar)> scalar_bytes {};
         auto source = make_ptr(&scalar).template reinterpret_as<const uint8_t>();
-        MemCopy(scalar_bytes.data(), source, sizeof(scalar));
+        memory::copy(scalar_bytes.data(), source, sizeof(scalar));
         data.insert(data.end(), scalar_bytes.begin(), scalar_bytes.end());
     };
 
@@ -385,7 +385,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         auto scalar_ptr = make_ptr(&scalar);
         auto target = scalar_ptr.template reinterpret_as<uint8_t>();
         auto source = make_ptr(data.data() + pos);
-        MemCopy(target, source, sizeof(ScalarType));
+        memory::copy(target, source, sizeof(ScalarType));
         pos += sizeof(ScalarType);
         return true;
     };

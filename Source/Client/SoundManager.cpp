@@ -143,7 +143,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
             auto target = make_ptr(output.data());
             auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-            MemCopy(target, source, offset);
+            memory::copy(target, source, offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
@@ -156,7 +156,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
                 auto stream_target = make_ptr(output.data()).offset(offset);
                 auto stream_source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-                MemCopy(stream_target, stream_source, write);
+                memory::copy(stream_target, stream_source, write);
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
@@ -164,7 +164,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             // Cut off end
             if (offset < output.size()) {
                 auto silence_target = make_ptr(output.data()).offset(offset);
-                MemFill(silence_target, silence, output.size() - offset);
+                memory::fill(silence_target, silence, output.size() - offset);
             }
         }
         else {
@@ -172,7 +172,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             if (!output.empty()) {
                 auto target = make_ptr(output.data());
                 auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-                MemCopy(target, source, output.size());
+                memory::copy(target, source, output.size());
             }
             sound->ConvertedBufCur += output.size();
         }
@@ -211,7 +211,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
         // Give silent
         if (!output.empty()) {
             auto silence_target = make_ptr(output.data());
-            MemFill(silence_target, silence, output.size());
+            memory::fill(silence_target, silence, output.size());
         }
         return true;
     }
@@ -219,7 +219,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     // Give silent
     if (!output.empty()) {
         auto silence_target = make_ptr(output.data());
-        MemFill(silence_target, silence, output.size());
+        memory::fill(silence_target, silence, output.size());
     }
 
     return false;
@@ -238,7 +238,7 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
         fixed_fname += "." + ext;
     }
 
-    auto sound = SafeAlloc::MakeUnique<Sound>();
+    auto sound = safe_alloc::make_unique<Sound>();
 
     if (ext == "wav" && !LoadWav(sound, fixed_fname)) {
         return false;
@@ -275,7 +275,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     uint32_t dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MakeUInt('R', 'I', 'F', 'F')) {
-        WriteLog("'RIFF' not found");
+        logging::write("'RIFF' not found");
         return false;
     }
 
@@ -284,21 +284,21 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MakeUInt('W', 'A', 'V', 'E')) {
-        WriteLog("'WAVE' not found");
+        logging::write("'WAVE' not found");
         return false;
     }
 
     dw_buf = reader.GetLEUInt32();
 
     if (dw_buf != MakeUInt('f', 'm', 't', ' ')) {
-        WriteLog("'fmt ' not found");
+        logging::write("'fmt ' not found");
         return false;
     }
 
     dw_buf = reader.GetLEUInt32();
 
     if (dw_buf == 0) {
-        WriteLog("Unknown format");
+        logging::write("Unknown format");
         return false;
     }
 
@@ -316,7 +316,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     constexpr size_t wave_format_base_size = 16;
 
     if (dw_buf < wave_format_base_size) {
-        WriteLog("Unknown format");
+        logging::write("Unknown format");
         return false;
     }
 
@@ -324,7 +324,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     reader.ReadBytes(wave_format_bytes);
 
     if (waveformatex.WFormatTag != 1) {
-        WriteLog("Compressed files not supported");
+        logging::write("Compressed files not supported");
         return false;
     }
 
@@ -339,7 +339,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     }
 
     if (dw_buf != MakeUInt('d', 'a', 't', 'a')) {
-        WriteLog("Unknown format2");
+        logging::write("Unknown format2");
         return false;
     }
 
@@ -359,7 +359,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
         sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
         break;
     default:
-        WriteLog("Unknown format");
+        logging::write("Unknown format");
         return false;
     }
 
@@ -387,7 +387,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     int32_t samples = 0;
     auto acm_data_ptr = make_nptr(acm_data.data());
     FO_VERIFY_AND_THROW(acm_data.empty() || acm_data_ptr, "Non-empty ACM data has a null pointer");
-    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
+    auto acm = safe_alloc::make_unique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
     int32_t buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -404,7 +404,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     int32_t dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
     if (dec_data != buf_size) {
-        WriteLog("Decode Acm error");
+        logging::write("Decode Acm error");
         return false;
     }
 
@@ -476,7 +476,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
-    auto ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
+    auto ogg_stream_owner = safe_alloc::make_unique<OggVorbis_File>();
     auto released_ogg_stream = ogg_stream_owner.release();
     sound->OggStream = make_unique_del_ptr(released_ogg_stream, [](OggVorbis_File* raw_vf) noexcept {
         auto vf = make_ptr(raw_vf);
@@ -487,31 +487,33 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
 
     FileReader reader = file.GetReader();
-    auto file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
+    auto file_context = safe_alloc::make_unique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
     int32_t error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
-        WriteLog("Open OGG file '{}' fail, error:", fname);
+        logging::write("Open OGG file '{}' fail, error:", fname);
+
         switch (error) {
         case OV_EREAD:
-            WriteLog("A read from media returned an error");
+            logging::write("A read from media returned an error");
             break;
         case OV_ENOTVORBIS:
-            WriteLog("Bitstream does not contain any Vorbis data");
+            logging::write("Bitstream does not contain any Vorbis data");
             break;
         case OV_EVERSION:
-            WriteLog("Vorbis version mismatch");
+            logging::write("Vorbis version mismatch");
             break;
         case OV_EBADHEADER:
-            WriteLog("Invalid Vorbis bitstream header");
+            logging::write("Invalid Vorbis bitstream header");
             break;
         case OV_EFAULT:
-            WriteLog("Internal logic fault; indicates a bug or heap/stack corruption");
+            logging::write("Internal logic fault; indicates a bug or heap/stack corruption");
             break;
         default:
-            WriteLog("Unknown error code {}", error);
+            logging::write("Unknown error code {}", error);
             break;
         }
+
         return false;
     }
 

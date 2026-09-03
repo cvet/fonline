@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void ClientInitHook(ptr<ClientEngine>);
+void ClientInitHook(ptr<ClientEngine>);
 
 auto GetClientResources(const ClientSettings& settings) -> FileSystem
 {
@@ -52,7 +52,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
     if (settings.Packaged && !settings.UserWritablePath.empty()) {
-        string writable_dir = fs_make_writable_path(settings.UserWritablePath, settings.ClientResources);
+        string writable_dir = fs::make_writable_path(settings.UserWritablePath, settings.ClientResources);
 
         for (const string& pack : settings.ClientResourceEntries) {
             resources.AddPackSource(writable_dir, pack, true);
@@ -69,7 +69,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    Cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -79,10 +79,10 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&SprMngr));
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
+    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&SprMngr));
+    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
+    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
 #endif
 
     ResMngr.IndexFiles();
@@ -100,13 +100,13 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *settings, Resources);
 #endif
 
-    WriteLog("Client compatibility version: {}", Settings->CompatibilityVersion);
+    logging::write("Client compatibility version: {}", Settings->CompatibilityVersion);
 
     string metadata_version = !Settings->ForceMetadataVersion.empty() ? Settings->ForceMetadataVersion : string(GetMetadataVersion());
     _conn.SetMetadataVersion(metadata_version);
-    WriteLog("Client metadata version: {}", metadata_version);
+    logging::write("Client metadata version: {}", metadata_version);
 
-    Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
+    Hashes.set_resolve_hash_failure_handler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
 
     _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Language);
@@ -235,7 +235,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    Cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -333,7 +333,7 @@ void ClientEngine::ProcessScheduledCallbacks()
             body();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }
@@ -608,7 +608,7 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
 
     if (result == ClientConnection::ConnectResult::Success) {
         FO_VERIFY_AND_THROW(!_curPlayer, "Cur player is already set");
-        _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
+        _curPlayer = safe_alloc::make_refcounted<PlayerView>(this, ident_t {});
         OnConnected.Fire();
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
@@ -700,7 +700,7 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
     if (std::cmp_greater(moving->GetSteps().size(), Settings->MaxPathFindLength)) {
-        BreakIntoDebugger();
+        break_into_debugger();
         cr->StopMoving();
         return;
     }
@@ -809,13 +809,13 @@ void ClientEngine::Net_OnInitData()
         if (!Settings->UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
             // it on top so the up-to-date file wins the size/hash check below
-            resources.AddDirSource(fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
+            resources.AddDirSource(fs::make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
         }
 
-        auto reader = DataReader(data);
+        auto reader = data_reader(data);
 
         while (true) {
-            int16_t name_len = reader.Read<int16_t>();
+            int16_t name_len = reader.read<int16_t>();
 
             if (name_len == -1) {
                 break;
@@ -825,11 +825,11 @@ void ClientEngine::Net_OnInitData()
             size_t fname_size = numeric_cast<size_t>(name_len);
             string fname;
             fname.resize(fname_size);
-            reader.ReadStringBytes(fname);
-            auto size = reader.Read<uint64_t>();
-            auto hash = reader.Read<uint64_t>();
-            auto target = reader.Read<UpdateFileTarget>();
-            auto data_index = reader.Read<uint32_t>();
+            reader.read_string_bytes(fname);
+            auto size = reader.read<uint64_t>();
+            auto hash = reader.read<uint64_t>();
+            auto target = reader.read<UpdateFileTarget>();
+            auto data_index = reader.read<uint32_t>();
 
             ignore_unused(hash);
             ignore_unused(data_index);
@@ -850,7 +850,7 @@ void ClientEngine::Net_OnInitData()
             }
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
     }
 }
 
@@ -864,11 +864,11 @@ void ClientEngine::Net_OnHashList()
         string str = _conn.InBuf->Read<string>();
 
         // Learn the string locally so the matching hash now resolves; same hash function as the server
-        Hashes.ToHashedString(str);
+        Hashes.to_hashed_string(str);
     }
 
     if (count != 0) {
-        WriteLog("Learned {} previously unresolved hash(es) from server", count);
+        logging::write("Learned {} previously unresolved hash(es) from server", count);
     }
 }
 
@@ -876,7 +876,7 @@ void ClientEngine::Net_OnLoginSuccess()
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Authentication success");
+    logging::write("Authentication success");
 
     auto player_id = _conn.InBuf->Read<ident_t>();
     _conn.InBuf->ReadPropsData(_globalsPropertiesData);
@@ -936,12 +936,12 @@ void ClientEngine::Net_OnAddCritter()
         }
 
         if (erase_index != _globalMapCritters.size()) {
-            BreakIntoDebugger();
+            break_into_debugger();
             _globalMapCritters[erase_index]->MarkAsDestroyed();
             _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
         }
 
-        auto global_cr = SafeAlloc::MakeRefCounted<CritterView>(this, cr_id, proto);
+        auto global_cr = safe_alloc::make_refcounted<CritterView>(this, cr_id, proto);
         global_cr->RestoreData(_tempPropertiesData);
         _globalMapCritters.emplace_back(global_cr);
 
@@ -1071,7 +1071,7 @@ void ClientEngine::Net_OnRemoveCritter()
         auto cr = map->GetCritter(cr_id);
 
         if (!cr) {
-            BreakIntoDebugger();
+            break_into_debugger();
             return;
         }
 
@@ -1094,7 +1094,7 @@ void ClientEngine::Net_OnRemoveCritter()
         }
 
         if (erase_index == _globalMapCritters.size()) {
-            BreakIntoDebugger();
+            break_into_debugger();
             return;
         }
 
@@ -1127,7 +1127,7 @@ void ClientEngine::Net_OnCritterVisibilityMode()
             OnCritterVisibilityModeChanged.Fire(cr, mode);
         }
         else {
-            BreakIntoDebugger();
+            break_into_debugger();
         }
     }
 }
@@ -1150,7 +1150,7 @@ void ClientEngine::Net_OnCritterDir()
     auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1196,7 +1196,7 @@ void ClientEngine::Net_OnCritterMoveSpeed()
     auto speed = _conn.InBuf->Read<uint16_t>();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1248,7 +1248,7 @@ void ClientEngine::Net_OnCritterAction()
     auto cr = map->GetCritter(cr_id);
 
     if (!cr) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1287,7 +1287,7 @@ void ClientEngine::Net_OnCritterMoveItem()
     }
 
     if (!cr) {
-        BreakIntoDebugger();
+        break_into_debugger();
 
         // Skip rest data
         auto items_count = _conn.InBuf->Read<uint32_t>();
@@ -1355,7 +1355,7 @@ void ClientEngine::Net_OnCritterTeleport()
     auto to_hex = _conn.InBuf->Read<mpos>();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1384,7 +1384,7 @@ void ClientEngine::Net_OnCritterPos()
     auto dir = _conn.InBuf->Read<mdir>();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1444,7 +1444,7 @@ void ClientEngine::Net_OnCritterAttachments()
         auto cr = map->GetCritter(cr_id);
 
         if (!cr) {
-            BreakIntoDebugger();
+            break_into_debugger();
             return;
         }
 
@@ -1477,7 +1477,7 @@ void ClientEngine::Net_OnCritterAttachments()
         auto cr = GetGlobalMapCritter(cr_id);
 
         if (!cr) {
-            BreakIntoDebugger();
+            break_into_debugger();
             return;
         }
 
@@ -1499,8 +1499,8 @@ void ClientEngine::Net_OnChosenAddItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        WriteLog("Chosen is not created on add item");
-        BreakIntoDebugger();
+        logging::write("Chosen is not created on add item");
+        break_into_debugger();
 
         // Skip rest data
         ReceiveCustomEntities(nullptr);
@@ -1542,8 +1542,8 @@ void ClientEngine::Net_OnChosenRemoveItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        WriteLog("Chosen is not created in remove item");
-        BreakIntoDebugger();
+        logging::write("Chosen is not created in remove item");
+        break_into_debugger();
         return;
     }
 
@@ -1580,7 +1580,7 @@ void ClientEngine::Net_OnAddItemOnMap()
     _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
 
         // Skip rest data
         ReceiveCustomEntities(nullptr);
@@ -1604,7 +1604,7 @@ void ClientEngine::Net_OnRemoveItemFromMap()
     auto item_id = _conn.InBuf->Read<ident_t>();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1647,7 +1647,7 @@ void ClientEngine::Net_OnPlaceToGameComplete()
 
     OnMapLoaded.Fire();
 
-    WriteLog("Map loaded");
+    logging::write("Map loaded");
 }
 
 void ClientEngine::Net_OnProperty()
@@ -1742,14 +1742,14 @@ void ClientEngine::Net_OnProperty()
     }
 
     if (!entity) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
     auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(property_index);
 
     if (!prop) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1783,7 +1783,7 @@ void ClientEngine::Net_OnLoadMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Change map");
+    logging::write("Change map");
 
     auto loc_id = _conn.InBuf->Read<ident_t>();
     auto map_id = _conn.InBuf->Read<ident_t>();
@@ -1810,12 +1810,12 @@ void ClientEngine::Net_OnLoadMap()
         isize32 screen_size = {Settings->ScreenWidth, Settings->ScreenHeight};
         OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
 
-        _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
+        _curLocation = safe_alloc::make_refcounted<LocationView>(this, loc_id, loc_proto);
         auto location = GetCurLocation();
         FO_VERIFY_AND_THROW(location, "Location is null");
         location->RestoreData(_tempPropertiesDataExt);
 
-        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto, screen_size);
+        _curMap = safe_alloc::make_refcounted<MapView>(this, map_id, map_proto, screen_size);
         auto map = GetCurMap();
         FO_VERIFY_AND_THROW(map, "Map is null");
         map->RestoreData(_tempPropertiesData);
@@ -1824,10 +1824,10 @@ void ClientEngine::Net_OnLoadMap()
         ReceiveCustomEntities(location);
         ReceiveCustomEntities(map);
 
-        WriteLog("Start load map");
+        logging::write("Start load map");
     }
     else {
-        WriteLog("Start load global map");
+        logging::write("Start load global map");
     }
 
     OnMapLoad.Fire();
@@ -1860,7 +1860,7 @@ void ClientEngine::Net_OnViewMap()
     auto hex = _conn.InBuf->Read<mpos>();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1897,7 +1897,7 @@ void ClientEngine::Net_OnAddCustomEntity()
         holder = GetEntity(holder_id);
 
         if (!holder) {
-            BreakIntoDebugger();
+            break_into_debugger();
             return;
         }
     }
@@ -1919,7 +1919,7 @@ void ClientEngine::Net_OnRemoveCustomEntity()
     auto entity = GetEntity(id);
 
     if (!entity) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1927,7 +1927,7 @@ void ClientEngine::Net_OnRemoveCustomEntity()
     auto custom_entity = entity.dyn_cast<CustomEntityView>();
 
     if (!custom_entity) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -1946,7 +1946,7 @@ void ClientEngine::Net_OnRemoveCustomEntity()
         holder->RemoveInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
     }
     else {
-        BreakIntoDebugger();
+        break_into_debugger();
     }
 
     custom_entity->DestroySelf();
@@ -1965,7 +1965,7 @@ auto ClientEngine::ReceiveDetachedItem() -> refcount_ptr<ItemView>
     auto proto = GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
+    auto item = safe_alloc::make_refcounted<ItemView>(this, item_id, proto);
     item->RestoreData(_tempPropertiesData);
 
     // Ownership is not synchronized, so a received view would keep the zero default and read as an
@@ -2033,10 +2033,10 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
 
     refcount_ptr<CustomEntityView> entity = [&]() -> refcount_ptr<CustomEntityView> {
         if (proto) {
-            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrar, proto);
+            return safe_alloc::make_refcounted<CustomEntityWithProtoView>(this, id, registrar, proto);
         }
 
-        return SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrar, nullptr, nullptr);
+        return safe_alloc::make_refcounted<CustomEntityView>(this, id, registrar, nullptr, nullptr);
     }();
 
     entity->RestoreData(data);
@@ -2081,12 +2081,12 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     auto end_hex_offset = _conn.InBuf->Read<ipos16>();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
     if (!cr) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -2102,7 +2102,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
         start_hex_offset = {numeric_cast<int16_t>(start_hex_offset.x + cr_offset.x), numeric_cast<int16_t>(start_hex_offset.y + cr_offset.y)};
     }
 
-    cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
+    cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
@@ -2157,13 +2157,13 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
     auto anim = SprMngr.LoadSprite(name, atlas_type);
 
     if (!anim) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return 0;
     }
 
     anim->PlayDefault();
 
-    auto iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
+    auto iface_anim = safe_alloc::make_unique<IfaceAnim>();
 
     iface_anim->Name = name;
     iface_anim->Anim = anim;
@@ -2624,7 +2624,7 @@ void ClientEngine::LmapPrepareMap()
     _lmapPrepPix.clear();
 
     if (!_curMap) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return;
     }
 
@@ -2814,7 +2814,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
     }
 
     if (try_move) {
-        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
+        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
         auto moving = cr->GetMoving();
         FO_VERIFY_AND_THROW(moving, "Missing active movement state");
         moving->ValidateRuntimeState();

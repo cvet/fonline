@@ -98,31 +98,31 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseResume")
     {
-        TimeMeter meter;
+        time_meter meter;
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        meter.Pause();
-        auto paused = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto paused = meter.get_duration().milliseconds();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto paused_after_wait = meter.GetDuration().milliseconds();
+        auto paused_after_wait = meter.get_duration().milliseconds();
         CHECK(paused_after_wait == paused);
 
-        meter.Resume();
+        meter.resume();
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        CHECK(meter.GetDuration().milliseconds() >= paused);
+        CHECK(meter.get_duration().milliseconds() >= paused);
     }
 
     SECTION("TimeMeterResumeWithoutPause")
     {
-        TimeMeter meter;
+        time_meter meter;
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        auto before_resume = meter.GetDuration().milliseconds();
-        meter.Resume();
+        auto before_resume = meter.get_duration().milliseconds();
+        meter.resume();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto after_resume = meter.GetDuration().milliseconds();
+        auto after_resume = meter.get_duration().milliseconds();
 
         CHECK(before_resume >= 1);
         CHECK(after_resume >= before_resume);
@@ -130,15 +130,15 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseIsIdempotent")
     {
-        TimeMeter meter;
+        time_meter meter;
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        meter.Pause();
-        auto first_pause = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto first_pause = meter.get_duration().milliseconds();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        meter.Pause();
-        auto second_pause = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto second_pause = meter.get_duration().milliseconds();
 
         CHECK(second_pause == first_pause);
     }

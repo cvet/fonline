@@ -200,7 +200,7 @@ TEST_CASE("FunctionObjects")
         move_only_function<void()> capture_two = [&counter, &other] { counter += other; };
         move_only_function<int32_t(int32_t)> free_function = &DoubleValue;
         move_only_function<void()> capture_string = [text = string("engine callback")] { ignore_unused(text); };
-        move_only_function<int32_t()> capture_owner = [value = SafeAlloc::MakeUnique<int32_t>(42)] { return *value; };
+        move_only_function<int32_t()> capture_owner = [value = safe_alloc::make_unique<int32_t>(42)] { return *value; };
         copyable_function<void()> copyable_capture = [&counter] { counter++; };
 
         REQUIRE(!capture_nothing.is_heap_allocated());
@@ -245,7 +245,7 @@ TEST_CASE("FunctionObjects")
 
     SECTION("MoveOnlyTargetSurvivesRelocation")
     {
-        move_only_function<int32_t()> owner = [value = SafeAlloc::MakeUnique<int32_t>(42)] { return *value; };
+        move_only_function<int32_t()> owner = [value = safe_alloc::make_unique<int32_t>(42)] { return *value; };
         move_only_function<int32_t()> moved = std::move(owner);
 
         REQUIRE(moved() == 42);

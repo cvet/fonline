@@ -241,7 +241,7 @@ void MapView::LoadFromFile(string_view map_name, string_view file_name, const st
             props.ApplyFromText(*kv);
 
             auto props_ptr = make_nptr(&props);
-            auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto, props_ptr);
+            auto cr = safe_alloc::make_refcounted<CritterHexView>(this, id, proto, props_ptr);
 
             if (auto hex = cr->GetHex(); !_mapSize.is_valid_pos(hex)) {
                 cr->SetHex(_mapSize.clamp_pos(hex));
@@ -259,7 +259,7 @@ void MapView::LoadFromFile(string_view map_name, string_view file_name, const st
             props.ApplyFromText(*kv);
 
             auto props_ptr = make_nptr(&props);
-            auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto, props_ptr);
+            auto item = safe_alloc::make_refcounted<ItemHexView>(this, id, proto, props_ptr);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
                 if (auto hex = item->GetHex(); !_mapSize.is_valid_pos(hex)) {
@@ -325,21 +325,21 @@ void MapView::LoadStaticData()
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
 
-    auto reader = DataReader(file.GetDataSpan());
+    auto reader = data_reader(file.GetDataSpan());
 
     MapLoader::ReadBakedFileHeader(reader, GetProtoId());
 
     // Hashes
     {
-        auto hashes_count = reader.Read<uint32_t>();
+        auto hashes_count = reader.read<uint32_t>();
 
         // Counts and sizes come from a resource file that may be stale or damaged, so every one of them is
         // preflighted against the buffer before it drives an allocation or a loop
-        reader.VerifyPayloadCount(hashes_count, sizeof(uint32_t));
+        reader.verify_payload_count(hashes_count, sizeof(uint32_t));
 
         for (uint32_t i = 0; i < hashes_count; i++) {
-            string str = reader.ReadString();
-            hstring hstr = _engine->Hashes.ToHashedString(str);
+            string str = reader.read_string();
+            hstring hstr = _engine->Hashes.to_hashed_string(str);
             ignore_unused(hstr);
         }
     }
@@ -349,9 +349,9 @@ void MapView::LoadStaticData()
         _mapLoading = true;
         auto reset_loading = scope_exit([this]() noexcept { _mapLoading = false; });
 
-        auto items_count = reader.Read<uint32_t>();
+        auto items_count = reader.read<uint32_t>();
 
-        reader.VerifyPayloadCount(items_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
+        reader.verify_payload_count(items_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
         _items.reserve(items_count);
         _staticItems.reserve(items_count);
@@ -360,9 +360,9 @@ void MapView::LoadStaticData()
         vector<uint8_t> props_data;
 
         for (uint32_t i = 0; i < items_count; i++) {
-            ident_t static_id = ident_t {reader.Read<ident_t::underlying_type>()};
-            auto item_pid_hash = reader.Read<hstring::hash_t>();
-            hstring item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
+            ident_t static_id = ident_t {reader.read<ident_t::underlying_type>()};
+            auto item_pid_hash = reader.read<hstring::hash_t>();
+            hstring item_pid = _engine->Hashes.resolve_hash(item_pid_hash);
 
             // A removed record still has to be walked past, because the entries are variable length and the
             // reader has no index to seek with
@@ -370,11 +370,11 @@ void MapView::LoadStaticData()
             FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype");
 
             auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
-            auto props_data_size = reader.Read<uint32_t>();
-            reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
+            auto props_data_size = reader.read<uint32_t>();
+            reader.verify_payload_count(props_data_size, sizeof(uint8_t));
             props_data.resize(props_data_size);
             span<uint8_t> props_data_span = props_data;
-            reader.ReadBytes(props_data_span);
+            reader.read_bytes(props_data_span);
 
             if (removed_ids.count(static_id) != 0) {
                 continue;
@@ -383,14 +383,14 @@ void MapView::LoadStaticData()
             item_props.RestoreAllData(props_data);
 
             auto item_props_ptr = make_nptr(&item_props);
-            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, static_id, item_proto, item_props_ptr);
+            auto static_item = safe_alloc::make_refcounted<ItemHexView>(this, static_id, item_proto, item_props_ptr);
             static_item->SetStatic(true);
 
             AddItemInternal(static_item);
         }
     }
 
-    reader.VerifyEnd();
+    reader.verify_end();
 
     // Index roof
     auto mark_roof_num = [this](ipos32 raw_hex, int32_t num) {
@@ -558,7 +558,7 @@ auto MapView::CalculateMapRenderTargetSize() const noexcept -> isize32
     };
 
     if (actual_size != requested_size) {
-        WriteLog(LogType::Warning, "Map render target size {}x{} requested by View.MapRenderTargetScale {} is not supported; using {}x{}", requested_size.width, requested_size.height, map_rt_scale, actual_size.width, actual_size.height);
+        logging::write(logging::type::warning, "Map render target size {}x{} requested by View.MapRenderTargetScale {} is not supported; using {}x{}", requested_size.width, requested_size.height, map_rt_scale, actual_size.width, actual_size.height);
     }
 
     return actual_size;
@@ -765,7 +765,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
+    auto item = safe_alloc::make_refcounted<ItemHexView>(this, id, proto);
 
     item->RestoreData(data);
     item->SetStatic(false);
@@ -796,7 +796,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props,
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
+    auto item = safe_alloc::make_refcounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
 
@@ -813,7 +813,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto);
+    auto item = safe_alloc::make_refcounted<ItemHexView>(this, GenTempEntityId(), proto);
 
     item->SetHex(hex);
     item->SetIsTile(true);
@@ -832,7 +832,7 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
+    auto item = safe_alloc::make_refcounted<ItemHexView>(this, ident_t {}, proto);
 
     item->SetStatic(false);
     item->SetHex(hex);
@@ -1113,7 +1113,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> nptr<SpritePat
     spr->Prewarm();
     spr->PlayDefault();
 
-    auto pattern = SafeAlloc::MakeRefCounted<SpritePattern>();
+    auto pattern = safe_alloc::make_refcounted<SpritePattern>();
 
     pattern->Sprites.emplace_back(std::move(spr));
 
@@ -1601,7 +1601,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
     auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        ptr<LightSource> ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second;
+        ptr<LightSource> ls = _lightSources.emplace(id, safe_alloc::make_unique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second;
 
         apply_updated_light_source(ls);
     }
@@ -1692,11 +1692,11 @@ void MapView::ApplyLightFan(ptr<LightSource> ls)
     ls->FanHexes.clear();
     ls->FanHexes.reserve(numeric_cast<size_t>(distance) * GameSettings::MAP_DIR_COUNT);
 
-    if (IsEnumSet(ls->Flags, LightFlag::Global)) {
+    if (is_enum_set(ls->Flags, LightFlag::Global)) {
         _globalLights++;
     }
 
-    if (IsEnumSet(ls->Flags, LightFlag::Global)) {
+    if (is_enum_set(ls->Flags, LightFlag::Global)) {
         ls->Capacity = GetGlobalDayLightCapacity();
     }
     else if (ls->Intensity >= 0) {
@@ -1706,7 +1706,7 @@ void MapView::ApplyLightFan(ptr<LightSource> ls)
         ls->Capacity = LIGHT_CAPACITY_MAX;
     }
 
-    if (IsEnumSet(ls->Flags, LightFlag::Inverse)) {
+    if (is_enum_set(ls->Flags, LightFlag::Inverse)) {
         ls->Capacity = LIGHT_CAPACITY_MAX - ls->Capacity;
     }
 
@@ -1747,7 +1747,7 @@ void MapView::ApplyLightFan(ptr<LightSource> ls)
 
             mpos traced_hex = _mapSize.clamp_pos(raw_traced_hex);
 
-            bool dir_disabled = IsEnumSet(ls->Flags, static_cast<LightFlag>(static_cast<uint16_t>(LightFlag::StopDir0) << i));
+            bool dir_disabled = is_enum_set(ls->Flags, static_cast<LightFlag>(static_cast<uint16_t>(LightFlag::StopDir0) << i));
             if (dir_disabled) {
                 traced_hex = center_hex;
             }
@@ -1790,7 +1790,7 @@ void MapView::CleanLightFan(ptr<LightSource> ls)
 
     ls->Applied = false;
 
-    if (IsEnumSet(ls->Flags, LightFlag::Global)) {
+    if (is_enum_set(ls->Flags, LightFlag::Global)) {
         FO_VERIFY_AND_THROW(_globalLights > 0, "Global light counter underflowed while cleaning a light fan");
         _globalLights--;
     }
@@ -2951,7 +2951,7 @@ void MapView::PrepareFogToDraw()
 
     for (auto& fog_slot : _fogs) {
         for (auto it = fog_slot.begin(); it != fog_slot.end();) {
-            if ((*it)->Disposed || (*it)->GetRefCount() == 1) {
+            if ((*it)->Disposed || (*it)->get_refcount() == 1) {
                 it = fog_slot.erase(it);
             }
             else {
@@ -3444,7 +3444,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
 
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Critter prototype is missing");
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto);
+    auto cr = safe_alloc::make_refcounted<CritterHexView>(this, id, proto);
 
     cr->RestoreData(data);
     cr->SetHex(hex);
@@ -3473,7 +3473,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Prope
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);
+    auto cr = safe_alloc::make_refcounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     cr->SetHex(hex);
     cr->ChangeDir(dir);
@@ -4080,7 +4080,7 @@ auto MapView::AddFog(nptr<CritterView> cr, DrawOrderType draw_order, nptr<Render
         throw ScriptException("Fog critter is not a hex critter on this map");
     }
 
-    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    auto fog = safe_alloc::make_refcounted<FogLayer>();
     fog->DrawOrder = draw_order;
     fog->FollowCritter = true;
     fog->OriginCritterId = hex_cr->GetId();
@@ -4094,7 +4094,7 @@ auto MapView::AddFog(mpos hex, DrawOrderType draw_order, nptr<RenderEffect> cust
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    auto fog = safe_alloc::make_refcounted<FogLayer>();
     fog->DrawOrder = draw_order;
     fog->FollowCritter = false;
     fog->OriginHex = hex;

@@ -97,7 +97,7 @@ public:
     auto operator=(tcp_server&& other) noexcept -> tcp_server& = default;
     ~tcp_server() = default;
 
-    [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_listenSock; }
+    [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_listen_sock; }
 
     auto listen(string_view bind_host, uint16_t port, int32_t backlog = 1) noexcept -> bool;
     auto can_accept(timespan timeout = {}) const noexcept -> bool;
@@ -105,7 +105,7 @@ public:
     void close() noexcept;
 
 private:
-    unique_del_nptr<socket_t> _listenSock;
+    unique_del_nptr<socket_t> _listen_sock;
 };
 
 class udp_socket final

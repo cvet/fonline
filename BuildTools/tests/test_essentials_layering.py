@@ -9,15 +9,54 @@ ESSENTIALS_DIR = ENGINE_ROOT / "Source" / "Essentials"
 ESSENTIALS_HEADER = ESSENTIALS_DIR / "Essentials.h"
 
 MODULE_INCLUDE_PATTERN = re.compile(r'^#include "([A-Za-z0-9]+)\.h"$', re.MULTILINE)
-EXTERN_FUNCTION_PATTERN = re.compile(
-    r"^\s*(?:\[\[noreturn\]\]\s+)?extern\s+[^;\n]+?\b([A-Za-z_]\w*)\s*\([^;\n]*\)[^;\n]*;",
+# A declaration is a parameter list closed by a semicolon; a definition opens a body instead
+DECLARATION_PATTERN = re.compile(
+    r"^[ \t]*(?:\[\[[a-z]+\]\]\s+)?(?!(?:return|throw|else|case)\b)"
+    r"[A-Za-z_][\w:<>,*& \t]*?\b([A-Za-z_]\w*)\s*\([^;\n]*\)[^;\n{}=]*;",
     re.MULTILINE,
 )
+NAMESPACE_PATTERN = re.compile(r"^namespace\s+([a-z_]\w*)\s*$", re.MULTILINE)
+
+
+def _declared_functions(header_text: str) -> set[str]:
+    """Returns each declared function as ns::name, or a bare name outside any namespace."""
+
+    names: set[str] = set()
+    namespace: str | None = None
+    depth = 0
+
+    for line in header_text.splitlines():
+        if namespace is None:
+            match = NAMESPACE_PATTERN.match(line)
+
+            if match:
+                namespace = match.group(1)
+                depth = 0
+                continue
+        else:
+            depth += line.count("{") - line.count("}")
+
+            if depth <= 0 and "}" in line:
+                namespace = None
+                continue
+
+        # Only a class body is indented outside a namespace, and its members are not namespace-level APIs
+        if namespace is None and line[:1].isspace():
+            continue
+
+        match = DECLARATION_PATTERN.match(line)
+
+        if match:
+            names.add(f"{namespace}::{match.group(1)}" if namespace else match.group(1))
+
+    return names
 
 
 def _definition_pattern(function_name: str) -> re.Pattern[str]:
+    qualified = re.escape(function_name)
+
     return re.compile(
-        rf"^\s*(?:\[\[noreturn\]\]\s+)?(?:extern\s+)?[^;\n{{}}]+?\b{re.escape(function_name)}\s*"
+        rf"^\s*(?:\[\[noreturn\]\]\s+)?[^;\n{{}}]+?(?<![\w:]){qualified}\s*"
         rf"\([^;\n{{}}]*\)[^;\n{{}}]*\n\s*\{{",
         re.MULTILINE,
     )
@@ -80,7 +119,7 @@ def test_essentials_public_apis_do_not_depend_on_later_modules() -> None:
 
         header_text = header.read_text(encoding="utf-8", errors="replace")
 
-        for function_name in EXTERN_FUNCTION_PATTERN.findall(header_text):
+        for function_name in _declared_functions(header_text):
             definition_pattern = _definition_pattern(function_name)
 
             for defining_module, source_text in module_sources.items():

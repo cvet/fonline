@@ -66,10 +66,10 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     EffectMngr.LoadDefaultEffects();
 
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&SprMngr));
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
+    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&SprMngr));
+    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
+    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
 #endif
 
     ResMngr.IndexFiles();
@@ -90,8 +90,8 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Language);
 
-    AnimViewer = SafeAlloc::MakeUnique<AnimationViewer>(this, &SprMngr, &ResMngr, &GameTime);
-    PartViewer = SafeAlloc::MakeUnique<ParticleViewer>(this, &SprMngr);
+    AnimViewer = safe_alloc::make_unique<AnimationViewer>(this, &SprMngr, &ResMngr, &GameTime);
+    PartViewer = safe_alloc::make_unique<ParticleViewer>(this, &SprMngr);
 
     SprMngr.BeginScene();
     SprMngr.EndScene();
@@ -204,7 +204,7 @@ void MapperEngine::InitIface()
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Init interface");
+    logging::write("Init interface");
 
     // Interface
     MainPanelPos = {-1, -1};
@@ -227,7 +227,7 @@ void MapperEngine::InitIface()
     ActivePanelMode = INT_MODE_ITEM;
     ProtoWidth = 50;
     ProtosOnScreen = MainPanelContentRect.width / ProtoWidth;
-    MemFill(TabIndex, 0, sizeof(TabIndex));
+    memory::fill(TabIndex, 0, sizeof(TabIndex));
     CritterDir = hdir::SouthWest;
     CurMode = CUR_MODE_DEFAULT;
     SelectItemsEnabled = true;
@@ -240,7 +240,7 @@ void MapperEngine::InitIface()
     CurPDef = SprMngr.LoadSprite("CurDefault.png", AtlasType::IfaceSprites);
     CurPHand = SprMngr.LoadSprite("CurHand.png", AtlasType::IfaceSprites);
 
-    WriteLog("Init interface complete");
+    logging::write("Init interface complete");
 }
 
 void MapperEngine::ResetImGuiSettings()
@@ -919,7 +919,7 @@ MapperEngine::EntityBuf::EntityBuf(const EntityBuf& other) :
 
     Children.reserve(other.Children.size());
     for (const auto& child : other.Children) {
-        Children.emplace_back(SafeAlloc::MakeUnique<EntityBuf>(*child));
+        Children.emplace_back(safe_alloc::make_unique<EntityBuf>(*child));
     }
 }
 
@@ -945,7 +945,7 @@ auto MapperEngine::EntityBuf::operator=(const EntityBuf& other) -> EntityBuf&
         Children.clear();
         Children.reserve(other.Children.size());
         for (const auto& child : other.Children) {
-            Children.emplace_back(SafeAlloc::MakeUnique<EntityBuf>(*child));
+            Children.emplace_back(safe_alloc::make_unique<EntityBuf>(*child));
         }
     }
 
@@ -1234,7 +1234,7 @@ void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> ent
     vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(entity);
 
     for (size_t i = 0; i < children.size(); i++) {
-        auto child_buf = SafeAlloc::MakeUnique<EntityBuf>();
+        auto child_buf = safe_alloc::make_unique<EntityBuf>();
         CaptureEntityBuf(*child_buf, children[i]);
         entity_buf.Children.emplace_back(std::move(child_buf));
     }
@@ -5293,7 +5293,7 @@ void MapperEngine::BufferCopy()
         vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(entity);
 
         for (size_t i = 0; i < children.size(); i++) {
-            auto child_buf = SafeAlloc::MakeUnique<EntityBuf>();
+            auto child_buf = safe_alloc::make_unique<EntityBuf>();
             add_entity(*child_buf, children[i]);
             entity_buf.Children.emplace_back(std::move(child_buf));
         }
@@ -5945,7 +5945,7 @@ void MapperEngine::ParseCommand(string_view command)
             return;
         }
 
-        auto func = FindFunc<string, string>(Hashes.ToHashedString(func_name));
+        auto func = FindFunc<string, string>(Hashes.to_hashed_string(func_name));
 
         if (!func) {
             AddMess("Function not found");
@@ -6028,10 +6028,10 @@ void MapperEngine::ParseCommand(string_view command)
             auto registrar = GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME);
             FO_VERIFY_AND_THROW(registrar, "Map property registrar is not available");
 
-            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), registrar);
+            auto pmap = safe_alloc::make_refcounted<ProtoMap>(Hashes.to_hashed_string("new"), registrar);
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
-            auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
+            auto map = safe_alloc::make_refcounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
             map->EnableMapperMode();
             map->SetScrollCheck(false);
             map->InstantScrollTo({GameSettings::DEFAULT_MAP_SIZE / 2, GameSettings::DEFAULT_MAP_SIZE / 2});
@@ -6204,10 +6204,10 @@ auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, 
     auto registrar = GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME);
     FO_VERIFY_AND_THROW(registrar, "Map property registrar is not available");
 
-    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrar);
+    auto pmap = safe_alloc::make_refcounted<ProtoMap>(Hashes.to_hashed_string(map_name), registrar);
     pmap->GetPropertiesForEdit()->ApplyFromText(proto_map_section);
 
-    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
+    auto new_map = safe_alloc::make_refcounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
     new_map->SetHeaderExtraFields(std::move(proto_map_header_extra_fields));
     new_map->EnableMapperMode();
     new_map->SetScrollCheck(false);
@@ -6605,11 +6605,11 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     string dir = strex(fomap_path).extract_dir().str();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
+        bool dir_ok = fs::create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create the map output directory", dir, fomap_path, fomap_name);
     }
 
-    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream fomap_file {std::filesystem::path {fs::make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open the map file for writing", fomap_path, fomap_name, final_content.size());
 
     if (!final_content.empty()) {
@@ -6681,11 +6681,11 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     string dir = strex(fomap_path).extract_dir().str();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
+        bool dir_ok = fs::create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Unable to create the target map directory", dir);
     }
 
-    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream fomap_file {std::filesystem::path {fs::make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(fomap_file, "Unable to open the fomap file for writing", fomap_path);
 
     if (!fomap_content.empty()) {
@@ -7022,8 +7022,8 @@ auto MapperEngine::ReadInspectorToken(nptr<const char> str, string& result) cons
     }
 
     auto decode_char = [str](size_t char_pos, size_t& char_len) {
-        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
-        utf8::Decode(&str[char_pos], char_len);
+        char_len = utf8::decode_str_nt_len(&str[char_pos]);
+        utf8::decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;

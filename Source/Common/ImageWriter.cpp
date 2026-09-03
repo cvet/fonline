@@ -47,11 +47,11 @@ void ImageWriter::WriteSimpleTga(string_view fname, isize32 size, vector<ucolor>
     string dir = strex(fname).extract_dir().str();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
+        bool dir_ok = fs::create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir, fname);
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
+    std::ofstream file {std::filesystem::path {fs::make_path(fname)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname, size, data.size());
 
     // ucolor keeps pixels in R, G, B, A byte order, but a TrueColor TGA stores them as B, G, R, A
@@ -84,11 +84,11 @@ void ImageWriter::WriteSimplePng(string_view fname, isize32 size, const_span<uco
     string dir = strex(fname).extract_dir().str();
 
     if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
+        bool dir_ok = fs::create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for PNG image", dir, fname);
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
+    std::ofstream file {std::filesystem::path {fs::make_path(fname)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(file, "Failed to open PNG image file for writing", fname, size, data.size());
 
     const uint8_t signature[8] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
@@ -117,10 +117,10 @@ void ImageWriter::WriteSimplePng(string_view fname, isize32 size, const_span<uco
     for (int32_t y = 0; y < size.height; y++) {
         size_t row_start = numeric_cast<size_t>(y) * (row_bytes + 1);
         scanlines[row_start] = 0;
-        MemCopy(scanlines_data.get() + row_start + 1, pixels_data.get() + numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width), row_bytes);
+        memory::copy(scanlines_data.get() + row_start + 1, pixels_data.get() + numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width), row_bytes);
     }
 
-    WritePngChunk(file, "IDAT", Compressor::Compress(scanlines));
+    WritePngChunk(file, "IDAT", compressor::compress(scanlines));
     WritePngChunk(file, "IEND", {});
 
     FO_VERIFY_AND_THROW(file, "Failed while writing PNG image file", fname, size, data.size());

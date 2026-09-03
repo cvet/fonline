@@ -336,10 +336,10 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>();
+    _ctx = safe_alloc::make_unique<Context>();
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    WriteLog("Used DirectX rendering");
+    logging::write("Used DirectX rendering");
 
     _ctx->Settings = &settings;
     _ctx->RenderDebug = settings.RenderDebug;
@@ -386,10 +386,10 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
                 throw AppInitException("D3D11CreateDevice failed (Hardware and Warp)", d3d_hardware_create_device, d3d_warp_create_device);
             }
 
-            WriteLog("Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+            logging::write("Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
         }
         else {
-            WriteLog("Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+            logging::write("Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
         }
 
         if (SUCCEEDED(_ctx->D3DDeviceContext->QueryInterface(IID_PPV_ARGS(_ctx->D3DDeviceContext1.get_pp())))) {
@@ -397,7 +397,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
             _ctx->D3DDeviceContext = _ctx->D3DDeviceContext1;
         }
         else {
-            WriteLog("Direct3D ID3D11DeviceContext1 not found");
+            logging::write("Direct3D ID3D11DeviceContext1 not found");
         }
     }
 
@@ -451,15 +451,15 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
                             throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2, d3d_create_swap_chain_3, d3d_create_swap_chain_4);
                         }
                         else {
-                            WriteLog("Direct3D swap chain created with one buffer count");
+                            logging::write("Direct3D swap chain created with one buffer count");
                         }
                     }
                     else {
-                        WriteLog("Direct3D swap chain created with non-flip swap effect");
+                        logging::write("Direct3D swap chain created with non-flip swap effect");
                     }
                 }
                 else {
-                    WriteLog("Direct3D swap chain created with flip sequential swap effect");
+                    logging::write("Direct3D swap chain created with flip sequential swap effect");
                 }
             }
         }
@@ -477,7 +477,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
                     throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2);
                 }
                 else {
-                    WriteLog("Direct3D swap chain created with one buffer count");
+                    logging::write("Direct3D swap chain created with one buffer count");
                 }
             }
         }
@@ -657,7 +657,7 @@ auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool w
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth, _ctx);
+    auto d3d_tex = safe_alloc::make_unique<Direct3D_Texture>(size, linear_filtered, with_depth, _ctx);
 
     D3D11_TEXTURE2D_DESC tex_desc = {};
     tex_desc.Width = size.width;
@@ -720,7 +720,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDra
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static, _ctx);
+    auto d3d_dbuf = safe_alloc::make_unique<Direct3D_DrawBuffer>(is_static, _ctx);
 
     return std::move(d3d_dbuf);
 }
@@ -730,7 +730,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader, _ctx);
+    auto d3d_effect = safe_alloc::make_unique<Direct3D_Effect>(usage, name, loader, _ctx);
 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
@@ -1240,7 +1240,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
 
     for (int32_t i = 0; i < size.height; i++) {
         auto src = mapped_bytes.offset(numeric_cast<size_t>(tex_resource.RowPitch) * i);
-        MemCopy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
+        memory::copy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
     }
 
     d3d_device_context->Unmap(staging_tex.get(), 0);
@@ -1341,13 +1341,13 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     if (upload_vertices != 0) {
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
-            MemCopy(vertices_dst, Vertices3D.data(), upload_vertices * vert_size);
+            memory::copy(vertices_dst, Vertices3D.data(), upload_vertices * vert_size);
         }
         else {
-            MemCopy(vertices_dst, Vertices.data(), upload_vertices * vert_size);
+            memory::copy(vertices_dst, Vertices.data(), upload_vertices * vert_size);
         }
 #else
-        MemCopy(vertices_dst, Vertices.data(), upload_vertices * vert_size);
+        memory::copy(vertices_dst, Vertices.data(), upload_vertices * vert_size);
 #endif
     }
 
@@ -1382,7 +1382,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     if (upload_indices != 0) {
         auto indices_dst = make_nptr(indices_resource.pData);
         FO_VERIFY_AND_THROW(indices_dst, "Mapped subresource data pointer is null");
-        MemCopy(indices_dst, Indices.data(), upload_indices * sizeof(vindex_t));
+        memory::copy(indices_dst, Indices.data(), upload_indices * sizeof(vindex_t));
     }
 
     _ctx->D3DDeviceContext->Unmap(IndexBuf.get(), 0);
@@ -1492,13 +1492,13 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 #if FO_ENABLE_3D
         if constexpr (std::same_as<std::decay_t<decltype(buf)>, ModelBuffer>) {
             auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float32_t) * 16;
-            MemCopy(cbuffer_dst, &buf, bind_size);
+            memory::copy(cbuffer_dst, &buf, bind_size);
         }
         else
 #endif
         {
             ignore_unused(this);
-            MemCopy(cbuffer_dst, &buf, sizeof(buf));
+            memory::copy(cbuffer_dst, &buf, sizeof(buf));
         }
 
         _ctx->D3DDeviceContext->Unmap(buf_handle.get(), 0);
@@ -1509,14 +1509,14 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         auto main_texture_size = main_tex_buf->MainTexSize;
         auto main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     auto upload_cbuffer = [&setup_cbuffer](bool need_buf, auto& buf, auto& cbuf, bool reset_buf) {

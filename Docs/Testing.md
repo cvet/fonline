@@ -123,7 +123,7 @@ masked. Notable cases:
 - backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
   binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
   never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
-  (`GetNativeTraceResolver`, serialized by `StackTraceState::NativeResolverLocker`): it is created
+  (`get_native_trace_resolver`, serialized by `stack_trace_state::native_resolver_locker`): it is created
   once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
@@ -272,13 +272,13 @@ failed - drive only what is reachable.
 `backward.hpp` only — they carry no engine namespace and appear in no engine
 header, so a test declares them exactly as that header does. The report is
 emitted through the base log on the first write to the crash stream, so point
-`LogToFile` at a private file, write one line into `GetCrashStream()` and read
+`logging::to_file` at a private file, write one line into `GetCrashStream()` and read
 the report back instead of letting "FATAL ERROR!" leak into the test console.
-Restore the log with `LogToFile("/dev/null")` (`"NUL"` on Windows); there is no
+Restore the log with `logging::to_file("/dev/null")` (`"NUL"` on Windows); there is no
 "stop logging to a file" call. Terminating reporters are covered out of process
-through `DiagnosticSelfTest`: `main_strong_assert` covers `ReportExceptionAndExit`,
+through `DiagnosticSelfTest`: `main_strong_assert` covers `exceptions::report_and_exit`,
 `main_basic_strong_assert` and `main_fatal_exit` cover the early `FatalError`
-layer, and `main_failure_exit` pins the raw status-only `ExitApp(false)` contract.
+layer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
 The embedding project's
 `Tools/PipelineTests/test_crash_diagnostics_linux.py` asserts their log and exit
 contracts without killing the unit-test process.

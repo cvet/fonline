@@ -100,7 +100,7 @@ This exists because a case-only rename of an input is invisible to everything el
 
 The reconciliation runs once per bake over the set the bakers already produced, so it costs no per-write work, never deletes and recreates a file, and — unlike a check on the write path — also repairs outputs that the current bake skipped as up to date. On a case-sensitive filesystem the pre-rename name does not collide with the new one, the outdated sweep removes it normally, and both steps find nothing to do.
 
-Covered by `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename` and `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` in `Source/Tests/Test_BakerSetup.cpp`. The underlying per-primitive behavior — `fs_rename()` establishes the requested spelling, `fs_write_file()` and `fs_create_directories()` keep whatever is already there — is pinned on both filesystem kinds by `DiskFileSystemNameCase` in `Source/Tests/Test_DiskFileSystem.cpp`.
+Covered by `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename` and `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` in `Source/Tests/Test_BakerSetup.cpp`. The underlying per-primitive behavior — `fs::rename()` establishes the requested spelling, `fs::write_file()` and `fs::create_directories()` keep whatever is already there — is pinned on both filesystem kinds by `DiskFileSystemNameCase` in `Source/Tests/Test_DiskFileSystem.cpp`.
 
 ## CMake entry points
 
@@ -749,8 +749,8 @@ Both blobs open with a format header - `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FIL
 `Source/Common/MapLoader.h` - which `MapLoader::ReadBakedFileHeader` validates before
 `MapManager::LoadStaticMaps` and `MapView::LoadStaticData` read anything else. Without it a stale output
 would be read as element counts, because the rest of the layout is bare numbers. The hash table is written and read through the
-`DataWriter::WriteString` / `DataReader::ReadString` pair, whose length check cannot be skipped at a call
-site, and every remaining count and size is preflighted with `DataReader::VerifyPayloadCount` before it
+`data_writer::WriteString` / `data_reader::ReadString` pair, whose length check cannot be skipped at a call
+site, and every remaining count and size is preflighted with `data_reader::VerifyPayloadCount` before it
 drives an allocation or a loop, so a damaged file raises `DataReadingException` instead of reserving
 whatever the bytes happened to say. When the
 layout changes, bump `BAKED_MAP_FILE_VERSION` and run `ForceBakeResources` in the same change: source-file
@@ -868,7 +868,7 @@ host's GPU, not the game device. Portable layout math uses
 still push a valid in-band envelope past `Render.ModelSpriteMaxTextureWidth` /
 `Height`; `RefreshFrameLayout` clamps that scratch texture and draws cropped
 instead of terminating.
-Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
+Schema 1 keeps the existing `data_writer` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire
 format and a new schema rather than interpreting schema 1 in place.
@@ -894,7 +894,7 @@ write temporary buffers. The baker verifies triangle-list shape and index ranges
 before the library call, requires fetch optimization to retain every vertex
 produced by `ufbx`, validates the resulting indices again, and only then commits
 the buffers and narrows indices to `vindex_t`. The library's temporary allocator
-is installed once before parallel mesh jobs and uses `SafeAllocator`, preserving
+is installed once before parallel mesh jobs and uses `safe_allocator`, preserving
 the engine rpmalloc, backup-pool retry, and fail-fast OOM policy.
 
 These passes are lossless reorderings, so `LFMODMSH` remains schema `1`; existing
@@ -1008,7 +1008,7 @@ cache keys.
 Before any runtime or offline codec object is constructed,
 `InitializeModelAnimationMemory()` installs a private engine allocator for the
 statically linked Ozz state in that module. It provides arbitrary power-of-two
-alignment over `SafeAllocator<uint8_t>`, so codec allocations use the same
+alignment over `safe_allocator<uint8_t>`, so codec allocations use the same
 rpmalloc backend, backup-memory retry, OOM diagnostics, and fail-fast policy as
 engine containers. No Ozz allocator type is exposed through a public model API,
 and the vendored allocator source remains byte-identical to upstream 0.16.0.

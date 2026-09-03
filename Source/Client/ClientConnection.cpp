@@ -113,7 +113,7 @@ void ClientConnection::Connect()
                 _udpFallbackTried = false;
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
                 _udpFallbackTried = true;
                 CreateNetworkConnection(false);
             }
@@ -124,15 +124,15 @@ void ClientConnection::Connect()
         }
     }
     catch (const ClientConnectionException& ex) {
-        WriteLog("Connecting error: {}", ex.what());
+        logging::write("Connecting error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (const NetworkClientException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (const NetBufferException& ex) {
-        WriteLog("Connecting error: {}", ex.what());
+        logging::write("Connecting error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (...) {
@@ -149,22 +149,22 @@ void ClientConnection::Process()
         ProcessConnection();
     }
     catch (const ClientConnectionException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         Disconnect();
     }
     catch (const NetworkClientException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
 
         if (!TryFallbackToTcp()) {
             Disconnect();
         }
     }
     catch (const NetBufferException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         Disconnect();
     }
     catch (const DecompressException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         Disconnect();
     }
     catch (...) {
@@ -181,7 +181,7 @@ void ClientConnection::ProcessConnection()
         return;
     }
 
-    // Wait for connecting result
+    // wait for connecting result
     if (_netConnection->IsConnecting()) {
         _netConnection->CheckStatus(true);
 
@@ -227,7 +227,7 @@ void ClientConnection::ProcessConnection()
 
             if (_settings->DebugNet) {
                 _msgCount++;
-                WriteLog("{}) Input net message {}", _msgCount, msg);
+                logging::write("{}) Input net message {}", _msgCount, msg);
             }
 
             auto it = _handlers.find(msg);
@@ -283,7 +283,7 @@ void ClientConnection::Disconnect()
     _artificalOutboundLagTime.reset();
     _netIn.ResetBuf();
     _netOut.ResetBuf();
-    _decompressor.Reset();
+    _decompressor.reset();
 
     _netIn.SetEncryptKey(0);
     _netOut.SetEncryptKey(0);
@@ -312,7 +312,7 @@ auto ClientConnection::TryFallbackToTcp() -> bool
         return false;
     }
 
-    WriteLog("UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ServerHost, _settings->ServerPort);
+    logging::write("UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ServerHost, _settings->ServerPort);
 
     _udpFallbackTried = true;
     _connectingHandled = false;
@@ -406,7 +406,7 @@ auto ClientConnection::ReceiveData() -> bool
         _netIn.ShrinkReadBuf();
 
         if (!_settings->DisableZlibCompression) {
-            _decompressor.Decompress(recv_buf, _unpackedReceivedBuf);
+            _decompressor.decompress(recv_buf, _unpackedReceivedBuf);
             _netIn.AddData(_unpackedReceivedBuf);
             _bytesReceived += recv_buf.size();
             _bytesRealReceived += _unpackedReceivedBuf.size();

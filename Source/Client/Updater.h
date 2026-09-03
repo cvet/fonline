@@ -56,19 +56,19 @@ enum class UpdaterResult : uint8_t
     MetadataMismatch = 6, // Resources are in sync with the descriptor, yet the server runs another metadata version
 };
 
-extern auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
-extern auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
-extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
-extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
-extern auto GetClientRuntimeLivePath() -> string;
-extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
-extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
-extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
-extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
-extern auto GetCurrentClientRuntimeLibraryName() -> string;
-extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
-extern void ShowUpdaterFailure(UpdaterResult result);
-extern auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
+auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
+auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
+auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
+auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
+auto GetClientRuntimeLivePath() -> string;
+auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
+auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
+auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
+auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
+auto GetCurrentClientRuntimeLibraryName() -> string;
+void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
+void ShowUpdaterFailure(UpdaterResult result);
+auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
 
 class Updater final
 {
@@ -141,7 +141,7 @@ private:
     FileSystem _resources {};
     GameTimer _gameTime;
     EffectManager _effectMngr;
-    HashStorage _hashStorage {};
+    hash_storage _hashStorage {};
     SpriteManager _sprMngr;
     FontManager _fontMngr;
     nanotime _startTime {};

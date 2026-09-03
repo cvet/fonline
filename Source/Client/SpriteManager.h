@@ -164,14 +164,14 @@ public:
     static constexpr size_t EGG_SLOT_COUNT = 2;
 
     SpriteManager() = delete;
-    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<HashResolver> hash_resolver);
+    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
     auto operator=(SpriteManager&&) noexcept = delete;
     ~SpriteManager() = default;
 
-    [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->ToHashedString(str); }
+    [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->to_hashed_string(str); }
     [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
@@ -270,7 +270,7 @@ private:
     ptr<IAppRender> _render;
     ptr<IAppInput> _input;
     ptr<EffectManager> _effectMngr;
-    ptr<HashResolver> _hashResolver;
+    ptr<hash_resolver> _hashResolver;
     random_generator _randomGenerator {};
 
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};

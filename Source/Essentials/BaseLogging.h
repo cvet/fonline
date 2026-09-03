@@ -38,10 +38,15 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void LogToFile(string_view path, bool append = false);
-extern void SetAsyncLogWriting(bool enabled);
-extern void SuspendAsyncLogWriting() noexcept;
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st = nullptr) noexcept;
-extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
+// The base tier of the logging module: writes straight to the sink, with no formatting and no callbacks,
+// so a crash or out-of-memory path can still report when the layers above it cannot run
+namespace logging
+{
+    void to_file(string_view path, bool append = false);
+    void set_async_writing(bool enabled);
+    void suspend_async_writing() noexcept;
+    void write_base(string_view message, const stack_trace::catched_data* st = nullptr) noexcept;
+    void safe_write_stack_trace(const stack_trace::data& st) noexcept;
+}
 
 FO_END_NAMESPACE

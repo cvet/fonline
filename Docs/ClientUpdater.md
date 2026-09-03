@@ -75,7 +75,7 @@ LF_Client.exe (host)
     â”‚     client may select a persisted per-user runtime bootstrap; --ClientLibPath overrides both)
     â”‚  2. ApplyStagedBinaryUpdate(<runtime>) â€” promote pending `<runtime>-staging` over `<runtime>`
     â”‚     (also recovers a crashed-mid-update install on first boot)
-    â”‚  3. Platform::LoadModule(<runtime>) â†’ FO_QueryClientRuntimeExports(...)
+    â”‚  3. platform::load_module(<runtime>) â†’ FO_QueryClientRuntimeExports(...)
     â”‚  4. Validate ClientRuntimeExports.Metadata (ABI; compatibility only when explicitly requested)
     â”‚
     â–¼
@@ -133,13 +133,13 @@ the freshly downloaded runtime and incorrectly start the embedded updater. `--Cl
 differs from the host's compatibility, embedded fallback is refused rather than silently downgrading to
 host code.
 
-Startup/runtime handoff diagnostics go to the normal `<host>.log` through the regular `WriteLog` path.
-The host brings up engine global data (`CreateGlobalData()` in `main`) and opens that log fresh up front
-(`LogToFile(GetExeLogFileName(), false)`) — the host runs first, so it truncates. It then keeps its handle
-open across the loaded-DLL call instead of closing before the handoff: `LogToFile` opens the file without
+Startup/runtime handoff diagnostics go to the normal `<host>.log` through the regular `logging::write` path.
+The host brings up engine global data (`global_data::create()` in `main`) and opens that log fresh up front
+(`logging::to_file(GetExeLogFileName(), false)`) — the host runs first, so it truncates. It then keeps its handle
+open across the loaded-DLL call instead of closing before the handoff: `logging::to_file` opens the file without
 an exclusive lock (the platform default —
 MSVC `std::ofstream` is deny-none, POSIX has no mandatory open lock), and every log write seeks to end of
-file first (`WriteSync`). The host EXE and the runtime DLL are two engine
+file first (`write_sync`). The host EXE and the runtime DLL are two engine
 modules in one process, each carrying its own copy of the engine global data, so they cannot share one
 `std::ofstream`, but with shared access both can hold the same file open and the seek-to-end keeps each
 module's writes after whatever the other appended — so the host's post-handoff lines land *after* the
@@ -148,7 +148,7 @@ DLL's whole session rather than overwriting it. Client runtimes pass `AppInitFla
 shared file instead of truncating the host's lines. The DLL's
 `FO_QueryClientRuntimeExports` and the first pre-`InitApp` line of its `RunClientRuntime` run before the
 DLL has its own global data, so those few lines go to stdout only; the host already records the full
-load/accept/enter handoff to the file, and once the DLL's `InitApp` runs, its `WriteLog` appends to the
+load/accept/enter handoff to the file, and once the DLL's `InitApp` runs, its `logging::write` appends to the
 shared file too.
 
 After a successful Case 1 binary update + restart request, the embedded host's `Application` instance
@@ -159,7 +159,7 @@ modules' independent `unique_ptr<Application> App` statics would briefly co-exis
 
 When the client runtime is running from a loaded DLL, `RunClientRuntime` also resets `App`
 before returning to the host so SDL windows, renderers, and other frontend resources are
-released before `Platform::UnloadModule`. Both embedded and DLL-backed runtime exits call
+released before `platform::unload_module`. Both embedded and DLL-backed runtime exits call
 `ApplicationShutdownHook()` before handing control back to the host; embedding projects use
 that hook to stop process-global integrations such as in-process crash handlers before a
 runtime module can be unloaded.
@@ -183,7 +183,7 @@ immediately.
 An in-process reload is avoided because it is unsafe for two independent reasons:
 
 1. **Stale module.** Reloading the **same** `<live>` path after staging the new module: if
-   `Platform::UnloadModule` does not bring the previous module's OS refcount to zero (Windows
+   `platform::unload_module` does not bring the previous module's OS refcount to zero (Windows
    `LoadLibrary` path dedup, glibc keeping a `.so` resident), the reload's `LoadModule` returns the
    **still-resident previous module** instead of the freshly-swapped file — so the runtime never
    actually updates. This is reliable, not occasional, on Windows.
@@ -201,7 +201,7 @@ A fresh launch sidesteps both: the new process loads the promoted runtime as its
 and enters the game without staging another update.
 
 > **Installed (writable-root) clients.** After promotion, the host records the writable live DLL in a
-> small selector under `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/`. On the next
+> small selector under `<platform::get_user_data_base()>/<FO_NICE_NAME>/ClientRuntimeHost/`. On the next
 > launch an `INSTALLED` host reads and validates that selector before `InitApp`, then loads the writable
 > DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
 > names a different runtime, or points to neither a live nor staged file. Portable clients never consult
@@ -236,7 +236,7 @@ LF_Client.exe --ClientLibPath <path>                                    # explic
 LF_Client.exe --ClientLibPath <path> --ClientLibCompatibilityVersion <ver>  # explicit runtime, no embedded fallback if ver != built-in
 ```
 
-The bundled runtime library name is **derived from the host executable name** at startup via `GetCurrentClientRuntimeLibraryName()` (returns the exe basename without extension; falls back to `FO_DEV_NAME` when `Platform::GetExePath()` cannot resolve). The resolved live path is `GetClientRuntimeLivePath() = <exe_dir>/<library_name>` (extension is appended by `Platform::LoadModule`). Renamed/multi-instance hosts therefore each load their own sibling module (`MyAlt.exe` â†” `MyAlt.dll`) instead of sharing one â€” no settings or packaging-time config patching needed. In the build tree, the `LF_ClientLib` target still writes its canonical `LF_ClientLib.*` artifact and also copies a host-derived alias (`LF_Client.dll` / `LF_Client.so` / `LF_Client.dylib`) so an unpackaged `LF_Client` can exercise the same loading path as a packaged client.
+The bundled runtime library name is **derived from the host executable name** at startup via `GetCurrentClientRuntimeLibraryName()` (returns the exe basename without extension; falls back to `FO_DEV_NAME` when `platform::get_exe_path()` cannot resolve). The resolved live path is `GetClientRuntimeLivePath() = <exe_dir>/<library_name>` (extension is appended by `platform::load_module`). Renamed/multi-instance hosts therefore each load their own sibling module (`MyAlt.exe` â†” `MyAlt.dll`) instead of sharing one â€” no settings or packaging-time config patching needed. In the build tree, the `LF_ClientLib` target still writes its canonical `LF_ClientLib.*` artifact and also copies a host-derived alias (`LF_Client.dll` / `LF_Client.so` / `LF_Client.dylib`) so an unpackaged `LF_Client` can exercise the same loading path as a packaged client.
 
 ## Runtime ABI
 
@@ -256,7 +256,7 @@ its only `InitApp`.
 
 The runtime stages a new module as `<live>-staging` next to the live module, where `<live>` is the updater's binary output path `Updater::GetRuntimeLivePath()` = `<Updater::_binaryDir>/<runtime_name><ext>` (the full live path including the platform runtime extension, e.g. `<exe_dir>/LastFrontier.dll` for a portable client, or `<UserWritablePath>/LastFrontier.dll` for an installed one). After each binary payload is fully downloaded and hash-validated, the updater also makes a best-effort attempt to promote that staged file to the live path immediately; if the live file is locked, the `-staging` file is left in place for the host's startup/exit-time promotion pass. The host promotes via `MakeClientRuntimeStagingPath(runtime_live_path)` â†’ `runtime_live_path` rename: at startup this is the path selected from the exe-dir default, installed-client bootstrap, or explicit CLI; after `ReloadRequested` it is the runtime-supplied `RequestedRuntimePath`. `RequestedRuntimePath` is the post-swap path (`<live>`), not the staging path. The host promotes it and exits; `LoadModule` happens only in the next process.
 
-**Linux module isolation.** The runtime `.so` must stay loadable with `dlopen` from an engine host executable that exports its own engine symbols (`-rdynamic` for stack-trace symbolization). Two build rules keep that true. First, engine runtime modules link with `-Wl,-Bsymbolic` (`AddSharedApplication` in [../BuildTools/cmake/helpers/Build.cmake](../BuildTools/cmake/helpers/Build.cmake)), so the module binds global references — the global-data registry, allocator, logging — to its own definitions instead of interposing on the host executable's exported copies; each module keeps private engine state, mirroring the Windows DLL model (without this, the module's `CreateGlobalData` resolves to the host's already-fired copy and the module crashes on its first global-data access). Second, vendored rpmalloc does not force initial-exec TLS on Linux (`(FOnline Patch)` in `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`): an IE-model TLS relocation makes glibc place the module's entire TLS segment into the limited static TLS surplus at `dlopen`, which fails with `cannot allocate memory in static TLS block`. The host/runtime C ABI keeps allocation ownership module-local (all strings are copied at the boundary), so per-module allocator state is safe.
+**Linux module isolation.** The runtime `.so` must stay loadable with `dlopen` from an engine host executable that exports its own engine symbols (`-rdynamic` for stack-trace symbolization). Two build rules keep that true. First, engine runtime modules link with `-Wl,-Bsymbolic` (`AddSharedApplication` in [../BuildTools/cmake/helpers/Build.cmake](../BuildTools/cmake/helpers/Build.cmake)), so the module binds global references — the global-data registry, allocator, logging — to its own definitions instead of interposing on the host executable's exported copies; each module keeps private engine state, mirroring the Windows DLL model (without this, the module's `global_data::create` resolves to the host's already-fired copy and the module crashes on its first global-data access). Second, vendored rpmalloc does not force initial-exec TLS on Linux (`(FOnline Patch)` in `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`): an IE-model TLS relocation makes glibc place the module's entire TLS segment into the limited static TLS surplus at `dlopen`, which fails with `cannot allocate memory in static TLS block`. The host/runtime C ABI keeps allocation ownership module-local (all strings are copied at the boundary), so per-module allocator state is safe.
 
 A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) is staged side-by-side as `<live>.pdb-staging` and usually promotes immediately because PDBs are not held by the loaded runtime module; if it is locked by a debugger or another process, `ApplyStagedBinaryUpdate` retries after the main DLL swap succeeds. The PDB swap is best-effort â€” failure only degrades stack traces, so it never blocks the runtime swap, while the DLL swap remains backup-rename-rollback atomic. The client-side filter accepts a server file whose basename starts with `<runtime_name>.`, so the DLL (`LastFrontier.dll`) and its PDB sibling (`LastFrontier.dll.pdb`) both match and ride the same `UpdateFileTarget::ClientBinaries` channel. **The runtime DLL and its `<live>.pdb` are fetched only together, in binaries mode** (when the DLL is actually being updated) — a client whose DLL is already current does not pull `<live>.pdb` on its own. **The host PDB (`<host_name>.pdb`, e.g. `LastFrontier.pdb`) is also delivered, but the client fetches it only to recover a *missing* local copy and never overwrites a present one.** The host exe is frozen and its PDB is build-specific, so the server's host PDB matches only an up-to-date host: an up-to-date client re-downloads a matching PDB, while an older host's matching local PDB is never clobbered (a non-matching server-build PDB is written only when the local one is absent, where the debugger ignores it by GUID). `accept_binaries` is `_binariesMode || CanSelfUpdateNativeModules(...)`, so host-PDB recovery also works on a normal resource-sync connect.
 
@@ -343,16 +343,16 @@ payload and does not change the `GetUpdateFile` / `UpdateFileData` state machine
 
 Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Server/UpdaterBackend.cpp)):
 
-- `file_index` out of range â†’ `LogType::Warning` + `HardDisconnect`.
-- `start_offset > file_size` â†’ `LogType::Warning` + `HardDisconnect`.
-- `update_file_max_portion_size <= 0` (misconfiguration) â†’ `LogType::Warning` + `HardDisconnect`.
-- Disk-mode read failure â†’ `LogType::Warning` + `HardDisconnect`.
-- Disk-mode size drift against the announced descriptor entry - `LogType::Warning` + `HardDisconnect`. With
+- `file_index` out of range â†’ `logging::type::warning` + `HardDisconnect`.
+- `start_offset > file_size` â†’ `logging::type::warning` + `HardDisconnect`.
+- `update_file_max_portion_size <= 0` (misconfiguration) â†’ `logging::type::warning` + `HardDisconnect`.
+- Disk-mode read failure â†’ `logging::type::warning` + `HardDisconnect`.
+- Disk-mode size drift against the announced descriptor entry - `logging::type::warning` + `HardDisconnect`. With
   `ServerNetwork.UpdateFilesInMemory = False` the descriptor is a start-time snapshot while the bytes are read on
   demand, so a pack replaced under a live server would otherwise reach the client under the hash announced for the
   previous one.
 
-Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
+Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs::hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs::hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
 
 To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
 
@@ -400,14 +400,14 @@ its writes must go to a per-user writable location instead.
 `Client.UserWritablePath` selects the model, resolved at startup by `ResolveUserWritablePath(settings)` (`Source/Frontend/ApplicationInit.cpp`, called from `LoadAppSettings`):
 
 - **empty → portable** (default): writable paths stay relative to the exe / working dir (unchanged behaviour).
-- **`*` → per-OS user data dir** (`Platform::GetUserDataBase()` via env, no SDL/shell32 dependency): Windows `%LOCALAPPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or `~/.local/share`, then `/<Common.GameName>`.
+- **`*` → per-OS user data dir** (`platform::get_user_data_base()` via env, no SDL/shell32 dependency): Windows `%LOCALAPPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or `~/.local/share`, then `/<Common.GameName>`.
 - **explicit path** → that absolute writable root.
 
 Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>` subdirs, and is
 **fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
 bad install config never bricks startup.
 
-What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
+What moves to the writable root (via the free path helper `fs::make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
 patches** — the updater writes them under `<root>/<ClientResources>`, while both the updater's post-sync
@@ -430,7 +430,7 @@ Because the host resolves and loads the runtime DLL *before* settings (so it can
 `ClientRuntimeResult::RequestedRuntimePath`. The host promotes that path, validates that it is absolute and
 has the current executable-derived runtime filename, writes it to the installed-client bootstrap selector,
 and exits; it never loads it again in the same process. On the next launch the `INSTALLED` host reads the
-selector from `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/<runtime><ext>.path` before
+selector from `<platform::get_user_data_base()>/<FO_NICE_NAME>/ClientRuntimeHost/<runtime><ext>.path` before
 settings, accepts it only when the live file or its `-staging` sibling exists, and loads that runtime directly.
 Missing, oversized, relative, newline-containing, wrong-basename, and stale selectors fall back to the frozen
 install-dir runtime. `--ClientLibPath` remains the final explicit override. Portable clients update their
@@ -472,7 +472,7 @@ LF_Client.exe main
     â”‚
     â”œâ”€â”€ RunClientFromLibrary(argc, argv, requested, *)   # CASE 2: bundled runtime exists
     â”‚     â”œâ”€â”€ ApplyStagedBinaryUpdate(requested.Path)    # promote <requested>-staging (no-op when missing)
-    â”‚     â”œâ”€â”€ Platform::LoadModule + FO_QueryClientRuntimeExports
+    â”‚     â”œâ”€â”€ platform::load_module + FO_QueryClientRuntimeExports
     â”‚     â”œâ”€â”€ Validate exports + metadata
     â”‚     â”œâ”€â”€ exports.Run(argc, argv, &result)           # DLL drives RunClientRuntime:
     â”‚     â”‚     â”œâ”€â”€ single Updater (UI) connects to the server. The connect result picks the mode:
@@ -519,7 +519,7 @@ instead of looping back to the game which would only reject the connection again
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
-| Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `LogType::Warning`), client gets disconnected |
+| Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `logging::type::warning`), client gets disconnected |
 | Client data does not match the server data | server log `Connected client X runs metadata version A while the server runs B`; updater log `synced resources run metadata version A while the server runs B, resources <dir>`. Both name the two versions - find which resource directory came from a different bake |
 | Server distributing resources it does not run on | server startup fails with `Distributed client resources were baked apart from the server resources`, naming both resource directories and both layout versions |
 | Server or unpackaged development resources predate the current metadata format | startup fails at the metadata header: `does not start with the metadata file marker`, `file version does not match the engine`, or `carries no version` - run a full rebake. A packaged client with an old install pack recovers through the writable updater overlay before gameplay startup; if that repair fails, install the latest full client package |
@@ -532,7 +532,7 @@ instead of looping back to the game which would only reject the connection again
 
 Local validation steps:
 
-1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and `ResolveUserWritablePath` fail-safe/creation behavior.
+1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs::hash_file` parity with `fs::hash_data` and `fs::make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `platform::get_user_data_base`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and `ResolveUserWritablePath` fail-safe/creation behavior.
 2. Build `LF_Client`; its native target dependency also builds `LF_ClientLib`. Confirm the client output directory contains the host plus the host-derived runtime alias (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux). Build `LF_ClientLib` explicitly when validating the runtime target in isolation.
 3. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup (Case 2 happy path: load DLL, resource updater finishes, game starts).
 4. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.

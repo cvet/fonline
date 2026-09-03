@@ -57,7 +57,7 @@ FO_BEGIN_NAMESPACE
 constexpr socket_t INVALID_SOCKET_VALUE = static_cast<socket_t>(-1);
 constexpr int32_t SOCKET_ERROR_VALUE = static_cast<int32_t>(-1);
 
-static void CloseSocket(socket_t sock) noexcept
+static void close_socket(socket_t sock) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -68,19 +68,19 @@ static void CloseSocket(socket_t sock) noexcept
 #endif
 }
 
-static auto MakeSocketHolder(socket_t sock) -> unique_del_ptr<socket_t>
+static auto make_socket_holder(socket_t sock) -> unique_del_ptr<socket_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto socket_holder = SafeAlloc::MakeUnique<socket_t>(sock);
+    auto socket_holder = safe_alloc::make_unique<socket_t>(sock);
     return make_unique_del_ptr(socket_holder.release(), [](ptr<socket_t> p) {
         auto owned_socket = adopt_unique_ptr(p);
         FO_VERIFY_AND_THROW(*owned_socket != INVALID_SOCKET_VALUE, "Socket handle is invalid");
-        CloseSocket(*owned_socket);
+        close_socket(*owned_socket);
     });
 }
 
-static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, timespan timeout) noexcept -> bool
+static auto wait_socket_ready(socket_t sock, bool check_read, bool check_write, timespan timeout) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -167,7 +167,7 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
         return std::nullopt;
     }
 
-    MemCopy(&addr, resolved_addr, sizeof(addr));
+    memory::copy(&addr, resolved_addr, sizeof(addr));
     return addr;
 }
 
@@ -312,7 +312,7 @@ auto net_sockets::last_error_text() noexcept -> string
 }
 
 tcp_socket::tcp_socket(socket_t sock) noexcept :
-    _sock {MakeSocketHolder(sock)}
+    _sock {make_socket_holder(sock)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -336,7 +336,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     auto resolved = net_sockets::resolve_ipv4(host);
 
     if (!resolved.has_value()) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
@@ -344,11 +344,11 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
 
     if (::connect(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
-    _sock = MakeSocketHolder(sock);
+    _sock = make_socket_holder(sock);
 
     return true;
 }
@@ -372,7 +372,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     auto resolved = net_sockets::resolve_ipv4(host);
 
     if (!resolved.has_value()) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
@@ -383,14 +383,14 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     u_long mode = 1;
 
     if (::ioctlsocket(sock, FIONBIO, &mode) != 0) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 #else
     int32_t flags = ::fcntl(sock, F_GETFL, 0);
 
     if (flags < 0 || ::fcntl(sock, F_SETFL, flags | O_NONBLOCK) != 0) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 #endif
@@ -401,18 +401,18 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     if (r == SOCKET_ERROR_VALUE) {
 #if FO_WINDOWS
         if (::WSAGetLastError() != WSAEWOULDBLOCK) {
-            CloseSocket(sock);
+            close_socket(sock);
             return false;
         }
 #else
         if (errno != EINPROGRESS) {
-            CloseSocket(sock);
+            close_socket(sock);
             return false;
         }
 #endif
     }
 
-    _sock = MakeSocketHolder(sock);
+    _sock = make_socket_holder(sock);
 
     return true;
 }
@@ -425,7 +425,7 @@ auto tcp_socket::can_read(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, true, false, timeout);
+    return wait_socket_ready(*_sock, true, false, timeout);
 }
 
 auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
@@ -436,7 +436,7 @@ auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, false, true, timeout);
+    return wait_socket_ready(*_sock, false, true, timeout);
 }
 
 auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
@@ -525,7 +525,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     auto resolved = net_sockets::resolve_ipv4(bind_host);
 
     if (!resolved.has_value()) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
@@ -534,16 +534,16 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
 
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
     if (::listen(sock, backlog > 0 ? backlog : 1) == SOCKET_ERROR_VALUE) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
-    _listenSock = MakeSocketHolder(sock);
+    _listen_sock = make_socket_holder(sock);
 
     return true;
 }
@@ -556,7 +556,7 @@ auto tcp_server::can_accept(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_listenSock, true, false, timeout);
+    return wait_socket_ready(*_listen_sock, true, false, timeout);
 }
 
 auto tcp_server::accept() noexcept -> tcp_socket
@@ -575,7 +575,7 @@ auto tcp_server::accept() noexcept -> tcp_socket
 #endif
     auto addr_len_ptr = make_ptr(&addr_len);
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), addr_len_ptr.get());
+    socket_t client_sock = ::accept(*_listen_sock, addr_ptr.get(), addr_len_ptr.get());
 
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
@@ -588,7 +588,7 @@ void tcp_server::close() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    _listenSock.reset();
+    _listen_sock.reset();
 }
 
 auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noexcept -> bool
@@ -609,7 +609,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
         auto opt_data = make_ptr(&opt).reinterpret_as<const char>();
 
         if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, opt_data.get(), sizeof(opt)) == SOCKET_ERROR_VALUE) {
-            CloseSocket(sock);
+            close_socket(sock);
             return false;
         }
     }
@@ -624,7 +624,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
     auto resolved = net_sockets::resolve_ipv4(bind_host);
 
     if (!resolved.has_value()) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
@@ -633,11 +633,11 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
     auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
 
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
-        CloseSocket(sock);
+        close_socket(sock);
         return false;
     }
 
-    _sock = MakeSocketHolder(sock);
+    _sock = make_socket_holder(sock);
 
     return true;
 }
@@ -650,7 +650,7 @@ auto udp_socket::can_read(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, true, false, timeout);
+    return wait_socket_ready(*_sock, true, false, timeout);
 }
 
 auto udp_socket::can_write(timespan timeout) const noexcept -> bool
@@ -661,7 +661,7 @@ auto udp_socket::can_write(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, false, true, timeout);
+    return wait_socket_ready(*_sock, false, true, timeout);
 }
 
 auto udp_socket::set_broadcast(bool enabled) noexcept -> bool

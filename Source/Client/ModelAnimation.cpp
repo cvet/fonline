@@ -83,7 +83,7 @@ ModelAnimationController::ModelAnimationController(int32_t track_count)
     FO_VERIFY_AND_THROW(track_count >= 0, "Track count is negative", track_count);
 
     if (track_count != 0) {
-        _animationBindings = SafeAlloc::MakeShared<vector<AnimationBinding>>();
+        _animationBindings = safe_alloc::make_shared<vector<AnimationBinding>>();
         _tracks.resize(track_count);
     }
 }
@@ -497,7 +497,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        return ModelAnimationRuntimeClip {SafeAlloc::MakeUnique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))};
+        return ModelAnimationRuntimeClip {safe_alloc::make_unique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))};
     }
 
     [[nodiscard]] static auto CreateRig(uint64_t rig_signature, uint64_t cache_signature, ozz::animation::Skeleton skeleton, ModelAnimationJointRemap base_joint_remap, vector<ModelAnimationRuntimeClip> clips, vector<ModelAnimationRigBinding> bindings) -> unique_ptr<ModelAnimationRuntimeRig>
@@ -505,7 +505,7 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         ValidateModelAnimationRuntimeSkeleton(skeleton, "runtime rig");
-        auto rig = SafeAlloc::MakeUnique<ModelAnimationRuntimeRig>(SafeAlloc::MakeUnique<ModelAnimationRuntimeRig::Impl>(rig_signature, cache_signature, std::move(skeleton), std::move(base_joint_remap), std::move(clips), std::move(bindings)));
+        auto rig = safe_alloc::make_unique<ModelAnimationRuntimeRig>(safe_alloc::make_unique<ModelAnimationRuntimeRig::Impl>(rig_signature, cache_signature, std::move(skeleton), std::move(base_joint_remap), std::move(clips), std::move(bindings)));
         ValidateModelAnimationRuntimePoseRig(*rig);
         return rig;
     }
@@ -809,7 +809,7 @@ auto ModelAnimationRuntimeRig::FindBinding(int32_t state_anim, int32_t action_an
 }
 
 ModelAnimationRuntimePose::ModelAnimationRuntimePose(ptr<const ModelAnimationRuntimeRig> rig) :
-    _impl {SafeAlloc::MakeUnique<Impl>(rig)}
+    _impl {safe_alloc::make_unique<Impl>(rig)}
 {
     FO_STACK_TRACE_ENTRY();
 

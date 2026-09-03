@@ -2143,8 +2143,8 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
         'meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {']
 
         if 'RefCounted' in ref_type_tag.flags:
-            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->AddRef(); }', is_stub)
-            append_ref_call_registration(body_lines, '__Release', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->Release(); }', is_stub)
+            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->addref(); }', is_stub)
+            append_ref_call_registration(body_lines, '__Release', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->release(); }', is_stub)
 
         if 'HasFactory' in ref_type_tag.flags:
             body_lines.append('    MethodDesc{ .Name = "__Factory", ' +
@@ -2154,7 +2154,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
                 body_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
 
                 body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
-                        '{ return SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
+                        '{ return safe_alloc::make_refcounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
                 body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
                 body_lines.append('    } },')
 
@@ -2324,7 +2324,7 @@ def append_migration_rule_registration(helper_lines: list[str], register_lines: 
     if not codegen_tags['MigrationRule']:
         return
 
-    body_lines = ['const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };', '', 'meta->RegisterMigrationRules({']
+    body_lines = ['const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.to_hashed_string(str); };', '', 'meta->RegisterMigrationRules({']
     for source_type in sorted(set(rule_tag.args[0] for rule_tag in codegen_tags['MigrationRule'])):
         body_lines.append('    {')
         body_lines.append('        to_hstring("' + source_type + '"), {')

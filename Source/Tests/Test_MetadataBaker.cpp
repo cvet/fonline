@@ -64,46 +64,46 @@ TEST_CASE("MetadataBaker")
 
     TestRig rig;
     auto bakers = MakeRequestedBakers({string(MetadataBaker::NAME)}, rig);
-    auto skip_baked_header = [](DataReader& reader) {
-        ignore_unused(reader.Read<uint32_t>());
-        ignore_unused(reader.Read<uint16_t>());
-        auto version_size = reader.Read<uint16_t>();
-        ignore_unused(reader.ReadStringView(version_size));
+    auto skip_baked_header = [](data_reader& reader) {
+        ignore_unused(reader.read<uint32_t>());
+        ignore_unused(reader.read<uint16_t>());
+        auto version_size = reader.read<uint16_t>();
+        ignore_unused(reader.read_string_view(version_size));
     };
     auto read_baked_header = [](const vector<uint8_t>& output) {
-        DataReader reader(output);
-        CHECK(reader.Read<uint32_t>() == METADATA_FILE_MAGIC);
-        CHECK(reader.Read<uint16_t>() == METADATA_FILE_VERSION);
-        auto version_size = reader.Read<uint16_t>();
+        data_reader reader(output);
+        CHECK(reader.read<uint32_t>() == METADATA_FILE_MAGIC);
+        CHECK(reader.read<uint16_t>() == METADATA_FILE_VERSION);
+        auto version_size = reader.read<uint16_t>();
         string version;
         version.resize(version_size);
-        reader.ReadStringBytes(version);
+        reader.read_string_bytes(version);
         return version;
     };
     auto read_baked_tags = [&skip_baked_header](const vector<uint8_t>& output) {
         map<string, vector<vector<string>>> tags;
-        DataReader reader(output);
+        data_reader reader(output);
         skip_baked_header(reader);
-        auto tag_count = reader.Read<uint16_t>();
+        auto tag_count = reader.read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
             value.resize(size);
-            reader.ReadStringBytes(value);
+            reader.read_string_bytes(value);
             return value;
         };
 
         for (uint16_t i = 0; i < tag_count; i++) {
-            auto tag_name_len = reader.Read<uint16_t>();
+            auto tag_name_len = reader.read<uint16_t>();
             string tag_name = read_string(tag_name_len);
-            auto tag_value_count = reader.Read<uint32_t>();
+            auto tag_value_count = reader.read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
-                auto value_parts_count = reader.Read<uint32_t>();
+                auto value_parts_count = reader.read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
-                    auto part_len = reader.Read<uint16_t>();
+                    auto part_len = reader.read<uint16_t>();
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -111,7 +111,7 @@ TEST_CASE("MetadataBaker")
             }
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
         return tags;
     };
 
@@ -167,10 +167,10 @@ TEST_CASE("MetadataBaker")
 
     SECTION("uses the applied config write time for setting values")
     {
-        string temp_dir = fs_path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
-        REQUIRE(fs_create_directories(temp_dir));
+        string temp_dir = fs::path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+        REQUIRE(fs::create_directories(temp_dir));
         string config_path = strex(temp_dir).combine_path("Test.fomain").str();
-        REQUIRE(fs_write_file(config_path, "Coverage.Enabled = true\n"));
+        REQUIRE(fs::write_file(config_path, "Coverage.Enabled = true\n"));
 
         rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
         rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
@@ -183,8 +183,8 @@ TEST_CASE("MetadataBaker")
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(checked_write_times.size() == 3);
-        CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs_last_write_time(config_path); }));
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs::last_write_time(config_path); }));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("returns without output when bake checker rejects every side")
@@ -622,30 +622,30 @@ namespace TestSettings
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        DataReader reader(output);
+        data_reader reader(output);
         skip_baked_header(reader);
-        auto tag_count = reader.Read<uint16_t>();
+        auto tag_count = reader.read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
             value.resize(size);
-            reader.ReadStringBytes(value);
+            reader.read_string_bytes(value);
             return value;
         };
 
         vector<vector<string>> settings_entries;
 
         for (uint16_t i = 0; i < tag_count; i++) {
-            auto tag_name_len = reader.Read<uint16_t>();
+            auto tag_name_len = reader.read<uint16_t>();
             string tag_name = read_string(tag_name_len);
-            auto tag_value_count = reader.Read<uint32_t>();
+            auto tag_value_count = reader.read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
-                auto value_parts_count = reader.Read<uint32_t>();
+                auto value_parts_count = reader.read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
-                    auto part_len = reader.Read<uint16_t>();
+                    auto part_len = reader.read<uint16_t>();
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -655,7 +655,7 @@ namespace TestSettings
             }
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
 
         auto debug_build_value = rig.Settings.FindSettingValue("Common.DebugBuild");
         auto debug_flag_value = rig.Settings.FindSettingValue("DebugFlag");
@@ -734,20 +734,20 @@ namespace TestSettings
         STATIC_REQUIRE(METADATA_FILE_VERSION > settings_without_value_layout);
 
         vector<uint8_t> outdated_metadata;
-        auto writer = DataWriter(outdated_metadata);
-        writer.Write<uint32_t>(METADATA_FILE_MAGIC);
-        writer.Write<uint16_t>(settings_without_value_layout);
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
-        writer.WriteStringBytes(TEST_METADATA_VERSION);
-        writer.Write<uint16_t>(const_numeric_cast<uint16_t>(1));
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
-        writer.WriteStringBytes(METADATA_SETTING_SECTION);
-        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1));
-        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(2));
+        auto writer = data_writer(outdated_metadata);
+        writer.write<uint32_t>(METADATA_FILE_MAGIC);
+        writer.write<uint16_t>(settings_without_value_layout);
+        writer.write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
+        writer.write_string_bytes(TEST_METADATA_VERSION);
+        writer.write<uint16_t>(const_numeric_cast<uint16_t>(1));
+        writer.write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
+        writer.write_string_bytes(METADATA_SETTING_SECTION);
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(1));
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(2));
 
         for (string_view token : {string_view("Common.GameName"), string_view("string")}) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-            writer.WriteStringBytes(token);
+            writer.write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+            writer.write_string_bytes(token);
         }
 
         CHECK_THROWS_WITH(ReadMetadataVersion(outdated_metadata), Catch::Matchers::ContainsSubstring("resources must be rebaked"));
@@ -867,13 +867,13 @@ namespace TestMigration
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        DataReader reader(output);
+        data_reader reader(output);
         skip_baked_header(reader);
-        auto tag_count = reader.Read<uint16_t>();
+        auto tag_count = reader.read<uint16_t>();
         auto read_string = [&reader](uint16_t size) -> string {
             string value;
             value.resize(size);
-            reader.ReadStringBytes(value);
+            reader.read_string_bytes(value);
             return value;
         };
 
@@ -881,17 +881,17 @@ namespace TestMigration
         vector<vector<string>> settings_entries;
 
         for (uint16_t i = 0; i < tag_count; i++) {
-            auto tag_name_len = reader.Read<uint16_t>();
+            auto tag_name_len = reader.read<uint16_t>();
             string tag_name = read_string(tag_name_len);
-            auto tag_value_count = reader.Read<uint32_t>();
+            auto tag_value_count = reader.read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
-                auto value_parts_count = reader.Read<uint32_t>();
+                auto value_parts_count = reader.read<uint32_t>();
                 vector<string> value_parts;
                 value_parts.reserve(value_parts_count);
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
-                    auto part_len = reader.Read<uint16_t>();
+                    auto part_len = reader.read<uint16_t>();
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -904,7 +904,7 @@ namespace TestMigration
             }
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
 
         CHECK(std::ranges::count(migration_entries, vector<string> {"Property", "Item", "Weapon.AmmoPid", "Weapon.Ammo"}) == 1);
         CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "LegacyAchvO9tCm0", "__remove__"}) == 1);
@@ -914,11 +914,11 @@ namespace TestMigration
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        auto property_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Property"), meta.Hashes.ToHashedString("Item"), meta.Hashes.ToHashedString("Weapon.AmmoPid"));
+        auto property_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Item"), meta.Hashes.to_hashed_string("Weapon.AmmoPid"));
         REQUIRE(property_rule.has_value());
-        CHECK(property_rule.value() == meta.Hashes.ToHashedString("Weapon.Ammo"));
+        CHECK(property_rule.value() == meta.Hashes.to_hashed_string("Weapon.Ammo"));
 
-        auto proto_rule = meta.CheckMigrationRule(meta.Hashes.ToHashedString("Proto"), meta.Hashes.ToHashedString("Modifier"), meta.Hashes.ToHashedString("LegacyAchvO9tCm0"));
+        auto proto_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Modifier"), meta.Hashes.to_hashed_string("LegacyAchvO9tCm0"));
         REQUIRE(proto_rule.has_value());
         CHECK_FALSE(static_cast<bool>(proto_rule.value()));
     }

@@ -38,8 +38,8 @@
 
 FO_BEGIN_NAMESPACE
 
-static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t max_collection_size, DataReader& reader, const EngineMetadata& meta);
-static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
+static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t max_collection_size, data_reader& reader, const EngineMetadata& meta);
+static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, data_reader& reader, const EngineMetadata& meta);
 static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta);
 static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_t> data, const EngineMetadata& meta);
 static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<uint8_t> data, size_t& offset, const EngineMetadata& meta);
@@ -59,7 +59,7 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
 
     if (!data.empty()) {
         auto target = make_ptr(&value).template reinterpret_as<uint8_t>();
-        MemCopy(target, data.data(), sizeof(T));
+        memory::copy(target, data.data(), sizeof(T));
     }
 
     return value;
@@ -75,7 +75,7 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
 
     if (!data.empty()) {
         auto target = make_ptr(&value).reinterpret_as<uint8_t>();
-        MemCopy(target, data.data(), data.size());
+        memory::copy(target, data.data(), data.size());
     }
 
     return value;
@@ -111,13 +111,13 @@ void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_spa
             throw ClientDataValidationException("Remote call payload exceeds structural limit", inbound_call.Name, data.size(), inbound_call.MaxPayloadSize);
         }
 
-        DataReader reader(data);
+        data_reader reader(data);
 
         for (const auto& arg : inbound_call.Args) {
             ValidateInboundRemoteCallArgData(arg.Type, inbound_call.MaxCollectionSize, reader, meta);
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
     }
     catch (const ClientDataValidationException&) {
         throw;
@@ -181,7 +181,7 @@ void ValidateInboundPropertyData(ptr<const Property> prop, const_span<uint8_t> d
     throw ClientDataValidationException("Unsupported property layout", prop->GetName());
 }
 
-static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t max_collection_size, DataReader& reader, const EngineMetadata& meta)
+static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t max_collection_size, data_reader& reader, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -189,7 +189,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
         ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
     }
     else if (type.Kind == ComplexTypeKind::Array) {
-        int32_t arr_size = reader.Read<int32_t>();
+        int32_t arr_size = reader.read<int32_t>();
 
         if (arr_size < 0) {
             throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
@@ -198,14 +198,14 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
             throw ClientDataValidationException("Array size exceeds structural remote-call limit", type.BaseType.Name, arr_size, max_collection_size);
         }
 
-        reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));
+        reader.verify_payload_count(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));
 
         for (int32_t i = 0; i < arr_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
         }
     }
     else if (type.Kind == ComplexTypeKind::Dict) {
-        int32_t dict_size = reader.Read<int32_t>();
+        int32_t dict_size = reader.read<int32_t>();
 
         if (dict_size < 0) {
             throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
@@ -217,7 +217,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
         size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(type.KeyType.value());
         size_t value_min_size = GetRemoteCallSimpleValueMinWireSize(type.BaseType);
         FO_VERIFY_AND_THROW(value_min_size <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict entry minimum serialized size overflows", type.BaseType.Name);
-        reader.VerifyPayloadCount(numeric_cast<size_t>(dict_size), key_min_size + value_min_size);
+        reader.verify_payload_count(numeric_cast<size_t>(dict_size), key_min_size + value_min_size);
 
         for (int32_t i = 0; i < dict_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.KeyType.value(), reader, meta);
@@ -225,7 +225,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
         }
     }
     else if (type.Kind == ComplexTypeKind::DictOfArray) {
-        int32_t dict_size = reader.Read<int32_t>();
+        int32_t dict_size = reader.read<int32_t>();
 
         if (dict_size < 0) {
             throw ClientDataValidationException("Negative dict size", type.BaseType.Name, dict_size);
@@ -236,12 +236,12 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
 
         size_t key_min_size = GetRemoteCallSimpleValueMinWireSize(type.KeyType.value());
         FO_VERIFY_AND_THROW(sizeof(int32_t) <= std::numeric_limits<size_t>::max() - key_min_size, "Remote call dict-of-array entry minimum serialized size overflows", type.BaseType.Name);
-        reader.VerifyPayloadCount(numeric_cast<size_t>(dict_size), key_min_size + sizeof(int32_t));
+        reader.verify_payload_count(numeric_cast<size_t>(dict_size), key_min_size + sizeof(int32_t));
 
         for (int32_t i = 0; i < dict_size; i++) {
             ValidateInboundSimpleRemoteCallData(type.KeyType.value(), reader, meta);
 
-            int32_t arr_size = reader.Read<int32_t>();
+            int32_t arr_size = reader.read<int32_t>();
 
             if (arr_size < 0) {
                 throw ClientDataValidationException("Negative array size", type.BaseType.Name, arr_size);
@@ -250,7 +250,7 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
                 throw ClientDataValidationException("Nested array size exceeds structural remote-call limit", type.BaseType.Name, arr_size, max_collection_size);
             }
 
-            reader.VerifyPayloadCount(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));
+            reader.verify_payload_count(numeric_cast<size_t>(arr_size), GetRemoteCallSimpleValueMinWireSize(type.BaseType));
 
             for (int32_t j = 0; j < arr_size; j++) {
                 ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
@@ -263,30 +263,30 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
     }
 }
 
-static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta)
+static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, data_reader& reader, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (type.IsBool) {
-        uint8_t value = reader.Read<uint8_t>();
+        uint8_t value = reader.read<uint8_t>();
 
         if (value > 1) {
             throw ClientDataValidationException("Invalid bool value", type.Name, value);
         }
     }
     else if (type.IsInt) {
-        (void)reader.ReadBytes(type.Size);
+        (void)reader.read_bytes(type.Size);
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            float32_t value = reader.Read<float32_t>();
+            float32_t value = reader.read<float32_t>();
 
             if (!std::isfinite(value)) {
                 throw ClientDataValidationException("Invalid float32 value", type.Name, value);
             }
         }
         else if (type.IsDoubleFloat) {
-            float64_t value = reader.Read<float64_t>();
+            float64_t value = reader.read<float64_t>();
 
             if (!std::isfinite(value)) {
                 throw ClientDataValidationException("Invalid float64 value", type.Name, value);
@@ -300,10 +300,10 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required enum underlying type");
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
         // Supported enum underlying types are uint8/uint16/uint32/int32 — none of them are narrow signed,
-        // so MemCopy into a zero-initialized int32 gives the correct numeric value for any size
+        // so memory::copy into a zero-initialized int32 gives the correct numeric value for any size
         FO_VERIFY_AND_THROW(type.Size <= sizeof(int32_t), "Enum payload is wider than the validation scratch integer", type.Name, type.Size, sizeof(int32_t));
 
-        int32_t value = ReadPaddedInt32(reader.ReadBytes(type.Size));
+        int32_t value = ReadPaddedInt32(reader.read_bytes(type.Size));
 
         bool failed = false;
         string_view hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
@@ -314,14 +314,14 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsString) {
-        int32_t str_len = reader.Read<int32_t>();
+        int32_t str_len = reader.read<int32_t>();
 
         if (str_len < 0) {
             throw ClientDataValidationException("Negative string length", type.Name, str_len);
         }
 
         size_t str_size = numeric_cast<size_t>(str_len);
-        const_span<uint8_t> str_data = reader.ReadBytes(str_size);
+        const_span<uint8_t> str_data = reader.read_bytes(str_size);
         string_view str = span_to_string(str_data);
 
         if (!strvex(str).is_valid_utf8()) {
@@ -332,9 +332,9 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsHashedString) {
-        hstring::hash_t hash = reader.Read<hstring::hash_t>();
+        hstring::hash_t hash = reader.read<hstring::hash_t>();
         bool failed = false;
-        hstring hstr = meta.Hashes.ResolveHash(hash, &failed);
+        hstring hstr = meta.Hashes.resolve_hash(hash, &failed);
         ignore_unused(hstr);
 
         if (failed) {
@@ -342,8 +342,8 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsRefType) {
-        uint32_t raw_size = reader.Read<uint32_t>();
-        const_span<uint8_t> ref_raw_data = reader.ReadBytes(raw_size);
+        uint32_t raw_size = reader.read<uint32_t>();
+        const_span<uint8_t> ref_raw_data = reader.read_bytes(raw_size);
         ValidateInboundRefTypeRawData(type.Name, type, ref_raw_data, meta);
     }
     else if (type.IsStruct) {
@@ -594,14 +594,14 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_
     else if (type.IsHashedString || type.IsFixedType || type.IsEntityProto) {
         hstring::hash_t hash = ReadTrivialValue<hstring::hash_t>(data);
         bool failed = false;
-        hstring hstr = meta.Hashes.ResolveHash(hash, &failed);
+        hstring hstr = meta.Hashes.resolve_hash(hash, &failed);
 
         if (failed) {
             throw ClientDataValidationException("Unknown hashed value", type.Name, hash);
         }
 
         if ((type.IsFixedType || type.IsEntityProto) && hstr) {
-            hstring hname = meta.Hashes.ToHashedString(type.Name);
+            hstring hname = meta.Hashes.to_hashed_string(type.Name);
             auto proto = meta.GetProtoEntity(hname, hstr);
 
             if (!proto) {

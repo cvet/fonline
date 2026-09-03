@@ -330,7 +330,7 @@ static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
         }
 
         if (!best_layout) {
-            layouts.emplace_back(SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size));
+            layouts.emplace_back(safe_alloc::make_unique<TextureAtlasLayout>(atlas_size));
             best_layout = layouts.back();
         }
 
@@ -364,7 +364,7 @@ static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
     constexpr isize32 atlas_size = {2048, 2048};
     constexpr size_t live_target = 1000;
 
-    auto layout = SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size);
+    auto layout = safe_alloc::make_unique<TextureAtlasLayout>(atlas_size);
     vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
     uint32_t random_state = 0x5EED17u;
 
@@ -433,7 +433,7 @@ TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
     constexpr size_t rounds = 400;
     constexpr size_t live_target = 96;
 
-    auto layout = SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size);
+    auto layout = safe_alloc::make_unique<TextureAtlasLayout>(atlas_size);
     vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
     uint32_t random_state = 0xC0FFEEu;
     size_t rejected = 0;

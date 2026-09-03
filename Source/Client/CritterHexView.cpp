@@ -242,7 +242,7 @@ void CritterHexView::NextAnim()
 
 #if FO_ENABLE_3D
     if (_model) {
-        constexpr auto anim_flags = CombineEnum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
+        constexpr auto anim_flags = combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
         _model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), 0.0f, anim_flags);
     }
     else
@@ -334,7 +334,7 @@ void CritterHexView::RefreshView(bool no_smooth)
                 _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), 0.0f, anim_flags);
             }
             else {
-                anim_flags = CombineEnum(anim_flags, ModelAnimFlags::Freeze);
+                anim_flags = combine_enum(anim_flags, ModelAnimFlags::Freeze);
                 float32_t frozen_time = GetCondition() == CritterCondition::Dead ? 1.0f : 0.0f;
                 _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), frozen_time, anim_flags);
             }
@@ -453,7 +453,7 @@ void CritterHexView::RefreshModel()
             }
         }
         else {
-            BreakIntoDebugger();
+            break_into_debugger();
 
             _spr = _engine->ResMngr.GetCritterDummyFrames();
         }

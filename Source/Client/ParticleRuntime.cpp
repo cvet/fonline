@@ -135,11 +135,11 @@ auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> v
     vector<unique_ptr<ParticleRuntimeBackend>> backends;
 
 #if FO_SPARK_PARTICLES
-    backends.emplace_back(SafeAlloc::MakeUnique<SparkParticleRuntimeBackend>(services));
+    backends.emplace_back(safe_alloc::make_unique<SparkParticleRuntimeBackend>(services));
 #endif
 #if FO_EFFEKSEER_PARTICLES
     InitializeEffekseerMemory();
-    backends.emplace_back(SafeAlloc::MakeUnique<EffekseerParticleRuntimeBackend>(services));
+    backends.emplace_back(safe_alloc::make_unique<EffekseerParticleRuntimeBackend>(services));
 #endif
 
     return backends;
@@ -197,7 +197,7 @@ void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender>
     overlay_buf->Upload(EffectUsage::Primitive, out_index, out_index);
 
     effect->ProjBuf = RenderEffect::ProjBuffer();
-    MemCopy(effect->ProjBuf->ProjMatrix, glm::value_ptr(proj_matrix), sizeof(effect->ProjBuf->ProjMatrix));
+    memory::copy(effect->ProjBuf->ProjMatrix, glm::value_ptr(proj_matrix), sizeof(effect->ProjBuf->ProjMatrix));
     effect->DrawBuffer(overlay_buf, 0, out_index);
 
     overlay_buf->VertCount = 0;

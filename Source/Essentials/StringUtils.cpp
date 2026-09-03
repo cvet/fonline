@@ -44,12 +44,12 @@
 
 FO_BEGIN_NAMESPACE
 
-struct StrGlobalData
+struct str_global_data
 {
-    unordered_set<char> TokSym = {'`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', //
+    unordered_set<char> tok_sym = {'`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', //
         '+', '-', '=', '|', '\\', '/', '.', ',', '\'', ';', '[', ']', ']', '{', '}', ':', '>', '<', '"'};
 };
-FO_GLOBAL_DATA(StrGlobalData, StrData);
+FO_GLOBAL_DATA(str_global_data, str_data);
 
 strex::operator string&&() noexcept
 {
@@ -153,18 +153,18 @@ auto strvex::compare_ignore_case_utf8(string_view other) const noexcept -> bool
     for (size_t i = 0; i < _sv.length();) {
         size_t length = _sv.length() - i;
         auto text_pos = make_ptr(_sv.data() + i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
+        uint32_t ucs = utf8::decode(text_pos, length);
         size_t other_length = other.length() - i;
         auto other_pos = make_ptr(other.data() + i);
-        uint32_t other_ucs = utf8::Decode(other_pos, other_length);
+        uint32_t other_ucs = utf8::decode(other_pos, other_length);
 
-        if (!utf8::IsValid(ucs) || !utf8::IsValid(other_ucs)) {
+        if (!utf8::is_valid(ucs) || !utf8::is_valid(other_ucs)) {
             return false;
         }
         if (length != other_length) {
             return false;
         }
-        if (utf8::Lower(ucs) != utf8::Lower(other_ucs)) {
+        if (utf8::lower(ucs) != utf8::lower(other_ucs)) {
             return false;
         }
 
@@ -213,9 +213,9 @@ auto strvex::is_valid_utf8() const noexcept -> bool
     for (size_t i = 0; i < _sv.length();) {
         size_t length = _sv.length() - i;
         auto text_pos = make_ptr(_sv.data() + i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
+        uint32_t ucs = utf8::decode(text_pos, length);
 
-        if (!utf8::IsValid(ucs)) {
+        if (!utf8::is_valid(ucs)) {
             return false;
         }
 
@@ -540,12 +540,12 @@ auto strex::lower_utf8() noexcept -> strex&
         size_t length = _s.length() - i;
         auto text_begin = make_ptr(_s.c_str());
         ptr<const char> text_pos = text_begin.offset(i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
+        uint32_t ucs = utf8::decode(text_pos, length);
 
-        ucs = utf8::Lower(ucs);
+        ucs = utf8::lower(ucs);
 
         char buf[4];
-        size_t new_length = utf8::Encode(ucs, buf);
+        size_t new_length = utf8::encode(ucs, buf);
 
         _s.replace(i, length, buf, new_length);
 
@@ -567,12 +567,12 @@ auto strex::upper_utf8() noexcept -> strex&
         size_t length = _s.length() - i;
         auto text_begin = make_ptr(_s.c_str());
         ptr<const char> text_pos = text_begin.offset(i);
-        uint32_t ucs = utf8::Decode(text_pos, length);
+        uint32_t ucs = utf8::decode(text_pos, length);
 
-        ucs = utf8::Upper(ucs);
+        ucs = utf8::upper(ucs);
 
         char buf[4];
-        size_t new_length = utf8::Encode(ucs, buf);
+        size_t new_length = utf8::encode(ucs, buf);
 
         _s.replace(i, length, buf, new_length);
 
@@ -744,7 +744,7 @@ auto strvex::tokenize() const noexcept -> vector<string_view>
     };
 
     for (char ch : trimmed_text) {
-        if (StrData->TokSym.contains(ch)) {
+        if (str_data->tok_sym.contains(ch)) {
             flush_tok_if_exists();
             cur_tok_len++;
             flush_tok_if_exists();
@@ -776,7 +776,7 @@ auto strex::tokenize() const noexcept -> vector<string>
 }
 
 template<typename T>
-static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
+static auto convert_to_number(string_view sv, T& value) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -857,7 +857,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 
             // Try read as float
             if (base == 10) {
-                if (float64_t fvalue; ConvertToNumber(sv, fvalue)) {
+                if (float64_t fvalue; convert_to_number(sv, fvalue)) {
                     value = static_cast<T>(std::clamp(fvalue, static_cast<float64_t>(std::numeric_limits<T>::min()), static_cast<float64_t>(std::numeric_limits<T>::max())));
 
                     return true;
@@ -870,7 +870,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
     else {
         if (((len >= 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) || (len >= 3 && sv[0] == '-' && sv[1] == '0' && (sv[2] == 'x' || sv[2] == 'X')))) {
             // Try read as hex integer
-            if (int64_t ivalue; ConvertToNumber(sv, ivalue)) {
+            if (int64_t ivalue; convert_to_number(sv, ivalue)) {
                 value = static_cast<T>(ivalue);
 
                 return true;
@@ -907,7 +907,7 @@ auto strvex::is_number() const noexcept -> bool
     }
 
     float64_t value;
-    bool success = ConvertToNumber(strvex(_sv).trim(), value);
+    bool success = convert_to_number(strvex(_sv).trim(), value);
     ignore_unused(value);
 
     return success;
@@ -957,7 +957,7 @@ auto strvex::to_int32() const noexcept -> int32_t
     FO_NO_STACK_TRACE_ENTRY();
 
     int64_t value;
-    bool success = ConvertToNumber(strvex(_sv).trim(), value);
+    bool success = convert_to_number(strvex(_sv).trim(), value);
 
     if (success) {
         constexpr int64_t min = static_cast<int64_t>(std::numeric_limits<int32_t>::min());
@@ -974,7 +974,7 @@ auto strvex::to_uint32() const noexcept -> uint32_t
     FO_NO_STACK_TRACE_ENTRY();
 
     int64_t value;
-    bool success = ConvertToNumber(strvex(_sv).trim(), value);
+    bool success = convert_to_number(strvex(_sv).trim(), value);
 
     if (success) {
         constexpr int64_t min = static_cast<int64_t>(std::numeric_limits<uint32_t>::min());
@@ -991,7 +991,7 @@ auto strvex::to_int64() const noexcept -> int64_t
     FO_NO_STACK_TRACE_ENTRY();
 
     int64_t value;
-    bool success = ConvertToNumber(strvex(_sv).trim(), value);
+    bool success = convert_to_number(strvex(_sv).trim(), value);
 
     return success ? value : 0;
 }
@@ -1001,7 +1001,7 @@ auto strvex::to_float32() const noexcept -> float32_t
     FO_NO_STACK_TRACE_ENTRY();
 
     float64_t value;
-    bool success = ConvertToNumber(strvex(_sv).trim(), value);
+    bool success = convert_to_number(strvex(_sv).trim(), value);
 
     return success ? static_cast<float32_t>(value) : 0.0f;
 }
@@ -1011,7 +1011,7 @@ auto strvex::to_float64() const noexcept -> float64_t
     FO_NO_STACK_TRACE_ENTRY();
 
     float64_t value;
-    bool success = ConvertToNumber(strvex(_sv).trim(), value);
+    bool success = convert_to_number(strvex(_sv).trim(), value);
 
     return success ? value : 0.0;
 }
@@ -1322,14 +1322,14 @@ auto strex::to_wide_char() const noexcept -> wstring
 // 0xFFFD - Unicode REPLACEMENT CHARACTER
 static constexpr uint32_t UNICODE_BAD_CHAR = 0xFFFD;
 
-auto utf8::IsValid(uint32_t ucs) noexcept -> bool
+auto utf8::is_valid(uint32_t ucs) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return ucs != UNICODE_BAD_CHAR && ucs <= 0x10FFFF;
 }
 
-auto utf8::DecodeStrNtLen(ptr<const char> str) noexcept -> size_t
+auto utf8::decode_str_nt_len(ptr<const char> str) noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1354,7 +1354,7 @@ auto utf8::DecodeStrNtLen(ptr<const char> str) noexcept -> size_t
     return length;
 }
 
-auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t
+auto utf8::decode(ptr<const char> str, size_t& length) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1458,7 +1458,7 @@ auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t
     return make_error();
 }
 
-auto utf8::Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t
+auto utf8::encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1496,7 +1496,7 @@ auto utf8::Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t
     return 3;
 }
 
-auto utf8::Lower(uint32_t ucs) noexcept -> uint32_t
+auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1593,32 +1593,32 @@ auto utf8::Lower(uint32_t ucs) noexcept -> uint32_t
     return ucs;
 }
 
-struct Utf8Data
+struct utf8_data
 {
-    Utf8Data() noexcept
+    utf8_data() noexcept
     {
         FO_STACK_TRACE_ENTRY();
 
-        UpperTable.resize(0x10000);
+        upper_table.resize(0x10000);
 
         for (uint32_t i = 0; i < 0x10000; i++) {
-            UpperTable[i] = static_cast<uint16_t>(i);
+            upper_table[i] = static_cast<uint16_t>(i);
         }
 
         for (uint32_t i = 0; i < 0x10000; i++) {
-            uint32_t l = utf8::Lower(i);
+            uint32_t l = utf8::lower(i);
 
             if (l != i) {
-                UpperTable[l] = static_cast<uint16_t>(i);
+                upper_table[l] = static_cast<uint16_t>(i);
             }
         }
     }
 
-    vector<uint16_t> UpperTable {};
+    vector<uint16_t> upper_table {};
 };
-FO_GLOBAL_DATA(Utf8Data, Utf8);
+FO_GLOBAL_DATA(utf8_data, utf8_tables);
 
-auto utf8::Upper(uint32_t ucs) noexcept -> uint32_t
+auto utf8::upper(uint32_t ucs) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1626,7 +1626,7 @@ auto utf8::Upper(uint32_t ucs) noexcept -> uint32_t
         return ucs;
     }
 
-    return Utf8->UpperTable[ucs];
+    return utf8_tables->upper_table[ucs];
 }
 
 FO_END_NAMESPACE

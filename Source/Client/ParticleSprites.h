@@ -84,7 +84,7 @@ class ParticleSpriteFactory : public SpriteFactory
     friend class ParticleSprite;
 
 public:
-    ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver);
+    ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<hash_resolver> hashes);
     ParticleSpriteFactory(const ParticleSpriteFactory&) = delete;
     ParticleSpriteFactory(ParticleSpriteFactory&&) noexcept = delete;
     auto operator=(const ParticleSpriteFactory&) = delete;

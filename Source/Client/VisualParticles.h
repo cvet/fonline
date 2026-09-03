@@ -60,7 +60,7 @@ struct ParticleSpriteFrame
 class ParticleSystem final
 {
     friend class ParticleManager;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ParticleSystem(const ParticleSystem&) = delete;
