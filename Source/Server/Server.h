@@ -315,8 +315,9 @@ private:
 
     void SyncPoint();
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
-    [[nodiscard]] auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
+    auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
 
+    void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
     void ProcessPlayer(ptr<Player> player);

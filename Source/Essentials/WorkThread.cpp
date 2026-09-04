@@ -285,6 +285,10 @@ void WorkThread::ThreadEntry() noexcept
                     }
                 }
                 catch (const std::exception& ex) {
+                    // Reported before the handler runs: the handler is what tells the rest of the process
+                    // that the job failed, so what it sets in motion would reach the log ahead of the reason
+                    ReportExceptionAndContinue(ex);
+
                     // Exception handling
                     {
                         scoped_lock locker {_dataLocker};
@@ -300,8 +304,6 @@ void WorkThread::ThreadEntry() noexcept
                             }
                         }
                     }
-
-                    ReportExceptionAndContinue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();

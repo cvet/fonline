@@ -1068,6 +1068,28 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
     }
 }
 
+TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
+{
+    // The flag suppresses the script responsiveness report while the engine comes up. Leaving it set
+    // would silence that report for the whole life of the server, and nothing else would say so
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    CHECK_FALSE(server->IsStartingUp());
+}
+
 TEST_CASE("ServerEngineStartsAndCreatesCritter")
 {
     auto settings = MakeServerTestSettings();
