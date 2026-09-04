@@ -1241,6 +1241,24 @@ auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
     return _randomGenerator.next_between(min_value, max_value);
 }
 
+auto BaseEngine::CaptureRandomState() const -> random_generator::state_data
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_randomGeneratorLocker};
+
+    return _randomGenerator.capture_state();
+}
+
+void BaseEngine::RestoreRandomState(const random_generator::state_data& state)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_randomGeneratorLocker};
+
+    _randomGenerator.restore_state(state);
+}
+
 void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
 {
     FO_STACK_TRACE_ENTRY();

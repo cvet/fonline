@@ -62,6 +62,12 @@ See [Applications.md](Applications.md) for the application map.
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.
 
+### Runtime random state
+
+`random_generator` owns its own state: `capture_state()` returns the four 64-bit words that define the sequence, and `restore_state()` puts them back, rejecting the all-zero state because xoshiro256++ sits at a fixed point there. `BaseEngine::CaptureRandomState()` and `RestoreRandomState()` delegate to the generator under the mutex it shares with random draws. There is no engine-level serialization format; a caller that needs to store the state serializes the four words itself.
+
+This API is a persistence primitive, not a complete snapshot boundary. An authoritative server must still stop gameplay mutation before it captures the generator together with the corresponding world, time, event, and storage state. Client presentation, transport, and subsystem-specific generators are independent and are not included in this state.
+
 ## Client and server layers
 
 `Source/Client/Client.h` includes the client-side composition points: application integration, resource/cache access, views for critters/items/locations/maps, effects, rendering-facing structures, and client connection code.

@@ -166,4 +166,43 @@ TEST_CASE("RandomGenerator")
     }
 }
 
+TEST_CASE("RandomGeneratorStateCaptureAndRestore")
+{
+    SECTION("Restored state replays the exact sequence")
+    {
+        random_generator generator {2026};
+        random_generator::state_data state = generator.capture_state();
+
+        vector<uint64_t> expected;
+        for (size_t i = 0; i < 16; i++) {
+            expected.emplace_back(generator.next());
+        }
+
+        random_generator restored {1};
+        restored.restore_state(state);
+
+        for (uint64_t expected_value : expected) {
+            CHECK(restored.next() == expected_value);
+        }
+    }
+
+    SECTION("Capture reflects consumption")
+    {
+        random_generator generator {7};
+        random_generator::state_data before = generator.capture_state();
+        (void)generator.next();
+
+        CHECK(generator.capture_state() != before);
+    }
+
+    SECTION("All-zero state is rejected and leaves the generator untouched")
+    {
+        random_generator generator {11};
+        random_generator::state_data before = generator.capture_state();
+
+        CHECK_THROWS(generator.restore_state(random_generator::state_data {}));
+        CHECK(generator.capture_state() == before);
+    }
+}
+
 FO_END_NAMESPACE
