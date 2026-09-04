@@ -279,6 +279,7 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
         ctx_ext->Root = ctx.get();
     }
     ctx_ext->Exception = {};
+    ctx_ext->ExecutionSuspended.store(false);
 
     CaptureNativeStackFrames(ctx_ext->BirthNativeFrames, ctx_ext->BirthNativeFrameCount, ctx_ext->BirthNativeTruncated, 1);
 
@@ -287,6 +288,39 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
     }
 
     return ctx;
+}
+
+auto AngelScriptContextManager::GetDiagnostics() const -> Diagnostics
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock lock {_poolLocker};
+
+    Diagnostics diagnostics;
+    diagnostics.FreeContexts = _freeContexts.size();
+    diagnostics.BusyContexts = _busyContexts.size();
+
+    for (const auto& ctx : _busyContexts) {
+        auto ctx_ext = AngelScriptContextExtendedData::Get(ctx.as_ptr());
+        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+
+        bool suspended = ctx_ext->ExecutionSuspended.load();
+
+        if (suspended) {
+            diagnostics.SuspendedContexts++;
+        }
+
+        bool active = ctx_ext->ExecutionActive.load();
+
+        if (active) {
+            diagnostics.ActiveContexts++;
+        }
+        if (!suspended && !active) {
+            diagnostics.OtherBusyContexts++;
+        }
+    }
+
+    return diagnostics;
 }
 
 void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext> ctx, uint64_t expected_generation) noexcept
@@ -331,6 +365,7 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
         ctx_ext->Parent = nullptr;
         ctx_ext->Root = nullptr;
         ctx_ext->Exception = {};
+        ctx_ext->ExecutionSuspended.store(false);
         ctx_ext->BirthNativeFrameCount = 0;
         ctx_ext->BirthNativeTruncated = false;
 
@@ -413,6 +448,7 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
     }
 
     auto execution_active_guard = scope_exit([ctx_ext]() mutable noexcept { ctx_ext->ExecutionActive.store(false); });
+    ctx_ext->ExecutionSuspended.store(false);
 
     int32_t exec_result = 0;
 
@@ -490,6 +526,7 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
             throw ScriptCallException("Can't yield current routine");
         }
 
+        ctx_ext->ExecutionSuspended.store(true);
         return false;
     }
 
