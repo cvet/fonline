@@ -69,11 +69,13 @@ public:
     {
         int32_t ThreadCount {};
         size_t ScheduledJobs {};
+        size_t AnonymousScheduledJobs {};
         size_t QueuedKeys {};
         size_t RunningJobs {};
         size_t PendingReruns {};
         int32_t ActiveWorkers {};
         bool Paused {};
+        bool SchedulingTimeFrozen {};
         uint64_t CompletedJobs {};
     };
 
@@ -93,6 +95,8 @@ public:
 
     void Resume();
     void Pause();
+    void FreezeSchedulingTime();
+    void ResumeSchedulingTime();
     void Submit(Job job);
     void Submit(timespan delay, Job job);
     void Submit(JobKey key, Job job);
@@ -113,6 +117,7 @@ private:
 
     [[nodiscard]] bool IsAnyJobReadyNow() const noexcept FO_TSA_REQUIRES(_mutex);
     [[nodiscard]] bool IsBarrierIdle() const noexcept FO_TSA_REQUIRES(_mutex);
+    [[nodiscard]] auto GetSchedulingTime() const noexcept -> nanotime FO_TSA_REQUIRES(_mutex);
 
     void EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept FO_TSA_REQUIRES(_mutex);
     void WorkerEntry(int32_t worker_index) noexcept;
@@ -134,6 +139,10 @@ private:
     int32_t _activeWorkers FO_TSA_GUARDED_BY(_mutex) {};
     bool _finish FO_TSA_GUARDED_BY(_mutex) {};
     bool _paused FO_TSA_GUARDED_BY(_mutex) {};
+    size_t _anonymousScheduledJobs FO_TSA_GUARDED_BY(_mutex) {};
+    timespan _schedulingTimeOffset FO_TSA_GUARDED_BY(_mutex) {};
+    nanotime _schedulingTimeFrozenAt FO_TSA_GUARDED_BY(_mutex) {};
+    bool _schedulingTimeFrozen FO_TSA_GUARDED_BY(_mutex) {};
 };
 
 FO_END_NAMESPACE
