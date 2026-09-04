@@ -100,8 +100,6 @@ struct ServerSnapshotCaptureResult
     vector<ServerSnapshotBlocker> Blockers {};
     optional<ServerSnapshotState> State {};
     vector<uint8_t> Payload {};
-
-    [[nodiscard]] auto IsCreated() const noexcept -> bool { return ReachedQuiescence && Blockers.empty() && State.has_value() && !Payload.empty(); }
 };
 
 struct ServerSnapshotRestore

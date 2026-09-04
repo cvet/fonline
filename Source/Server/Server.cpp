@@ -51,6 +51,15 @@ extern void ServerInitHook(ptr<ServerEngine>);
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
 
+auto GetServerResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddPacksSource(settings.Packaged ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
+    return resources;
+}
+
 static void ValidateServerSnapshotState(const ServerSnapshotState& state)
 {
     FO_STACK_TRACE_ENTRY();

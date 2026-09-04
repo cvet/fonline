@@ -746,8 +746,7 @@ TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    random_generator captured_generator = server->GetRandomGenerator();
-    random_generator::state_data captured_state = captured_generator.capture_state();
+    random_generator::state_data captured_state = server->CaptureRandomState();
     CHECK_FALSE(std::ranges::all_of(captured_state, [](uint64_t part) { return part == 0; }));
 
     vector<int32_t> expected_sequence;
@@ -755,25 +754,24 @@ TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
         expected_sequence.emplace_back(server->Random(-100000, 100000));
     }
 
-    // The engine hands the generator back and takes it whole, so replaying the same draws is a plain assignment
-    server->SetRandomGenerator(captured_generator);
+    // The generator stays behind the engine's own lock and its state travels as bare words, so a replay is a restore
+    server->RestoreRandomState(captured_state);
     for (int32_t expected_value : expected_sequence) {
         CHECK(server->Random(-100000, 100000) == expected_value);
     }
 
-    // The same state can also travel as bare words and be put back through the generator itself
+    // The same words survive a round trip through the generator type itself
     random_generator rebuilt_generator {uint64_t {1}};
     rebuilt_generator.restore_state(captured_state);
-    server->SetRandomGenerator(rebuilt_generator);
+    server->RestoreRandomState(rebuilt_generator.capture_state());
     for (int32_t expected_value : expected_sequence) {
         CHECK(server->Random(-100000, 100000) == expected_value);
     }
 
-    random_generator::state_data state_before_invalid_restore = server->GetRandomGenerator().capture_state();
-
-    random_generator invalid_generator {uint64_t {1}};
-    CHECK_THROWS(invalid_generator.restore_state(random_generator::state_data {}));
-    CHECK(server->GetRandomGenerator().capture_state() == state_before_invalid_restore);
+    // A rejected restore is validated before the state is touched, so the engine keeps drawing where it stood
+    random_generator::state_data state_before_invalid_restore = server->CaptureRandomState();
+    CHECK_THROWS(server->RestoreRandomState(random_generator::state_data {}));
+    CHECK(server->CaptureRandomState() == state_before_invalid_restore);
 }
 
 TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
@@ -800,7 +798,7 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
         auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
         hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-        critter = server->CreateCritter(critter_pid, false);
+        critter = server->CreateCritter(critter_pid, false).hold_ref();
     }
 
     REQUIRE(critter);
@@ -814,7 +812,7 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
         CHECK(IsEntityAccessValid(critter));
         CHECK(state.SynchronizedTime == server->GameTime.GetSynchronizedTime());
 
-        CHECK(state.RandomState == server->GetRandomGenerator().capture_state());
+        CHECK(state.RandomState == server->CaptureRandomState());
 
         nanotime paused_frame_time = server->GameTime.GetFrameTime();
         server->FrameAdvance();
@@ -842,7 +840,12 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-    server->CrMngr.DestroyCritter(critter.take_not_null());
+
+    // The external lock opens a context of its own but covers nothing, and the destroy call only retains
+    // an already covered entity, so the caller establishes the cover
+    refcount_ptr<Critter> held_critter = critter.take_not_null();
+    server->RequireCurrentSyncContext()->SyncEntity(held_critter);
+    server->CrMngr.DestroyCritter(held_critter);
 }
 
 TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
@@ -882,7 +885,8 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
 
         CHECK(result.ReachedQuiescence);
-        CHECK_FALSE(result.IsCreated());
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
         CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
         CHECK_FALSE(fs_exists(fs_path_to_string(snapshot_root / "delayed" / "Storage.sqlite")));
     }
@@ -900,7 +904,8 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
 
         CHECK(result.ReachedQuiescence);
-        CHECK_FALSE(result.IsCreated());
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
         CHECK(has_blocker(result, ServerSnapshotBlockerKind::SuspendedScriptContexts));
         CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
     }
@@ -918,7 +923,8 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
 
         CHECK(result.ReachedQuiescence);
-        CHECK_FALSE(result.IsCreated());
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
         CHECK(has_blocker(result, ServerSnapshotBlockerKind::TimeEvents));
     }
 
@@ -934,7 +940,8 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
 
         CHECK(result.ReachedQuiescence);
-        CHECK_FALSE(result.IsCreated());
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
         CHECK(has_blocker(result, ServerSnapshotBlockerKind::CritterMovements));
     }
 }
@@ -981,8 +988,10 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
 
         // The Engine hands back bytes and state; naming, versioning and publishing them is the embedder's job
         auto capture_result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
-        REQUIRE(capture_result.IsCreated());
+        REQUIRE(capture_result.ReachedQuiescence);
+        REQUIRE(capture_result.Blockers.empty());
         REQUIRE(capture_result.State.has_value());
+        REQUIRE_FALSE(capture_result.Payload.empty());
         captured_state = *capture_result.State;
         captured_payload = std::move(capture_result.Payload);
 
