@@ -1500,6 +1500,18 @@
       "release_note": "Document the two synthesizable network notifications in the client-runtime guide and the generated script-API reference for this Engine revision.",
       "compatibility": "The symbols are additive, but strict API-model consumers must adopt the regenerated inventory and its SHA-256 pin. Engine binaries, generated metadata, and baked resources update together.",
       "owner": "runtime-client"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.fcc2e95e238386bc",
+      "baseline_contract_sha256": "fe5a7ad3d670bf52ea844970bef306a5add6570cc305da20f677b2db610c78e9",
+      "current_contract_sha256": "b877cfa51af143311391ba762b76328d5cdbf8497b895b7b06d00296b97d1b4f",
+      "classification": "breaking",
+      "rationale": "Two settings, ServerNetwork.ListenRetryTime and ServerNetwork.ListenRetryDelay, raise the strict native-codegen inventory from 2507 to 2509. They bound the listener bind retry a restart needs while the process it replaces still holds the port: past the deadline the original exception is rethrown, so a dead port still fails startup rather than becoming an acceptable state.",
+      "migration": "Regenerate script and API artifacts against this revision. Both settings default to a working retry window (30000 ms over 500 ms attempts), so an embedding project adopts the new inventory pin without authoring anything; a project that wants the old behavior sets ListenRetryTime to zero.",
+      "release_note": "Document the listener retry window in the authority-and-networking guide and the generated settings reference for this Engine revision.",
+      "compatibility": "The settings are additive, but strict API-model consumers must adopt the regenerated inventory and its SHA-256 pin. Engine binaries, generated metadata, and baked configuration update together.",
+      "owner": "runtime-networking"
     }
   ]
 }

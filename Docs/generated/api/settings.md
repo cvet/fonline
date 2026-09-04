@@ -987,6 +987,12 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-servernetwork-inactivitydisconnecttime-466812551b"></a>
 - [`symbol-setting-server-servernetwork-inactivitydisconnecttime-466812551b`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-inactivitydisconnecttime-466812551b)
 
+<a id="symbol-setting-server-servernetwork-listenretrydelay-5b4a6347eb"></a>
+- [`symbol-setting-server-servernetwork-listenretrydelay-5b4a6347eb`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-listenretrydelay-5b4a6347eb)
+
+<a id="symbol-setting-server-servernetwork-listenretrytime-4017824a8b"></a>
+- [`symbol-setting-server-servernetwork-listenretrytime-4017824a8b`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-listenretrytime-4017824a8b)
+
 <a id="symbol-setting-server-servernetwork-logintimeout-7533a97eed"></a>
 - [`symbol-setting-server-servernetwork-logintimeout-7533a97eed`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-logintimeout-7533a97eed)
 

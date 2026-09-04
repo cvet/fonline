@@ -51,6 +51,15 @@ extern void ServerInitHook(ptr<ServerEngine>);
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
 
+auto GetServerResources(GlobalSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    resources.AddPacksSource(settings.Packaged ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
+    return resources;
+}
+
 static void ValidateServerSnapshotState(const ServerSnapshotState& state)
 {
     FO_STACK_TRACE_ENTRY();
@@ -84,6 +93,8 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _restoreSnapshot {std::move(restore_snapshot)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    SetStartingUp(true);
 
     WriteLog("Start server");
     WriteLog("Updater version: {}", FO_UPDATER_VERSION);
@@ -368,18 +379,17 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
         return std::nullopt;
     }
 
+    auto on_connection = [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); };
+
     if (Settings->EnableUdp) {
-        unique_ptr<NetworkServer> udp_server = NetworkServer::StartUdpSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-        _connectionServers.emplace_back(std::move(udp_server));
+        StartConnectionServer("UDP", [&] { return NetworkServer::StartUdpSocketsServer(Settings, on_connection); });
     }
 
 #if FO_HAVE_ASIO
-    unique_ptr<NetworkServer> asio_server = NetworkServer::StartAsioServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-    _connectionServers.emplace_back(std::move(asio_server));
+    StartConnectionServer("TCP", [&] { return NetworkServer::StartAsioServer(Settings, on_connection); });
 #endif
 #if FO_HAVE_WEB_SOCKETS
-    unique_ptr<NetworkServer> web_sockets_server = NetworkServer::StartWebSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-    _connectionServers.emplace_back(std::move(web_sockets_server));
+    StartConnectionServer("WebSockets", [&] { return NetworkServer::StartWebSocketsServer(Settings, on_connection); });
 #endif
 
     return std::nullopt;
@@ -763,6 +773,7 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 
     // Set started flag AFTER workerPool is resumed and mainWorker has jobs queued so
     // external observers (tests, network OnNewConnection) only see a fully-running server
+    SetStartingUp(false);
     _started = true;
 
     return std::nullopt;
@@ -2089,6 +2100,35 @@ auto ServerEngine::EvaluateConnectionRate(ConnRateState& state, int64_t now_sec,
 
     state.Count++;
     return state.Count <= rate_per_sec;
+}
+
+void ServerEngine::StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::chrono::milliseconds retry_delay {std::max(Settings->ListenRetryDelay, 1)};
+    const nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ListenRetryTime, 0)};
+
+    for (int32_t attempt = 1;; attempt++) {
+        try {
+            _connectionServers.emplace_back(start());
+
+            if (attempt != 1) {
+                WriteLog("Listener {} started on attempt {}", what, attempt);
+            }
+
+            return;
+        }
+        catch (const std::exception&) {
+            if (nanotime::now() >= deadline) {
+                WriteLog("Listener {} did not start within {} ms of retries", what, std::max(Settings->ListenRetryTime, 0));
+                throw;
+            }
+
+            WriteLog("Listener {} did not start on attempt {}, retrying in {} ms", what, attempt, retry_delay.count());
+            coarse_sleep(retry_delay);
+        }
+    }
 }
 
 void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)

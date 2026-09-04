@@ -44,10 +44,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2507**
-- Symbols with source-backed descriptions: **2507**
+- Discovered symbols: **2509**
+- Symbols with source-backed descriptions: **2509**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2507**
+- Explicitly classified symbols: **2509**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.

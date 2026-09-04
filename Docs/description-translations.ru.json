@@ -18005,6 +18005,14 @@
           "source_sha256": "e439335f922cc3a536c43f737d14de7bb4e493cfd2cb0c07b2e8b42f4319e090",
           "translation": "Время до отключения из-за неактивности в миллисекундах"
         },
+        "/symbols/@id=setting.server.ServerNetwork.ListenRetryDelay/description": {
+          "source_sha256": "071d6043d7f11341caaba2acbc22bb0dbe6e0fe43c8ec147fd551a5dedba0fc4",
+          "translation": "Задержка в миллисекундах между попытками привязать слушателя"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.ListenRetryTime/description": {
+          "source_sha256": "f167ea3322ef30cac7c1759f3b01ceeb7680d5c99f144e0cb6af5f90b6da620b",
+          "translation": "Время в миллисекундах, в течение которого повторяются попытки для слушателя, чей порт всё ещё держит предыдущий процесс (0 — не повторять)"
+        },
         "/symbols/@id=setting.server.ServerNetwork.LoginTimeout/description": {
           "source_sha256": "c8d412b042c6dac764bda0a88b6bca5739ebdce6f79ddb13880b4520f5bc0c81",
           "translation": "Максимальное время жизни соединения до входа без прогресса handshake, аутентификации или обновления, в миллисекундах (0 = без ограничения)"

@@ -372,10 +372,17 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        // Deserializing straight into the live handle would detach it from its file, so the bytes are loaded
-        // into a private in-memory database and copied back page by page into the live storage
+        // A scratch file, not a deserialized memory image: copying into a WAL destination reaches for the
+        // source's own file, and a memory source has none, which SQLite answers with SQLITE_CANTOPEN
+        string source_path = strex("{}/Storage.snapshot-restore", _storageDir);
+
+        FO_VERIFY_AND_THROW(fs_write_file(source_path, snapshot_data), "Cannot write the snapshot restore scratch database", source_path);
+
+        auto remove_source_file = scope_exit([&source_path]() noexcept { (void)fs_remove_file(source_path); });
+
+        auto source_path_ptr = make_ptr(source_path.c_str());
         nptr<sqlite3> source_db;
-        int32_t open = sqlite3_open_v2(":memory:", source_db.get_pp(), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+        int32_t open = sqlite3_open_v2(source_path_ptr.get(), source_db.get_pp(), SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nullptr);
 
         if (open != SQLITE_OK) {
             string error = source_db ? string(sqlite3_errmsg(source_db.get())) : string("unknown");
@@ -396,22 +403,6 @@ protected:
                 source_db = nullptr;
             }
         });
-
-        // sqlite3_deserialize takes ownership of a buffer allocated by SQLite itself and frees it on close
-        auto data_size = numeric_cast<sqlite3_int64>(snapshot_data.size());
-        nptr<uint8_t> buffer {static_cast<uint8_t*>(sqlite3_malloc64(numeric_cast<sqlite3_uint64>(data_size)))};
-
-        if (!buffer) {
-            throw DataBaseException("DbSQLite snapshot restore allocation failed", snapshot_data.size());
-        }
-
-        MemCopy(buffer.get(), snapshot_data.data(), snapshot_data.size());
-
-        int32_t deserialize = sqlite3_deserialize(source_db.get(), "main", buffer.get(), data_size, data_size, SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE);
-
-        if (deserialize != SQLITE_OK) {
-            throw DataBaseException("DbSQLite sqlite3_deserialize", deserialize, sqlite3_errmsg(source_db.get()));
-        }
 
         scoped_lock locker {_storageLocker};
 

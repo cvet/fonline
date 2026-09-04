@@ -361,7 +361,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: b44d54bfe43d398b4725c7927d81cc01272efa6410f1c4e041a690ad5edab91b
+Content SHA-256: 11dda0c80de0abe307f18152b2b26ec266ab84c48e3b2ee1863d9a0c0462fa21
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **18** modeled contract domains: `experimental` 15
 
 ## Native script API status
 
-- Discovered symbols: **2507**
-- Symbols with source-backed descriptions: **2507**
+- Discovered symbols: **2509**
+- Symbols with source-backed descriptions: **2509**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2507**
+- Explicitly classified symbols: **2509**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -1235,7 +1235,7 @@ A normal embedding-project workflow looks like this:
 ===== BEGIN DOCUMENT build-workflow =====
 Source: Docs/en/how-to/build/index.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/
-Content SHA-256: 3c5210f482fd03630c1c3cd9ed6913f08b134cad1c069d4212a70703054ba15b
+Content SHA-256: 06a30974defcfe17ff89383a18d73ddf40d47d4cfe752887b89a18fea5352ce2
 
 ---
 layout: default
@@ -1363,6 +1363,32 @@ python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
 ```
 
 The check parses PE imports and fails on `CreateFile2`, the currently forbidden Windows 8+ import. The embedding project owns the concrete toolset installation, binary paths, package matrix, and CI gate; [Testing](../../contributing/testing/) owns the reusable validation rule.
+
+## Fetching through a mirror of your own
+
+`prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from
+whoever publishes them. Each of those is a machine you do not run, and a dropped connection costs the
+job that is waiting on it. An embedding project may put a host of its own in front of them; the engine
+only needs to be told where it is, so nothing about that host is compiled in and everything travels in
+the environment:
+
+| variable | what it configures |
+|---|---|
+| `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
+| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The MSVC SDK tree is built once, stored under `xwin-<version>-<arches>.tar.gz`, and downloaded whole afterwards. |
+| `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
+| `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
+
+Unset, every one of them leaves the download path exactly as it was.
+
+Two behaviours are deliberate. A download is checked against the upstream `Content-Length`, because a
+dropped connection ends the read instead of raising and an archive cut in half unpacks into a failure
+far from its cause. And a workspace cache that is empty, unreachable or refusing is only a **miss**:
+it exists to make the build faster and independent of other people's servers, not to become another
+way for it to fail.
+
+`xwin` fetches the Microsoft packages itself, so mirroring the engine's own downloads does not cover
+it — which is why its *result* is what the workspace cache holds.
 
 ## Where build logic lives
 
@@ -15199,7 +15225,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 153bc91bcaa18f4e358af70516fdfda89b9c403872f5f53426456e516abe1bf6
+Content SHA-256: 4a520e213a18a7abb50e2c0ad51f57e48096c65e6b45322179e17689d48cd1ec
 
 ---
 layout: default
@@ -15533,6 +15559,19 @@ The source tree supports several connection families:
 - WebSocket server support when built with `FO_HAVE_WEB_SOCKETS`.
 
 Build availability is controlled by compile-time feature toggles and platform dependencies. For build toggles and package workflow, see [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md).
+
+### A listener that cannot bind is retried before the startup gives up
+
+A restart races the process it replaces for its ports, and the loser used to take the whole startup
+down on its first attempt: the world loaded, a socket that frees itself within seconds was still
+held, and every bit of that work was thrown away. Each remote listener is therefore started through
+`ServerEngine::StartConnectionServer`, which retries until `ServerNetwork.ListenRetryTime` runs out,
+waiting `ServerNetwork.ListenRetryDelay` between attempts.
+
+Past the deadline the original exception is rethrown and the startup fails, because a server nobody
+can reach is not a started server — the retries buy the losing side of the race some time, they do
+not turn a dead port into an acceptable state. The interthread transport is not part of this: it
+binds nothing another process could hold, so a failure there is a defect rather than a race.
 
 ## Tests to inspect
 
@@ -25888,7 +25927,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 0ffd6c5acbcbea15103fe9f3fcb89363b8115e1bedee5e8df4b7505e7010f73e
+Content SHA-256: 1e421ec13f737cfc12d0ccb27137280518e97c629a6a26a5eab6fd84c75222cd
 
 ---
 title: Generated API Reference
@@ -25909,32 +25948,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 134 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 979 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 284 | Fixed and runtime-variable engine settings. |
+| [Engine settings](settings.md) | 286 | Fixed and runtime-variable engine settings. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2507 |
-| Symbols with descriptions | 2507 |
+| Addressable symbols | 2509 |
+| Symbols with descriptions | 2509 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2507 |
+| Explicitly classified symbols | 2509 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2506 |
+| <code>experimental</code> | 2508 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2507 stable IDs with SHA-256 <code>0bea01dd879a74c4aa9d7fe1f6cddcbea7fa7a94a06b1e65de7c4508ac8b6fc3</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2509 stable IDs with SHA-256 <code>71d15b8518f2939c45fa902a7de9f4e0c9f86f69a7491a98fe74461b60aaa0ba</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-<br>pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,<br>removal, or stable-ID change instead of silently extending this experimental promise.
 

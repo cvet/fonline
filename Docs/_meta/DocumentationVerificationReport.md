@@ -9052,3 +9052,65 @@ Disposition:
 - Merge-readiness still depends on current remote CI, including the native
   unit-test suite that covers the new quiescence, snapshot, timer, and worker
   contracts.
+
+## 2026-09-04 - download mirror, listener retry, and snapshot restore hardening
+
+Scope and source revisions:
+
+- Reconciled the documentation branch at
+  `737d170b93da14f0ff3d3e0977b25a8dfb4b2ad8` with Engine `origin/master`
+  through `9c0976b4d94fb0692cdb5fdff62d072031a581c4`. The eight incoming commits
+  add an optional pull-through download mirror and workspace cache for
+  `prepare-workspace`, a bounded listener bind retry for a restart racing the
+  process it replaces, `IsRestoredFromSnapshot()` with the entity-load handling
+  that follows from it, and resource-management and return-type corrections in
+  the snapshot restore path.
+- The merge reported **no** conflict at all, and both legacy routes upstream
+  touched - `Docs/BuildWorkflow.md` and `Docs/Networking.md` - had its prose
+  spliced into their stubs. That is the third occurrence of the silent shape;
+  it is caught now only because every legacy route is re-read after a merge
+  rather than only the ones git reports.
+
+Contract and documentation changes:
+
+- The build guide gained the mirror section: the four environment variables,
+  the fact that nothing about the host is compiled in, the `Content-Length`
+  check that stops a half-read archive failing far from its cause, the
+  cache-miss-is-not-a-failure rule, and why the workspace cache holds `xwin`'s
+  result rather than mirroring its downloads.
+- Authority and networking gained the listener retry: what it buys, and the
+  boundary it does not cross - past `ServerNetwork.ListenRetryTime` the original
+  exception is rethrown, because a server nobody can reach is not a started
+  server, and the interthread transport is excluded since it binds nothing
+  another process could hold.
+- The native-codegen scope contract is re-pinned from 2507 to 2509 for the two
+  new settings, recorded as one disposition.
+- Generated API, reference, public-contract, inventory, snippets, description
+  translations, locale status, screenshot provenance, site/search data, AI
+  evaluation, manifest, and AI-delivery artifacts were regenerated in dependency
+  order. Two Russian owner pages carry current source hashes.
+
+Validation:
+
+- Every documentation generator reports current: 310/310 normative snippets,
+  159 evidence blocks, 183 external-parser checks, 197/197 locale pairs,
+  4979/4979 generated description translations, 397 maintained Markdown
+  entries, and all 65 retrieval checks across 27 tasks at 100 percent success
+  and 0.915 MRR.
+- Contract-diff reconciliation against
+  `737d170b93da14f0ff3d3e0977b25a8dfb4b2ad8` reports three changes across the 18
+  tracked domains, one requiring a disposition, which is recorded.
+- The focused owner suites pass 114 tests across the api, reference, locale,
+  description-translation, coding-contract, build, inventory, site, delivery,
+  metadata, public-contract, screenshot, and CLI modules.
+- The engine C++ suite was not rebuilt locally; the incoming range is upstream
+  code already validated on `master`, and no engine source was changed here
+  beyond the scope-contract pin.
+
+Disposition:
+
+- The reusable Engine contract and generated corpus are reconciled for review.
+  Publish the Engine documentation branch before the embedding project branch
+  so the root gitlink never points at an unavailable commit.
+- Merge-readiness still depends on current remote CI, including the native
+  unit-test suite and the new BuildTools download coverage.

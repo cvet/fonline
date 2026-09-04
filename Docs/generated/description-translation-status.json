@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 20,
-    "entry_count": 4977,
-    "current_count": 4977,
+    "entry_count": 4979,
+    "current_count": 4979,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2509,
-      "current_count": 2509,
+      "entry_count": 2511,
+      "current_count": 2511,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15952,6 +15952,18 @@
           "locator": "/symbols/@id=setting.server.ServerNetwork.InactivityDisconnectTime/description",
           "source": "Inactivity disconnect time in milliseconds",
           "source_sha256": "e439335f922cc3a536c43f737d14de7bb4e493cfd2cb0c07b2e8b42f4319e090",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.server.ServerNetwork.ListenRetryDelay/description",
+          "source": "Delay in milliseconds between listener bind attempts",
+          "source_sha256": "071d6043d7f11341caaba2acbc22bb0dbe6e0fe43c8ec147fd551a5dedba0fc4",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.server.ServerNetwork.ListenRetryTime/description",
+          "source": "Time in milliseconds to keep retrying a listener whose port is still held by the previous process (0 = do not retry)",
+          "source_sha256": "f167ea3322ef30cac7c1759f3b01ceeb7680d5c99f144e0cb6af5f90b6da620b",
           "status": "current"
         },
         {

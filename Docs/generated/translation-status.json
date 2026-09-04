@@ -313,8 +313,8 @@
       "english_path": "Docs/en/explanation/authority-and-networking/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/authority-and-networking/index.md",
-      "source_sha256": "153bc91bcaa18f4e358af70516fdfda89b9c403872f5f53426456e516abe1bf6",
-      "source_bytes": 24488,
+      "source_sha256": "4a520e213a18a7abb50e2c0ad51f57e48096c65e6b45322179e17689d48cd1ec",
+      "source_bytes": 25410,
       "status": "current"
     },
     {
@@ -482,8 +482,8 @@
       "english_path": "Docs/en/how-to/build/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/index.md",
-      "source_sha256": "3c5210f482fd03630c1c3cd9ed6913f08b134cad1c069d4212a70703054ba15b",
-      "source_bytes": 11131,
+      "source_sha256": "06a30974defcfe17ff89383a18d73ddf40d47d4cfe752887b89a18fea5352ce2",
+      "source_bytes": 12892,
       "status": "current"
     },
     {
@@ -2068,7 +2068,7 @@
       "english_path": "Docs/en/reference/public-contract/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/public-contract/index.md",
-      "source_sha256": "b44d54bfe43d398b4725c7927d81cc01272efa6410f1c4e041a690ad5edab91b",
+      "source_sha256": "11dda0c80de0abe307f18152b2b26ec266ab84c48e3b2ee1863d9a0c0462fa21",
       "source_bytes": 7511,
       "status": "current"
     },
@@ -2094,7 +2094,7 @@
       "english_path": "Docs/en/reference/script-api/events.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/events.md",
-      "source_sha256": "202b9f71012891b2282b57acbb0bdb8de0d526e281ca0a65c8e386cddf890b94",
+      "source_sha256": "b72436df46e77d350c683a05b5e6b1c7a19f54ba2e4c950566e3712043545173",
       "source_bytes": 74455,
       "status": "current"
     },
@@ -2107,7 +2107,7 @@
       "english_path": "Docs/en/reference/script-api/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/index.md",
-      "source_sha256": "0ffd6c5acbcbea15103fe9f3fcb89363b8115e1bedee5e8df4b7505e7010f73e",
+      "source_sha256": "1e421ec13f737cfc12d0ccb27137280518e97c629a6a26a5eab6fd84c75222cd",
       "source_bytes": 3505,
       "status": "current"
     },
@@ -2172,8 +2172,8 @@
       "english_path": "Docs/en/reference/script-api/settings.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/settings.md",
-      "source_sha256": "59e5a1c41c5955260e3b14ca43ee5f04dd6ca4b05be1beefe17b0dd81b85f606",
-      "source_bytes": 170016,
+      "source_sha256": "7e4073343d3c2c377469423a110f8e503be4743eb9f8622c76aa5bd61134c18c",
+      "source_bytes": 171245,
       "status": "current"
     },
     {

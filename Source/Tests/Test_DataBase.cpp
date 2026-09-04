@@ -601,14 +601,14 @@ TEST_CASE("DataBaseSnapshotDrainsAndBlocksNewProducers")
     db.BlockSnapshot();
 
     std::exception_ptr snapshot_error;
-    thread snapshot_thread {[&] {
+    thread snapshot_thread = run_thread("SnapshotDrain", [&] {
         try {
             (void)db.CreateSnapshot();
         }
         catch (...) {
             snapshot_error = std::current_exception();
         }
-    }};
+    });
 
     db.WaitUntilSnapshotEntered();
 
@@ -622,7 +622,7 @@ TEST_CASE("DataBaseSnapshotDrainsAndBlocksNewProducers")
     std::atomic_bool producer_started {false};
     std::atomic_bool producer_finished {false};
     std::exception_ptr producer_error;
-    thread producer_thread {[&] {
+    thread producer_thread = run_thread("BlockedProducer", [&] {
         producer_started = true;
 
         try {
@@ -633,7 +633,7 @@ TEST_CASE("DataBaseSnapshotDrainsAndBlocksNewProducers")
         }
 
         producer_finished = true;
-    }};
+    });
 
     while (!producer_started.load()) {
         std::this_thread::yield();

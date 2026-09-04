@@ -100,8 +100,6 @@ struct ServerSnapshotCaptureResult
     vector<ServerSnapshotBlocker> Blockers {};
     optional<ServerSnapshotState> State {};
     vector<uint8_t> Payload {};
-
-    [[nodiscard]] auto IsCreated() const noexcept -> bool { return ReachedQuiescence && Blockers.empty() && State.has_value() && !Payload.empty(); }
 };
 
 struct ServerSnapshotRestore
@@ -135,6 +133,7 @@ public:
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
+    [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
@@ -347,8 +346,9 @@ private:
 
     void SyncPoint();
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
-    [[nodiscard]] auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
+    auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
 
+    void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
     void ProcessPlayer(ptr<Player> player);

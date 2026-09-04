@@ -125,6 +125,32 @@ python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
 
 The check parses PE imports and fails on `CreateFile2`, the currently forbidden Windows 8+ import. The embedding project owns the concrete toolset installation, binary paths, package matrix, and CI gate; [Testing](../../contributing/testing/) owns the reusable validation rule.
 
+## Fetching through a mirror of your own
+
+`prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from
+whoever publishes them. Each of those is a machine you do not run, and a dropped connection costs the
+job that is waiting on it. An embedding project may put a host of its own in front of them; the engine
+only needs to be told where it is, so nothing about that host is compiled in and everything travels in
+the environment:
+
+| variable | what it configures |
+|---|---|
+| `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
+| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The MSVC SDK tree is built once, stored under `xwin-<version>-<arches>.tar.gz`, and downloaded whole afterwards. |
+| `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
+| `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
+
+Unset, every one of them leaves the download path exactly as it was.
+
+Two behaviours are deliberate. A download is checked against the upstream `Content-Length`, because a
+dropped connection ends the read instead of raising and an archive cut in half unpacks into a failure
+far from its cause. And a workspace cache that is empty, unreachable or refusing is only a **miss**:
+it exists to make the build faster and independent of other people's servers, not to become another
+way for it to fail.
+
+`xwin` fetches the Microsoft packages itself, so mirroring the engine's own downloads does not cover
+it — which is why its *result* is what the workspace cache holds.
+
 ## Where build logic lives
 
 Use the generated [BuildTools CLI reference](../../reference/buildtools/index.md) for the exact main commands, arguments, defaults, choices, and executable help output.

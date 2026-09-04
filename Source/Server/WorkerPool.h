@@ -117,7 +117,7 @@ private:
 
     [[nodiscard]] bool IsAnyJobReadyNow() const noexcept FO_TSA_REQUIRES(_mutex);
     [[nodiscard]] bool IsBarrierIdle() const noexcept FO_TSA_REQUIRES(_mutex);
-    [[nodiscard]] auto GetSchedulingTime() const noexcept -> nanotime FO_TSA_REQUIRES(_mutex);
+    [[nodiscard]] nanotime GetSchedulingTime() const noexcept FO_TSA_REQUIRES(_mutex);
 
     void EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept FO_TSA_REQUIRES(_mutex);
     void WorkerEntry(int32_t worker_index) noexcept;

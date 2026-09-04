@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import shlex
 import shutil
+import ssl
 import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
 import time
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -185,6 +188,17 @@ XWIN_HTTP_RETRY_COUNT = '5'
 
 DOWNLOAD_RETRY_COUNT = 5
 DOWNLOAD_RETRY_DELAY_SEC = 3
+DOWNLOAD_TIMEOUT_SEC = 900
+
+# Every archive here comes from a machine somebody else runs, and a dropped connection costs the job that
+# is waiting on it. A deployment may put a host of its own in front of them all; the engine only needs to
+# know where it is, so the addresses stay out of the engine and travel in the environment.
+# `FO_DOWNLOAD_MIRROR` mirrors an upstream file as `<mirror>/<host>/<path>`; `FO_WORKSPACE_CACHE` holds
+# prepared workspaces, which are built once and then downloaded whole
+DOWNLOAD_MIRROR_VAR = 'FO_DOWNLOAD_MIRROR'
+WORKSPACE_CACHE_VAR = 'FO_WORKSPACE_CACHE'
+CI_TOKEN_VAR = 'FO_CI_TOKEN'
+CI_CA_VAR = 'FO_CI_CA'
 
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
@@ -728,14 +742,162 @@ def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_
 	shutil.copytree(source_path, target_path, dirs_exist_ok=dirs_exist_ok)
 
 
+def download_mirror() -> str:
+	return os.environ.get(DOWNLOAD_MIRROR_VAR, '').rstrip('/')
+
+
+def mirrored_url(url: str) -> str:
+	"""The same file behind the configured mirror, or the URL unchanged when no mirror is configured.
+
+	A query is passed through rather than dropped: none of these downloads carry one, and a mirror that
+	refuses it is a visible failure, while silently fetching upstream instead would hide the day one appears.
+	"""
+	mirror = download_mirror()
+	if not mirror:
+		return url
+
+	parts = urllib.parse.urlsplit(url)
+	if parts.scheme not in ('http', 'https') or not parts.hostname:
+		return url
+
+	query = f'?{parts.query}' if parts.query else ''
+	return f'{mirror}/{parts.hostname}{parts.path}{query}'
+
+
+def ci_origins() -> set[str]:
+	"""The scheme and host of every configured CI address; nothing else may be handed the credential."""
+	found = set()
+
+	for name in (DOWNLOAD_MIRROR_VAR, WORKSPACE_CACHE_VAR):
+		parts = urllib.parse.urlsplit(os.environ.get(name, ''))
+
+		if parts.scheme and parts.netloc:
+			found.add(f'{parts.scheme}://{parts.netloc}')
+
+	return found
+
+
+def ci_request(url: str, data=None, method: str | None = None) -> urllib.request.Request:
+	request = urllib.request.Request(url, data=data, method=method)
+	token = os.environ.get(CI_TOKEN_VAR, '')
+	parts = urllib.parse.urlsplit(url)
+
+	# The credential belongs to our own host; an upstream address must never be handed it, whether it
+	# arrived by configuration or by a redirect
+	if token and f'{parts.scheme}://{parts.netloc}' in ci_origins():
+		request.add_header('Authorization', f'Bearer {token}')
+
+	return request
+
+
+def ci_ssl_context() -> ssl.SSLContext | None:
+	bundle = os.environ.get(CI_CA_VAR, '')
+
+	# Repairing a runner's own root store needs rights a build machine does not always grant, so a
+	# deployment may ship the anchors its host chains to. They are added to the system store, not swapped in
+	if not bundle or not Path(bundle).is_file():
+		return None
+
+	context = ssl.create_default_context()
+	context.load_verify_locations(cafile=bundle)
+	return context
+
+
+def fetch_url(url: str, target_path: Path) -> None:
+	request = ci_request(url)
+	context = ci_ssl_context()
+
+	with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_SEC, context=context) as response:
+		declared = response.headers.get('Content-Length')
+		written = 0
+
+		with target_path.open('wb') as handle:
+			while True:
+				chunk = response.read(1024 * 1024)
+				if not chunk:
+					break
+
+				handle.write(chunk)
+				written += len(chunk)
+
+		# A dropped connection ends the read instead of raising, and an archive cut in half unpacks into a
+		# failure far from its cause
+		if declared is not None and declared.isdigit() and written != int(declared):
+			raise OSError(f'received {written} of {declared} bytes')
+
+
+def file_digest(path: Path) -> str:
+	digest = hashlib.sha256()
+
+	with path.open('rb') as handle:
+		for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+			digest.update(chunk)
+
+	return digest.hexdigest()
+
+
+def upload_url(url: str, source_path: Path) -> None:
+	"""Send a file with its length and digest, so a store that checks them refuses a truncated upload."""
+	checksum = file_digest(source_path)
+
+	# The body streams from the open file, so it has to be passed at construction: a `data` attached to a
+	# finished request is not read, and the upload silently stores nothing
+	with source_path.open('rb') as handle:
+		request = ci_request(url, data=handle, method='PUT')
+		request.add_header('Content-Type', 'application/octet-stream')
+		request.add_header('Content-Length', str(source_path.stat().st_size))
+		request.add_header('X-Content-SHA256', checksum)
+		urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_SEC, context=ci_ssl_context()).close()
+
+
+def workspace_cache_url(name: str) -> str:
+	base = os.environ.get(WORKSPACE_CACHE_VAR, '').rstrip('/')
+	return f'{base}/{name}' if base else ''
+
+
+def workspace_cache_fetch(name: str, target_path: Path) -> bool:
+	"""Take a prepared workspace from the cache, or report that it has to be built.
+
+	A cache that is empty, unreachable or refusing must not fail the job: it exists to make the build
+	faster and independent of other people's servers, not to become another way for it to die.
+	"""
+	url = workspace_cache_url(name)
+
+	if not url:
+		return False
+
+	try:
+		fetch_url(url, target_path)
+		log('Workspace cache hit:', name)
+		return True
+	except OSError as ex:
+		log(f'Workspace cache miss for {name} ({type(ex).__name__}: {ex})')
+		remove_path_if_exists(target_path)
+		return False
+
+
+def workspace_cache_store(name: str, source_path: Path) -> None:
+	url = workspace_cache_url(name)
+
+	if not url:
+		return
+
+	try:
+		upload_url(url, source_path)
+		log('Workspace cache filled:', name)
+	except OSError as ex:
+		log(f'Workspace cache store failed for {name} ({type(ex).__name__}: {ex})')
+
+
 def download_file(url: str, target_path: Path, label: str) -> None:
-	log(f'Download {label}:', url)
+	source = mirrored_url(url)
+	log(f'Download {label}:', source)
 
 	# Release CDNs drop connections when several jobs start at once and every caller here fetches an archive the
 	# rest of the job depends on; xwin retries its own downloads, this covers fetching xwin and the Android archives
 	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
 		try:
-			urllib.request.urlretrieve(url, target_path)
+			fetch_url(source, target_path)
 			return
 		except OSError as ex:
 			if attempt == DOWNLOAD_RETRY_COUNT:
@@ -1312,6 +1474,24 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(xwin_extra_splat_dir)
 	ensure_dir(workspace)
 
+	# xwin fetches the SDK packages from Microsoft itself, so mirroring our own downloads does not cover it.
+	# What is cached instead is its result: the splat tree, keyed by the tool version and the arches in it
+	cached_name = f'xwin-{build_xwin_workspace_version(env)}.tar.gz'
+	cached_path = workspace / cached_name
+
+	if workspace_cache_fetch(cached_name, cached_path):
+		log('Unpack cached MSVC SDK:', cached_path)
+
+		with tarfile.open(cached_path, 'r:gz') as archive:
+			archive.extractall(workspace)
+
+		remove_path_if_exists(cached_path)
+
+		if xwin_splat_dir.is_dir():
+			return
+
+		log('Cached MSVC SDK did not contain the splat tree, building it')
+
 	url = f'https://github.com/Jake-Shadle/xwin/releases/download/{version}/{archive_name}'
 	download_file(url, archive_path, 'xwin')
 	log('Unpack xwin:', archive_path)
@@ -1333,6 +1513,13 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 		run_xwin_splat(xwin_binary, arch, arch_splat_dir)
 		copy_xwin_arch_libraries(arch_splat_dir, xwin_splat_dir, arch)
 	remove_path_if_exists(xwin_extra_splat_dir)
+
+	log('Pack MSVC SDK for the workspace cache:', cached_path)
+	with tarfile.open(cached_path, 'w:gz') as archive:
+		archive.add(xwin_splat_dir, arcname=xwin_splat_dir.name)
+
+	workspace_cache_store(cached_name, cached_path)
+	remove_path_if_exists(cached_path)
 
 
 def prepare_msan_libcxx_workspace(env: Mapping[str, str]) -> None:

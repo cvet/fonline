@@ -375,7 +375,10 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
     int64_t last = _engine->GetLastEntityId().underlying_value();
     int64_t start = _engine->Settings->EntityStartId;
-    _lastEntityId = std::max(last, start);
+
+    // A snapshot carries the exact boundary its world stopped at and validates it against the payload
+    // before this runs, so raising it to the configured floor would break the continuity it promises
+    _lastEntityId = _engine->IsRestoredFromSnapshot() ? last : std::max(last, start);
     _persistedEntityId = _lastEntityId;
 
     bool is_error = false;

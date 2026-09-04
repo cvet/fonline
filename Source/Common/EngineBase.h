@@ -176,6 +176,11 @@ public:
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
     [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui> { return _imgui; }
 
+    // Scripts run single-threaded while the engine comes up and hold nobody back, so the responsiveness
+    // budget that reports an overrunning call does not apply to them until it is serving
+    [[nodiscard]] auto IsStartingUp() const noexcept -> bool { return _startingUp; }
+    void SetStartingUp(bool starting_up) noexcept { _startingUp = starting_up; }
+
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     [[nodiscard]] auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
@@ -204,6 +209,7 @@ protected:
 
 private:
     refcount_ptr<ScriptImGui> _imgui;
+    std::atomic_bool _startingUp {false};
     mutable mutex _randomGeneratorLocker {};
     mutable random_generator _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {};
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
