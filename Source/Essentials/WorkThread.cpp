@@ -285,15 +285,16 @@ void WorkThread::ThreadEntry() noexcept
                     }
                 }
                 catch (const std::exception& ex) {
-                    // Reported before the handler runs: the handler is what tells the rest of the process
-                    // that the job failed, so what it sets in motion would reach the log ahead of the reason
-                    ReportExceptionAndContinue(ex);
+                    // A handler owns the reporting: it knows what the failure means to its owner and when to
+                    // say so, and reporting here too would repeat it behind everything the handler set going
+                    bool handled = false;
 
-                    // Exception handling
                     {
                         scoped_lock locker {_dataLocker};
 
                         if (_exceptionHandler) {
+                            handled = true;
+
                             try {
                                 if (_exceptionHandler(ex)) {
                                     _jobs.clear();
@@ -303,6 +304,10 @@ void WorkThread::ThreadEntry() noexcept
                                 ReportExceptionAndContinue(ex2);
                             }
                         }
+                    }
+
+                    if (!handled) {
+                        ReportExceptionAndContinue(ex);
                     }
                 }
                 catch (...) {

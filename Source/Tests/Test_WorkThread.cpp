@@ -139,20 +139,18 @@ TEST_CASE("WorkThread")
         CHECK(worker.GetJobsCount() == 0);
     }
 
-    SECTION("ExceptionHandlerRunsBeforeGlobalExceptionReport")
+    SECTION("AnExceptionHandlerTakesOverTheReporting")
     {
+        // The handler knows what the failure means to its owner and when to say so. Reporting here as
+        // well would print the same exception twice, the second copy behind everything the handler started
         auto prev_callback = GetExceptionCallback();
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
 
-        WorkThread worker {"ExceptionOrderWorker"};
+        WorkThread worker {"ExceptionHandlerWorker"};
         std::atomic_bool handler_called = false;
         std::atomic_bool report_called = false;
-        std::atomic_bool report_saw_handler = false;
 
-        SetExceptionCallback([&](string_view, const CatchedStackTraceData&, bool) {
-            report_saw_handler = handler_called.load();
-            report_called = true;
-        });
+        SetExceptionCallback([&](string_view, const CatchedStackTraceData&, bool) { report_called = true; });
 
         worker.SetExceptionHandler([&](const std::exception&) {
             handler_called = true;
@@ -164,8 +162,24 @@ TEST_CASE("WorkThread")
         worker.Wait();
 
         CHECK(handler_called.load());
+        CHECK_FALSE(report_called.load());
+    }
+
+    SECTION("WithoutAHandlerTheExceptionIsStillReported")
+    {
+        auto prev_callback = GetExceptionCallback();
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+
+        WorkThread worker {"ExceptionReportWorker"};
+        std::atomic_bool report_called = false;
+
+        SetExceptionCallback([&](string_view, const CatchedStackTraceData&, bool) { report_called = true; });
+
+        worker.AddJob([]() -> optional<timespan> { throw std::runtime_error("boom"); });
+
+        worker.Wait();
+
         CHECK(report_called.load());
-        CHECK(report_saw_handler.load());
     }
 
     SECTION("ClearRemovesQueuedJobsWhilePaused")

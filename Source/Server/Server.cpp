@@ -123,7 +123,7 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     }
 
     _starter.SetExceptionHandler([this](const std::exception& ex) FO_DEFERRED {
-        ignore_unused(ex);
+        ReportExceptionAndContinue(ex);
 
         _startingError = true;
 
