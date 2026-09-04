@@ -133,6 +133,7 @@ public:
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
+    [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
