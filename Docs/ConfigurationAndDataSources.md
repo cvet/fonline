@@ -122,6 +122,12 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 - `MountDir(dir, recursive, non_cached, maybe_not_available)` for disk directory resources;
 - `MountPack(dir, name, maybe_not_available)` for packed resource data.
 
+`MountPack` probes by extension in a fixed order: `.fores`, then `.zip` and `.bos` (both read as ZIP), then
+`.dat` (Fallout). `.fores` is the engine pack format - one file holding a header, the payload blobs and the
+index over them, with the pack identity readable from the first bytes. Its contract is
+[ResourcePackFormat.md](ResourcePackFormat.md). A file that claims the `FORS` magic and fails validation throws; it is never
+downgraded to an empty source and never falls back to a sibling `.zip` of the same pack.
+
 `FileSystem` then combines sources and offers:
 
 - `AddDirSource()`, `AddPackSource()`, `AddPacksSource()`, and `AddCustomSource()`;

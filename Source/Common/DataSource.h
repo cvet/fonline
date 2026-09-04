@@ -39,6 +39,11 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataSourceException);
 
+// Shared by the pack sources: the name filter every source applies, and the deleter-carrying holder that hands
+// a decoded file buffer to the caller
+auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>;
+auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>;
+
 // One entry of a source's content, as handed to a file system that indexes what it mounted
 struct IndexedFile
 {

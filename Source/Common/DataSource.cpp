@@ -33,12 +33,13 @@
 
 #include "DataSource.h"
 #include "EmbeddedResources.gen.inc"
+#include "ResourcePack.h"
 
 #include "minizip/unzip.h"
 
 FO_BEGIN_NAMESPACE
 
-static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>
+auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -69,7 +70,7 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
     return result;
 }
 
-static auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
+auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -317,6 +318,9 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
     }
     else if (name == "FilesList") {
         return SafeAlloc::MakeUnique<FilesList>();
+    }
+    else if (is_file_present(strex("{}.fores", path))) {
+        return SafeAlloc::MakeUnique<ResourcePackSource>(strex("{}.fores", path));
     }
     else if (is_file_present(strex("{}.zip", path))) {
         return SafeAlloc::MakeUnique<ZipFile>(strex("{}.zip", path));
