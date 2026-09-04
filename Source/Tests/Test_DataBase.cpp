@@ -198,6 +198,29 @@ namespace
             _blockedReadCv.notify_all();
         }
 
+        void BlockSnapshot()
+        {
+            scoped_lock locker {_snapshotTestLocker};
+            _snapshotBlocked = true;
+            _snapshotEntered = false;
+        }
+
+        void WaitUntilSnapshotEntered()
+        {
+            unique_lock locker {_snapshotTestLocker};
+            _snapshotTestCv.wait(locker, [this]() FO_TSA_REQUIRES(_snapshotTestLocker) { return _snapshotEntered; });
+        }
+
+        void UnblockSnapshot()
+        {
+            {
+                scoped_lock locker {_snapshotTestLocker};
+                _snapshotBlocked = false;
+            }
+
+            _snapshotTestCv.notify_all();
+        }
+
     protected:
         void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
         {
@@ -331,6 +354,18 @@ namespace
             }
         }
 
+        auto CreateSnapshotData() -> vector<uint8_t> override
+        {
+            {
+                unique_lock locker {_snapshotTestLocker};
+                _snapshotEntered = true;
+                _snapshotTestCv.notify_all();
+                _snapshotTestCv.wait(locker, [this]() FO_TSA_REQUIRES(_snapshotTestLocker) { return !_snapshotBlocked; });
+            }
+
+            return vector<uint8_t> {1, 2, 3, 4};
+        }
+
     private:
         static auto SettingsPtr(DataBaseSettings& settings) noexcept -> ptr<DataBaseSettings>
         {
@@ -347,9 +382,11 @@ namespace
         mutable mutex _readStatsLocker {};
         mutable mutex _mirrorLocker {};
         mutable mutex _restoreLocker {};
+        mutable mutex _snapshotTestLocker {};
         mutable std::condition_variable_any _blockedReadCv {};
         mutable std::condition_variable_any _mirrorCv {};
         mutable std::condition_variable_any _restoreCv {};
+        mutable std::condition_variable_any _snapshotTestCv {};
         mutable DataBase::Collections _collections FO_TSA_GUARDED_BY(_collectionsLocker) {};
         mutable unordered_map<DataBaseKey, size_t> _recordReadCount FO_TSA_GUARDED_BY(_readStatsLocker) {};
         mutable function<void()> _onGetRecord FO_TSA_GUARDED_BY(_callbackLocker) {};
@@ -360,6 +397,8 @@ namespace
         bool _pendingChangesRestored FO_TSA_GUARDED_BY(_restoreLocker) {};
         bool _strictRecordSemantics FO_TSA_GUARDED_BY(_collectionsLocker) {};
         bool _failBackendWrites FO_TSA_GUARDED_BY(_collectionsLocker) {};
+        bool _snapshotBlocked FO_TSA_GUARDED_BY(_snapshotTestLocker) {};
+        bool _snapshotEntered FO_TSA_GUARDED_BY(_snapshotTestLocker) {};
     };
 
     auto MakeDoc(std::initializer_list<pair<string_view, int64_t>> values) -> AnyData::Document
@@ -547,6 +586,74 @@ TEST_CASE("DataBaseCommitOperationsPreserveOrder")
     REQUIRE(!committed_doc.Empty());
     CHECK(committed_doc["a"].AsInt64() == 3);
     CHECK(committed_doc["b"].AsInt64() == 2);
+}
+
+TEST_CASE("DataBaseSnapshotDrainsAndBlocksNewProducers")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.ToHashedString("test_collection");
+    ident_t record_id = ident_t {1001};
+
+    db.StartCommitChanges();
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.BlockSnapshot();
+
+    std::exception_ptr snapshot_error;
+    thread snapshot_thread {[&] {
+        try {
+            (void)db.CreateSnapshot();
+        }
+        catch (...) {
+            snapshot_error = std::current_exception();
+        }
+    }};
+
+    db.WaitUntilSnapshotEntered();
+
+    auto drained_doc = db.SnapshotRecord(collection, record_id);
+    CHECK_FALSE(drained_doc.Empty());
+
+    if (!drained_doc.Empty()) {
+        CHECK(drained_doc["value"].AsInt64() == 1);
+    }
+
+    std::atomic_bool producer_started {false};
+    std::atomic_bool producer_finished {false};
+    std::exception_ptr producer_error;
+    thread producer_thread {[&] {
+        producer_started = true;
+
+        try {
+            db.Update(collection, record_id, "value", numeric_cast<int64_t>(2));
+        }
+        catch (...) {
+            producer_error = std::current_exception();
+        }
+
+        producer_finished = true;
+    }};
+
+    while (!producer_started.load()) {
+        std::this_thread::yield();
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {20});
+    CHECK_FALSE(producer_finished.load());
+
+    db.UnblockSnapshot();
+    snapshot_thread.join();
+    producer_thread.join();
+
+    CHECK_FALSE(snapshot_error);
+    CHECK_FALSE(producer_error);
+    CHECK(producer_finished.load());
+
+    db.WaitCommitChanges();
+    auto updated_doc = db.SnapshotRecord(collection, record_id);
+    REQUIRE(!updated_doc.Empty());
+    CHECK(updated_doc["value"].AsInt64() == 2);
 }
 
 TEST_CASE("DataBaseRejectsNonFiniteFloatUpdates")
@@ -1679,6 +1786,10 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 1);
     CHECK(db.GetDbRequestsPerMinute() >= 1);
+    // A backend without a byte representation refuses in both directions instead of returning nothing
+    CHECK_THROWS_AS((void)db.CreateSnapshot(), DataBaseException);
+    CHECK_THROWS_AS(db.RestoreSnapshot(vector<uint8_t> {1, 2, 3}), DataBaseException);
+    CHECK_THROWS_AS(db.RestoreSnapshot(vector<uint8_t> {}), DataBaseException);
 }
 
 #if FO_HAVE_SQLITE
@@ -1795,6 +1906,70 @@ TEST_CASE("SQLiteDataBasePersistsDocumentsAcrossReconnects")
         auto string_ids = db.GetAllStringIds(string_collection);
         REQUIRE(string_ids.size() == 1);
         CHECK(string_ids.front() == std::get<string>(string_id));
+    }
+}
+
+TEST_CASE("SQLiteDataBaseSnapshotRoundTripsThroughBytes")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-snapshot"};
+    string source_storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "source");
+    hstring collection = hashes.ToHashedString("test_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
+    ident_t record_id = ident_t {1001};
+    string source_connection = strex("DbSQLite {}", source_storage_dir).str();
+    vector<uint8_t> snapshot_data;
+
+    {
+        auto source = ConnectToDataBase(&settings, source_connection, collection_schemas, {});
+        source.StartCommitChanges();
+        source.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+
+        // CreateSnapshot drains the commit queue itself and holds new producers until the backend copy ends.
+        // The result is plain bytes: the database never names a file or touches a directory
+        snapshot_data = source.CreateSnapshot();
+        CHECK_FALSE(snapshot_data.empty());
+
+        // A SQLite serialization starts with the file format header, so the bytes are a real page image
+        REQUIRE(snapshot_data.size() > 16);
+        CHECK(string_view {reinterpret_cast<const char*>(snapshot_data.data()), 15} == string_view {"SQLite format 3"});
+
+        source.Update(collection, record_id, "value", numeric_cast<int64_t>(2));
+        source.WaitCommitChanges();
+
+        auto changed_doc = source.Get(collection, record_id);
+        REQUIRE(!changed_doc.Empty());
+        CHECK(changed_doc["value"].AsInt64() == 2);
+
+        // Restoring the captured bytes puts the live storage back to the captured content
+        source.RestoreSnapshot(snapshot_data);
+
+        auto restored_doc = source.Get(collection, record_id);
+        REQUIRE(!restored_doc.Empty());
+        CHECK(restored_doc["value"].AsInt64() == 1);
+
+        CHECK_THROWS_AS(source.RestoreSnapshot(vector<uint8_t> {}), DataBaseException);
+        CHECK_THROWS_AS(source.RestoreSnapshot(vector<uint8_t> {1, 2, 3, 4, 5, 6, 7, 8}), DataBaseException);
+    }
+
+    {
+        // The restore survives a reconnect, so it reached the storage file rather than a memory copy
+        auto source = ConnectToDataBase(&settings, source_connection, collection_schemas, {});
+        auto doc = source.Get(collection, record_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 1);
+    }
+
+    {
+        // The same bytes load into an unrelated storage
+        string other_storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "other");
+        auto other = ConnectToDataBase(&settings, strex("DbSQLite {}", other_storage_dir).str(), collection_schemas, {});
+        other.RestoreSnapshot(snapshot_data);
+
+        auto doc = other.Get(collection, record_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 1);
     }
 }
 
