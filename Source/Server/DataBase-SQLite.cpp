@@ -372,10 +372,8 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        // Deserializing straight into the live handle would detach it from its file, so the bytes are opened
-        // as a separate database and copied back page by page into the live storage. That database is a scratch
-        // file rather than a deserialized memory image: copying into a WAL destination reaches for the source's
-        // own file, and a memory source has none, which SQLite answers with SQLITE_CANTOPEN
+        // A scratch file, not a deserialized memory image: copying into a WAL destination reaches for the
+        // source's own file, and a memory source has none, which SQLite answers with SQLITE_CANTOPEN
         string source_path = strex("{}/Storage.snapshot-restore", _storageDir);
 
         FO_VERIFY_AND_THROW(fs_write_file(source_path, snapshot_data), "Cannot write the snapshot restore scratch database", source_path);
