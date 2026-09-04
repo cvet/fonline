@@ -76,6 +76,37 @@ TEST_CASE("GameTimer")
         CHECK(timer.GetSynchronizedTime() >= sync_base);
     }
 
+    SECTION("PauseFreezesFrameAndSynchronizedTime")
+    {
+        GameTimer timer {&settings};
+        synctime sync_base {654321};
+
+        timer.SetSynchronizedTime(sync_base);
+        timer.FrameAdvance(false);
+        timer.Pause();
+
+        CHECK(timer.IsPaused());
+        CHECK_THROWS_AS(timer.Pause(), VerificationException);
+
+        nanotime paused_frame_time = timer.GetFrameTime();
+        synctime paused_sync_time = timer.GetSynchronizedTime();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        timer.FrameAdvance(false);
+
+        CHECK(timer.GetFrameTime() == paused_frame_time);
+        CHECK(timer.GetFrameDeltaTime() == timespan {});
+        CHECK(timer.GetSynchronizedTime() == paused_sync_time);
+
+        timer.Resume();
+        CHECK_FALSE(timer.IsPaused());
+        CHECK_THROWS_AS(timer.Resume(), VerificationException);
+
+        timer.FrameAdvance(false);
+        CHECK(timer.GetFrameTime() >= paused_frame_time);
+        CHECK(timer.GetSynchronizedTime() >= paused_sync_time);
+    }
+
     SECTION("MonotonicSynchronizedTimeDoesNotRollbackAndCatchesUp")
     {
         GameTimer timer {&settings};
