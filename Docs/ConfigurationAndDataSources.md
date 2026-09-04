@@ -148,7 +148,7 @@ all of it, and a source whose answer depends on the world at call time returns `
 so a source that says nothing keeps being probed - a missed override costs a lookup, a wrong one serves a file that
 has since moved.
 
-Every pack-backed source offers a snapshot - `ZipFile`, `EmbeddedFile`, `FalloutDat`, `FilesList` - and so does the
+Every pack-backed source offers a snapshot - `ResourcePackSource`, `ZipFile`, `EmbeddedFile`, `FalloutDat` - and so does the
 empty stand-in a `maybe_not_available` mount produces when its pack is absent. That last one is not a detail:
 `GetClientResources()` mounts every pack name a second time against the writable overlay so a downloaded pack wins
 over the installed copy, and on a client that has downloaded nothing yet every one of those is absent. If an absent

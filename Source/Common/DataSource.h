@@ -39,6 +39,14 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataSourceException);
 
+// The pack compiled into the executable rather than shipped as a file, so it is mounted by this name instead
+// of found on disk, and packaging embeds it instead of writing an artifact
+constexpr string_view EMBEDDED_PACK_NAME = "Embedded";
+
+// The engine own base resources. The bootstrap mounts it by name beside the embedded pack, to bring the
+// window up before the game resource set exists
+constexpr string_view CORE_PACK_NAME = "Core";
+
 // Shared by the pack sources: the name filter every source applies, and the deleter-carrying holder that hands
 // a decoded file buffer to the caller
 auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>;
