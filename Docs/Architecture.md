@@ -68,6 +68,8 @@ This layer should stay reusable. Game rules should generally be expressed throug
 
 This API is a persistence primitive, not a complete snapshot boundary. An authoritative server must still stop gameplay mutation before it captures the generator together with the corresponding world, time, event, and storage state. Client presentation, transport, and subsystem-specific generators are independent and are not included in this state.
 
+The server-side `RunInQuiescence()` operation supplies that reusable in-process stop boundary: new connection admission closes, main/worker gameplay execution drains, frame/synchronized time and delayed-job scheduling freeze, the live entity graph is covered, and synchronized-time/RNG state is captured before a callback runs. `ServerEngine::CreateSnapshot()` composes the stable subset: it rejects counted runtime-only script/delayed/time-event/movement blockers, flushes exact time/id, and returns the database payload bytes together with the state that describes them. Fresh construction takes that pair back, restores the random state before startup jobs, loads the payload into storage, and validates its time/id before gameplay hooks. Atomic slot publication, persistent time-event/movement forms, project eligibility, UI policy, integrity/rotation, and coordinated client reload remain embedding-layer work. See [ServerRuntime.md](ServerRuntime.md) and [Persistence.md](Persistence.md) for the exact guarantees and exclusions.
+
 ## Client and server layers
 
 `Source/Client/Client.h` includes the client-side composition points: application integration, resource/cache access, views for critters/items/locations/maps, effects, rendering-facing structures, and client connection code.

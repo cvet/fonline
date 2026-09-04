@@ -32,6 +32,7 @@
 //
 
 #include "Server.h"
+#include "AngelScriptBackend.h"
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "Application.h"
@@ -50,21 +51,37 @@ extern void ServerInitHook(ptr<ServerEngine>);
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
 
-auto GetServerResources(GlobalSettings& settings) -> FileSystem
+static void ValidateServerSnapshotState(const ServerSnapshotState& state)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FileSystem resources;
-    resources.AddPacksSource(settings.Packaged ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
-    return resources;
+    if (state.FormatVersion != ServerSnapshotState::FORMAT_VERSION) {
+        throw ServerSnapshotException("Unsupported server snapshot format version", state.FormatVersion);
+    }
+    if (state.CompatibilityVersion.empty() || state.CompatibilityVersion.size() > 512) {
+        throw ServerSnapshotException("Invalid snapshot compatibility version");
+    }
+    if (state.MetadataVersion.empty() || state.MetadataVersion.size() > 512) {
+        throw ServerSnapshotException("Invalid snapshot metadata version");
+    }
+    if (state.SynchronizedTime.milliseconds() < 0) {
+        throw ServerSnapshotException("Invalid snapshot synchronized time", state.SynchronizedTime);
+    }
+    if (state.LastEntityId.underlying_value() < 0) {
+        throw ServerSnapshotException("Invalid snapshot entity id boundary", state.LastEntityId);
+    }
+    if (std::ranges::all_of(state.RandomState, [](uint64_t part) { return part == 0; })) {
+        throw ServerSnapshotException("Invalid snapshot random state: every generator word is zero");
+    }
 }
 
-ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources) :
+ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot) :
     BaseEngine(settings, std::move(resources), [&] { RegisterServerMetadata(this, &resources); }),
     EntityMngr(make_ptr(this)),
     MapMngr(make_ptr(this)),
     CrMngr(make_ptr(this)),
-    ItemMngr(make_ptr(this))
+    ItemMngr(make_ptr(this)),
+    _restoreSnapshot {std::move(restore_snapshot)}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -72,6 +89,27 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources)
     WriteLog("Updater version: {}", FO_UPDATER_VERSION);
     WriteLog("Compatibility version: {}", Settings->CompatibilityVersion);
     WriteLog("Metadata version: {}", GetMetadataVersion());
+
+    if (_restoreSnapshot) {
+        ValidateServerSnapshotState(_restoreSnapshot->State);
+
+        if (_restoreSnapshot->Payload.empty()) {
+            throw ServerSnapshotException("Snapshot restore requires a database payload");
+        }
+        if (_restoreSnapshot->State.CompatibilityVersion != Settings->CompatibilityVersion) {
+            throw ServerSnapshotException("Snapshot compatibility version mismatch", _restoreSnapshot->State.CompatibilityVersion, Settings->CompatibilityVersion);
+        }
+        if (_restoreSnapshot->State.MetadataVersion != GetMetadataVersion()) {
+            throw ServerSnapshotException("Snapshot metadata version mismatch", _restoreSnapshot->State.MetadataVersion, GetMetadataVersion());
+        }
+
+        try {
+            RestoreRandomState(_restoreSnapshot->State.RandomState);
+        }
+        catch (const std::exception& ex) {
+            throw ServerSnapshotException("Snapshot random state is invalid", ex.what());
+        }
+    }
 
     _starter.SetExceptionHandler([this](const std::exception& ex) FO_DEFERRED {
         ignore_unused(ex);
@@ -416,6 +454,13 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
         GetApp()->RequestQuit(false);
     });
 
+    if (_restoreSnapshot) {
+        // The world is replaced before anything reads it, and the payload is released right after so a
+        // long-lived server does not keep a second copy of the whole database in memory
+        DbStorage.RestoreSnapshot(_restoreSnapshot->Payload);
+        _restoreSnapshot->Payload = {};
+    }
+
     return std::nullopt;
 }
 
@@ -603,6 +648,18 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         else {
             if (!PropertiesSerializer::LoadFromDocument(GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
                 throw ServerInitException("Failed to load globals document");
+            }
+        }
+
+        if (_restoreSnapshot) {
+            if (globals_doc.Empty()) {
+                throw ServerInitException("Snapshot restore requires a stored global state");
+            }
+            if (GetSynchronizedTime() != _restoreSnapshot->State.SynchronizedTime) {
+                throw ServerInitException("Snapshot synchronized time does not match its database payload", GetSynchronizedTime(), _restoreSnapshot->State.SynchronizedTime);
+            }
+            if (GetLastEntityId() != _restoreSnapshot->State.LastEntityId) {
+                throw ServerInitException("Snapshot entity id boundary does not match its database payload", GetLastEntityId(), _restoreSnapshot->State.LastEntityId);
             }
         }
 
@@ -1026,6 +1083,15 @@ auto ServerEngine::GetCompletedServerJobsCount() const -> uint64_t
     return _completedServerStatsJobs.load(std::memory_order_relaxed);
 }
 
+auto ServerEngine::IsConnectionAdmissionOpen() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_connectionAdmissionLocker};
+
+    return _connectionAdmissionOpen && _started && !_shutdownInProgress;
+}
+
 // Zero until the pool is created in InitMetadataJob, so an aborted startup reports no workers rather than faulting
 auto ServerEngine::GetWorkerThreadCount() const -> int32_t
 {
@@ -1037,6 +1103,10 @@ auto ServerEngine::GetWorkerThreadCount() const -> int32_t
 void ServerEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!GetCurrentSyncContext(), "Server shutdown must be requested outside a server execution context");
+
+    scoped_lock quiescence_locker {_quiescenceLocker};
 
     WriteLog("Stop server");
 
@@ -1295,6 +1365,157 @@ void ServerEngine::Unlock()
     }
 }
 
+auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!callback) {
+        throw ServerQuiescenceException("Server quiescence requires a callback");
+    }
+    if (GetCurrentSyncContext()) {
+        throw ServerQuiescenceException("Server quiescence must be requested outside a server execution context");
+    }
+
+    scoped_lock quiescence_locker {_quiescenceLocker};
+
+    if (!_started || _shutdownInProgress) {
+        throw ServerQuiescenceException("Server quiescence requires a running server");
+    }
+    if (GameTime.IsPaused()) {
+        throw ServerQuiescenceException("Server game timer is already paused");
+    }
+
+    bool admission_was_open;
+    {
+        scoped_lock admission_locker {_connectionAdmissionLocker};
+        admission_was_open = _connectionAdmissionOpen;
+        _connectionAdmissionOpen = false;
+    }
+
+    auto restore_admission = scope_exit([this, admission_was_open]() noexcept {
+        safe_call([this, admission_was_open] {
+            scoped_lock admission_locker {_connectionAdmissionLocker};
+            _connectionAdmissionOpen = admission_was_open;
+        });
+    });
+
+    if (!Lock(max_wait_time)) {
+        return false;
+    }
+
+    auto unlock = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+
+    GameTime.Pause();
+    auto resume_time = scope_exit([this]() noexcept { safe_call([this] { GameTime.Resume(); }); });
+
+    _workerPool->FreezeSchedulingTime();
+    auto resume_scheduling_time = scope_exit([this]() noexcept { safe_call([this] { _workerPool->ResumeSchedulingTime(); }); });
+
+    vector<refcount_ptr<Player>> not_logged_in_players;
+    {
+        scoped_lock locker {_notLoggedInPlayersLocker};
+        not_logged_in_players = _notLoggedInPlayers;
+    }
+
+    SyncWholeWorld(*RequireCurrentSyncContext(), not_logged_in_players);
+
+    ServerQuiescenceState state;
+    state.SynchronizedTime = GameTime.GetSynchronizedTime();
+    state.RandomState = CaptureRandomState();
+
+    callback(state);
+    return true;
+}
+
+auto ServerEngine::CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(GameTime.IsPaused(), "Snapshot eligibility requires a paused game timer");
+    FO_VERIFY_AND_THROW(_workerPool, "Snapshot eligibility requires an initialized worker pool");
+
+    vector<ServerSnapshotBlocker> blockers;
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    if (auto backend = GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX); backend) {
+        if (auto context_mngr = backend->GetContextMngr(); context_mngr) {
+            auto diagnostics = context_mngr->GetDiagnostics();
+
+            if (diagnostics.SuspendedContexts != 0) {
+                blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::SuspendedScriptContexts, .Count = diagnostics.SuspendedContexts});
+            }
+            if (diagnostics.ActiveContexts != 0) {
+                blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::ActiveScriptContexts, .Count = diagnostics.ActiveContexts});
+            }
+            if (diagnostics.OtherBusyContexts != 0) {
+                blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::RetainedScriptContexts, .Count = diagnostics.OtherBusyContexts});
+            }
+        }
+    }
+#endif
+
+    auto worker_diagnostics = _workerPool->GetDiagnostics();
+
+    if (worker_diagnostics.AnonymousScheduledJobs != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::DelayedCallbacks, .Count = worker_diagnostics.AnonymousScheduledJobs});
+    }
+
+    auto time_event_diagnostics = TimeEventMngr.GetDiagnostics();
+
+    if (time_event_diagnostics.EventCount != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::TimeEvents, .Count = time_event_diagnostics.EventCount});
+    }
+
+    size_t moving_critters = 0;
+
+    for (const auto& critter : EntityMngr.GetCritters()) {
+        if (!critter->IsDestroyed() && critter->IsMoving()) {
+            moving_critters++;
+        }
+    }
+
+    if (moving_critters != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::CritterMovements, .Count = moving_critters});
+    }
+
+    return blockers;
+}
+
+auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ServerSnapshotCaptureResult result;
+    result.ReachedQuiescence = RunInQuiescence(max_wait_time, [&](const ServerQuiescenceState& quiescence_state) {
+        result.Blockers = CollectSnapshotBlockers();
+
+        if (!result.Blockers.empty()) {
+            return;
+        }
+
+        EntityMngr.FlushExactEntityId();
+        FlushExactSyncTime();
+
+        ServerSnapshotState state;
+        state.CompatibilityVersion = Settings->CompatibilityVersion;
+        state.MetadataVersion = string {GetMetadataVersion()};
+        state.SynchronizedTime = quiescence_state.SynchronizedTime;
+        state.LastEntityId = GetLastEntityId();
+        state.RandomState = quiescence_state.RandomState;
+
+        result.Payload = DbStorage.CreateSnapshot();
+
+        if (result.Payload.empty()) {
+            throw ServerSnapshotException("Snapshot database payload is empty");
+        }
+
+        ValidateServerSnapshotState(state);
+        result.State = std::move(state);
+    });
+
+    return result;
+}
+
 void ServerEngine::SyncPoint()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1481,6 +1702,7 @@ void ServerEngine::DrawGui()
             info_row("Worker pool queued keys", has_worker_pool ? strex("{}", worker_pool_diagnostics.QueuedKeys).str() : string("n/a"));
             info_row("Worker pool active workers", has_worker_pool ? strex("{}", worker_pool_diagnostics.ActiveWorkers).str() : string("n/a"));
             info_row("Worker pool paused", has_worker_pool ? strex("{}", worker_pool_diagnostics.Paused).str() : string("n/a"));
+            info_row("Worker pool scheduling time frozen", has_worker_pool ? strex("{}", worker_pool_diagnostics.SchedulingTimeFrozen).str() : string("n/a"));
             info_row("CPU system load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuSystemLoad)).str() : string("n/a"));
             info_row("CPU process load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessLoad)).str() : string("n/a"));
             info_row("CPU process core load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessCoreLoad)).str() : string("n/a"));
@@ -1873,7 +2095,9 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_started || _shutdownInProgress) {
+    unique_lock admission_locker {_connectionAdmissionLocker};
+
+    if (!_connectionAdmissionOpen || !_started || _shutdownInProgress) {
         net_connection->Disconnect();
         return;
     }
