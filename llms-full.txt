@@ -177,7 +177,7 @@ When behavior changes in a noticeable way, the owning document is updated in the
 ===== BEGIN DOCUMENT documentation-home =====
 Source: Docs/en/index.md
 Canonical URL: https://fonline.ru/Docs/en/
-Content SHA-256: 724476e7a2180571527c4e4ecd9cb06c73e801cfe791096198fd454003eda3ff
+Content SHA-256: fc22a1f7d15f57e32c438fb7e36cb65d284f401c469c4ae422f8a29d23df937d
 
 ---
 layout: default
@@ -258,8 +258,9 @@ balance, quests, dialog content, visual policy, and localization policy.
 - [Entity and Property Model](explanation/entity-and-property-model/index.md),
   [Maps, Movement, and Geometry](explanation/maps-and-movement.md),
   [Authority and Networking](explanation/authority-and-networking/index.md), and
-  [Persistence](explanation/persistence/index.md) describe the reusable world
-  model.
+  [Persistence](explanation/persistence/index.md) — the database facade, commit
+  queue, backend-consistent snapshots, and recovery logs — describe the reusable
+  world model.
 - [Client Runtime](explanation/runtime/client.md),
   [Server Runtime](explanation/runtime/server.md),
   [Frontend and Rendering](explanation/rendering/index.md), and
@@ -1047,7 +1048,7 @@ Validate engine changes through a real embedding project whenever possible. The 
 ===== BEGIN DOCUMENT engine-architecture =====
 Source: Docs/en/explanation/architecture/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/architecture/
-Content SHA-256: c029d979974afe0265f7b765970c086c3ce9c9f2355321fb74760dfc9ae2b6f4
+Content SHA-256: daaf491a9bbb5a3ede51109a72fb2ba0519bb8117b6a35280a9fa24233610bd0
 
 ---
 layout: default
@@ -1151,6 +1152,14 @@ See [Applications](../../reference/applications.md) for the application map.
 - `ImageWriter.h` — TGA/PNG encoders for diagnostic images written by the engine, including screenshots, render-target captures, and atlas dumps.
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.
+
+### Runtime random state
+
+`random_generator` owns its own state: `capture_state()` returns the four 64-bit words that define the sequence, and `restore_state()` puts them back, rejecting the all-zero state because xoshiro256++ sits at a fixed point there. `BaseEngine::CaptureRandomState()` and `RestoreRandomState()` delegate to the generator under the mutex it shares with random draws. There is no engine-level serialization format; a caller that needs to store the state serializes the four words itself.
+
+This API is a persistence primitive, not a complete snapshot boundary. An authoritative server must still stop gameplay mutation before it captures the generator together with the corresponding world, time, event, and storage state. Client presentation, transport, and subsystem-specific generators are independent and are not included in this state.
+
+The server-side `RunInQuiescence()` operation supplies that reusable in-process stop boundary: new connection admission closes, main/worker gameplay execution drains, frame/synchronized time and delayed-job scheduling freeze, the live entity graph is covered, and synchronized-time/RNG state is captured before a callback runs. `ServerEngine::CreateSnapshot()` composes the stable subset: it rejects counted runtime-only script/delayed/time-event/movement blockers, flushes exact time/id, and returns the database payload bytes together with the state that describes them. Fresh construction takes that pair back, restores the random state before startup jobs, loads the payload into storage, and validates its time/id before gameplay hooks. Atomic slot publication, persistent time-event/movement forms, project eligibility, UI policy, integrity/rotation, and coordinated client reload remain embedding-layer work. See [Server Runtime](../runtime/server.md) and [Persistence](../persistence/index.md) for the exact guarantees and exclusions.
 
 ## Client and server layers
 
@@ -17291,7 +17300,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT persistence =====
 Source: Docs/en/explanation/persistence/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/persistence/
-Content SHA-256: 0cc2d410296794ff1b79efe7db64f834c30841f95e0d6c22f01ca02d5076308c
+Content SHA-256: 5ea157746d9ac5839d7c0209c905160bca4b177c830f8c2142a6cee8c187a7fa
 
 ---
 layout: default
@@ -17303,7 +17312,7 @@ permalink: /Docs/en/explanation/persistence/
 
 # Persistence
 
-This document explains the server-side database abstraction, collection/key model, commit queue, recovery logs, and backend implementations.
+This document explains the server-side database abstraction, collection/key model, commit queue, backend-consistent snapshots, recovery logs, and backend implementations.
 
 Use it when changing `Source/Server/DataBase.*`, database settings, entity save/load code, or persistence tests.
 
@@ -17322,6 +17331,7 @@ Do not put live credentials, production connection strings, or host-specific rec
 - reads: `Get()`, `Valid()`;
 - writes: `Insert()`, `Update()`, `Delete()`;
 - commit control: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
+- backend snapshot: `CreateSnapshot()` and `RestoreSnapshot(bytes)`;
 - debug UI: `DrawGui()`.
 
 `ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
@@ -17357,6 +17367,7 @@ Core types:
 
 Backends can override:
 
+- `CreateSnapshotData()` and `RestoreSnapshotData()` when the backend can represent its whole content as bytes;
 - `TryReconnect()`;
 - `DrawGui()`;
 - test hooks such as `OnCommitOperationWrittenToOpLog()` and `OnPendingChangesRestored()`.
@@ -17393,6 +17404,18 @@ Writes are represented as commit operations:
 - `CommitThreadEntry()` runs the background loop.
 
 The public `DataBase` facade forwards write calls into this machinery. Backend write implementations should remain focused on durable record operations, while shared logic handles scheduling, operation logs, panic/retry policy, and metrics.
+
+## Backend-consistent snapshots
+
+`DataBase::CreateSnapshot()` returns the whole database content as bytes and `RestoreSnapshot(bytes)` puts such a content back. The database never names a file, creates a directory, or decides where a snapshot lives: storing the bytes is the caller's business. Shared `DataBaseImpl` logic requires an active commit thread for a capture, drains the pending commit queue, rejects a failed backend, then blocks new `Insert()` / `Update()` / `Delete()` producers until the backend operation returns or throws. A restore requires an already drained queue and blocks producers the same way. Concurrent snapshot operations serialize. Reads may continue, subject to the backend's own storage lock.
+
+A backend without a byte representation throws `DataBaseException` in both directions, so an unsupported backend fails loudly instead of returning an empty snapshot. These operations do not select slot names, publish packages, write manifests, capture Engine/runtime state, or authorize a save; those policies belong to the embedding session controller. The caller must first stop gameplay/runtime producers and materialize any exact state that needs to enter the commit queue.
+
+`DbSQLite::CreateSnapshotData()` serializes the database with `sqlite3_serialize()` while holding the source storage lock, so the bytes are the exact page image the database would have on disk with WAL content folded in. `RestoreSnapshotData()` loads those bytes into a private in-memory database with `sqlite3_deserialize()` and copies it into the live storage with the online-backup API: deserializing straight into the live handle would detach it from its file. The buffer handed to `sqlite3_deserialize()` is allocated with `sqlite3_malloc64()` and freed on close.
+
+`ServerEngine::CreateSnapshot()` is the higher Engine-state composition for a stable authoritative world. It first reaches quiescence and returns typed blockers for runtime-only script contexts, delayed closures, time events, or movement; only a ready world flushes exact time/id, creates the backend payload, and writes the paired versioned RNG/compatibility manifest. This does not change the narrower `DataBase` contract and is not atomic slot publication. Restore callers strictly read the manifest, copy the immutable database payload to an isolated live directory, and pass its state into a fresh `ServerEngine`; opening a selected snapshot directly as writable live storage is outside the supported contract.
+
+`DataBaseSnapshotDrainsAndBlocksNewProducers` pins the shared commit/producer barrier. `SQLiteDataBaseCreatesReopenableSnapshotWithoutOverwriting` pins pending-write inclusion, later-source-mutation exclusion, live-source independent reopen, no-overwrite behavior, and a failed destination that leaves no database file.
 
 ## Recovery logs and panic policy
 
@@ -17431,7 +17454,7 @@ When changing commit durability, validate failed-write recovery and pending-log 
 ## Backend-specific notes
 
 - JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths.
-- SQLite backend: enabled only when the build has `FO_HAVE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, and SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`.
+- SQLite backend: enabled only when the build has `FO_HAVE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`, and `CreateSnapshot()` returns the serialized page image rather than copying the live files.
 - Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; it shares the BSON conversion and allocator setup used by the JSON and SQLite backends.
 - Memory backend: useful for tests and non-durable runtime paths.
 
@@ -17485,8 +17508,9 @@ Relevant tests include:
 4. Validate commit queue drain with `StartCommitChanges()` / `WaitCommitChanges()`.
 5. Validate operation-log restore after a simulated failed commit when durability/recovery behavior changes.
 6. Validate that an enabled `DataBase.OpLogPath` is non-empty and that replacing `.oplog` with `-committed.oplog` produces a distinct committed-log path.
-7. Validate entity save/load paths when persistent property semantics change.
-8. Never put production credentials or live connection strings into repository docs or tests.
+7. For snapshot changes, prove pending changes are included, later source mutations are excluded, the destination reopens while the source remains live, completed destinations are not overwritten, and failed destinations leave no database artifact.
+8. Validate entity save/load paths when persistent property semantics change.
+9. Never put production credentials or live connection strings into repository docs or tests.
 
 ===== END DOCUMENT persistence =====
 
@@ -19645,7 +19669,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: f2117d5615cfadc631ab3f2904d9ab4f39f4c6ed23971b18cf5d64d762727ed0
+Content SHA-256: 120f429242018d5baa4e70dcedfefe216c622c3e11db328ce7022116543cd46b
 
 ---
 layout: default
@@ -19711,6 +19735,8 @@ Read this page together with:
 - `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Scripting/ServerPlayerScriptMethods.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_Timer.cpp`
+- `Source/Tests/Test_WorkerPool.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
@@ -19770,6 +19796,18 @@ Startup runs on the `_starter` worker thread, so a failure surfaces asynchronous
 [Release Operations](../../how-to/release/operations.md) turns these startup/error/shutdown states, log markers, and optional health-file output into a deployment readiness and rollback procedure. It does not make process existence or an open listener equivalent to readiness.
 
 The public `Lock()` / `Unlock()` pair is used by tests, tooling, and controlled operations that need a consistent view of server state. `Source/Tests/Test_ServerEngine.cpp` repeatedly waits for server startup, locks the server, performs entity/script checks, and unlocks on scope exit.
+
+The frame path stays lock-free: `GameTimer` publishes its pause flag and accumulated offset as atomics, and the mutex only keeps `Pause()` and `Resume()` exclusive with each other. `WorkerPool` counts anonymous scheduled jobs incrementally rather than scanning its queue, because diagnostics run periodically while the health file is enabled.
+
+`RunInQuiescence()` is the stronger reusable boundary for an authoritative capture operation. It must be called from outside a server execution/synchronization context. The Engine serializes the operation, closes new connection admission, reaches the existing `SyncPoint()` and drained `WorkerPool` pause, freezes `GameTimer` frame/synchronized time and the worker scheduling clock, covers every registered server entity plus current not-logged-in players, and invokes the caller callback with the captured synchronized time and the four-word `random_generator` state. Existing connection buffers remain transport state, but their player jobs cannot apply gameplay input while the pool is paused. New accepted transport connections are disconnected until admission reopens.
+
+The callback boundary is exception-safe: scheduling time, game time, the whole-world synchronization context, the worker/main sync point, and admission are unwound in order when the callback returns or throws. Server shutdown is serialized with quiescence and waits for an active callback; shutdown from inside the callback is rejected before lock acquisition to avoid self-deadlock. Delayed jobs retain their remaining scheduling delay across the pause, including jobs submitted while scheduling time is frozen; an explicit `Wake()` during the pause makes its keyed job due when execution resumes. `GameTimer::FrameAdvance()` is inert while paused and removes the paused wall-clock interval from later frame/synchronized-time projection.
+
+`ServerEngine::CreateSnapshot()` is the first storage composition built on that boundary. Inside quiescence it inspects AngelScript context diagnostics, anonymous delayed worker callbacks, runtime time events, and active critter movements. Any retained state produces counted `ServerSnapshotBlockerKind` entries and no payload. A ready world flushes the exact generated-entity id and synchronized time, invokes `DataBase::CreateSnapshot()`, and returns the payload bytes together with a `ServerSnapshotState` carrying compatibility and metadata versions, exact synchronized time, id boundary, and the four generator words. The Engine writes no file and defines no container format: naming, versioning, packaging and atomic publication belong to the embedder. Restoring is the mirror image — `ServerEngine` is constructed with a `ServerSnapshotRestore` pair, loads the payload into storage before anything reads the world, and rejects a state that disagrees with its payload before gameplay hooks run.
+
+`ReadServerSnapshotState()` parses that manifest strictly and requires the SQLite payload. The embedding controller must copy the immutable payload into a separate writable live-session directory before construction. Passing the parsed state to `ServerEngine` validates format/compatibility/metadata synchronously and restores RNG before startup jobs; after the copied database globals load, exact time and id are cross-checked before script module/init hooks run. A corrupt or mismatched pair fails startup rather than combining manifest state with a different database.
+
+This is still a staging primitive rather than a player-facing slot/checkpoint system. Version 1 blocks every runtime time event and movement instead of serializing them, cannot classify project-owned state, and does not choose slot names, calculate package integrity, atomically publish/rotate saves, own pause/UI authority, or coordinate network reload and identity. `Lock()` / `Unlock()` retain their existing diagnostic semantics and do not freeze clocks; callers needing only a custom frozen operation use `RunInQuiescence()`, while stable Engine/database capture uses `CreateSnapshot()`. `ServerEngineQuiescenceFreezesAndCleansUp`, `ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState`, `ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession`, `PauseFreezesFrameAndSynchronizedTime`, and `WorkerPoolSchedulingTimeFreezePreservesDelays` pin the source contract.
 
 Script-exported map critter queries (`Map.GetCritters(...)`, "who sees" variants, and property-filtered lookups) rely on the map access validation performed by the script dispatch layer: callers must already hold map coverage, and concurrent map membership mutation under that cover is a bug to surface rather than mask by taking extra critter refs.
 

@@ -279,6 +279,12 @@ namespace ServerEngineTest
 
     void UnitTestNoop() {}
 
+    [[Async]]
+    void UnitTestSuspend()
+    {
+        Yield(60000);
+    }
+
     void UnitTestMarkManualCall()
     {
         ManualCalls++;
@@ -531,9 +537,9 @@ namespace ServerEngineInitGateTest
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto MakeServerEngine(GlobalSettings& settings, optional<ServerSnapshotRestore> restore_snapshot = std::nullopt) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources(), std::move(restore_snapshot));
     }
 
     static void CheckServerStartupFailsSafely(GlobalSettings& settings, FileSystem&& resources)
@@ -717,6 +723,339 @@ TEST_CASE("ServerEngineConnectionAcceptPredicates")
         // A new second rolls the window over and accepts again
         CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
         CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
+    }
+}
+
+TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    random_generator captured_generator = server->GetRandomGenerator();
+    random_generator::state_data captured_state = captured_generator.capture_state();
+    CHECK_FALSE(std::ranges::all_of(captured_state, [](uint64_t part) { return part == 0; }));
+
+    vector<int32_t> expected_sequence;
+    for (size_t i = 0; i < 32; i++) {
+        expected_sequence.emplace_back(server->Random(-100000, 100000));
+    }
+
+    // The engine hands the generator back and takes it whole, so replaying the same draws is a plain assignment
+    server->SetRandomGenerator(captured_generator);
+    for (int32_t expected_value : expected_sequence) {
+        CHECK(server->Random(-100000, 100000) == expected_value);
+    }
+
+    // The same state can also travel as bare words and be put back through the generator itself
+    random_generator rebuilt_generator {uint64_t {1}};
+    rebuilt_generator.restore_state(captured_state);
+    server->SetRandomGenerator(rebuilt_generator);
+    for (int32_t expected_value : expected_sequence) {
+        CHECK(server->Random(-100000, 100000) == expected_value);
+    }
+
+    random_generator::state_data state_before_invalid_restore = server->GetRandomGenerator().capture_state();
+
+    random_generator invalid_generator {uint64_t {1}};
+    CHECK_THROWS(invalid_generator.restore_state(random_generator::state_data {}));
+    CHECK(server->GetRandomGenerator().capture_state() == state_before_invalid_restore);
+}
+
+TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->IsConnectionAdmissionOpen());
+
+    refcount_nptr<Critter> critter;
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+        critter = server->CreateCritter(critter_pid, false);
+    }
+
+    REQUIRE(critter);
+
+    bool callback_invoked = false;
+    REQUIRE(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState& state) {
+        callback_invoked = true;
+
+        CHECK(server->GameTime.IsPaused());
+        CHECK_FALSE(server->IsConnectionAdmissionOpen());
+        CHECK(IsEntityAccessValid(critter));
+        CHECK(state.SynchronizedTime == server->GameTime.GetSynchronizedTime());
+
+        CHECK(state.RandomState == server->GetRandomGenerator().capture_state());
+
+        nanotime paused_frame_time = server->GameTime.GetFrameTime();
+        server->FrameAdvance();
+        CHECK(server->GameTime.GetFrameTime() == paused_frame_time);
+        CHECK(server->GameTime.GetFrameDeltaTime() == timespan {});
+    }));
+
+    CHECK(callback_invoked);
+    CHECK_FALSE(server->GameTime.IsPaused());
+    CHECK(server->IsConnectionAdmissionOpen());
+    CHECK_FALSE(server->GetCurrentSyncContext());
+
+    CHECK_THROWS_AS(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [](const ServerQuiescenceState&) { throw GenericException("Intentional quiescence callback failure"); }), GenericException);
+    CHECK_FALSE(server->GameTime.IsPaused());
+    CHECK(server->IsConnectionAdmissionOpen());
+    CHECK_FALSE(server->GetCurrentSyncContext());
+
+    REQUIRE(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&server](const ServerQuiescenceState&) { CHECK_THROWS_AS(server->Shutdown(), VerificationException); }));
+    CHECK(server->IsStarted());
+    CHECK(server->IsConnectionAdmissionOpen());
+
+    server->RunScriptContext([&server] { CHECK_THROWS_AS(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [](const ServerQuiescenceState&) { }), ServerQuiescenceException); });
+
+    REQUIRE(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [](const ServerQuiescenceState&) { }));
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    server->CrMngr.DestroyCritter(critter.take_not_null());
+}
+
+TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
+{
+    auto snapshot_root = std::filesystem::temp_directory_path() / std::format("fo_engine_snapshot_blockers_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    std::error_code remove_error;
+    std::filesystem::remove_all(snapshot_root, remove_error);
+
+    auto cleanup_snapshot = scope_exit([snapshot_root]() noexcept {
+        safe_call([snapshot_root] {
+            std::error_code ignored;
+            std::filesystem::remove_all(snapshot_root, ignored);
+        });
+    });
+
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    auto has_blocker = [](const ServerSnapshotCaptureResult& result, ServerSnapshotBlockerKind kind) { return std::ranges::any_of(result.Blockers, [kind](const ServerSnapshotBlocker& blocker) { return blocker.Kind == kind && blocker.Count != 0; }); };
+
+    SECTION("DelayedCallback")
+    {
+        server->ScheduleDelayedCallback(timespan {std::chrono::hours {1}}, [] { });
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.IsCreated());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
+        CHECK_FALSE(fs_exists(fs_path_to_string(snapshot_root / "delayed" / "Storage.sqlite")));
+    }
+
+    SECTION("SuspendedAngelScript")
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto suspend_func = server->FindFunc<void>(server->Hashes.ToHashedString("ServerEngineTest::UnitTestSuspend"));
+            REQUIRE(suspend_func);
+            REQUIRE(suspend_func.Call());
+        }
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.IsCreated());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::SuspendedScriptContexts));
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
+    }
+
+    SECTION("TimeEvent")
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto event_func = server->FindFunc<void>(server->Hashes.ToHashedString("ServerEngineTest::UnitTestNoop"));
+            REQUIRE(event_func);
+            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan {}, {}));
+        }
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.IsCreated());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::TimeEvents));
+    }
+
+    SECTION("Movement")
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto critter = server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+            critter->SetMoving(MakeServerMovementContext(SERVER_TEST_MAP_SIZE, SERVER_TEST_MOVE_START_HEX, server->GameTime.GetFrameTime()));
+        }
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.IsCreated());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::CritterMovements));
+    }
+}
+
+TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
+{
+    auto storage_root = std::filesystem::temp_directory_path() / std::format("fo_engine_server_snapshot_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    auto source_storage = storage_root / "source";
+    auto restored_storage = storage_root / "restored-live";
+    std::error_code remove_error;
+    std::filesystem::remove_all(storage_root, remove_error);
+    std::filesystem::create_directories(storage_root);
+
+    auto cleanup_storage = scope_exit([storage_root]() noexcept {
+        safe_call([storage_root] {
+            std::error_code ignored;
+            std::filesystem::remove_all(storage_root, ignored);
+        });
+    });
+
+    ident_t saved_location_id;
+    ident_t expected_next_location_id;
+    vector<int32_t> expected_random_sequence;
+    ServerSnapshotState captured_state;
+    vector<uint8_t> captured_payload;
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", source_storage.generic_string()).str());
+        auto server = MakeServerEngine(settings);
+
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+            server->EntityMngr.MakePersistent(location, true, true);
+            saved_location_id = location->GetId();
+        }
+
+        // The Engine hands back bytes and state; naming, versioning and publishing them is the embedder's job
+        auto capture_result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+        REQUIRE(capture_result.IsCreated());
+        REQUIRE(capture_result.State.has_value());
+        captured_state = *capture_result.State;
+        captured_payload = std::move(capture_result.Payload);
+
+        REQUIRE(captured_payload.size() > 16);
+        CHECK(string_view {reinterpret_cast<const char*>(captured_payload.data()), 15} == string_view {"SQLite format 3"});
+
+        for (int32_t i = 0; i < 8; i++) {
+            expected_random_sequence.emplace_back(server->Random(-1000000, 1000000));
+        }
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            expected_next_location_id = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"))->GetId();
+        }
+
+        server->Shutdown();
+    }
+
+    std::filesystem::create_directories(restored_storage);
+
+    {
+        // A state that disagrees with its payload must fail before gameplay hooks run
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        auto mismatched_state = captured_state;
+        mismatched_state.LastEntityId = ident_t {captured_state.LastEntityId.underlying_value() + 1};
+        auto server = MakeServerEngine(settings, ServerSnapshotRestore {mismatched_state, captured_payload});
+
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        CHECK_FALSE(startup_error.empty());
+        CHECK(server->IsStartingError());
+        CHECK_FALSE(server->IsStarted());
+        REQUIRE_NOTHROW(server->Shutdown());
+    }
+
+    {
+        // An empty payload is rejected at construction rather than producing an empty world
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", (storage_root / "empty-payload").generic_string()).str());
+        CHECK_THROWS_AS(MakeServerEngine(settings, ServerSnapshotRestore {captured_state, {}}), ServerSnapshotException);
+    }
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        auto server = MakeServerEngine(settings, ServerSnapshotRestore {captured_state, captured_payload});
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        REQUIRE(static_cast<bool>(server->EntityMngr.GetLocation(saved_location_id)));
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetLocation(expected_next_location_id)));
+
+        for (int32_t expected : expected_random_sequence) {
+            CHECK(server->Random(-1000000, 1000000) == expected);
+        }
+
+        auto next_location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+        CHECK(next_location->GetId() == expected_next_location_id);
     }
 }
 

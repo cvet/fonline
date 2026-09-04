@@ -665,6 +665,78 @@ TEST_CASE("WorkerPoolWaitIdleTimeout")
     }
 }
 
+TEST_CASE("WorkerPoolCountsAnonymousScheduledJobsIncrementally")
+{
+    std::atomic<bool> shutdown_flag {false};
+    std::atomic<int32_t> ran {0};
+    WorkerPool pool {"test", 1, &shutdown_flag, /*start_paused*/ true};
+    WorkerJobKey key {WorkerJobType::Player, 1};
+
+    CHECK(pool.GetDiagnostics().AnonymousScheduledJobs == 0);
+
+    pool.Submit(std::chrono::milliseconds {5000}, [&]() -> std::optional<timespan> { return std::nullopt; });
+    pool.Submit(std::chrono::milliseconds {5000}, [&]() -> std::optional<timespan> { return std::nullopt; });
+    CHECK(pool.GetDiagnostics().AnonymousScheduledJobs == 2);
+
+    // A keyed job is never counted as an anonymous one
+    pool.Submit(key, std::chrono::milliseconds {5000}, [&]() -> std::optional<timespan> { return std::nullopt; });
+    CHECK(pool.GetDiagnostics().AnonymousScheduledJobs == 2);
+    CHECK(pool.GetDiagnostics().ScheduledJobs == 3);
+
+    CHECK(pool.Cancel(key));
+    CHECK(pool.GetDiagnostics().AnonymousScheduledJobs == 2);
+
+    // Running the queue empties the counter as jobs leave it
+    pool.Submit([&]() -> std::optional<timespan> {
+        ran++;
+        return std::nullopt;
+    });
+    pool.Resume();
+    REQUIRE(WaitFor([&] { return ran.load() == 1; }, std::chrono::milliseconds {2000}));
+    pool.WaitIdle();
+    CHECK(pool.GetDiagnostics().AnonymousScheduledJobs == 2);
+
+    pool.Clear();
+    CHECK(pool.GetDiagnostics().AnonymousScheduledJobs == 0);
+    CHECK(pool.GetDiagnostics().ScheduledJobs == 0);
+}
+
+TEST_CASE("WorkerPoolSchedulingTimeFreezePreservesDelays")
+{
+    std::atomic<bool> shutdown_flag {false};
+    std::atomic<int64_t> before_freeze_after_resume_ms {-1};
+    std::atomic<int64_t> during_freeze_after_resume_ms {-1};
+    std::chrono::steady_clock::time_point resume_time {};
+    WorkerPool pool {"test", 1, &shutdown_flag, /*start_paused*/ true};
+
+    pool.Submit(std::chrono::milliseconds {200}, [&]() -> std::optional<timespan> {
+        before_freeze_after_resume_ms.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - resume_time).count());
+        return std::nullopt;
+    });
+
+    pool.FreezeSchedulingTime();
+    CHECK(pool.GetDiagnostics().SchedulingTimeFrozen);
+
+    pool.Submit(std::chrono::milliseconds {200}, [&]() -> std::optional<timespan> {
+        during_freeze_after_resume_ms.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - resume_time).count());
+        return std::nullopt;
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {250});
+    CHECK(before_freeze_after_resume_ms.load() == -1);
+    CHECK(during_freeze_after_resume_ms.load() == -1);
+
+    resume_time = std::chrono::steady_clock::now();
+    pool.ResumeSchedulingTime();
+    CHECK_FALSE(pool.GetDiagnostics().SchedulingTimeFrozen);
+    pool.Resume();
+
+    REQUIRE(WaitFor([&] { return before_freeze_after_resume_ms.load() >= 0 && during_freeze_after_resume_ms.load() >= 0; }, std::chrono::milliseconds {2000}));
+    CHECK(before_freeze_after_resume_ms.load() >= 100);
+    CHECK(during_freeze_after_resume_ms.load() >= 100);
+    pool.WaitIdle();
+}
+
 // ============================================================================
 // WorkerPool — diagnostics
 // ============================================================================

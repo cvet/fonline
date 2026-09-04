@@ -6,7 +6,7 @@ document_id: documentation-home
 permalink: /Docs/ru/
 ---
 
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"724476e7a2180571527c4e4ecd9cb06c73e801cfe791096198fd454003eda3ff"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"fc22a1f7d15f57e32c438fb7e36cb65d284f401c469c4ae422f8a29d23df937d"} -->
 
 # Документация движка FOnline
 
@@ -81,8 +81,9 @@ FOnline. Она предназначена для разработчиков и�
 - [Модель сущностей и свойств](explanation/entity-and-property-model/index.md),
   [карты, движение и геометрия](explanation/maps-and-movement.md),
   [полномочия и сеть](explanation/authority-and-networking/index.md) и
-  [хранение данных](explanation/persistence/index.md) описывают переиспользуемую
-  модель мира.
+  [хранение данных](explanation/persistence/index.md) — фасад базы, очередь
+  commit, согласованные с backend снимки и журналы восстановления — описывают
+  переиспользуемую модель мира.
 - [Клиентская среда выполнения](explanation/runtime/client.md),
   [серверная среда выполнения](explanation/runtime/server.md),
   [frontend и рендеринг](explanation/rendering/index.md) и

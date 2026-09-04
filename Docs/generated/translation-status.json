@@ -300,8 +300,8 @@
       "english_path": "Docs/en/explanation/architecture/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/architecture/index.md",
-      "source_sha256": "c029d979974afe0265f7b765970c086c3ce9c9f2355321fb74760dfc9ae2b6f4",
-      "source_bytes": 9610,
+      "source_sha256": "daaf491a9bbb5a3ede51109a72fb2ba0519bb8117b6a35280a9fa24233610bd0",
+      "source_bytes": 11516,
       "status": "current"
     },
     {
@@ -365,8 +365,8 @@
       "english_path": "Docs/en/explanation/persistence/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/persistence/index.md",
-      "source_sha256": "0cc2d410296794ff1b79efe7db64f834c30841f95e0d6c22f01ca02d5076308c",
-      "source_bytes": 9081,
+      "source_sha256": "5ea157746d9ac5839d7c0209c905160bca4b177c830f8c2142a6cee8c187a7fa",
+      "source_bytes": 12441,
       "status": "current"
     },
     {
@@ -417,8 +417,8 @@
       "english_path": "Docs/en/explanation/runtime/server.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/server.md",
-      "source_sha256": "f2117d5615cfadc631ab3f2904d9ab4f39f4c6ed23971b18cf5d64d762727ed0",
-      "source_bytes": 60317,
+      "source_sha256": "120f429242018d5baa4e70dcedfefe216c622c3e11db328ce7022116543cd46b",
+      "source_bytes": 64694,
       "status": "current"
     },
     {
@@ -911,8 +911,8 @@
       "english_path": "Docs/en/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/index.md",
-      "source_sha256": "724476e7a2180571527c4e4ecd9cb06c73e801cfe791096198fd454003eda3ff",
-      "source_bytes": 9466,
+      "source_sha256": "fc22a1f7d15f57e32c438fb7e36cb65d284f401c469c4ae422f8a29d23df937d",
+      "source_bytes": 9559,
       "status": "current"
     },
     {
@@ -2094,7 +2094,7 @@
       "english_path": "Docs/en/reference/script-api/events.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/events.md",
-      "source_sha256": "d64c59e10544161ea3177ef047e15a05b996f762e1402fcb13c2a1dca281c378",
+      "source_sha256": "202b9f71012891b2282b57acbb0bdb8de0d526e281ca0a65c8e386cddf890b94",
       "source_bytes": 74455,
       "status": "current"
     },

@@ -77,8 +77,9 @@ balance, quests, dialog content, visual policy, and localization policy.
 - [Entity and Property Model](explanation/entity-and-property-model/index.md),
   [Maps, Movement, and Geometry](explanation/maps-and-movement.md),
   [Authority and Networking](explanation/authority-and-networking/index.md), and
-  [Persistence](explanation/persistence/index.md) describe the reusable world
-  model.
+  [Persistence](explanation/persistence/index.md) — the database facade, commit
+  queue, backend-consistent snapshots, and recovery logs — describe the reusable
+  world model.
 - [Client Runtime](explanation/runtime/client.md),
   [Server Runtime](explanation/runtime/server.md),
   [Frontend and Rendering](explanation/rendering/index.md), and

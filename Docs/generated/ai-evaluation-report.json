@@ -1525,7 +1525,7 @@
             "client-updater",
             "debugging",
             "frontend-rendering",
-            "packaging-and-release"
+            "server-runtime"
           ]
         },
         {
@@ -2103,8 +2103,8 @@
             "release-operations",
             "backup-and-recovery",
             "packaging-and-release",
-            "web-debugging",
-            "debugging"
+            "server-runtime",
+            "web-debugging"
           ]
         },
         {
@@ -2228,8 +2228,8 @@
           "top_document_ids": [
             "backup-and-recovery",
             "documentation-maintenance",
-            "release-operations",
             "persistence",
+            "release-operations",
             "engine-upgrade-guide"
           ]
         }

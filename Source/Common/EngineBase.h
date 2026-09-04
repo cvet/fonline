@@ -177,6 +177,8 @@ public:
     [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui> { return _imgui; }
 
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
+    [[nodiscard]] auto CaptureRandomState() const -> random_generator::state_data;
+    void RestoreRandomState(const random_generator::state_data& state);
     virtual void Shutdown() { }
     void FrameAdvance();
 

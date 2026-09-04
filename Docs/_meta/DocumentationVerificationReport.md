@@ -8984,3 +8984,71 @@ Disposition:
   so the root gitlink never points at an unavailable commit.
 - Merge-readiness still depends on current remote CI, including the native
   unit-test suite and the real Linux external-parser path.
+
+## 2026-09-04 - quiescence boundary and world snapshot reconciliation
+
+Scope and source revisions:
+
+- Reconciled the documentation branch at
+  `fb84e1c32086916fd640da9396305677d16299f5` with Engine `origin/master`
+  through `f58f0c6042171de7f578bf9979a1a4ca975acc39`. The seven incoming commits
+  build one feature bottom-up: `random_generator` state capture/restore, a
+  `GameTimer` pause, a frozen `WorkerPool` scheduling clock, script-context and
+  time-event diagnostics, byte-level database snapshot/restore, and finally the
+  `RunInQuiescence()` stop boundary with `ServerEngine::CreateSnapshot()` on top.
+- Three conflicts were legacy documentation routes and were resolved as stubs.
+  `Docs/Architecture.md` merged with no conflict marker and had upstream prose
+  spliced into its stub - the second time that silent shape has appeared, and
+  the reason every legacy route is now re-checked after a merge rather than only
+  the ones git reports.
+
+Contract and documentation changes:
+
+- Server runtime now owns the quiescence contract: what the boundary closes and
+  freezes, the ordered exception-safe unwind, the shutdown serialization that
+  rejects a self-deadlocking call from inside the callback, delayed-job delay
+  retention across the pause, and the five source tests that pin it. It also
+  records what version 1 deliberately does not do - it blocks runtime time
+  events and movement rather than serializing them, and owns neither slot
+  naming, package integrity, atomic publication, UI authority, nor client
+  reload.
+- Persistence gained the backend-consistent snapshot section: the drain-and-block
+  producer barrier, the loud failure for a backend with no byte representation,
+  the SQLite serialize/deserialize path and why a live handle cannot be
+  deserialized into, and the composition boundary against
+  `ServerEngine::CreateSnapshot()`. Its facade, backend-override, and checklist
+  lists were extended in place.
+- Architecture records the random-state primitive and states plainly that it is
+  not a snapshot boundary on its own.
+- Generated API provenance, reference, public-contract, snippets, locale status,
+  site/search data, AI evaluation, manifest, and AI-delivery artifacts were
+  regenerated in dependency order. Four Russian owner pages carry current source
+  hashes.
+
+Validation:
+
+- Every documentation generator reports current: 310/310 normative snippets,
+  159 evidence blocks, 183 external-parser checks, 197/197 locale pairs,
+  4977/4977 generated description translations, 397 maintained Markdown
+  entries, and all 65 retrieval checks across 27 tasks at 100 percent success
+  and 0.915 MRR.
+- Contract-diff reconciliation against
+  `fb84e1c32086916fd640da9396305677d16299f5` reports zero changes across the 18
+  tracked domains: the range adds no script-visible symbol, so the native-codegen
+  scope contract keeps its 2507 pin and no disposition was required. The only
+  `api.json` movement is source-line provenance.
+- The focused owner suites pass 115 tests across the api, reference, locale,
+  description-translation, coding-contract, lifecycle, runtime, scripting,
+  configuration, site, delivery, inventory, metadata, and public-contract
+  modules.
+- The engine C++ suite was not rebuilt locally; the incoming range is upstream
+  code already validated on `master`, and no engine source was changed here.
+
+Disposition:
+
+- The reusable Engine contract and generated corpus are reconciled for review.
+  Publish the Engine documentation branch before the embedding project branch
+  so the root gitlink never points at an unavailable commit.
+- Merge-readiness still depends on current remote CI, including the native
+  unit-test suite that covers the new quiescence, snapshot, timer, and worker
+  contracts.

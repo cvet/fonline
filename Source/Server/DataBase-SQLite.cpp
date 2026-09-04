@@ -345,6 +345,91 @@ protected:
         }
     }
 
+    auto CreateSnapshotData() -> vector<uint8_t> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        scoped_lock locker {_storageLocker};
+
+        sqlite3_int64 serialized_size = 0;
+        nptr<uint8_t> serialized {sqlite3_serialize(GetHandle().get(), "main", &serialized_size, 0)};
+
+        if (!serialized) {
+            throw DataBaseException("DbSQLite sqlite3_serialize", sqlite3_errcode(GetHandle().get()), sqlite3_errmsg(GetHandle().get()));
+        }
+
+        auto free_serialized = scope_exit([&]() noexcept { sqlite3_free(serialized.get()); });
+
+        if (serialized_size <= 0) {
+            throw DataBaseException("DbSQLite produced an empty snapshot", serialized_size);
+        }
+
+        // The serialization is the exact page image the database would have on disk, WAL content folded in
+        return vector<uint8_t> {serialized.get(), serialized.get() + serialized_size};
+    }
+
+    void RestoreSnapshotData(const_span<uint8_t> snapshot_data) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        // Deserializing straight into the live handle would detach it from its file, so the bytes are loaded
+        // into a private in-memory database and copied back page by page into the live storage
+        nptr<sqlite3> source_db;
+        int32_t open = sqlite3_open_v2(":memory:", source_db.get_pp(), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
+
+        if (open != SQLITE_OK) {
+            string error = source_db ? string(sqlite3_errmsg(source_db.get())) : string("unknown");
+
+            if (source_db) {
+                (void)sqlite3_close(source_db.get());
+                source_db = nullptr;
+            }
+
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_open_v2", open, error);
+        }
+
+        FO_VERIFY_AND_THROW(source_db, "Opened SQLite snapshot restore handle is null");
+
+        auto close_source = scope_exit([&]() noexcept {
+            if (source_db) {
+                (void)sqlite3_close(source_db.get());
+                source_db = nullptr;
+            }
+        });
+
+        // sqlite3_deserialize takes ownership of a buffer allocated by SQLite itself and frees it on close
+        auto data_size = numeric_cast<sqlite3_int64>(snapshot_data.size());
+        nptr<uint8_t> buffer {static_cast<uint8_t*>(sqlite3_malloc64(numeric_cast<sqlite3_uint64>(data_size)))};
+
+        if (!buffer) {
+            throw DataBaseException("DbSQLite snapshot restore allocation failed", snapshot_data.size());
+        }
+
+        MemCopy(buffer.get(), snapshot_data.data(), snapshot_data.size());
+
+        int32_t deserialize = sqlite3_deserialize(source_db.get(), "main", buffer.get(), data_size, data_size, SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE);
+
+        if (deserialize != SQLITE_OK) {
+            throw DataBaseException("DbSQLite sqlite3_deserialize", deserialize, sqlite3_errmsg(source_db.get()));
+        }
+
+        scoped_lock locker {_storageLocker};
+
+        nptr<sqlite3_backup> backup {sqlite3_backup_init(GetHandle().get(), "main", source_db.get(), "main")};
+
+        if (!backup) {
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_backup_init", sqlite3_errcode(GetHandle().get()), sqlite3_errmsg(GetHandle().get()));
+        }
+
+        int32_t step = sqlite3_backup_step(backup.get(), -1);
+        int32_t finish = sqlite3_backup_finish(backup.get());
+        backup = nullptr;
+
+        if (step != SQLITE_DONE || finish != SQLITE_OK) {
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_backup_step", step, finish, sqlite3_errmsg(GetHandle().get()));
+        }
+    }
+
     auto TryReconnect() -> bool override
     {
         FO_STACK_TRACE_ENTRY();
