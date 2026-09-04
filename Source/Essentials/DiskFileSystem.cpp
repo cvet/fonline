@@ -32,7 +32,9 @@
 //
 
 #include "DiskFileSystem.h"
+#include "Posix.h"
 #include "SafeArithmetics.h"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -471,6 +473,240 @@ auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::se
     stream.clear();
     stream.seekg(offset, origin);
     return !!stream;
+}
+
+disk_read_file::disk_read_file(string_view path) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    _descriptor = winapi::open_shared_read_file(string(path));
+#else
+    _descriptor = posix::open_shared_read_file(string(path));
+#endif
+
+    if (_descriptor < 0) {
+        return;
+    }
+
+#if FO_WINDOWS
+    int64_t size = winapi::get_file_size(_descriptor);
+#else
+    int64_t size = posix::get_file_size(_descriptor);
+#endif
+
+    // A descriptor whose length cannot be read is unusable, so it closes rather than pass for an open file
+    if (size < 0) {
+        close();
+        return;
+    }
+
+    _size = static_cast<uint64_t>(size);
+}
+
+disk_read_file::disk_read_file(disk_read_file&& other) noexcept :
+    _descriptor {other._descriptor},
+    _size {other._size}
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    other._descriptor = -1;
+    other._size = 0;
+}
+
+auto disk_read_file::operator=(disk_read_file&& other) noexcept -> disk_read_file&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (this != &other) {
+        close();
+        _descriptor = other._descriptor;
+        _size = other._size;
+        other._descriptor = -1;
+        other._size = 0;
+    }
+
+    return *this;
+}
+
+disk_read_file::~disk_read_file()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    close();
+}
+
+auto disk_read_file::read_at(uint64_t offset, span<uint8_t> buf) const noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+    size_t done = 0;
+
+    while (done != buf.size()) {
+        auto target = make_ptr(buf.data() + done);
+
+#if FO_WINDOWS
+        int64_t read_bytes = winapi::read_file_at(_descriptor, offset + done, target, buf.size() - done);
+#else
+        int64_t read_bytes = posix::read_file_at(_descriptor, offset + done, target, buf.size() - done);
+#endif
+
+        // Zero means the file ended before the span did, which for a declared extent is a corrupt file
+        if (read_bytes <= 0) {
+            return false;
+        }
+
+        done += static_cast<size_t>(read_bytes);
+    }
+
+    return true;
+}
+
+void disk_read_file::close() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_descriptor >= 0) {
+#if FO_WINDOWS
+        winapi::close_file(_descriptor);
+#else
+        posix::close_file(_descriptor);
+#endif
+        _descriptor = -1;
+    }
+
+    _size = 0;
+}
+
+disk_write_file::disk_write_file(string_view path) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    _descriptor = winapi::open_new_write_file(string(path));
+#else
+    _descriptor = posix::open_new_write_file(string(path));
+#endif
+}
+
+disk_write_file::disk_write_file(disk_write_file&& other) noexcept :
+    _descriptor {other._descriptor}
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    other._descriptor = -1;
+}
+
+auto disk_write_file::operator=(disk_write_file&& other) noexcept -> disk_write_file&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (this != &other) {
+        close();
+        _descriptor = other._descriptor;
+        other._descriptor = -1;
+    }
+
+    return *this;
+}
+
+disk_write_file::~disk_write_file()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    close();
+}
+
+auto disk_write_file::write(const_span<uint8_t> buf) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+    size_t done = 0;
+
+    while (done != buf.size()) {
+        auto source = make_ptr(buf.data() + done).reinterpret_as<const char>();
+
+#if FO_WINDOWS
+        int64_t written = winapi::write_file_chunk(_descriptor, source, buf.size() - done);
+#else
+        int64_t written = posix::write_file_chunk(_descriptor, source, buf.size() - done);
+#endif
+
+        if (written <= 0) {
+            return false;
+        }
+
+        done += static_cast<size_t>(written);
+    }
+
+    return true;
+}
+
+auto disk_write_file::seek_to_begin() noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    return winapi::seek_file_begin(_descriptor);
+#else
+    return posix::seek_file_begin(_descriptor);
+#endif
+}
+
+auto disk_write_file::preallocate(uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    return winapi::preallocate_file(_descriptor, size);
+#else
+    return posix::preallocate_file(_descriptor, size);
+#endif
+}
+
+auto disk_write_file::flush() noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    return winapi::sync_file(_descriptor);
+#else
+    return posix::sync_file(_descriptor);
+#endif
+}
+
+void disk_write_file::close() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_descriptor >= 0) {
+#if FO_WINDOWS
+        winapi::close_file(_descriptor);
+#else
+        posix::close_file(_descriptor);
+#endif
+        _descriptor = -1;
+    }
 }
 
 FO_END_NAMESPACE
