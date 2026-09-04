@@ -58,6 +58,32 @@ The exact list depends on host OS and target platform, but common tools include:
 
 Prefer the embedding project's documented setup because it may pin specific SDK/tool versions.
 
+## Fetching through a mirror of your own
+
+`prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from
+whoever publishes them. Each of those is a machine you do not run, and a dropped connection costs the
+job that is waiting on it. An embedding project may put a host of its own in front of them; the engine
+only needs to be told where it is, so nothing about that host is compiled in and everything travels in
+the environment:
+
+| variable | what it configures |
+|---|---|
+| `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
+| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The MSVC SDK tree is built once, stored under `xwin-<version>-<arches>.tar.gz`, and downloaded whole afterwards. |
+| `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
+| `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
+
+Unset, every one of them leaves the download path exactly as it was.
+
+Two behaviours are deliberate. A download is checked against the upstream `Content-Length`, because a
+dropped connection ends the read instead of raising and an archive cut in half unpacks into a failure
+far from its cause. And a workspace cache that is empty, unreachable or refusing is only a **miss**:
+it exists to make the build faster and independent of other people's servers, not to become another
+way for it to fail.
+
+`xwin` fetches the Microsoft packages itself, so mirroring the engine's own downloads does not cover
+it — which is why its *result* is what the workspace cache holds.
+
 ## Where build logic lives
 
 - [../BuildTools/README.md](../BuildTools/README.md) — BuildTools overview.
