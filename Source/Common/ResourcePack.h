@@ -82,8 +82,8 @@ struct ResourcePackWriteSettings
 // Reads only the header, without touching the index or the payloads
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool;
 
-// Builds a pack by streaming: every blob is encoded and written as it arrives, the index is appended at the
-// end, and the header is patched last once the offsets and the body hash are known
+// Builds a pack by streaming: blobs are encoded and written as they arrive, the index is appended at the end,
+// and the header is patched last. Add paths sorted for a canonical file - the index sorts, the payloads do not
 class ResourcePackWriter final
 {
 public:

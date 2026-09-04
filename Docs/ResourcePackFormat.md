@@ -75,8 +75,10 @@ StringPool            IndexDecodedSize - EntryCount * 40 bytes, UTF-8, not null 
 | 32 | 4 | `Codec`, `0` stored or `1` deflate |
 | 36 | 4 | `Flags`, reserved, written as zero |
 
-Entries are sorted by path, byte-wise. That gives the file one canonical layout, makes enumeration a walk and
-makes lookup a binary search over the resident buffer.
+Entries are sorted by path, byte-wise. That makes enumeration a walk and lookup a binary search over the
+resident buffer. The payload region follows the order the writer was given, so a canonical file - one whose
+bytes depend only on its contents - needs its paths added in sorted order; the packager does that, and the
+golden vector in `Test_ResourcePack.cpp` pins both writers to the same layout.
 
 ## Codecs
 

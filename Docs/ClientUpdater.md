@@ -52,7 +52,7 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/package.py`
 - `BuildTools/msicreator/createmsi.py`
-- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_zip_helpers.py`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
@@ -454,7 +454,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, verifies the exact entry list, and streams every entry through Python's CRC-checking reader; a damaged archive fails packaging before it can become the server's updater source. The `Embedded` pack goes through the same check on its in-memory buffer before it is patched into the executable, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order and post-build validation invariants.
+Client resource packs are written in the engine pack format ([ResourcePackFormat.md](ResourcePackFormat.md)), from sorted normalized paths and with no timestamp anywhere in the file. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same hash in the updater descriptor and does not force clients to redownload every pack. The `Embedded` pack is the one that stays a zip, since it is patched into the executable rather than shipped as a file: the packager reopens its in-memory buffer, verifies the exact entry list and streams every entry through Python's CRC-checking reader before embedding it, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_helpers.py` covers the mtime/order and post-build validation invariants.
 
 The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data.
 
