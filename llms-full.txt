@@ -19708,7 +19708,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: 120f429242018d5baa4e70dcedfefe216c622c3e11db328ce7022116543cd46b
+Content SHA-256: 33f7e26fc7c75d38a6beff20698e389ddc5c37427a242e512976630a22ff8a09
 
 ---
 layout: default
@@ -19830,7 +19830,7 @@ worker. Time events, connection processing, and critter movement use keyed,
 self-rescheduling `WorkerPool` jobs; data-arrival callbacks wake the associated
 connection key without restoring aggregate per-frame polling.
 
-Startup runs on the `_starter` worker thread, so a failure surfaces asynchronously. If any mandatory init job throws — for example `InitStorageJob()` when the database is unreachable — the starter's exception handler sets `IsStartingError()` and clears the remaining jobs before global exception reporting runs: `IsStarted()` never becomes true, and the worker pool, database connection, and time synchronization are never established. This ordering keeps the host-visible startup-failure flag prompt even when stack-trace collection is slow. Host apps must observe this rather than block forever: `ServerHeadlessApp`, `ServerDaemonApp`, and `ServerServiceApp` wait on `IsQuitRequested() || IsStartingError()` and turn a start error into a non-success quit, instead of leaving the process listening but non-functional (the failure mode behind a Staging incident where a down MongoDB left the headless server half-initialized for hours). `Shutdown()` is correspondingly safe to call on a partially-initialized engine: the worker-pool drain and the database / sync-time flushes are gated on `reached_running_state` (the presence of `_workerPool`, which is created last in `InitMetadataJob` after the DB connect and time-sync), so an aborted startup tears down cleanly instead of dereferencing the null pool (`WorkerPool::Clear` locking a null pool's mutex) or tripping the connected/synchronized invariants. `Source/Tests/Test_ServerEngine.cpp` (`ServerEngineShutdownIsSafeAfterStartupFailure`) pins this by forcing an unrecognized `DbStorage`, asserting the start error, and requiring `Shutdown()` to complete without crashing.
+Startup runs on the `_starter` worker thread, so a failure surfaces asynchronously. If any mandatory init job throws — for example `InitStorageJob()` when the database is unreachable — the starter's exception handler reports the exception, sets `IsStartingError()`, and clears the remaining jobs: `IsStarted()` never becomes true, and the worker pool, database connection, and time synchronization are never established. The handler owns that reporting because `WorkThread` reports a job exception itself only when no handler is registered. Host apps must observe this rather than block forever: `ServerHeadlessApp`, `ServerDaemonApp`, and `ServerServiceApp` wait on `IsQuitRequested() || IsStartingError()` and turn a start error into a non-success quit, instead of leaving the process listening but non-functional (the failure mode behind a Staging incident where a down MongoDB left the headless server half-initialized for hours). `Shutdown()` is correspondingly safe to call on a partially-initialized engine: the worker-pool drain and the database / sync-time flushes are gated on `reached_running_state` (the presence of `_workerPool`, which is created last in `InitMetadataJob` after the DB connect and time-sync), so an aborted startup tears down cleanly instead of dereferencing the null pool (`WorkerPool::Clear` locking a null pool's mutex) or tripping the connected/synchronized invariants. `Source/Tests/Test_ServerEngine.cpp` (`ServerEngineShutdownIsSafeAfterStartupFailure`) pins this by forcing an unrecognized `DbStorage`, asserting the start error, and requiring `Shutdown()` to complete without crashing.
 
 [Release Operations](../../how-to/release/operations.md) turns these startup/error/shutdown states, log markers, and optional health-file output into a deployment readiness and rollback procedure. It does not make process existence or an open listener equivalent to readiness.
 
@@ -25179,7 +25179,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: 5972c9bac3a5240bc4401ea785d7514d036247724370b7624aecfa274d810434
+Content SHA-256: 3171979cd9c286d579d113174bcea6a8886ac63c49a5290576d281ab304e67f7
 
 ---
 layout: default
@@ -25490,7 +25490,7 @@ deliberate sub-millisecond deadlines such as synchronization back-off and frame
 pacing. Both functions are `noexcept`; choose by latency intent rather than
 interchanging them mechanically.
 
-When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
+When a `WorkThread` job throws, a registered exception handler owns the reporting: it knows what the failure means to its owner and when to say so, and it can also update worker-owned policy such as clearing queued jobs. The thread reports through the global non-fatal exception reporter only when no handler is registered — reporting in both places would repeat the exception behind everything the handler already set in motion.
 
 ## Build integration
 

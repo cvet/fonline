@@ -307,7 +307,7 @@ deliberate sub-millisecond deadlines such as synchronization back-off and frame
 pacing. Both functions are `noexcept`; choose by latency intent rather than
 interchanging them mechanically.
 
-When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
+When a `WorkThread` job throws, a registered exception handler owns the reporting: it knows what the failure means to its owner and when to say so, and it can also update worker-owned policy such as clearing queued jobs. The thread reports through the global non-fatal exception reporter only when no handler is registered — reporting in both places would repeat the exception behind everything the handler already set in motion.
 
 ## Build integration
 

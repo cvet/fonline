@@ -417,8 +417,8 @@
       "english_path": "Docs/en/explanation/runtime/server.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/server.md",
-      "source_sha256": "120f429242018d5baa4e70dcedfefe216c622c3e11db328ce7022116543cd46b",
-      "source_bytes": 64694,
+      "source_sha256": "33f7e26fc7c75d38a6beff20698e389ddc5c37427a242e512976630a22ff8a09",
+      "source_bytes": 64692,
       "status": "current"
     },
     {
@@ -1808,8 +1808,8 @@
       "english_path": "Docs/en/reference/native/essentials.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/native/essentials.md",
-      "source_sha256": "5972c9bac3a5240bc4401ea785d7514d036247724370b7624aecfa274d810434",
-      "source_bytes": 34376,
+      "source_sha256": "3171979cd9c286d579d113174bcea6a8886ac63c49a5290576d281ab304e67f7",
+      "source_bytes": 34546,
       "status": "current"
     },
     {

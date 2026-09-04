@@ -6,7 +6,7 @@ document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
 
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"5972c9bac3a5240bc4401ea785d7514d036247724370b7624aecfa274d810434"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3171979cd9c286d579d113174bcea6a8886ac63c49a5290576d281ab304e67f7"} -->
 
 # Базовый слой Essentials
 
@@ -319,7 +319,7 @@ standard stream копируется через `make_stream_string`,
 например, synchronization back-off и frame pacing. Обе функции `noexcept`;
 выбирайте их по требованиям к latency, а не заменяйте механически.
 
-Когда job `WorkThread` бросает исключение, поток сначала вызывает свой local exception handler, чтобы обновить worker-owned policy, например очистить очередь jobs. Затем original exception передаётся global non-fatal exception reporter уже вне worker lock.
+Когда job `WorkThread` бросает исключение, отчётом владеет зарегистрированный exception handler: он знает, что этот отказ значит для его владельца и когда об этом сообщить, и он же обновляет worker-owned policy, например очищает очередь jobs. Поток передаёт исключение global non-fatal exception reporter только тогда, когда handler не зарегистрирован: отчёт в обоих местах повторил бы исключение позади всего, что handler уже запустил.
 
 ## Интеграция сборки
 

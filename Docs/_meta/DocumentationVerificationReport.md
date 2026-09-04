@@ -9114,3 +9114,59 @@ Disposition:
   so the root gitlink never points at an unavailable commit.
 - Merge-readiness still depends on current remote CI, including the native
   unit-test suite and the new BuildTools download coverage.
+
+## 2026-09-05 - WorkThread exception reporting moves to the handler
+
+Scope and source revisions:
+
+- Reconciled the documentation branch at
+  `ece0f8aea310f184b9bd3e3e5eaba6e7f7098318` with Engine `origin/master`
+  through `f7e2ac6bfed80eba91de1550a80838f0d5b5e1ba`. The single incoming commit
+  inverts who reports a `WorkThread` job exception: a registered handler now owns
+  the reporting, and the thread reports only when no handler exists. The server's
+  starter handler therefore reports the exception itself before setting the
+  startup-error flag.
+- The merge conflicted nowhere and touched no legacy route, so no stub needed
+  restoring this time.
+
+Documentation the change invalidated:
+
+- `Essentials` claimed the thread runs the handler first and *then* reports
+  through the global non-fatal reporter. That is now true only with no handler
+  registered; with one, reporting in both places would repeat the exception
+  behind everything the handler already set in motion. Rewritten to say who owns
+  the report.
+- `Server Runtime` claimed the starter's handler sets `IsStartingError()` and
+  clears the remaining jobs *before* global exception reporting runs, and
+  justified that ordering as keeping the host-visible flag prompt while
+  stack-trace collection is slow. The ordering is now the reverse - the handler
+  reports first - so both the claim and its rationale were replaced with the
+  reason the handler owns the report at all.
+- Neither statement was reachable from the incoming diff: both live in canonical
+  pages upstream does not carry. They were found by reading what the changed
+  symbols are documented as doing, which is the check this branch has to run on
+  every source-behavior commit.
+
+Validation:
+
+- Every documentation generator reports current: 310/310 normative snippets,
+  159 evidence blocks, 183 external-parser checks, 197/197 locale pairs,
+  4979/4979 generated description translations, 397 maintained Markdown
+  entries, and all 65 retrieval checks across 27 tasks at 100 percent success
+  and 0.915 MRR.
+- Contract-diff reconciliation against
+  `ece0f8aea310f184b9bd3e3e5eaba6e7f7098318` reports zero changes across the 18
+  tracked domains: the range exports no new symbol, so the native-codegen pin
+  stays at 2509 and no disposition was required.
+- The focused owner suites pass 62 tests across the coding-contract, essentials,
+  lifecycle, runtime, locale, site, delivery, and api modules.
+- The engine C++ suite was not rebuilt locally; the incoming range is upstream
+  code already validated on `master`, and no engine source was changed here.
+
+Disposition:
+
+- The reusable Engine contract and generated corpus are reconciled for review.
+  Publish the Engine documentation branch before the embedding project branch
+  so the root gitlink never points at an unavailable commit.
+- Merge-readiness still depends on current remote CI, including the native
+  unit-test suite that covers the reworked `WorkThread` reporting.
