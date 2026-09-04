@@ -154,6 +154,24 @@ auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_na
     return 0;
 }
 
+auto TimeEventManager::GetDiagnostics() const -> Diagnostics
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::scoped_lock lock {_timeEventLocker};
+
+    Diagnostics diagnostics;
+    diagnostics.EntityCount = _timeEventEntities.size();
+
+    for (const auto& entity : _timeEventEntities) {
+        if (auto time_events = entity->GetTimeEvents(); time_events) {
+            diagnostics.EventCount += time_events->size();
+        }
+    }
+
+    return diagnostics;
+}
+
 void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
     FO_STACK_TRACE_ENTRY();
