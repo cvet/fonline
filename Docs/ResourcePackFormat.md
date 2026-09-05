@@ -18,6 +18,8 @@ Related: `ConfigurationAndDataSources.md` for mounting, `ClientUpdater.md` for t
 - All integers are little endian with explicit widths. There are no C++ structs or pointers on disk.
 - All offsets and sizes are 64-bit and are validated against the file length before use.
 - Paths are relative UTF-8 with `/` separators, normalized by the writer. A path appears at most once.
+- Field widths are the limits: at most 2^32-1 entries, a path at most 2^32-1 bytes at an offset within a
+  decoded index of at most 2^32-1 bytes, and blob offsets and sizes bounded only by the 64-bit file.
 - Hashes are FNV-1a 64, seeded `0xcbf29ce484222325` with prime `0x100000001b3` — the digest the updater already
   computes over whole files. Nothing in this format is a security boundary; the delivery layer signs the pack
   list, and after that the local file is trusted (see the plan's decision on the trust boundary).
@@ -32,6 +34,12 @@ Related: `ConfigurationAndDataSources.md` for mounting, `ClientUpdater.md` for t
 
 `DataOffset` is 72 and the index follows the data, so the writer streams every blob out as it arrives and
 appends the index once it knows the offsets.
+
+Every extent in v1 is **committed**: there is no reserved space, no padding and no alignment requirement, and
+the file ends where the index ends. The writer may preallocate the target (`disk_write_file::preallocate`) so a
+long write fails early, but that is a transfer property and never leaves unused bytes in a finished pack. A
+reader can therefore treat the file length as the outer bound of every extent, which is what the validation
+below does. Reserved extents belong to the in-place diff work under Reserved for later.
 
 ## Header
 
@@ -75,6 +83,11 @@ StringPool            IndexDecodedSize - EntryCount * 40 bytes, UTF-8, not null 
 | 32 | 4 | `Codec`, `0` stored or `1` deflate |
 | 36 | 4 | `Flags`, reserved, written as zero |
 
+An entry carries no timestamp. `GetFileInfo` reports the pack file's own modification time for every entry,
+so one pack is one epoch: consumers that cache by `(size, write_time)` re-read everything in a pack the updater
+replaced and nothing in one it did not. Per-entry times would be a per-file cache key the format cannot honour
+anyway, since replacing any blob rewrites the whole pack.
+
 Entries are sorted by path, byte-wise. That makes enumeration a walk and lookup a binary search over the
 resident buffer. The payload region follows the order the writer was given, so a canonical file - one whose
 bytes depend only on its contents - needs its paths added in sorted order; the packager does that, and the
@@ -88,7 +101,8 @@ golden vector in `Test_ResourcePack.cpp` pins both writers to the same layout.
 | 1 | `Deflate` | zlib stream, as produced by `compress2` |
 
 A blob is deflated only when it gives back at least a configured minimum (default 5 %); otherwise it is stored
-raw. So already-compressed data — audio, compressed textures, well-packed images — is never re-deflated and
+raw. The level is `Baking.CompressLevel`, passed to `compress2` as the zlib level 0-9, and the minimum saving
+and the 64-byte floor are `ResourcePackWriteSettings` inputs, so both writers take them from the same place. So already-compressed data — audio, compressed textures, well-packed images — is never re-deflated and
 costs nothing to read back. Blobs under 64 bytes are always stored. The same rule governs the index itself.
 
 Codec choice is a writer input, not part of what the pack *contains*: re-encoding a blob differently changes

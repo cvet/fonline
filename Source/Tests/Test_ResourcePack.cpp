@@ -223,6 +223,110 @@ TEST_CASE("ResourcePack")
         CHECK(fs_remove_file(truncated));
     }
 
+    SECTION("RoundtripsAPackWithNoEntries")
+    {
+        string pack_path = MakeTempPackPath("empty_pack");
+
+        {
+            ResourcePackWriter writer {pack_path};
+            writer.Finish();
+        }
+
+        {
+            ResourcePackSource pack {pack_path};
+
+            CHECK_FALSE(pack.IsFileExists("Anything.bin"));
+            CHECK(pack.GetFileNames("", true, "").empty());
+
+            auto snapshot = pack.GetIndexSnapshot();
+            REQUIRE(snapshot.has_value());
+            CHECK(snapshot->empty());
+        }
+
+        // Packaging refuses to ship an empty pack, but the format still has to describe one rather than leave
+        // a reader guessing whether a zero entry count means corruption
+        ResourcePackHeader header;
+        REQUIRE(ReadResourcePackHeader(pack_path, header));
+        CHECK(header.EntryCount == 0);
+        CHECK(header.DataSize == 0);
+        CHECK(VerifyResourcePackFile(pack_path, header.PackHash));
+
+        CHECK(fs_remove_file(pack_path));
+    }
+
+    SECTION("RoundtripsAUnicodePath")
+    {
+        string pack_path = MakeTempPackPath("unicode");
+
+        // Written as bytes rather than as a literal, so the test asserts the pool holds UTF-8 whatever the
+        // compiler decides a source literal means
+        static constexpr array<uint8_t, 13> UNICODE_PATH_BYTES = {0xD0, 0x93, 0xD1, 0x80, 0x2F, 0xD0, 0xA1, 0xD0, 0xBF, 0x2E, 0x62, 0x69, 0x6E};
+        string unicode_path {reinterpret_cast<const char*>(UNICODE_PATH_BYTES.data()), UNICODE_PATH_BYTES.size()};
+
+        {
+            ResourcePackWriter writer {pack_path};
+            writer.AddFile(unicode_path, MakeBytes("payload"));
+            writer.Finish();
+        }
+
+        {
+            ResourcePackSource pack {pack_path};
+
+            CHECK(pack.IsFileExists(unicode_path));
+            CHECK(ReadWholeFile(pack, unicode_path).size() == 7);
+
+            auto snapshot = pack.GetIndexSnapshot();
+            REQUIRE(snapshot.has_value());
+            REQUIRE(snapshot->size() == 1);
+            CHECK((*snapshot)[0].Path == unicode_path);
+        }
+
+        CHECK(fs_remove_file(pack_path));
+    }
+
+    SECTION("RejectsExtentsThatCannotFitTheFile")
+    {
+        string pack_path = MakeTempPackPath("overflow");
+
+        {
+            ResourcePackWriter writer {pack_path};
+            writer.AddFile("Payload.bin", MakeBytes("payload"));
+            writer.Finish();
+        }
+
+        auto original = fs_read_file(pack_path);
+        REQUIRE(original.has_value());
+
+        // IndexOffset and DataOffset are the two header fields that address the file, and an offset this far
+        // out must end the mount rather than reach a read - whether the extent check or the read refuses it
+        static constexpr array<uint64_t, 3> HUGE_OFFSETS = {UINT64_MAX, UINT64_MAX - 64, UINT64_C(1) << 62};
+        static constexpr array<size_t, 2> OFFSET_FIELDS = {16, 48};
+
+        for (size_t field_offset : OFFSET_FIELDS) {
+            for (uint64_t huge : HUGE_OFFSETS) {
+                string patched_path = MakeTempPackPath("overflow_case");
+                string patched = *original;
+
+                for (size_t i = 0; i < 8; ++i) {
+                    patched[field_offset + i] = static_cast<char>((huge >> (i * 8)) & 0xFF);
+                }
+
+                // Recomputed so the extent check is what refuses the file rather than the header checksum
+                uint64_t checksum = fs_hash_data(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(patched.data()), 64});
+
+                for (size_t i = 0; i < 8; ++i) {
+                    patched[64 + i] = static_cast<char>((checksum >> (i * 8)) & 0xFF);
+                }
+
+                REQUIRE(fs_write_file(patched_path, patched));
+                CHECK_THROWS_AS(ResourcePackSource {patched_path}, DataSourceException);
+                CHECK(fs_remove_file(patched_path));
+            }
+        }
+
+        CHECK(fs_remove_file(pack_path));
+    }
+
     SECTION("MatchesTheGoldenLayout")
     {
         // Produced by the packager from the same inputs with compression off, so both writers share one layout
