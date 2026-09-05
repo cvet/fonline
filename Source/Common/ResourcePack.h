@@ -81,6 +81,9 @@ struct ResourcePackWriteSettings
 
 // Reads only the header, without touching the index or the payloads
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool;
+// The one place a pack body is hashed: after a download, to prove the file carries the hash it was fetched
+// for. The header hash is trusted from then on, so a startup never pays this over gigabytes
+auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexcept -> bool;
 
 // Builds a pack by streaming: blobs are encoded and written as they arrive, the index is appended at the end,
 // and the header is patched last. Add paths sorted for a canonical file - the index sorts, the payloads do not

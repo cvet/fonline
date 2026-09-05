@@ -129,6 +129,8 @@ The format is shaped so these are additive, not a version break:
 `Engine/Source/Common/ResourcePack.h`:
 
 - `ReadResourcePackHeader(path, header)` — header only, no index, no payloads.
+- `VerifyResourcePackFile(path, expected_pack_hash)` — the one place a pack body is hashed: after a download,
+  to prove the file carries the hash it was fetched for. The header hash is trusted from then on.
 - `ResourcePackWriter` — streams blobs out as they arrive, appends the index, patches the header last. An
   abandoned writer removes its own half-written file.
 - `ResourcePackSource` — a `DataSource`; the index is resident and every payload read is positional.

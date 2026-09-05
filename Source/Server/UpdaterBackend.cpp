@@ -38,6 +38,7 @@
 #include "Logging.h"
 #include "MetadataRegistration.h"
 #include "Player.h"
+#include "ResourcePack.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
@@ -68,6 +69,12 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         }
 
         size_t file_size = stream_get_size(file);
+        data.Size = numeric_cast<uint64_t>(file_size);
+
+        // A resource pack publishes the hash its header already carries, so neither side hashes the body to
+        // decide whether it is current; anything else is hashed whole, as before
+        ResourcePackHeader pack_header;
+        bool is_resource_pack = ReadResourcePackHeader(disk_path, pack_header);
 
         if (settings.UpdateFilesInMemory) {
             data.InMemory = true;
@@ -77,19 +84,23 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
-            data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(data.MemoryData);
+            data.Hash = is_resource_pack ? pack_header.PackHash : fs_hash_data(data.MemoryData);
         }
         else {
             data.DiskPath = string(disk_path);
-            data.Size = numeric_cast<uint64_t>(file_size);
-            auto file_hash = fs_hash_file(disk_path);
 
-            if (!file_hash.has_value()) {
-                throw UpdaterException("Can't hash resource pack for client", disk_path);
+            if (is_resource_pack) {
+                data.Hash = pack_header.PackHash;
             }
+            else {
+                auto file_hash = fs_hash_file(disk_path);
 
-            data.Hash = *file_hash;
+                if (!file_hash.has_value()) {
+                    throw UpdaterException("Can't hash resource pack for client", disk_path);
+                }
+
+                data.Hash = *file_hash;
+            }
         }
 
         update_files.emplace_back(std::move(data));

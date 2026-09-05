@@ -190,6 +190,44 @@ auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexce
     return ParseHeaderBytes(const_span<uint8_t> {buf.data(), buf.size()}, header);
 }
 
+auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ResourcePackHeader header;
+
+    if (!ReadResourcePackHeader(path, header) || header.PackHash != expected_pack_hash) {
+        return false;
+    }
+
+    disk_read_file file {path};
+
+    if (!file || file.get_size() < RESOURCE_PACK_HEADER_SIZE) {
+        return false;
+    }
+
+    // The body is hashed in bounded slices so a multi-gigabyte pack never has to sit in memory to be checked
+    constexpr size_t SLICE_SIZE = 1024 * 1024;
+    auto slice = vector<uint8_t>(SLICE_SIZE);
+    uint64_t hash = HASH_SEED;
+    uint64_t offset = RESOURCE_PACK_HEADER_SIZE;
+    uint64_t remaining = file.get_size() - RESOURCE_PACK_HEADER_SIZE;
+
+    while (remaining != 0) {
+        size_t chunk = numeric_cast<size_t>(std::min<uint64_t>(remaining, SLICE_SIZE));
+
+        if (!file.read_at(offset, span<uint8_t> {slice.data(), chunk})) {
+            return false;
+        }
+
+        hash = HashBytes(hash, const_span<uint8_t> {slice.data(), chunk});
+        offset += chunk;
+        remaining -= chunk;
+    }
+
+    return hash == header.PackHash;
+}
+
 // Deflates the payload and keeps the result only when it gives back the configured minimum, so data that is
 // already compressed is stored as it is and costs nothing to read back
 static auto EncodeBlob(const_span<uint8_t> data, const ResourcePackWriteSettings& settings, uint32_t& codec) -> vector<uint8_t>

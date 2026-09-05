@@ -116,8 +116,10 @@ private:
     void Net_OnUpdateFileData();
 
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
+    auto IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool;
 
     static auto IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool;
+    static auto IsResourcePackName(string_view file_name) noexcept -> bool;
     static auto GetDiskFileSize(string_view file_path) -> optional<uint64_t>;
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;

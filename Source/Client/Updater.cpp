@@ -36,6 +36,7 @@
 #include "Client.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -310,7 +311,7 @@ void Updater::GetNextFile()
         string prev_path_str = make_final_path(prev_update_file);
         string temp_path_str = make_temp_path(prev_update_file);
 
-        if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
+        if (!IsDownloadedFileHashMatch(temp_path_str, prev_update_file)) {
             WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
             Abort(StrFilesystemError);
             return;
@@ -340,7 +341,7 @@ void Updater::GetNextFile()
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
-                if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash)) {
+                if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
                     WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
                     fs_remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
@@ -632,14 +633,25 @@ void Updater::Net_OnInitData()
 
             if (file_header) {
                 if (file_header.GetSize() == size) {
-                    if (file_header.GetDataSource()->IsDiskDir() && IsDiskFileHashMatch(file_header.GetDiskPath(), size, hash)) {
-                        continue;
+                    // A resource pack answers from its header, and only from it: the published hash is the one
+                    // it carries, so deciding whether the pack is current never reads a multi-gigabyte body
+                    if (IsResourcePackName(fname)) {
+                        ResourcePackHeader pack_header;
+
+                        if (file_header.GetDataSource()->IsDiskDir() && ReadResourcePackHeader(file_header.GetDiskPath(), pack_header) && pack_header.PackHash == hash) {
+                            continue;
+                        }
                     }
+                    else {
+                        if (file_header.GetDataSource()->IsDiskDir() && IsDiskFileHashMatch(file_header.GetDiskPath(), size, hash)) {
+                            continue;
+                        }
 
-                    auto file = resources.ReadFile(fname);
+                        auto file = resources.ReadFile(fname);
 
-                    if (file && IsDataHashMatch(file.GetData(), size, hash)) {
-                        continue;
+                        if (file && IsDataHashMatch(file.GetData(), size, hash)) {
+                            continue;
+                        }
                     }
                 }
             }
@@ -810,6 +822,26 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
+}
+
+auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (IsResourcePackName(update_file.Name)) {
+        auto local_size = fs_file_size(file_path);
+
+        return local_size.has_value() && *local_size == update_file.Size && VerifyResourcePackFile(file_path, update_file.Hash);
+    }
+
+    return IsDiskFileHashMatch(file_path, update_file.Size, update_file.Hash);
+}
+
+auto Updater::IsResourcePackName(string_view file_name) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return strex(file_name).get_file_extension() == "fores";
 }
 
 auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool

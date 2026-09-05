@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 46
+///@ MigrationRule Version 0 0 47
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -413,7 +413,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 2;
+static constexpr uint32_t FO_UPDATER_VERSION = 3;
 
 enum class UpdatePlatform : uint8_t
 {

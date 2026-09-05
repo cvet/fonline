@@ -265,7 +265,9 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) i
 Versioned by `FO_UPDATER_VERSION` ([../Source/Common/Common.h](../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. Generation 2 rejects
 generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
-in-process runtime reload. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and
+in-process runtime reload. Generation 3 changes what `hash` means for a resource pack entry - the header
+`PackHash` rather than the whole-file digest - which a generation-2 client would compare against a digest it
+computes itself and re-download for ever, so it is refused the same way. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and
 changes with every build.
 
 ### Handshake
@@ -318,7 +320,7 @@ Each descriptor entry is:
 | `name_len` | `int16` (`-1` terminates the list) | client-relative path length |
 | `name` | `char[name_len]` | client-relative path |
 | `size` | `uint64` | full file size |
-| `hash` | `uint64` | FNV-1a 64-bit hash of the file content |
+| `hash` | `uint64` | FNV-1a 64-bit digest: for a resource pack (`.fores`) the `PackHash` its header carries, for anything else the whole file content |
 | `target` | `UpdateFileTarget` (`uint8`) | `ClientResources` or `ClientBinaries` |
 | `file_index` | `uint32` | server-assigned index for `GetUpdateFile` |
 
@@ -352,9 +354,9 @@ Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Serve
   demand, so a pack replaced under a live server would otherwise reach the client under the hash announced for the
   previous one.
 
-Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
+Client-side, the `Updater` writes each portion to a `~<filename>` temp file, proves the finished file once complete, then atomically renames over the live file (`ReplaceFileSafely`). A resource pack is proved by `VerifyResourcePackFile` ([../Source/Common/ResourcePack.cpp](../Source/Common/ResourcePack.cpp)): the header must carry the published `PackHash` and the body, hashed in bounded slices, must reproduce it. Anything else is hashed whole via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
 
-To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+A resource pack never needs that pass at all: the published hash is the one in its header, so "is this pack current" is one header read (`ReadResourcePackHeader`) and no body is hashed at startup. For the remaining whole-file entries, and to avoid rehashing them on every startup, the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 
