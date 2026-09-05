@@ -41,7 +41,10 @@ Important command arguments include:
 - `-genoutput` — generated output directory, currently `GeneratedSource` under the CMake binary dir.
 - `-devname` / `-nicename` — project identity values.
 - `-embedded` — embedded data capacity (`FO_EMBEDDED_DATA_CAPACITY`).
-- `-meta` — metadata source entries from `FO_SOURCE_META_FILES` and `FO_MONO_SOURCE`.
+- `-meta` — metadata source entries from `FO_SOURCE_META_FILES`, which the build helpers fill with the
+  engine's own `///@`-tagged headers and with the managed C# sources registered through
+  `AddEngineSources`. C# files carry script-level tags such as `Enum`, `Property`, `RefType` and
+  `Setting`, and codegen accepts them so `MetadataBaker` can process them during resource baking.
 - `-commonheader` — extra common headers from `FO_ADDED_COMMON_HEADERS`.
 - `-enginedefine` — repeatable `NAME=VALUE` engine value/shape configuration macro (`FO_GEOMETRY`, `FO_MAP_*`, `FO_EFFECT_*`, `FO_MODEL_*`, `FO_USE_NAMESPACE`, `FO_NO_*`, `FO_MAIN_CONFIG`, ...), resolved to a literal at configure time and emitted into `EngineConfig.gen.h` instead of being passed as a `-D` compiler define. Feature/backend toggles (`FO_ENABLE_3D`, `FO_*_SCRIPTING`, `FO_*_PARTICLES`) and per-config `FO_DEBUG` stay compiler-side — they gate whole files/headers before any engine header is included.
 
@@ -52,7 +55,7 @@ The stage creates normal and forced code-generation command targets and appends 
 `Codegen.cmake` declares generated outputs under `GeneratedSource/`, including:
 
 - `CodeGenTouch`
-- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`.
+- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_GENERATED_SOURCE_DIR` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`.
 - `EmbeddedResources.gen.inc`
 - `InternalConfig.gen.inc`
 - `MetadataRegistration-Server.gen.cpp`
@@ -84,6 +87,8 @@ Hand-authored declarations live in `Source/Common/MetadataRegistration.h`:
 `Source/Common/MetadataRegistration.template.cpp` is the template used to generate side-specific registration files. It contains code-generation markers such as `///@ CodeGen RegisterHelpers` and `///@ CodeGen Register`.
 
 `Source/Common/GenericCode.template.cpp` is the template for generated common code.
+
+`GenericCode-Common.cpp` also emits per-target `GetServerSettingsTyped()`, `GetClientSettingsTyped()`, and `GetMapperSettingsTyped()` lists for engine `ExportSettings`. `ManagedScriptBaker` consumes those lists to generate C# `Settings.*` accessors for scalar settings and supported `vector<T>` settings as `List<T>`, while dictionary-shaped settings remain outside this generated managed surface. Mapper generated settings include the Client/Common engine `ExportSettings` surface because mapper AngelScript runs with the same visible engine settings groups for editor rendering and input helpers. Managed methods returning non-generic `Task` register as native `void` script functions: callback invocation observes an incomplete task and returns without blocking the script pump, so `Game.YieldAsync` can resume it and deferred faults remain accounted. `Task<T>` registers as `T` and is awaited synchronously because the native caller requires the result.
 
 ## Engine hook tags
 
@@ -211,6 +216,10 @@ written in an older file layout is refused),
 Fixed value-type layouts are shared by native C++, AngelScript registration, and metadata field traversal. `hstring` therefore has an explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` on every supported target. On 32-bit targets the pointer-backed handle carries trailing padding to preserve that width and keep composite offsets (for example `TextPackKey`) platform-independent. The padding is not wire data: RPC/property serializers still convert the handle through `as_hash()` and resolve the received hash through the target engine's hash resolver.
 
 When property metadata changes, inspect both the property runtime and the generator inputs/templates. Script-visible nullability or API changes should also update [Scripting.md](Scripting.md), [ScriptMethodsMap.md](ScriptMethodsMap.md), and [Nullability.md](Nullability.md) as applicable.
+
+Managed property access completes native exception unwinding before returning through Mono's internal-call ABI. Typed property wrappers and the generated `Entity.GetAsInt` / `SetAsInt` / `GetAsAny` / `SetAsAny` helpers therefore surface access, destroyed-entity, property-index, type, disabled-property, and mutability violations as catchable managed `InvalidOperationException` instances; no C++ exception crosses the ABI. Typed `int8`, `uint8`, `int16`, and `uint16` property accessors use the integer property-index bridge directly, preserving their narrow C# types without relying on Mono's boxed-object scalar ABI.
+
+When Managed scripting is enabled, `ManagedScriptBaker` consumes the same property metadata to emit typed C# property enums and entity wrappers. The generated base `Entity` includes generic `GetAsInt<TProp>()`, `SetAsInt<TProp>()`, `GetAsAny<TProp>()`, and `SetAsAny<TProp>()` helpers that pass property enum values to native property-index bridges. Each wrapper captures its creating backend's identity and alive flag; native access from a foreign or already-destroyed backend fails with a managed exception before the entity pointer can reach released engine metadata. Entity equality and hashing use both that backend identity and the native entity pointer, so separately boxed wrappers for the same entity compare equal without allowing pointer collisions between engine instances. The generated C# `Game.GetPropertyInfo(<Type>Property, out ...)` overloads are metadata-only mirrors of the AngelScript property-info API for entity and fixed-type properties, so changes to property flags, base type, sync state, or enum names are reflected by a managed rebake. Cross-backend managed callbacks marshal fixed types and entity-proto values as proto-entity handles, matching AngelScript's handle representation while preserving their metadata type identity for function lookup. Managed callbacks may also return metadata-defined dynamic ref types: the bridge transfers one native reference to an AngelScript result or retains it through managed boxing, so the reconstructed object remains valid for the complete handoff. Scalar AngelScript object handles returned through managed `Game.Invoke<TResult>` stay owned by the call frame until boxing completes, then release the temporary script reference; dynamic ref types are copied into managed values during that window. Generated event surfaces provide synchronous, `Task`-returning, and explicit-`EventResult` handler overloads. Native-to-managed event dispatch runs through the engine's script-context boundary, giving each server callback its own nested sync cover just like AngelScript execution. A `Task` handler runs synchronously until its first incomplete await; the event chain then continues without blocking the script dispatcher, while the managed bridge observes deferred faults. Explicit `EventResult` handlers remain synchronous. Generated `Game.AddPropertySetter(...)` overloads are also metadata-shaped: entity-only post-set callbacks receive `Action<TEntity>`, simple setters receive `(entity, ref value)`, and property-group setters can receive `(entity, <Type>Property, ref value)` through `PropertySetterWithProperty<TEntity,TProperty,TValue>`.
 
 ## Public API relationship
 

@@ -34,6 +34,7 @@
 #include "MapBaker.h"
 #include "AngelScriptScripting.h"
 #include "ConfigFile.h"
+#include "ManagedScripting.h"
 #include "MapLoader.h"
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
@@ -186,6 +187,9 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     server_engine.MapScriptTypes(&server_engine);
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(&server_engine, *_context->Settings, *_context->BakedFiles);
+#endif
+#if FO_MANAGED_SCRIPTING
+    InitManagedScripting(&server_engine, *_context->BakedFiles, _context->Settings->BakeOutput);
 #endif
 
     // Bake maps

@@ -739,45 +739,149 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
 endif()
 
-# Mono scripting
-if(FO_MONO_SCRIPTING)
-    StatusMessage("+ Mono")
+# Managed scripting runtime (Mono)
+if(FO_MANAGED_SCRIPTING)
+    StatusMessage("+ Managed runtime (Mono)")
 
     SetValue(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
     SetValue(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
+    # Keep in sync with the marker suffixes in buildtools.py; only the browser subset carries the
+    # JavaScript glue, so only it is invalidated when that glue is added
+    if(FO_WEB)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue)
+    else()
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
+    endif()
 
-    SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    # dotnet/runtime's own paths sit close to MAX_PATH, and the default location adds the build
+    # directory's name on top: the resource step of System.Globalization.Native runs at 297 characters
+    # there and dies with `C1083: Cannot open compiler generated file`. FO_DOTNET_DIR is therefore an
+    # override — point it at a short path, and it doubles as the place the runtime's own markers make
+    # a repeat build a no-op
+    if(NOT FO_DOTNET_DIR AND NOT "$ENV{FO_DOTNET_DIR}" STREQUAL "")
+        SetValue(FO_DOTNET_DIR "$ENV{FO_DOTNET_DIR}")
+    endif()
+    if(NOT FO_DOTNET_DIR)
+        SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    endif()
+    SetValue(FO_MANAGED_RUNTIME_DIR ${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET})
     FileMakeDirectory(${FO_DOTNET_DIR})
 
-    AddIncludeDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0)
-    AddLinkDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/lib)
+    AddIncludeDirectories(${FO_MANAGED_RUNTIME_DIR}/include/mono-2.0)
+    AddLinkDirectories(${FO_MANAGED_RUNTIME_DIR}/lib)
 
-    if(FO_WINDOWS)
+    # dotnet/runtime builds the managed runtime with the host's own toolchain and has no Windows
+    # cross-target, so a Windows target reachable by clang-cl still leaves the runtime out of reach.
+    # The way across is a tree built on Windows and handed over through FO_MANAGED_RUNTIME_PREBUILT
+    if(FO_WINDOWS AND NOT CMAKE_HOST_WIN32 AND "$ENV{FO_MANAGED_RUNTIME_PREBUILT}" STREQUAL "")
+        AbortMessage("Managed runtime for Windows cannot be built on a non-Windows host (dotnet/runtime has no such cross-target); build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree")
+    endif()
+
+    # The setup script runs on the build host, not on the target, so it follows the host
+    if(CMAKE_HOST_WIN32)
         SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
     else()
         SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
     endif()
 
-    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
-        COMMAND ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
-        WORKING_DIRECTORY ${FO_DOTNET_DIR}
-        COMMENT "Setup Mono")
+    SetValue(FO_MONO_SETUP_ENV "FO_WORKSPACE=${FO_DOTNET_DIR}")
 
-    AddCommandTarget(SetupMono
-        DEPENDS ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
+    # dotnet/runtime's Android build reads both paths from the environment and fails outright without
+    # them (libs.native builds a Java part through the SDK), so they are handed over explicitly
+    if(FO_ANDROID)
+        if(ANDROID_NDK)
+            AppendList(FO_MONO_SETUP_ENV "ANDROID_NDK_ROOT=${ANDROID_NDK}")
+        else()
+            AppendList(FO_MONO_SETUP_ENV "ANDROID_NDK_ROOT=$ENV{FO_ANDROID_NDK_ROOT}")
+        endif()
+
+        AppendList(FO_MONO_SETUP_ENV "ANDROID_SDK_ROOT=$ENV{FO_ANDROID_SDK_ROOT}")
+    endif()
+
+    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+        COMMAND ${CMAKE_COMMAND} -E env ${FO_MONO_SETUP_ENV} ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR}
+        COMMENT "Setup Managed runtime")
+
+    AddCommandTarget(SetupManagedRuntime
+        DEPENDS ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
         WORKING_DIRECTORY ${FO_DOTNET_DIR})
-    AppendList(FO_GEN_DEPENDENCIES SetupMono)
+    AppendList(FO_GEN_DEPENDENCIES SetupManagedRuntime)
+
+    # CoreLib reaches the OS through these shims, so they belong to the runtime rather than being an
+    # extra. They are linked statically everywhere: Windows and WebAssembly cannot dlopen them at all
+    if(FO_WEB)
+        # Elsewhere the shim resolves ICU at load time; statically it needs ICU present, and none ships
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native)
+    elseif(FO_WINDOWS)
+        # Nothing to link there: System.Native is the Unix PAL dotnet/runtime does not build for Windows,
+        # where CoreLib reaches the OS through Win32 P/Invokes Mono resolves by itself, and the
+        # globalization shim ships only as a DLL import library and an LTCG archive no nm can read
+        SetValue(FO_MANAGED_SHIM_LIBS "")
+    else()
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native)
+    endif()
+
+    # The entry-point prefix does not follow the module name (System.Globalization.Native exports
+    # GlobalizationNative_*), so each shim states its own instead of deriving one
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Native SystemNative_)
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Globalization.Native GlobalizationNative_)
+
+    # The archive name follows the target toolchain, not the host
+    foreach(shimLib ${FO_MANAGED_SHIM_LIBS})
+        SetValue(shimArchive "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${shimLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        AppendList(FO_MANAGED_PINVOKE_ARGS --library "${shimLib}=${FO_MANAGED_SHIM_PREFIX_${shimLib}}=${shimArchive}")
+        AppendList(FO_MANAGED_SHIM_ARCHIVES "${shimArchive}")
+    endforeach()
+
+    # Taking an entry point's address keeps its whole object alive, so naming one a browser cannot honour
+    # drags in a POSIX call Emscripten does not implement - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    if(FO_WEB)
+        SetValue(FO_MANAGED_WEB_EXCLUDED_ENTRY_POINTS
+            SystemNative_FreeLibrary SystemNative_GetDefaultSearchOrderPseudoHandle SystemNative_GetLoadLibraryError
+            SystemNative_GetProcAddress SystemNative_LoadLibrary
+            SystemNative_ForkAndExecProcess SystemNative_GetPriority SystemNative_GetRLimit SystemNative_GetSid
+            SystemNative_Kill SystemNative_SchedGetAffinity SystemNative_SchedSetAffinity SystemNative_SetPriority
+            SystemNative_SetRLimit SystemNative_SysLog SystemNative_WaitIdAnyExitedNoHangNoWait SystemNative_WaitPidExitedNoHang
+            SystemNative_GetEGid SystemNative_GetEUid SystemNative_GetGroupList SystemNative_GetGroupName
+            SystemNative_GetGroups SystemNative_GetPwNamR SystemNative_GetPwUidR SystemNative_SetEUid
+            SystemNative_GetOSArchitecture SystemNative_GetUnixRelease SystemNative_GetUnixVersion
+            SystemNative_GetCpuUtilization
+            SystemNative_FLock SystemNative_LockFileRegion SystemNative_MAdvise SystemNative_MMap SystemNative_MProtect
+            SystemNative_MSync SystemNative_MUnmap SystemNative_ShmOpen SystemNative_ShmUnlink SystemNative_Sync)
+
+        foreach(excludedEntryPoint ${FO_MANAGED_WEB_EXCLUDED_ENTRY_POINTS})
+            AppendList(FO_MANAGED_PINVOKE_ARGS --exclude "${excludedEntryPoint}")
+        endforeach()
+    endif()
+
+    # WebAssembly has no JIT, so the interpreter is mandatory - and it is built as its own archive that has
+    # to precede monosgen, whose own interp-stubs.c would otherwise answer and abort on first managed call
+    if(FO_WEB)
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-ee-interp)
+    endif()
 
     AppendList(FO_COMMON_SYSTEM_LIBS
         monosgen-2.0
         mono-component-debugger-stub-static
         mono-component-diagnostics_tracing-stub-static
         mono-component-hot_reload-stub-static
-        mono-component-marshal-ilgen-stub-static)
+        mono-component-marshal-ilgen-stub-static
+        ${FO_MANAGED_SHIM_ARCHIVES}
+        minipal)
 
     if(FO_WINDOWS)
         AppendList(FO_COMMON_SYSTEM_LIBS bcrypt)
     elseif(FO_WEB)
-        AppendList(FO_COMMON_SYSTEM_LIBS mono-wasm-eh-wasm mono-wasm-nosimd)
+        # The JS flavour, not the wasm one: the engine builds with -sDISABLE_EXCEPTION_CATCHING=0 rather
+        # than -fwasm-exceptions, and the wasm flavour then wants an unwinder the link does not have.
+        # The interpreter's SIMD tables are their own archive and must match the runtime build, which
+        # enables SIMD - taking the nosimd tables leaves their entries empty for opcodes it still runs
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-icall-table mono-wasm-eh-js mono-wasm-simd)
+
+        # Mono's browser runtime imports its scheduler and entropy from JavaScript. dotnet's own glue only
+        # links stubs there and fills them from its JS host, which the engine does not run - so it supplies
+        # the implementations itself, see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+        AddLinkOptionsList(--js-library ${FO_BUILDTOOLS_DIR}/web/managed-runtime.lib.js)
     endif()
 endif()

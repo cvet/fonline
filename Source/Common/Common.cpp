@@ -165,20 +165,4 @@ void FrameBalancer::EndLoop()
     }
 }
 
-// Dummy symbols for web build to avoid linker errors
-#if FO_WEB
-
-FO_END_NAMESPACE
-
-void emscripten_sleep(unsigned int ms)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_UNREACHABLE_PLACE();
-}
-
-FO_BEGIN_NAMESPACE
-
-#endif
-
 FO_END_NAMESPACE

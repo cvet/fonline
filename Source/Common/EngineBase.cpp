@@ -221,7 +221,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     }
     if (has_abstract) {
         _entityRelatives.emplace(strex("Abstract{}", name), &entry.first->second);
-        RegisterBaseType(strex("Abstract{}", name));
+        auto abstract_type = RegisterBaseType(strex("Abstract{}", name));
+        abstract_type->IsAbstractEntity = true;
     }
 
     if (!exported) {
@@ -1285,11 +1286,20 @@ void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uin
     HandleOutboundRemoteCall(name, caller, data);
 }
 
-void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler)
+auto BaseEngine::HasRemoteCallHandler(hstring name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_inboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already registered", name);
+    return _inboundRemoteCallHandlers.contains(name);
+}
+
+void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!replace) {
+        FO_VERIFY_AND_THROW(!_inboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already registered", name);
+    }
 
     _inboundRemoteCallHandlers[name] = std::move(handler);
 }

@@ -65,7 +65,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
 
-        if (ext != "fos") {
+        if (ext != "fos" && ext != "cs") {
             continue;
         }
 
@@ -1640,6 +1640,19 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
         string replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
 
         ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
+
+        // A `MigrationRule Property` rewrites an obsolete stored name onto its replacement when loading stored data
+        if (rule_name == "Property") {
+            auto registrar = ctx.Meta.GetPropertyRegistrar(extra_info);
+
+            if (registrar) {
+                auto live_prop = registrar->FindProperty(target);
+
+                if (live_prop) {
+                    WriteLog(LogType::Warning, "Property migration rule shares its old name with a live property: {}.{} is registered as {} while stored values migrate to {}", extra_info, target, live_prop->GetViewTypeName(), replacement);
+                }
+            }
+        }
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(rule_name);

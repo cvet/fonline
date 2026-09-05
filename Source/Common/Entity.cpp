@@ -132,7 +132,7 @@ void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     auto callbacks = EnsureEventCallbacks(event_name);
-    SubscribeEvent(callbacks, std::move(callback));
+    SubscribeEvent(callbacks, std::move(callback), event_name);
 }
 
 void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept
@@ -186,18 +186,18 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
     return EventResult::ContinueChain;
 }
 
-void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback)
+void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback, string_view event_name)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks->end()) {
-        throw GenericException("Highest callback already added");
+        throw GenericException("Highest callback already added", GetName(), event_name);
     }
 
     if (callback.Priority <= EventPriority::Lowest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks->end()) {
-        throw GenericException("Lowest callback already added");
+        throw GenericException("Lowest callback already added", GetName(), event_name);
     }
 
     callbacks->emplace_back(std::move(callback));

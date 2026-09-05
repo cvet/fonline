@@ -120,6 +120,7 @@ public:
     void CopyFrom(const GlobalSettings& other);
     void SetSettingValue(string_view name, string_view value);
     void SetCustomSetting(string_view name, any_t value);
+    void SetRuntimeSetting(const string& name, const string& value);
     void Draw(bool editable);
 
 private:

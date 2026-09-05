@@ -558,6 +558,7 @@ def resolve_env() -> EnvMap:
 	dotnet_runtime_root = workspace / 'dotnet' / 'runtime'
 	env['FO_ANDROID_NDK_ROOT'] = str(ndk_root) if ndk_root.is_dir() else os.environ.get('FO_ANDROID_NDK_ROOT', '')
 	env['FO_DOTNET_RUNTIME_ROOT'] = os.environ.get('FO_DOTNET_RUNTIME_ROOT') or (str(dotnet_runtime_root) if dotnet_runtime_root.is_dir() else '')
+	env['FO_MANAGED_RUNTIME_PREBUILT'] = os.environ.get('FO_MANAGED_RUNTIME_PREBUILT', '')
 	return env
 
 
@@ -592,6 +593,7 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_ANDROID_NDK_ROOT',
 		'FO_DOTNET_RUNTIME',
 		'FO_DOTNET_RUNTIME_ROOT',
+		'FO_MANAGED_RUNTIME_PREBUILT',
 		'FO_IOS_SDK',
 		'FO_XWIN_VERSION',
 		'FO_XWIN_ROOT',
@@ -909,8 +911,11 @@ def download_file(url: str, target_path: Path, label: str) -> None:
 			time.sleep(delay)
 
 
-def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None) -> None:
-	command: list[object] = ['git', 'clone', repo_url]
+def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None, long_paths: bool = False) -> None:
+	command: list[object] = ['git']
+	if long_paths:
+		command.extend(['-c', 'core.longpaths=true'])
+	command.extend(['clone', repo_url])
 	if depth is not None:
 		command.extend(['--depth', str(depth)])
 	if branch_name is not None:
@@ -919,8 +924,70 @@ def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = N
 	run(command)
 
 
-def resolve_runtime_build_script() -> str:
-	return 'build.cmd' if os.name == 'nt' else './build.sh'
+def resolve_visual_studio_2022_dev_cmd() -> Path | None:
+	if os.name != 'nt':
+		return None
+
+	program_files_x86 = os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')
+	vswhere = Path(program_files_x86) / 'Microsoft Visual Studio' / 'Installer' / 'vswhere.exe'
+	if not vswhere.exists():
+		return None
+
+	try:
+		output = subprocess.check_output(
+			[
+				str(vswhere),
+				'-latest',
+				'-products',
+				'*',
+				'-version',
+				'[17.0,18.0)',
+				'-requires',
+				'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+				'-property',
+				'installationPath',
+			],
+			text=True,
+			encoding='utf-8',
+			errors='replace',
+		).strip()
+	except (OSError, subprocess.CalledProcessError):
+		return None
+
+	if not output:
+		return None
+
+	dev_cmd = Path(output) / 'Common7' / 'Tools' / 'VsDevCmd.bat'
+	return dev_cmd if dev_cmd.exists() else None
+
+
+def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
+	if os.name != 'nt':
+		# The outer CMake build passes down a make jobserver its nested make cannot join, and the browser
+		# subset turns that into a hard error, so the inherited job-control flags are dropped here
+		build_env = {name: value for name, value in os.environ.items() if name not in ('MAKEFLAGS', 'MFLAGS')}
+		run(['./build.sh', *build_args], cwd=runtime_root, env=build_env)
+		return
+
+	wrapper = runtime_root / 'fo-build-runtime.cmd'
+	wrapper_lines = ['@echo off']
+	vs_dev_cmd = resolve_visual_studio_2022_dev_cmd()
+	if vs_dev_cmd is not None:
+		wrapper_lines.extend([
+			f'call "{vs_dev_cmd}" -no_logo',
+			'if errorlevel 1 exit /b %ERRORLEVEL%',
+		])
+	wrapper_lines.extend([
+		f'call "{runtime_root / "build.cmd"}" %*',
+		'if errorlevel 1 exit /b %ERRORLEVEL%',
+	])
+	wrapper.write_text('\n'.join(wrapper_lines) + '\n', encoding='utf-8')
+
+	# Absolute paths, not bare names resolved against the current directory: cmd.exe drops the implicit
+	# leading "." from its search path when NoDefaultCurrentDirectoryInExePath is set in the environment
+	# (a common Windows hardening setting), and the bare name then fails with "not recognized as an
+	# internal or external command" even though cwd is correct
+	run(['cmd', '/d', '/c', str(wrapper), *build_args], cwd=runtime_root)
 
 
 def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
@@ -1094,7 +1161,10 @@ def run_in_emsdk_env(command: Sequence[str], workspace: Path, cwd: str | Path | 
 
 
 def build_toolset_version() -> str:
-	return f'v1-{os.name}'
+	# Derived from the configure flags so a tree prepared before a flag change is invalidated: a stale
+	# cache value the project no longer produces (FO_BUILD_ASCOMPILER before the managed switch) breaks configure
+	digest = hashlib.sha256('\n'.join(toolset_flag_args()).encode('utf-8')).hexdigest()[:8]
+	return f'v2-{os.name}-{digest}'
 
 
 def build_emscripten_version(env: Mapping[str, str]) -> str:
@@ -1303,8 +1373,15 @@ def make_output_path_cmake_args(output_path: str, binary_output_postfix: str = '
 	return args
 
 
+def toolset_flag_args(config_name: str | None = None) -> list[str]:
+	# The baker belongs to every scripting backend, while ASCompiler only exists when the
+	# embedding project enables AngelScript. Leave FO_BUILD_ASCOMPILER to the project's
+	# SetOptionValues default instead of overriding managed-only projects with an invalid pair
+	return [arg for arg in build_flag_args('toolset', config=config_name) if not arg.startswith('-DFO_BUILD_ASCOMPILER=')]
+
+
 def make_toolset_cmake_args(output_path: str, config_name: str | None = None, binary_output_postfix: str = '') -> list[str]:
-	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *build_flag_args('toolset', config=config_name)]
+	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *toolset_flag_args(config_name)]
 
 
 def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
@@ -2250,17 +2327,158 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
 
 
+# CoreLib reaches the OS through the interop shims on every non-Windows platform (Interop.Sys is
+# libSystem.Native), so the runtime alone is not a working runtime and libs.native must be built with it
+MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
+
+# Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
+# subset changes: an unchanged marker leaves an already-prepared host on a runtime built the old way
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
+MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
+
+
+def resolve_mono_runtime_subset(os_name: str) -> str:
+	# Passing an explicit subset overrides the dotnet default, which for browser carries mono.wasmruntime
+	# — the piece that builds the JavaScript glue Mono imports (scheduling, crypto, startup)
+	if os_name == 'browser':
+		return f'{MONO_RUNTIME_SUBSET}+mono.wasmruntime'
+
+	return MONO_RUNTIME_SUBSET
+
+
+def resolve_mono_marker_suffix(os_name: str) -> str:
+	return MONO_BROWSER_SUBSET_MARKER_SUFFIX if os_name == 'browser' else MONO_SUBSET_MARKER_SUFFIX
+
+
+PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
+
+
+def patch_runtime_sources(runtime_root: Path) -> None:
+	# dotnet/runtime builds the Windows mono runtime with /GL, and a static archive carrying MSVC
+	# whole-program IL can be consumed by exactly one linker build: link.exe rejects IL produced by a
+	# different toolset (C1900) and lld-link cannot read it at all ("is not a native COFF file").
+	# This archive is published and linked on other machines and by clang-cl, so the flag is dropped
+	# at the source rather than worked around per consumer
+	path = runtime_root / 'src' / 'mono' / 'CMakeLists.txt'
+	text = path.read_text(encoding='utf-8')
+
+	if PATCH_MARKER in text:
+		log('Already patched', path)
+		return
+
+	patches = (
+		('    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/GL>) # whole program optimization\n', f'    # {PATCH_MARKER}\n'),
+		('    add_link_options(/LTCG)    # link-time code generation\n', ''),
+	)
+
+	for needle, replacement in patches:
+		if needle not in text:
+			raise SystemExit(f'Cannot patch the mono whole-program-optimization flags, anchor not found in {path}: {needle.strip()}')
+
+		text = text.replace(needle, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched', path, '- dropped /GL and /LTCG')
+
+
+def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
+	native_root = runtime_root / 'artifacts' / 'bin' / 'native'
+	candidates = sorted(native_root.glob(f'*-{os_name}-{config}-{arch}'))
+
+	if not candidates:
+		raise SystemExit(f'Interop shim libraries not found: {native_root}/*-{os_name}-{config}-{arch}')
+
+	return candidates[-1]
+
+
+def resolve_minipal_libraries(runtime_root: Path, os_name: str, arch: str, config: str) -> list[Path]:
+	# The shims call into minipal (SystemNative_GetTimestamp needs minipal_hires_ticks), and it is only
+	# ever produced under the intermediate obj tree, so it is picked up separately from the shims.
+	# The file name follows the target toolchain rather than the host: libminipal.a where CMake applies
+	# the Unix prefix, minipal.lib on MSVC. aotminipal is a different library and stays out
+	obj_root = runtime_root / 'artifacts' / 'obj' / 'native'
+	return sorted(path
+		for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}')
+		for path in (parent / 'minipal').rglob('*')
+		if path.suffix.lower() in ('.a', '.lib') and path.stem.lower() in ('minipal', 'libminipal'))
+
+
+def copy_browser_runtime_glue(runtime_root: Path, output_lib_dir: Path, os_name: str, arch: str, config: str) -> None:
+	# Mono's browser runtime imports its scheduler, crypto and startup helpers from JavaScript, so the
+	# Emscripten link needs these next to the archives; the rsp files carry dotnet's own link options
+	native_dir = resolve_interop_shim_dir(runtime_root, os_name, arch, config)
+	glue_dir = native_dir / 'src' / 'es6'
+	glue_paths = sorted(glue_dir.glob('dotnet.es6.*.js'))
+
+	if not glue_paths:
+		raise SystemExit(f'Browser runtime glue not found: {glue_dir}')
+
+	target_dir = output_lib_dir / 'es6'
+	ensure_dir(target_dir)
+
+	for glue_path in glue_paths:
+		log('Copy browser runtime glue', glue_path.name)
+		shutil.copy2(glue_path, target_dir / glue_path.name)
+
+	for rsp_path in sorted((native_dir / 'src').glob('emcc-*.rsp')):
+		log('Copy browser link options', rsp_path.name)
+		shutil.copy2(rsp_path, output_lib_dir / rsp_path.name)
+
+
+def copy_interop_shim_libraries(runtime_root: Path, output_lib_dir: Path, os_name: str, arch: str, config: str) -> None:
+	shim_dir = resolve_interop_shim_dir(runtime_root, os_name, arch, config)
+	# Static archives only: the shims are linked into the host binary and reached through the engine's
+	# Mono dl fallback, because Windows and WebAssembly cannot resolve them as shared libraries
+	shim_paths = sorted(path for pattern in ('*.a', '*.lib') for path in shim_dir.glob(pattern))
+
+	if not shim_paths:
+		raise SystemExit(f'Interop shim libraries not found: {shim_dir}')
+
+	minipal_paths = resolve_minipal_libraries(runtime_root, os_name, arch, config)
+
+	if not minipal_paths:
+		obj_root = runtime_root / 'artifacts' / 'obj' / 'native'
+		seen = sorted(str(path.relative_to(obj_root)) for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}') for path in (parent / 'minipal').rglob('*') if path.is_file())
+		raise SystemExit(f'Interop shim dependency minipal not found under: {obj_root}/*-{os_name}-{config}-{arch}/minipal (found: {", ".join(seen) if seen else "nothing"})')
+
+	shim_paths.extend(minipal_paths)
+
+	ensure_dir(output_lib_dir)
+
+	for shim_path in shim_paths:
+		log('Copy interop shim', shim_path.name)
+		shutil.copy2(shim_path, output_lib_dir / shim_path.name)
+
+
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
 	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
 	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
 	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent
 	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
-	triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
+	runtime_triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
+	publish_triplet = f'{os_name}.{arch}.{config}'
 	workspace = Path(env['FO_WORKSPACE'])
 	runtime_root = workspace / 'runtime'
-	clone_marker = workspace / 'CLONED'
-	built_marker = workspace / f'BUILT_{triplet}'
-	ready_marker = workspace / f'READY_{triplet}'
+	runtime_version = env['FO_DOTNET_RUNTIME'].replace('/', '_').replace('\\', '_')
+	clone_marker = workspace / f'CLONED_{runtime_version}'
+	marker_suffix = resolve_mono_marker_suffix(os_name)
+	built_marker = workspace / f'BUILT_{runtime_triplet}{marker_suffix}'
+	ready_marker = workspace / f'READY_{publish_triplet}{marker_suffix}'
+
+	# A published runtime tree stands in for the source build. It is what makes a Windows target
+	# reachable from a Linux host at all: dotnet/runtime builds with the host's own toolchain and has
+	# no Windows cross-target, so that combination has to be produced on Windows and carried over
+	prebuilt_root = env.get('FO_MANAGED_RUNTIME_PREBUILT', '')
+
+	if prebuilt_root:
+		adopt_prebuilt_mono(Path(prebuilt_root), workspace, publish_triplet, ready_marker)
+		log(f'Runtime {publish_triplet} is ready (prebuilt)!')
+		return
+
+	if os_name == 'windows' and os.name != 'nt':
+		raise SystemExit(
+			f'Managed runtime for {publish_triplet} cannot be built on this host: dotnet/runtime has no Windows cross-target. '
+			'Build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree')
 
 	def clone_runtime() -> None:
 		if runtime_root.exists():
@@ -2272,28 +2490,65 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 			copy_directory(dotnet_runtime_root, runtime_root)
 		else:
 			log('Clone runtime')
-			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1)
+			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1, long_paths=True)
+
+		patch_runtime_sources(runtime_root)
 
 	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
 
 	def build_runtime() -> None:
-		build_script = resolve_runtime_build_script()
-		run([build_script, '-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', 'mono.runtime'], cwd=runtime_root)
+		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root)
 
 	run_marker_step(built_marker, 'Build runtime', build_runtime)
 
 	def publish_runtime() -> None:
-		output_dir = workspace / 'output' / 'mono' / triplet
-		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / triplet / 'out'
+		output_dir = workspace / 'output' / 'mono' / publish_triplet
+		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / runtime_triplet / 'out'
 		if not input_dir.is_dir():
 			raise SystemExit(f'Files not found: {input_dir}')
 		log('Copy from', input_dir, 'to', output_dir)
 		copy_directory(input_dir, output_dir, dirs_exist_ok=True)
 
-	run_marker_step(ready_marker, f'Publish runtime {triplet}', publish_runtime)
+		shared_framework_root = runtime_root / '.dotnet' / 'shared' / 'Microsoft.NETCore.App'
+		if not shared_framework_root.is_dir():
+			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
+		shared_framework_dirs = sorted((path for path in shared_framework_root.iterdir() if path.is_dir()), key=lambda path: path.name)
+		if not shared_framework_dirs:
+			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
 
-	log(f'Runtime {triplet} is ready!')
+		shared_framework_dir = shared_framework_dirs[-1]
+		corelib_path = runtime_root / 'artifacts' / 'bin' / 'mono' / runtime_triplet / 'IL' / 'System.Private.CoreLib.dll'
+		if not corelib_path.is_file():
+			raise SystemExit(f'Mono System.Private.CoreLib not found: {corelib_path}')
 
+		netcoreapp_dir = output_dir / 'lib' / 'netcoreapp'
+		ensure_empty_dir(netcoreapp_dir)
+		for assembly_path in shared_framework_dir.glob('*.dll'):
+			shutil.copy2(assembly_path, netcoreapp_dir / assembly_path.name)
+		shutil.copy2(corelib_path, netcoreapp_dir / corelib_path.name)
+
+		copy_interop_shim_libraries(runtime_root, output_dir / 'lib', os_name, dotnet_runtime_arch, config)
+
+		if os_name == 'browser':
+			copy_browser_runtime_glue(runtime_root, output_dir / 'lib', os_name, dotnet_runtime_arch, config)
+
+	run_marker_step(ready_marker, f'Publish runtime {publish_triplet}', publish_runtime)
+
+	log(f'Runtime {publish_triplet} is ready!')
+
+
+def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: str, ready_marker: Path) -> None:
+	# The tree is named by its triplet so one published archive can hold several; a caller that points
+	# straight at a single triplet's directory is accepted as well
+	source_dir = prebuilt_root / publish_triplet if (prebuilt_root / publish_triplet).is_dir() else prebuilt_root
+
+	if not (source_dir / 'lib').is_dir() or not (source_dir / 'include').is_dir():
+		raise SystemExit(f'Prebuilt managed runtime for {publish_triplet} is not a published runtime tree: {source_dir}')
+
+	output_dir = workspace / 'output' / 'mono' / publish_triplet
+	log('Copy prebuilt runtime from', source_dir, 'to', output_dir)
+	copy_directory(source_dir, output_dir, dirs_exist_ok=True)
+	ready_marker.touch()
 
 
 def discover_clang_format() -> str:

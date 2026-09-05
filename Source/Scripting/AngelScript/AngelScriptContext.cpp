@@ -66,7 +66,7 @@ struct AngelScriptStackTraceInstaller
 };
 FO_GLOBAL_DATA(AngelScriptStackTraceInstaller, AngelScriptStackTraceInstall);
 
-static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_ctx, void* param);
+static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_ctx, void* param) noexcept;
 static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* param);
 
 #if FO_TRACY
@@ -732,17 +732,23 @@ static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_lay
     }
 }
 
-static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_ctx, void* param)
+// AngelScript calls this from inside its own catch block to let the host capture the in-flight application exception
+static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_ctx, void* param) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     ignore_unused(param);
 
-    FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
-    auto ctx = make_ptr(raw_ctx);
+    auto ctx = make_nptr(raw_ctx);
+    FO_VERIFY_AND_CONTINUE(ctx, "Missing script execution context");
+
+    // A context without extended data is not ours (AngelScript runs internal contexts of its own, for example
+    // while a module exit destroys global properties), so there is nothing to record into
     auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
-    ctx_ext->Exception = std::current_exception();
+
+    if (ctx_ext) {
+        ctx_ext->Exception = std::current_exception();
+    }
 }
 
 static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* param)

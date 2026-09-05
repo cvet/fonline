@@ -531,7 +531,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        if (context_mngr->RunContext(ctx, !func_desc->Ret)) {
+        const bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+
+        if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();
@@ -644,7 +646,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        if (context_mngr->RunContext(ctx, !func_desc->Ret)) {
+        const bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+
+        if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();
@@ -683,7 +687,14 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                         }
 
                         NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
-                        as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
+
+                        if (ret_obj) {
+                            as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
+
+                            if (call.Accessor->GetBackendIndex() == ScriptSystemBackend::MANAGED_BACKEND_INDEX) {
+                                call.RetValueOwner.Reset([as_engine, as_ret_type, ret_obj]() mutable noexcept { as_engine->ReleaseScriptObject(ret_obj.get_no_const(), as_ret_type.get()); });
+                            }
+                        }
                     }
                     else {
                         FO_VERIFY_AND_THROW(ret_obj, "Missing AngelScript return object");

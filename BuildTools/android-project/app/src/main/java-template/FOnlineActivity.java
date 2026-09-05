@@ -48,6 +48,13 @@ public class FOnlineActivity extends SDLActivity {
         args.add("--Baking.CacheResources");
         args.add(cacheDir.getAbsolutePath());
 
+        // Set here rather than beside the unpacking: nativeSetenv is a native method, and SDL only loads
+        // the libraries in its own onCreate, which runs after the assets are already in place
+        final File managedRuntimeDir = new File(runtimeRoot, "ManagedRuntime");
+        if (managedRuntimeDir.isDirectory()) {
+            nativeSetenv("FO_MANAGED_RUNTIME", managedRuntimeDir.getAbsolutePath());
+        }
+
         final String serverHost = getIntent() != null ? getIntent().getStringExtra("server_host") : null;
         if (serverHost != null) {
             final String trimmedServerHost = serverHost.trim();
@@ -64,14 +71,21 @@ public class FOnlineActivity extends SDLActivity {
         final File runtimeRoot = getRuntimeRoot();
 
         final File resourcesDir = new File(runtimeRoot, "Resources");
+        final File managedRuntimeDir = new File(runtimeRoot, "ManagedRuntime");
         final File revisionFile = new File(runtimeRoot, ".asset_revision");
         final String assetRevision = getAssetRevision();
 
         if (!assetRevision.equals(readSmallTextFile(revisionFile)) || !new File(resourcesDir, "Metadata.zip").isFile()) {
             deleteRecursively(resourcesDir);
             copyAssetTree("Resources", resourcesDir);
+            // Mono resolves CoreLib through a real filesystem path, which assets inside the package are
+            // not, so the managed assemblies are unpacked next to the resources and named through the
+            // environment below
+            deleteRecursively(managedRuntimeDir);
+            copyAssetTree("ManagedRuntime", managedRuntimeDir);
             writeSmallTextFile(revisionFile, assetRevision);
         }
+
     }
 
     private File getRuntimeRoot() {

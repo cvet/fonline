@@ -1,0 +1,25 @@
+<!--
+  Self-tests for the managed script analyzers. A plain console runner rather than a test framework: no
+  xunit/NUnit/Microsoft.CodeAnalysis.Testing package is available to this build offline, and the whole
+  harness a diagnostic test needs is "compile a snippet, assert the reported ids", which Roslyn provides
+  directly. Exit code 0 means every case passed.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDependencyFile>true</GenerateDependencyFile>
+    <AssemblyName>FOnline.Analyzers.Tests</AssemblyName>
+    <RootNamespace>FOnline.Analyzers.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../FOnline.Analyzers.csproj" />
+  </ItemGroup>
+</Project>

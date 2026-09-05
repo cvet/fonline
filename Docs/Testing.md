@@ -48,6 +48,7 @@ of cooked files presented as authored inputs.
 The executable target can also be invoked directly when you need Catch2 arguments. In Last Frontier-style layouts, test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/LF_UnitTests.exe` or `Binaries/Tests-Linux-x64/LF_UnitTests`.
 
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. When the run fails, the helper also echoes the captured output before failing, so a failure is diagnosable from the build output alone — on CI the log file never leaves the runner, and the exit code by itself does not say which test or assertion broke.
+The generated `RunUnitTests` target captures the complete test process output under the configured build tree's `Testing/` directory and prints the Catch2 success summary. On a real non-zero process exit it replays the captured output before failing. This keeps expected diagnostics from negative compiler/parser tests from being reclassified as build errors by native build frontends such as MSBuild.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
@@ -57,6 +58,14 @@ Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
+
+The validation project (`Engine/BuildTools/validation-project`) enables `FO_ANGELSCRIPT_SCRIPTING` and keeps `FO_MANAGED_SCRIPTING` off, so validators stay offline-friendly and do not pull in the Mono runtime build (`SetupManagedRuntime` / `setup-mono` clones and builds the pinned `dotnet/runtime` source, a heavy network step). The managed (C#/Mono) backend and `Test_ManagedScriptBaker` are exercised through the embedding project's managed build (the `auto-managed` preset), not through the validators.
+
+The unit-test executable follows the configured scripting backends. AngelScript-only test translation units are
+compiled only with `FO_ANGELSCRIPT_SCRIPTING`; `Test_ManagedScriptBaker` is compiled only with
+`FO_MANAGED_SCRIPTING`. A managed-only embedding project can therefore build and run its local `RunUnitTests`
+target without re-enabling the retired runtime backend, while the validation project remains the full AngelScript
+backend boundary.
 
 ### Unit tests under sanitizers
 
@@ -139,6 +148,11 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 - MSVC / clang-cl: MSVC-style coverage output;
 - Clang: LLVM profile/coverage mapping;
 - GCC: GCC/lcov-style coverage flags.
+
+Coverage builds use AngelScript's portable generic calling convention. The native x64 GCC trampoline adjusts the
+stack inside inline assembly and cannot reliably unwind an application C++ exception once coverage instrumentation
+changes the surrounding frame; the portable path keeps the same registered-function behavior in ordinary C++ so
+expected exception tests remain catchable.
 
 `BuildTools/cmake/stages/Applications.cmake` wires coverage command targets through `BuildTools/codecoverage.py`:
 
