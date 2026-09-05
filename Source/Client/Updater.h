@@ -106,6 +106,7 @@ private:
     void GetNextFile();
     void FinishResourcesUpdate();
     auto ReadLocalMetadataVersion() const -> string;
+    void RemoveStaleTempPacks() const;
     void RequestUpdateFile(const UpdateFile& update_file);
 
     void Net_OnConnect(ClientConnection::ConnectResult result);

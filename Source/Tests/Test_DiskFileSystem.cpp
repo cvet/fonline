@@ -288,4 +288,105 @@ TEST_CASE("DiskFileSystemNameCase")
     }
 }
 
+TEST_CASE("DiskFilePrimitives")
+{
+    SECTION("WriteHandleAppendsWhileReadHandleSeeksFreely")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_handles");
+        string file_path = strex(temp_dir).combine_path("pack.bin").str();
+
+        ignore_unused(fs_remove_dir_tree(temp_dir));
+        REQUIRE(fs_create_directories(temp_dir));
+
+        array<uint8_t, 4> head_bytes = {'a', 'b', 'c', 'd'};
+        array<uint8_t, 4> tail_bytes = {'e', 'f', 'g', 'h'};
+        array<uint8_t, 1> patch_byte = {'A'};
+
+        {
+            disk_write_file writer {file_path};
+            REQUIRE(static_cast<bool>(writer));
+            REQUIRE(writer.preallocate(8));
+            REQUIRE(writer.write(const_span<uint8_t> {head_bytes.data(), head_bytes.size()}));
+            REQUIRE(writer.write(const_span<uint8_t> {tail_bytes.data(), tail_bytes.size()}));
+            REQUIRE(writer.seek_to_begin());
+            REQUIRE(writer.write(const_span<uint8_t> {patch_byte.data(), patch_byte.size()}));
+            REQUIRE(writer.flush());
+        }
+
+        REQUIRE(fs_file_size(file_path).has_value());
+        CHECK(*fs_file_size(file_path) == 8);
+
+        disk_read_file reader {file_path};
+        REQUIRE(static_cast<bool>(reader));
+        CHECK(reader.get_size() == 8);
+
+        // Reads carry their own offset, so they neither disturb each other nor depend on the order they run in
+        array<uint8_t, 4> read_tail = {};
+        array<uint8_t, 4> read_head = {};
+        REQUIRE(reader.read_at(4, span<uint8_t> {read_tail.data(), read_tail.size()}));
+        REQUIRE(reader.read_at(0, span<uint8_t> {read_head.data(), read_head.size()}));
+        CHECK(string_view {reinterpret_cast<const char*>(read_head.data()), read_head.size()} == "Abcd");
+        CHECK(string_view {reinterpret_cast<const char*>(read_tail.data()), read_tail.size()} == "efgh");
+
+        // A read running past the end fails outright rather than reporting a short count
+        CHECK_FALSE(reader.read_at(6, span<uint8_t> {read_tail.data(), read_tail.size()}));
+
+        // Windows refuses to unlink a file while a handle on it is open, so the reader goes first
+        reader.close();
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
+    SECTION("OpeningAMissingFileLeavesTheHandleClosed")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_missing");
+        disk_read_file reader {strex(temp_dir).combine_path("absent.bin").str()};
+
+        CHECK_FALSE(static_cast<bool>(reader));
+    }
+
+    SECTION("ListingNamesKeepsWhatIterationHides")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_listing");
+
+        ignore_unused(fs_remove_dir_tree(temp_dir));
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_create_directories(strex(temp_dir).combine_path("sub").str()));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("plain.bin").str(), string_view {"a"}));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("~temp.bin").str(), string_view {"b"}));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path(".hidden").str(), string_view {"c"}));
+
+        vector<string> listed = fs_list_dir_file_names(temp_dir);
+        vector<string> iterated;
+
+        fs_iterate_dir(temp_dir, false, [&](string_view path, size_t size, uint64_t write_time) {
+            ignore_unused(size, write_time);
+            iterated.emplace_back(path);
+        });
+
+        // The updater sweeps its own '~' temp files, which the filtering iteration never shows it
+        CHECK(std::find(listed.begin(), listed.end(), "~temp.bin") != listed.end());
+        CHECK(std::find(listed.begin(), listed.end(), ".hidden") != listed.end());
+        CHECK(std::find(iterated.begin(), iterated.end(), "~temp.bin") == iterated.end());
+        CHECK(listed.size() == 3);
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
+    SECTION("AvailableSpaceAnswersForAnExistingDirectoryOnly")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_space");
+
+        ignore_unused(fs_remove_dir_tree(temp_dir));
+        REQUIRE(fs_create_directories(temp_dir));
+
+        auto available = fs_available_space(temp_dir);
+        REQUIRE(available.has_value());
+        CHECK(*available > 0);
+
+        CHECK_FALSE(fs_available_space(strex(temp_dir).combine_path("no/such/place").str()).has_value());
+
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+}
+
 FO_END_NAMESPACE

@@ -137,6 +137,17 @@ auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
     return !ec ? optional<uint64_t> {size} : std::nullopt;
 }
 
+auto fs_available_space(string_view path) noexcept -> optional<uint64_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::error_code ec;
+    auto info = std::filesystem::space(std::filesystem::path {fs_make_path(path)}, ec);
+
+    // The path itself need not exist yet, but its directory must, or the volume cannot be identified
+    return !ec ? optional<uint64_t> {numeric_cast<uint64_t>(info.available)} : std::nullopt;
+}
+
 static auto fs_read_file_impl(string_view path, optional<size_t> max_size) -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
@@ -409,6 +420,29 @@ void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visito
     FO_STACK_TRACE_ENTRY();
 
     RecursiveDirLook(dir, "", recursive, visitor);
+}
+
+auto fs_list_dir_file_names(string_view dir) noexcept -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> names;
+    std::error_code ec;
+    std::filesystem::directory_iterator it {std::filesystem::path {fs_make_path(dir)}, ec};
+    std::filesystem::directory_iterator end;
+
+    // Every step takes the error code, because the throwing increment would reach a noexcept frame
+    while (!ec && it != end) {
+        if (it->is_regular_file(ec) && !ec) {
+            auto u8_str = it->path().filename().u8string();
+            names.emplace_back(u8_str.begin(), u8_str.end());
+        }
+
+        ec.clear();
+        it.increment(ec);
+    }
+
+    return names;
 }
 
 auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool

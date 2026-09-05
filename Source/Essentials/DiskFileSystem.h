@@ -56,6 +56,7 @@ auto fs_make_writable_path(string_view user_writable_path, string_view relative)
 auto fs_create_directories(string_view dir) noexcept -> bool;
 auto fs_last_write_time(string_view path) noexcept -> uint64_t;
 auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;
+auto fs_available_space(string_view path) noexcept -> optional<uint64_t>;
 auto fs_hash_file(string_view path) -> optional<uint64_t>;
 auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
 auto fs_read_file(string_view path) -> optional<string>;
@@ -69,6 +70,7 @@ auto fs_touch_file(string_view path) noexcept -> bool;
 auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool;
 auto fs_open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
 void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visitor);
+auto fs_list_dir_file_names(string_view dir) noexcept -> vector<string>;
 
 // Stream helpers
 auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool;

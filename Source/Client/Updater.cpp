@@ -373,6 +373,16 @@ void Updater::GetNextFile()
                 Abort(StrFilesystemError);
                 return;
             }
+
+            // Refusing a pack that will not fit leaves the installed one alone, where running the volume dry
+            // mid-transfer leaves a temp file and a download to repeat. See Docs/ClientUpdater.md
+            auto available = fs_available_space(dir);
+
+            if (available.has_value() && *available < next_update_file.RemaningSize) {
+                WriteLog("Client updater: not enough free space for {}, need {}, available {}", next_update_file.Name, next_update_file.RemaningSize, *available);
+                Abort(StrFilesystemError);
+                return;
+            }
         }
 
         std::ios_base::openmode open_mode = std::ios::binary | (next_update_file.RemaningSize != next_update_file.Size ? std::ios::app : std::ios::trunc);
@@ -672,6 +682,8 @@ void Updater::Net_OnInitData()
 
     reader.VerifyEnd();
 
+    RemoveStaleTempPacks();
+
     if (!_filesToUpdate.empty()) {
         WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
         GetNextFile();
@@ -822,6 +834,36 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
+}
+
+void Updater::RemoveStaleTempPacks() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string resources_dir = fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources);
+
+    if (!fs_is_dir(resources_dir)) {
+        return;
+    }
+
+    unordered_set<string> wanted;
+
+    for (const auto& update_file : _filesToUpdate) {
+        wanted.emplace(strex("~{}", update_file.Name).str());
+    }
+
+    // fs_iterate_dir hides names starting with '~', which is exactly the set this sweep is looking for
+    for (const auto& name : fs_list_dir_file_names(resources_dir)) {
+        // Only a temp pack of a pack the server no longer lists is stale; one still in the list is the resume
+        // point this run is about to continue from
+        if (!name.starts_with('~') || !IsResourcePackName(name) || wanted.count(name) != 0) {
+            continue;
+        }
+
+        string stale_path = strex(resources_dir).combine_path(name).str();
+        WriteLog("Client updater: removing stale temp pack {}", stale_path);
+        (void)fs_remove_file(stale_path);
+    }
 }
 
 auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool

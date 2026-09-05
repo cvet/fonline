@@ -354,9 +354,18 @@ Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Serve
   demand, so a pack replaced under a live server would otherwise reach the client under the hash announced for the
   previous one.
 
+Once the update list is known, temp files left by an abandoned transfer whose pack the server no longer
+lists are removed (`RemoveStaleTempPacks`), so an interrupted download does not hold its size on the volume
+for ever; a temp file for a pack still on the list is the resume point and is kept.
+
 Client-side, the `Updater` writes each portion to a `~<filename>` temp file, proves the finished file once complete, then atomically renames over the live file (`ReplaceFileSafely`). A resource pack is proved by `VerifyResourcePackFile` ([../Source/Common/ResourcePack.cpp](../Source/Common/ResourcePack.cpp)): the header must carry the published `PackHash` and the body, hashed in bounded slices, must reproduce it. Anything else is hashed whole via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
 
 A resource pack never needs that pass at all: the published hash is the one in its header, so "is this pack current" is one header read (`ReadResourcePackHeader`) and no body is hashed at startup. For the remaining whole-file entries, and to avoid rehashing them on every startup, the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+
+Before a transfer starts the updater refuses one it cannot finish: `fs_available_space` on the target
+directory must hold the remaining bytes, or the pack is not attempted and the installed one is left alone.
+The space is checked rather than reserved, because the resume protocol reads how much already arrived from
+the temp file's length, and preallocating the full size would make every partial download look complete.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 

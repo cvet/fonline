@@ -267,6 +267,13 @@ ResourcePackWriter::ResourcePackWriter(string_view path, ResourcePackWriteSettin
         throw ResourcePackException("Can't create pack file", _path);
     }
 
+    // A constructor that throws runs no destructor, so the truncated file it just created has to be cleared
+    // here or a later mount finds a pack with no valid header and refuses to start
+    auto remove_on_fail = scope_fail([this]() noexcept {
+        _file.close();
+        (void)fs_remove_file(_path);
+    });
+
     // The header is patched at the end, once the index offset and the body hash are known
     array<uint8_t, RESOURCE_PACK_HEADER_SIZE> placeholder = {};
 
