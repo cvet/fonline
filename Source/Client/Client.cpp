@@ -68,7 +68,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
-    SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
+    AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
     Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
@@ -86,6 +86,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 #endif
 
     ResMngr.IndexFiles();
+    AudioMngr.IndexFiles();
 
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
     MapEngineType<ItemView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
@@ -234,7 +235,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
-    SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
+    AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
     Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
@@ -2612,7 +2613,7 @@ void ClientEngine::UnloadMap()
 
     _globalMapCritters.clear();
 
-    SndMngr.StopSounds();
+    AudioMngr.StopSounds();
 
     _mapLoaded = false;
 }
@@ -2872,10 +2873,10 @@ void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool en
     _video.emplace(std::move(video_clip), std::move(video_tex));
 
     if (names.size() > 1) {
-        SndMngr.StopMusic();
+        AudioMngr.StopMusic();
 
         if (!names[1].empty()) {
-            SndMngr.PlayMusic(names[1], timespan::zero);
+            AudioMngr.PlayMusic(names[1], timespan::zero);
         }
     }
 }
@@ -2890,7 +2891,7 @@ void ClientEngine::ProcessVideo()
 
         if (_video->Clip.IsStopped()) {
             _video.reset();
-            SndMngr.StopMusic();
+            AudioMngr.StopMusic();
         }
     }
 

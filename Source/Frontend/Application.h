@@ -605,7 +605,6 @@ class AppAudio final : public IAppAudio
     friend class Application;
 
 public:
-    static const int32_t AUDIO_FORMAT_U8;
     static const int32_t AUDIO_FORMAT_S16;
 
     using AudioStreamCallback = IAppAudio::AudioStreamCallback;

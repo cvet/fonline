@@ -73,6 +73,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 #endif
 
     ResMngr.IndexFiles();
+    AudioMngr.IndexFiles();
 
     MapScriptTypes(this);
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));

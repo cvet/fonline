@@ -24,6 +24,8 @@ Read this page together with:
 - `Source/Client/ResourceManager.cpp`
 - `Source/Client/FontManager.h`
 - `Source/Client/FontManager.cpp`
+- `Source/Client/AudioManager.h`
+- `Source/Client/AudioManager.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
@@ -292,7 +294,8 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
-- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes sound-name mappings.
+- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, and handles Fallout-style animation frame mapping.
+- `AudioManager` owns the sound-name index built from `Audio.SoundFileExtensions`, decodes Ogg Vorbis, and mixes playing sounds into the audio device stream.
 - `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
 - `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
   image/animation resources, including the optional per-frame silhouette mesh

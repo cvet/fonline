@@ -59,7 +59,6 @@ public:
     [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>;
     [[nodiscard]] auto GetCritterDummyFrames() -> ptr<const SpriteSheet>;
     [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> ptr<const Sprite>;
-    [[nodiscard]] auto GetSoundNames() const -> const map<string, string>&;
 
     void IndexFiles();
     void CleanupCritterFrames();
@@ -81,7 +80,6 @@ private:
     unordered_map<hstring::hash_t, shared_ptr<SpriteSheet>> _critterFrames {};
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};
-    map<string, string> _soundNames {};
 #if FO_ENABLE_3D
     unordered_map<hstring, shared_ptr<ModelSprite>> _critterModels {};
 #endif

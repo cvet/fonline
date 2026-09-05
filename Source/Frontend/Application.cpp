@@ -67,7 +67,6 @@ struct Application::Context
 int32_t AppRender::MAX_ATLAS_WIDTH {};
 int32_t AppRender::MAX_ATLAS_HEIGHT {};
 int32_t AppRender::MAX_BONES {};
-const int32_t AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
 const int32_t AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
 static constexpr float32_t GAMEPAD_STICK_DEADZONE = 0.2f;

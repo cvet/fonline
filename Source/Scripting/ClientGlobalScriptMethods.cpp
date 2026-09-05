@@ -605,18 +605,18 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<Client
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
 {
-    return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
+    return client->AudioMngr.PlaySound(soundName);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlayMusic(ptr<ClientEngine> client, string_view musicName, timespan repeatTime)
 {
     if (musicName.empty()) {
-        client->SndMngr.StopMusic();
+        client->AudioMngr.StopMusic();
         return true;
     }
 
-    return client->SndMngr.PlayMusic(musicName, repeatTime);
+    return client->AudioMngr.PlayMusic(musicName, repeatTime);
 }
 
 ///@ ExportMethod

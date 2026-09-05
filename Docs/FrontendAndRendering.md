@@ -141,6 +141,10 @@ Audio responsibilities include:
 - mixing audio;
 - locking and unlocking the audio device around critical sections.
 
+`AUDIO_FORMAT_S16` is the only sample format the interface names, because every
+audio resource is baked to Ogg Vorbis and decodes to signed 16-bit; see
+[BakingPipeline.md](BakingPipeline.md).
+
 ## Headless and stub modes
 
 Two non-normal modes are important for tools, tests, CI, and platform staging:

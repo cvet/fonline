@@ -128,6 +128,7 @@ SETTING_GROUP(AudioSettings, virtual BaseSettings);
 VARIABLE_SETTING(bool, Audio, DisableAudio, false); // If true, audio is disabled
 VARIABLE_SETTING(int32_t, Audio, SoundVolume, 100); // Sound volume percentage
 VARIABLE_SETTING(int32_t, Audio, MusicVolume, 100); // Music volume percentage
+FIXED_SETTING(vector<string>, Audio, SoundFileExtensions, "wav", "ogg"); // Source extensions the sound-name index accepts; every baked payload is Ogg Vorbis whatever the extension says
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
