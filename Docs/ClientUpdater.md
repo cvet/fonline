@@ -358,6 +358,16 @@ Once the update list is known, temp files left by an abandoned transfer whose pa
 lists are removed (`RemoveStaleTempPacks`), so an interrupted download does not hold its size on the volume
 for ever; a temp file for a pack still on the list is the resume point and is kept.
 
+A promotion that was interrupted between its two renames is repaired first (`RecoverInterruptedReplacements`).
+`ReplaceFileSafely` moves the installed file to `<name>.bak` before renaming the new one into place and puts
+it back when that fails - but the restore can fail for the same reason, and then the only copy of the pack is
+a backup nothing reads. A backup whose live counterpart is missing is renamed back; one whose counterpart is
+present is obsolete and removed. `ApplyStagedBinaryUpdate` in the client host writes the same `<name>.bak`
+shape, so the same sweep also repairs a runtime library whose promotion was interrupted. The updater releases
+every mounted data source at the end of its constructor (`CleanDataSources`) precisely so a pack it is about
+to replace is not open: `open_shared_read_file` shares read and write but not delete, so a live
+`ResourcePackSource` would refuse the rename.
+
 Client-side, the `Updater` writes each portion to a `~<filename>` temp file, proves the finished file once complete, then atomically renames over the live file (`ReplaceFileSafely`). A resource pack is proved by `VerifyResourcePackFile` ([../Source/Common/ResourcePack.cpp](../Source/Common/ResourcePack.cpp)): the header must carry the published `PackHash` and the body, hashed in bounded slices, must reproduce it. Anything else is hashed whole via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
 
 A resource pack never needs that pass at all: the published hash is the one in its header, so "is this pack current" is one header read (`ReadResourcePackHeader`) and no body is hashed at startup. For the remaining whole-file entries, and to avoid rehashing them on every startup, the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.

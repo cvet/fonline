@@ -55,6 +55,7 @@ static constexpr string_view StrMetadataMismatch = "Game data on the server does
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
+static constexpr string_view ReplacedFileBackupSuffix = "-backup";
 static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
@@ -318,7 +319,7 @@ void Updater::GetNextFile()
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
-            WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
+            WriteLog("Client updater: failed to promote downloaded file from {} to {}, installed file present {}", temp_path_str, prev_path_str, fs_exists(prev_path_str));
             Abort(StrFilesystemError);
             return;
         }
@@ -348,7 +349,7 @@ void Updater::GetNextFile()
                 }
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
-                        WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
+                        WriteLog("Client updater: failed to promote existing temp file from {} to {}, installed file present {}", temp_path, prev_path_str, fs_exists(prev_path_str));
                         Abort(StrFilesystemError);
                         return;
                     }
@@ -538,6 +539,10 @@ void Updater::Net_OnInitData()
 
         return;
     }
+
+    // Before anything reads the installed files, so a pack that exists only as the backup of an interrupted
+    // replacement is put back rather than counted as missing and downloaded again
+    RecoverInterruptedReplacements();
 
     FileSystem resources;
 
@@ -836,6 +841,44 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     return *local_hash == expected_hash;
 }
 
+void Updater::RecoverInterruptedReplacements() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto recover_in_dir = [](string_view dir) {
+        if (!fs_is_dir(dir)) {
+            return;
+        }
+
+        for (const auto& name : fs_list_dir_file_names(dir)) {
+            if (!name.ends_with(ReplacedFileBackupSuffix) || name.size() == ReplacedFileBackupSuffix.size()) {
+                continue;
+            }
+
+            string_view live_name = string_view {name}.substr(0, name.size() - ReplacedFileBackupSuffix.size());
+
+            string backup_path = strex(dir).combine_path(name).str();
+            string live_path = strex(dir).combine_path(live_name).str();
+
+            // ReplaceFileSafely moves the installed file aside before it renames the new one over it, so a
+            // backup with nothing in its place is the only copy left and putting it back is the repair
+            if (fs_exists(live_path)) {
+                WriteLog("Client updater: removing obsolete backup {}", backup_path);
+                (void)fs_remove_file(backup_path);
+            }
+            else if (fs_rename(backup_path, live_path)) {
+                WriteLog("Client updater: restored {} from an interrupted replacement", live_path);
+            }
+            else {
+                WriteLog("Client updater: can't restore {} from {}", live_path, backup_path);
+            }
+        }
+    };
+
+    recover_in_dir(fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources));
+    recover_in_dir(_binaryDir);
+}
+
 void Updater::RemoveStaleTempPacks() const
 {
     FO_STACK_TRACE_ENTRY();
@@ -911,7 +954,7 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    string backup_path = strex("{}.bak", final_path).str();
+    string backup_path = strex("{}{}", final_path, ReplacedFileBackupSuffix).str();
     bool final_exists = fs_exists(final_path);
 
     fs_remove_file(backup_path);
