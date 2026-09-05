@@ -276,16 +276,6 @@ AddStaticThirdPartyLibrary(Theora
     APPEND_TO FO_CLIENT_LIBS
     INCLUDE_DIRS "${FO_THEORA_DIR}/include")
 
-# Acm
-SetValue(FO_ACM_DIR "${FO_ENGINE_ROOT}/ThirdParty/Acm")
-SetValue(FO_ACM_SOURCE
-    "${FO_ACM_DIR}/acmstrm.cpp"
-    "${FO_ACM_DIR}/acmstrm.h")
-AddStaticThirdPartyLibrary(AcmDecoder
-    SOURCE_LIST FO_ACM_SOURCE
-    APPEND_TO FO_CLIENT_LIBS
-    INCLUDE_DIRS "${FO_ACM_DIR}")
-
 # GLM
 StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
