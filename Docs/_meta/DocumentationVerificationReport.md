@@ -9170,3 +9170,33 @@ Disposition:
   so the root gitlink never points at an unavailable commit.
 - Merge-readiness still depends on current remote CI, including the native
   unit-test suite that covers the reworked `WorkThread` reporting.
+
+## 2026-09-05 - listener retry refactor, no contract movement
+
+Scope and source revisions:
+
+- Reconciled the documentation branch at
+  `00fb680aa078ff0d2dacab7f86afe9634cced20d` with Engine `origin/master`
+  through `cd3fba65f01a98ad57f002f965a9a79b31e81184`. The single incoming commit
+  drops two redundant top-level local `const` qualifiers in
+  `ServerEngine::StartConnectionServer` and turns its success `return` into a
+  `break`, which is the local-variable convention being applied rather than a
+  behavior change.
+- The merge conflicted nowhere, touched no documentation, and left no legacy
+  route to restore.
+
+Validation:
+
+- Nothing needed reconciling and nothing needed regenerating: all sixteen
+  documentation generators already report current, aggregate validation passes
+  397 Markdown entries, and contract-diff reports zero changes across the 18
+  tracked domains, so the native-codegen pin stays at 2509.
+- The retry loop's documented contract is unchanged, so the
+  authority-and-networking section written for it still reads correctly against
+  the source.
+
+Disposition:
+
+- The pin moves with no reusable-contract movement behind it. Publish the Engine
+  documentation branch before the embedding project branch, as always, so the
+  root gitlink never points at an unavailable commit.

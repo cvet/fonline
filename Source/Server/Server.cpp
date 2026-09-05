@@ -2106,8 +2106,8 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
 {
     FO_STACK_TRACE_ENTRY();
 
-    const std::chrono::milliseconds retry_delay {std::max(Settings->ListenRetryDelay, 1)};
-    const nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ListenRetryTime, 0)};
+    std::chrono::milliseconds retry_delay {std::max(Settings->ListenRetryDelay, 1)};
+    nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ListenRetryTime, 0)};
 
     for (int32_t attempt = 1;; attempt++) {
         try {
@@ -2117,7 +2117,7 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
                 WriteLog("Listener {} started on attempt {}", what, attempt);
             }
 
-            return;
+            break;
         }
         catch (const std::exception&) {
             if (nanotime::now() >= deadline) {
