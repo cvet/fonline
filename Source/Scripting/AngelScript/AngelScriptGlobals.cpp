@@ -124,6 +124,32 @@ static auto Global_GetContextExceptionCount() -> int32_t
     return ctx_ext->ExceptionCount;
 }
 
+static auto Global_GetExceptionInfo() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+
+    // AngelScript reports a native throw as a generic string, so the real message is the stored engine
+    // exception. Reading consumes it, or the next catch in this context would inherit it
+    if (std::exception_ptr ex = std::exchange(ctx_ext->Exception, {}); ex) {
+        try {
+            std::rethrow_exception(ex);
+        }
+        catch (const std::exception& handled_ex) {
+            return string {handled_ex.what()};
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
+    }
+
+    return string {ctx->GetExceptionString() != nullptr ? ctx->GetExceptionString() : ""};
+}
+
 static void Global_RunScriptGC()
 {
     FO_STACK_TRACE_ENTRY();
@@ -759,6 +785,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetGlobalExceptionCount()", FO_SCRIPT_FUNC(Global_GetGlobalExceptionCount), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetContextExceptionCount()", FO_SCRIPT_FUNC(Global_GetContextExceptionCount), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string GetExceptionInfo()", FO_SCRIPT_FUNC(Global_GetExceptionInfo), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void RunScriptGC()", FO_SCRIPT_FUNC(Global_RunScriptGC), FO_SCRIPT_FUNC_CONV));
 
     // Global instances
