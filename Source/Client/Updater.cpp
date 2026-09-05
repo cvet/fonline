@@ -675,6 +675,14 @@ void Updater::Net_OnInitData()
             continue;
         }
 
+        // Everything the updater does afterwards - the promotion, the sweeps, the next run's comparison -
+        // looks inside the directory it owns, so a name that resolves outside it is never seen again
+        if (!fs_is_contained_relative_path(local_name)) {
+            WriteLog("Client updater: server listed a file the client cannot place, name {}, local {}", fname, local_name);
+            Abort(StrUpdateFailed);
+            return;
+        }
+
         UpdateFile update_file;
         update_file.Index = numeric_cast<int32_t>(data_index);
         update_file.Name = local_name;

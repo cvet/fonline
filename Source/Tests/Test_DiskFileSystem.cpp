@@ -372,6 +372,25 @@ TEST_CASE("DiskFilePrimitives")
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
+    SECTION("ContainedRelativePathRefusesWhatWouldResolveOutside")
+    {
+        CHECK(fs_is_contained_relative_path("Core.fores"));
+        CHECK(fs_is_contained_relative_path("Packs/Core.fores"));
+        CHECK(fs_is_contained_relative_path("Packs\\Core.fores"));
+
+        CHECK_FALSE(fs_is_contained_relative_path(""));
+        CHECK_FALSE(fs_is_contained_relative_path("../Core.fores"));
+        CHECK_FALSE(fs_is_contained_relative_path("Packs/../../Core.fores"));
+        CHECK_FALSE(fs_is_contained_relative_path("Packs\\..\\Core.fores"));
+        CHECK_FALSE(fs_is_contained_relative_path("/etc/passwd"));
+
+#if FO_WINDOWS
+        // A drive-qualified path is absolute here and an ordinary file name on POSIX, so it is asserted
+        // only where the answer is the interesting one
+        CHECK_FALSE(fs_is_contained_relative_path("C:\\Windows\\System32\\evil.dll"));
+#endif
+    }
+
     SECTION("AvailableSpaceAnswersForAnExistingDirectoryOnly")
     {
         string temp_dir = MakeTempTestDir("diskfs_space");

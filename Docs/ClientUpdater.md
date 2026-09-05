@@ -372,6 +372,12 @@ Client-side, the `Updater` writes each portion to a `~<filename>` temp file, pro
 
 A resource pack never needs that pass at all: the published hash is the one in its header, so "is this pack current" is one header read (`ReadResourcePackHeader`) and no body is hashed at startup. For the remaining whole-file entries, and to avoid rehashing them on every startup, the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
 
+Every entry name is checked with `fs_is_contained_relative_path` before it becomes an update target: the
+promotion, both sweeps and the next run's comparison all look inside the directory the updater owns, so an
+entry that would land outside it is never seen again and the update is aborted instead. This is not a defence
+against a hostile server - the signature is what is trusted there - it is refusing to act on a descriptor the
+client cannot carry out.
+
 Before a transfer starts the updater refuses one it cannot finish: `fs_available_space` on the target
 directory must hold the remaining bytes, or the pack is not attempted and the installed one is left alone.
 The space is checked rather than reserved, because the resume protocol reads how much already arrived from

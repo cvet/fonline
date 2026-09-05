@@ -92,6 +92,21 @@ auto fs_is_relative_path(string_view path) noexcept -> bool
     return path.empty() || std::filesystem::path {fs_make_path(path)}.is_relative();
 }
 
+auto fs_is_contained_relative_path(string_view path) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Windows calls a leading separator relative - relative to the current drive - yet it still resolves
+    // from a root, so it leaves the directory behind exactly as an absolute path would
+    if (path.empty() || path.front() == '/' || path.front() == '\\') {
+        return false;
+    }
+
+    // Refusing every '..' rather than resolving the path is deliberate: resolution depends on what exists on
+    // disk, and a caller checking a name before creating it needs the answer to hold either way
+    return fs_is_relative_path(path) && path.find("..") == string_view::npos;
+}
+
 auto fs_make_writable_path(string_view user_writable_path, string_view relative) -> string
 {
     FO_STACK_TRACE_ENTRY();
