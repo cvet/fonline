@@ -1,273 +1,191 @@
-# Debugging
+# Native and AngelScript Debugging
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Legacy route.
 
-Diagnosing a server that logged a handled invariant violation, deterministically terminated (`FO_STRONG_ASSERT` / `ReportExceptionAndExit`), or left a "stuck-destroying" / un-syncable entity? The error-tier model and the entity-lifecycle exception contracts are in [ExceptionSafety.md](ExceptionSafety.md).
+The canonical guide moved to locale-specific paths.
 
-## Visual Studio Visualizers
+[English](en/troubleshooting/debugging.md) | [Russian](ru/troubleshooting/debugging.md)
 
-For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are included in the generated project automatically.
+## Fast route decision
 
-`essentials.natvis` covers Essentials smart pointers, stack traces, exceptions, hashed strings, and compact helper value types.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#fast-route-decision).
 
-`unordered_dense.natvis` covers `ankerl::unordered_dense` containers.
+## Contract status
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#contract-status).
+
+## Scope and authority
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#scope-and-authority).
 
 ## Source paths inspected
 
-- `../BuildTools/natvis/essentials.natvis`
-- `../BuildTools/natvis/unordered_dense.natvis`
-- `../BuildTools/cmake/stages/Finalize.cmake`
-- `../BuildTools/cmake/helpers/Build.cmake`
-- `../Source/Essentials/StackTrace.h`
-- `../Source/Essentials/StackTrace.cpp`
-- `../Source/Essentials/BaseLogging.h`
-- `../Source/Essentials/BaseLogging.cpp`
-- `../Source/Essentials/FatalError.h`
-- `../Source/Essentials/FatalError.cpp`
-- `../Source/Essentials/ExceptionHandling.h`
-- `../Source/Essentials/ExceptionHandling.cpp`
-- `../Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
-- `../Source/Scripting/AngelScript/AngelScriptHelpers.cpp`
-- `../Source/Scripting/AngelScript/AngelScriptContext.cpp`
-- `../Source/Frontend/ApplicationInit.cpp`
-- `../Source/Tests/Test_StackTrace.cpp`
-- `../Source/Tests/Test_ExceptionHandling.cpp`
-- `../Source/Tests/Test_ScriptBuiltins.cpp`
-- `../../.vscode/launch.json`
-- `../../.vscode/tasks.json`
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#source-paths-inspected).
 
-## Stack Trace Architecture
+## Evidence layers and support matrix
 
-The engine no longer maintains a thread-local manual call stack. The `FO_STACK_TRACE_ENTRY()` macro is now empty outside Tracy builds (under `FO_TRACY` it expands to `ZoneScoped` only), and stack traces are constructed on demand from two independent sources at the moment a `StackTraceData` is captured:
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#evidence-layers-and-support-matrix).
 
-1. **Native frames.** [../Source/Essentials/StackTrace.cpp](../Source/Essentials/StackTrace.cpp) calls `backward::StackTrace::load_here(...)` to capture raw return addresses. Symbol resolution is deferred â€” `ResolveStackTrace`, `FormatStackTrace`, `SafeWriteStackTrace`, and `GetStackTraceEntry` resolve via `backward::TraceResolver` only when frames are actually needed. Resolved native frames are cached globally by instruction pointer in a capped process-local cache (`STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES`) so repeated exception formatting and script/native anchor matching reuse symbol data. The capture path is allocation-free aside from the storage on the `StackTraceData` itself.
-2. **Script frames.** Higher layers register a `ScriptStackTraceProvider` via `SetScriptStackTraceProvider(...)`. The provider is called synchronously during capture and pre-resolves frames eagerly because script execution state is ephemeral (the active context's call stack changes after we leave the capture site).
+## Fast route selection
 
-Pre-resolved script frames live behind a `shared_ptr<const vector<StackTraceFrame>>` so copying a `StackTraceData` (notably during `BaseEngineException` propagation) remains noexcept.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#fast-route-selection).
 
-### AngelScript bridge
+## Build configurations and symbols
 
-[../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) installs `CollectScriptStackLayers` through the AngelScript stack-trace installer. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `StackTraceFrame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`).
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#build-configurations-and-symbols).
 
-The provider handles the multi-context case naturally: if a script function called a native function that re-entered scripting on a fresh context, the active (child) context's frames are emitted first, then the parent context's frames are appended. The two sub-stacks read continuously in the formatted output, with native bridging frames showing up after all script frames once symbols are resolved.
+### Debug symbols are not debug semantics
 
-`AngelScriptBackend` mutes the AngelScript message callback during final script-engine teardown. Runtime and compilation messages still go through the normal callback before teardown begins, but shutdown-only GC survivor messages are kept out of normal logs.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#debug-symbols-are-not-debug-semantics).
 
-When `ServerEntity::ValidateAccess()` reports `Entity access without sync`, the server log includes the entity parent/widen chain and the script/native stack. This identifies the uncovered entity path and the access site; the engine does not currently retain a `SyncContext` transition history, so earlier cover replacement or `Release()` activity must still be reconstructed from the surrounding execution path.
+### Windows
 
-The Essentials module never depends on AngelScript directly; the bridge is one-way through the function pointer registered at runtime. This keeps the `Essentials` layer reusable and avoids forcing the whole engine to compile against AngelScript headers.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#windows).
 
-### Unified frame ordering
+### Linux
 
-The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, most-recent first:
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#linux).
 
-```
-[Script] active context, top frame
-[Script] active context, ..., bottom frame
-[Script] parent context, top frame
-[Script] ..., bottom frame
-[Script] ..., root context, bottom frame
-[Native] caller of root context Execute()
-[Native] ...
-[Native] main
-```
+### macOS
 
-`FormatStackTrace` prefixes lines with `[Script]` or `[Native]` so the boundary between sub-stacks is obvious in logs. `SafeWriteStackTrace` uses the same format, with an allocation-free fallback that writes raw `0x...` addresses when symbol resolution fails (used for OOM and crash paths).
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#macos).
 
-### API surface
+### Sanitizer and platform limits
 
-| Function | Purpose |
-|----------|---------|
-| `GetStackTrace()` | Capture native PCs + query script provider. Returns a `StackTraceData` snapshot. |
-| `GetStackTraceEntry(deep)` | Resolve a single frame at depth `deep` (0 = topmost). Script frames first, native frames after. |
-| `ResolveStackTrace(st)` | Resolve every frame into a `vector<StackTraceFrame>` (full symbol resolution). |
-| `FormatStackTrace(st)` | Human-readable multi-line string with `[Script]` / `[Native]` prefixes. |
-| `SafeWriteStackTrace(st)` | Writes the trace to the base log; tolerant of OOM (falls back to hex addresses). |
-| `ClearResolvedStackTraceCache()` | Clear the process-wide native-frame resolution cache. |
-| `GetResolvedStackTraceCacheSize()` | Return the current native-frame resolution cache size. |
-| `SetScriptStackTraceProvider(p)` | Install the script-frame provider. Pass an empty function to clear. |
-| `HasScriptStackTraceProvider()` | Test hook to confirm a provider is registered. |
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#sanitizer-and-platform-limits).
 
-`BaseEngineException` captures `GetStackTrace()` at construction so the trace stored on the exception object reflects the throw site. The crash printer in `ExceptionHandling.cpp` writes `FATAL ERROR!`, a `Crash reason:` line with the native SEH exception / signal / runtime termination code captured by `backward.hpp`, then calls `SafeWriteStackTrace` with the trace captured by `SetCrashStackTrace`.
+## Native debugging
 
-### Exception reporting and deferred formatting
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#native-debugging).
 
-The reporters (`ReportExceptionAndExit`, `ReportExceptionAndContinue`) create a `CatchedStackTraceData` value with `MakeErrorStackTrace()`. That value contains the origin trace from `BaseEngineException::stack_trace()` when the exception type carries one, plus a fresh catch-site trace from `GetStackTrace()`. `FormatStackTrace(const CatchedStackTraceData&)` formats the origin trace when present, otherwise it prefixes the catch-site trace with `Catched at:`.
+### Launch, attach, and reproduce
 
-The exception callback receives the already-captured `CatchedStackTraceData` and the fatal flag directly. There is no separate context object in the current source; if callback behavior changes, update `ExceptionCallback` in [../Source/Essentials/ExceptionHandling.h](../Source/Essentials/ExceptionHandling.h), `ReportExceptionAndExit` / `ReportExceptionAndContinue` in [../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp), and the default callback in [../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp) together.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#launch-attach-and-reproduce).
 
-AngelScript `throw(...)` / `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, name, runtime id, and proto id (or `<none>` when the entity has no proto), so a production exception identifies the involved objects instead of reporting only `Critter` or `AbstractItem`. Primitive, enum, string, and null context formatting keeps its existing compact form. `Test_ScriptBuiltins.cpp` pins the entity-context representation through the real global `throw` binding.
+### Exceptions, assertions, and memory failures
 
-### Logging and crash-path primitives
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#exceptions-assertions-and-memory-failures).
 
-[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `SafeWriteStackTrace(const StackTraceData&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `WriteLogMessage` with the captured `CatchedStackTraceData`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `SetAsyncLogWriting(true)` once `settings.AsyncLogWrite` is known.
+### Core and minidump boundary
 
-### Crash-to-log guarantee and self-test
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#core-and-minidump-boundary).
 
-Every abnormal death must leave usable diagnostics in the log file, not only on `stderr` (which is discarded for a headless/service process). The paths:
+## Debugger detection and debugger breaks
 
-- **Fatal signals** (`SIGSEGV`, `SIGABRT`, `SIGFPE`, `SIGBUS`, `SIGILL`, …) are caught by backward-cpp's signal handler ([../ThirdParty/backward-cpp/backward.hpp](../ThirdParty/backward-cpp/backward.hpp)), which writes `FATAL ERROR!`, a `Crash reason:` line, and a symbolised stack trace through `GetCrashStream()` → `BackwardOStreamBuffer` → `WriteBaseLog`. The header first calls `SuspendAsyncLogWriting()` and everything after is written with `WriteSync` (immediate `flush`), so the report survives even with `Common.AsyncLogWrite` on.
-- **`std::terminate`** (an exception escaping a `noexcept` function or a thread, a rethrow with no handler, a pure-virtual call) is routed through `SignalHandling::terminator()` — an **FOnline patch** that installs `std::set_terminate` on POSIX too (it was Windows-only upstream). It records the failing exception's type + `what()` via `SetCrashTerminationInfo("std::terminate")` (`FormatRuntimeCrashInfo`), prints the report, and `_Exit`s without re-entering the `SIGABRT` handler. Without it, the default POSIX terminate handler prints the exception text to `stderr` only and the log gets a bare `Signal 6 (SIGABRT)`.
-- **Stack overflow** is a `SIGSEGV` on the guard page; the handler needs an **alternate signal stack** (`SA_ONSTACK`) because the thread's own stack is exhausted. backward installs one only on the thread that constructs it (the main thread), so every long-lived worker thread calls `InstallCrashHandlerStackForThisThread()` ([../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp)) at entry (see `WorkThread::ThreadEntry`) to keep worker-thread overflows diagnosable. Threads created outside the engine (e.g. third-party Asio/SDL threads) do not get one; add the call at their entry if they run engine logic that can recurse deeply.
-- **Caught exceptions** reported through `ReportExceptionAndExit` / `ReportExceptionAndContinue` take the graceful path instead: the exception callback logs the message + `CatchedStackTraceData` via `WriteLogMessage`, plus `Shutdown!` for the fatal variant. No `FATAL ERROR!` header.
-- **Explicit low-level fatal exits** call `ReportFatalAndExit` or `ReportStrongAssertAndExit` in [../Source/Essentials/FatalError.cpp](../Source/Essentials/FatalError.cpp). This early layer suspends async logging, writes one synchronous native report, and then calls `ExitApp(false)`. It sits after `StackTrace` / `BaseLogging` and before `SmartPointers`, so low-level callers do not create a reverse dependency on `ExceptionHandling`.
-- **Raw application exit** remains status-only: `ExitApp(false)` drains the async log through the registered `at_quick_exit` handler and returns `EXIT_FAILURE`, but does not invent a fatal report. Controlled failures such as compiler input errors use the non-zero status without being mislabeled as crashes; true fatal callers must report explicitly before exiting. `ReportExceptionAndExit` and the terminate-on-OOM path already own their reports and therefore produce no generic duplicate. A successful exit (`ExitApp(true)`) likewise prints nothing.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#debugger-detection-and-debugger-breaks).
 
-`InstallCrashHandlerStackForThisThread()` allocates a per-thread 2 MiB signal stack (lazily committed; touched only during a crash) and is a no-op on non-POSIX targets and under a debugger (where backward does not install its handlers).
+## Visual Studio Visualizers
 
-**Self-test.** [../Source/Common/DiagnosticSelfTest.cpp](../Source/Common/DiagnosticSelfTest.cpp) deliberately induces a chosen crash class to verify the above end-to-end. It is driven by the `FO_SELFTEST_CRASH` environment variable (not a setting, so it is inert in production and invisible to the config/script surface) and fires once in `InitApp`, after logging + the exception callback + the async-log mode are live. Modes: `main_null_read` / `main_null_write` / `main_wild_write` (SIGSEGV), `main_fpe`, `main_abort`, `main_stack_overflow`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, `main_failure_exit`, and `thread_*` counterparts that run the same crash on a worker-style `std::thread`. The embedding project's `Tools/PipelineTests/test_crash_diagnostics_linux.py` exercises these against the Linux headless server.
-
-### Coverage
-
-`../Source/Tests/Test_StackTrace.cpp` exercises the new API:
-
-- Provider registration / unregistration is observable via `HasScriptStackTraceProvider`.
-- Script frames captured by the provider preserve the most-recent-first ordering.
-- Multi-context concatenation (top-most context's frames first, then parent) renders in the expected order.
-- `[Script]` / `[Native]` prefixes are present in `FormatStackTrace`.
-- Resolved unified order places script frames before native frames.
-- Native frame resolution populates the global cache once per unique instruction pointer and reuses entries on repeated resolution.
-- `GetStackTraceEntry(deep)` returns the depth-th frame and `nullopt` for out-of-range depths.
-- An empty `StackTraceData` formats to header-only.
-- `SafeWriteStackTrace` writes both sections.
-- A throwing provider (despite the noexcept contract) does not propagate from capture.
-
-`../Source/Tests/Test_ExceptionHandling.cpp` continues to exercise `BaseEngineException` capture, `FormatStackTrace` ordering, and exception callbacks against the new layout.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#visual-studio-visualizers).
 
 ## Visual Studio Solution Folders
 
-For the MSVC CMake generators, solution-folder grouping is only reliable when a target is created with `CMAKE_FOLDER` already set. Keep the late regrouping pass in `../BuildTools/cmake/stages/Finalize.cmake`, but make sure the helper macros in `../BuildTools/cmake/helpers/Build.cmake` set `CMAKE_FOLDER` while creating `Applications`, `Commands`, `CoreLibs`, and `ThirdParty` targets. For external packages added through `AddSubdirectory(...)`, pass `FOLDER "..."` to the repository-owned wrapper so the subproject targets are created inside the intended solution folder without editing vendor `../../CMakeLists.txt`.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#visual-studio-solution-folders).
 
 ## Quick Validation
 
-1. Regenerate or open the MSVC solution.
-2. Start a debugger session and inspect `fo::ptr`, `fo::nptr`, `fo::unique_ptr`, or `fo::refcount_ptr` values in Watch or Locals.
-3. Confirm that expanding the smart pointer opens the pointed object directly.
-4. Capture a stack trace by stepping into `fo::GetStackTrace()` and inspect the resulting `StackTraceData`. Native frames render as raw addresses until symbol resolution runs (via `FormatStackTrace` / `ResolveStackTrace`); pre-resolved script frames are reachable through `ScriptStackTraceLayer::ScriptFrames` in the `ScriptLayers` shared pointer.
-5. Break on `fo::BaseEngineException` and verify that the message, parameters, and embedded stack trace are visible.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#quick-validation).
 
-## VS Code Debug Configurations
+## Stack Trace Architecture
 
-Current `../../.vscode/launch.json` entries use:
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#stack-trace-architecture).
 
-- `Debugging :: Launch [windows]` for native Windows server debugging (`cppvsdbg`)
-- `Debugging :: Launch [linux]` for native Linux server debugging (`cppdbg` with `gdb`)
-- `Debugging :: Attach` for the AngelScript debugger over UDP discovery on port `43001`
-- compound launchers such as `Debugging :: Launch and Attach [windows]` and `Debugging :: Launch and Attach [linux]`
+### AngelScript bridge
 
-These native launch configurations depend on `Prepare :: Launch (Debug)`, which currently bakes resources and builds the debug `LF_Server` binary before attaching the C++ debugger.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#angelscript-bridge).
 
-The AngelScript debugger requires `Script.DebuggerEnabled = True`. The maintained native and web debug launch routes set it explicitly; ordinary `LocalTest` launches leave it disabled, and `GameplayTests` also forces it off. The TCP endpoint binds to `Script.DebuggerBindHost = 127.0.0.1` by default. Remote binding must be an explicit command-line or subconfig override on a trusted network.
+### Unified frame ordering
 
-## Fast Route Selection
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#unified-frame-ordering).
 
-Before choosing a debugger, identify the smallest boundary that can prove the symptom:
+### API surface
 
-| Symptom family | First doc route | Validation route |
-|----------------|-----------------|------------------|
-| Gameplay rule, player-state, AI, combat, survival, inventory, or world traversal | [GameSystems.md](../../Docs/GameSystems.md) and the owning domain doc | [Testing.md#validation-boundary-test-routing](../../Docs/Testing.md#validation-boundary-test-routing) with the narrowest `Testing.Filter` |
-| Auth, login, account lookup, or platform-only runtime behavior | [AuthLoginFlow.md](../../Docs/AuthLoginFlow.md) first; add [SteamIntegration.md](../../Docs/SteamIntegration.md) for Steam client/server runtime issues | `Testing.Filter = authentication` for script flow; manual `Steam :: Launch Login` only when Steam runtime state is involved |
-| Achievement, stat, analytics, or platform mirror mismatch | [Achievements.md](../../Docs/Achievements.md), [Analytics.md](../../Docs/Analytics.md), [SteamIntegration.md](../../Docs/SteamIntegration.md) | prove the gameplay event first, then inspect analytics transport or Steam mirror queues |
-| Client-visible GUI/text/input issue | [GuiSystem.md](../../Docs/GuiSystem.md), [Localization.md](../../Docs/Localization.md), and the platform-specific debug doc if needed | GUI generation, `Testing.Filter = client`, then web or Android launch paths for platform-only failures |
-| Native crash, script API binding, or engine/unit behavior | [NativeExtensions.md](../../Docs/NativeExtensions.md), [Scripts.md](../../Docs/Scripts.md), or engine tests | `RunUnitTests` / `validate.sh unit-tests`, then `CompileAngelScript` and the smallest consuming gameplay suite |
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#api-surface).
 
-Use this table as the bridge between the entry-index fast routes and the concrete launch profiles below. If the boundary can be captured by a deterministic test, add or narrow that test before opening an interactive debugger. If the symptom depends on renderer, browser, Android packaging, Steam client state, or live script stepping, move to the matching launch/debug profile.
+### Exception reporting and deferred formatting
 
-## Choosing The Right Debug Path
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#exception-reporting-and-deferred-formatting).
 
-Use the debug path that matches the bug boundary instead of starting with the heaviest interactive session:
+### Logging and crash-path primitives
 
-| Symptom | Start here | Why |
-|---------|------------|-----|
-| Script, proto, dialog, scene state, gameplay rule regression | `Launch Tests [linux]` / `Launch Tests [windows]` with `GameplayTests` after selecting the boundary in [Testing.md#validation-boundary-test-routing](../../Docs/Testing.md#validation-boundary-test-routing) | fastest repeatable server-side signal after resource baking |
-| Native crash or engine assertion before gameplay state matters | `Debugging :: Launch [linux]` or `[windows]` | attaches C++ debugger to `LF_Server` under `LocalTest` |
-| AngelScript breakpoint or call-stack inspection | compound `Debugging :: Launch and Attach [...]` | starts native server and attaches the FOS debugger on discovery port `43001` |
-| Browser package, web client, or JavaScript-side failure | `Debugging :: Launch Web [...]` / Web Scene profiles | launches Chrome against the web-debug workspace and pairs with web service tasks |
-| Android APK, Wi-Fi ADB, or device-to-host scene failure | `Android :: Launch Remote Scene [linux]` / `Docs/AndroidDebugging.md` | validates the external-device client path, APK install, and `ClientNetwork.ServerHost` override |
-| Startup-scene-only bug | scene launch, Web Scene, or Android remote-scene profile first, then headless test only after isolating the rule | preserves intro/personal-room scene flow that regular gameplay suites may bypass |
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#logging-and-crash-path-primitives).
 
-A practical rule: if the repro can be expressed as a deterministic gameplay assertion, add or narrow a headless suite before opening an interactive debugger. If the repro depends on renderer, input, browser or Android packaging, external-device networking, or script stepping, use the launch profiles.
+### Crash-to-log guarantee and self-test
 
-## Unit Test Validation
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#crash-to-log-guarantee-and-self-test).
 
-Use the deterministic engine test target for Common and metadata regressions before moving to wider gameplay checks.
+### Coverage
 
-1. Build the suite with `cmake --build Build/MSVC2026 --config RelWithDebInfo --target LF_UnitTests`.
-2. Run it with `cmake --build Build/MSVC2026 --config RelWithDebInfo --target RunUnitTests`.
-3. Prefer this path for migration-rule, serialization, and other engine-only regressions that do not require resource baking or a live server-client session.
-4. Self-contained client-engine tests run through `NullRenderer`. They may still log missing `.fofx` files from the minimal in-memory test resources, but the headless renderer now synthesizes the required effect metadata instead of treating those missing shader assets as fatal.
-5. A recoverable ImGui error reaches the engine as an `IM_ASSERT` throw carrying only the stringified expression, so a report like `ImGui: (0) && "Missing End()"` says what went wrong but not where. `ImGuiExt::Init` therefore installs an ImGui error callback that logs `ImGui error in window '<name>': <message>` just before the assert fires. When a headless client or mapper test aborts a frame over an unbalanced window, read that line to find the `Begin` that was never closed. The callback is the only route available here: ImGui's own error log is compiled out by `IMGUI_DISABLE_DEBUG_TOOLS`, which `ImGuiConfig.h` defines, while `g.ErrorCallback` is invoked outside that guard.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#coverage).
 
-## Gameplay Bug Triage
+## AngelScript debugger
 
-Use the headless workflow first for script, proto, content, and scene-runtime regressions. It is more deterministic than starting the regular server with an embedded client and keeps reproduction focused on gameplay state.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#angelscript-debugger).
 
-1. Reproduce the bug first, then rebake resources after any changes under `../../Scripts/`, `../../Scripts/Tests/`, `../../Scripts/Scenes/`, `Modifiers/`, `Items/`, `Critters/`, `Dialogs/`, `Maps/`, or `../../LastFrontier.fomain`.
-2. Run `Prepare :: Gameplay Tests Launch`, then the platform launch task (`Launch Tests [windows]` or `Launch Tests [linux]`). This starts `LF_ServerHeadless` with `--ApplySubConfig GameplayTests`.
-3. `GameplayTests` now uses suite-level multi-instance execution by default: matched gameplay suites run in dedicated in-process server+client worker threads, with `Testing.RunSuitesInParallel` enabling overlap and `Testing.MaxParallelInstances` capping how many worker instances may stay active at once. Worker servers are started one by one to avoid startup fan-out on busy machines, then continue running in parallel after startup succeeds. When `Testing.MaxParallelInstances = 0`, the controller uses `std::thread::hardware_concurrency()` and logs the resolved value at startup. Narrow validation with `Testing.Filter` when a bug maps to an existing gameplay suite or tag. New gameplay test files are only discovered after `Bake Resources` rebakes scripts.
-4. Watch `TEST` log lines for suite progress, per-suite completion summaries, and the final parallel aggregate, plus `SCENE` log lines for startup-scene and runtime-context issues. Engine and extension threads created through the shared thread helper now inherit the suite thread namespace in logs, for example `TestSuite-Combat::ServerWorker`, which makes parallel output easier to separate even when the code uses direct thread creation instead of `WorkThread`. The default log file for this flow is `LF_ServerHeadless.log` in the workspace root.
-5. Use the regular launch or scene-launch profiles only when the bug depends on the embedded client, rendering, direct input, AngelScript stepping, or startup scene UX.
-6. For engine-side regressions that may also affect gameplay, run `LF_UnitTests` first, then move to the headless gameplay pass if the failure path crosses scripting, baking, or network replication.
+### Enablement and runtime cost
 
-## Network Latency Emulation
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#enablement-and-runtime-cost).
 
-`Network.ArtificalLags` (milliseconds, `0` disables) makes a client behave as if it were on a slow link, for reproducing latency-dependent desynchronization without a real remote host. It is implemented entirely in `ClientConnection::ProcessConnection` and applies **symmetrically**, drawing a fresh `ArtificalLags / 2 .. ArtificalLags` sample for each delayed batch:
+### Endpoint and discovery contract
 
-- **Inbound** — a complete received message waits in the receive buffer until its delivery deadline, the way it would wait on the wire.
-- **Outbound** — queued data waits before it reaches the socket, so the *server* learns about the client's actions late.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#endpoint-and-discovery-contract).
 
-Both halves matter and they are not interchangeable. Only the outbound half makes the server's copy of the world trail the player's own copy, which is the direction every "the server saw me somewhere else" symptom depends on: with inbound delay alone the server still receives a movement the instant the client starts it and can never fall behind. An emulation that delays only one direction will silently fail to reproduce that entire class of bug.
+### Attach capability matrix
 
-Neither half throttles throughput. A slow link still transmits continuously; gating the whole network pump on the interval instead starves the initial state sync and produces a client that looks broken rather than merely slow.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#attach-capability-matrix).
 
-`Network.ArtificalLags` is not a fixed delay: each delayed batch draws its own `ArtificalLags/2 .. ArtificalLags` sample, so consecutive batches already differ by up to half the base value. `Network.ArtificalLagsJitter` (milliseconds, `0` disables) adds a further `0 .. jitter` sample on top, widening that spread.
+### Security boundary
 
-The spread is what matters for a client/server divergence, not the mean. Two related messages — the client starting a movement, then acting on having arrived — each carry their own delay, and the server's copy trails by the *difference* between them: a delay that were truly identical for both would cancel, since the server would begin the movement late by `D` and judge the action late by `D`, having covered exactly the missing distance in between. Base lag alone therefore bounds the divergence at about half its value; raise `ArtificalLagsJitter` when a wider one is needed, which also matches how a real link behaves when packet loss stalls one message and not the next. A modest base with a large jitter (for example `300` and `1500`) emulates an ordinary link with occasional stalls.
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#security-boundary).
 
-(Adding or renaming a setting needs no manual compatibility-version bump: `codegen.py` feeds every settings entry into the compatibility hash, so the version changes on its own and an older client is told to update at handshake.)
+### Adapter delivery status
 
-Two related facts when reading a latency-dependent movement bug:
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#adapter-delivery-status).
 
-- The server→client direction carries an `offset_time` field, so a client that learns about a movement late fast-forwards into it correctly.
-- The client→server direction carries no timestamp or elapsed-time field. `Process_Move` replays the movement from `GameTime.GetFrameTime()` with a zero offset, so the server's copy of a player-driven critter trails the client's by the one-way latency for the whole walk.
+### Multi-process selection
 
-## Key Files and Integration Points
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#multi-process-selection).
 
-If you need to trace the current debugging flow through the live repository, start with these files:
+### Attach troubleshooting
 
-- `../../.vscode/launch.json` - live native, AngelScript-attach, and web-debug launch entries such as `Debugging :: Launch [linux]`, `Debugging :: Attach`, and the compound launch-and-attach profiles
-- `../../.vscode/tasks.json` - task wiring behind `Prepare :: Launch (Debug)`, gameplay-test preparation, Win32 variants, and the web debug service lifecycle tasks paired with launch profiles
-- `../../LastFrontier.fomain` - base config plus `LocalTest`, `GameplayTests`, and scene-launch subconfigs that control debugger availability and startup behavior
-- `../BuildTools/natvis/essentials.natvis` and `../BuildTools/natvis/unordered_dense.natvis` - debugger visualizers for MSVC sessions
-- `../BuildTools/cmake/stages/Finalize.cmake` and `../BuildTools/cmake/helpers/Build.cmake` - current solution-folder and generated-project wiring mentioned by the Visual Studio guidance in this doc
-- `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` - embedded-client and client-visible gameplay probes that are often the fastest debugger-adjacent validation targets
-- `Docs/Testing.md` - current headless gameplay-test triage flow and validation-boundary test routing used before falling back to regular embedded-client debugging
-- `Docs/GameSystems.md` - cross-system debugging clusters that help choose the owning gameplay/content doc before choosing a launch profile
-- `Docs/Scenes.md` - startup-scene runtime details that matter when a bug only reproduces through intro, personal-room, or other scene-driven entry paths
-- `Docs/WebDebugging.md` - companion reference for browser-side and web packaging debug flows that branch away from the native server debugger path
-- `Docs/AndroidDebugging.md` - companion reference for Android APK, Wi-Fi ADB, external-device networking, and remote-scene debug flows
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#attach-troubleshooting).
 
-## Validation and Tests
+## Debugger integration in an embedding project
 
-Current checks worth running when debugger launch flow, attach assumptions, or troubleshooting guidance changes:
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#debugger-integration-in-an-embedding-project).
 
-- verify native, AngelScript, and web debugging entries against `../../.vscode/launch.json`, including the AngelScript discovery port `43001`; keep this guide focused on debugger route selection rather than duplicating every launch profile
-- `../../Tools/CiChecks/check_debug_workflows.py` verifies launch/task references, explicit `Script.DebuggerEnabled = True` on maintained debug routes, and rejects the obsolete debugger-setting spelling in maintained tooling
-- `../../LastFrontier.fomain` keeps ordinary launches debugger-off with a loopback bind default, while `GameplayTests` explicitly preserves `Script.DebuggerEnabled = False`
-- `Docs/Testing.md` remains the reference for the current `LF_ServerHeadless --ApplySubConfig GameplayTests` workflow and `Validation Boundary Test Routing` table used during gameplay bug triage
-- `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` cover embedded-client interaction, GUI, and UI-text paths that are commonly rechecked when debugging workflows depend on client-visible behavior
-- `Docs/WebDebugging.md` and `Docs/AndroidDebugging.md` confirm the browser and external-device branches of the general debug-path selection table
+## Project launch-profile checklist
 
-## Client Host and Runtime Validation
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#project-launch-profile-checklist).
 
-The client ships as `LF_Client.exe` (host) plus a sibling loadable runtime library built by the `LF_ClientLib` target. The host loads the runtime through a stable C ABI and falls back to the embedded client only when the requested compatibility version matches its built-in one. See [ClientUpdater.md](ClientUpdater.md) for the full architecture, ABI surface, updater protocol, and packaging behavior.
+## Engine test validation
 
-Quick validation when touching either side:
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#engine-test-validation).
 
-1. Build `LF_Client`; on native host/runtime platforms it depends on `LF_ClientLib`. Confirm the host-derived runtime alias lands next to the host (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux). Build `LF_ClientLib` explicitly only when the host is not needed.
-2. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup.
-3. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.
-4. Launch `LF_Client.exe --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime â†’ host fails (no embedded fallback when compatibility differs).
-5. Point `--ClientLibPath` to an invalid path without `--ClientLibCompatibilityVersion` â†’ host falls back to the embedded client.
-6. Re-run `LF_UnitTests` after ABI changes; `Test_ClientRuntimeApi.cpp` covers exports validation and compatibility helpers.
-7. Build a packaged server target and confirm `<Settings.PlatformBinaries>/<target>/` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the runtime libraries the client will pull during startup binary sync.
+## Client host and runtime validation
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#client-host-and-runtime-validation).
+
+## Project evidence and extraction rules
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#project-evidence-and-extraction-rules).
+
+## Troubleshooting by layer
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#troubleshooting-by-layer).
+
+## Network latency emulation
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#network-latency-emulation).
+
+## Maintenance triggers
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#maintenance-triggers).
+
+## Validation checklist
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#validation-checklist).
+
+## See also
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#see-also).

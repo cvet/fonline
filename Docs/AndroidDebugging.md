@@ -1,150 +1,99 @@
-# Android Debugging
+# Android Build, Packaging, and Device Debugging
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Legacy route.
 
-Practical reference for building, packaging, installing, and remote-scene debugging the Android client.
+The canonical guide moved to locale-specific paths.
 
-## Workflow Overview
+[English](en/how-to/platforms/android-debugging.md) | [Russian](ru/how-to/platforms/android-debugging.md)
 
-Android debug work is split into four layers:
+## Contract status
 
-1. prepare the Android SDK/NDK workspace parts;
-2. build the Android client native library;
-3. package a Gradle project with baked resources;
-4. build/install/launch the APK on a Wi-Fi ADB device.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#contract-status).
 
-The current supported platform identifiers are `android-arm32`, `android-arm64`, and `android-x86`. Most local tasks use `android-arm64`. A package emits an installable Android APK when its `DefinePackage(...)` entry carries a `BINARY Client Android arm64 Apk` line — the raw LocalTest `AndroidTest` package is the reusable example. Which of an embedding project's release packages include Android (and which CI job builds them) is that project's own choice; consult the project's build/CI documentation for its package composition.
+## Scope and authority
 
-The high-level command flow from the repo root is:
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#scope-and-authority).
 
-```bash
-bash ../BuildTools/prepare-workspace.sh android-packages android-arm64 # fresh Linux host
-# or, when system packages are already present:
-bash ../BuildTools/prepare-workspace.sh android-arm64
-python3 ../BuildTools/buildtools.py build android-arm64 client RelWithDebInfo
-python3 ../BuildTools/buildtools.py package-android-debug LF android-arm64 LocalTest
-python3 ../BuildTools/android_device.py --workspace-root Workspace connect
-cd Workspace/android-debug/LF-Client-LocalTest-Android
-./gradlew assembleDebug
-python3 ../BuildTools/android_device.py --workspace-root Workspace install --apk Workspace/android-debug/LF-Client-LocalTest-Android/app/build/outputs/apk/debug/app-debug.apk
-python3 ../BuildTools/android_device.py --workspace-root Workspace launch --activity com.lastfrontier.app/.FOnlineActivity
-python3 ../BuildTools/android_device.py --workspace-root Workspace logcat
-```
+## Support and qualification matrix
 
-## VS Code Task Flow
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#support-and-qualification-matrix).
 
-The active Linux VS Code Android launch tasks are thin wrappers around the same BuildTools entry points:
+## Prepare the host and workspace
 
-- `Android :: Prepare Workspace`
-- `Android :: Build Client`
-- `Android :: Build Debug Package`
-- `Android :: Build APK`
-- `Android :: Connect Device`
-- `Android :: Install APK`
-- `Android :: Launch App`
-- `Android :: Logs App`
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#prepare-the-host-and-workspace).
 
-`Android :: Prepare Launch [linux]` runs the standard sequence for a `LocalTest` APK.
+### SDK-level relationships
 
-`Android :: Launch Remote Scene [linux]` runs the remote-scene sequence: select scene, prepare workspace, bake resources, build `LF_ServerHeadless`, build/package/install `RemoteSceneLaunch`, stop older scene servers on the gameplay ports, start a fresh headless scene server, stop the app, and launch it with a server-host override.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#sdk-level-relationships).
 
-## Remote Scene Launch
+## Build and stage a local debug package
 
-Android scene debugging uses the `RemoteSceneLaunch` subconfig rather than the embedded-client `SceneLaunch` path.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#build-and-stage-a-local-debug-package).
 
-Important differences:
+### Native and Gradle debug meanings
 
-- the server is `LF_ServerHeadless` on the host;
-- the Android client is a separate device process;
-- `Server.AutoStartClientOnServer` stays disabled;
-- `android_device.py launch-game` passes `ClientNetwork.ServerHost` as an Android activity extra;
-- if `--server-host` is omitted, `android_device.py` auto-detects the host LAN IP by checking the route to the selected Wi-Fi device.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#native-and-gradle-debug-meanings).
 
-Use `Android :: Launch Remote Scene [linux]` after compatibility-affecting changes. Launching only the already installed APK can leave an older client talking to a newer scene server and produce `Client outdated` style failures.
+## Assemble and inspect the debug APK
 
-## Official Package Targets
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#assemble-and-inspect-the-debug-apk).
 
-The local debug flow above uses `package-android-debug` and then Gradle `assembleDebug` from `Workspace/android-debug/...`. The CI/release package flow is different: `MakePackage-<type>` targets are generated from the `DefinePackage(...)` entries in the embedding project's `CMakeLists.txt`. Any package whose entry lists `BINARY Client Android arm64 Apk` produces an installable APK alongside its other artifacts, provided the packaging job runs `prepare-workspace android-sdk android-ndk` first; the generated package lands under `Workspace/output/<DevName>-<type>` with the APK produced through the shared `../BuildTools/package.py` Android packager. The official packager invokes Gradle with `--no-daemon` so concurrent package jobs on the same self-hosted runner do not reuse or kill each other's Gradle daemon.
+## Android package configuration
 
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#android-package-configuration).
 
-## Source paths inspected
+### Package-only extension families
 
-- `../BuildTools/buildtools.py`
-- `../BuildTools/android_device.py`
-- `../BuildTools/package.py`
-- `../BuildTools/android-project/`
-- `../BuildTools/android-project/app/src/main/java-template/FOnlineActivity.java`
-- `../ThirdParty/android-sdk`
-- `../ThirdParty/android-ndk`
-- `../../.vscode/tasks.json`
-- `../../CMakeLists.txt`
-- `../../.github/workflows/ci.yml`
-- `../../LastFrontier.fomain`
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#package-only-extension-families).
 
-Use this split when debugging Android output:
+### Config precedence and secrets
 
-- **LocalTest/RemoteSceneLaunch device debugging** -> inspect `package-android-debug`, `Workspace/android-debug/LF-Client-*-Android`, Wi-Fi ADB, and the VS Code Android tasks.
-- **Release-package APK artifact issue** -> inspect the embedding project's `DefinePackage(...)` entries, its CI package matrix, `MakePackage-<type>`, and `Workspace/output/<DevName>-<type>` rather than the local debug Gradle directory first.
-- **AndroidTest package issue** -> remember it is defined as `BINARY Client Android arm64 Raw`, not an APK-producing package target.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#config-precedence-and-secrets).
 
-## Runtime Resource Copy
+## Runtime bootstrap and resource staging
 
-Android packaging moves baked client resources into the Gradle project under `app/src/main/assets/Resources`.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#runtime-bootstrap-and-resource-staging).
 
-On first launch after install/update, `FOnlineActivity` copies those assets into the app files directory and starts the engine with absolute overrides for:
+## Discover and select a Wi-Fi ADB device
 
-- `Baking.ClientResources`
-- `Baking.CacheResources`
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#discover-and-select-a-wi-fi-adb-device).
 
-The activity tracks an `.asset_revision` based on Android package metadata and recopies resources when the installed package changes.
+## Install, launch, stop, and collect logs
 
-## Practical Debugging Notes
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#install-launch-stop-and-collect-logs).
 
-When Android launch behavior fails, isolate the failing layer before rebuilding the whole stack:
+## Connect to a development server
 
-- **workspace prepare fails before build** -> check `../ThirdParty/android-sdk`, `../ThirdParty/android-ndk`, and whether `Workspace/android-sdk` / `Workspace/android-ndk` were prepared by `prepare-workspace.sh`. Truncated Google CDN zips (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) are retried by `download_file` / `run_with_retry` in `../BuildTools/buildtools.py`; a persistent failure is a host/network problem, not a missing pin.
-- **Gradle project exists but APK build fails** -> inspect `Workspace/android-debug/LF-Client-*-Android/local.properties`; the VS Code tasks fall back to `Workspace/android-sdk` and then `/usr/lib/android-sdk` if needed.
-- **APK install is canceled on device** -> rerun `android_device.py install` after approving Android wireless debugging or unknown-app-install prompts on the device.
-- **device is not found** -> run `android_device.py discover` / `connect`; the helper uses `adb mdns services`, caches `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` input.
-- **RemoteSceneLaunch app cannot connect back to host** -> check the `launch-game` `ClientNetwork.ServerHost` override, the selected Wi-Fi route, and whether host ports `4025`/`4026` are already occupied by a stale server.
-- **scene launch opens the wrong scene** -> inspect the selected `startupSceneName`, `LF_ServerHeadless --ApplySubConfig RemoteSceneLaunch --Scene.Startup <SceneId>`, and the installed package path.
-- **resources are stale after reinstall** -> verify the APK was rebuilt from the expected `Workspace/android-debug/LF-Client-*-Android` directory and that `FOnlineActivity` recopied assets by checking app logs for resource-copy failures.
-- **packaging fails on icon, signing, or manifest metadata** -> inspect `Android.Icon`, `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, `Android.KeyPassword`, and any `Android.ManifestMetaData.*` keys in `../../LastFrontier.fomain`; icon input must be a PNG, manifest metadata values must be non-empty, and partial signing config is invalid.
-- **Gradle cannot resolve an Android SDK dependency** -> inspect the selected package config's `Android.GradleMavenRepository.*` and `Android.GradleDependency.*` settings in `../../LastFrontier.fomain`; the packager copies those entries into the generated Gradle project only for configs that define them.
-- **package-specific Java bridge is missing or in the wrong package** -> inspect `Android.JavaSource.*` settings in `../../LastFrontier.fomain`; non-empty entries are copied into the generated app package namespace and get `$PACKAGE$` / `$CONFIG$` placeholders patched by `package.py`.
-- **CI package contains Windows/Web/Linux artifacts but no Android APK** -> only package definitions whose `DefinePackage(...)` lists `BINARY Client Android arm64 Apk` emit APKs, and the CI job that builds such a package must prepare the `android-sdk`/`android-ndk` workspace; check the embedding project's package definitions and CI matrix.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#connect-to-a-development-server).
 
-## Key Files and Integration Points
+## Integrate release packaging
 
-If you need to trace the Android debug flow through the live repository, start with these files:
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#integrate-release-packaging).
 
-- `README.md` - concise repo-front-door Android command flow that this detailed device/debug guide expands
-- the embedding project's `CMakeLists.txt` `DefinePackage(...)` entries, including which package targets emit `Android arm64 Apk` artifacts
-- the embedding project's CI config - package matrix and the Android workspace-preparation step for APK-producing packages
-- `../../.vscode/tasks.json` - live Android task graph for workspace prep, package build, install, remote-scene server startup, and app launch
-- `../BuildTools/buildtools.py` - Android platform identifiers, workspace feature mapping, and `package-android-debug` entry point
-- `../BuildTools/android_device.py` - Wi-Fi ADB discovery, connection caching, install, launch, `launch-game`, stop, and logcat helper
-- `../BuildTools/package.py` - Android Gradle project generation, resource movement, icon/signing config, and APK build integration used by both debug and package targets
-- `../BuildTools/android-project/` - Gradle and activity template patched by the packager
-- `../BuildTools/android-project/app/src/main/java-template/FOnlineActivity.java` - runtime resource copy and `ClientNetwork.ServerHost` argument forwarding
-- `../../LastFrontier.fomain` - `Android.*`, `LocalTest`, and `RemoteSceneLaunch` config values used by packaging and launch
-- `BuildAndLaunch.md` and `Docs/Scenes.md` - companion references for general launch selection and scene-debug behavior
+### Release signing behavior
 
-## Validation and Tests
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#release-signing-behavior).
 
-Current checks worth running when Android build, packaging, or launch docs change:
+## Device and release acceptance matrix
 
-- `../../.vscode/tasks.json` confirms the current task names, package paths, APK paths, and remote-scene sequence.
-- `README.md` remains the front-door summary for the concise Android command flow; this guide owns detailed Wi-Fi ADB, Gradle project, package-output, and remote-scene troubleshooting behavior.
-- the embedding project's `CMakeLists.txt` confirms which package targets emit Android APKs (those with `BINARY Client Android arm64 Apk`).
-- the embedding project's CI config confirms it prepares the Android workspace only for APK-producing package types.
-- `../BuildTools/android_device.py` confirms the current helper commands and failure messages around Wi-Fi ADB discovery/installation.
-- `../BuildTools/package.py` confirms Android config keys, icon requirements, signing behavior, and resource movement into APK assets.
-- `FOnlineActivity.java` confirms runtime resource copy and `ClientNetwork.ServerHost` override handling.
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#device-and-release-acceptance-matrix).
 
-## See Also
+## Troubleshooting by layer
 
-- [BuildAndLaunch.md](../../Docs/BuildAndLaunch.md) â€” general build and launch entry points
-- [Scenes.md](../../Docs/Scenes.md) â€” `SceneLaunch` vs `RemoteSceneLaunch` behavior
-- [WebDebugging.md](WebDebugging.md) â€” sibling remote-scene workflow for browser clients
-- [GuiSystem.md](../../Docs/GuiSystem.md) and [Localization.md](../../Docs/Localization.md) â€” generated-screen and text-presentation references when APK/device startup is healthy but UI output is wrong
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#troubleshooting-by-layer).
+
+## Project evidence and extraction rules
+
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#project-evidence-and-extraction-rules).
+
+## Maintenance triggers
+
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#maintenance-triggers).
+
+## Validation routes
+
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#validation-routes).
+
+## See also
+
+Continue with the [canonical English guide](en/how-to/platforms/android-debugging.md#see-also).

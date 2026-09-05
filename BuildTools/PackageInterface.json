@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "scope": {
+    "surface": "package-interface",
+    "stability": "internal",
+    "since": null,
+    "support_note": "No versioned package support line is declared; embedding projects must pin an engine revision.",
+    "included": [
+      "DefinePackage declaration clauses and the per-binary POSTFIX modifier",
+      "package.py targets, platforms, architecture keys, pack tokens, and payload effects",
+      "implemented, placeholder, and unsupported package boundaries"
+    ],
+    "excluded": [
+      "embedding-project package matrices and release policy",
+      "project configuration key schema and secret provisioning",
+      "resource-pack content selection and deployment topology",
+      "installer signing credentials and external tool operation"
+    ]
+  },
+  "declaration": {
+    "command": "DefinePackage",
+    "source": "BuildTools/cmake/helpers/Build.cmake",
+    "consumer": "BuildTools/cmake/stages/Packages.cmake",
+    "description": "Declare a named package target and one or more binary payloads.",
+    "clauses": [
+      {
+        "name": "CONFIG",
+        "required": true,
+        "repeatable": false,
+        "arguments": [
+          {"name": "config", "value_kind": "subconfig", "description": "Default project subconfig baked into every binary entry."}
+        ],
+        "description": "Set the package-wide default config."
+      },
+      {
+        "name": "BINARY",
+        "required": true,
+        "repeatable": true,
+        "arguments": [
+          {"name": "target", "value_kind": "target", "description": "Packager target name."},
+          {"name": "platform", "value_kind": "platform", "description": "Packager platform name."},
+          {"name": "arch", "value_kind": "architecture-list", "description": "Architecture key or plus-separated architecture keys."},
+          {"name": "pack", "value_kind": "pack-list", "description": "Plus-separated pack tokens."}
+        ],
+        "description": "Add one target/platform/architecture payload, optionally followed by POSTFIX and a value that apply together only to this binary entry."
+      }
+    ],
+    "options": [
+      {
+        "name": "POSTFIX",
+        "value_kind": "string",
+        "default_source": "empty",
+        "description": "Select the matching postfixed binary input and isolate this entry's target directory, packaged build name, runtime-update payloads, and MSI name without affecting sibling BINARY entries."
+      }
+    ]
+  },
+  "packager": {
+    "source": "BuildTools/package.py",
+    "entrypoint": "main",
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts."
+  },
+  "targets": [
+    {"name": "Server", "resource_mode": "server-and-client", "required_packs": [], "description": "Server binary plus server resources and client update resource packs."},
+    {"name": "Client", "resource_mode": "client", "required_packs": [], "description": "Client host/runtime binary and client resources."},
+    {"name": "Mapper", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Mapper binary without packaged game resources."},
+    {"name": "Baker", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Baker executable or library without packaged game resources."},
+    {"name": "AnimationViewer", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Standalone animation preview tool without packaged game resources."},
+    {"name": "ParticleViewer", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Standalone particle preview tool without packaged game resources."}
+  ],
+  "platforms": [
+    {"name": "Windows", "status": "implemented", "architectures": ["win32", "win64", "win32-win7", "win64-win7", "arm64"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Native PE payloads with optional runtime DLLs, symbols, archives, and MSI. The -win7 keys resolve to canonical win32/win64 binary architectures and require a matching explicit POSTFIX when the build output is postfixed. arm64 is accepted as an existing package input, but the standard BuildTools platform registry does not provide a Windows arm64 build lane."},
+    {"name": "Linux", "status": "implemented", "architectures": ["x64", "arm64", "x86", "arm"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Native ELF payloads with optional runtime libraries and archives."},
+    {"name": "Android", "status": "implemented", "architectures": ["arm32", "arm64", "x86"], "targets": ["Client"], "description": "Gradle client project with native ABI libraries, assets, and optional APK."},
+    {"name": "macOS", "status": "unsupported", "architectures": ["x64", "arm64"], "targets": ["Client"], "description": "Accepted by argparse but package_macos currently aborts."},
+    {"name": "iOS", "status": "unsupported", "architectures": ["arm64", "simulator"], "targets": ["Client"], "description": "Accepted by argparse but package_ios currently aborts."},
+    {"name": "Web", "status": "implemented", "architectures": ["wasm"], "targets": ["Client"], "description": "Browser client JavaScript/Wasm payload with preloaded resources."}
+  ],
+  "packs": [
+    {"name": "Raw", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Windows", "Linux", "Android", "Web"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Retain the staged target directory after finalization.", "output": "<target-output>"},
+    {"name": "Zip", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Windows", "Linux", "Android", "Web"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Create a deterministic ZIP beside the staged target directory.", "output": "<target-output>.zip"},
+    {"name": "SingleZip", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Windows", "Linux", "Android", "Web"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Append the staged target directory to one package-wide ZIP; identical same-name members are stored once, while conflicting contents fail packaging.", "output": "<output>/<output-name>.zip"},
+    {"name": "Tar", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Linux"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Create an uncompressed tar archive.", "output": "<target-output>.tar"},
+    {"name": "TarGz", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Linux"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Create a gzip-compressed tar archive.", "output": "<target-output>.tar.gz"},
+    {"name": "Root", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Windows", "Linux", "Android", "Web"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Merge the staged target directory into the package output root.", "output": "<output>"},
+    {"name": "Wix", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Windows"], "targets": ["Client"], "description": "Build a required MSI from the staged Windows client payload; POSTFIX is appended to the installer base name.", "output": "<output>/<nice-name>[_<postfix>].msi"},
+    {"name": "Apk", "category": "artifact", "status": "implemented", "artifact": true, "platforms": ["Android"], "targets": ["Client"], "description": "Run Gradle and copy the selected signed/debug APK beside the staged project.", "output": "<output>/<target-output-name>.apk"},
+    {"name": "Debug", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows", "Linux", "Android", "Web"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Select debug binary inputs; Android uses assembleDebug."},
+    {"name": "NoRes", "category": "resource", "status": "implemented", "artifact": false, "platforms": ["Windows", "Linux"], "targets": ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"], "description": "Skip resource staging and embedded/config/build-name patching."},
+    {"name": "Headless", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows", "Linux"], "targets": ["Server", "Client"], "description": "Include the regular and Headless binary variants."},
+    {"name": "Service", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows"], "targets": ["Server"], "description": "Include the regular server and Windows Service variants."},
+    {"name": "Daemon", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Linux"], "targets": ["Server"], "description": "Include the regular server and Linux Daemon variants."},
+    {"name": "TotalProfiling", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows", "Linux"], "targets": ["Server", "Client"], "description": "Include the regular and total-profiling binary variants."},
+    {"name": "OnDemandProfiling", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows", "Linux"], "targets": ["Server", "Client"], "description": "Include the regular and on-demand-profiling binary variants."},
+    {"name": "OGL", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows"], "targets": ["Client"], "description": "Include the regular and OpenGL client variants and patch ForceOpenGL=1."},
+    {"name": "Lib", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows"], "targets": ["Client", "Baker"], "description": "Package the shared-library application instead of the executable."},
+    {"name": "WebServer", "category": "payload", "status": "implemented", "artifact": false, "platforms": ["Web"], "targets": ["Client"], "description": "Add the local simple-web-server.py helper to the browser payload."},
+    {"name": "AppImage", "category": "artifact", "status": "placeholder", "artifact": false, "platforms": ["Linux"], "targets": ["Client"], "description": "Reserved token; the current Linux packager emits no AppImage artifact."}
+  ],
+  "payloads": [
+    {"name": "Windows", "status": "implemented", "description": "Patched PE executable or DLL, companion runtime files, PDBs when present, and resource ZIP directories unless NoRes is selected. win32-win7 and win64-win7 read the canonical win32/win64 binary entry selected by the same per-binary POSTFIX."},
+    {"name": "Linux", "status": "implemented", "description": "Patched executable or shared runtime, companion files, and resource ZIP directories unless NoRes is selected."},
+    {"name": "Android", "status": "implemented", "description": "Generated Gradle project containing libmain.so per ABI and baked resources under app assets; Apk optionally emits a sibling APK."},
+    {"name": "Web", "status": "implemented", "description": "JavaScript, patched Wasm, HTML shell, Resources.data/Resources.js preload files, and optional local server helper."},
+    {"name": "macOS", "status": "unsupported", "description": "No payload is emitted in the current repository state."},
+    {"name": "iOS", "status": "unsupported", "description": "No payload is emitted in the current repository state."}
+  ]
+}

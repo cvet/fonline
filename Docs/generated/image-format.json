@@ -1,0 +1,1114 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_image_format.py",
+  "source_manifest": "BuildTools/ImageFormatInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed import, FOFRM composition, polygonal sprite meshing, baked-container, client sprite, atlas, cache, and validation contract for FOnline images.",
+  "scope": {
+    "surface": "image-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The contract is generated for a pinned Engine revision. Projects own asset catalogs, source licensing, visual style, compression policy, resource-pack precedence, animation substitutions, movement tuning, and visible acceptance.",
+    "included": [
+      "the twelve built-in ImageBaker source extensions and their current import behavior",
+      "FOFRM fields, aliases, direction sections, nested references, filename options, flattening, offsets, and timing",
+      "the versioned private RGBA/mesh frame container, per-pack SpriteInfo index, and output-renaming behavior",
+      "default client sprite-factory coverage, SpriteSheet playback, polygon or quad atlas drawing, hit masks, caches, and diagnostics",
+      "focused source-anchor, generator, native-test, project-bake, and visible-validation boundaries"
+    ],
+    "excluded": [
+      "project image catalogs, resource-pack precedence, asset licenses, art direction, quality targets, and acceptance baselines",
+      "authoritative movement and the detailed walk/run projection algorithm documented by the Sprite Root Motion guide",
+      "particle authoring, model textures, shader effects, GUI layout, fonts, video, and audio formats",
+      "a public compatibility promise for the private baked byte stream or unsupported third-party image formats"
+    ]
+  },
+  "sources": {
+    "image_baker": "Source/Tools/ImageBaker.cpp",
+    "image_baker_header": "Source/Tools/ImageBaker.h",
+    "default_sprites": "Source/Client/DefaultSprites.cpp",
+    "default_sprites_header": "Source/Client/DefaultSprites.h",
+    "sprite_manager": "Source/Client/SpriteManager.cpp",
+    "sprite_manager_header": "Source/Client/SpriteManager.h",
+    "texture_atlas": "Source/Client/TextureAtlas.cpp",
+    "texture_atlas_header": "Source/Client/TextureAtlas.h",
+    "sprite_resource": "Source/Common/SpriteResource.cpp",
+    "sprite_resource_header": "Source/Common/SpriteResource.h",
+    "sprite_meshing": "Source/Tools/SpriteMeshing.cpp",
+    "sprite_meshing_header": "Source/Tools/SpriteMeshing.h",
+    "string_utils_header": "Source/Essentials/StringUtils.h",
+    "tests": [
+      "Source/Tests/Test_ImageBaker.cpp",
+      "Source/Tests/Test_TextureAtlas.cpp"
+    ]
+  },
+  "outputs": {
+    "baker_name": "Image",
+    "baker_order": 4,
+    "accepted_extensions": [
+      "fofrm",
+      "frm",
+      "fr0",
+      "rix",
+      "art",
+      "spr",
+      "zar",
+      "til",
+      "mos",
+      "bam",
+      "png",
+      "tga"
+    ],
+    "default_runtime_extensions": [
+      "fofrm",
+      "frm",
+      "fr0",
+      "rix",
+      "art",
+      "zar",
+      "til",
+      "mos",
+      "bam",
+      "png",
+      "tga"
+    ],
+    "default_runtime_unsupported": [
+      "spr"
+    ],
+    "container_magic": 43,
+    "container_version": 2,
+    "pixel_format": "RGBA8",
+    "direction_counts": [
+      "1",
+      "GameSettings::MAP_DIR_COUNT"
+    ],
+    "runtime_side": "client",
+    "source_option_separator": "$",
+    "fofrm_effect_serialized": false
+  },
+  "formats": [
+    {
+      "id": "image-format.format.fofrm",
+      "name": "FOFRM descriptor",
+      "extension": "fofrm",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "FOFRM composes relative image references into one static image, animation, or complete direction sheet and is the preferred authored wrapper for multi-frame or option-bearing sources.",
+      "rationale": "It is the only built-in text descriptor that can combine sources, add frame deltas, and produce a runtime-loadable .fofrm path.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadFofrm",
+            "ConfigFile fofrm(reader.GetStr())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.frm",
+      "name": "Fallout FRM",
+      "extension": "frm",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "FRM imports big-endian frame timing, offsets, deltas, one or complete direction tables, optional same-basename .pal data, and animated default-palette indices.",
+      "rationale": "The importer preserves legacy frame geometry while normalizing pixels into the Engine RGBA container.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadFrm",
+            "File palette_file = files.FindFileByPath",
+            "collection.NewName = strex(fname).lower()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.fr0",
+      "name": "Split directional FRx set",
+      "extension": "fr0",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "A .fr0 entry discovers its numbered directional siblings, rejects a gap after direction loading begins, and renames baked output to lowercase .fofrm for critter paths or .frm otherwise.",
+      "rationale": "The split legacy representation must become one runtime direction sheet with a deterministic output path.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadFrX",
+            "collection.NewName = strex(\"{}.{}\", strex(fname).erase_file_extension().lower(), \"fofrm\")",
+            "collection.NewName = strex(\"{}.{}\", strvex(fname).erase_file_extension(), \"frm\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.rix",
+      "name": "RIX image",
+      "extension": "rix",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "RIX imports one opaque indexed image using its embedded palette and emits one RGBA frame.",
+      "rationale": "The format has no authored animation or direction metadata.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadRix",
+            "collection.SequenceSize = 1;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.art",
+      "name": "Fallout Tactics ART",
+      "extension": "art",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "ART imports raw or RLE frames, palettes, offsets, frame rate, static or eight-rotation data, and the palette/alpha/mirror/frame filename options.",
+      "rationale": "ART direction numbering and frame metadata require format-specific remapping before runtime use.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadArt",
+            "header.RotationCount == 8",
+            "if (w * h == frame_info.FrameSize)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.spr",
+      "name": "Fallout Tactics SPR",
+      "extension": "spr",
+      "availability": "baker only by default; wrap through FOFRM for the stock runtime",
+      "stability": "experimental",
+      "requirement": "SPR imports named sequences, layered parts, direction remapping, color offsets, repeated-frame sharing, and fixed 10 fps, but the stock DefaultSpriteFactory does not register the .spr extension.",
+      "rationale": "Directly baked .spr output cannot be loaded by the default client; a .fofrm wrapper gives the output a registered extension without changing imported pixels.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadSpr",
+            "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size())"
+          ]
+        },
+        {
+          "path": "Source/Client/DefaultSprites.h",
+          "anchors": [
+            "return {\"fofrm\", \"frm\", \"fr0\", \"rix\", \"art\", \"zar\", \"til\", \"mos\", \"bam\", \"png\", \"tga\"};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.zar",
+      "name": "ZAR image",
+      "extension": "zar",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "ZAR imports one palette-backed raw or RLE image with alpha into one RGBA frame.",
+      "rationale": "ZAR is a single-image legacy container used directly and inside TIL.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadZar",
+            "strcmp(head, \"<zar>\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.til",
+      "name": "TIL animation",
+      "extension": "til",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "TIL imports its nested ZAR frames as a 10 fps single-direction sequence.",
+      "rationale": "The loader supplies timing because the legacy container exposes a frame list rather than an Engine animation descriptor.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadTil",
+            "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * frames_count)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.mos",
+      "name": "MOS or MOSC tiled image",
+      "extension": "mos",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "MOS imports one tiled palette image; MOSC is decompressed first, and palette color 0x00FF00 is made transparent.",
+      "rationale": "Packed and unpacked files share one extension and normalize to one RGBA frame.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadMos",
+            "if (color == 0xFF00)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.bam",
+      "name": "BAM or BAMC animation",
+      "extension": "bam",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "BAM imports one selected cycle or one selected frame, supports packed BAMC input and RLE, derives frame deltas, and treats palette blue 255 as transparent.",
+      "rationale": "Cycle/frame lookup and palette transparency are part of the legacy format rather than generic sprite behavior.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadBam",
+            "if (head[3] == 'C')",
+            "if (color.comp.b == 255)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.png",
+      "name": "PNG image",
+      "extension": "png",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "PNG is decoded through libpng, strips 16-bit channels to 8-bit, expands palette/low-bit grayscale/tRNS data, and fills missing alpha with 255 before emitting one RGBA frame.",
+      "rationale": "PNG is the recommended lossless authored source for ordinary project images and transparent sprites.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "auto ImageBaker::LoadPng",
+            "png_set_strip_16",
+            "png_set_filler(png_ptr.get(), 0x000000ff, PNG_FILLER_AFTER)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.format.tga",
+      "name": "TGA TrueColor image",
+      "extension": "tga",
+      "availability": "baker and default runtime",
+      "stability": "experimental",
+      "requirement": "TGA supports only raw type 2 or RLE type 10 TrueColor input at 24 or 32 bpp, converts BGR(A) to RGBA, and flips rows bottom-to-top.",
+      "rationale": "Indexed, grayscale, other bit depths, image IDs, and alternate-origin assumptions are outside the implemented production subset.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "static auto TgaLoad",
+            "if (type != 2 && type != 10)",
+            "if (pixel_depth != 24 && pixel_depth != 32)",
+            "int32_t i = (height - y - 1) * width + x;"
+          ]
+        }
+      ]
+    }
+  ],
+  "descriptor_fields": [
+    {
+      "id": "image-format.field.fps",
+      "name": "fps / Fps",
+      "syntax": "fps = <integer>",
+      "default": "10",
+      "stability": "experimental",
+      "requirement": "FOFRM reads lowercase fps first and then legacy Fps; zero creates a non-playing sheet, while production animation values must also keep whole duration per frame above zero.",
+      "rationale": "The authored count and fps determine whole-sheet AnimTicks, while runtime playback divides that duration by flattened frame count.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "int32_t frm_fps = fofrm.GetAsInt(\"\", \"fps\", 10);",
+            "frm_fps = fofrm.GetAsInt(\"\", \"Fps\", frm_fps);"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.count",
+      "name": "count / Count",
+      "syntax": "count = <positive integer>",
+      "default": "1",
+      "stability": "experimental",
+      "requirement": "Count is the number of descriptor references per direction, defaults to one, and must be positive; it is not necessarily the final flattened frame count.",
+      "rationale": "Each referenced source can itself contain multiple frames.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "int32_t frm_count = fofrm.GetAsInt(\"\", \"count\", 1);",
+            "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.sequence-offset",
+      "name": "offs_x / offs_y and OffsetX / OffsetY",
+      "syntax": "offs_x = <signed integer>; offs_y = <signed integer>",
+      "default": "0 in the root section; inherited from the previous parsed direction when omitted",
+      "stability": "experimental",
+      "requirement": "Sequence offsets are signed and may be authored in the root or each direction section; explicitly set both values in every direction section because omitted values carry forward.",
+      "rationale": "The parser reuses the current ox/oy variables instead of resetting them for each direction.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "ox = fofrm.GetAsInt(dir_str, \"offs_x\", ox);",
+            "oy = fofrm.GetAsInt(dir_str, \"offs_y\", oy);"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.effect",
+      "name": "effect / Effect",
+      "syntax": "effect = <string>",
+      "default": "empty",
+      "stability": "deprecated",
+      "requirement": "The parser accepts effect/Effect into FrameCollection.EffectName for compatibility, but ImageBaker does not serialize or apply it and the stock runtime never selects an effect from this field.",
+      "rationale": "Authors must not treat a parsed-but-unused field as a rendering contract.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "collection.EffectName = fofrm.GetAsStr(\"\", \"effect\");",
+            "collection.EffectName = fofrm.GetAsStr(\"\", \"Effect\", collection.EffectName);"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker.h",
+          "anchors": [
+            "string EffectName {};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.direction-section",
+      "name": "[dir_N] / [Dir_N]",
+      "syntax": "[dir_0] through [dir_<MAP_DIR_COUNT-1>]",
+      "stability": "experimental",
+      "requirement": "A descriptor is either single-direction or supplies every Engine map direction; partial direction sets and later gaps fail.",
+      "rationale": "SpriteSheet accepts exactly one direction or GameSettings::MAP_DIR_COUNT directions.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "string dir_str = strex(\"dir_{}\", dir);",
+            "throw ImageBakerException(\"FOFRM file invalid apps\", fname);"
+          ]
+        },
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.frame-reference",
+      "name": "frm / Frm and frm_N / Frm_N",
+      "syntax": "frm_0 = Relative$Options.ext",
+      "stability": "experimental",
+      "requirement": "Every authored descriptor slot resolves one relative image path; only slot zero also accepts the unnumbered frm/Frm alias.",
+      "rationale": "References are joined with the descriptor directory and then dispatched by the referenced extension.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "frm_name = fofrm.GetAsStr(dir_str, \"frm\");",
+            "auto sub_collection = LoadAny(strex(\"{}/{}\", frm_dir, frm_name), files);"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.frame-delta",
+      "name": "next_x_N / next_y_N and NextX_N / NextY_N",
+      "syntax": "next_x_0 = <signed integer>; next_y_0 = <signed integer>",
+      "default": "0",
+      "stability": "experimental",
+      "requirement": "Descriptor frame deltas are added to every flattened child frame's imported NextX/NextY values.",
+      "rationale": "This preserves source-format displacement while allowing authored composition corrections.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "sub_collection.Main.Frames[i].NextX + next_x",
+            "sub_collection.Main.Frames[i].NextY + next_y"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.flattening",
+      "name": "Nested sequence flattening",
+      "stability": "experimental",
+      "requirement": "FOFRM appends the Main sequence of every referenced child; child direction sheets and child sequence offsets are not composed, and all authored parent directions must flatten to the same final frame count.",
+      "rationale": "The merge loop copies child Main frames only and validates each later direction against collection.SequenceSize.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "frames += sub_collection.SequenceSize;",
+            "frames != collection.SequenceSize",
+            "sub_collection.Main.Frames[i].Data"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.timing",
+      "name": "FOFRM whole-sequence timing",
+      "syntax": "AnimTicks = 1000 * count / fps",
+      "stability": "experimental",
+      "requirement": "FOFRM computes whole-sequence duration from authored descriptor count, not from the flattened child-frame count; fps zero yields zero ticks.",
+      "rationale": "Nested animated references can therefore change effective frame cadence unless the author accounts for flattening.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "1000 * frm_count / frm_fps : 0"
+          ]
+        }
+      ]
+    }
+  ],
+  "filename_options": [
+    {
+      "id": "image-format.option.art",
+      "name": "ART palette, alpha, mirror, and frame selection",
+      "syntax": "Name$[0-3][T][H][V][Fframe|Ffrom-to].art",
+      "stability": "experimental",
+      "requirement": "Digits select the last requested available palette, T derives alpha from maximum RGB while index zero remains transparent, H/V mirror, and F selects an inclusive ascending or descending clamped frame/range; letters are case-insensitive and unknown characters are ignored.",
+      "rationale": "Options are parsed from the source reference without changing the physical source filename.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "case 'T':",
+            "case 'H':",
+            "case 'V':",
+            "case 'F':",
+            "frm_count_target = std::max(frm_from, frm_to)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.option.spr",
+      "name": "SPR part color offsets and sequence",
+      "syntax": "Name$[part,r,g,b]...Sequence.spr",
+      "stability": "experimental",
+      "requirement": "Zero or more bracket entries set clamped RGB offsets for part 0 other, 1 skin, 2 hair, or 3 armor; an out-of-range part applies the RGB values to all parts, and text after the last bracket selects a sequence case-insensitively (empty selects the first).",
+      "rationale": "The importer composes palette layers and animation selection before writing runtime RGBA frames.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "Format: fileName$[1,100,0,0][2,0,0,100]animName.spr",
+            "if (rgb[0] >= 0 && rgb[0] <= 3)",
+            "compare_ignore_case(name)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.option.bam",
+      "name": "BAM cycle and frame selection",
+      "syntax": "Name$cycle[-frame].bam",
+      "stability": "experimental",
+      "requirement": "The integer before '-' selects a cycle and an optional non-negative integer after '-' selects one frame; out-of-range cycle/frame values fall back to zero, while no frame selector imports the whole cycle.",
+      "rationale": "The source can expose many cycles while one resource path needs deterministic output.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "Format: fileName$5-6.bam",
+            "if (need_cycle >= cycles_count)",
+            "specific_frame = 0;"
+          ]
+        }
+      ]
+    }
+  ],
+  "baking_rules": [
+    {
+      "id": "image-format.baking.discovery",
+      "name": "Scan and targeted modes",
+      "stability": "experimental",
+      "requirement": "An empty target scans every registered extension; a targeted missing, unsupported, or BakeChecker-skipped path returns without output.",
+      "rationale": "Incremental project builds and one-file rebakes share one baker without treating a skipped target as failure.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "bool scan_mode = target_path.empty()",
+            "if (!_fileLoaders.contains(ext))",
+            "if (_context->BakeChecker && !_context->BakeChecker"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.extension-case",
+      "name": "Case-insensitive extension dispatch",
+      "stability": "experimental",
+      "requirement": "Source and runtime extension lookup uses get_file_extension(), which returns the extension without its dot and lowercases it.",
+      "rationale": "Mixed-case extensions resolve to the same registered loader, though projects should still use canonical lowercase paths.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "strex(target_path).get_file_extension()",
+            "strex(fname_with_opt).get_file_extension()"
+          ]
+        },
+        {
+          "path": "Source/Essentials/StringUtils.h",
+          "anchors": [
+            "get_file_extension() noexcept -> strex&; // Extension without dot and lowered"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.source-options",
+      "name": "Dollar option dispatch",
+      "stability": "experimental",
+      "requirement": "LoadAny strips text after '$' from the physical filename, passes that suffix to the selected loader, and resolves the source inside the same FileCollection.",
+      "rationale": "One source file can produce selected or transformed variants through FOFRM references without duplicate binaries.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "substring_until('$')",
+            "substring_after('$')",
+            "return it->second(fname, opt"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.output-path",
+      "name": "Output path and NewName",
+      "stability": "experimental",
+      "requirement": "The baked resource normally keeps its source path; loaders may set NewName, which replaces that output path for legacy normalization.",
+      "rationale": "FRM/FRx critter normalization and split-direction aggregation require deterministic renamed resources.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "string output_path = collection.NewName.empty() ? string(fname) : collection.NewName",
+            "_context->WriteData(output_path, data)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.container-header",
+      "name": "Private container header",
+      "stability": "internal",
+      "requirement": "The private baked stream starts with SpriteResource magic 43 and version 2, then uint16 frame count, uint16 whole animation ticks, and uint8 direction count, and ends with magic 43.",
+      "rationale": "The shared SpriteResource decoder validates the versioned framing before any client or tool consumes pixels or mesh data.",
+      "source": [
+        {
+          "path": "Source/Common/SpriteResource.h",
+          "anchors": [
+            "SPRITE_RESOURCE_MAGIC = 43",
+            "SPRITE_RESOURCE_VERSION = 2"
+          ]
+        },
+        {
+          "path": "Source/Common/SpriteResource.cpp",
+          "anchors": [
+            "header_magic == SPRITE_RESOURCE_MAGIC",
+            "version == SPRITE_RESOURCE_VERSION",
+            "footer_magic == SPRITE_RESOURCE_MAGIC"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.direction-record",
+      "name": "Direction records",
+      "stability": "internal",
+      "requirement": "Each of one or GameSettings::MAP_DIR_COUNT directions stores exactly the common frame count; the resolved logical root offset is serialized on every concrete frame after mesh padding and cropping.",
+      "rationale": "Per-frame offsets preserve screen placement when polygon geometry changes the serialized canvas independently for each direction and animation frame.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1",
+            "for (uint8_t dir = 0; dir < dirs; dir++)",
+            "writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.frame-record",
+      "name": "Concrete and shared frame records",
+      "stability": "internal",
+      "requirement": "Each frame starts with a shared flag; a concrete record stores signed int16 draw offset, uint16 cropped dimensions, signed int16 NextX/NextY, exact RGBA8 pixels, a mesh kind, and mesh vertices and indices plus logical source size and origin when the kind is Mesh. A shared record stores one earlier-frame index.",
+      "rationale": "The record preserves logical placement and lighting coordinates while avoiding transparent texture rows and submitting indexed silhouettes; repeated frames still reuse the original payload.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "writer.Write<bool>(shot.Shared)",
+            "writer.Write<int16_t>(bake_shot->NextX)",
+            "writer.Write<uint16_t>(shot.SharedIndex)",
+            "bake_shot->Width) * bake_shot->Height * 4"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.sprite-info-index",
+      "name": "Per-pack SpriteInfo index",
+      "stability": "internal",
+      "requirement": "Image baking maintains SpriteInfo/<PackName>.foinfo version 1 with duration, direction, frame bounds, offsets, and shared-frame metadata for every current image source in that resource pack.",
+      "rationale": "Common EngineMetadata can answer 2D animation queries on server and client without decoding RGBA payloads; losing or introducing the aggregate index requires a full rebake.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "SPRITE_INFO_DIRECTORY",
+            "ReadSpriteInfoFile",
+            "WriteSpriteInfoFile",
+            "Sprite info index is incomplete; perform a full resource rebake"
+          ]
+        },
+        {
+          "path": "Source/Common/AnimationInfo.cpp",
+          "anchors": [
+            "auto ReadSpriteInfoFile",
+            "auto WriteSpriteInfoFile"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.sprite-mesh",
+      "name": "Optional polygonal sprite mesh",
+      "stability": "experimental",
+      "requirement": "Resolve and validate the complete SpriteMesh setting group for every image bake, including when SpriteMesh.Enabled is false: AlphaThreshold is 0..254, MaxTriangles is positive, and AreaSavingsWeight is finite and non-negative. When enabled, build deterministic alpha-thresholded candidates within that triangle budget, score saved original-frame area against submitted triangles, retain only validated coverage, crop selected mesh canvases to exact geometry bounds, and preserve the logical root through the serialized frame offset.",
+      "rationale": "The opt-in path reduces transparent overdraw and texture area without clipping visible pixels or changing gameplay placement; unsafe or unprofitable candidates remain quads and empty masks remain explicit empty geometry.",
+      "source": [
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "FIXED_SETTING(bool, SpriteMesh, Enabled",
+            "FIXED_SETTING(int32_t, SpriteMesh, AlphaThreshold",
+            "FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles",
+            "FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight"
+          ]
+        },
+        {
+          "path": "Source/Tools/SpriteMeshing.cpp",
+          "anchors": [
+            "auto ResolveSpriteMeshBakeConfig",
+            "auto BuildSpriteMesh",
+            "saved_area_ratio * config.AreaSavingsWeight - numeric_cast<float64_t>(triangle_count)",
+            "SpriteMeshKind::Empty"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "CropSpriteFrameToMeshBounds",
+            "TranslateSpriteMesh",
+            "mesh.Kind == SpriteMeshKind::Mesh"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.error-aggregation",
+      "name": "Per-file work and aggregate failure",
+      "stability": "experimental",
+      "requirement": "Selected files bake asynchronously; each exception is logged, and any nonzero error count ends the Image baker with ImageBakerException.",
+      "rationale": "A full scan reports all independently failing image resources in one run without silently succeeding.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "run_async(GetAsyncMode(), task_name",
+            "WriteLog(\"Image baking error: {}\"",
+            "throw ImageBakerException(\"Errors during images baking\", errors)"
+          ]
+        }
+      ]
+    }
+  ],
+  "runtime_rules": [
+    {
+      "id": "image-format.runtime.factory-coverage",
+      "name": "Default factory extension boundary",
+      "stability": "experimental",
+      "requirement": "DefaultSpriteFactory registers every built-in ImageBaker extension except spr; direct .spr paths need a custom factory or, normally, an authored .fofrm wrapper.",
+      "rationale": "Bake support and stock runtime path support are separate extension registries.",
+      "source": [
+        {
+          "path": "Source/Client/DefaultSprites.h",
+          "anchors": [
+            "auto GetExtensions() const -> vector<string> override",
+            "return {\"fofrm\", \"frm\", \"fr0\", \"rix\", \"art\", \"zar\", \"til\", \"mos\", \"bam\", \"png\", \"tga\"};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.decode",
+      "name": "Baked-container decoding",
+      "stability": "internal",
+      "requirement": "The stock runtime reads only the baked container through ReadSpriteResource, validates magic, version, frame and direction counts, complete frame/mesh records, footer, and trailing data, then constructs either AtlasSprite or SpriteSheet.",
+      "rationale": "Source decoders are baker-only and are not deployed as runtime image parsers.",
+      "source": [
+        {
+          "path": "Source/Common/SpriteResource.cpp",
+          "anchors": [
+            "auto ReadSpriteResource",
+            "Sprite resource version is unsupported",
+            "Sprite resource contains trailing data"
+          ]
+        },
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "SpriteResourceData resource = ReadSpriteResource",
+            "if (sprite_info.FrameCount > 1 || direction_count > 1)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.static-frame",
+      "name": "Single-frame behavior",
+      "stability": "experimental",
+      "requirement": "A one-frame one-direction resource becomes AtlasSprite and applies the resolved concrete-frame draw offset; serialized NextX/NextY remains metadata because there is no SpriteSheet frame-displacement surface.",
+      "rationale": "NextX/NextY matter only when a sheet consumer selects and interprets animation frames.",
+      "source": [
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "SpriteResourceFrameData& frame = direction.Frames.front()",
+            "result = FillAtlas(atlas_type, frame.Size, frame.Offset"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.sprite-sheet",
+      "name": "Direction and playback state",
+      "stability": "experimental",
+      "requirement": "SpriteSheet accepts one or the full map direction count, supports direction selection, random prewarm, normalized time, loop/reverse playback, and treats one frame or zero whole ticks as non-playing.",
+      "rationale": "Animation state is client presentation state and each direction owns a parallel frame sheet.",
+      "source": [
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT",
+            "void SpriteSheet::Prewarm()",
+            "void SpriteSheet::SetDir",
+            "if (_framesCount == 1 || _wholeTicks == 0)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.frame-offset",
+      "name": "Per-frame sprite offsets",
+      "stability": "experimental",
+      "requirement": "Concrete and shared SpriteSheet frames retain imported NextX/NextY in _sprOffset; ordinary drawing uses the selected AtlasSprite offset, while locomotion projection consumes the separate frame-offset array.",
+      "rationale": "Visual root-motion displacement must remain separate from sequence placement and authoritative world movement.",
+      "source": [
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "dir_anim->_sprOffset[j] = frame.NextOffset",
+            "dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index]"
+          ]
+        },
+        {
+          "path": "Source/Client/DefaultSprites.h",
+          "anchors": [
+            "auto GetSprOffset() const noexcept -> const_span<ipos32>"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.atlas",
+      "name": "Atlas upload, polygon draw, border, and hit mask",
+      "stability": "experimental",
+      "requirement": "Positive-size RGBA frames are placed in the requested AtlasType, uploaded with duplicated one-pixel filtering edges, and converted to a SpriteHitValue hit mask. Ordinary full-image draws submit the baked indexed silhouette when present; crops, tiled and padded draws, fonts, blits, model sprites, and particles retain rectangular paths.",
+      "rationale": "Mesh geometry changes fill and submission cost without changing atlas pixels, picking, logical scaling, or specialized rectangular rendering contracts.",
+      "source": [
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "if (_meshData)",
+            "for (uint16_t local_index : mesh.Indices)",
+            "1px border for correct linear interpolation",
+            "hit_test_data[i] = _sprMngr->CheckHitTest"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "spr->FillData(_spritesDrawBuf",
+            "DrawSpriteSize"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.cache",
+      "name": "Copyable sprite cache identity",
+      "stability": "experimental",
+      "requirement": "Copyable sprites are cached by hashed path plus AtlasType and each load returns MakeCopy, so the same source path may have separate atlas-backed cache entries.",
+      "rationale": "Independent animation state must not mutate the cached prototype, and different atlas classes cannot share placement blindly.",
+      "source": [
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "_copyableSpriteCache.find({path, atlas_type})",
+            "return it->second->MakeCopy()",
+            "_copyableSpriteCache.emplace(pair {path, atlas_type}, spr)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.missing-cache",
+      "name": "Missing-path memoization",
+      "stability": "experimental",
+      "requirement": "Missing paths, absent extensions, unknown factories, and factory load failures are memoized by path in _nonFoundSprites; CleanupSpriteCache does not clear that set.",
+      "rationale": "Adding a previously missing resource during a live session normally requires recreating the manager or restarting the client before retrying the same path.",
+      "source": [
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "if (_nonFoundSprites.count(path) != 0)",
+            "_nonFoundSprites.emplace(path)",
+            "void SpriteManager::CleanupSpriteCache()"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.h",
+          "anchors": [
+            "unordered_set<hstring> _nonFoundSprites {};"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "image-format.validation.fofrm-count",
+      "name": "Positive FOFRM count",
+      "stability": "experimental",
+      "requirement": "Reject a descriptor whose count/Count is zero or negative.",
+      "rationale": "A descriptor must resolve at least one source reference before a runtime frame table can exist.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.fofrm-directions",
+      "name": "Complete equal-size directions",
+      "stability": "experimental",
+      "requirement": "Reject partial direction sets and any later direction whose flattened frame count differs from direction zero.",
+      "rationale": "Every direction sheet shares one frame-count and timing header.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "dir > 0 && frames != collection.SequenceSize",
+            "throw ImageBakerException(\"FOFRM file invalid data\", fname)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"FofrmDirectionEdgeCases\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.fofrm-nested-shared",
+      "name": "No nested shared frame records",
+      "stability": "experimental",
+      "requirement": "Reject a FOFRM reference whose child Main frame is already a shared record.",
+      "rationale": "The flattening implementation copies concrete child pixels and does not rebase child shared indices.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "FOFRM file invalid data (shared index)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.rgba-payload",
+      "name": "Exact RGBA payload size",
+      "stability": "internal",
+      "requirement": "Reject every concrete frame whose byte payload is not exactly width times height times four.",
+      "rationale": "The client reads a fixed RGBA8 byte count without a separate payload-length field.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "Animation frame RGBA payload size does not match frame dimensions"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.tga-subset",
+      "name": "Supported TGA subset",
+      "stability": "experimental",
+      "requirement": "Use no image ID, bottom-left orientation, TrueColor type 2 or 10, and 24 or 32 bpp; indexed/grayscale/other inputs are rejected or outside the implemented orientation assumptions.",
+      "rationale": "The loader consumes the fixed header directly, then always flips rows and does not branch on descriptor origin.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "Indexed TGA is not supported",
+            "TGA support only 24 and 32 bpp",
+            "height - y - 1"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"InvalidTgaInputsAreReported\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.malformed-inputs",
+      "name": "Malformed decoder inputs",
+      "stability": "experimental",
+      "requirement": "Keep focused failure coverage for corrupt PNG, TGA, FRM/FRx/RIX/ART/ZAR/TIL/MOS/BAM, SPR, and nested FOFRM inputs.",
+      "rationale": "Legacy binary parsers must fail deterministically instead of emitting truncated runtime containers.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"InvalidPngInputIsReported\")",
+            "SECTION(\"InvalidLegacyHeadersAreReported\")",
+            "SECTION(\"InvalidSprInputsAreReported\")",
+            "SECTION(\"InvalidFofrmNestedFramesAreReported\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.runtime-container",
+      "name": "Runtime container guards",
+      "stability": "internal",
+      "requirement": "Reject invalid header/footer magic, zero frames, zero directions, unsupported direction counts, invalid single-frame shared records, and invalid shared-frame indices.",
+      "rationale": "Corrupt baked bytes must not reach atlas allocation or animation updates.",
+      "source": [
+        {
+          "path": "Source/Common/SpriteResource.cpp",
+          "anchors": [
+            "Sprite resource header magic is invalid",
+            "Sprite resource contains no frames",
+            "Sprite frame reference points outside previously decoded frames",
+            "Sprite resource contains trailing data"
+          ]
+        },
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "Sprite file direction count is unsupported",
+            "Single-frame sprite resource cannot contain a shared-frame reference"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.playback-timing",
+      "name": "Nonzero per-frame duration",
+      "stability": "experimental",
+      "requirement": "For a playing multi-frame sheet, author timing so whole AnimTicks divided by flattened frame count is at least one millisecond; fps zero intentionally disables playback.",
+      "rationale": "SpriteSheet::Update divides elapsed time by integer ticks_per_frame, while Play only guards one frame or zero whole ticks.",
+      "source": [
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "if (_framesCount == 1 || _wholeTicks == 0)",
+            "int32_t ticks_per_frame",
+            "int32_t frames_passed = dt / ticks_per_frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.validation.project-visible",
+      "name": "Embedding-project visual gate",
+      "stability": "experimental",
+      "requirement": "After native and documentation checks, rebake the embedding project and inspect changed dimensions, alpha edges, mirrors, directions, cadence, offsets, hit masks, and relevant client profiles in a visible scene.",
+      "rationale": "Parser and container tests cannot prove art framing, filtering, gait, or project resource-pack selection.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "TEST_CASE(\"ImageBaker\")"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_TextureAtlas.cpp",
+          "anchors": [
+            "TEST_CASE(\"TextureAtlasLayoutPacksOverlappingMaximalFreeRectangles\")",
+            "TEST_CASE(\"TextureAtlasLayoutDumpOverlayDrawsMeshGeometry\")"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 51,
+    "format_count": 12,
+    "descriptor_field_count": 9,
+    "filename_option_count": 3,
+    "baking_rule_count": 10,
+    "runtime_rule_count": 8,
+    "validation_rule_count": 9,
+    "baker_extension_count": 12,
+    "runtime_extension_count": 11,
+    "entries_by_stability": {
+      "deprecated": 1,
+      "experimental": 43,
+      "internal": 7
+    }
+  },
+  "contract_digest": "e566e0b777acd21b4440657bb7dec1cbcfd15a53e99c9f128f4d0c303e17753a"
+}

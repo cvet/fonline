@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "id": "showcase-chime",
+      "path": "ShowcaseAssets/Showcase/Audio/ShowcaseChime.wav",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "8836eb5c2b0ed556133606d14c0311fad15a2aa6725542b80ba9d61799543c79"
+    },
+    {
+      "id": "showcase-particle-effect",
+      "path": "ShowcaseAssets/Showcase/Effects/ShowcaseParticle.fofx",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "4f116fb1b7f61270b0a0b4a7668e106749af245e2490adac4673a5eeb4a15076"
+    },
+    {
+      "id": "showcase-particle-source",
+      "path": "ShowcaseAssets/Showcase/Particles/Showcase.spark",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "cada4bca7607beb58e581f45cedac4e50e3b791af2478bb0ec38a78ee5035a4c"
+    },
+    {
+      "id": "showcase-particle-texture",
+      "path": "ShowcaseAssets/Showcase/Particles/ShowcaseSpark.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "4c73c68cd2d7f228998a82c97355533be760ac9e334c23db8c6fcaef23fa9ebc"
+    },
+    {
+      "id": "showcase-beacon-descriptor",
+      "path": "ShowcaseAssets/Showcase/Sprites/Beacon.fofrm",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "eb5ac213c305aafffcee60c932910372d57d07e71322fb393fbc9f2f2e226119"
+    },
+    {
+      "id": "showcase-beacon-frame-0",
+      "path": "ShowcaseAssets/Showcase/Sprites/Beacon_0.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "461998a7c9440c3c9490d62eb08942c0b486087c94847a3e0cbd3186ce9a8fd7"
+    },
+    {
+      "id": "showcase-beacon-frame-1",
+      "path": "ShowcaseAssets/Showcase/Sprites/Beacon_1.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "e8c4b18a8edfd5be5aaede54e512516ec5b309c9c2362f4964b2ae100c161096"
+    },
+    {
+      "id": "showcase-beacon-frame-2",
+      "path": "ShowcaseAssets/Showcase/Sprites/Beacon_2.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "e8c4b18a8edfd5be5aaede54e512516ec5b309c9c2362f4964b2ae100c161096"
+    },
+    {
+      "id": "showcase-beacon-frame-3",
+      "path": "ShowcaseAssets/Showcase/Sprites/Beacon_3.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "461998a7c9440c3c9490d62eb08942c0b486087c94847a3e0cbd3186ce9a8fd7"
+    },
+    {
+      "id": "showcase-beacon-frame-4",
+      "path": "ShowcaseAssets/Showcase/Sprites/Beacon_4.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "ea557638336ac6cce29060420a24777f9e5fee0d73c0699d0f582639d6e4506d"
+    },
+    {
+      "id": "showcase-beacon-frame-5",
+      "path": "ShowcaseAssets/Showcase/Sprites/Beacon_5.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "ef00c198948dbec8c260f7fcf31d05eae56722bdb785355f8a262c463549199b"
+    },
+    {
+      "id": "showcase-telemetry-panel",
+      "path": "ShowcaseAssets/Showcase/Sprites/ShowcasePanel.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "25facb36cee6f91cbb85725f59b183f11566da5c6794fc725bdde2982001b697"
+    },
+    {
+      "id": "showcase-floor-tile",
+      "path": "ShowcaseAssets/Showcase/Tiles/ShowcaseFloor.tga",
+      "license": "CC0-1.0",
+      "source": "project-original",
+      "sha256": "5b71758b9b638d41d011a062fed59ce1a90a2aae15c217cc846506a2cd10c1ac"
+    }
+  ]
+}

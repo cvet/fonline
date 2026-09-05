@@ -51,7 +51,7 @@ FO_BEGIN_NAMESPACE
 
 class BaseEngine;
 
-///@ ExportEntity ImGui ScriptImGui ScriptImGui Global
+///@ ExportEntity ImGui ScriptImGui ScriptImGui Global // Global script receiver bound to the current engine's Dear ImGui context; individual methods define their active-frame and balanced-scope requirements.
 class ScriptImGui : public Entity
 {
 public:
@@ -70,6 +70,7 @@ private:
     ptr<BaseEngine> _engine;
 };
 
+// Window creation and interaction flags forwarded to the embedded Dear ImGui runtime.
 ///@ ExportEnum
 enum class ImGui_WindowFlags : uint32_t
 {
@@ -98,6 +99,7 @@ enum class ImGui_WindowFlags : uint32_t
     NoInputs = 197120, // ImGuiWindowFlags_NoInputs
 };
 
+// Child-window sizing, framing, padding, and navigation flags forwarded to Dear ImGui.
 ///@ ExportEnum
 enum class ImGui_ChildFlags : uint32_t
 {
@@ -113,6 +115,7 @@ enum class ImGui_ChildFlags : uint32_t
     NavFlattened = 256, // ImGuiChildFlags_NavFlattened
 };
 
+// Conditions controlling when a queued Dear ImGui state assignment takes effect.
 ///@ ExportEnum
 enum class ImGui_Cond : uint32_t
 {
@@ -123,6 +126,7 @@ enum class ImGui_Cond : uint32_t
     Appearing = 8, // ImGuiCond_Appearing
 };
 
+// Selection, spanning, overlap, and activation behavior for Dear ImGui selectable items.
 ///@ ExportEnum
 enum class ImGui_SelectableFlags : uint32_t
 {
@@ -134,6 +138,7 @@ enum class ImGui_SelectableFlags : uint32_t
     AllowOverlap = 16, // ImGuiSelectableFlags_AllowOverlap
 };
 
+// Expansion, framing, selection, spanning, and navigation flags for Dear ImGui tree nodes.
 ///@ ExportEnum
 enum class ImGui_TreeNodeFlags : uint32_t
 {
@@ -156,6 +161,7 @@ enum class ImGui_TreeNodeFlags : uint32_t
     CollapsingHeader = 26, // ImGuiTreeNodeFlags_CollapsingHeader
 };
 
+// Scope and hierarchy filters used by Dear ImGui focus queries.
 ///@ ExportEnum
 enum class ImGui_FocusedFlags : uint32_t
 {
@@ -167,6 +173,7 @@ enum class ImGui_FocusedFlags : uint32_t
     RootAndChildWindows = 3, // ImGuiFocusedFlags_RootAndChildWindows
 };
 
+// Blocking, overlap, timing, and hierarchy filters used by Dear ImGui hover queries.
 ///@ ExportEnum
 enum class ImGui_HoveredFlags : uint32_t
 {
@@ -186,6 +193,7 @@ enum class ImGui_HoveredFlags : uint32_t
     ForTooltip = 4096, // ImGuiHoveredFlags_ForTooltip
 };
 
+// Layout, borders, sizing, scrolling, sorting, and clipping behavior for Dear ImGui tables.
 ///@ ExportEnum
 enum class ImGui_TableFlags : uint32_t
 {
@@ -227,6 +235,7 @@ enum class ImGui_TableFlags : uint32_t
     HighlightHoveredColumn = 268435456, // ImGuiTableFlags_HighlightHoveredColumn
 };
 
+// Per-column visibility, sizing, ordering, sorting, and status flags for Dear ImGui tables.
 ///@ ExportEnum
 enum class ImGui_TableColumnFlags : uint32_t
 {
@@ -256,6 +265,7 @@ enum class ImGui_TableColumnFlags : uint32_t
     IsHovered = 134217728, // ImGuiTableColumnFlags_IsHovered
 };
 
+// Per-row header and background behavior for Dear ImGui tables.
 ///@ ExportEnum
 enum class ImGui_TableRowFlags : uint32_t
 {
@@ -263,6 +273,7 @@ enum class ImGui_TableRowFlags : uint32_t
     Headers = 1, // ImGuiTableRowFlags_Headers
 };
 
+// Table background channel targeted by a Dear ImGui cell or row color assignment.
 ///@ ExportEnum
 enum class ImGui_TableBgTarget : uint32_t
 {
@@ -272,6 +283,7 @@ enum class ImGui_TableBgTarget : uint32_t
     CellBg = 3, // ImGuiTableBgTarget_CellBg
 };
 
+// Reordering, fitting, selection, and tooltip behavior for Dear ImGui tab bars.
 ///@ ExportEnum
 enum class ImGui_TabBarFlags : uint32_t
 {
@@ -288,6 +300,7 @@ enum class ImGui_TabBarFlags : uint32_t
     FittingPolicyScroll = 512, // ImGuiTabBarFlags_FittingPolicyScroll
 };
 
+// Visibility, closure, ordering, and tooltip behavior for individual Dear ImGui tabs.
 ///@ ExportEnum
 enum class ImGui_TabItemFlags : uint32_t
 {
@@ -303,6 +316,7 @@ enum class ImGui_TabItemFlags : uint32_t
     NoAssumedClosure = 256, // ImGuiTabItemFlags_NoAssumedClosure
 };
 
+// Popup height, alignment, and preview behavior for Dear ImGui combo boxes.
 ///@ ExportEnum
 enum class ImGui_ComboFlags : uint32_t
 {
@@ -317,6 +331,7 @@ enum class ImGui_ComboFlags : uint32_t
     WidthFitPreview = 128, // ImGuiComboFlags_WidthFitPreview
 };
 
+// Editing, filtering, submission, callback, and read-only behavior for Dear ImGui text input.
 ///@ ExportEnum
 enum class ImGui_InputTextFlags : uint32_t
 {
@@ -333,6 +348,7 @@ enum class ImGui_InputTextFlags : uint32_t
     DisplayEmptyRefVal = 16384, // ImGuiInputTextFlags_DisplayEmptyRefVal
 };
 
+// Mouse-button selection and popup-stack policies for opening or closing Dear ImGui popups.
 ///@ ExportEnum
 enum class ImGui_PopupFlags : uint32_t
 {
@@ -348,6 +364,7 @@ enum class ImGui_PopupFlags : uint32_t
     AnyPopup = 3072, // ImGuiPopupFlags_AnyPopup
 };
 
+// Mouse-button identifiers accepted by the Dear ImGui script bindings.
 ///@ ExportEnum
 enum class ImGui_MouseButton : int32_t
 {
@@ -356,6 +373,7 @@ enum class ImGui_MouseButton : int32_t
     Middle = 2, // ImGuiMouseButton_Middle
 };
 
+// Cardinal directions and the no-direction sentinel used by Dear ImGui navigation and layout APIs.
 ///@ ExportEnum
 enum class ImGui_Dir : int32_t
 {
@@ -366,6 +384,7 @@ enum class ImGui_Dir : int32_t
     Down = 3, // ImGuiDir_Down
 };
 
+// Clamping and input behavior for Dear ImGui sliders and drag controls.
 ///@ ExportEnum
 enum class ImGui_SliderFlags : uint32_t
 {
@@ -380,6 +399,7 @@ enum class ImGui_SliderFlags : uint32_t
     AlwaysClamp = 1536, // ImGuiSliderFlags_AlwaysClamp
 };
 
+// Mouse-button, overlap, and activation behavior for low-level Dear ImGui buttons.
 ///@ ExportEnum
 enum class ImGui_ButtonFlags : uint32_t
 {
@@ -390,6 +410,7 @@ enum class ImGui_ButtonFlags : uint32_t
     EnableNav = 8, // ImGuiButtonFlags_EnableNav
 };
 
+// Picker mode, channel visibility, data format, preview, and input behavior for Dear ImGui color editors.
 ///@ ExportEnum
 enum class ImGui_ColorEditFlags : uint32_t
 {
@@ -421,6 +442,7 @@ enum class ImGui_ColorEditFlags : uint32_t
     DefaultOptions = 311427072, // ImGuiColorEditFlags_DefaultOptions_
 };
 
+// Indexed Dear ImGui style-color slots used by scripted theme customization.
 ///@ ExportEnum
 enum class ImGui_Col : int32_t
 {
@@ -463,6 +485,7 @@ enum class ImGui_Col : int32_t
     TableRowBgAlt = 50, // ImGuiCol_TableRowBgAlt
 };
 
+// Indexed scalar and vector Dear ImGui style variables accepted by style-stack operations.
 ///@ ExportEnum
 enum class ImGui_StyleVar : int32_t
 {
@@ -486,6 +509,75 @@ enum class ImGui_StyleVar : int32_t
     ButtonTextAlign = 38, // ImGuiStyleVar_ButtonTextAlign
     SelectableTextAlign = 39, // ImGuiStyleVar_SelectableTextAlign
 };
+
+///@ EnumValueDoc ImGui_WindowFlags None // Applies no optional window behavior flags.
+///@ EnumValueDoc ImGui_WindowFlags NoNav // Disables both navigation input within the window and navigation focus toward it.
+///@ EnumValueDoc ImGui_WindowFlags NoDecoration // Disables the title bar, resizing, scrollbars, and collapsing controls.
+///@ EnumValueDoc ImGui_WindowFlags NoInputs // Disables mouse input, navigation input, and navigation focus for the window.
+///@ EnumValueDoc ImGui_ChildFlags None // Applies no optional child-window behavior flags.
+///@ EnumValueDoc ImGui_ChildFlags Border // Draws an outer border and enables the child window's standard window padding.
+///@ EnumValueDoc ImGui_ChildFlags AlwaysUseWindowPadding // Uses style.WindowPadding even when the child window has no border.
+///@ EnumValueDoc ImGui_ChildFlags ResizeX // Allows resizing from the right layout border and persists the width unless window settings are disabled.
+///@ EnumValueDoc ImGui_ChildFlags ResizeY // Allows resizing from the bottom layout border and persists the height unless window settings are disabled.
+///@ EnumValueDoc ImGui_ChildFlags AutoResizeX // Derives the child-window width from its measured content.
+///@ EnumValueDoc ImGui_ChildFlags AutoResizeY // Derives the child-window height from its measured content.
+///@ EnumValueDoc ImGui_ChildFlags AlwaysAutoResize // With automatic sizing enabled, measures hidden content, always reports the child as visible, and disables clipping optimization; this expensive mode is not recommended for routine use.
+///@ EnumValueDoc ImGui_ChildFlags FrameStyle // Styles the child window as a framed item by using frame colors, rounding, border size, and padding.
+///@ EnumValueDoc ImGui_ChildFlags NavFlattened // Beta behavior that shares focus scope and allows keyboard or gamepad navigation across the parent border and sibling child windows.
+///@ EnumValueDoc ImGui_SelectableFlags None // Applies no optional selectable-item behavior flags.
+///@ EnumValueDoc ImGui_TreeNodeFlags None // Applies no optional tree-node behavior flags.
+///@ EnumValueDoc ImGui_TreeNodeFlags CollapsingHeader // Combines framing with no tree-stack push and no automatic opening during logging.
+///@ EnumValueDoc ImGui_FocusedFlags None // Tests focus only for the current window without expanding the query scope.
+///@ EnumValueDoc ImGui_FocusedFlags RootAndChildWindows // Tests the root window and all of its child windows for focus.
+///@ EnumValueDoc ImGui_HoveredFlags AllowWhenOverlapped // Allows a hover result when another item or window overlaps the tested rectangle.
+///@ EnumValueDoc ImGui_HoveredFlags RectOnly // Uses the item or window rectangle while ignoring popup, active-item, and overlap blocking.
+///@ EnumValueDoc ImGui_TableFlags None // Applies no optional table behavior flags.
+///@ EnumValueDoc ImGui_TableColumnFlags None // Applies no optional table-column behavior flags.
+///@ EnumValueDoc ImGui_TableRowFlags None // Applies no optional table-row behavior flags.
+///@ EnumValueDoc ImGui_TableBgTarget None // Selects no table background color target.
+///@ EnumValueDoc ImGui_TabBarFlags None // Applies no optional tab-bar behavior flags.
+///@ EnumValueDoc ImGui_TabBarFlags TabListPopupButton // Shows a button that opens the tab-list popup and lets the user select a tab.
+///@ EnumValueDoc ImGui_TabItemFlags None // Applies no optional tab-item behavior flags.
+///@ EnumValueDoc ImGui_ComboFlags None // Applies no optional combo-box behavior flags.
+///@ EnumValueDoc ImGui_InputTextFlags None // Applies no optional text-input behavior flags.
+///@ EnumValueDoc ImGui_PopupFlags None // Applies the default popup mouse-button and stack-level behavior.
+///@ EnumValueDoc ImGui_PopupFlags AnyPopup // Tests any popup identifier at any level of the popup stack.
+///@ EnumValueDoc ImGui_MouseButton Left // Identifies the left mouse button.
+///@ EnumValueDoc ImGui_MouseButton Right // Identifies the right mouse button.
+///@ EnumValueDoc ImGui_MouseButton Middle // Identifies the middle mouse button.
+///@ EnumValueDoc ImGui_Dir None // Indicates that no cardinal direction is selected.
+///@ EnumValueDoc ImGui_Dir Left // Selects the left cardinal direction.
+///@ EnumValueDoc ImGui_Dir Right // Selects the right cardinal direction.
+///@ EnumValueDoc ImGui_Dir Up // Selects the upward cardinal direction.
+///@ EnumValueDoc ImGui_Dir Down // Selects the downward cardinal direction.
+///@ EnumValueDoc ImGui_SliderFlags None // Applies no optional slider or drag-control behavior flags.
+///@ EnumValueDoc ImGui_SliderFlags AlwaysClamp // Clamps manual input and also clamps a zero-width range where minimum and maximum are both zero.
+///@ EnumValueDoc ImGui_ButtonFlags None // Applies no optional low-level button behavior flags.
+///@ EnumValueDoc ImGui_ColorEditFlags None // Applies no optional color-editor behavior flags.
+///@ EnumValueDoc ImGui_ColorEditFlags AlphaOpaque // Hides alpha in the preview while still allowing ColorEdit4 and ColorPicker4 to edit it; for ColorButton this is equivalent to NoAlpha.
+///@ EnumValueDoc ImGui_ColorEditFlags DisplayHSV // Displays and edits color components in HSV form.
+///@ EnumValueDoc ImGui_ColorEditFlags DisplayHex // Displays and edits the color as a hexadecimal value.
+///@ EnumValueDoc ImGui_ColorEditFlags DefaultOptions // Selects 8-bit RGB display and input with the hue-bar picker as the default color-editor options.
+///@ EnumValueDoc ImGui_Col Text // Selects the primary text color slot.
+///@ EnumValueDoc ImGui_Col TextDisabled // Selects the disabled-text color slot.
+///@ EnumValueDoc ImGui_Col Border // Selects the border color slot for windows, child windows, popups, and framed widgets.
+///@ EnumValueDoc ImGui_Col FrameBgHovered // Selects the frame background color slot while the frame is hovered.
+///@ EnumValueDoc ImGui_Col FrameBgActive // Selects the frame background color slot while the frame is active.
+///@ EnumValueDoc ImGui_Col MenuBarBg // Selects the menu-bar background color slot.
+///@ EnumValueDoc ImGui_Col ScrollbarBg // Selects the scrollbar-track background color slot.
+///@ EnumValueDoc ImGui_Col ScrollbarGrab // Selects the normal scrollbar-grab color slot.
+///@ EnumValueDoc ImGui_Col SliderGrab // Selects the normal slider-grab color slot.
+///@ EnumValueDoc ImGui_Col SliderGrabActive // Selects the active slider-grab color slot.
+///@ EnumValueDoc ImGui_Col Button // Selects the normal button color slot.
+///@ EnumValueDoc ImGui_Col ButtonHovered // Selects the hovered button color slot.
+///@ EnumValueDoc ImGui_Col ButtonActive // Selects the active button color slot.
+///@ EnumValueDoc ImGui_Col HeaderHovered // Selects the hovered header color slot used by headers, tree nodes, and selectables.
+///@ EnumValueDoc ImGui_Col HeaderActive // Selects the active header color slot used by headers, tree nodes, and selectables.
+///@ EnumValueDoc ImGui_Col Separator // Selects the normal separator color slot.
+///@ EnumValueDoc ImGui_Col SeparatorHovered // Selects the hovered separator color slot.
+///@ EnumValueDoc ImGui_Col SeparatorActive // Selects the active separator color slot.
+///@ EnumValueDoc ImGui_Col ResizeGripHovered // Selects the hovered resize-grip color slot.
+///@ EnumValueDoc ImGui_Col ResizeGripActive // Selects the active resize-grip color slot.
 
 inline void ImGuiTextUnformatted(string_view text)
 {

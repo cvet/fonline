@@ -13,7 +13,7 @@ MAPPER_AOT_PLATFORMS = ('x86', 'amd64', 'wasm')
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description='FOnline scripts generation')
+    parser = argparse.ArgumentParser(prog='compile-mono-scripts.py', description='FOnline scripts generation')
     parser.add_argument('-scripts', dest='scripts', required=True, help='path to scripts directory')
     parser.add_argument('-assembly', dest='assembly', action='append', default=[], help='assembly name')
     return parser

@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_screenshots.py",
+  "source_manifest": "BuildTools/DocumentationScreenshots.json",
+  "source_manifest_sha256": "4ed162142f9be3e52aac35f0cbca98d3f3a78a9488944a7f2c91db4a2fa1dbfa",
+  "engine_base_revision": "fac978a67d1e601eb77389e8dc562d7e511705a0",
+  "revision_policy": "The base revision plus the generated SHA-256 digest of every listed source path identifies captures made from a documentation worktree before its final commit.",
+  "screenshot_count": 2,
+  "screenshots": [
+    {
+      "id": "mapper-particle-preview",
+      "title": "Mapper particle preview and core work windows",
+      "path": "Docs/assets/screenshots/mapper-particle-preview.png",
+      "owning_document": "Docs/en/how-to/tools/mapper-interactive.md",
+      "alt": "FOnline Mapper at 1280 by 800 showing the Workspace and Controls windows, the Particle Preview panel with Documentation.spk selected, deterministic seed and prewarm controls, and the live radiation particle centered on TutorialMap.",
+      "caption": "Mapper capture from the minimal multiplayer example. Particle Preview selects the baked Documentation.spk resource, places it at the view center, and exposes deterministic scale, offset, seed, and prewarm controls beside the normal Workspace and Controls windows.",
+      "width": 1280,
+      "height": 800,
+      "sha256": "75cb718080bcd3ab657d1885cdb571b39df6680a000e0947e2be8229f0c045e0",
+      "captured_on": "2026-08-20",
+      "license": "MIT",
+      "capture": {
+        "host": "Windows 11 x64",
+        "renderer": "Direct3D 11, feature level 11.1",
+        "project": "Examples/MinimalMultiplayer",
+        "viewport": "1280x800",
+        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationCapture",
+        "interaction_steps": [
+          "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
+          "Launch the MapperDocumentationCapture subconfig and do not modify the restored tool layout.",
+          "After the preview settles, capture the visible 1280x800 application window with a platform screenshot tool and save as PNG without resizing, cropping, or color adjustment."
+        ]
+      },
+      "source_paths": [
+        "Source/Common/Settings.inc",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp",
+        "Source/Tools/Mapper.cpp",
+        "Source/Tools/Mapper.h",
+        "Source/Tools/ParticleEditor.cpp",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/generate_config.py",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark"
+      ],
+      "recapture_triggers": [
+        "Mapper menu, Workspace, Controls, or Particle Preview layout or labels change.",
+        "Mapper visible-window composition or ImGui rendering changes.",
+        "The minimal example map, particle fixture, startup profile, renderer, or viewport changes."
+      ],
+      "source_sha256": {
+        "Source/Common/Settings.inc": "42434173365caad8b96ea419b601f8e81e17e48b2832667bad78d25dc4e78521",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "64ce37b319dcded1749e7afa63935c883e50927857d12a7861e4cf499a47a0eb",
+        "Source/Tools/Mapper.cpp": "123e9f17e2260e6e0a566941a3d12c3825f0c2a1bb4694a58181721427844875",
+        "Source/Tools/Mapper.h": "13b579296fbb490b23e3063d3d8deec25a8800597257bbff62f4b63727ff8780",
+        "Source/Tools/ParticleEditor.cpp": "bc9314d96aecd9f5ca28eeda21360d1fba8375b624a0c1de3687a809626c98d7",
+        "Examples/MinimalMultiplayer/CMakeLists.txt": "7ef014dd34a92e0f50a53e26880608fbec757679ead89afe9b88faf4691fc70e",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "79e40868d86a7080b55ea4403dfade1deb8745ec2dd03cb3715006820c4bbe1f",
+        "Examples/MinimalMultiplayer/generate_config.py": "8f91b7b4a9259982c3138c5f23e600f7fd55ab54920db0fd3e091e3627c265ae",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark": "bbbe2e18997abe4ffe878926a9f56449fc6591cae633c5b08a916153b366b805"
+      }
+    },
+    {
+      "id": "mapper-spark-editor",
+      "title": "Mapper SPARK particle editor",
+      "path": "Docs/assets/screenshots/mapper-spark-editor.png",
+      "owning_document": "Docs/en/how-to/tools/particle-authoring.md",
+      "alt": "FOnline SPARK Particle Editor at 1280 by 800 showing Documentation.spark, Adding and Removing modes, Auto replay and direction controls, a live 200-pixel preview, and the expandable Groups hierarchy with DocumentationGroup.",
+      "caption": "The Mapper opens the authored Documentation.spark source, not the baked .spk output. The editor combines a live preview with adding, removing, and naming modes plus the editable System and Group object hierarchy.",
+      "width": 1280,
+      "height": 800,
+      "sha256": "61292f3d05fd652235a6afad0e14b2c862d6bb879319a2379d2073140d89a006",
+      "captured_on": "2026-08-20",
+      "license": "MIT",
+      "capture": {
+        "host": "Windows 11 x64",
+        "renderer": "Direct3D 11, feature level 11.1",
+        "project": "Examples/MinimalMultiplayer",
+        "viewport": "1280x800",
+        "command": "Binaries/Mapper-Windows-win64/FOMM_Mapper.exe -ApplyConfig ../../FOnlineMinimalMultiplayer.fomain -ApplySubConfig MapperDocumentationSparkEditorCapture",
+        "interaction_steps": [
+          "Build ForceBakeResources and FOMM_Mapper in Release configuration.",
+          "Launch the MapperDocumentationSparkEditorCapture subconfig; Mapper.SparkEditorSource opens Documentation.spark directly.",
+          "Wait for the source editor and preview to render, then capture the visible 1280x800 application window with a platform screenshot tool without interacting with the restored layout.",
+          "Save as PNG without resizing, cropping, or color adjustment."
+        ]
+      },
+      "source_paths": [
+        "Source/Common/SpriteResource.cpp",
+        "Source/Common/SpriteResource.h",
+        "Source/Common/Settings.inc",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp",
+        "Source/Tools/Mapper.cpp",
+        "Source/Tools/ParticleEditor.cpp",
+        "Source/Tools/SparkParticleEditor.cpp",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/generate_config.py",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark"
+      ],
+      "recapture_triggers": [
+        "The SPARK source browser, editor modes, hierarchy, preview, or save workflow changes.",
+        "The baked sprite resource format or SPARK editor texture-loading path changes.",
+        "The minimal example particle fixture, renderer, viewport, or startup profile changes."
+      ],
+      "source_sha256": {
+        "Source/Common/SpriteResource.cpp": "40541abc41580a2cd9368dd9bec0a7595d019923802fc3ea4e7e8ac68cb92b79",
+        "Source/Common/SpriteResource.h": "1bc6aac200eb6ce7917e7603a0f10fce85f11d9cb1173dc93ee190a8ffadb745",
+        "Source/Common/Settings.inc": "42434173365caad8b96ea419b601f8e81e17e48b2832667bad78d25dc4e78521",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "64ce37b319dcded1749e7afa63935c883e50927857d12a7861e4cf499a47a0eb",
+        "Source/Tools/Mapper.cpp": "123e9f17e2260e6e0a566941a3d12c3825f0c2a1bb4694a58181721427844875",
+        "Source/Tools/ParticleEditor.cpp": "bc9314d96aecd9f5ca28eeda21360d1fba8375b624a0c1de3687a809626c98d7",
+        "Source/Tools/SparkParticleEditor.cpp": "955dc7caa441d1f817915210e413d58a1a0c4a528eb251c23d76c61f785038fd",
+        "Examples/MinimalMultiplayer/CMakeLists.txt": "7ef014dd34a92e0f50a53e26880608fbec757679ead89afe9b88faf4691fc70e",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain": "79e40868d86a7080b55ea4403dfade1deb8745ec2dd03cb3715006820c4bbe1f",
+        "Examples/MinimalMultiplayer/generate_config.py": "8f91b7b4a9259982c3138c5f23e600f7fd55ab54920db0fd3e091e3627c265ae",
+        "Examples/MinimalMultiplayer/Particles/Documentation.spark": "bbbe2e18997abe4ffe878926a9f56449fc6591cae633c5b08a916153b366b805"
+      }
+    }
+  ]
+}

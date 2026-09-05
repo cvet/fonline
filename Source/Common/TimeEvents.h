@@ -43,6 +43,7 @@ FO_DECLARE_EXCEPTION(TimeEventException);
 
 class BaseEngine;
 
+// Transient callback context for inspecting and changing the time event that is currently firing; requested changes are applied after the callback returns.
 ///@ ExportRefType Common RefCounted Export = GetId, GetData, GetDataArray, HasData, IsStopped, GetRepeat, Stop, Repeat, SetData, SetDataArray
 class TimeEventContext final : public RefCounted<TimeEventContext>
 {
@@ -54,19 +55,29 @@ public:
     auto operator=(TimeEventContext&&) noexcept = delete;
     ~TimeEventContext() = default;
 
+    // Returns the unique identifier of the event currently invoking the callback.
     [[nodiscard]] auto GetId() const noexcept -> uint32_t { return _id; }
+    // Returns the first payload value, or an empty any value when the event has no payload.
     [[nodiscard]] auto GetData() const noexcept -> any_t { return !_data.empty() ? _data.front() : any_t {}; }
+    // Returns a copy of the complete payload array visible to this callback.
     [[nodiscard]] auto GetDataArray() const noexcept -> vector<any_t> { return _data; }
+    // Returns whether the callback context currently contains at least one payload value.
     [[nodiscard]] auto HasData() const noexcept -> bool { return !_data.empty(); }
+    // Returns whether Stop has been requested through this callback context.
     [[nodiscard]] auto IsStopped() const noexcept -> bool { return _stopped; }
+    // Returns the current repeat interval, including a value assigned by Repeat during this callback.
     [[nodiscard]] auto GetRepeat() const noexcept -> timespan { return _repeat; }
     [[nodiscard]] auto IsRepeatChanged() const noexcept -> bool { return _repeatChanged; }
     [[nodiscard]] auto IsDataChanged() const noexcept -> bool { return _dataChanged; }
     [[nodiscard]] auto GetRawData() const noexcept -> const_span<any_t> { return _data; }
 
+    // Marks the current event for removal after the callback returns.
     void Stop() noexcept;
+    // Replaces the repeat interval and schedules the next firing from callback completion, clamped to the Engine minimum interval.
     void Repeat(timespan repeat) noexcept;
+    // Replaces the event payload with one value after the callback returns.
     void SetData(any_t data);
+    // Replaces the complete event payload with a copy of the supplied array after the callback returns.
     void SetDataArray(readonly_vector<any_t> data);
 
 private:

@@ -480,8 +480,8 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 
     ValidateSparkTexturePaths(file, system);
 
-    // Positions and billboard radius are measured separately because the runtime transforms the position box
-    // by the emitter placement, while the quad radius is an absolute length added in the view plane
+    // Use a deterministic run of a throwaway copy to bake emitter-local positions separately from the absolute billboard radius
+    // Runtime transforms only the positions
     {
         SPK::Ref<SPK::System> simulation = SPK::SPKObject::copy(system);
 

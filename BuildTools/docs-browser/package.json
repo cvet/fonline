@@ -1,0 +1,17 @@
+{
+  "name": "fonline-documentation-browser-audit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned Chromium and axe-core audit for the rendered FOnline documentation site.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "audit": "node audit.mjs"
+  },
+  "dependencies": {
+    "axe-core": "4.12.1",
+    "playwright": "1.62.0"
+  }
+}

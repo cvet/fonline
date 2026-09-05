@@ -365,8 +365,8 @@ auto EntityManager::GetItemsCount() const noexcept -> size_t
     return _allItems.size();
 }
 
-// Runs single-threaded during init and calls back into the engine, which re-locks the registry, so holding
-// `_registryLock` across it would self-deadlock (Docs/ThreadSafetyAnalysis.md)
+// LoadEntities runs before workers and cannot hold _registryLock while callbacks re-lock the registry
+// Thread-safety analysis is disabled for this startup-only path
 void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();

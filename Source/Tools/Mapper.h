@@ -319,12 +319,16 @@ public:
     auto CaptureMapSnapshot(nptr<const MapView> map) const -> string;
     auto RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool;
 
+    // Runs for submitted Mapper console text; handlers may replace `text`, and `StopChain` suppresses built-in command parsing.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);
+    // Runs after a map is loaded and normalized, before it is added to the Mapper's loaded-map list.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapLoad, ptr<MapView> /*map*/);
+    // Runs after Mapper writes a map successfully and before it marks the undo state clean.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapSave, ptr<MapView> /*map*/);
+    // Runs when the Inspector selects `entity`; handlers populate or reorder the mutable property-index list.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInspectorProperties, ptr<Entity> /*entity*/, vector<int32_t>& /*properties*/);
 

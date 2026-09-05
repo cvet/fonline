@@ -66,7 +66,7 @@ public:
     [[nodiscard]] auto WaiterCount() const noexcept -> size_t;
 
     // Escalation releases a parent-held lock to zero and re-takes it this many times, restoring the parent
-    // context's bookkeeping exactly (Docs/ServerRuntime.md, entity synchronization)
+    // context's bookkeeping exactly
     auto GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t;
 
     // Exclusive ("write") acquisition. One owner thread at a time; re-entrant on that thread via
@@ -81,7 +81,7 @@ public:
     void ReleaseShared() noexcept;
 
     // Bookkeeping, not access: nobody reads through the mark, it only tells an ancestor's exclusive Acquire that
-    // a descendant is busy. Compatibility and starvation rules: Docs/ServerRuntime.md, entity synchronization
+    // a descendant is busy
     void RegisterDescendantHold(uint64_t ticket);
     auto TryRegisterDescendantHold() -> bool;
     void UnregisterDescendantHold() noexcept;
@@ -282,7 +282,7 @@ private:
 };
 
 // Retains the own lock of an already-covered entity without ever releasing the caller's cover or parking on a
-// lock; the bounded retry absorbs in-flight acquire/release windows (Docs/ServerRuntime.md)
+// lock; the bounded retry absorbs in-flight acquire/release windows
 void EnsureEntitySynced(nptr<ServerEntity> entity);
 
 FO_END_NAMESPACE

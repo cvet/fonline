@@ -79,8 +79,8 @@ PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('Web', 'wasm'): 'wasm',
 }
 
-def parse_args() -> argparse.Namespace:
-	parser = argparse.ArgumentParser(description='FOnline packager')
+def create_parser() -> argparse.ArgumentParser:
+	parser = argparse.ArgumentParser(prog='package.py', description='FOnline packager')
 	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
 	parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 	parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
@@ -106,7 +106,11 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
-	return parser.parse_args()
+	return parser
+
+
+def parse_args() -> argparse.Namespace:
+	return create_parser().parse_args()
 
 
 def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:

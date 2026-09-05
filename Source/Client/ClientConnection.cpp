@@ -344,7 +344,7 @@ void ClientConnection::SendData()
 }
 
 // Symmetric by design: only the outbound half makes the server's copy of the world trail the client's,
-// and neither half throttles throughput. Delay distribution and its effect: Docs/Debugging.md
+// and neither half throttles throughput
 
 auto ClientConnection::IsInboundLagged() -> bool
 {

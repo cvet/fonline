@@ -80,8 +80,10 @@ public:
     void SetItemToContainer(ptr<Item> item);
     void SetMultihexEntries(vector<mpos> entries);
 
+    // Runs while this item is being finished.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Runs when a critter crosses this static item's trigger footprint; `isIn` distinguishes entry from exit.
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterWalk, ptr<Critter> /*critter*/, bool /*isIn*/, mdir /*dir*/);
 

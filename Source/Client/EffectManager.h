@@ -46,6 +46,7 @@ FO_DECLARE_EXCEPTION(EffectManagerException);
 
 class IAppRender;
 
+// Bit mask selecting the render pipeline or flush stage served by an effect.
 ///@ ExportEnum
 enum class EffectType : uint32_t
 {
@@ -68,6 +69,24 @@ enum class EffectType : uint32_t
     FlushFog = 0x20000000,
     Offscreen = 0x40000000,
 };
+///@ EnumValueDoc EffectType None // Selects no effect category.
+///@ EnumValueDoc EffectType GenericSprite // Replaces the default generic-sprite effect or one map item's draw effect.
+///@ EnumValueDoc EffectType CritterSprite // Replaces the default critter-sprite effect or one map critter's draw effect.
+///@ EnumValueDoc EffectType TileSprite // Replaces the default flat tile-sprite effect.
+///@ EnumValueDoc EffectType RoofSprite // Replaces the default roof-sprite effect.
+///@ EnumValueDoc EffectType RainSprite // Replaces the default rain-sprite effect.
+///@ EnumValueDoc EffectType SkinnedMesh // Replaces the default skinned-model effect when 3D rendering is enabled.
+///@ EnumValueDoc EffectType Interface // Replaces the default interface-sprite effect.
+///@ EnumValueDoc EffectType Font // Replaces the default font effect or the effect of one font slot selected by subtype.
+///@ EnumValueDoc EffectType Primitive // Replaces the default generic primitive effect.
+///@ EnumValueDoc EffectType Light // Replaces the primitive effect used for map light accumulation.
+///@ EnumValueDoc EffectType Fog // Replaces the primitive effect used for map fog rendering.
+///@ EnumValueDoc EffectType FlushRenderTarget // Replaces the effect used to flush a render-target texture.
+///@ EnumValueDoc EffectType FlushPrimitive // Replaces the effect used to flush primitive rendering.
+///@ EnumValueDoc EffectType FlushMap // Replaces the effect used to composite the rendered map.
+///@ EnumValueDoc EffectType FlushLight // Replaces the effect used to composite the light buffer.
+///@ EnumValueDoc EffectType FlushFog // Replaces the effect used to composite the fog buffer.
+///@ EnumValueDoc EffectType Offscreen // Registers the effect in an indexed offscreen-effect subtype slot.
 
 struct EffectCollection
 {

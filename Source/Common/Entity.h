@@ -41,12 +41,12 @@
 
 FO_BEGIN_NAMESPACE
 
-///@ ExportEntity Game ServerEngine ClientEngine Global
-///@ ExportEntity Player Player PlayerView HasTimeEvents
-///@ ExportEntity Location Location LocationView HasProtos HasTimeEvents
-///@ ExportEntity Map Map MapView HasProtos HasTimeEvents
-///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents
-///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents
+///@ ExportEntity Game ServerEngine ClientEngine Global // Global singleton script receiver for the current server, client, or Mapper engine; it exposes engine services, events, and game properties rather than a persistent world object.
+///@ ExportEntity Player Player PlayerView HasTimeEvents // Player account and connection-session entity, distinct from the Critter it may control; clients receive its replicated PlayerView.
+///@ ExportEntity Location Location LocationView HasProtos HasTimeEvents // Prototype-backed world-location entity that owns instantiated maps on the server and is represented by LocationView on clients.
+///@ ExportEntity Map Map MapView HasProtos HasTimeEvents // Prototype-backed instantiated map entity containing runtime critters and items; clients operate on its replicated MapView.
+///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents // Prototype-backed character entity used for player bodies and NPCs, with inventory, movement, and map or global-map state.
+///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents // Prototype-backed item entity that can belong to a map, critter inventory, container, or custom holder and also exposes static and abstract variants.
 
 #define FO_ENTITY_PROPERTY(prop_type, prop) \
     inline auto GetProperty##prop() const noexcept -> ptr<const Property> \
@@ -82,10 +82,13 @@ FO_BEGIN_NAMESPACE
 class EntityProperties
 {
 public:
+    // For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier.
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
+    // For a custom entity, names the holder entry through which it is attached.
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(hstring, CustomHolderEntry);
+    // Marks an entity as independently persistent rather than persistent only through containment by another entity.
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, ExplicitlyPersistent);
 
@@ -138,15 +141,19 @@ class Entity
 public:
     using InnerEntityMap = map<hstring, vector<refcount_ptr<Entity>>>;
 
+    // Controls whether an entity event callback allows lower-priority callbacks to run.
     ///@ ExportEnum
     enum class EventResult : int32_t
     {
         ContinueChain,
         StopChain,
     };
+    ///@ EnumValueDoc EventResult ContinueChain // Continues dispatching callbacks with lower priority.
+    ///@ EnumValueDoc EventResult StopChain // Stops the current event callback chain immediately.
 
     using EventCallback = copyable_function<EventResult(FuncCallData&)>;
 
+    // Relative ordering assigned to callbacks subscribed to the same entity event.
     ///@ ExportEnum
     enum class EventPriority : int32_t
     {
@@ -156,6 +163,11 @@ public:
         High = 3000000,
         Highest = 4000000,
     };
+    ///@ EnumValueDoc EventPriority Lowest // Runs after callbacks with higher numeric priority; only one callback may occupy the lowest band.
+    ///@ EnumValueDoc EventPriority Low // Runs after normal-priority callbacks and before the lowest callback.
+    ///@ EnumValueDoc EventPriority Normal // Default callback priority between the low and high bands.
+    ///@ EnumValueDoc EventPriority High // Runs after the highest callback and before normal-priority callbacks.
+    ///@ EnumValueDoc EventPriority Highest // Runs before callbacks with lower numeric priority; only one callback may occupy the highest band.
 
     struct EventCallbackData
     {

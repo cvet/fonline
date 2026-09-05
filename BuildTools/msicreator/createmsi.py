@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import platform
@@ -537,6 +538,12 @@ class PackageGenerator:
             subprocess.check_output([os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml])
 
 
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog='createmsi.py', description='Build an MSI package from a WiX definition')
+    parser.add_argument('jsonfile', metavar='definition.json', help='bare WiX package definition filename in the working directory')
+    return parser
+
+
 def run(args: list[str]) -> None:
     if len(args) != 1:
         sys.exit('createmsi.py <msi definition json>')
@@ -549,7 +556,8 @@ def run(args: list[str]) -> None:
 
 
 def main() -> None:
-    run(sys.argv[1:])
+    args = create_parser().parse_args()
+    run([args.jsonfile])
 
 if __name__ == '__main__':
     main()
