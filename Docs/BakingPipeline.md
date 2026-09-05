@@ -22,6 +22,8 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Tools/RawCopyBaker.cpp`
 - `Source/Tools/ImageBaker.h`
 - `Source/Tools/ImageBaker.cpp`
+- `Source/Tools/AudioBaker.h`
+- `Source/Tools/AudioBaker.cpp`
 - `Source/Tools/SpriteMeshing.h`
 - `Source/Tools/SpriteMeshing.cpp`
 - `Source/Common/SpriteResource.h`
@@ -63,6 +65,7 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
@@ -381,6 +384,7 @@ During output discovery it visits resource packs in configured order so a later 
 - `ConfigBaker` — `Source/Tools/ConfigBaker.*`, name `Config`, order `2`
 - `RawCopyBaker` — `Source/Tools/RawCopyBaker.*`, name `RawCopy`, order `4`
 - `ImageBaker` — `Source/Tools/ImageBaker.*`
+- `AudioBaker` — `Source/Tools/AudioBaker.*`, name `Audio`, order `4`
 - `EffectBaker` — `Source/Tools/EffectBaker.*`
 - `ParticleBaker` — `Source/Tools/ParticleBaker.*`, name `Particle`, order `5`
 - `ProtoBaker` — `Source/Tools/ProtoBaker.*`, name `Proto`, order `7`
@@ -556,6 +560,47 @@ common scripts query its duration table through
 returns a `timespan`, or zero when the resource, model, or resolved tuple is
 absent. The config representation is an internal baker/runtime contract and
 should not be parsed by embedding-project code.
+
+## Audio baking architecture
+
+Ogg Vorbis is the only audio format the client decodes, and `AudioBaker` is what
+makes that true. Every authored source it accepts is converted to Vorbis, so a
+runtime that once carried a RIFF parser and an ACM decoder now carries one
+decoder, one exception-safety surface, and one streaming path. Vorbis is also
+what lets a long track stay compressed in memory: the client decodes it in
+portions rather than holding decoded PCM, which a multi-megabyte WAV would force.
+
+**The baked file keeps the authored path.** `Sfx/Shot.wav` is written as
+`Sfx/Shot.wav` holding Vorbis bytes, the same way `ImageBaker` writes sprite
+resources under their source `.png` name. The extension therefore names the
+source format and never the payload. Keeping the path is what lets prototype
+`Resource` properties, persisted world values, and script literals go on
+resolving with no content sweep and no migration rule.
+
+Sources already in the runtime format pass through untouched. A `.ogg` input is
+verified as a Vorbis stream with `ov_test_callbacks` and written byte for byte;
+re-encoding lossy audio would only lose more of it, and a non-Vorbis `.ogg`
+(Opus, for instance) is a baking error rather than a silent copy.
+
+The built-in loader reads RIFF/WAVE. It walks the chunk list rather than
+assuming a layout, so `fmt ` may follow a `JUNK` block and editor metadata
+(`LIST`, `bext`, `iXML`, `id3 `) may sit anywhere; `WAVE_FORMAT_PCM` at 8, 16,
+24 or 32 bits and `WAVE_FORMAT_IEEE_FLOAT` at 32 bits are converted to
+interleaved signed 16-bit, and `WAVE_FORMAT_EXTENSIBLE` is resolved through its
+sub-format tag. Any other encoding fails the bake naming the file and the tag.
+
+`AudioBaker::AddLoader(LoadFunc, extensions)` registers further converters, the
+way `ImageBaker::AddLoader` does. A `LoadFunc` receives the path and a
+`FileReader` and returns `PcmAudio` (channels, sample rate, interleaved S16);
+the baker owns the encoding from there. Embedding projects register their own
+formats from `SetupBakersHook()`, and add the same extensions to
+`Audio.SoundFileExtensions` so the client's sound-name index still finds the
+baked files.
+
+Encoding is VBR at `Baking.AudioVorbisQuality` (default `0.5`, valid `-0.1` to
+`1.0`, checked before any file is read). The stream carries a fixed serial
+number and an empty comment block, so baking the same source twice produces
+identical bytes.
 
 ## 3D model baking architecture
 
@@ -1108,6 +1153,7 @@ Baker behavior is covered by focused tests in `Source/Tests/`:
 - `Test_MetadataBaker.cpp`
 - `Test_RawCopyBaker.cpp`
 - `Test_ImageBaker.cpp`
+- `Test_AudioBaker.cpp`
 - `Test_EffectBaker.cpp`
 - `Test_ProtoBaker.cpp`
 - `Test_ProtoTextBaker.cpp`

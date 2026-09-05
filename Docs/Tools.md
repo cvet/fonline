@@ -85,6 +85,7 @@ Built-in baker implementations:
 - `Source/Tools/ConfigBaker.*` — bakes configuration resources.
 - `Source/Tools/RawCopyBaker.*` — copies selected resources without transformation.
 - `Source/Tools/ImageBaker.*` — imports image/sprite/frame formats including classic Fallout-family formats and PNG/TGA.
+- `Source/Tools/AudioBaker.*` — encodes authored audio to Ogg Vorbis, the single format the client decodes.
 - `Source/Tools/EffectBaker.*` — bakes shader/effect sources and shader stages.
 - `Source/Tools/ParticleBaker.*` — converts native SPARK `.spark` XML to
   memory-loadable `.spk` and compiles Effekseer `.efkproj` XML to validated raw

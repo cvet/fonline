@@ -143,6 +143,7 @@ Script API documents:
 * .frm
 * .rix
 * .fbx
+* .wav
 * .ogg
 ...
 

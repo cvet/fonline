@@ -34,6 +34,7 @@
 #include "Baker.h"
 #include "AngelScriptBaker.h"
 #include "Application.h"
+#include "AudioBaker.h"
 #include "ConfigBaker.h"
 #include "ConfigFile.h"
 #include "EffectBaker.h"
@@ -131,6 +132,9 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
     }
     if (vec_exists(request_bakers, ImageBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<ImageBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, AudioBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<AudioBaker>(ctx));
     }
     if (vec_exists(request_bakers, EffectBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(ctx));

@@ -510,6 +510,7 @@ Current count: **103** `Test_*.cpp` suites.
 ### Bakers and tools
 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_BakerSetup.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`

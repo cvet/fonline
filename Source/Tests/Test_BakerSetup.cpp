@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptBaker.h"
+#include "AudioBaker.h"
 #include "ConfigBaker.h"
 #include "ConfigFile.h"
 #include "EffectBaker.h"
@@ -253,6 +254,7 @@ TEST_CASE("BakerSetup")
             string(RawCopyBaker::NAME),
             string(ProtoBaker::NAME),
             string(ImageBaker::NAME),
+            string(AudioBaker::NAME),
             string(EffectBaker::NAME),
             string(ProtoTextBaker::NAME),
         };
@@ -269,6 +271,7 @@ TEST_CASE("BakerSetup")
 
         expected_names.emplace_back(string(RawCopyBaker::NAME));
         expected_names.emplace_back(string(ImageBaker::NAME));
+        expected_names.emplace_back(string(AudioBaker::NAME));
         expected_names.emplace_back(string(EffectBaker::NAME));
         expected_names.emplace_back(string(ProtoBaker::NAME));
         expected_names.emplace_back(string(MapBaker::NAME));
