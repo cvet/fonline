@@ -149,6 +149,11 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 
 Each `[ResourcePack]` becomes one `<Name>.fores` under the target's resource directory, written from the loose baked tree with the per-target file filter applied; the format is [ResourcePackFormat.md](ResourcePackFormat.md). It is the only form packaging writes - zip, bos and dat stay readable at mount time as optional support for foreign or legacy data, but nothing produces them any more. The writer lives in `package.py` rather than in the engine because the file list depends on the packaging target, which the baker does not know. `Baking.CompressLevel` sets the deflate level and `Baking.ResourcePackMinCompressGain` the percentage a blob must give back before it is deflated instead of stored as it is. `Embedded` is the one exception: it is compiled into the executable rather than shipped as a file, and stays a zip.
 
+`BuildTools/measure_resource_packs.py` writes a baked tree in both formats and reports what each costs -
+shipped bytes, bytes read to mount, the stored/deflate split and write time - so the choice of format stays
+answerable against a real corpus rather than from memory. It takes the baked root as an argument and deletes
+each artifact as it measures it, so it needs no project data and peaks at one pack in two formats.
+
 Two writers of one binary format is a drift risk, so they are pinned together: `Source/Tests/Test_ResourcePack.cpp` holds a golden vector produced by `package.py` and asserts the engine writer reproduces it byte for byte. The vector is written with compression disabled, so a zlib version difference between Python and the engine cannot break it while the layout stays comparable.
 
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)

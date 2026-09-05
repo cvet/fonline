@@ -101,8 +101,10 @@ golden vector in `Test_ResourcePack.cpp` pins both writers to the same layout.
 | 1 | `Deflate` | zlib stream, as produced by `compress2` |
 
 A blob is deflated only when it gives back at least a configured minimum (default 5 %); otherwise it is stored
-raw. The level is `Baking.CompressLevel`, passed to `compress2` as the zlib level 0-9, and the minimum saving
-and the 64-byte floor are `ResourcePackWriteSettings` inputs, so both writers take them from the same place. So already-compressed data — audio, compressed textures, well-packed images — is never re-deflated and
+raw. The level is `Baking.CompressLevel`, passed to `compress2` as the zlib level 0-9, and the gain threshold
+is `Baking.ResourcePackMinCompressGain`; both reach the engine writer as `ResourcePackWriteSettings`, so the
+two writers take them from one place. The 64-byte floor is fixed rather than configured - below it the header
+of a deflate stream costs more than the stream can save. So already-compressed data — audio, compressed textures, well-packed images — is never re-deflated and
 costs nothing to read back. Blobs under 64 bytes are always stored. The same rule governs the index itself.
 
 Codec choice is a writer input, not part of what the pack *contains*: re-encoding a blob differently changes
