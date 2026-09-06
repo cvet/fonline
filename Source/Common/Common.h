@@ -42,9 +42,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// The complete native-codegen surface is available to embedding projects for evaluation, but it remains revision-
-// pinned until supported release lines exist. SymbolCount and InventorySha256 force owner review for every addition,
-// removal, or stable-ID change instead of silently extending this experimental promise.
+// The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
+// SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 ///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2509 InventorySha256=71d15b8518f2939c45fa902a7de9f4e0c9f86f69a7491a98fe74461b60aaa0ba
 
 // Force change of compatability version
@@ -81,7 +80,7 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 // Explicit-entity access check (validates a passed-in entity argument rather than `this`)
 #define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
-// Strong signed 64-bit identity token whose zero value is false and whose ordering compares the stored value.
+// Strong signed 64-bit identity token whose zero value is false and whose ordering compares the stored value
 ///@ ExportValueType Name = ident Layout = int64-value
 ///@ ValueFieldDoc ident value // Signed 64-bit identity payload; zero represents an empty identity.
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
@@ -373,7 +372,7 @@ struct GameSettings
     static constexpr int32_t MAX_MAP_SIZE = 4000;
 };
 
-// Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy.
+// Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy
 ///@ ExportEnum
 enum class EngineInfoMessage : uint16_t
 {
@@ -923,7 +922,7 @@ using InterthreadDataCallback = function<void(span<const uint8_t>)>;
 extern mutex InterthreadListenersLocker;
 extern map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
-// Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers.
+// Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t
 {
@@ -935,7 +934,7 @@ enum class CritterItemSlot : uint8_t
 ///@ EnumValueDoc CritterItemSlot Main // Places the item in the critter's main equipped slot.
 ///@ EnumValueDoc CritterItemSlot Outside // Marks the item as outside the critter's owned inventory slots.
 
-// High-level life condition of a critter.
+// High-level life condition of a critter
 ///@ ExportEnum
 enum class CritterCondition : uint8_t
 {
@@ -948,7 +947,7 @@ enum class CritterCondition : uint8_t
 ///@ EnumValueDoc CritterCondition Dead // Critter is dead and uses death-state handling and animation.
 
 // Engine-originated critter action notifications such as item movement, knockout, death, connection, and respawn.
-// Some actions have hardcoded local or server dispatch rules; project code should consume the symbolic action.
+// Some actions have hardcoded local or server dispatch rules; project code should consume the symbolic action
 ///@ ExportEnum
 enum class CritterAction : uint16_t
 {
@@ -976,7 +975,7 @@ enum class CritterAction : uint16_t
 ///@ EnumValueDoc CritterAction Respawn // Notifies observers that the critter returned to the alive condition outside knockout recovery.
 ///@ EnumValueDoc CritterAction Refresh // Requests observers to refresh the critter's visual action state.
 
-// Persistent critter animation posture passed to model animation resolution.
+// Persistent critter animation posture passed to model animation resolution
 ///@ ExportEnum
 enum class CritterStateAnim : uint16_t
 {
@@ -986,7 +985,7 @@ enum class CritterStateAnim : uint16_t
 ///@ EnumValueDoc CritterStateAnim None // No persistent critter animation posture is selected.
 ///@ EnumValueDoc CritterStateAnim Unarmed // Selects the unarmed persistent animation posture.
 
-// Requested critter movement or pose animation passed to model animation resolution.
+// Requested critter movement or pose animation passed to model animation resolution
 ///@ ExportEnum
 enum class CritterActionAnim : uint16_t
 {
@@ -1020,7 +1019,7 @@ enum class CritterActionAnim : uint16_t
 ///@ EnumValueDoc CritterActionAnim IdleProneFront // Requests the front-facing prone idle animation.
 ///@ EnumValueDoc CritterActionAnim DeadFront // Requests the front-facing death animation.
 
-// Perspective used by critter visibility queries: either direction or their union.
+// Perspective used by critter visibility queries: either direction or their union
 ///@ ExportEnum
 enum class CritterSeeType : uint8_t
 {
@@ -1032,7 +1031,7 @@ enum class CritterSeeType : uint8_t
 ///@ EnumValueDoc CritterSeeType WhoSeeMe // Selects critters whose visibility relation currently includes this critter.
 ///@ EnumValueDoc CritterSeeType WhoISee // Selects critters currently visible to this critter.
 
-// Visibility override applied to a critter independently of normal perception checks.
+// Visibility override applied to a critter independently of normal perception checks
 ///@ ExportEnum
 enum class CritterVisibilityMode : uint8_t
 {
@@ -1042,7 +1041,7 @@ enum class CritterVisibilityMode : uint8_t
 ///@ EnumValueDoc CritterVisibilityMode None // Applies no full-visibility override and uses normal perception rules.
 ///@ EnumValueDoc CritterVisibilityMode Full // Forces the target into full visibility for the selected relation.
 
-// Composable filters for selecting critters by life state and player-or-NPC ownership.
+// Composable filters for selecting critters by life state and player-or-NPC ownership
 ///@ ExportEnum
 enum class CritterFindType : uint8_t
 {
@@ -1066,7 +1065,7 @@ enum class CritterFindType : uint8_t
 ///@ EnumValueDoc CritterFindType NonDeadNpc // Selects non-player critters that are not dead.
 ///@ EnumValueDoc CritterFindType DeadNpc // Selects dead non-player critters.
 
-// Current ownership location of an item: map hex, critter inventory, item container, or no owner.
+// Current ownership location of an item: map hex, critter inventory, item container, or no owner
 ///@ ExportEnum
 enum class ItemOwnership : uint8_t
 {
@@ -1080,7 +1079,7 @@ enum class ItemOwnership : uint8_t
 ///@ EnumValueDoc ItemOwnership ItemContainer // Item is nested inside another item used as a container.
 ///@ EnumValueDoc ItemOwnership Nowhere // Item has no map, critter, or item-container owner.
 
-// Wall-corner orientation used by map geometry and corner-aware rendering.
+// Wall-corner orientation used by map geometry and corner-aware rendering
 ///@ ExportEnum
 enum class CornerType : uint8_t
 {
@@ -1098,7 +1097,7 @@ enum class CornerType : uint8_t
 ///@ EnumValueDoc CornerType North // Selects the north-facing wall-corner orientation.
 ///@ EnumValueDoc CornerType EastWest // Selects the combined east-west wall-corner orientation.
 
-// Policy for generating occupied hexes around a multihex prototype.
+// Policy for generating occupied hexes around a multihex prototype
 ///@ ExportEnum
 enum class MultihexGenerationType : uint8_t
 {

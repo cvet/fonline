@@ -577,7 +577,7 @@ def _run_external(snippets: list[dict[str, object]]) -> list[str]:
             result = subprocess.run(
                 [bash, "-n"],
                 # Send bytes so Windows does not translate normalized LF back
-                # to CRLF while writing the parser's stdin.
+                # to CRLF while writing the parser's stdin
                 input=body.encode("utf-8"),
                 capture_output=True,
                 check=False,

@@ -72,35 +72,35 @@ enum class LightFlag : uint16_t
     StopDir7 = 0x200,
 };
 
-// Map-owned controller that places copies of a named sprite on matching visible hexes until finished or the map is destroyed.
+// Map-owned controller that places copies of a named sprite on matching visible hexes until finished or the map is destroyed
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
 class SpritePattern : public RefCounted<SpritePattern>
 {
 public:
-    // Clears the pattern sprites and marks the controller finished; repeated calls are harmless.
+    // Clears the pattern sprites and marks the controller finished; repeated calls are harmless
     void Finish();
 
-    // Reports whether Finish has stopped this pattern and released its sprite instances.
+    // Reports whether Finish has stopped this pattern and released its sprite instances
     bool Finished {};
-    // Positive nonzero X/Y hex intervals used as modulo divisors when selecting placement cells.
+    // Positive nonzero X/Y hex intervals used as modulo divisors when selecting placement cells
     ipos32 EveryHex {1, 1};
-    // Makes hidden roofs suppress the pattern and places matching roof sprites in the roof-particle draw order.
+    // Makes hidden roofs suppress the pattern and places matching roof sprites in the roof-particle draw order
     bool InteractWithRoof {};
-    // Enables the required ground-tile property filter; false currently suppresses all pattern placement.
+    // Enables the required ground-tile property filter; false currently suppresses all pattern placement
     bool CheckTileProperty {};
-    // Ground-tile item property read when CheckTileProperty is enabled.
+    // Ground-tile item property read when CheckTileProperty is enabled
     ItemProperty TileProperty {};
-    // Integer value that the selected ground-tile property must equal for sprite placement.
+    // Integer value that the selected ground-tile property must equal for sprite placement
     int32_t ExpectedTilePropertyValue {};
     vector<shared_ptr<Sprite>> Sprites {};
 };
 
-// Map-owned fog or traced-zone layer whose shape and compositing parameters are rebuilt from mutable script fields each frame.
+// Map-owned fog or traced-zone layer whose shape and compositing parameters are rebuilt from mutable script fields each frame
 ///@ ExportRefType Client RefCounted Export = Enabled, Distance, Radius, ExtraLength, TransitionDuration, OvalRoundness, EdgeNoise, Depth, ClearRadius, TintColor, OverlayColor, CenterColor, Traced, CheckShootBlocks, OriginHex, Disposed, Dispose
 class FogLayer : public RefCounted<FogLayer>
 {
 public:
-    // Marks this layer for removal during the map's next fog preparation pass; repeated calls are harmless.
+    // Marks this layer for removal during the map's next fog preparation pass; repeated calls are harmless
     void Dispose() noexcept;
 
     // Script-tunable configuration (exported as properties)

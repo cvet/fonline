@@ -94,7 +94,7 @@ enum class EffectUsage : uint8_t
 #endif
 };
 
-// Vertex assembly topology used when submitting primitive draw buffers.
+// Vertex assembly topology used when submitting primitive draw buffers
 ///@ ExportEnum
 enum class RenderPrimitiveType : uint8_t
 {

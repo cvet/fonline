@@ -58,7 +58,7 @@ class IAppInput;
 class SpriteManager;
 class AtlasSprite;
 
-// Selects one of the two simultaneous transparency-egg masks supported by sprite rendering.
+// Selects one of the two simultaneous transparency-egg masks supported by sprite rendering
 ///@ ExportEnum
 enum class TransparentEggSlot : uint8_t
 {

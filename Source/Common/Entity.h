@@ -82,13 +82,13 @@ FO_BEGIN_NAMESPACE
 class EntityProperties
 {
 public:
-    // For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier.
+    // For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
-    // For a custom entity, names the holder entry through which it is attached.
+    // For a custom entity, names the holder entry through which it is attached
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(hstring, CustomHolderEntry);
-    // Marks an entity as independently persistent rather than persistent only through containment by another entity.
+    // Marks an entity as independently persistent rather than persistent only through containment by another entity
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, ExplicitlyPersistent);
 
@@ -141,19 +141,19 @@ class Entity
 public:
     using InnerEntityMap = map<hstring, vector<refcount_ptr<Entity>>>;
 
-    // Controls whether an entity event callback allows lower-priority callbacks to run.
+    // Controls whether an entity event callback allows lower-priority callbacks to run
     ///@ ExportEnum
     enum class EventResult : int32_t
     {
         ContinueChain,
         StopChain,
     };
-    ///@ EnumValueDoc EventResult ContinueChain // Continues dispatching callbacks with lower priority.
-    ///@ EnumValueDoc EventResult StopChain // Stops the current event callback chain immediately.
+    ///@ EnumValueDoc EventResult ContinueChain // Continues dispatching callbacks with lower priority
+    ///@ EnumValueDoc EventResult StopChain // Stops the current event callback chain immediately
 
     using EventCallback = copyable_function<EventResult(FuncCallData&)>;
 
-    // Relative ordering assigned to callbacks subscribed to the same entity event.
+    // Relative ordering assigned to callbacks subscribed to the same entity event
     ///@ ExportEnum
     enum class EventPriority : int32_t
     {
@@ -163,11 +163,11 @@ public:
         High = 3000000,
         Highest = 4000000,
     };
-    ///@ EnumValueDoc EventPriority Lowest // Runs after callbacks with higher numeric priority; only one callback may occupy the lowest band.
-    ///@ EnumValueDoc EventPriority Low // Runs after normal-priority callbacks and before the lowest callback.
-    ///@ EnumValueDoc EventPriority Normal // Default callback priority between the low and high bands.
-    ///@ EnumValueDoc EventPriority High // Runs after the highest callback and before normal-priority callbacks.
-    ///@ EnumValueDoc EventPriority Highest // Runs before callbacks with lower numeric priority; only one callback may occupy the highest band.
+    ///@ EnumValueDoc EventPriority Lowest // Runs after callbacks with higher numeric priority; only one callback may occupy the lowest band
+    ///@ EnumValueDoc EventPriority Low // Runs after normal-priority callbacks and before the lowest callback
+    ///@ EnumValueDoc EventPriority Normal // Default callback priority between the low and high bands
+    ///@ EnumValueDoc EventPriority High // Runs after the highest callback and before normal-priority callbacks
+    ///@ EnumValueDoc EventPriority Highest // Runs before callbacks with lower numeric priority; only one callback may occupy the highest band
 
     struct EventCallbackData
     {

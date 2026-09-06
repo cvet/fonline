@@ -27,7 +27,7 @@ FO_BEGIN_NAMESPACE
 ///@ EngineHook
 FO_SCRIPT_API void ServerInitHook(ptr<ServerEngine> server);
 
-// SyncScope: reads immutable state owned by this ServerEngine instance; no additional cover is required.
+// SyncScope: reads immutable state owned by this ServerEngine instance; no additional cover is required
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Game_NativeExtensionValue(ptr<ServerEngine> server, int32_t delta);
 

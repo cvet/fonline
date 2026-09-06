@@ -46,7 +46,7 @@ FO_DECLARE_EXCEPTION(EffectManagerException);
 
 class IAppRender;
 
-// Bit mask selecting the render pipeline or flush stage served by an effect.
+// Bit mask selecting the render pipeline or flush stage served by an effect
 ///@ ExportEnum
 enum class EffectType : uint32_t
 {

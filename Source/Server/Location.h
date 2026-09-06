@@ -71,13 +71,13 @@ public:
     void AddMap(ptr<Map> map);
     void RemoveMap(ptr<Map> map);
 
-    // Runs while this location is being finished.
+    // Runs while this location is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
-    // Runs after a map is added to this location.
+    // Runs after a map is added to this location
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapAdded, ptr<Map> /*map*/);
-    // Runs when a map is removed from this location.
+    // Runs when a map is removed from this location
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapRemoved, ptr<Map> /*map*/);
 

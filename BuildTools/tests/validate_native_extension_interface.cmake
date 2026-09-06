@@ -77,7 +77,7 @@ endif()
 
 # Current CMake does not reject an arbitrary role token. It creates the
 # corresponding FO_<ROLE>_SOURCE list, but only the documented roles above have
-# known library/application consumers.
+# known library/application consumers
 AddEngineSource(EDITOR "Source/Common/Common.h")
 if(NOT "${_expectedCommonHeader}" IN_LIST FO_EDITOR_SOURCE)
 	message(FATAL_ERROR "Current arbitrary-role routing behavior changed unexpectedly")

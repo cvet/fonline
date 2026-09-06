@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-// Draws the loaded map during the RenderIface event; throws when called outside that render callback.
+// Draws the loaded map during the RenderIface event; throws when called outside that render callback
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
 {
@@ -51,7 +51,7 @@ FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
     self->DrawMap();
 }
 
-// Adds a holder-defined sprite to this map draw, silently skipping invalid, offscreen, or unresolved sprites and applying referenced item-prototype rendering rules when present.
+// Adds a holder-defined sprite to this map draw, silently skipping invalid, offscreen, or unresolved sprites and applying referenced item-prototype rendering rules when present
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr)
 {
@@ -134,7 +134,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
     }
 }
 
-// Draws a client entity through the selected offscreen effect during a render event and returns whether drawing succeeded; throws outside rendering or for negative padding.
+// Draws a client entity through the selected offscreen effect during a render event and returns whether drawing succeeded; throws outside rendering or for negative padding
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEntity> entity, int32_t effectSubtype, ucolor color, int32_t padding)
 {
@@ -151,56 +151,56 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEnti
     return self->DrawEntitySprite(entity, effect, color, padding);
 }
 
-// Rebuilds this map view's fog geometry and rendering state from its current fog layers.
+// Rebuilds this map view's fog geometry and rendering state from its current fog layers
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_RebuildFog(ptr<MapView> self)
 {
     self->RebuildFog();
 }
 
-// Replaces the map-local and global day colors together with their light-capacity values for this client map view.
+// Replaces the map-local and global day colors together with their light-capacity values for this client map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetDayColors(ptr<MapView> self, ucolor mapDayColor, int32_t mapLightCapacity, ucolor globalDayColor, int32_t globalLightCapacity)
 {
     self->SetDayColors(mapDayColor, mapLightCapacity, globalDayColor, globalLightCapacity);
 }
 
-// Returns the current pixel size of the map view's rendering viewport.
+// Returns the current pixel size of the map view's rendering viewport
 ///@ ExportMethod
 FO_SCRIPT_API isize32 Client_Map_GetScreenSize(ptr<MapView> self)
 {
     return self->GetScreenSize();
 }
 
-// Sets the pixel size used by this map view for projection, visibility, and rendering.
+// Sets the pixel size used by this map view for projection, visibility, and rendering
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetScreenSize(ptr<MapView> self, isize32 size)
 {
     self->SetScreenSize(size);
 }
 
-// Returns the map view's current scroll-check flag.
+// Returns the map view's current scroll-check flag
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsScrollCheck(ptr<MapView> self)
 {
     return self->IsScrollCheck();
 }
 
-// Enables or disables the map view's scroll-check behavior.
+// Enables or disables the map view's scroll-check behavior
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetScrollCheck(ptr<MapView> self, bool enabled)
 {
     self->SetScrollCheck(enabled);
 }
 
-// Sets an additional floating-point scroll offset applied by this map view.
+// Sets an additional floating-point scroll offset applied by this map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetExtraScrollOffset(ptr<MapView> self, fpos32 offset)
 {
     self->SetExtraScrollOffset(offset);
 }
 
-// Returns the map item with the nonzero runtime id, or null when this map does not contain it; a zero id throws.
+// Returns the map item with the nonzero runtime id, or null when this map does not contain it; a zero id throws
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Map_GetItem(ptr<MapView> self, ident_t itemId)
 {
@@ -212,7 +212,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItem(ptr<MapView> self, ident_t itemI
     return item;
 }
 
-// Returns the map's single-item lookup result for a valid hex, or null when no item is selected there; an invalid hex throws.
+// Returns the map's single-item lookup result for a valid hex, or null when no item is selected there; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemOnHex(ptr<MapView> self, mpos hex)
 {
@@ -224,7 +224,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemOnHex(ptr<MapView> self, mpos hex
     return item;
 }
 
-// Returns all client item views currently attached to this map.
+// Returns all client item views currently attached to this map
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Map_GetItems(ptr<MapView> self)
 {
@@ -232,7 +232,7 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Map_GetItems(ptr<MapView> self)
     return MakeScriptRefHandleVectorAs<ItemView, ItemHexView>(map_items);
 }
 
-// Returns all client item views occupying a valid hex; an invalid hex throws.
+// Returns all client item views occupying a valid hex; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Map_GetItemsOnHex(ptr<MapView> self, mpos hex)
 {
@@ -244,7 +244,7 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Map_GetItemsOnHex(ptr<MapView> self, 
     return vector<ptr<ItemView>>(hex_items.begin(), hex_items.end());
 }
 
-// Returns the critter with the supplied runtime id, or null for a zero or unknown id.
+// Returns the critter with the supplied runtime id, or null for a zero or unknown id
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritter(ptr<MapView> self, ident_t critterId)
 {
@@ -256,7 +256,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritter(ptr<MapView> self, ident_t
     return cr;
 }
 
-// Returns the matching critter nearest to a valid hex after accounting for multihex size, or null when none match; an invalid hex throws.
+// Returns the matching critter nearest to a valid hex after accounting for multihex size, or null when none match; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterOnHex(ptr<MapView> self, mpos hex, CritterFindType findType)
 {
@@ -280,7 +280,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterOnHex(ptr<MapView> self, mp
     return cr;
 }
 
-// Returns the matching critter nearest to a valid center hex within the requested radius after accounting for multihex size, or null when none match.
+// Returns the matching critter nearest to a valid center hex within the requested radius after accounting for multihex size, or null when none match
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterInRadius(ptr<MapView> self, mpos hex, int32_t radius, CritterFindType findType)
 {
@@ -304,7 +304,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterInRadius(ptr<MapView> self,
     return cr;
 }
 
-// Returns every critter on this map that passes the requested find-type filter.
+// Returns every critter on this map that passes the requested find-type filter
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self, CritterFindType findType = CritterFindType::Any)
 {
@@ -324,7 +324,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self,
     return critters;
 }
 
-// Returns every critter on this map whose prototype id and find-type state match the supplied filters.
+// Returns every critter on this map whose prototype id and find-type state match the supplied filters
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self, hstring pid, CritterFindType findType)
 {
@@ -342,7 +342,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self,
     return critters;
 }
 
-// Returns every critter on this map whose prototype and find-type state match the supplied filters.
+// Returns every critter on this map whose prototype and find-type state match the supplied filters
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self, ptr<ProtoCritter> proto, CritterFindType findType)
 {
@@ -361,7 +361,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self,
     return critters;
 }
 
-// Returns matching critters overlapping a valid hex, ordered by multihex-adjusted distance from it; an invalid hex throws.
+// Returns matching critters overlapping a valid hex, ordered by multihex-adjusted distance from it; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersOnHex(ptr<MapView> self, mpos hex, CritterFindType findType)
 {
@@ -380,7 +380,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersOnHex(ptr<MapView> 
     return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
-// Returns matching critters within the requested radius of a valid hex, ordered by multihex-adjusted distance from it; an invalid hex throws.
+// Returns matching critters within the requested radius of a valid hex, ordered by multihex-adjusted distance from it; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersInRadius(ptr<MapView> self, mpos hex, int32_t radius, CritterFindType findType)
 {
@@ -399,7 +399,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersInRadius(ptr<MapVie
     return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
-// Traces the requested path corridor and returns matching critters intersected along it; invalid endpoint hexes throw.
+// Traces the requested path corridor and returns matching critters intersected along it; invalid endpoint hexes throw
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersInPath(ptr<MapView> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
 {
@@ -415,7 +415,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersInPath(ptr<MapView>
     return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
-// Traces the requested path corridor, returns matching critters, and writes the last pre-block and first blocking hexes; invalid endpoints throw.
+// Traces the requested path corridor, returns matching critters, and writes the last pre-block and first blocking hexes; invalid endpoints throw
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersWithBlockInPath(ptr<MapView> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
@@ -431,7 +431,7 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersWithBlockInPath(ptr
     return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
-// Traces toward a valid destination and replaces it with the last hex before the path is blocked or reaches its distance limit; invalid endpoints throw.
+// Traces toward a valid destination and replaces it with the last hex before the path is blocked or reaches its distance limit; invalid endpoints throw
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_GetHexInPath(ptr<MapView> self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
@@ -447,7 +447,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(ptr<MapView> self, mpos fromHex, mpos
     toHex = pre_block;
 }
 
-// Finds movement directions between valid hexes, optionally stopping the endpoint cut hexes short; returns an empty array when no movement or path is available.
+// Finds movement directions between valid hexes, optionally stopping the endpoint cut hexes short; returns an empty array when no movement or path is available
 ///@ ExportMethod
 FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, mpos toHex, int32_t cut)
 {
@@ -486,7 +486,7 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
     return result->DirSteps;
 }
 
-// Finds movement directions from an on-map critter to a valid hex, accounting for its multihex and optionally stopping cut hexes short; returns an empty array when no movement or path is available.
+// Finds movement directions from an on-map critter to a valid hex, accounting for its multihex and optionally stopping cut hexes short; returns an empty array when no movement or path is available
 ///@ ExportMethod
 FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView> cr, mpos toHex, int32_t cut)
 {
@@ -527,7 +527,7 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView
     return result->DirSteps;
 }
 
-// Returns the number of movement steps between valid hexes, optionally stopping cut hexes short; returns zero when cut removes the move or no path is available.
+// Returns the number of movement steps between valid hexes, optionally stopping cut hexes short; returns zero when cut removes the move or no path is available
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, mpos fromHex, mpos toHex, int32_t cut)
 {
@@ -562,7 +562,7 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, mpos fromHex, 
     return numeric_cast<int32_t>(result->DirSteps.size());
 }
 
-// Returns the number of movement steps from an on-map critter to a valid hex, accounting for its multihex and optional cut; returns zero when no movement or path is available.
+// Returns the number of movement steps from an on-map critter to a valid hex, accounting for its multihex and optional cut; returns zero when no movement or path is available
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterView> cr, mpos toHex, int32_t cut)
 {
@@ -600,7 +600,7 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterVie
     return numeric_cast<int32_t>(result->DirSteps.size());
 }
 
-// Scrolls the view toward a valid hex using the supplied offset and nonnegative speed; speed zero jumps immediately and ignores the offset.
+// Scrolls the view toward a valid hex using the supplied offset and nonnegative speed; speed zero jumps immediately and ignores the offset
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_MoveScreenToHex(ptr<MapView> self, mpos hex, ipos16 hex_offset, int32_t speed, bool canStop)
 {
@@ -619,21 +619,21 @@ FO_SCRIPT_API void Client_Map_MoveScreenToHex(ptr<MapView> self, mpos hex, ipos1
     }
 }
 
-// Applies a pixel scroll delta using the requested speed and interruption policy.
+// Applies a pixel scroll delta using the requested speed and interruption policy
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_ApplyScreenScroll(ptr<MapView> self, ipos32 offset, int32_t speed, bool canStop)
 {
     self->ApplyScrollOffset(offset, speed, canStop);
 }
 
-// Returns whether this map view is currently performing an automatic scroll.
+// Returns whether this map view is currently performing an automatic scroll
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsAutoScrolling(ptr<MapView> self)
 {
     return self->IsAutoScrolling();
 }
 
-// Moves a hex one cell in the requested direction when the destination remains inside the map, updates the argument, and reports success.
+// Moves a hex one cell in the requested direction when the destination remains inside the map, updates the argument, and reports success
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_MoveHexByDir(ptr<MapView> self, mpos& hex, mdir dir)
 {
@@ -645,7 +645,7 @@ FO_SCRIPT_API bool Client_Map_MoveHexByDir(ptr<MapView> self, mpos& hex, mdir di
     }
 }
 
-// Moves a hex up to the requested number of in-bounds cells in one direction, updates the argument, and returns the completed step count.
+// Moves a hex up to the requested number of in-bounds cells in one direction, updates the argument, and returns the completed step count
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_MoveHexByDir(ptr<MapView> self, mpos& hex, mdir dir, int32_t steps)
 {
@@ -663,14 +663,14 @@ FO_SCRIPT_API int32_t Client_Map_MoveHexByDir(ptr<MapView> self, mpos& hex, mdir
     return result;
 }
 
-// Rebuilds the map view's renderable map state from its current client-side contents.
+// Rebuilds the map view's renderable map state from its current client-side contents
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_RedrawMap(ptr<MapView> self)
 {
     self->RebuildMap();
 }
 
-// Starts a zoom change anchored under the mouse cursor, or the screen center when mouse input is unavailable; an unchanged target is ignored.
+// Starts a zoom change anchored under the mouse cursor, or the screen center when mouse input is unavailable; an unchanged target is ignored
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_ChangeZoom(ptr<MapView> self, float32_t targetZoom)
 {
@@ -687,7 +687,7 @@ FO_SCRIPT_API void Client_Map_ChangeZoom(ptr<MapView> self, float32_t targetZoom
     self->ChangeZoom(targetZoom, {mouse_x_factor, mouse_y_factor});
 }
 
-// Returns the integer screen position of the visual center of a valid hex after current scrolling and projection; an invalid hex throws.
+// Returns the integer screen position of the visual center of a valid hex after current scrolling and projection; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(ptr<MapView> self, mpos hex)
 {
@@ -700,7 +700,7 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(ptr<MapView> self, mpos hex)
     return self->MapToScreenPos(hex_pos + hex_center);
 }
 
-// Returns the integer map-space position of the top-left of a valid hex cell; an invalid hex throws.
+// Returns the integer map-space position of the top-left of a valid hex cell; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Map_GetHexMapPos(ptr<MapView> self, mpos hex)
 {
@@ -711,7 +711,7 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexMapPos(ptr<MapView> self, mpos hex)
     return self->GetHexMapPos(hex);
 }
 
-// Returns the floating-point screen position of a valid hex center after current scrolling and sprite zoom; an invalid hex throws.
+// Returns the floating-point screen position of a valid hex center after current scrolling and sprite zoom; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(ptr<MapView> self, mpos hex)
 {
@@ -725,28 +725,28 @@ FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(ptr<MapView> self, mpos hex)
     return (fpos32(map_pos) - self->GetScrollOffset()) * self->GetSpritesZoom();
 }
 
-// Resolves a screen position to a map hex, writes the hex on success, and returns whether the position maps to the view.
+// Resolves a screen position to a map hex, writes the hex on success, and returns whether the position maps to the view
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(ptr<MapView> self, ipos32 pos, mpos& hex)
 {
     return self->GetHexAtScreen(pos, hex, nullptr);
 }
 
-// Resolves a screen position to a map hex and its pixel offset within that hex, writes both outputs on success, and reports whether resolution succeeded.
+// Resolves a screen position to a map hex and its pixel offset within that hex, writes both outputs on success, and reports whether resolution succeeded
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(ptr<MapView> self, ipos32 pos, mpos& hex, ipos32& hexOffset)
 {
     return self->GetHexAtScreen(pos, hex, &hexOffset);
 }
 
-// Configures a transparent-egg slot around an explicit hex-relative rectangle without attaching it to a critter.
+// Configures a transparent-egg slot around an explicit hex-relative rectangle without attaching it to a critter
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEggSlot slot, mpos hex, ipos32 hexOffset, isize32 eggSize)
 {
     self->SetTransparentEgg(slot, hex, hexOffset, eggSize, false);
 }
 
-// Configures a transparent-egg slot around an on-map critter's current sprite bounds, or clears the slot when the critter is absent, foreign, or not drawable.
+// Configures a transparent-egg slot around an on-map critter's current sprite bounds, or clears the slot when the critter is absent, foreign, or not drawable
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEggSlot slot, nptr<CritterView> cr)
 {
@@ -771,14 +771,14 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
     self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), true);
 }
 
-// Clears the selected transparent-egg slot from this map view.
+// Clears the selected transparent-egg slot from this map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_ClearTransparentEgg(ptr<MapView> self, TransparentEggSlot slot)
 {
     self->ClearTransparentEgg(slot);
 }
 
-// Returns the top selectable map item at a screen position using pixel-precise hit testing, or null when none is hit.
+// Returns the top selectable map item at a screen position using pixel-precise hit testing, or null when none is hit
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemAtScreenPos(ptr<MapView> self, ipos32 pos)
 {
@@ -787,7 +787,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemAtScreenPos(ptr<MapView> self, ip
     return item;
 }
 
-// Returns the pixel-precise critter hit at a screen position, optionally retrying with an expanded range when the exact lookup finds none.
+// Returns the pixel-precise critter hit at a screen position, optionally retrying with an expanded range when the exact lookup finds none
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterAtScreenPos(ptr<MapView> self, ipos32 pos, int32_t extraRange = 0)
 {
@@ -800,7 +800,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterAtScreenPos(ptr<MapView> se
     return cr;
 }
 
-// Returns the top selectable client entity at a screen position using pixel-precise hit testing, or null when none is hit.
+// Returns the top selectable client entity at a screen position using pixel-precise hit testing, or null when none is hit
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> self, ipos32 pos)
 {
@@ -808,14 +808,14 @@ FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> se
     return entity;
 }
 
-// Returns whether the supplied hex lies inside this map's dimensions without throwing for an invalid coordinate.
+// Returns whether the supplied hex lies inside this map's dimensions without throwing for an invalid coordinate
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexValid(ptr<MapView> self, mpos hex)
 {
     return self->GetSize().is_valid_pos(hex);
 }
 
-// Returns every map hex currently selected for drawing by this view.
+// Returns every map hex currently selected for drawing by this view
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Client_Map_GetVisibleHexes(ptr<MapView> self)
 {
@@ -836,7 +836,7 @@ FO_SCRIPT_API vector<mpos> Client_Map_GetVisibleHexes(ptr<MapView> self)
     return hexes;
 }
 
-// Returns the client visibility flag stored for a valid hex; an invalid hex throws.
+// Returns the client visibility flag stored for a valid hex; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexVisible(ptr<MapView> self, mpos hex)
 {
@@ -847,7 +847,7 @@ FO_SCRIPT_API bool Client_Map_IsHexVisible(ptr<MapView> self, mpos hex)
     return self->GetField(hex).IsView;
 }
 
-// Returns whether movement is currently unblocked on a valid hex; an invalid hex throws.
+// Returns whether movement is currently unblocked on a valid hex; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexMovable(ptr<MapView> self, mpos hex)
 {
@@ -858,7 +858,7 @@ FO_SCRIPT_API bool Client_Map_IsHexMovable(ptr<MapView> self, mpos hex)
     return !self->GetField(hex).MoveBlocked;
 }
 
-// Returns whether shooting is currently unblocked through a valid hex; an invalid hex throws.
+// Returns whether shooting is currently unblocked through a valid hex; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexShootable(ptr<MapView> self, mpos hex)
 {
@@ -869,7 +869,7 @@ FO_SCRIPT_API bool Client_Map_IsHexShootable(ptr<MapView> self, mpos hex)
     return !self->GetField(hex).ShootBlocked;
 }
 
-// Returns whether a valid hex lies outside the map's configured playable area; an invalid hex throws.
+// Returns whether a valid hex lies outside the map's configured playable area; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsOutsideArea(ptr<MapView> self, mpos hex)
 {
@@ -880,7 +880,7 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(ptr<MapView> self, mpos hex)
     return self->IsOutsideArea(hex);
 }
 
-// Adds and returns a fog layer attached to an optional critter at the requested draw order, using an offscreen flush effect when its subtype is nonnegative.
+// Adds and returns a fog layer attached to an optional critter at the requested draw order, using an offscreen flush effect when its subtype is nonnegative
 ///@ ExportMethod
 FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, nptr<CritterView> cr, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
@@ -893,7 +893,7 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, nptr<CritterVie
     return fog;
 }
 
-// Adds and returns a fog layer at a valid hex and draw order, using an offscreen flush effect when its subtype is nonnegative; an invalid hex throws.
+// Adds and returns a fog layer at a valid hex and draw order, using an offscreen flush effect when its subtype is nonnegative; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, mpos hex, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
@@ -910,7 +910,7 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, mpos hex, DrawO
     return fog;
 }
 
-// Starts a named sprite pattern with a positive frame count and returns its controller, or null when the pattern cannot be created.
+// Starts a named sprite pattern with a positive frame count and returns its controller, or null when the pattern cannot be created
 ///@ ExportMethod
 FO_SCRIPT_API nptr<SpritePattern> Client_Map_RunSpritePattern(ptr<MapView> self, string_view spriteName, int32_t spriteCount)
 {
@@ -922,14 +922,14 @@ FO_SCRIPT_API nptr<SpritePattern> Client_Map_RunSpritePattern(ptr<MapView> self,
     return sprite_pattern;
 }
 
-// Returns the aggregate pixel size of content associated with the supplied hex in this map view.
+// Returns the aggregate pixel size of content associated with the supplied hex in this map view
 ///@ ExportMethod
 FO_SCRIPT_API isize32 Client_Map_GetHexContentSize(ptr<MapView> self, mpos hex)
 {
     return self->GetHexContentSize(hex);
 }
 
-// Creates and attaches a client-local item of a known prototype at a valid map hex; invalid prototypes or coordinates throw.
+// Creates and attaches a client-local item of a known prototype at a valid map hex; invalid prototypes or coordinates throw
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Client_Map_CreateLocalItem(ptr<MapView> self, hstring pid, mpos hex)
 {
@@ -946,14 +946,14 @@ FO_SCRIPT_API ptr<ItemView> Client_Map_CreateLocalItem(ptr<MapView> self, hstrin
     return item;
 }
 
-// Sets the hex used by this map view's roof-hiding logic.
+// Sets the hex used by this map view's roof-hiding logic
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetHiddenRoof(ptr<MapView> self, mpos hex)
 {
     self->SetHiddenRoof(hex);
 }
 
-// Returns the roof group number at a valid map hex; an out-of-range coordinate throws.
+// Returns the roof group number at a valid map hex; an out-of-range coordinate throws
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_GetRoofNum(ptr<MapView> self, mpos hex)
 {
@@ -964,7 +964,7 @@ FO_SCRIPT_API int32_t Client_Map_GetRoofNum(ptr<MapView> self, mpos hex)
     return self->GetField(hex).RoofNum;
 }
 
-// Returns the roof group currently hidden by this map view's roof-hiding logic.
+// Returns the roof group currently hidden by this map view's roof-hiding logic
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_GetHiddenRoofNum(ptr<MapView> self)
 {

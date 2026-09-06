@@ -974,7 +974,7 @@ def run_with_retry(
 	label: str,
 	on_retry: Callable[[], None] | None = None,
 ) -> None:
-	# The Android CLI fetches platform zips from the same CDN as download_file and has no retry of its own.
+	# The Android CLI fetches platform zips from the same CDN as download_file and has no retry of its own
 	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
 		try:
 			run(cmd, cwd=cwd, env=env)

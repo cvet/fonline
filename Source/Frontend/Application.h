@@ -46,7 +46,7 @@ class IAppWindow;
 
 FO_DECLARE_EXCEPTION(AppInitException);
 
-// Physical SDL-scancode key identifiers used by input events and key-state queries, plus a synthetic Text event for UTF-8 text, paste, and drop payloads.
+// Physical SDL-scancode key identifiers used by input events and key-state queries, plus a synthetic Text event for UTF-8 text, paste, and drop payloads
 ///@ ExportEnum
 enum class KeyCode : uint8_t
 {
@@ -159,7 +159,7 @@ enum class KeyCode : uint8_t
 ///@ EnumValueDoc KeyCode None // Indicates that no physical or synthetic keyboard input code is selected.
 ///@ EnumValueDoc KeyCode Text // Identifies a synthetic text event whose UTF-8 input, clipboard, or dropped-data payload is carried separately by the input event.
 
-// Mouse buttons and wheel directions exposed through application input events.
+// Mouse buttons and wheel directions exposed through application input events
 ///@ ExportEnum
 enum class MouseButton : uint8_t
 {
@@ -185,7 +185,7 @@ enum class MouseButton : uint8_t
 ///@ EnumValueDoc MouseButton Ext3 // Fourth extended mouse button, mapped from platform button 7.
 ///@ EnumValueDoc MouseButton Ext4 // Fifth extended mouse button, mapped from platform button 8.
 
-// Per-frame gamepad snapshot containing availability, stick and trigger values, face buttons, shoulders, sticks, and D-pad state.
+// Per-frame gamepad snapshot containing availability, stick and trigger values, face buttons, shoulders, sticks, and D-pad state
 ///@ ExportValueType Layout = float32-LeftStickX+float32-LeftStickY+float32-RightStickX+float32-RightStickY+float32-LeftTrigger+float32-RightTrigger+bool-Available+bool-South+bool-East+bool-West+bool-North+bool-Back+bool-Start+bool-LeftStickButton+bool-RightStickButton+bool-LeftShoulder+bool-RightShoulder+bool-DpadUp+bool-DpadDown+bool-DpadLeft+bool-DpadRight+bool-Reserved
 ///@ ValueFieldDoc GamepadState LeftStickX // Left-stick horizontal axis normalized to -1 through 1 after the dead zone.
 ///@ ValueFieldDoc GamepadState LeftStickY // Left-stick vertical axis normalized to -1 through 1 after the dead zone.

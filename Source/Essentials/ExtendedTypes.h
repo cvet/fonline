@@ -607,7 +607,7 @@ struct frect
     T height {};
 };
 
-// Two-dimensional signed 8-bit integer position exposed to scripts as mutable x and y components.
+// Two-dimensional signed 8-bit integer position exposed to scripts as mutable x and y components
 ///@ ExportValueType Layout = int8-x+int8-y
 ///@ ValueFieldDoc ipos8 x // Signed 8-bit X position component.
 ///@ ValueFieldDoc ipos8 y // Signed 8-bit Y position component.
@@ -616,7 +616,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos8, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 
-// Two-dimensional signed 16-bit integer position exposed to scripts as mutable x and y components.
+// Two-dimensional signed 16-bit integer position exposed to scripts as mutable x and y components
 ///@ ExportValueType Layout = int16-x+int16-y
 ///@ ValueFieldDoc ipos16 x // Signed 16-bit X position component.
 ///@ ValueFieldDoc ipos16 y // Signed 16-bit Y position component.
@@ -625,7 +625,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos16, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos16);
 
-// Standard two-dimensional signed 32-bit integer position exposed to scripts as mutable x and y components.
+// Standard two-dimensional signed 32-bit integer position exposed to scripts as mutable x and y components
 ///@ ExportValueType Name = ipos Layout = int32-x+int32-y
 ///@ ValueFieldDoc ipos x // Signed 32-bit X position component.
 ///@ ValueFieldDoc ipos y // Signed 32-bit Y position component.
@@ -635,7 +635,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos32, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
 
-// Two-dimensional signed 32-bit integer size exposed to scripts as mutable width and height components.
+// Two-dimensional signed 32-bit integer size exposed to scripts as mutable width and height components
 ///@ ExportValueType Name = isize Layout = int32-width+int32-height
 ///@ ValueFieldDoc isize width // Signed 32-bit width component.
 ///@ ValueFieldDoc isize height // Signed 32-bit height component.
@@ -645,7 +645,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize32, "{} {}", value.width, value.heig
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize32, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize32);
 
-// Signed 32-bit integer rectangle exposed to scripts as mutable origin and size components.
+// Signed 32-bit integer rectangle exposed to scripts as mutable origin and size components
 ///@ ExportValueType Name = irect Layout = int32-x+int32-y+int32-width+int32-height
 ///@ ValueFieldDoc irect x // Signed 32-bit X coordinate of the rectangle origin.
 ///@ ValueFieldDoc irect y // Signed 32-bit Y coordinate of the rectangle origin.
@@ -657,7 +657,7 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect32, "{} {} {} {}", value.x, value.y,
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect32, value.x >> value.y >> value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect32);
 
-// Two-dimensional 32-bit floating-point position exposed to scripts as mutable x and y components.
+// Two-dimensional 32-bit floating-point position exposed to scripts as mutable x and y components
 ///@ ExportValueType Name = fpos Layout = float32-x+float32-y
 ///@ ValueFieldDoc fpos x // 32-bit floating-point X position component.
 ///@ ValueFieldDoc fpos y // 32-bit floating-point Y position component.
@@ -666,7 +666,7 @@ static_assert(sizeof(fpos32) == 8 && std::is_standard_layout_v<fpos32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fpos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos32, value.x >> value.y);
 
-// Two-dimensional 32-bit floating-point size exposed to scripts as mutable width and height components.
+// Two-dimensional 32-bit floating-point size exposed to scripts as mutable width and height components
 ///@ ExportValueType Name = fsize Layout = float32-width+float32-height
 ///@ ValueFieldDoc fsize width // 32-bit floating-point width component.
 ///@ ValueFieldDoc fsize height // 32-bit floating-point height component.
@@ -675,7 +675,7 @@ static_assert(sizeof(fsize32) == 8 && std::is_standard_layout_v<fsize32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize32, "{} {}", value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize32, value.width >> value.height);
 
-// 32-bit floating-point rectangle exposed to scripts as mutable origin and size components.
+// 32-bit floating-point rectangle exposed to scripts as mutable origin and size components
 ///@ ExportValueType Name = frect Layout = float32-x+float32-y+float32-width+float32-height
 ///@ ValueFieldDoc frect x // 32-bit floating-point X coordinate of the rectangle origin.
 ///@ ValueFieldDoc frect y // 32-bit floating-point Y coordinate of the rectangle origin.

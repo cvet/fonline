@@ -70,7 +70,7 @@ private:
     ptr<BaseEngine> _engine;
 };
 
-// Window creation and interaction flags forwarded to the embedded Dear ImGui runtime.
+// Window creation and interaction flags forwarded to the embedded Dear ImGui runtime
 ///@ ExportEnum
 enum class ImGui_WindowFlags : uint32_t
 {
@@ -99,7 +99,7 @@ enum class ImGui_WindowFlags : uint32_t
     NoInputs = 197120, // ImGuiWindowFlags_NoInputs
 };
 
-// Child-window sizing, framing, padding, and navigation flags forwarded to Dear ImGui.
+// Child-window sizing, framing, padding, and navigation flags forwarded to Dear ImGui
 ///@ ExportEnum
 enum class ImGui_ChildFlags : uint32_t
 {
@@ -115,7 +115,7 @@ enum class ImGui_ChildFlags : uint32_t
     NavFlattened = 256, // ImGuiChildFlags_NavFlattened
 };
 
-// Conditions controlling when a queued Dear ImGui state assignment takes effect.
+// Conditions controlling when a queued Dear ImGui state assignment takes effect
 ///@ ExportEnum
 enum class ImGui_Cond : uint32_t
 {
@@ -126,7 +126,7 @@ enum class ImGui_Cond : uint32_t
     Appearing = 8, // ImGuiCond_Appearing
 };
 
-// Selection, spanning, overlap, and activation behavior for Dear ImGui selectable items.
+// Selection, spanning, overlap, and activation behavior for Dear ImGui selectable items
 ///@ ExportEnum
 enum class ImGui_SelectableFlags : uint32_t
 {
@@ -138,7 +138,7 @@ enum class ImGui_SelectableFlags : uint32_t
     AllowOverlap = 16, // ImGuiSelectableFlags_AllowOverlap
 };
 
-// Expansion, framing, selection, spanning, and navigation flags for Dear ImGui tree nodes.
+// Expansion, framing, selection, spanning, and navigation flags for Dear ImGui tree nodes
 ///@ ExportEnum
 enum class ImGui_TreeNodeFlags : uint32_t
 {
@@ -161,7 +161,7 @@ enum class ImGui_TreeNodeFlags : uint32_t
     CollapsingHeader = 26, // ImGuiTreeNodeFlags_CollapsingHeader
 };
 
-// Scope and hierarchy filters used by Dear ImGui focus queries.
+// Scope and hierarchy filters used by Dear ImGui focus queries
 ///@ ExportEnum
 enum class ImGui_FocusedFlags : uint32_t
 {
@@ -173,7 +173,7 @@ enum class ImGui_FocusedFlags : uint32_t
     RootAndChildWindows = 3, // ImGuiFocusedFlags_RootAndChildWindows
 };
 
-// Blocking, overlap, timing, and hierarchy filters used by Dear ImGui hover queries.
+// Blocking, overlap, timing, and hierarchy filters used by Dear ImGui hover queries
 ///@ ExportEnum
 enum class ImGui_HoveredFlags : uint32_t
 {
@@ -193,7 +193,7 @@ enum class ImGui_HoveredFlags : uint32_t
     ForTooltip = 4096, // ImGuiHoveredFlags_ForTooltip
 };
 
-// Layout, borders, sizing, scrolling, sorting, and clipping behavior for Dear ImGui tables.
+// Layout, borders, sizing, scrolling, sorting, and clipping behavior for Dear ImGui tables
 ///@ ExportEnum
 enum class ImGui_TableFlags : uint32_t
 {
@@ -235,7 +235,7 @@ enum class ImGui_TableFlags : uint32_t
     HighlightHoveredColumn = 268435456, // ImGuiTableFlags_HighlightHoveredColumn
 };
 
-// Per-column visibility, sizing, ordering, sorting, and status flags for Dear ImGui tables.
+// Per-column visibility, sizing, ordering, sorting, and status flags for Dear ImGui tables
 ///@ ExportEnum
 enum class ImGui_TableColumnFlags : uint32_t
 {
@@ -265,7 +265,7 @@ enum class ImGui_TableColumnFlags : uint32_t
     IsHovered = 134217728, // ImGuiTableColumnFlags_IsHovered
 };
 
-// Per-row header and background behavior for Dear ImGui tables.
+// Per-row header and background behavior for Dear ImGui tables
 ///@ ExportEnum
 enum class ImGui_TableRowFlags : uint32_t
 {
@@ -273,7 +273,7 @@ enum class ImGui_TableRowFlags : uint32_t
     Headers = 1, // ImGuiTableRowFlags_Headers
 };
 
-// Table background channel targeted by a Dear ImGui cell or row color assignment.
+// Table background channel targeted by a Dear ImGui cell or row color assignment
 ///@ ExportEnum
 enum class ImGui_TableBgTarget : uint32_t
 {
@@ -283,7 +283,7 @@ enum class ImGui_TableBgTarget : uint32_t
     CellBg = 3, // ImGuiTableBgTarget_CellBg
 };
 
-// Reordering, fitting, selection, and tooltip behavior for Dear ImGui tab bars.
+// Reordering, fitting, selection, and tooltip behavior for Dear ImGui tab bars
 ///@ ExportEnum
 enum class ImGui_TabBarFlags : uint32_t
 {
@@ -300,7 +300,7 @@ enum class ImGui_TabBarFlags : uint32_t
     FittingPolicyScroll = 512, // ImGuiTabBarFlags_FittingPolicyScroll
 };
 
-// Visibility, closure, ordering, and tooltip behavior for individual Dear ImGui tabs.
+// Visibility, closure, ordering, and tooltip behavior for individual Dear ImGui tabs
 ///@ ExportEnum
 enum class ImGui_TabItemFlags : uint32_t
 {
@@ -316,7 +316,7 @@ enum class ImGui_TabItemFlags : uint32_t
     NoAssumedClosure = 256, // ImGuiTabItemFlags_NoAssumedClosure
 };
 
-// Popup height, alignment, and preview behavior for Dear ImGui combo boxes.
+// Popup height, alignment, and preview behavior for Dear ImGui combo boxes
 ///@ ExportEnum
 enum class ImGui_ComboFlags : uint32_t
 {
@@ -331,7 +331,7 @@ enum class ImGui_ComboFlags : uint32_t
     WidthFitPreview = 128, // ImGuiComboFlags_WidthFitPreview
 };
 
-// Editing, filtering, submission, callback, and read-only behavior for Dear ImGui text input.
+// Editing, filtering, submission, callback, and read-only behavior for Dear ImGui text input
 ///@ ExportEnum
 enum class ImGui_InputTextFlags : uint32_t
 {
@@ -348,7 +348,7 @@ enum class ImGui_InputTextFlags : uint32_t
     DisplayEmptyRefVal = 16384, // ImGuiInputTextFlags_DisplayEmptyRefVal
 };
 
-// Mouse-button selection and popup-stack policies for opening or closing Dear ImGui popups.
+// Mouse-button selection and popup-stack policies for opening or closing Dear ImGui popups
 ///@ ExportEnum
 enum class ImGui_PopupFlags : uint32_t
 {
@@ -364,7 +364,7 @@ enum class ImGui_PopupFlags : uint32_t
     AnyPopup = 3072, // ImGuiPopupFlags_AnyPopup
 };
 
-// Mouse-button identifiers accepted by the Dear ImGui script bindings.
+// Mouse-button identifiers accepted by the Dear ImGui script bindings
 ///@ ExportEnum
 enum class ImGui_MouseButton : int32_t
 {
@@ -373,7 +373,7 @@ enum class ImGui_MouseButton : int32_t
     Middle = 2, // ImGuiMouseButton_Middle
 };
 
-// Cardinal directions and the no-direction sentinel used by Dear ImGui navigation and layout APIs.
+// Cardinal directions and the no-direction sentinel used by Dear ImGui navigation and layout APIs
 ///@ ExportEnum
 enum class ImGui_Dir : int32_t
 {
@@ -384,7 +384,7 @@ enum class ImGui_Dir : int32_t
     Down = 3, // ImGuiDir_Down
 };
 
-// Clamping and input behavior for Dear ImGui sliders and drag controls.
+// Clamping and input behavior for Dear ImGui sliders and drag controls
 ///@ ExportEnum
 enum class ImGui_SliderFlags : uint32_t
 {
@@ -399,7 +399,7 @@ enum class ImGui_SliderFlags : uint32_t
     AlwaysClamp = 1536, // ImGuiSliderFlags_AlwaysClamp
 };
 
-// Mouse-button, overlap, and activation behavior for low-level Dear ImGui buttons.
+// Mouse-button, overlap, and activation behavior for low-level Dear ImGui buttons
 ///@ ExportEnum
 enum class ImGui_ButtonFlags : uint32_t
 {
@@ -410,7 +410,7 @@ enum class ImGui_ButtonFlags : uint32_t
     EnableNav = 8, // ImGuiButtonFlags_EnableNav
 };
 
-// Picker mode, channel visibility, data format, preview, and input behavior for Dear ImGui color editors.
+// Picker mode, channel visibility, data format, preview, and input behavior for Dear ImGui color editors
 ///@ ExportEnum
 enum class ImGui_ColorEditFlags : uint32_t
 {
@@ -442,7 +442,7 @@ enum class ImGui_ColorEditFlags : uint32_t
     DefaultOptions = 311427072, // ImGuiColorEditFlags_DefaultOptions_
 };
 
-// Indexed Dear ImGui style-color slots used by scripted theme customization.
+// Indexed Dear ImGui style-color slots used by scripted theme customization
 ///@ ExportEnum
 enum class ImGui_Col : int32_t
 {
@@ -485,7 +485,7 @@ enum class ImGui_Col : int32_t
     TableRowBgAlt = 50, // ImGuiCol_TableRowBgAlt
 };
 
-// Indexed scalar and vector Dear ImGui style variables accepted by style-stack operations.
+// Indexed scalar and vector Dear ImGui style variables accepted by style-stack operations
 ///@ ExportEnum
 enum class ImGui_StyleVar : int32_t
 {

@@ -46,7 +46,7 @@ class Sprite;
 class ItemHexView;
 class MapSpriteList;
 
-// Ordered map-render layers spanning flat sprites, lighting, normal objects, particles, and roofs.
+// Ordered map-render layers spanning flat sprites, lighting, normal objects, particles, and roofs
 ///@ ExportEnum
 enum class DrawOrderType : uint8_t
 {
@@ -108,7 +108,7 @@ enum class DrawOrderType : uint8_t
 ///@ EnumValueDoc DrawOrderType RoofParticles // Particle layer rendered with roof sprites.
 ///@ EnumValueDoc DrawOrderType Last // Highest valid draw-order marker reserved by the map-sprite sorter.
 
-// Conditions under which a map sprite participates in the transparency-egg cutout around the player.
+// Conditions under which a map sprite participates in the transparency-egg cutout around the player
 ///@ ExportEnum
 enum class EggAppearenceType : uint8_t
 {
@@ -251,7 +251,7 @@ private:
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
-// Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped.
+// Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
 ///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
@@ -263,44 +263,44 @@ public:
     auto operator=(MapSpriteHolder&&) noexcept = delete;
     ~MapSpriteHolder();
 
-    // Invalidates the attached map sprite, sets Valid to false through its callback, and detaches this holder; repeated calls are harmless.
+    // Invalidates the attached map sprite, sets Valid to false through its callback, and detaches this holder; repeated calls are harmless
     void StopDraw();
 
-    // Reports whether the attached map sprite remains valid; the sprite writes false when invalidated.
+    // Reports whether the attached map sprite remains valid; the sprite writes false when invalidated
     bool Valid {};
-    // Sprite resource handle resolved when Map.DrawMapSprite attaches the holder.
+    // Sprite resource handle resolved when Map.DrawMapSprite attaches the holder
     uint32_t SprId {};
-    // Map hex used as the sprite anchor and visibility test.
+    // Map hex used as the sprite anchor and visibility test
     mpos Hex {};
-    // Optional item prototype whose color, flattening, lighting, draw order, corner, and egg settings override the corresponding holder fields.
+    // Optional item prototype whose color, flattening, lighting, draw order, corner, and egg settings override the corresponding holder fields
     hstring ProtoId {};
-    // Base map-pixel offset applied when the sprite is attached.
+    // Base map-pixel offset applied when the sprite is attached
     ipos32 Offset {};
-    // Manual flat-sprite selection used when ProtoId is empty.
+    // Manual flat-sprite selection used when ProtoId is empty
     bool IsFlat {};
-    // Manual lighting bypass used when ProtoId is empty.
+    // Manual lighting bypass used when ProtoId is empty
     bool NoLight {};
-    // Manual draw-order slot used when ProtoId is empty.
+    // Manual draw-order slot used when ProtoId is empty
     DrawOrderType DrawOrder {DrawOrderType::Item};
-    // Vertical hex offset applied to draw-order sorting when ProtoId is empty.
+    // Vertical hex offset applied to draw-order sorting when ProtoId is empty
     int32_t DrawOrderHyOffset {};
-    // Manual corner classification used for lighting and egg appearance when ProtoId is empty.
+    // Manual corner classification used for lighting and egg appearance when ProtoId is empty
     CornerType Corner {};
-    // Manual switch that suppresses egg appearance when ProtoId is empty.
+    // Manual switch that suppresses egg appearance when ProtoId is empty
     bool DisableEgg {};
-    // Optional packed color and fixed alpha applied at attachment; clear leaves the sprite color unchanged.
+    // Optional packed color and fixed alpha applied at attachment; clear leaves the sprite color unchanged
     ucolor Color {};
-    // Enables live offset tracking through TweakOffset after attachment.
+    // Enables live offset tracking through TweakOffset after attachment
     bool IsTweakOffs {};
-    // Mutable map-pixel offset read by the attached sprite while IsTweakOffs was enabled at attachment.
+    // Mutable map-pixel offset read by the attached sprite while IsTweakOffs was enabled at attachment
     ipos32 TweakOffset {};
-    // Enables live alpha tracking through TweakAlpha after attachment.
+    // Enables live alpha tracking through TweakAlpha after attachment
     bool IsTweakAlpha {};
-    // Mutable alpha read by the attached sprite while IsTweakAlpha was enabled at attachment.
+    // Mutable alpha read by the attached sprite while IsTweakAlpha was enabled at attachment
     uint8_t TweakAlpha {};
-    // Initial sprite angle in degrees applied when nonzero.
+    // Initial sprite angle in degrees applied when nonzero
     int16_t Angle {};
-    // Requests map-projected rendering when the sprite is attached.
+    // Requests map-projected rendering when the sprite is attached
     bool MapProjected {};
     nptr<MapSprite> MSpr {};
 };
