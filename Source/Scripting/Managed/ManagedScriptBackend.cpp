@@ -232,6 +232,7 @@ static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, Mono
 static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend, MonoString* owner_type, MonoString* property_name, bool require_virtual, bool require_marshalable_value) -> ptr<const Property>;
 static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call);
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call);
+static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data);
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>;
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*;
 
@@ -2738,9 +2739,28 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
     MonoObject* result = mono_runtime_invoke(invoke_callback, nullptr, invoke_args, &exception);
     ThrowIfManagedException(exception, "Managed callback failed");
 
+    for (size_t i = 0; i < args.size(); i++) {
+        if (args[i].IsMutable) {
+            CopyManagedCallbackByRefArg(backend, args[i], mono_array_get(args_array, MonoObject*, i), ptr<void>(call.ArgsData[i]));
+        }
+    }
+
     if (ret) {
         CopyManagedCallbackReturnValue(backend, ret, result, call);
     }
+}
+
+// The managed registration admits one by-ref shape, the dialog start function's string, so anything else here is a
+// signature that should never have been registered rather than a case to grow support for
+static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(type.Kind == ComplexTypeKind::Simple && type.BaseType.IsString, "Only a string by-ref argument is supported", type.BaseType.Name);
+
+    ManagedScalarValue storage;
+    void* native_value = ConvertManagedSimpleObjectToNative(backend, type.BaseType, value, storage);
+    *arg_data.reinterpret_as<string>() = *static_cast<string*>(native_value);
 }
 
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call)
@@ -4693,8 +4713,20 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
     // resolve_type)
     ComplexTypeDesc type;
 
+    // A by-ref argument arrives as "T&". The descriptor already models it: IsMutable is what the metadata uses for
+    // an argument the callee writes and the caller reads back
+    if (type_name.ends_with("&")) {
+        ComplexTypeDesc ref_type = MakeManagedGlobalSimpleType(meta, type_name.substr(0, type_name.size() - 1));
+
+        if (ref_type) {
+            ref_type.IsMutable = true;
+        }
+
+        return ref_type;
+    }
+
     // Array element: "T[]" -> Array desc wrapping the element base type. The managed registration emits this for
-    // List<T> / T[] params and returns (see ScriptFuncRegistration.EngineTypeName), so collection-typed bridges (e.g
+    // List<T> / T[] params and returns (see ScriptFuncRegistration.EngineTypeName)
     if (type_name.ends_with("[]")) {
         string_view elem_name = type_name.substr(0, type_name.size() - 2);
 

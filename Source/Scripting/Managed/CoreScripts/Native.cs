@@ -108,7 +108,16 @@ namespace FOnline
         {
             try
             {
-                object? result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
+                // A by-ref parameter is written by the callee, and the caller reads it back out of the very array it
+                // handed over. AdaptInvokeArgs may hand DynamicInvoke a copy, so the written values are carried back
+                object[] invokeArgs = AdaptInvokeArgs(handler, args);
+                object? result = handler.DynamicInvoke(invokeArgs);
+
+                if (!ReferenceEquals(invokeArgs, args))
+                {
+                    CopyBackByRefArgs(handler, invokeArgs, args);
+                }
+
                 Task? task = result as Task;
 
                 if (task == null)
@@ -141,6 +150,19 @@ namespace FOnline
             {
                 Game.RecordManagedException(UnwrapInvocationException(ex), false);
                 throw;
+            }
+        }
+
+        private static void CopyBackByRefArgs(Delegate handler, object[] invokeArgs, object[] args)
+        {
+            ParameterInfo[] parameters = handler.Method.GetParameters();
+
+            for (int i = 0; i < args.Length && i < parameters.Length && i < invokeArgs.Length; i++)
+            {
+                if (parameters[i].ParameterType.IsByRef)
+                {
+                    args[i] = invokeArgs[i];
+                }
             }
         }
 

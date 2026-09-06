@@ -23,5 +23,16 @@ namespace FOnline
             Verify(name != null, "Invalid enum index", typeof(T).Name, value);
             return fullSpecification ? typeof(T).Name + "::" + name! : name!;
         }
+
+        // Non-throwing counterpart of EnumToString, mirroring the AngelScript `Game.TryEnumToString(value, name)`
+        // overloads: a value with no member name answers false instead of failing the caller, which is what a
+        // lookup keyed by an enum member name needs when the value legitimately has no authored row
+        public static bool TryEnumToString<T>(T value, out string name)
+            where T : struct, System.Enum
+        {
+            string? resolved = System.Enum.GetName(value);
+            name = resolved ?? string.Empty;
+            return resolved != null;
+        }
     }
 }

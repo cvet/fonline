@@ -2028,7 +2028,10 @@ static auto MakeCsTypeName(const ComplexTypeDesc& type, bool nullable) -> string
 
     // Nullability is tracked only on handle/reference types (entities, strings, ref-types), which map
     // to C# reference types where `?` is valid; value types never carry the nullable bit
-    if (nullable) {
+
+    // A callback is optional by construction: every export tests the ScriptFunc before calling it, and the
+    // managed bridge turns an absent delegate into an empty one
+    if (nullable || type.Kind == ComplexTypeKind::Callback) {
         name += "?";
     }
 

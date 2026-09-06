@@ -58,25 +58,52 @@ namespace FOnline
             }
         }
 
+        // A by-ref parameter is an out-argument the caller reads back. The engine spells the shape as `T&` and the
+        // only contract that uses it is a dialog start function, which comes in these two return flavours. They are
+        // written out because Action<>/Func<> cannot carry a `ref` parameter at all
+        public delegate void RefStringAction(Critter cr, Critter npc, ref string value);
+
+        public delegate int RefStringFunc(Critter cr, Critter npc, ref string value);
+
         private static void RegisterFunc(Type type, MethodInfo method, string attributeName, bool skipExistingScriptFunc)
         {
             ParameterInfo[] parameters = method.GetParameters();
             string[] paramTypeNames = new string[parameters.Length];
             Type[] delegateParamTypes = new Type[parameters.Length];
+            bool hasByRef = false;
 
             for (int i = 0; i < parameters.Length; i++)
             {
-                paramTypeNames[i] = EngineTypeName(parameters[i].ParameterType);
-                delegateParamTypes[i] = parameters[i].ParameterType;
+                Type parameterType = parameters[i].ParameterType;
+
+                if (parameterType.IsByRef)
+                {
+                    hasByRef = true;
+                    paramTypeNames[i] = EngineTypeName(parameterType.GetElementType()!) + "&";
+                }
+                else
+                {
+                    paramTypeNames[i] = EngineTypeName(parameterType);
+                }
+
+                delegateParamTypes[i] = parameterType;
             }
 
             string returnTypeName = EngineTypeName(GetRegisteredReturnType(method.ReturnType));
 
             // Build a matching Action<...>/Func<...> delegate type so the static method can be wrapped as a Delegate
             // and invoked later via Native.InvokeCallback (DynamicInvoke).
-            Type delegateType = method.ReturnType == typeof(void)
-                ? Expression.GetActionType(delegateParamTypes)
-                : Expression.GetFuncType(delegateParamTypes.Append(method.ReturnType).ToArray());
+            Type? delegateType = hasByRef
+                ? ResolveByRefDelegateType(method, delegateParamTypes)
+                : method.ReturnType == typeof(void)
+                    ? Expression.GetActionType(delegateParamTypes)
+                    : Expression.GetFuncType(delegateParamTypes.Append(method.ReturnType).ToArray());
+
+            if (delegateType == null)
+            {
+                Game.Log($"Managed script func '{type.Name}::{method.Name}' has an unsupported by-ref signature; skipping registration");
+                return;
+            }
 
             Delegate handler = Delegate.CreateDelegate(delegateType, method);
             string fullName = type.Name + "::" + method.Name;
@@ -89,6 +116,23 @@ namespace FOnline
                 handler,
                 skipExistingScriptFunc);
         }
+
+        private static Type? ResolveByRefDelegateType(MethodInfo method, Type[] delegateParamTypes)
+        {
+            if (delegateParamTypes.Length != 3 || delegateParamTypes[0] != typeof(Critter) || delegateParamTypes[1] != typeof(Critter) ||
+                delegateParamTypes[2] != typeof(string).MakeByRefType())
+            {
+                return null;
+            }
+
+            if (method.ReturnType == typeof(void))
+            {
+                return typeof(RefStringAction);
+            }
+
+            return method.ReturnType == typeof(int) ? typeof(RefStringFunc) : null;
+        }
+
 
         private static Type GetRegisteredReturnType(Type returnType)
         {
