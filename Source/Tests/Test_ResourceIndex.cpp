@@ -111,6 +111,35 @@ TEST_CASE("ResourceIndex")
         CHECK(fs_remove_dir_tree(dir));
     }
 
+    SECTION("ReportsWhetherTheIndexStillDescribesTheDisk")
+    {
+        string dir = MakeTempIndexDir("index_current");
+        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        vector<string> dirs {dir};
+        vector<string> names {"Base", "Over"};
+
+        WritePack(dir, "Base", {{"A.txt", "a"}});
+        WritePack(dir, "Over", {{"B.txt", "b"}});
+
+        // An absent index is the ordinary first-run answer, not an error
+        CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, names));
+
+        vector<ResourceIndexPack> packs;
+        vector<string> pack_paths;
+        REQUIRE(ResolveResourceIndexPacks(dirs, names, packs, pack_paths));
+        BuildResourceIndex(index_path, pack_paths, packs);
+        CHECK(IsResourceIndexCurrent(index_path, dirs, names));
+
+        // Dropping a pack from the list changes the fold, so the same file no longer describes the request
+        CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, vector<string> {"Base"}));
+
+        // And so does rewriting one, because its hash travels in the key
+        WritePack(dir, "Over", {{"B.txt", "changed"}});
+        CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, names));
+
+        CHECK(fs_remove_dir_tree(dir));
+    }
+
     SECTION("RefusesAnIndexWhosePackMovedOn")
     {
         string dir = MakeTempIndexDir("index_stale");

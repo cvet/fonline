@@ -143,7 +143,9 @@ source and never falls back to another artifact of the same pack.
 It holds no payload of its own - every entry points into a `.fores`.
 
 It is built locally and is disposable. Nothing ships it, nothing downloads it, and deleting it costs one
-rebuild.
+rebuild. A client keeps it as `Resources.foindex` beside the packs under its writable root, and
+`GetClientResources()` mounts it only when `IsResourceIndexCurrent()` says it still describes what is on disk,
+falling back to mounting each pack otherwise.
 
 ### Header
 

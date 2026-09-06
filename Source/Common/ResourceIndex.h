@@ -51,6 +51,9 @@ constexpr size_t RESOURCE_INDEX_HEADER_SIZE = 72;
 constexpr size_t RESOURCE_INDEX_PACK_SIZE = 16;
 constexpr size_t RESOURCE_INDEX_ENTRY_SIZE = 40;
 
+// The merged tree a client mounts, kept beside the packs under the writable root because it is built there
+constexpr string_view RESOURCE_INDEX_FILE_NAME = "Resources.foindex";
+
 // One pack the merged tree draws from. The file records the name rather than a path, so an installed client
 // that moved on disk still resolves, and the hash is what proves the resolved file is the one merged
 struct ResourceIndexPack
@@ -83,7 +86,9 @@ auto ReadResourceIndexHeader(string_view path, ResourceIndexHeader& header) noex
 // Resolves each name against the directories in priority order and reads the hash from each pack's header,
 // so deciding whether the index still holds costs one small read per pack instead of a mount
 auto ResolveResourceIndexPacks(const vector<string>& pack_dirs, const vector<string>& pack_names, vector<ResourceIndexPack>& packs, vector<string>& pack_paths) noexcept -> bool;
-
+// Whether the index on disk still describes exactly these packs, answered from headers alone so a caller can
+// decide to mount it without opening one
+auto IsResourceIndexCurrent(string_view path, const vector<string>& pack_dirs, const vector<string>& pack_names) noexcept -> bool;
 // Merges the packs in the given order, last one winning a shared path, and replaces the index atomically. The
 // packs are read and released; nothing is ever written back into a `.fores`
 void BuildResourceIndex(string_view path, const vector<string>& pack_paths, const vector<ResourceIndexPack>& packs, ResourcePackWriteSettings settings = {});

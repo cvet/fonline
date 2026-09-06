@@ -37,6 +37,7 @@
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
+#include "ResourceIndex.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -47,15 +48,29 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(settings.Packaged ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    string base_dir = settings.Packaged ? settings.ClientResources : settings.BakeOutput;
+    vector<string> pack_dirs {base_dir};
 
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
     if (settings.Packaged && !settings.UserWritablePath.empty()) {
-        string writable_dir = fs_make_writable_path(settings.UserWritablePath, settings.ClientResources);
+        pack_dirs.emplace_back(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
+    }
 
+    // One merged tree when the packs on disk are the ones it was built from. It is disposable, so anything
+    // else - absent, stale, unreadable - falls back to the per-pack mounts and costs only the rebuild
+    string index_path = strex(pack_dirs.back()).combine_path(RESOURCE_INDEX_FILE_NAME).str();
+
+    if (IsResourceIndexCurrent(index_path, pack_dirs, settings.ClientResourceEntries)) {
+        resources.AddCustomSource(SafeAlloc::MakeUnique<ResourceIndexSource>(index_path, pack_dirs));
+        return resources;
+    }
+
+    resources.AddPacksSource(base_dir, settings.ClientResourceEntries);
+
+    for (size_t i = 1; i < pack_dirs.size(); ++i) {
         for (const string& pack : settings.ClientResourceEntries) {
-            resources.AddPackSource(writable_dir, pack, true);
+            resources.AddPackSource(pack_dirs[i], pack, true);
         }
     }
 

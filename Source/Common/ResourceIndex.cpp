@@ -70,6 +70,26 @@ static_assert(PACK_OFFSET_PACK_HASH + sizeof(uint64_t) == RESOURCE_INDEX_PACK_SI
 static_assert(ENTRY_OFFSET_DECODED_SIZE + sizeof(uint64_t) == RESOURCE_INDEX_ENTRY_SIZE);
 static_assert(RESOURCE_INDEX_MAGIC == (uint32_t {'F'} | uint32_t {'O'} << 8 | uint32_t {'I'} << 16 | uint32_t {'X'} << 24));
 
+auto IsResourceIndexCurrent(string_view path, const vector<string>& pack_dirs, const vector<string>& pack_names) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ResourceIndexHeader header;
+
+    if (!ReadResourceIndexHeader(path, header)) {
+        return false;
+    }
+
+    vector<ResourceIndexPack> packs;
+    vector<string> pack_paths;
+
+    if (!ResolveResourceIndexPacks(pack_dirs, pack_names, packs, pack_paths)) {
+        return false;
+    }
+
+    return header.PackCount == packs.size() && ComputeResourceIndexPackListHash(packs) == header.PackListHash;
+}
+
 // What the merge keeps per path while it folds the packs in order
 struct ResourceIndexEntryRecord
 {
