@@ -156,6 +156,11 @@ each artifact as it measures it, so it needs no project data and peaks at one pa
 adds the correctness half: every entry is read back out of the artifact and diffed against the source by name
 in both directions and by raw bytes, and the tool exits non-zero when anything differs.
 
+`BuildTools/analyze_resource_corpus.py` describes the tree itself rather than the artifacts: file and byte
+distribution by size, duplicates within and across packs, compression gain by extension, the largest files, and
+the size of the merged index over every pack raw and deflated. It lays those index bytes out for real, because
+a stand-in buffer deflates to nothing and would report an index several times smaller than one.
+
 Two writers of one binary format is a drift risk, so they are pinned together: `Source/Tests/Test_ResourcePack.cpp` holds a golden vector produced by `package.py` and asserts the engine writer reproduces it byte for byte. The vector is written with compression disabled, so a zlib version difference between Python and the engine cannot break it while the layout stays comparable.
 
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
