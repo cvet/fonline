@@ -54,11 +54,14 @@ public:
     [[nodiscard]] auto GetFrameTime() const noexcept -> nanotime { return _frameTime.load(std::memory_order_relaxed); }
     [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> timespan { return _frameDeltaTime.load(std::memory_order_relaxed); }
     [[nodiscard]] auto IsTimeSynchronized() const -> bool;
+    [[nodiscard]] auto IsPaused() const noexcept -> bool { return _paused.load(std::memory_order_acquire); }
     [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
     [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps.load(std::memory_order_relaxed); }
 
     void SetSynchronizedTime(synctime time);
     void SetSynchronizedTimeMonotonic(synctime time);
+    void Pause();
+    void Resume();
     void FrameAdvance(bool clamp_to_cap);
 
 private:
@@ -69,6 +72,10 @@ private:
     std::atomic<nanotime> _frameTime {};
     std::atomic<timespan> _frameDeltaTime {};
     timespan _debuggingOffset {}; // main-worker only
+    mutable mutex _pauseLocker {};
+    std::atomic<timespan> _pauseOffset {};
+    nanotime _pauseStartedAt FO_TSA_GUARDED_BY(_pauseLocker) {};
+    std::atomic_bool _paused {};
 
     // The synchronized-time projection reads this triple together, so it needs a consistent snapshot
     // against the main-worker writers — guarded by a mutex (the frame time is folded in via the atomic)

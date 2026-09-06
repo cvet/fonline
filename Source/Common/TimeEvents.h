@@ -83,6 +83,12 @@ class TimeEventManager
 public:
     static const timespan MIN_REPEAT_TIME;
 
+    struct Diagnostics
+    {
+        size_t EntityCount {};
+        size_t EventCount {};
+    };
+
     struct ReadyTimeEvent
     {
         refcount_ptr<Entity> OwnerEntity;
@@ -109,6 +115,7 @@ public:
     ~TimeEventManager() = default;
 
     [[nodiscard]] auto CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
+    [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
 
     void SetDispatcherHooks(DispatcherHooks hooks);
     void PauseDispatcherHooks();

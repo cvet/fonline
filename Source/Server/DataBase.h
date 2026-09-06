@@ -111,6 +111,8 @@ public:
     void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
     void WaitCommitChanges();
+    auto CreateSnapshot() -> vector<uint8_t>;
+    void RestoreSnapshot(const_span<uint8_t> snapshot_data);
     void ClearChanges() noexcept;
     void DrawGui();
 
@@ -176,6 +178,8 @@ public:
     void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
     void WaitCommitChanges();
+    auto CreateSnapshot() -> vector<uint8_t>;
+    void RestoreSnapshot(const_span<uint8_t> snapshot_data);
     void ClearChanges() noexcept;
     virtual void DrawGui();
 
@@ -188,6 +192,8 @@ protected:
     virtual void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
     virtual void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(hstring collection_name, const DataBaseKey& id) = 0;
+    virtual auto CreateSnapshotData() -> vector<uint8_t>;
+    virtual void RestoreSnapshotData(const_span<uint8_t> snapshot_data);
     virtual auto TryReconnect() -> bool { return true; }
 
     virtual void OnCommitOperationWrittenToOpLog() { } // Testing override point for a failed commit operation being durably written to oplog
@@ -230,6 +236,8 @@ private:
     std::condition_variable_any _commitThreadDoneSignal {};
     bool _commitThreadStopRequested FO_TSA_GUARDED_BY(_stateLocker) {};
     bool _commitThreadActive FO_TSA_GUARDED_BY(_stateLocker) {};
+    bool _snapshotInProgress FO_TSA_GUARDED_BY(_stateLocker) {};
+    std::condition_variable_any _snapshotDoneSignal {};
     deque<shared_ptr<CommitOperationData>> _pendingCommitOperations FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable std::atomic_bool _backendFailed {};

@@ -345,6 +345,82 @@ protected:
         }
     }
 
+    auto CreateSnapshotData() -> vector<uint8_t> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        scoped_lock locker {_storageLocker};
+
+        sqlite3_int64 serialized_size = 0;
+        nptr<uint8_t> serialized {sqlite3_serialize(GetHandle().get(), "main", &serialized_size, 0)};
+
+        if (!serialized) {
+            throw DataBaseException("DbSQLite sqlite3_serialize", sqlite3_errcode(GetHandle().get()), sqlite3_errmsg(GetHandle().get()));
+        }
+
+        auto free_serialized = scope_exit([&]() noexcept { sqlite3_free(serialized.get()); });
+
+        if (serialized_size <= 0) {
+            throw DataBaseException("DbSQLite produced an empty snapshot", serialized_size);
+        }
+
+        // The serialization is the exact page image the database would have on disk, WAL content folded in
+        return vector<uint8_t> {serialized.get(), serialized.get() + serialized_size};
+    }
+
+    void RestoreSnapshotData(const_span<uint8_t> snapshot_data) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        // A scratch file, not a deserialized memory image: copying into a WAL destination reaches for the
+        // source's own file, and a memory source has none, which SQLite answers with SQLITE_CANTOPEN
+        string source_path = strex("{}/Storage.snapshot-restore", _storageDir);
+
+        FO_VERIFY_AND_THROW(fs_write_file(source_path, snapshot_data), "Cannot write the snapshot restore scratch database", source_path);
+
+        auto remove_source_file = scope_exit([&source_path]() noexcept { (void)fs_remove_file(source_path); });
+
+        auto source_path_ptr = make_ptr(source_path.c_str());
+        nptr<sqlite3> source_db;
+        int32_t open = sqlite3_open_v2(source_path_ptr.get(), source_db.get_pp(), SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nullptr);
+
+        if (open != SQLITE_OK) {
+            string error = source_db ? string(sqlite3_errmsg(source_db.get())) : string("unknown");
+
+            if (source_db) {
+                (void)sqlite3_close(source_db.get());
+                source_db = nullptr;
+            }
+
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_open_v2", open, error);
+        }
+
+        FO_VERIFY_AND_THROW(source_db, "Opened SQLite snapshot restore handle is null");
+
+        auto close_source = scope_exit([&]() noexcept {
+            if (source_db) {
+                (void)sqlite3_close(source_db.get());
+                source_db = nullptr;
+            }
+        });
+
+        scoped_lock locker {_storageLocker};
+
+        nptr<sqlite3_backup> backup {sqlite3_backup_init(GetHandle().get(), "main", source_db.get(), "main")};
+
+        if (!backup) {
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_backup_init", sqlite3_errcode(GetHandle().get()), sqlite3_errmsg(GetHandle().get()));
+        }
+
+        int32_t step = sqlite3_backup_step(backup.get(), -1);
+        int32_t finish = sqlite3_backup_finish(backup.get());
+        backup = nullptr;
+
+        if (step != SQLITE_DONE || finish != SQLITE_OK) {
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_backup_step", step, finish, sqlite3_errmsg(GetHandle().get()));
+        }
+    }
+
     auto TryReconnect() -> bool override
     {
         FO_STACK_TRACE_ENTRY();
