@@ -88,10 +88,16 @@ so one pack is one epoch: consumers that cache by `(size, write_time)` re-read e
 replaced and nothing in one it did not. Per-entry times would be a per-file cache key the format cannot honour
 anyway, since replacing any blob rewrites the whole pack.
 
-Entries are sorted by path, byte-wise. That makes enumeration a walk and lookup a binary search over the
-resident buffer. The payload region follows the order the writer was given, so a canonical file - one whose
-bytes depend only on its contents - needs its paths added in sorted order; the packager does that, and the
-golden vector in `Test_ResourcePack.cpp` pins both writers to the same layout.
+Entries are sorted by path, byte-wise, which makes the file canonical and enumeration an ordered walk. Lookup
+is not a search over that order: `ResourcePackSource` builds an `unordered_map` at mount whose keys are
+`string_view`s into the resident index buffer, so a path is hashed once and the sorted order costs the reader
+nothing at lookup time. The payload region follows the order the writer was given, so a canonical file - one
+whose bytes depend only on its contents - needs its paths added in sorted order; the packager does that, and
+the golden vector in `Test_ResourcePack.cpp` pins both writers to the same layout.
+
+Mounting therefore holds three things per pack, which is what a memory budget has to count: the decoded index
+buffer, one `FileEntry` per entry, and the lookup map. The paths themselves exist once, in the buffer - the
+entries and the map both point into it.
 
 ## Codecs
 
