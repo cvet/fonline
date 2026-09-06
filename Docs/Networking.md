@@ -330,6 +330,19 @@ The source tree supports several connection families:
 
 Build availability is controlled by compile-time feature toggles and platform dependencies. For build toggles and package workflow, see [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 
+### A listener that cannot bind is retried before the startup gives up
+
+A restart races the process it replaces for its ports, and the loser used to take the whole startup
+down on its first attempt: the world loaded, a socket that frees itself within seconds was still
+held, and every bit of that work was thrown away. Each remote listener is therefore started through
+`ServerEngine::StartConnectionServer`, which retries until `ServerNetwork.ListenRetryTime` runs out,
+waiting `ServerNetwork.ListenRetryDelay` between attempts.
+
+Past the deadline the original exception is rethrown and the startup fails, because a server nobody
+can reach is not a started server — the retries buy the losing side of the race some time, they do
+not turn a dead port into an acceptable state. The interthread transport is not part of this: it
+binds nothing another process could hold, so a failure there is a defect rather than a race.
+
 ## Tests to inspect
 
 Relevant tests include:

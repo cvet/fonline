@@ -499,7 +499,7 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
 
         timespan lock_wait_duration = _engine->RunScriptContext(execute_context);
 
-        if (_overrunTimeout && !IsRunInDebugger()) {
+        if (_overrunTimeout && !IsRunInDebugger() && !_engine->IsStartingUp()) {
             timespan total_duration = execution_time.GetDuration();
             timespan execution_duration = total_duration >= lock_wait_duration ? total_duration - lock_wait_duration : timespan::zero;
             bool execution_overrun = execution_duration >= _overrunTimeout;

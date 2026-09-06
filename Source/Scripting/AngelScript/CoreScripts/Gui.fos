@@ -3829,6 +3829,8 @@ class ItemView : Grid
 // Implementation
 
 dict<GuiScreen, CreateScreenFunc> ScreenCreators = {};
+string[] FailedScreenNames = {};
+string[] FailedScreenReasons = {};
 
 Screen[] Screens = {};
 Screen? CursorScreen;
@@ -3849,6 +3851,11 @@ Console? CurConsole;
 // Public API
 //
 
+bool IsScreenRegistered(GuiScreen screenNum)
+{
+    return ScreenCreators.exists(screenNum);
+}
+
 void RegisterScreen(GuiScreen screenNum, CreateScreenFunc screenFunc)
 {
     UnregisterScreen(screenNum);
@@ -3859,13 +3866,66 @@ void RegisterScreen(GuiScreen screenNum, CreateScreenFunc screenFunc)
 
     ScreenCreators[screenNum] = screenFunc;
 
-    // Precache
-    Screen screen = CreateScreen(screenNum);
+    // One window that cannot be built must not take the rest of the catalog with it: the creator stays
+    // registered, the failure is collected, and VerifyScreensInitialized reports them all at once
+    try {
+        // Precache
+        Screen screen = CreateScreen(screenNum);
 
-    if (screen.IsMultiinstance) {
-        screen._Remove();
-        Screens.removeAt(Screens.findByRef(screen));
+        if (screen.IsMultiinstance) {
+            screen._Remove();
+            Screens.removeAt(Screens.findByRef(screen));
+        }
     }
+    catch {
+        SetScreenFailure(DescribeScreen(screenNum), GetExceptionInfo());
+        return;
+    }
+
+    ClearScreenFailure(DescribeScreen(screenNum));
+}
+
+// Reports every window that is currently broken. Called once the catalog is complete, so the throw carries
+// all of them and none of them blocked another. The record survives the report and a later successful
+// registration clears its own entry, so it always describes the catalog as it stands
+void VerifyScreensInitialized()
+{
+    if (FailedScreenNames.isEmpty()) {
+        return;
+    }
+
+    string[] failed = {};
+
+    for (int i = 0; i < FailedScreenNames.length(); i++) {
+        failed.insertLast(FailedScreenNames[i] + ": " + FailedScreenReasons[i]);
+    }
+
+    verify(false, "Screens failed to initialize", "; ".join(failed));
+}
+
+void SetScreenFailure(string screenName, string reason)
+{
+    int index = FailedScreenNames.find(screenName);
+
+    if (index >= 0) {
+        FailedScreenReasons[index] = reason;
+        return;
+    }
+
+    FailedScreenNames.insertLast(screenName);
+    FailedScreenReasons.insertLast(reason);
+}
+
+void ClearScreenFailure(string screenName)
+{
+    int index = FailedScreenNames.find(screenName);
+
+    if (index < 0) {
+        return;
+    }
+
+    FailedScreenNames.removeAt(index);
+    FailedScreenReasons.removeAt(index);
 }
 
 void ShowScreen(GuiScreen screenNum)
@@ -4322,6 +4382,10 @@ void EngineCallback_Start()
 {
     // Register custom screens
     GuiScreens::InitializeScreens();
+
+    // Every screen is registered by now, so this throw reports the broken ones without having stopped
+    // the others from being built
+    VerifyScreensInitialized();
 }
 
 void EngineCallback_Draw()
@@ -4682,9 +4746,18 @@ void Callback_OnLanguageChanged()
 // Internal
 //
 
+// Names the screen for a diagnostic. EnumToString throws on a value the metadata does not name, which
+// would replace the caller's own failure message with "Invalid enum index"
+string DescribeScreen(GuiScreen screenNum)
+{
+    string name;
+    return Game.TryEnumToString(screenNum, name) ? name : "GuiScreen " + int(screenNum);
+}
+
 Screen CreateScreen(GuiScreen screenNum)
 {
-    verify(ScreenCreators.exists(screenNum), "No screen creator registered for this screen", screenNum);
+    verify(ScreenCreators.exists(screenNum), "No screen creator registered for this screen", DescribeScreen(screenNum));
+
     CreateScreenFunc screenFunc = ScreenCreators[screenNum];
     Screen screen = screenFunc();
     screen._Num = screenNum;

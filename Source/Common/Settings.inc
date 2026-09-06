@@ -104,6 +104,8 @@ FIXED_SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP pack
 FIXED_SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept
 FIXED_SETTING(int32_t, ServerNetwork, MaxPlayers, 0); // Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept
 FIXED_SETTING(int32_t, ServerNetwork, NewConnectionRatePerSec, 0); // Max new connections accepted per source host per second (0 = unlimited); bursts above this are dropped at accept
+FIXED_SETTING(int32_t, ServerNetwork, ListenRetryTime, 30000); // Time in milliseconds to keep retrying a listener whose port is still held by the previous process (0 = do not retry)
+FIXED_SETTING(int32_t, ServerNetwork, ListenRetryDelay, 500); // Delay in milliseconds between listener bind attempts
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 FIXED_SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
 SETTING_GROUP_END();
