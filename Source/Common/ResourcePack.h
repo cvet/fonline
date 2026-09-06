@@ -48,6 +48,22 @@ constexpr uint16_t RESOURCE_PACK_VERSION_MAJOR = 1;
 constexpr uint16_t RESOURCE_PACK_VERSION_MINOR = 0;
 constexpr size_t RESOURCE_PACK_HEADER_SIZE = 72;
 constexpr size_t RESOURCE_PACK_ENTRY_SIZE = 40;
+// Below this a deflate stream's own header costs more than the stream can save, so nothing smaller is tried
+constexpr size_t RESOURCE_PACK_MIN_COMPRESSED_SIZE = 64;
+
+// FNV-1a 64, the digest the updater already computes over whole files, applied to a byte span so a body can
+// be hashed while it is still being written
+constexpr uint64_t RESOURCE_PACK_HASH_SEED = UINT64_C(0xcbf29ce484222325);
+constexpr uint64_t RESOURCE_PACK_HASH_PRIME = UINT64_C(0x100000001b3);
+
+constexpr auto HashResourceBytes(uint64_t hash, const_span<uint8_t> data) noexcept -> uint64_t
+{
+    for (size_t i = 0; i < data.size(); ++i) {
+        hash = (hash ^ data[i]) * RESOURCE_PACK_HASH_PRIME;
+    }
+
+    return hash;
+}
 
 // A blob and an index section each choose their own storage, so data that will not shrink is never deflated
 // and never pays a decode on the way back
@@ -57,7 +73,8 @@ enum class ResourcePackCodec : uint32_t
     Deflate = 1,
 };
 
-// The header comes first in the file, so a pack identity is one small read away
+// The header comes first in the file, so a pack identity is one small read away. This is the parsed form and
+// not the on-disk image: the file is written field by field, so member order and sizeof are free here
 struct ResourcePackHeader
 {
     uint64_t PackHash {}; // Over [RESOURCE_PACK_HEADER_SIZE, end of file): the identity the updater compares
@@ -78,6 +95,20 @@ struct ResourcePackWriteSettings
     // A blob is deflated only when it gives back at least this much, so the decode cost buys something
     int32_t MinCompressGainPercent {5};
 };
+
+// One entry as the pack stores it, so a merged index can point at the bytes without re-reading the pack
+struct ResourcePackEntryRef
+{
+    string Path {};
+    uint64_t DataOffset {};
+    uint64_t StoredSize {};
+    uint64_t DecodedSize {};
+    uint32_t Codec {};
+};
+
+// Deflates a blob and keeps the result only when it gives back the configured minimum. Both formats encode
+// through this, so an index section and a payload obey one rule
+auto EncodeResourceBlob(const_span<uint8_t> data, const ResourcePackWriteSettings& settings, uint32_t& codec) -> vector<uint8_t>;
 
 // Reads only the header, without touching the index or the payloads
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool;
@@ -143,6 +174,7 @@ public:
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
     [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
     [[nodiscard]] auto GetPackHash() const noexcept -> uint64_t { return _header.PackHash; }
+    [[nodiscard]] auto GetEntryRefs() const -> vector<ResourcePackEntryRef>;
 
 private:
     struct FileEntry

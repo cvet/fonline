@@ -35,82 +35,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint64_t HASH_SEED = UINT64_C(0xcbf29ce484222325);
-
-// FNV-1a 64, the same digest the updater already computes over whole files, applied here to a byte span so a
-// pack body can be hashed while it is still being written
-static auto HashBytes(uint64_t hash, const_span<uint8_t> data) noexcept -> uint64_t
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    constexpr uint64_t prime = UINT64_C(0x100000001b3);
-
-    for (size_t i = 0; i < data.size(); ++i) {
-        hash = (hash ^ data[i]) * prime;
-    }
-
-    return hash;
-}
-
-static void WriteUint16(span<uint8_t> buf, size_t offset, uint16_t value) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    buf[offset + 0] = static_cast<uint8_t>(value & 0xFF);
-    buf[offset + 1] = static_cast<uint8_t>((value >> 8) & 0xFF);
-}
-
-static void WriteUint32(span<uint8_t> buf, size_t offset, uint32_t value) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (size_t i = 0; i < 4; ++i) {
-        buf[offset + i] = static_cast<uint8_t>((value >> (i * 8)) & 0xFF);
-    }
-}
-
-static void WriteUint64(span<uint8_t> buf, size_t offset, uint64_t value) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (size_t i = 0; i < 8; ++i) {
-        buf[offset + i] = static_cast<uint8_t>((value >> (i * 8)) & 0xFF);
-    }
-}
-
-static auto ReadUint16(const_span<uint8_t> buf, size_t offset) noexcept -> uint16_t
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return static_cast<uint16_t>(buf[offset + 0]) | static_cast<uint16_t>(static_cast<uint16_t>(buf[offset + 1]) << 8);
-}
-
-static auto ReadUint32(const_span<uint8_t> buf, size_t offset) noexcept -> uint32_t
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    uint32_t value = 0;
-
-    for (size_t i = 0; i < 4; ++i) {
-        value |= static_cast<uint32_t>(buf[offset + i]) << (i * 8);
-    }
-
-    return value;
-}
-
-static auto ReadUint64(const_span<uint8_t> buf, size_t offset) noexcept -> uint64_t
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    uint64_t value = 0;
-
-    for (size_t i = 0; i < 8; ++i) {
-        value |= static_cast<uint64_t>(buf[offset + i]) << (i * 8);
-    }
-
-    return value;
-}
-
 // Header layout, little endian throughout. The checksum covers everything before it, so a header that survived
 // a truncated write is rejected before any offset it carries is believed
 static constexpr size_t HEADER_OFFSET_MAGIC = 0;
@@ -126,48 +50,63 @@ static constexpr size_t HEADER_OFFSET_DATA_OFFSET = 48;
 static constexpr size_t HEADER_OFFSET_DATA_SIZE = 56;
 static constexpr size_t HEADER_OFFSET_CHECKSUM = 64;
 
+// Entry layout inside the decoded index
+static constexpr size_t ENTRY_OFFSET_PATH_OFFSET = 0;
+static constexpr size_t ENTRY_OFFSET_PATH_LENGTH = 4;
+static constexpr size_t ENTRY_OFFSET_DATA_OFFSET = 8;
+static constexpr size_t ENTRY_OFFSET_STORED_SIZE = 16;
+static constexpr size_t ENTRY_OFFSET_DECODED_SIZE = 24;
+static constexpr size_t ENTRY_OFFSET_CODEC = 32;
+static constexpr size_t ENTRY_OFFSET_FLAGS = 36;
+
+// The offsets above are the format. These pin the record sizes to them, so widening a field without widening
+// the record it sits in stops compiling instead of writing a file nothing can read
+static_assert(HEADER_OFFSET_CHECKSUM + sizeof(uint64_t) == RESOURCE_PACK_HEADER_SIZE);
+static_assert(ENTRY_OFFSET_FLAGS + sizeof(uint32_t) == RESOURCE_PACK_ENTRY_SIZE);
+static_assert(RESOURCE_PACK_MAGIC == (uint32_t {'F'} | uint32_t {'O'} << 8 | uint32_t {'R'} << 16 | uint32_t {'S'} << 24));
+
 static void BuildHeaderBytes(const ResourcePackHeader& header, span<uint8_t> buf) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    WriteUint32(buf, HEADER_OFFSET_MAGIC, RESOURCE_PACK_MAGIC);
-    WriteUint16(buf, HEADER_OFFSET_VERSION_MAJOR, header.VersionMajor);
-    WriteUint16(buf, HEADER_OFFSET_VERSION_MINOR, header.VersionMinor);
-    WriteUint64(buf, HEADER_OFFSET_PACK_HASH, header.PackHash);
-    WriteUint64(buf, HEADER_OFFSET_INDEX_OFFSET, header.IndexOffset);
-    WriteUint64(buf, HEADER_OFFSET_INDEX_STORED_SIZE, header.IndexStoredSize);
-    WriteUint64(buf, HEADER_OFFSET_INDEX_DECODED_SIZE, header.IndexDecodedSize);
-    WriteUint32(buf, HEADER_OFFSET_INDEX_CODEC, header.IndexCodec);
-    WriteUint32(buf, HEADER_OFFSET_ENTRY_COUNT, header.EntryCount);
-    WriteUint64(buf, HEADER_OFFSET_DATA_OFFSET, header.DataOffset);
-    WriteUint64(buf, HEADER_OFFSET_DATA_SIZE, header.DataSize);
-    WriteUint64(buf, HEADER_OFFSET_CHECKSUM, HashBytes(HASH_SEED, const_span<uint8_t> {buf.data(), HEADER_OFFSET_CHECKSUM}));
+    span_write_uint32(buf, HEADER_OFFSET_MAGIC, RESOURCE_PACK_MAGIC);
+    span_write_uint16(buf, HEADER_OFFSET_VERSION_MAJOR, header.VersionMajor);
+    span_write_uint16(buf, HEADER_OFFSET_VERSION_MINOR, header.VersionMinor);
+    span_write_uint64(buf, HEADER_OFFSET_PACK_HASH, header.PackHash);
+    span_write_uint64(buf, HEADER_OFFSET_INDEX_OFFSET, header.IndexOffset);
+    span_write_uint64(buf, HEADER_OFFSET_INDEX_STORED_SIZE, header.IndexStoredSize);
+    span_write_uint64(buf, HEADER_OFFSET_INDEX_DECODED_SIZE, header.IndexDecodedSize);
+    span_write_uint32(buf, HEADER_OFFSET_INDEX_CODEC, header.IndexCodec);
+    span_write_uint32(buf, HEADER_OFFSET_ENTRY_COUNT, header.EntryCount);
+    span_write_uint64(buf, HEADER_OFFSET_DATA_OFFSET, header.DataOffset);
+    span_write_uint64(buf, HEADER_OFFSET_DATA_SIZE, header.DataSize);
+    span_write_uint64(buf, HEADER_OFFSET_CHECKSUM, HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {buf.data(), HEADER_OFFSET_CHECKSUM}));
 }
 
 static auto ParseHeaderBytes(const_span<uint8_t> buf, ResourcePackHeader& header) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (ReadUint32(buf, HEADER_OFFSET_MAGIC) != RESOURCE_PACK_MAGIC) {
+    if (span_read_uint32(buf, HEADER_OFFSET_MAGIC) != RESOURCE_PACK_MAGIC) {
         return false;
     }
 
-    uint64_t checksum = HashBytes(HASH_SEED, const_span<uint8_t> {buf.data(), HEADER_OFFSET_CHECKSUM});
+    uint64_t checksum = HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {buf.data(), HEADER_OFFSET_CHECKSUM});
 
-    if (ReadUint64(buf, HEADER_OFFSET_CHECKSUM) != checksum) {
+    if (span_read_uint64(buf, HEADER_OFFSET_CHECKSUM) != checksum) {
         return false;
     }
 
-    header.VersionMajor = ReadUint16(buf, HEADER_OFFSET_VERSION_MAJOR);
-    header.VersionMinor = ReadUint16(buf, HEADER_OFFSET_VERSION_MINOR);
-    header.PackHash = ReadUint64(buf, HEADER_OFFSET_PACK_HASH);
-    header.IndexOffset = ReadUint64(buf, HEADER_OFFSET_INDEX_OFFSET);
-    header.IndexStoredSize = ReadUint64(buf, HEADER_OFFSET_INDEX_STORED_SIZE);
-    header.IndexDecodedSize = ReadUint64(buf, HEADER_OFFSET_INDEX_DECODED_SIZE);
-    header.IndexCodec = ReadUint32(buf, HEADER_OFFSET_INDEX_CODEC);
-    header.EntryCount = ReadUint32(buf, HEADER_OFFSET_ENTRY_COUNT);
-    header.DataOffset = ReadUint64(buf, HEADER_OFFSET_DATA_OFFSET);
-    header.DataSize = ReadUint64(buf, HEADER_OFFSET_DATA_SIZE);
+    header.VersionMajor = span_read_uint16(buf, HEADER_OFFSET_VERSION_MAJOR);
+    header.VersionMinor = span_read_uint16(buf, HEADER_OFFSET_VERSION_MINOR);
+    header.PackHash = span_read_uint64(buf, HEADER_OFFSET_PACK_HASH);
+    header.IndexOffset = span_read_uint64(buf, HEADER_OFFSET_INDEX_OFFSET);
+    header.IndexStoredSize = span_read_uint64(buf, HEADER_OFFSET_INDEX_STORED_SIZE);
+    header.IndexDecodedSize = span_read_uint64(buf, HEADER_OFFSET_INDEX_DECODED_SIZE);
+    header.IndexCodec = span_read_uint32(buf, HEADER_OFFSET_INDEX_CODEC);
+    header.EntryCount = span_read_uint32(buf, HEADER_OFFSET_ENTRY_COUNT);
+    header.DataOffset = span_read_uint64(buf, HEADER_OFFSET_DATA_OFFSET);
+    header.DataSize = span_read_uint64(buf, HEADER_OFFSET_DATA_SIZE);
     return true;
 }
 
@@ -209,7 +148,7 @@ auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexc
     // The body is hashed in bounded slices so a multi-gigabyte pack never has to sit in memory to be checked
     constexpr size_t SLICE_SIZE = 1024 * 1024;
     auto slice = vector<uint8_t>(SLICE_SIZE);
-    uint64_t hash = HASH_SEED;
+    uint64_t hash = RESOURCE_PACK_HASH_SEED;
     uint64_t offset = RESOURCE_PACK_HEADER_SIZE;
     uint64_t remaining = file.get_size() - RESOURCE_PACK_HEADER_SIZE;
 
@@ -220,7 +159,7 @@ auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexc
             return false;
         }
 
-        hash = HashBytes(hash, const_span<uint8_t> {slice.data(), chunk});
+        hash = HashResourceBytes(hash, const_span<uint8_t> {slice.data(), chunk});
         offset += chunk;
         remaining -= chunk;
     }
@@ -228,15 +167,13 @@ auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexc
     return hash == header.PackHash;
 }
 
-// Deflates the payload and keeps the result only when it gives back the configured minimum, so data that is
-// already compressed is stored as it is and costs nothing to read back
-static auto EncodeBlob(const_span<uint8_t> data, const ResourcePackWriteSettings& settings, uint32_t& codec) -> vector<uint8_t>
+auto EncodeResourceBlob(const_span<uint8_t> data, const ResourcePackWriteSettings& settings, uint32_t& codec) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     codec = static_cast<uint32_t>(ResourcePackCodec::Stored);
 
-    if (data.size() < 64) {
+    if (data.size() < RESOURCE_PACK_MIN_COMPRESSED_SIZE) {
         return {data.begin(), data.end()};
     }
 
@@ -281,7 +218,7 @@ ResourcePackWriter::ResourcePackWriter(string_view path, ResourcePackWriteSettin
         throw ResourcePackException("Can't write pack header placeholder", _path);
     }
 
-    _bodyHash = HASH_SEED;
+    _bodyHash = RESOURCE_PACK_HASH_SEED;
     _bodyOffset = RESOURCE_PACK_HEADER_SIZE;
 }
 
@@ -304,7 +241,7 @@ void ResourcePackWriter::AddFile(string_view path, const_span<uint8_t> data)
     FO_VERIFY_AND_THROW(!path.empty(), "Pack entry path is empty", _path);
 
     uint32_t codec = 0;
-    vector<uint8_t> blob = EncodeBlob(data, _settings, codec);
+    vector<uint8_t> blob = EncodeResourceBlob(data, _settings, codec);
 
     Entry entry;
     entry.Path = strex(path).normalize_path_slashes();
@@ -325,7 +262,7 @@ void ResourcePackWriter::WriteBody(const_span<uint8_t> data)
         throw ResourcePackException("Can't write pack body", _path, data.size());
     }
 
-    _bodyHash = HashBytes(_bodyHash, data);
+    _bodyHash = HashResourceBytes(_bodyHash, data);
     _bodyOffset += numeric_cast<uint64_t>(data.size());
 }
 
@@ -355,13 +292,13 @@ void ResourcePackWriter::Finish()
     size_t entry_offset = 0;
 
     for (const Entry& entry : _entries) {
-        WriteUint32(index_span, entry_offset + 0, numeric_cast<uint32_t>(pool_offset));
-        WriteUint32(index_span, entry_offset + 4, numeric_cast<uint32_t>(entry.Path.size()));
-        WriteUint64(index_span, entry_offset + 8, entry.DataOffset);
-        WriteUint64(index_span, entry_offset + 16, entry.StoredSize);
-        WriteUint64(index_span, entry_offset + 24, entry.DecodedSize);
-        WriteUint32(index_span, entry_offset + 32, entry.Codec);
-        WriteUint32(index_span, entry_offset + 36, 0);
+        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_OFFSET, numeric_cast<uint32_t>(pool_offset));
+        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_LENGTH, numeric_cast<uint32_t>(entry.Path.size()));
+        span_write_uint64(index_span, entry_offset + ENTRY_OFFSET_DATA_OFFSET, entry.DataOffset);
+        span_write_uint64(index_span, entry_offset + ENTRY_OFFSET_STORED_SIZE, entry.StoredSize);
+        span_write_uint64(index_span, entry_offset + ENTRY_OFFSET_DECODED_SIZE, entry.DecodedSize);
+        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_CODEC, entry.Codec);
+        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_FLAGS, 0);
 
         std::memcpy(index.data() + pool_offset, entry.Path.data(), entry.Path.size());
         pool_offset += entry.Path.size();
@@ -369,7 +306,7 @@ void ResourcePackWriter::Finish()
     }
 
     uint32_t index_codec = 0;
-    vector<uint8_t> stored_index = EncodeBlob(const_span<uint8_t> {index.data(), index.size()}, _settings, index_codec);
+    vector<uint8_t> stored_index = EncodeResourceBlob(const_span<uint8_t> {index.data(), index.size()}, _settings, index_codec);
 
     ResourcePackHeader header;
     header.VersionMajor = RESOURCE_PACK_VERSION_MAJOR;
@@ -482,12 +419,12 @@ void ResourcePackSource::ParseIndex()
         size_t entry_offset = numeric_cast<size_t>(i) * RESOURCE_PACK_ENTRY_SIZE;
 
         FileEntry entry;
-        uint32_t path_offset = ReadUint32(index_span, entry_offset + 0);
-        uint32_t path_length = ReadUint32(index_span, entry_offset + 4);
-        entry.DataOffset = ReadUint64(index_span, entry_offset + 8);
-        entry.StoredSize = ReadUint64(index_span, entry_offset + 16);
-        entry.DecodedSize = ReadUint64(index_span, entry_offset + 24);
-        entry.Codec = ReadUint32(index_span, entry_offset + 32);
+        uint32_t path_offset = span_read_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_OFFSET);
+        uint32_t path_length = span_read_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_LENGTH);
+        entry.DataOffset = span_read_uint64(index_span, entry_offset + ENTRY_OFFSET_DATA_OFFSET);
+        entry.StoredSize = span_read_uint64(index_span, entry_offset + ENTRY_OFFSET_STORED_SIZE);
+        entry.DecodedSize = span_read_uint64(index_span, entry_offset + ENTRY_OFFSET_DECODED_SIZE);
+        entry.Codec = span_read_uint32(index_span, entry_offset + ENTRY_OFFSET_CODEC);
 
         if (path_length == 0 || path_offset < pool_begin || numeric_cast<uint64_t>(path_offset) + path_length > _index.size()) {
             throw DataSourceException("Resource pack entry path lies outside the string pool", _fileName, i, path_offset, path_length);
@@ -597,6 +534,20 @@ auto ResourcePackSource::GetFileNames(string_view dir, bool recursive, string_vi
     }
 
     return GetFileNamesGeneric(names, dir, recursive, ext);
+}
+
+auto ResourcePackSource::GetEntryRefs() const -> vector<ResourcePackEntryRef>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ResourcePackEntryRef> refs;
+    refs.reserve(_entries.size());
+
+    for (const FileEntry& entry : _entries) {
+        refs.emplace_back(ResourcePackEntryRef {string(entry.Path), entry.DataOffset, entry.StoredSize, entry.DecodedSize, entry.Codec});
+    }
+
+    return refs;
 }
 
 auto ResourcePackSource::GetIndexSnapshot() const -> optional<vector<IndexedFile>>

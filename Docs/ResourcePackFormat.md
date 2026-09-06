@@ -1,7 +1,8 @@
 # Resource Pack Format
 
-`.fores` is the engine resource pack format: one file holding a fixed header, the payload blobs and the index
-over them. It replaces the ZIP artifact behind a resource pack.
+Two formats. `.fores` is the engine resource pack: one file holding a fixed header, the payload blobs and the
+index over them, and it replaces the ZIP artifact behind a resource pack. `.foindex` is the merged tree over
+several packs - references only, built locally, disposable.
 
 Two properties drive the layout:
 
@@ -134,6 +135,72 @@ Per read: the decoded size matches what the entry declared. A mismatch is a corr
 
 Every failure throws. A file that claims the `FORS` magic and fails validation is never downgraded to an empty
 source and never falls back to another artifact of the same pack.
+
+## The merged tree: `.foindex`
+
+`.fores` answers "what is in this pack". A client needs "where is this path", once, over every pack it has.
+`.foindex` is that answer written down: one file naming every path the packs present and where its bytes live.
+It holds no payload of its own - every entry points into a `.fores`.
+
+It is built locally and is disposable. Nothing ships it, nothing downloads it, and deleting it costs one
+rebuild.
+
+### Header
+
+72 bytes, always uncompressed, the same shape as a pack header so one reader habit covers both.
+
+| Offset | Size | Field | Meaning |
+|--------|------|-------|---------|
+| 0 | 4 | `Magic` | `0x58494F46`, the ASCII `FOIX` |
+| 4 | 2 | `VersionMajor` | 1 |
+| 6 | 2 | `VersionMinor` | 0 |
+| 8 | 8 | `PackListHash` | The divergence key, below |
+| 16 | 8 | `IndexOffset` | Absolute offset of the stored index |
+| 24 | 8 | `IndexStoredSize` | Index bytes on disk |
+| 32 | 8 | `IndexDecodedSize` | Index bytes after decoding |
+| 40 | 4 | `IndexCodec` | `0` stored, `1` deflate |
+| 44 | 4 | `EntryCount` | Number of merged entries |
+| 48 | 4 | `PackCount` | Number of packs the tree draws from |
+| 64 | 8 | `HeaderChecksum` | FNV-1a 64 over `[0, 64)` |
+
+### Index
+
+One buffer, stored or deflated by the same rule a pack's index follows. Decoded, it is:
+
+```text
+Pack[PackCount]       16 bytes each
+Entry[EntryCount]     40 bytes each
+StringPool            UTF-8, not null terminated
+```
+
+A pack record is `NameOffset` (4), `NameLength` (4) and `PackHash` (8). It records the pack's **name**, never a
+path, so an installed client that moved on disk still resolves; the hash is what proves the file found under
+that name is the one that was merged.
+
+An entry is `PathOffset` (4), `PathLength` (4), `PackIndex` (4), `Codec` (4), `DataOffset` (8), `StoredSize`
+(8) and `DecodedSize` (8). The offset and sizes are the blob's inside the pack the index names, copied from
+that pack's own index at build time - so a read is one hash probe here and one positional read there, with no
+per-pack index consulted at runtime.
+
+### The merge rule
+
+Packs are folded in the configured order and the last one to declare a path wins, which is exactly the
+precedence the per-pack mounts already have. Entries are sorted by path, as in a pack.
+
+### Divergence and rebuild
+
+`PackListHash` folds each pack's name and hash, in order. That one field answers the whole question: an edited
+pack changes its `PackHash`, and an added, removed or reordered pack changes the sequence. Checking it costs
+one 72-byte read per pack, not a mount.
+
+The index is rebuilt whenever it does not describe what is on disk: it is missing, it fails header validation,
+its `PackListHash` differs from the current pack list, or any pack it names is absent or carries a different
+hash. There is no partial update - the rebuild reads the packs and replaces the file, writing through a
+neighbouring temporary and renaming over the target, so an interrupted rebuild leaves the previous index
+intact. A rebuild never writes into a `.fores`.
+
+A reader that meets a stale index throws rather than falling back, because a merged tree that half-describes
+the packs is worse than no tree: the caller's answer is to rebuild.
 
 ## Reserved for later
 
