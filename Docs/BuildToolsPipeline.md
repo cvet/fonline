@@ -152,7 +152,9 @@ Each `[ResourcePack]` becomes one `<Name>.fores` under the target's resource dir
 `BuildTools/measure_resource_packs.py` writes a baked tree in both formats and reports what each costs -
 shipped bytes, bytes read to mount, the stored/deflate split and write time - so the choice of format stays
 answerable against a real corpus rather than from memory. It takes the baked root as an argument and deletes
-each artifact as it measures it, so it needs no project data and peaks at one pack in two formats.
+each artifact as it measures it, so it needs no project data and peaks at one pack in two formats. `--verify`
+adds the correctness half: every entry is read back out of the artifact and diffed against the source by name
+in both directions and by raw bytes, and the tool exits non-zero when anything differs.
 
 Two writers of one binary format is a drift risk, so they are pinned together: `Source/Tests/Test_ResourcePack.cpp` holds a golden vector produced by `package.py` and asserts the engine writer reproduces it byte for byte. The vector is written with compression disabled, so a zlib version difference between Python and the engine cannot break it while the layout stays comparable.
 
