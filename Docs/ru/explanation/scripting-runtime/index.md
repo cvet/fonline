@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 # Скриптовый runtime
 
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"3a85b54cc74f281136b582feeccfafce495b376fb33dd78c98c849e46bd97c2b"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"8dfbc8deba74e8d5e5fc0173dbea9b30d53f2399e5cbe81cb2fa0822ad4fb26d"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
@@ -185,6 +185,17 @@ Events и remote calls являются разными понятиями. Event
 При добавлении метода размещайте его на стороне, владеющей изменяемым состоянием. Например, авторитетное создание предмета относится к серверным методам, а sprite/UI helpers — к клиентским или общим frontend methods.
 
 AngelScript хранит значение `bool` в одном байте четырёхбайтового stack slot VM, верхние байты которого могут содержать прежние данные. Исправленные пути native-call marshalling для x64 GCC, x64 MSVC и ARM64 обнуляют destination argument slot и копируют только байты значения по его типу. Поэтому native callee может полагаться, что входной регистр `bool` нормализован к `0` или `1`; эту ABI boundary закрепляет `AngelScriptNativeCallNormalizesBoolArgument` в `Source/Tests/Test_AngelScriptAlignment.cpp`.
+
+`Gui::RegisterScreen` прекеширует каждый экран внутри try/catch, поэтому одно окно,
+которое не удалось построить, больше не стоит регистраций, идущих за ним: у неудачного
+экрана остаётся его creator, остальные регистрируются как обычно, а
+`Gui::VerifyScreensInitialized()` затем поднимает один `verify`, называющий все окна,
+которые не собрались. `Gui::IsScreenRegistered` отвечает, сохранён ли creator, а
+`verify` в `CreateScreen` передаёт имя элемента перечисления экрана как контекст.
+Важно, чего `catch` в AngelScript не даёт: он не связывает объект исключения, поэтому
+`GetExceptionInfo()` возвращает сообщение того исключения, которое обрабатывает текущий
+блок catch, и этот контекст сбрасывается только при повторной подготовке контекста
+скрипта.
 
 Lookup текста следует той же модели владения. Клиентские и mapper-скрипты могут получать строки и менять язык; серверные скрипты предоставляют только проверку наличия текста и число вариантов. Полный поведенческий контракт и семантика отсутствующих данных находятся в [руководстве по тексту и локализации](../../how-to/content/text-and-localization.md).
 

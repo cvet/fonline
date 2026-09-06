@@ -201,6 +201,16 @@ When adding a method, route it to the side that owns the state it mutates. For e
 
 AngelScript stores a `bool` value in one byte of a four-byte VM stack slot, whose upper bytes may retain earlier data. The patched native-call marshalling paths for x64 GCC, x64 MSVC, and ARM64 zero the destination argument slot and copy only the value type's in-memory bytes. Native callees may therefore rely on an incoming `bool` register being normalized to `0` or `1`; `AngelScriptNativeCallNormalizesBoolArgument` in `Source/Tests/Test_AngelScriptAlignment.cpp` pins this ABI boundary.
 
+`Gui::RegisterScreen` precaches each screen inside a try/catch, so one window that
+cannot be built no longer costs the registrations behind it: the failing screen keeps
+its creator, the rest register normally, and `Gui::VerifyScreensInitialized()` then
+raises a single `verify` naming every window that failed. `Gui::IsScreenRegistered`
+answers whether a creator is stored, and the `verify` in `CreateScreen` carries the
+screen's enum name as context. Note what an AngelScript `catch` does not give you: it
+binds no exception object, so `GetExceptionInfo()` reports the message of the exception
+the current catch block is handling, and that context is reset only when the script
+context is reprepared.
+
 Text lookup follows the same side ownership. Client/mapper scripts can retrieve
 strings and change language; server scripts expose only text presence and
 variant counts. The complete behavioral contract and missing-data semantics are
