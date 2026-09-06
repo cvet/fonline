@@ -45,6 +45,10 @@
 
 FO_BEGIN_NAMESPACE
 
+// An installed file wears this while it is being replaced. Both writers of that swap - the updater and the
+// client host's staged-runtime promotion - take it from here, because a sweep looks files up by this name
+constexpr string_view REPLACED_FILE_BACKUP_SUFFIX = "-backup";
+
 enum class UpdaterResult : uint8_t
 {
     ResourcesReady = 0, // Gameplay compat OK; resources are now in sync, caller may start the game
@@ -105,6 +109,7 @@ private:
     void Abort(string_view text);
     void GetNextFile();
     void FinishResourcesUpdate();
+    void RebuildResourceIndex() const;
     auto ReadLocalMetadataVersion() const -> string;
     void RecoverInterruptedReplacements() const;
     void RemoveStaleTempPacks() const;

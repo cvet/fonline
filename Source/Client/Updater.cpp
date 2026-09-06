@@ -36,6 +36,7 @@
 #include "Client.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
+#include "ResourceIndex.h"
 #include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
@@ -55,7 +56,6 @@ static constexpr string_view StrMetadataMismatch = "Game data on the server does
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
-static constexpr string_view ReplacedFileBackupSuffix = "-backup";
 static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
@@ -255,8 +255,46 @@ void Updater::FinishResourcesUpdate()
         return;
     }
 
+    RebuildResourceIndex();
+
     WriteLog("Client updater: resources ready, metadata version {}", local_metadata_version);
     _result = UpdaterResult::ResourcesReady;
+}
+
+void Updater::RebuildResourceIndex() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string index_path;
+
+    // The merged tree is an optimization over mounting each pack, so nothing here may fail the update. The
+    // whole body is guarded, not just the build, so a throw anywhere leaves the client on the per-pack view
+    try {
+        vector<string> pack_dirs = GetClientPackDirs(*_settings);
+        index_path = GetClientResourceIndexPath(*_settings);
+
+        if (IsResourceIndexCurrent(index_path, pack_dirs, _settings->ClientResourceEntries)) {
+            return;
+        }
+
+        vector<ResourceIndexPack> packs;
+        vector<string> pack_paths;
+
+        if (!ResolveResourceIndexPacks(pack_dirs, _settings->ClientResourceEntries, packs, pack_paths)) {
+            WriteLog("Client updater: can't resolve every pack, leaving the merged index to the next run");
+            return;
+        }
+
+        BuildResourceIndex(index_path, pack_paths, packs);
+        WriteLog("Client updater: merged index rebuilt over {} packs", packs.size());
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Client updater: can't build the merged index, {}", ex.what());
+
+        if (!index_path.empty()) {
+            (void)fs_remove_file(index_path);
+        }
+    }
 }
 
 auto Updater::ReadLocalMetadataVersion() const -> string
@@ -859,11 +897,11 @@ void Updater::RecoverInterruptedReplacements() const
         }
 
         for (const auto& name : fs_list_dir_file_names(dir)) {
-            if (!name.ends_with(ReplacedFileBackupSuffix) || name.size() == ReplacedFileBackupSuffix.size()) {
+            if (!name.ends_with(REPLACED_FILE_BACKUP_SUFFIX) || name.size() == REPLACED_FILE_BACKUP_SUFFIX.size()) {
                 continue;
             }
 
-            string_view live_name = string_view {name}.substr(0, name.size() - ReplacedFileBackupSuffix.size());
+            string_view live_name = string_view {name}.substr(0, name.size() - REPLACED_FILE_BACKUP_SUFFIX.size());
 
             string backup_path = strex(dir).combine_path(name).str();
             string live_path = strex(dir).combine_path(live_name).str();
@@ -962,7 +1000,7 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    string backup_path = strex("{}{}", final_path, ReplacedFileBackupSuffix).str();
+    string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
     bool final_exists = fs_exists(final_path);
 
     fs_remove_file(backup_path);

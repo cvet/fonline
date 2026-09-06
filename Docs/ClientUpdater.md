@@ -359,11 +359,20 @@ lists are removed (`RemoveStaleTempPacks`), so an interrupted download does not 
 for ever; a temp file for a pack still on the list is the resume point and is kept.
 
 A promotion that was interrupted between its two renames is repaired first (`RecoverInterruptedReplacements`).
-`ReplaceFileSafely` moves the installed file to `<name>.bak` before renaming the new one into place and puts
+A successful resource sync ends by rebuilding the merged tree. `FinishResourcesUpdate` calls
+`RebuildResourceIndex`, which skips the work when `IsResourceIndexCurrent` says the tree already describes the
+packs - a sync that changed nothing rewrites nothing - and otherwise merges the packs into `Resources.foindex`
+beside them. Building it is best effort: the tree is an optimization over mounting each pack, so a failure is
+logged, the half-built file is removed, and the update still succeeds with the client taking the per-pack
+view. That is the one place anything writes a `.foindex`; nothing ships or downloads one.
+
+`ReplaceFileSafely` moves the installed file to `<name>-backup` before renaming the new one into place and puts
 it back when that fails - but the restore can fail for the same reason, and then the only copy of the pack is
 a backup nothing reads. A backup whose live counterpart is missing is renamed back; one whose counterpart is
-present is obsolete and removed. `ApplyStagedBinaryUpdate` in the client host writes the same `<name>.bak`
-shape, so the same sweep also repairs a runtime library whose promotion was interrupted. The updater releases
+present is obsolete and removed. `ApplyStagedBinaryUpdate` in the client host writes the same suffix, taken
+from the same `REPLACED_FILE_BACKUP_SUFFIX`, so one sweep repairs an interrupted swap whichever of the two
+started it. The constant lives in `Updater.h` rather than in either writer precisely because a sweep looks
+files up by that name: two spellings mean the other writer's leftovers are invisible. The updater releases
 every mounted data source at the end of its constructor (`CleanDataSources`) precisely so a pack it is about
 to replace is not open: `open_shared_read_file` shares read and write but not delete, so a live
 `ResourcePackSource` would refuse the rename.

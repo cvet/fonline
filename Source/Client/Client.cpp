@@ -43,13 +43,11 @@ FO_BEGIN_NAMESPACE
 
 extern void ClientInitHook(ptr<ClientEngine>);
 
-auto GetClientResources(const ClientSettings& settings) -> FileSystem
+auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FileSystem resources;
-    string base_dir = settings.Packaged ? settings.ClientResources : settings.BakeOutput;
-    vector<string> pack_dirs {base_dir};
+    vector<string> pack_dirs {settings.Packaged ? settings.ClientResources : settings.BakeOutput};
 
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
@@ -57,16 +55,35 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
         pack_dirs.emplace_back(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
     }
 
-    // One merged tree when the packs on disk are the ones it was built from. It is disposable, so anything
-    // else - absent, stale, unreadable - falls back to the per-pack mounts and costs only the rebuild
-    string index_path = strex(pack_dirs.back()).combine_path(RESOURCE_INDEX_FILE_NAME).str();
+    return pack_dirs;
+}
 
+auto GetClientResourceIndexPath(const ClientSettings& settings) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> pack_dirs = GetClientPackDirs(settings);
+
+    // Beside the packs the updater writes, which is the writable overlay when there is one
+    return strex(pack_dirs.back()).combine_path(RESOURCE_INDEX_FILE_NAME).str();
+}
+
+auto GetClientResources(const ClientSettings& settings) -> FileSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FileSystem resources;
+    vector<string> pack_dirs = GetClientPackDirs(settings);
+    string index_path = GetClientResourceIndexPath(settings);
+
+    // One merged tree when the packs on disk are the ones it was built from. It is disposable, so anything
+    // the check rejects falls back to the per-pack mounts and costs only the rebuild
     if (IsResourceIndexCurrent(index_path, pack_dirs, settings.ClientResourceEntries)) {
         resources.AddCustomSource(SafeAlloc::MakeUnique<ResourceIndexSource>(index_path, pack_dirs));
         return resources;
     }
 
-    resources.AddPacksSource(base_dir, settings.ClientResourceEntries);
+    resources.AddPacksSource(pack_dirs.front(), settings.ClientResourceEntries);
 
     for (size_t i = 1; i < pack_dirs.size(); ++i) {
         for (const string& pack : settings.ClientResourceEntries) {
