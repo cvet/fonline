@@ -33,6 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "DataSource.h"
 #include "ResourceIndex.h"
 #include "ResourcePack.h"
 
@@ -75,6 +76,89 @@ static auto ReadThroughIndex(const ResourceIndexSource& index, string_view path)
     REQUIRE(buf);
     auto data = const_span<uint8_t> {buf.get(), size};
     return vector<uint8_t> {data.begin(), data.end()};
+}
+
+static auto Crc32(const_span<uint8_t> data) -> uint32_t
+{
+    uint32_t crc = 0xFFFFFFFF;
+
+    for (uint8_t byte : data) {
+        crc ^= byte;
+
+        for (size_t bit = 0; bit < 8; ++bit) {
+            crc = (crc >> 1) ^ (0xEDB88320 & (0 - (crc & 1)));
+        }
+    }
+
+    return ~crc;
+}
+
+// A stored-entry zip, written by hand because the engine has no zip writer - only unzip is compiled in. It is
+// enough to mount through DataSource::MountPack and measure the engine's own reader against a pack
+static void WriteStoredZip(string_view path, const vector<std::pair<string, string>>& files)
+{
+    vector<uint8_t> out;
+    vector<uint8_t> central;
+    auto put16 = [](vector<uint8_t>& buf, uint16_t value) { buf.insert(buf.end(), {static_cast<uint8_t>(value & 0xFF), static_cast<uint8_t>(value >> 8)}); };
+    auto put32 = [](vector<uint8_t>& buf, uint32_t value) {
+        for (size_t i = 0; i < 4; ++i) {
+            buf.emplace_back(static_cast<uint8_t>((value >> (i * 8)) & 0xFF));
+        }
+    };
+    auto put_bytes = [](vector<uint8_t>& buf, string_view text) { buf.insert(buf.end(), text.begin(), text.end()); };
+
+    for (const auto& [name, content] : files) {
+        uint32_t local_offset = numeric_cast<uint32_t>(out.size());
+        uint32_t crc = Crc32(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
+        uint32_t size = numeric_cast<uint32_t>(content.size());
+
+        put32(out, 0x04034B50);
+        put16(out, 20);
+        put16(out, 0);
+        put16(out, 0); // Stored
+        put16(out, 0);
+        put16(out, 0);
+        put32(out, crc);
+        put32(out, size);
+        put32(out, size);
+        put16(out, numeric_cast<uint16_t>(name.size()));
+        put16(out, 0);
+        put_bytes(out, name);
+        put_bytes(out, content);
+
+        put32(central, 0x02014B50);
+        put16(central, 20);
+        put16(central, 20);
+        put16(central, 0);
+        put16(central, 0);
+        put16(central, 0);
+        put16(central, 0);
+        put32(central, crc);
+        put32(central, size);
+        put32(central, size);
+        put16(central, numeric_cast<uint16_t>(name.size()));
+        put16(central, 0);
+        put16(central, 0);
+        put16(central, 0);
+        put16(central, 0);
+        put32(central, 0);
+        put32(central, local_offset);
+        put_bytes(central, name);
+    }
+
+    uint32_t central_offset = numeric_cast<uint32_t>(out.size());
+    out.insert(out.end(), central.begin(), central.end());
+
+    put32(out, 0x06054B50);
+    put16(out, 0);
+    put16(out, 0);
+    put16(out, numeric_cast<uint16_t>(files.size()));
+    put16(out, numeric_cast<uint16_t>(files.size()));
+    put32(out, numeric_cast<uint32_t>(central.size()));
+    put32(out, central_offset);
+    put16(out, 0);
+
+    REQUIRE(fs_write_file(path, const_span<uint8_t> {out.data(), out.size()}));
 }
 
 TEST_CASE("ResourceIndex")
@@ -354,6 +438,84 @@ TEST_CASE("ResourceIndexCost", "[.]")
                "  read all      {:.1f} ms ({:.2f} us each)\n"
                "  index stored  {} bytes, decoded {} bytes",
         PACK_COUNT, header.EntryCount, write_ms, resolve_ms, PACK_COUNT, build_ms, mount_ms, lookup_ms, lookup_ms * 1000.0 / static_cast<double>(entry_count), read_ms, read_ms * 1000.0 / static_cast<double>(entry_count), header.IndexStoredSize, header.IndexDecodedSize)
+            .str());
+
+    CHECK(fs_remove_dir_tree(dir));
+}
+
+// Hidden, like the case above: the ZIP half, through the engine's own readers so both numbers share a code
+// path. Entries are stored, which leaves the mount comparison intact and makes the read figure ZIP's best
+TEST_CASE("ResourcePackVersusZipCost", "[.]")
+{
+    static constexpr size_t ENTRY_COUNT = 8000;
+
+    string dir = MakeTempIndexDir("pack_vs_zip");
+    vector<std::pair<string, string>> files;
+    files.reserve(ENTRY_COUNT);
+
+    for (size_t i = 0; i < ENTRY_COUNT; ++i) {
+        files.emplace_back(strex("CommonArt_Group/Scenery/Section{}/Sprite_{:05}.png", i % 16, i).str(), string("payload"));
+    }
+
+    auto elapsed_ms = [](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); };
+
+    {
+        ResourcePackWriter writer {strex(dir).combine_path("Bulk.fores").str()};
+
+        for (const auto& [name, content] : files) {
+            writer.AddFile(name, MakeBytes(content));
+        }
+
+        writer.Finish();
+    }
+
+    string zip_dir = strex(dir).combine_path("zip").str();
+    REQUIRE(fs_create_directories(zip_dir));
+    WriteStoredZip(strex(zip_dir).combine_path("Bulk.zip").str(), files);
+
+    double pack_mount_ms = 0.0;
+    double pack_read_ms = 0.0;
+    double zip_mount_ms = 0.0;
+    double zip_read_ms = 0.0;
+
+    {
+        auto started = std::chrono::steady_clock::now();
+        auto pack = DataSource::MountPack(dir, "Bulk", false);
+        pack_mount_ms = elapsed_ms(started);
+
+        started = std::chrono::steady_clock::now();
+
+        for (const auto& [name, content] : files) {
+            size_t size = 0;
+            uint64_t write_time = 0;
+            CHECK(pack->OpenFile(name, size, write_time));
+        }
+
+        pack_read_ms = elapsed_ms(started);
+    }
+
+    {
+        auto started = std::chrono::steady_clock::now();
+        auto zip = DataSource::MountPack(zip_dir, "Bulk", false);
+        zip_mount_ms = elapsed_ms(started);
+
+        started = std::chrono::steady_clock::now();
+
+        for (const auto& [name, content] : files) {
+            size_t size = 0;
+            uint64_t write_time = 0;
+            CHECK(zip->OpenFile(name, size, write_time));
+        }
+
+        zip_read_ms = elapsed_ms(started);
+    }
+
+    WARN(strex("entries {}\n"
+               "  mount pack   {:.1f} ms\n"
+               "  mount zip    {:.1f} ms\n"
+               "  read pack    {:.1f} ms ({:.2f} us each)\n"
+               "  read zip     {:.1f} ms ({:.2f} us each)",
+        ENTRY_COUNT, pack_mount_ms, zip_mount_ms, pack_read_ms, pack_read_ms * 1000.0 / ENTRY_COUNT, zip_read_ms, zip_read_ms * 1000.0 / ENTRY_COUNT)
             .str());
 
     CHECK(fs_remove_dir_tree(dir));
