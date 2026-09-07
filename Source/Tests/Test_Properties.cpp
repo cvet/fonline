@@ -35,6 +35,7 @@
 
 #include "Common.h"
 #include "DataSerialization.h"
+#include "EngineBase.h"
 #include "EntityProtos.h"
 #include "Properties.h"
 #include "PropertiesSerializer.h"
@@ -5282,6 +5283,131 @@ TEST_CASE("PropertiesStorageStrategyMetrics", "[properties]")
         CHECK(static_cast<bool>(fixture.ProbeIntProp));
         CHECK(static_cast<bool>(fixture.ProbeStringProp));
     }
+}
+
+TEST_CASE("PropertiesVersionQualifiedNamesPreserveExistingSavedDocuments")
+{
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    auto registrar = meta.RegisterEntityType("VersionedQuest", true, false, false, false, false);
+    auto version_prop = registrar->RegisterProperty({"Common", "int32", "DataVersion", "Mutable", "Persistent", "PublicSync"});
+    auto legacy_prop = registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
+    auto live_prop = registrar->RegisterProperty({"Common", "int16", "Step", "Mutable", "Persistent", "PublicSync"});
+    meta.RegisterMigrationRule("Property", "VersionedQuest", "Step", "LegacyStep");
+    meta.RegisterPropertyMigrationBeforeVersion("VersionedQuest", "Step", "DataVersion", "3270");
+
+    SECTION("Cutover and current documents retain both numeric slots without a new save marker")
+    {
+        for (int64_t version : {int64_t {3270}, int64_t {3963}}) {
+            AnyData::Document doc;
+            doc.Emplace("DataVersion", version);
+            doc.Emplace("Step", int64_t {7});
+            doc.Emplace("LegacyStep", int64_t {4});
+            Properties restored(registrar);
+            REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
+            CHECK(restored.GetValue<int16_t>(live_prop) == 7);
+            CHECK(restored.GetValue<int32_t>(legacy_prop) == 4);
+            CHECK(restored.GetValue<int32_t>(version_prop) == version);
+            auto saved = PropertiesSerializer::SaveToDocument(&restored, nullptr, meta.Hashes, meta);
+            Properties again(registrar);
+            REQUIRE(PropertiesSerializer::LoadFromDocument(&again, saved, meta.Hashes, meta));
+            CHECK(again.GetValue<int16_t>(live_prop) == 7);
+            CHECK(again.GetValue<int32_t>(legacy_prop) == 4);
+            auto text = restored.SaveToText(nullptr);
+            Properties from_text(registrar);
+            REQUIRE_NOTHROW(from_text.ApplyFromText(text));
+            CHECK(from_text.GetValue<int16_t>(live_prop) == 7);
+            CHECK(from_text.GetValue<int32_t>(legacy_prop) == 4);
+        }
+    }
+
+    SECTION("Unversioned authored text and its text round trip retain current slots")
+    {
+        Properties authored(registrar);
+        REQUIRE_NOTHROW(authored.ApplyFromText(map<string, string> {{"Step", "7"}, {"LegacyStep", "4"}}));
+        CHECK(authored.GetValue<int16_t>(live_prop) == 7);
+        CHECK(authored.GetValue<int32_t>(legacy_prop) == 4);
+        auto text = authored.SaveToText(nullptr);
+        CHECK_FALSE(text.contains("DataVersion"));
+        Properties round_trip(registrar);
+        REQUIRE_NOTHROW(round_trip.ApplyFromText(text));
+        CHECK(round_trip.GetValue<int16_t>(live_prop) == 7);
+        CHECK(round_trip.GetValue<int32_t>(legacy_prop) == 4);
+        auto legacy_flag = registrar->RegisterProperty({"Common", "int32", "LegacyFlag", "Mutable", "Persistent", "PublicSync"});
+        auto live_flag = registrar->RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+        meta.RegisterMigrationRule("Property", "VersionedQuest", "Flag", "LegacyFlag");
+        meta.RegisterPropertyMigrationBeforeVersion("VersionedQuest", "Flag", "DataVersion", "3270");
+        Properties flag_props(registrar);
+        REQUIRE_NOTHROW(flag_props.ApplyFromText(map<string, string> {{"Flag", "True"}}));
+        CHECK(flag_props.GetValue<bool>(live_flag));
+        CHECK(flag_props.GetValue<int32_t>(legacy_flag) == 0);
+    }
+
+    SECTION("Old and missing versions still migrate wider integer values")
+    {
+        for (bool has_version : {false, true}) {
+            AnyData::Document doc;
+            if (has_version) {
+                doc.Emplace("DataVersion", int64_t {3269});
+            }
+            doc.Emplace("Step", int64_t {100000});
+            Properties restored(registrar);
+            REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
+            CHECK(restored.GetValue<int16_t>(live_prop) == 0);
+            CHECK(restored.GetValue<int32_t>(legacy_prop) == 100000);
+            doc.Emplace("LegacyStep", int64_t {4});
+            CHECK_FALSE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
+            CHECK_THROWS(restored.ApplyFromText(map<string, string> {{"DataVersion", "3269"}, {"Step", "7"}, {"LegacyStep", "4"}}));
+        }
+    }
+
+    SECTION("Version input is strict and is consulted only by the matching conditional rule")
+    {
+        AnyData::Document doc;
+        doc.Emplace("DataVersion", string {"3963"});
+        AnyData::Value value {int64_t {7}};
+        CHECK_THROWS(PropertiesSerializer::ResolvePropertyFromValue(registrar, "Step", value, &doc));
+        CHECK(PropertiesSerializer::ResolvePropertyFromValue(registrar, "LegacyStep", value, &doc) == legacy_prop);
+        auto read_bad_version = [](string_view) -> optional<string_view> { return "3270.0"; };
+        CHECK_THROWS(PropertiesSerializer::ResolvePropertyFromText(registrar, "Step", "7", read_bad_version));
+        CHECK(PropertiesSerializer::ResolvePropertyFromText(registrar, "LegacyStep", "7", read_bad_version) == legacy_prop);
+    }
+
+    SECTION("An older unconditional alias remains old after the reused name cutover")
+    {
+        meta.RegisterMigrationRule("Property", "VersionedQuest", "OriginalStep", "Step");
+        AnyData::Document doc;
+        doc.Emplace("DataVersion", int64_t {3963});
+        doc.Emplace("OriginalStep", int64_t {100000});
+        Properties restored(registrar);
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
+        CHECK(restored.GetValue<int16_t>(live_prop) == 0);
+        CHECK(restored.GetValue<int32_t>(legacy_prop) == 100000);
+    }
+}
+
+TEST_CASE("PropertiesVersionQualifiedRefTypeNamesUseSiblingVersion")
+{
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    meta.RegisterRefType("QuestSnapshot");
+    meta.RegisterRefTypeLayout("QuestSnapshot", {{"DataVersion", "int32"}, {"LegacyStep", "int32"}, {"Step", "int16"}});
+    meta.RegisterMigrationRule("Property", "QuestSnapshotRefType", "Step", "LegacyStep");
+    meta.RegisterPropertyMigrationBeforeVersion("QuestSnapshotRefType", "Step", "DataVersion", "3270");
+    auto registrar = meta.RegisterEntityType("VersionedRefOwner", true, false, false, false, false);
+    auto prop = registrar->RegisterProperty({"Common", "QuestSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+    Properties props(registrar);
+    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, prop, "Step 7 LegacyStep 4 DataVersion 3270", meta.Hashes, meta));
+    auto value = PropertiesSerializer::SavePropertyToValue(&props, prop, meta.Hashes, meta);
+    CHECK(value.AsDict()["Step"].AsInt64() == 7);
+    CHECK(value.AsDict()["LegacyStep"].AsInt64() == 4);
+    Properties from_value(registrar);
+    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&from_value, prop, value, meta.Hashes, meta));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&from_value, prop, meta.Hashes, meta) == value);
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, prop, "Step 7 LegacyStep 4 DataVersion 3269", meta.Hashes, meta));
+    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, prop, "Step 100000 DataVersion 3269", meta.Hashes, meta));
+    auto old_value = PropertiesSerializer::SavePropertyToValue(&props, prop, meta.Hashes, meta);
+    CHECK(old_value.AsDict()["LegacyStep"].AsInt64() == 100000);
 }
 
 FO_END_NAMESPACE

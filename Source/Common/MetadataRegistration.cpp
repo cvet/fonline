@@ -382,9 +382,13 @@ static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, cons
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() >= 4, "MigrationRule metadata record is missing rule scope, version or target fields", tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() == 4 || (tokens.size() == 7 && tokens[0] == "Property" && tokens[4] == "BeforeVersion"), "Invalid MigrationRule metadata record", tokens.size());
 
         meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);
+
+        if (tokens.size() == 7) {
+            meta->RegisterPropertyMigrationBeforeVersion(tokens[1], tokens[2], tokens[5], tokens[6]);
+        }
     }
 }
 

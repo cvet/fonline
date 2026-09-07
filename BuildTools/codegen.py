@@ -1589,9 +1589,9 @@ def parse_migration_rule_tags() -> None:
         comment = tag_meta.comment
 
         try:
-            rule_args = tokenize(tag_info, anySymbols=[2, 3])
+            rule_args = tokenize(tag_info, anySymbols=[2, 3, 5])
             assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
-            assert len(rule_args) == 4, 'Invalid migration rule args'
+            assert len(rule_args) == 4 or (len(rule_args) == 7 and rule_args[0] == 'Property' and rule_args[4] == 'BeforeVersion' and rule_args[6].isascii() and rule_args[6].isdecimal() and 0 < int(rule_args[6]) <= 9223372036854775807), 'Invalid migration rule args'
             assert not len([rule_tag for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0:3] == rule_args[0:3]]), 'Migration rule already added'
             assert rule_args[2] != rule_args[3], 'Migration rule same last args'
 
@@ -2404,6 +2404,9 @@ def append_migration_rule_registration(helper_lines: list[str], register_lines: 
         body_lines.append('        },')
         body_lines.append('    },')
     body_lines.append('});')
+    for rule_tag in codegen_tags['MigrationRule']:
+        if len(rule_tag.args) == 7:
+            body_lines.append('meta->RegisterPropertyMigrationBeforeVersion("' + rule_tag.args[1] + '", "' + rule_tag.args[2] + '", "' + rule_tag.args[5] + '", "' + rule_tag.args[6] + '");')
 
     append_static_function(helper_lines, 'static void RegisterMigrationRulesSection(EngineMetadata* meta)', body_lines)
     register_lines.append('RegisterMigrationRulesSection(meta.get_no_const());')

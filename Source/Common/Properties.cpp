@@ -1402,7 +1402,11 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
 
         // Keys come from a stored document (baked proto/map sections, authored property text), so an
         // obsolete stored name has to migrate onto its replacement here
-        auto prop = PropertiesSerializer::ResolvePropertyFromText(registrar, key, value);
+        auto read_sibling = [&key_values](string_view name) -> optional<string_view> {
+            auto it = key_values.find(name);
+            return it != key_values.end() ? optional<string_view> {it->second} : std::nullopt;
+        };
+        auto prop = PropertiesSerializer::ResolvePropertyFromText(registrar, key, value, read_sibling);
 
         if (!prop) {
             WriteLog("Failed to load unknown property {}", key);

@@ -138,6 +138,7 @@ public:
     void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
+    void RegisterPropertyMigrationBeforeVersion(string_view entity_type, string_view target, string_view version_property, string_view before_version);
     void RegisterProtos(const FileSystem& resources);
     void RegisterAnimationInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);

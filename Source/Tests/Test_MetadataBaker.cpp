@@ -37,10 +37,9 @@
 
 #include "DataSerialization.h"
 
-#if FO_ANGELSCRIPT_SCRIPTING
 #include "MetadataBaker.h"
 #include "MetadataRegistration.h"
-#endif
+#include "PropertiesSerializer.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -1322,6 +1321,50 @@ namespace TestValueTypePropertyOwner
         REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("only RefType supports script metadata properties"));
     }
 #endif
+}
+
+TEST_CASE("MetadataBakerPreservesPropertyVersionQualifiers")
+{
+    BakerTests::TestRig rig;
+    rig.AddSourceFile("Scripts/VersionedMetadata.cs", R"(
+///@ Property Critter Common int32 DataVersion Mutable Persistent PublicSync
+///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync
+///@ Property Critter Common int16 Step Mutable Persistent PublicSync
+///@ MigrationRule Property Critter Step LegacyStep BeforeVersion DataVersion 3270
+)");
+    MetadataBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    for (auto target : {"server", "client", "mapper"}) {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(target == string_view {"server"} ? EngineSideKind::ServerSide : EngineSideKind::ClientSide);
+        meta.RegisterEntityType("Critter", true, false, true, true, true);
+        meta.RegisterEnumGroup("CritterProperty", "int32", {});
+        const auto& output = rig.Outputs.at(strex("TestPack.fometa-{}", target));
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        auto condition = meta.CheckMigrationRule(meta.Hashes.ToHashedString("PropertyBeforeVersion"), meta.Hashes.ToHashedString("Critter"), meta.Hashes.ToHashedString("Step"));
+        REQUIRE(condition.has_value());
+        CHECK(condition.value().as_str() == "DataVersion 3270");
+        auto registrar = meta.GetPropertyRegistrar("Critter");
+        REQUIRE(registrar);
+        Properties props(registrar);
+        AnyData::Document doc;
+        doc.Emplace("DataVersion", int64_t {3270});
+        doc.Emplace("Step", int64_t {7});
+        doc.Emplace("LegacyStep", int64_t {4});
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&props, doc, meta.Hashes, meta));
+        CHECK(props.GetValue<int16_t>(registrar->FindProperty("Step").as_ptr()) == 7);
+        CHECK(props.GetValue<int32_t>(registrar->FindProperty("LegacyStep").as_ptr()) == 4);
+    }
+}
+
+TEST_CASE("MetadataBakerRejectsInvalidPropertyVersionQualifiers")
+{
+    for (auto rule : {"Property Critter Step LegacyStep BeforeVersion DataVersion 0", "Property Critter Step LegacyStep BeforeVersion DataVersion 9223372036854775808", "Property Critter Step LegacyStep BeforeVersion Step 3270", "Property Critter Step LegacyStep BeforeVersion Missing 3270", "Proto Critter Step LegacyStep BeforeVersion DataVersion 3270", "Property Critter Step LegacyStep BeforeVersion DataVersion"}) {
+        BakerTests::TestRig rig;
+        rig.AddSourceFile("Scripts/InvalidVersionedMetadata.cs", strex("///@ Property Critter Common int32 DataVersion Mutable Persistent PublicSync\n///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync\n///@ Property Critter Common int16 Step Mutable Persistent PublicSync\n///@ MigrationRule {}\n", rule));
+        MetadataBaker baker(rig.MakeContext());
+        CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    }
 }
 
 FO_END_NAMESPACE
