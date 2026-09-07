@@ -85,6 +85,12 @@ the runtime output, SDK shared-framework directory and Mono core library before 
 so removed files cannot survive a successful republish. Shared-framework versions sort numerically, with a
 prerelease ordered before the corresponding release.
 
+Windows targets with managed scripting use the static MSVC runtime (`/MT`, or
+`/MTd` for Debug configurations), matching the published Mono and minipal
+archives even when no client target is built. Client builds also retain the
+static CRT; builds with neither client nor managed scripting retain `/MD` or
+`/MDd`. Existing Mono caches already use this contract and need no rebuild.
+
 Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
 target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
 zlib-ng retains its own `/W3`, additional diagnostics and `/WX`; this prevents

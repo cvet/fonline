@@ -443,7 +443,8 @@ if(WIN32)
 		$<${expr_FullOptimization}:/LTCG>
 		$<IF:${expr_DebugInfo},/DEBUG:FULL,/DEBUG:NONE>)
 
-	if(FO_BUILD_CLIENT)
+	# The published Mono archives use the static CRT for every managed host
+	if(FO_BUILD_CLIENT OR FO_MANAGED_SCRIPTING)
 		AddCompileOptionsList($<${expr_DebugBuild}:/MTd> $<$<NOT:${expr_DebugBuild}>:/MT>)
 	else()
 		AddCompileOptionsList($<${expr_DebugBuild}:/MDd> $<$<NOT:${expr_DebugBuild}>:/MD>)
