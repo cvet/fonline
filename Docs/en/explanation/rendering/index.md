@@ -529,6 +529,13 @@ Important behaviors:
 - handles resize by recreating backbuffer/depth resources;
 - reports render-target textures as not flipped (`IsRenderTargetFlipped() == false`).
 
+**A missing GPU is refused rather than papered over.** When no hardware device is available, DXGI will
+happily hand back the WARP software rasterizer, which draws every frame on the CPU: the client then
+starts, runs, and cannot be played. That substitution is now an explicit choice —
+`Render.AllowSoftwareRenderer` (default off) permits it for diagnostics or a headless machine, and the
+log names the device as `Warp` so a slow session is never a mystery. With the setting off, device
+creation fails loudly instead of producing a playable-looking client that is not one.
+
 Direct3D changes are Windows-specific and should be validated through a Windows embedding-project build/debug flow.
 
 ### Direct Metal placeholder

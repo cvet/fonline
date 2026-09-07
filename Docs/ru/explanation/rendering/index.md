@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"46b532a0da05213b72d6571fc7081c2abbb7d92df2ff8f584f2114e682829967"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"081501b476a5348b040d987609259be5787ebf94051f4761739ddf057f48b645"} -->
 
 # Frontend и рендеринг
 
@@ -542,6 +542,14 @@ OpenGL — основной путь WebAssembly/WebGL; изменения пр�
 - сообщает `IsRenderTargetFlipped() == false`.
 
 Изменения Direct3D проверяются в Windows build/debug flow встраиваемого проекта.
+
+**Отсутствие GPU не заминается, а отвергается.** Когда аппаратного устройства нет, DXGI охотно
+возвращает программный растеризатор WARP, который рисует каждый кадр на CPU: клиент после этого
+запускается, работает и играть в него нельзя. Теперь такая подмена — явный выбор:
+`Render.AllowSoftwareRenderer` (по умолчанию выключен) разрешает её для диагностики или машины без
+дисплея, а лог называет устройство `Warp`, чтобы медленная сессия не оставалась загадкой. С
+выключенной настройкой создание устройства падает громко, а не выдаёт клиент, который лишь выглядит
+играбельным.
 
 ### Placeholder прямого Metal
 
