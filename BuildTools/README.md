@@ -144,6 +144,18 @@ Host prerequisite checks are also available through the main tool:
 - `buildtools.py host-check macos`
 - `buildtools.py host-check windows`
 
+Apple builds use Xcode: `buildtools.py build mac client Release` builds the
+embedding project's macOS client, and `buildtools.py build ios client Release`
+selects the `SIMULATOR64` iOS toolchain. That toolchain defaults to `x86_64`;
+Mono's `iossimulator` architecture follows the normalized native target processor
+(`x64`), independently of the build host. The `OS64` device target uses
+`ios/arm64`. Simulator builds do not validate device signing or execution.
+
+`tests/test_apple_managed_architecture.py` configures the real Init stage with
+managed scripting enabled and checks both simulator and device runtime identities
+without requiring an Apple SDK. Native linking and managed execution still need
+the corresponding Apple host build and runtime checks.
+
 Host wrapper scripts now delegate to the unified workspace preparation command:
 
 - `buildtools.py prepare-host-workspace linux ...`
