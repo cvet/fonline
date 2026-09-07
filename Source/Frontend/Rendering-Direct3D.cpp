@@ -380,6 +380,10 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
         auto d3d_hardware_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
 
         if (FAILED(d3d_hardware_create_device)) {
+            if (!settings.AllowSoftwareRenderer) {
+                throw AppInitException("Direct3D hardware device creation failed", d3d_hardware_create_device);
+            }
+
             auto d3d_warp_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
 
             if (FAILED(d3d_warp_create_device)) {

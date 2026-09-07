@@ -203,6 +203,7 @@ VARIABLE_SETTING(bool, Render, ForceMetal, false); // If true, Metal is forced
 VARIABLE_SETTING(bool, Render, ForceVulkan, false); // If true, Vulkan is forced
 VARIABLE_SETTING(bool, Render, ForceSDLGpu, false); // If true, SDL_GPU backend is forced
 VARIABLE_SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
+VARIABLE_SETTING(bool, Render, AllowSoftwareRenderer, false); // If true, a software rasterizer may stand in when no hardware device is available
 FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
