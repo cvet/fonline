@@ -957,7 +957,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     WriteTextFileIfChanged(project_path, file.str(), "Can't create generated Managed host project file");
 }
 
-void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view assemblies_relative_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
+void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view assemblies_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1002,12 +1002,19 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <FOnlineBakeRoot Condition=\" '$(FOnlineBakeRoot)' == '' \">$(MSBuildThisFileDirectory)..</FOnlineBakeRoot>\n";
     file << "  </PropertyGroup>\n";
 
+    std::filesystem::path assemblies_path {fs_make_path(assemblies_dir)};
+    string assemblies_output_dir = fs_path_to_string(assemblies_path);
+
+    if (!assemblies_path.is_absolute()) {
+        assemblies_output_dir = strex("$(FOnlineBakeRoot)/{}", assemblies_output_dir).str();
+    }
+
     for (string_view target : targets) {
         file << "  <PropertyGroup Condition=\" '$(Configuration)|$(Platform)' == '" << EscapeXml(target) << "|AnyCPU' \">\n";
         file << "    <DebugType>embedded</DebugType>\n";
         file << "    <Optimize>true</Optimize>\n";
         file << "    <AssemblyName>" << EscapeXml(pack_name) << "." << EscapeXml(target) << "</AssemblyName>\n";
-        file << "    <OutputPath>$(FOnlineBakeRoot)/" << EscapeXml(assemblies_relative_dir) << "/" << EscapeXml(target) << "Assemblies/</OutputPath>\n";
+        file << "    <OutputPath>" << EscapeXml(assemblies_output_dir) << "/" << EscapeXml(target) << "Assemblies/</OutputPath>\n";
         file << "    <DefineConstants>TRACE;" << strex(target).upper().str() << "</DefineConstants>\n";
         file << "  </PropertyGroup>\n";
     }

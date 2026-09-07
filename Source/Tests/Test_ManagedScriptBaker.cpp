@@ -633,6 +633,55 @@ TEST_CASE("ManagedScriptBaker")
 #endif
 }
 
+TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable bake roots")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    bool absolute_output = GENERATE(false, true);
+    CAPTURE(absolute_output);
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
+    std::filesystem::path bake_output = absolute_output ? temp_dir.Path() / fs_make_path("External Bake & Данные") : std::filesystem::path {fs_make_path("Relocated Bake & Данные")};
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {fs_path_to_string(core_scripts_dir), fs_path_to_string(script_dir)});
+    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, fs_path_to_string(script_dir));
+    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.BakeOutput, fs_path_to_string(bake_output));
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    string project = ReadTextFile(script_dir / "UnitProject.gen.csproj");
+    string expected_root = absolute_output ? strex("{}/External Bake &amp; Данные", fs_path_to_string(temp_dir.Path())).str() : "$(FOnlineBakeRoot)/Relocated Bake &amp; Данные";
+
+    for (string_view target : array<string_view, 3> {"Server", "Client", "Mapper"}) {
+        string expected_output = strex("<OutputPath>{}/TestPack/Assemblies/{}Assemblies/</OutputPath>", expected_root, target).str();
+        CHECK(project.find(expected_output) != string::npos);
+    }
+
+    CHECK(project.find("<FOnlineBakeRoot Condition=\" '$(FOnlineBakeRoot)' == '' \">$(MSBuildThisFileDirectory)..</FOnlineBakeRoot>") != string::npos);
+    CHECK((project.find("<OutputPath>$(FOnlineBakeRoot)/") == string::npos) == absolute_output);
+#endif
+}
+
 TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisions")
 {
 #if FO_MANAGED_SCRIPTING
