@@ -103,6 +103,14 @@ When changing hash serialization, inspect both generated metadata/hash registrat
 
 Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. `NetInBuffer::ReadHashedString` resolves the raw hash through the supplied `HashResolver`; when that lookup fails, the resolver's failure handler sees the raw `hstring::hash_t`, the input buffer is reset, and `ReadHashedString` throws a regular `NetBufferException`. The same handler also covers non-buffer lazy resolves, such as converting raw replicated property data into AngelScript `hstring`, arrays, dictionaries, or proto-reference objects.
 
+What fills that client storage decides which strings are at risk. At startup it takes local
+resources — proto packs, script `.hstr()` literals, the dialog and text bakers — and a map's own
+`fomap-bin-client` hash table arrives only when that map loads (`MapView::LoadStaticData`). Critter
+instance properties are not in the client map-bin at all. So a `Common` / `PublicSync` / `OwnerSync`
+`hstring` whose string exists only as a map-instance override, or only in the server map-bin, fails
+to resolve when it arrives before the matching client hash is registered — which is exactly the
+window the recovery below closes.
+
 The engine recovers from this instead of looping on the disconnect:
 
 1. `ClientEngine` registers a `HashStorage` resolve-failure handler. When the client hits an unknown hash on an established connection, the handler writes `NetMessage::UnresolvedHash` and performs one immediate pending-output flush. `ClientConnection::Process` still turns the following `NetBufferException` into a normal disconnect for direct buffer reads; lazy script/property exceptions may be contained by the script event system, so the server also hard-disconnects the reporter after receiving the hash. The report is tiny and the connection was just live, so it lands in the kernel send buffer without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client keeps no state, writes nothing to disk, and learns the string on the next normal reconnect.
