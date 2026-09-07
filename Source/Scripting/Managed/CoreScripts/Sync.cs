@@ -2033,6 +2033,83 @@ namespace FOnline
             return true;
         }
 
+        // SyncScope: reads the map's own critter list and spectator snapshot without changing cover.
+        // Lifecycle: inspection-only — the returned Players are owning handles and are re-proved by the caller's membership check
+        public static List<Player> CollectMapObserverPlayers(Map map)
+        {
+            List<Player> observers = map.GetSpectatorPlayers();
+            List<Critter> playerCritters = map.GetCritters(CritterFindType.Players);
+
+            for (int i = 0; i < playerCritters.Count; i++) {
+                Player? player = playerCritters[i].GetPlayer();
+
+                if (player != null && !observers.Contains(player)) {
+                    observers.Add(player);
+                }
+            }
+
+            return observers;
+        }
+
+        // A critter appearing on a map is broadcast to everyone who sees it, and the send goes through a Player
+        // entity the engine requires under cover. There are two kinds of observer and neither belongs to the
+        // map, so the map's own cover reaches neither: a player controlling a critter on the map, and a
+        // spectator viewing the map with no critter at all
+        // SyncScope: widens cover with map + its current location + every Player observing it; every retry explicitly re-proves all roots.
+        // Lifecycle: strict — a stale dependency or exhausted map/location/observer membership retry budget returns false
+        public static async Task<bool> WidenMapForCritterAdd(Map map)
+        {
+            List<Entity> roots = new List<Entity> {map};
+
+            for (int attempt = 0; attempt < MapDestroyGraphCoverAttempts; attempt++) {
+                if (!await Widen(roots)) {
+                    return false;
+                }
+
+                Location location = map.GetLocation();
+                ident locationId = location.Id;
+                List<Entity> treeScope = new List<Entity> {map, location};
+
+                if (!await Widen(treeScope)) {
+                    if (!await Widen(roots)) {
+                        return false;
+                    }
+                    if (map.GetLocation().Id != locationId) {
+                        continue;
+                    }
+                    return false;
+                }
+                if (map.GetLocation().Id != locationId) {
+                    continue;
+                }
+
+                List<Player> observers = CollectMapObserverPlayers(map);
+                List<Entity> scope = new List<Entity>(treeScope);
+
+                for (int i = 0; i < observers.Count; i++) {
+                    if (!scope.Contains(observers[i])) {
+                        scope.Add(observers[i]);
+                    }
+                }
+
+                if (!await Widen(scope)) {
+                    if (!await Widen(treeScope)) {
+                        return false;
+                    }
+                    if (map.GetLocation().Id != locationId || !HasSamePlayerMembership(observers, CollectMapObserverPlayers(map))) {
+                        continue;
+                    }
+                    return false;
+                }
+
+                if (map.GetLocation().Id == locationId && HasSamePlayerMembership(observers, CollectMapObserverPlayers(map))) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         // SyncScope: compares two owning spectator snapshots by immutable Player identity without changing cover.
         // Lifecycle: inspection-only — no Player property is read, so a removed snapshot member may remain as a retained owning handle
         public static bool HasSamePlayerMembership(List<Player> first, List<Player> second)
