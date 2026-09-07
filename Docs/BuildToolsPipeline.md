@@ -74,6 +74,11 @@ Adds bundled engine third-party libraries. The stage comment notes that it insta
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
+LibreSSL enables generic assembly only on non-MSVC toolchains; its existing
+MSVC x64 path selects `ASM_MASM`. MongoDB's AWS authentication is explicitly
+disabled alongside its TLS support, matching the driver's effective feature
+set without requesting an authentication mode that requires TLS.
+
 `setup-mono` and CMake's ready marker include the normalized pinned `ThirdParty/dotnet-runtime` revision and
 runtime triplet. Changing the pin invalidates both the native build and published runtime. Publication validates
 the runtime output, SDK shared-framework directory and Mono core library before replacing the output tree,
@@ -87,6 +92,12 @@ conflicting warning-level options without suppressing diagnostics. The patch
 also applies when rebuilding an existing clone. Already built or published
 runtime caches remain valid because the effective warning level and binary
 behavior are unchanged.
+
+The managed setup command calls the absolute host Python interpreter selected
+by CMake (Python 3.11 or newer). It retains that interpreter when a build tool
+changes `PATH`, as Xcode does for script phases. `Python3_EXECUTABLE` can select
+an explicit interpreter at configure time; the standalone `setup-mono` wrappers
+remain convenience entry points for an interactive shell.
 
 ### `EngineSources.cmake`
 

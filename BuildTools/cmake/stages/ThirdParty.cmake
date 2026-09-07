@@ -454,6 +454,7 @@ if(FO_BUILD_SERVER_LIB)
         ENABLE_STATIC BUILD_ONLY
         ENABLE_TESTS OFF
         ENABLE_SSL OFF
+        ENABLE_MONGODB_AWS_AUTH OFF
         ENABLE_SASL OFF
         ENABLE_ZLIB SYSTEM
         # Disable unbundled snappy and zstd so mongo-c cannot silently link host libraries
@@ -780,12 +781,8 @@ if(FO_MANAGED_SCRIPTING)
         AbortMessage("Managed runtime for Windows cannot be built on a non-Windows host (dotnet/runtime has no such cross-target); build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree")
     endif()
 
-    # The setup script runs on the build host, not on the target, so it follows the host
-    if(CMAKE_HOST_WIN32)
-        SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
-    else()
-        SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
-    endif()
+    # Xcode changes PATH for build phases, so retain the host interpreter selected during configure
+    RequirePackage(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 
     SetValue(FO_MONO_SETUP_ENV "FO_WORKSPACE=${FO_DOTNET_DIR}")
 
@@ -802,9 +799,12 @@ if(FO_MANAGED_SCRIPTING)
     endif()
 
     AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
-        COMMAND ${CMAKE_COMMAND} -E env ${FO_MONO_SETUP_ENV} ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
+        COMMAND ${CMAKE_COMMAND} -E env ${FO_MONO_SETUP_ENV}
+            "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/buildtools.py"
+            setup-mono ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
         WORKING_DIRECTORY ${FO_DOTNET_DIR}
-        COMMENT "Setup Managed runtime")
+        COMMENT "Setup Managed runtime"
+        VERBATIM)
 
     AddCommandTarget(SetupManagedRuntime
         DEPENDS ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
