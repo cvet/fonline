@@ -407,12 +407,55 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
     return result;
 }
 
+// Pack offsets are 64-bit, so the file calls must be too. A 32-bit Android ABI keeps off_t at 32 bits and is
+// reached by the wide names; every other platform we build already has a wide off_t, which the assert proves
+#if FO_ANDROID
+static constexpr int32_t LARGE_FILE_OPEN_FLAG = O_LARGEFILE;
+#else
+static_assert(sizeof(off_t) == 8, "off_t must carry a 64-bit file offset, or the wide calls must be named here");
+static constexpr int32_t LARGE_FILE_OPEN_FLAG = 0;
+#endif
+
+static auto seek_file(int32_t fd, int64_t offset, int32_t whence) noexcept -> int64_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_ANDROID
+    return ::lseek64(fd, offset, whence);
+#else
+    return ::lseek(fd, offset, whence);
+#endif
+}
+
+static auto read_file_offset(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // pread carries its own offset, so concurrent readers of one descriptor never fight over a shared cursor
+#if FO_ANDROID
+    return ::pread64(fd, buffer.get(), size, static_cast<int64_t>(offset));
+#else
+    return ::pread(fd, buffer.get(), size, static_cast<int64_t>(offset));
+#endif
+}
+
+static auto truncate_file_to(int32_t fd, uint64_t size) noexcept -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_ANDROID
+    return ::ftruncate64(fd, static_cast<int64_t>(size));
+#else
+    return ::ftruncate(fd, static_cast<int64_t>(size));
+#endif
+}
+
 #if !FO_WEB
 auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0666);
+    int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT | LARGE_FILE_OPEN_FLAG, 0666);
 
     if (fd < 0) {
         return -1;
@@ -440,14 +483,14 @@ auto posix::seek_file_end(int32_t fd) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::lseek(fd, 0, SEEK_END);
+    return seek_file(fd, 0, SEEK_END);
 }
 
 auto posix::seek_file_begin(int32_t fd) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::lseek(fd, 0, SEEK_SET) >= 0;
+    return seek_file(fd, 0, SEEK_SET) >= 0;
 }
 
 auto posix::read_file_chunk(int32_t fd, ptr<char> buffer, size_t size) noexcept -> int64_t
@@ -468,7 +511,7 @@ auto posix::truncate_file(int32_t fd) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::ftruncate(fd, 0) == 0;
+    return truncate_file_to(fd, 0) == 0;
 }
 
 auto posix::sync_file(int32_t fd) noexcept -> bool
@@ -482,14 +525,14 @@ auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::open(path.c_str(), O_RDONLY);
+    return ::open(path.c_str(), O_RDONLY | LARGE_FILE_OPEN_FLAG);
 }
 
 auto posix::open_new_write_file(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    return ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | LARGE_FILE_OPEN_FLAG, 0666);
 }
 
 void posix::close_file(int32_t fd) noexcept
@@ -503,30 +546,33 @@ auto posix::get_file_size(int32_t fd) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::lseek(fd, 0, SEEK_END);
+    return seek_file(fd, 0, SEEK_END);
 }
 
 auto posix::read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    // pread carries its own offset, so concurrent readers of one descriptor never fight over a shared cursor
-    return ::pread(fd, buffer.get(), size, static_cast<off_t>(offset));
+    return read_file_offset(fd, offset, buffer, size);
 }
 
 auto posix::preallocate_file(int32_t fd, uint64_t size) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_LINUX || FO_ANDROID
     // Reserving the blocks is best effort: a filesystem that cannot do it reports so, and the size still has
     // to be set, which is what the caller actually depends on
-    if (::posix_fallocate(fd, 0, static_cast<off_t>(size)) == 0) {
+#if FO_ANDROID
+    if (::posix_fallocate64(fd, 0, static_cast<int64_t>(size)) == 0) {
+        return true;
+    }
+#elif FO_LINUX
+    if (::posix_fallocate(fd, 0, static_cast<int64_t>(size)) == 0) {
         return true;
     }
 #endif
 
-    return ::ftruncate(fd, static_cast<off_t>(size)) == 0;
+    return truncate_file_to(fd, size) == 0;
 }
 
 #if !FO_WEB

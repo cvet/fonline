@@ -34,7 +34,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [BakingPipeline.md](BakingPipeline.md) — resource baking, baker classes, script compile adjacency, and validation.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — codegen, metadata registration, generated files, and property contracts.
 - [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md) — config parsing, settings application, resource-pack data sources, file lookup, and caches.
-- [ResourcePackFormat.md](ResourcePackFormat.md) — the `.fores` resource pack binary contract: header, index, codecs, and what a reader must validate.
+- [ResourcePackFormat.md](ResourcePackFormat.md) — the two resource formats: the `.fores` pack binary contract (header, index, codecs, what a reader must validate) and the derived `.foindex` merged tree, plus what Android staging and the Web preload do to both.
 
 ## Runtime model
 

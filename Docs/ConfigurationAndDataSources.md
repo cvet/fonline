@@ -128,6 +128,12 @@ index over them, with the pack identity readable from the first bytes. Its contr
 [ResourcePackFormat.md](ResourcePackFormat.md). A file that claims the `FORS` magic and fails validation throws; it is never
 downgraded to an empty source and never falls back to a sibling `.zip` of the same pack.
 
+Listing a source goes through `GetFileNamesGeneric`, which has two overloads over one filter. A source that
+genuinely owns its names - the zip, dat and directory ones, which copy them out of a central directory or a
+disk walk - passes its `vector<string>`. A source built on its own string pool passes a `vector<string_view>`
+into that pool instead, so the pack and the merged tree keep exactly one copy of every path and borrow it for
+the call rather than holding a second list for the life of the mount.
+
 `FileSystem` then combines sources and offers:
 
 - `AddDirSource()`, `AddPackSource()`, `AddPacksSource()`, and `AddCustomSource()`;

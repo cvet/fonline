@@ -189,6 +189,10 @@ per-pack index consulted at runtime.
 Packs are folded in the configured order and the last one to declare a path wins, which is exactly the
 precedence the per-pack mounts already have. Entries are sorted by path, as in a pack.
 
+Neither format stores a per-file timestamp - one would cost writer determinism for nothing - so a read reports
+the mtime of the `.fores` the bytes live in. The merged tree reports the owning pack's mtime rather than its
+own, so the answer for one file does not change with which of the two views is mounted.
+
 ### Divergence and rebuild
 
 `PackListHash` folds each pack's name and hash, in order. That one field answers the whole question: an edited
@@ -203,6 +207,34 @@ intact. A rebuild never writes into a `.fores`.
 
 A reader that meets a stale index throws rather than falling back, because a merged tree that half-describes
 the packs is worse than no tree: the caller's answer is to rebuild.
+
+## Platforms
+
+Two targets do not keep their packs in an ordinary directory, and both resolve it before the reader ever sees
+them.
+
+**Android** ships the packs inside the APK, where they are assets rather than files - and a pack is read by
+positional file reads, which an asset does not answer. The activity therefore stages the whole resource tree
+into the application's files directory on launch and points `Baking.ClientResources` at it. The staging is
+keyed by the package's last-update time and repeats when the staged directory is empty or gone; it probes the
+directory rather than one artifact inside it, because naming an artifact ties the check to a pack list and a
+format, and a check that names the wrong file re-copies the tree on every start. The merged tree is written
+into that staged directory and is discarded with it.
+
+**Web** has the client resource directory preloaded into the Emscripten in-memory filesystem when the package
+is built, and that filesystem does not survive a page reload. **The merged tree is therefore not built there at
+all.** Its whole value is that one fold outlives the launch that paid for it, and on web nothing outlives the
+launch - while building it means parsing every pack's index, which is precisely the work that mounting the
+packs separately already does. Lookup does not suffer either way: `FileSystem` folds the snapshot of every
+mounted source into one cross-source index, so a path resolves in one probe with or without the tree. Only the
+build is skipped and not the mount, so a `.foindex` that ever arrives inside a package is still used.
+
+Neither platform ever receives a `.foindex` over the wire; nothing ships or transfers one.
+
+Preallocation is available (`disk_write_file::preallocate`, and see the ladder in
+[Essentials.md](Essentials.md)) but the download target is deliberately not preallocated - sizing the file up
+front would make every partial download look complete to the resume check. The transfer checks free space
+instead; see [ClientUpdater.md](ClientUpdater.md).
 
 ## Reserved for later
 

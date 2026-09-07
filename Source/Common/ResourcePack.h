@@ -167,7 +167,7 @@ public:
     ~ResourcePackSource() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
@@ -191,7 +191,6 @@ private:
     auto ReadEntryData(const FileEntry& entry) const -> vector<uint8_t>;
 
     string _fileName;
-    string _packName;
     disk_read_file _file;
     ResourcePackHeader _header {};
     vector<uint8_t> _index {};

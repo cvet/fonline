@@ -195,6 +195,87 @@ TEST_CASE("ResourceIndex")
         CHECK(fs_remove_dir_tree(dir));
     }
 
+    SECTION("ListsNamesFromTheEntriesItAlreadyHolds")
+    {
+        string dir = MakeTempIndexDir("index_names");
+        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        vector<string> dirs {dir};
+
+        WritePack(dir, "Base", {{"Dir/A.txt", "a"}, {"Root.bin", "r"}, {"Shared.txt", "base"}});
+        WritePack(dir, "Over", {{"Dir/B.txt", "b"}, {"Shared.txt", "over"}});
+
+        vector<ResourceIndexPack> packs;
+        vector<string> pack_paths;
+        REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Base", "Over"}, packs, pack_paths));
+        BuildResourceIndex(index_path, pack_paths, packs);
+
+        ResourceIndexSource index {index_path, dirs};
+
+        auto snapshot = index.GetIndexSnapshot();
+        REQUIRE(snapshot.has_value());
+
+        vector<string> from_snapshot;
+
+        for (const IndexedFile& file : *snapshot) {
+            from_snapshot.emplace_back(file.Path);
+        }
+
+        std::sort(from_snapshot.begin(), from_snapshot.end());
+
+        // The listing and the entry table must stay one source of truth: a second copy of the paths is what
+        // both drifts from the entries and pays for itself in resident memory for the life of the mount
+        auto listed = index.GetFileNames("", true, "");
+        std::sort(listed.begin(), listed.end());
+        CHECK(listed == from_snapshot);
+        CHECK(listed.size() == 4);
+
+        // Read through the source first: the listing borrows views into the mounted index, so a name that
+        // outlives what it points at shows up here rather than in a player's crash
+        CHECK(ReadThroughIndex(index, "Shared.txt") == BytesOf("over"));
+        CHECK(index.GetFileNames("Dir", false, "txt").size() == 2);
+        CHECK(index.GetFileNames("", false, "bin").size() == 1);
+
+        CHECK(fs_remove_dir_tree(dir));
+    }
+
+    SECTION("ReportsTheOwningPackWriteTime")
+    {
+        string dir = MakeTempIndexDir("index_write_time");
+        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        vector<string> dirs {dir};
+
+        WritePack(dir, "Base", {{"A.txt", "a"}});
+        WritePack(dir, "Over", {{"B.txt", "b"}});
+
+        vector<ResourceIndexPack> packs;
+        vector<string> pack_paths;
+        REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Base", "Over"}, packs, pack_paths));
+        BuildResourceIndex(index_path, pack_paths, packs);
+
+        auto pack_write_time = [&](string_view pack_name, string_view entry_path) -> uint64_t {
+            ResourcePackSource pack {strex(dir).combine_path(strex("{}.fores", pack_name)).str()};
+            size_t size = 0;
+            uint64_t write_time = 0;
+            REQUIRE(pack.GetFileInfo(entry_path, size, write_time));
+            return write_time;
+        };
+
+        auto index_write_time = [&](string_view entry_path) -> uint64_t {
+            ResourceIndexSource index {index_path, dirs};
+            size_t size = 0;
+            uint64_t write_time = 0;
+            REQUIRE(index.GetFileInfo(entry_path, size, write_time));
+            return write_time;
+        };
+
+        // GetClientResources switches between the two views by whether the tree is current, so one file has to
+        // answer the same either way - and the answer is the mtime of the pack the bytes live in, not the tree's
+        CHECK(index_write_time("A.txt") == pack_write_time("Base", "A.txt"));
+        CHECK(index_write_time("B.txt") == pack_write_time("Over", "B.txt"));
+
+        CHECK(fs_remove_dir_tree(dir));
+    }
+
     SECTION("ReportsWhetherTheIndexStillDescribesTheDisk")
     {
         string dir = MakeTempIndexDir("index_current");

@@ -364,7 +364,9 @@ A successful resource sync ends by rebuilding the merged tree. `FinishResourcesU
 packs - a sync that changed nothing rewrites nothing - and otherwise merges the packs into `Resources.foindex`
 beside them. Building it is best effort: the tree is an optimization over mounting each pack, so a failure is
 logged, the half-built file is removed, and the update still succeeds with the client taking the per-pack
-view. That is the one place anything writes a `.foindex`; nothing ships or downloads one.
+view. That is the one place anything writes a `.foindex`; nothing ships or downloads one. The web build skips
+the build outright - see the Platforms section of [ResourcePackFormat.md](ResourcePackFormat.md) for why a tree
+that cannot outlive its launch costs more than it saves.
 
 `ReplaceFileSafely` moves the installed file to `<name>-backup` before renaming the new one into place and puts
 it back when that fails - but the restore can fail for the same reason, and then the only copy of the pack is
@@ -442,6 +444,13 @@ its writes must go to a per-user writable location instead.
 Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>` subdirs, and is
 **fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
 bad install config never bricks startup.
+
+Android and Web reach the portable branch, and both point `Baking.ClientResources` somewhere the platform
+made writable for them rather than at the install directory: the Android activity stages the packs out of the
+APK into the application's files directory, and the web build runs entirely inside the preloaded Emscripten
+filesystem. Neither has an installer marker, so neither takes the per-user branch. What that costs the merged
+tree - rebuilt with the staged directory on Android, on every launch on Web - is in
+[ResourcePackFormat.md](ResourcePackFormat.md).
 
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
@@ -586,3 +595,4 @@ Local validation steps:
 - [Architecture.md](../../Docs/Architecture.md) â€” engine + game build layout, target table.
 - [Debugging.md](Debugging.md) â€” debugger setup; the host vs runtime split affects which binary the debugger should attach to.
 - [SteamIntegration.md](../../Docs/SteamIntegration.md) â€” alternative distribution channel that bypasses the in-game updater.
+- [ResourcePackFormat.md](ResourcePackFormat.md) â€” the `.fores` pack and the derived `.foindex` tree the sync moves and rebuilds.

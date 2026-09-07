@@ -107,7 +107,7 @@ public:
     ~ResourceIndexSource() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> string_view override { return _indexName; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
@@ -131,15 +131,15 @@ private:
     auto ReadEntryData(const FileEntry& entry) const -> vector<uint8_t>;
 
     string _fileName;
-    string _indexName;
     disk_read_file _file;
     ResourceIndexHeader _header {};
     vector<uint8_t> _index {};
     vector<FileEntry> _entries {};
     unordered_map<string_view, size_t> _entryLookup {};
     vector<disk_read_file> _packFiles {};
-    vector<string> _fileNames {};
-    uint64_t _writeTime {};
+    // Per pack, so an entry reports the mtime of the `.fores` its bytes live in - the same answer a direct
+    // pack mount gives, which is what keeps the two views of one file indistinguishable
+    vector<uint64_t> _packWriteTimes {};
 };
 
 FO_END_NAMESPACE

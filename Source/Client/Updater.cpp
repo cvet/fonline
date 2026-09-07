@@ -265,6 +265,12 @@ void Updater::RebuildResourceIndex() const
 {
     FO_STACK_TRACE_ENTRY();
 
+    // The tree only pays by outliving the launch that built it, and the web filesystem starts empty every
+    // load - so building it there costs the per-pack index parse it exists to save
+    if (build_condition<FO_WEB>()) {
+        return;
+    }
+
     string index_path;
 
     // The merged tree is an optimization over mounting each pack, so nothing here may fail the update. The

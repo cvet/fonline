@@ -339,7 +339,6 @@ void ResourcePackWriter::Finish()
 
 ResourcePackSource::ResourcePackSource(string_view path) :
     _fileName {path},
-    _packName {strex(path).extract_file_name().erase_file_extension()},
     _file {path}
 {
     FO_STACK_TRACE_ENTRY();
@@ -526,7 +525,7 @@ auto ResourcePackSource::GetFileNames(string_view dir, bool recursive, string_vi
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<string> names;
+    vector<string_view> names;
     names.reserve(_entries.size());
 
     for (const FileEntry& entry : _entries) {

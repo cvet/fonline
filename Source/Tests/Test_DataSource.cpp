@@ -37,6 +37,7 @@
 #include "DataSource.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -624,6 +625,47 @@ TEST_CASE("DataSource")
         CHECK(BufferAsString(buf, size) == "two");
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+
+    SECTION("PackMountPrefersTheEnginePackOverALegacyZip")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_pack_bridge");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("Bridge.zip").str(), MakeStoredZip("entry.txt", "legacy")));
+
+        size_t size = 0;
+        uint64_t write_time = 0;
+
+        // A client installed before the format switch still holds the zip, so a release that reads both must
+        // answer from the zip until the pack arrives and from the pack the moment it does
+        {
+            auto legacy_pack = DataSource::MountPack(temp_dir, "Bridge", false);
+            auto legacy_buf = legacy_pack->OpenFile("entry.txt", size, write_time);
+            REQUIRE(legacy_buf);
+            CHECK(BufferAsString(legacy_buf, size) == "legacy");
+        }
+
+        string pack_path = strex(temp_dir).combine_path("Bridge.fores").str();
+        string_view current_text = "current";
+
+        {
+            ResourcePackWriter writer {pack_path};
+            writer.AddFile("entry.txt", const_span<uint8_t> {reinterpret_cast<const uint8_t*>(current_text.data()), current_text.size()});
+            writer.Finish();
+        }
+
+        {
+            auto current_pack = DataSource::MountPack(temp_dir, "Bridge", false);
+            CHECK(current_pack->GetPackName() == pack_path);
+            auto current_buf = current_pack->OpenFile("entry.txt", size, write_time);
+            REQUIRE(current_buf);
+            CHECK(BufferAsString(current_buf, size) == "current");
+        }
+
+        (void)fs_remove_dir_tree(temp_dir);
     }
 
     SECTION("BosPackUsesZipReader")

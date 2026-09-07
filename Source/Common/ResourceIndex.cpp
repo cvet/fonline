@@ -307,6 +307,10 @@ void BuildResourceIndex(string_view path, const vector<string>& pack_paths, cons
     // Written beside the target and renamed over it, so a reader never meets a half-written tree and an
     // interrupted rebuild leaves the previous index in place
     string temp_path = strex("{}.tmp", path).str();
+
+    // A full disk throws mid-write and nothing revisits this name, so the partial file goes out with the throw
+    auto remove_on_fail = scope_fail([&temp_path]() noexcept { (void)fs_remove_file(temp_path); });
+
     {
         disk_write_file file {temp_path};
         FO_VERIFY_AND_THROW(!!file, "Can't create resource index file", temp_path);
@@ -328,7 +332,6 @@ void BuildResourceIndex(string_view path, const vector<string>& pack_paths, cons
 
 ResourceIndexSource::ResourceIndexSource(string_view path, const vector<string>& pack_dirs) :
     _fileName {path},
-    _indexName {strex(path).extract_file_name().erase_file_extension()},
     _file {path}
 {
     FO_STACK_TRACE_ENTRY();
@@ -343,8 +346,6 @@ ResourceIndexSource::ResourceIndexSource(string_view path, const vector<string>&
     FO_VERIFY_AND_THROW(header_valid, "Resource index header is not valid", _fileName);
 
     ParseIndex(pack_dirs);
-
-    _writeTime = fs_last_write_time(_fileName);
 }
 
 void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
@@ -377,7 +378,7 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 
     // The packs come first: every entry names one by position, so they must all resolve before any entry does
     _packFiles.reserve(_header.PackCount);
-    _fileNames.reserve(_header.EntryCount);
+    _packWriteTimes.reserve(_header.PackCount);
     vector<ResourceIndexPack> packs;
     packs.reserve(_header.PackCount);
 
@@ -409,6 +410,7 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
         disk_read_file pack_file {resolved_path};
         FO_VERIFY_AND_THROW(!!pack_file, "Can't open a pack the resource index names", resolved_path);
         _packFiles.emplace_back(std::move(pack_file));
+        _packWriteTimes.emplace_back(fs_last_write_time(resolved_path));
         packs.emplace_back(ResourceIndexPack {std::move(pack_name), pack_hash});
     }
 
@@ -443,7 +445,6 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 
         bool first_of_its_path = _entryLookup.emplace(entry.Path, _entries.size()).second;
         FO_VERIFY_AND_THROW(first_of_its_path, "Resource index holds the same path twice", _fileName, entry.Path);
-        _fileNames.emplace_back(entry.Path);
         _entries.emplace_back(entry);
     }
 }
@@ -497,7 +498,7 @@ auto ResourceIndexSource::GetFileInfo(string_view path, size_t& size, uint64_t& 
     }
 
     size = numeric_cast<size_t>(entry->DecodedSize);
-    write_time = _writeTime;
+    write_time = _packWriteTimes[entry->PackIndex];
 
     return true;
 }
@@ -514,7 +515,7 @@ auto ResourceIndexSource::OpenFile(string_view path, size_t& size, uint64_t& wri
 
     vector<uint8_t> data = ReadEntryData(*entry);
     size = numeric_cast<size_t>(entry->DecodedSize);
-    write_time = _writeTime;
+    write_time = _packWriteTimes[entry->PackIndex];
 
     auto buf = unique_arr_ptr<uint8_t> {SafeAlloc::MakeUniqueArr<uint8_t>(data.size())};
     std::copy(data.begin(), data.end(), buf.get());
@@ -526,7 +527,14 @@ auto ResourceIndexSource::GetFileNames(string_view dir, bool recursive, string_v
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetFileNamesGeneric(_fileNames, dir, recursive, ext);
+    vector<string_view> names;
+    names.reserve(_entries.size());
+
+    for (const FileEntry& entry : _entries) {
+        names.emplace_back(entry.Path);
+    }
+
+    return GetFileNamesGeneric(names, dir, recursive, ext);
 }
 
 auto ResourceIndexSource::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
@@ -537,7 +545,7 @@ auto ResourceIndexSource::GetIndexSnapshot() const -> optional<vector<IndexedFil
     snapshot.reserve(_entries.size());
 
     for (const FileEntry& entry : _entries) {
-        snapshot.emplace_back(IndexedFile {string(entry.Path), numeric_cast<size_t>(entry.DecodedSize), _writeTime});
+        snapshot.emplace_back(IndexedFile {string(entry.Path), numeric_cast<size_t>(entry.DecodedSize), _packWriteTimes[entry.PackIndex]});
     }
 
     return snapshot;

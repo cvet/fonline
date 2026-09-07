@@ -39,9 +39,28 @@
 
 FO_BEGIN_NAMESPACE
 
+// Templated over the element so a source that owns its names and one that only views them share the filter
+template<typename T>
+static auto FilterFileNames(const T& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>;
+
 auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
+
+    return FilterFileNames(fnames, dir, recursive, ext);
+}
+
+auto GetFileNamesGeneric(const vector<string_view>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return FilterFileNames(fnames, dir, recursive, ext);
+}
+
+template<typename T>
+static auto FilterFileNames(const T& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>
+{
+    FO_NO_STACK_TRACE_ENTRY();
 
     string dir_fixed = strex(dir).normalize_path_slashes();
 
@@ -56,14 +75,14 @@ auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool rec
     for (const auto& fname : fnames) {
         bool add = false;
 
-        if (fname.compare(0, len, dir_fixed) == 0 && (recursive || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
+        if (fname.compare(0, len, dir_fixed) == 0 && (recursive || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string_view::npos))) {
             if (ext.empty() || strex(fname).get_file_extension() == ext) {
                 add = true;
             }
         }
 
         if (add && added_names.emplace(fname).second) {
-            result.push_back(fname);
+            result.emplace_back(fname);
         }
     }
 
