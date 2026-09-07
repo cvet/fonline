@@ -1,6 +1,6 @@
 # Client Runtime Split and Updater
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Engine-owned documentation. Source paths under `../` are relative to the FOnline engine root.
 
 The native client ships as two artifacts:
 
@@ -24,7 +24,9 @@ The updater protocol is the same machinery used to deliver gameplay resources, b
 
 A managed native client requests its platform/architecture target with a `-Managed-<sha256>` suffix. The digest covers the relative paths and contents of its complete `ManagedRuntime` tree; CMake generates it after runtime setup and compiles it into the updater. Each linked binary also gets a matching `.managed-runtime-id` build sidecar.
 
-The server packager verifies that sidecar against the supplied companion tree and publishes native update payloads only under that exact target. A changed runtime tree, a different managed runtime, or a client built without managed support cannot receive that payload. The existing missing-native-update path asks the player to install the full client package; the updater does not stage a library requiring unavailable companions. With identical companions, native library and gameplay assembly updates work normally. `FOnline.ManagedHost.dll` and game assemblies travel in resource packs; they are not installation-level Mono companions.
+Binary output postfixes are parsed on full flag boundaries: a custom postfix such as `Debug_Profiling_Total` remains a postfix and does not change the profiling variant.
+
+The server packager selects each GUI/headless variant by its own build-hash sidecar, then verifies its runtime-identity sidecar against the supplied companion tree and publishes native update payloads only under that exact target. A changed runtime tree, a different managed runtime, or a client built without managed support cannot receive that payload. The existing missing-native-update path asks the player to install the full client package; the updater does not stage a library requiring unavailable companions. A companion upgrade must also bump the central compatibility migration marker so the client enters native update mode; the target suffix does not replace that compatibility contract. With identical companions, native library and gameplay assembly updates work normally. `FOnline.ManagedHost.dll` and game assemblies travel in resource packs; they are not installation-level Mono companions.
 
 Changing installation-level Mono files therefore requires distributing a full client package. This is an explicit compatibility boundary, not an atomic multi-file runtime installation protocol. Build sidecars are packaging inputs and are not required in installed clients.
 
@@ -341,7 +343,7 @@ client â†’ server: GetUpdateFile  { file_index: uint32, start_offset: uint6
 server â†’ client: UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
-The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`, currently 5 MB in this project â€” see [LastFrontier.fomain](../../LastFrontier.fomain)). The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
+The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`, see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md)). The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
 
 The updater connection also participates in the shared connection-stage protocol. After `InitData`, a
 server may send `NetMessage::HashList` (message id 122) to teach clients strings that were previously
@@ -362,7 +364,7 @@ Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Serve
 
 Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
 
-To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](ConfigurationAndDataSources.md)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 
@@ -554,7 +556,7 @@ Local validation steps:
 
 ## See Also
 
-- [BuildAndLaunch.md](../../Docs/BuildAndLaunch.md) â€” build / package commands and launch profiles.
-- [Architecture.md](../../Docs/Architecture.md) â€” engine + game build layout, target table.
+- [BuildWorkflow.md](BuildWorkflow.md) — configure, build and validation workflow.
+- [BuildToolsPipeline.md](BuildToolsPipeline.md) — packaging and generated-source stages.
+- [Architecture.md](Architecture.md) â€” engine + game build layout, target table.
 - [Debugging.md](Debugging.md) â€” debugger setup; the host vs runtime split affects which binary the debugger should attach to.
-- [SteamIntegration.md](../../Docs/SteamIntegration.md) â€” alternative distribution channel that bypasses the in-game updater.

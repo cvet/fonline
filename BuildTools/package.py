@@ -664,10 +664,10 @@ class Packager:
 			return None
 		remainder = after_client[best_prefix_len:]
 		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
-			if remainder.startswith(opt):
+			if remainder == opt or remainder.startswith(opt + '-'):
 				remainder = remainder[len(opt):]
 				break
-		if remainder.startswith('-Debug'):
+		if remainder == '-Debug' or remainder.startswith('-Debug-'):
 			remainder = remainder[len('-Debug'):]
 		if not remainder:
 			return ''
@@ -764,17 +764,9 @@ class Packager:
 				default_runtime_variant = BinaryVariant()
 				headless_runtime_variant = BinaryVariant(role='Headless')
 
-				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
-				if not os.path.isfile(build_hash_path):
-					continue
-
-				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
-					build_hash = file.read().strip()
-				if build_hash != self.args.buildhash:
-					continue
-
 				suffix = ''
-				if '-Profiling_' in entry_name:
+				variant_entry_name = entry_name[:-(len(entry_postfix) + 1)] if entry_postfix else entry_name
+				if variant_entry_name.endswith(('-Profiling_Total', '-Profiling_OnDemand', '-Profiling_Total-Debug', '-Profiling_OnDemand-Debug')):
 					suffix = '_Profiling'
 
 				# binary_output_postfix is appended to the staged payload name so two
@@ -797,6 +789,10 @@ class Packager:
 					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
 					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
 					if not os.path.isfile(runtime_input_path):
+						continue
+
+					build_hash_path = Path(entry_path) / (runtime_input_name + '.build-hash')
+					if not build_hash_path.is_file() or build_hash_path.read_text(encoding='utf-8-sig').strip() != self.args.buildhash:
 						continue
 
 					payload_target_name = request_target_name
