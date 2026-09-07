@@ -318,7 +318,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
     auto holder_holder = holder.hold_ref();
     ignore_unused(holder_holder);
 
-    if (count > 0 && item->GetStackable()) {
+    if (count != 0 && item->GetStackable()) {
         auto result_item = to_cr->GetInvItemByPid(item->GetProtoId());
 
         if (result_item && result_item != item) {
