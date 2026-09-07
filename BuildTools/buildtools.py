@@ -2381,6 +2381,31 @@ def patch_runtime_sources(runtime_root: Path) -> None:
 	log('Patched', path, '- dropped /GL and /LTCG')
 
 
+def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'native' / 'external' / 'zlib-ng.cmake'
+	text = path.read_text(encoding='utf-8')
+	marker = '(FOnline Patch) Keep zlib-ng /W3 without the inherited Mono /W4'
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = 'FetchContent_MakeAvailable(fetchzlibng)\n'
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the zlib-ng warning level, unique anchor not found in {path}: {anchor.strip()}')
+
+	patch = (
+		f'\n# {marker}\n'
+		'if(MSVC)\n'
+		'  get_target_property(fo_zlib_compile_options zlib COMPILE_OPTIONS)\n'
+		'  list(REMOVE_ITEM fo_zlib_compile_options "$<$<COMPILE_LANGUAGE:C,CXX>:/W4>")\n'
+		'  set_property(TARGET zlib PROPERTY COMPILE_OPTIONS "${fo_zlib_compile_options}")\n'
+		'endif()\n'
+	)
+	path.write_text(text.replace(anchor, anchor + patch, 1), encoding='utf-8')
+	log('Patched', path, '- preserved the zlib-ng warning level')
+
+
 def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
 	native_root = runtime_root / 'artifacts' / 'bin' / 'native'
 	candidates = sorted(native_root.glob(f'*-{os_name}-{config}-{arch}'))
@@ -2497,6 +2522,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
 
 	def build_runtime() -> None:
+		patch_runtime_zlib_warning_level(runtime_root)
 		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root)
 
 	run_marker_step(built_marker, 'Build runtime', build_runtime)

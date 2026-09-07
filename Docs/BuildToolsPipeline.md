@@ -80,6 +80,14 @@ the runtime output, SDK shared-framework directory and Mono core library before 
 so removed files cannot survive a successful republish. Shared-framework versions sort numerically, with a
 prerelease ordered before the corresponding release.
 
+Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
+target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
+zlib-ng retains its own `/W3`, additional diagnostics and `/WX`; this prevents
+conflicting warning-level options without suppressing diagnostics. The patch
+also applies when rebuilding an existing clone. Already built or published
+runtime caches remain valid because the effective warning level and binary
+behavior are unchanged.
+
 ### `EngineSources.cmake`
 
 Builds source lists and generated resource files used by later stages. It appends source lists for engine layers such as Essentials, Common, Frontend, Client, Server, Tools, Scripting, and tests. It also prepares app icon/resource data such as the generated Windows `.rc` file.

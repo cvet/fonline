@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 
 import pytest
@@ -109,6 +112,101 @@ def test_mono_patch_fails_loudly_when_the_anchor_moves(tmp_path: Path) -> None:
 
     with pytest.raises(SystemExit):
         _buildtools.patch_runtime_sources(tmp_path)
+
+
+@pytest.mark.skipif(shutil.which("cmake") is None or shutil.which("ninja") is None, reason="CMake and Ninja are required")
+@pytest.mark.parametrize("msvc", [False, True])
+def test_mono_zlib_keeps_its_own_warning_level_without_changing_siblings(tmp_path: Path, msvc: bool) -> None:
+    external = tmp_path / "src" / "native" / "external"
+    zlib = external / "zlib-ng"
+    zlib.mkdir(parents=True)
+    (zlib / "zlib.c").write_text("int zlib_probe;\n", encoding="utf-8")
+    (zlib / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.22)\n"
+        "if(MSVC)\n  add_compile_options(/W3 /w34242 /WX)\nendif()\n"
+        "add_library(zlib STATIC zlib.c)\n",
+        encoding="utf-8",
+    )
+    wrapper = external / "zlib-ng.cmake"
+    wrapper.write_text(
+        "include(FetchContent)\n"
+        'FetchContent_Declare(fetchzlibng SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/zlib-ng")\n'
+        "FetchContent_MakeAvailable(fetchzlibng)\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "mono.c").write_text("int mono_probe;\n", encoding="utf-8")
+    (tmp_path / "sibling.c").write_text("int sibling_probe;\n", encoding="utf-8")
+    (tmp_path / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.22)\nproject(WarningLevels LANGUAGES C)\n"
+        'set(CMAKE_C_FLAGS "")\n'
+        f"set(MSVC {'ON' if msvc else 'OFF'})\n"
+        "if(MSVC)\n  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/W4> /WX)\nendif()\n"
+        "add_library(mono STATIC mono.c)\n"
+        'include("src/native/external/zlib-ng.cmake")\n'
+        "add_library(sibling STATIC sibling.c)\n",
+        encoding="utf-8",
+    )
+    def configure(name: str) -> dict[str, list[str]]:
+        build = tmp_path / name
+        result = subprocess.run(
+            ["cmake", "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"],
+            capture_output=True, text=True, check=True,
+        )
+        assert "warning" not in result.stderr.lower(), result.stderr
+        return {Path(entry["file"]).name: entry["command"].split() for entry in json.loads((build / "compile_commands.json").read_text())}
+
+    original_commands = configure("original-build")
+    assert original_commands["zlib.c"].count("/W4") == int(msvc)
+    assert original_commands["zlib.c"].count("/W3") == int(msvc)
+
+    _buildtools.patch_runtime_zlib_warning_level(tmp_path)
+    patched = wrapper.read_text(encoding="utf-8")
+    _buildtools.patch_runtime_zlib_warning_level(tmp_path)
+    assert wrapper.read_text(encoding="utf-8") == patched
+
+    commands = configure("patched-build")
+    assert "/W4" not in commands["zlib.c"]
+    assert commands["zlib.c"].count("/W3") == int(msvc)
+    assert commands["zlib.c"].count("/w34242") == int(msvc)
+    for source in ("mono.c", "sibling.c"):
+        assert commands[source].count("/W4") == int(msvc)
+        assert "/W3" not in commands[source]
+    for command in commands.values():
+        assert command.count("/WX") == int(msvc)
+
+
+@pytest.mark.parametrize("anchor_count", [0, 2])
+def test_zlib_warning_patch_requires_a_unique_anchor(tmp_path: Path, anchor_count: int) -> None:
+    wrapper = tmp_path / "src" / "native" / "external" / "zlib-ng.cmake"
+    wrapper.parent.mkdir(parents=True)
+    original = "FetchContent_MakeAvailable(fetchzlibng)\n" * anchor_count
+    wrapper.write_text(original, encoding="utf-8")
+    with pytest.raises(SystemExit, match="unique anchor not found"):
+        _buildtools.patch_runtime_zlib_warning_level(tmp_path)
+    assert wrapper.read_text(encoding="utf-8") == original
+
+
+def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env = setup_mono_env(tmp_path, "")
+    runtime = Path(env["FO_WORKSPACE"]) / "runtime"
+    wrapper = runtime / "src" / "native" / "external" / "zlib-ng.cmake"
+    wrapper.parent.mkdir(parents=True)
+    wrapper.write_text("FetchContent_MakeAvailable(fetchzlibng)\n", encoding="utf-8")
+    calls = []
+
+    def run_build_only(marker: Path, label: str, action: object) -> None:
+        if label == "Build runtime":
+            action()
+
+    def check_patched_before_build(args: list[str], runtime_root: Path) -> None:
+        assert runtime_root == runtime
+        assert "list(REMOVE_ITEM fo_zlib_compile_options" in wrapper.read_text(encoding="utf-8")
+        calls.append(args)
+
+    monkeypatch.setattr(_buildtools, "run_marker_step", run_build_only)
+    monkeypatch.setattr(_buildtools, "run_runtime_build", check_patched_before_build)
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+    assert len(calls) == 1
 
 
 def test_framework_versions_sort_numerically_with_release_after_preview() -> None:
