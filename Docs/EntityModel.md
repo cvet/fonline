@@ -139,6 +139,10 @@ Property flags are load-bearing:
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](Nullability.md).
 
+A property name may be reused for a primitive of a different serialized kind while its old values migrate into a separate property. Document loads distinguish boolean, integer and floating-point payloads; text loads distinguish explicit `True`/`False`, integral and fractional/exponent forms. When a payload uniquely matches the current primitive kind rather than the migration target's kind, it stays in the current property. Otherwise the declared stored-name migration still applies. This preserves typed save/load round trips, including a current boolean and an explicitly populated legacy integer in the same document, without discarding either field. RefType fields use the same resolution.
+
+No storage format or migration rule changes are needed. Existing old integer flags still load through their declared migration target. Same-kind reuse (including numeric width changes) and text whose type cannot be distinguished retain migration precedence; embedding projects must give such current fields an unambiguous persisted name. Load validation still rejects two inputs that resolve to the same property, including old-name integer plus explicit legacy-name integer.
+
 Stored-name migrations resolve aliases before duplicate detection: a document or text input may name a property or RefType field only once, even when its old and current names differ. Duplicate aliases fail loading instead of making the final value depend on input order. RefType layouts require stored fields; registering a `Virtual` field fails before publishing the layout.
 
 ## Base properties and overlays

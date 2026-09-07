@@ -1402,7 +1402,7 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
 
         // Keys come from a stored document (baked proto/map sections, authored property text), so an
         // obsolete stored name has to migrate onto its replacement here
-        auto prop = registrar->FindPersistedProperty(key);
+        auto prop = PropertiesSerializer::ResolvePropertyFromText(registrar, key, value);
 
         if (!prop) {
             WriteLog("Failed to load unknown property {}", key);

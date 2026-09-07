@@ -37,6 +37,8 @@
 FO_BEGIN_NAMESPACE
 
 static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> bool;
+static auto GetPrimitiveStorageKind(ptr<const Property> prop) -> optional<AnyData::ValueType>;
+static auto ResolvePropertyFromStorageKind(ptr<const PropertyRegistrar> registrar, string_view name, optional<AnyData::ValueType> kind) -> nptr<const Property>;
 
 auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
 {
@@ -107,7 +109,7 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
 
         try {
             // Find property, migrating an obsolete stored name onto its replacement
-            auto prop = props->GetRegistrar()->FindPersistedProperty(doc_key);
+            auto prop = ResolvePropertyFromValue(props->GetRegistrar(), doc_key, doc_value);
 
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
                 FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", doc_key);
@@ -121,6 +123,68 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
     }
 
     return !is_error;
+}
+
+auto PropertiesSerializer::ResolvePropertyFromValue(ptr<const PropertyRegistrar> registrar, string_view name, const AnyData::Value& value) -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ResolvePropertyFromStorageKind(registrar, name, value.Type());
+}
+
+auto PropertiesSerializer::ResolvePropertyFromText(ptr<const PropertyRegistrar> registrar, string_view name, string_view text) -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<AnyData::ValueType> kind;
+
+    if (strvex(text).is_explicit_bool()) {
+        kind = AnyData::ValueType::Bool;
+    }
+    else if (strvex(text).is_number()) {
+        kind = text.find_first_of(".eE") != string_view::npos ? AnyData::ValueType::Float64 : AnyData::ValueType::Int64;
+    }
+
+    return ResolvePropertyFromStorageKind(registrar, name, kind);
+}
+
+static auto GetPrimitiveStorageKind(ptr<const Property> prop) -> optional<AnyData::ValueType>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const BaseTypeDesc& type = prop->GetBaseType();
+
+    if (!prop->IsPlainData() || !type.IsPrimitive) {
+        return std::nullopt;
+    }
+    if (type.IsBool) {
+        return AnyData::ValueType::Bool;
+    }
+    if (type.IsSingleFloat || type.IsDoubleFloat) {
+        return AnyData::ValueType::Float64;
+    }
+
+    return AnyData::ValueType::Int64;
+}
+
+static auto ResolvePropertyFromStorageKind(ptr<const PropertyRegistrar> registrar, string_view name, optional<AnyData::ValueType> kind) -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto migrated = registrar->FindPersistedProperty(name);
+    auto current = registrar->FindProperty(name);
+
+    if (kind.has_value() && current && migrated && current != migrated) {
+        optional<AnyData::ValueType> current_kind = GetPrimitiveStorageKind(current);
+        optional<AnyData::ValueType> migrated_kind = GetPrimitiveStorageKind(migrated);
+
+        // Distinct serialized kinds disambiguate a reused live name from its obsolete stored meaning
+        if (current_kind.has_value() && migrated_kind.has_value() && current_kind != migrated_kind && current_kind == kind) {
+            return current;
+        }
+    }
+
+    return migrated;
 }
 
 auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
@@ -1326,7 +1390,7 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     unordered_set<ptr<const Property>> seen_fields;
 
     for (auto&& [field_name, field_value] : dict) {
-        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
+        auto field_prop = PropertiesSerializer::ResolvePropertyFromValue(fields_registrar, field_name, field_value);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
@@ -1363,7 +1427,7 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
         string_view field_name = fields_arr[i].AsString();
-        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
+        auto field_prop = PropertiesSerializer::ResolvePropertyFromText(fields_registrar, field_name, fields_arr[i + 1].AsString());
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);

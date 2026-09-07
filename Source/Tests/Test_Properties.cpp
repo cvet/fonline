@@ -400,6 +400,13 @@ namespace
             throw EnumResolveException("Enum name is not supported in test resolver");
         }
 
+        void RegisterRetypedSnapshotFields()
+        {
+            PropertyRegistrar& registrar = _ref_type_registrars.at("RouteSnapshot");
+            (void)registrar.RegisterProperty({"Common", "int32", "LegacyFlag"});
+            (void)registrar.RegisterProperty({"Common", "bool", "Flag"});
+        }
+
         void AddMigrationRule(hstring rule_name, hstring extra_info, hstring target, hstring replacement) { _migration_rules[rule_name][extra_info][target] = replacement; }
 
         [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override
@@ -2902,6 +2909,90 @@ TEST_CASE("PropertiesNameMigrationAppliesOnlyToStoredNames")
     doc.Emplace("LegacyFlag", int64_t {8});
     CHECK_FALSE(PropertiesSerializer::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK_THROWS(text_props.ApplyFromText(map<string, string> {{"Flag", "9"}, {"LegacyFlag", "10"}}));
+}
+
+TEST_CASE("PropertiesRetypedNamesPreserveCurrentRoundTrips")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("RetypedRoundTripEntity"), hashes.ToHashedString("Flag"), hashes.ToHashedString("LegacyFlag"));
+    PropertyRegistrar registrar("RetypedRoundTripEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto legacy_prop = registrar.RegisterProperty({"Common", "int32", "LegacyFlag", "Mutable", "Persistent", "PublicSync"});
+    auto live_prop = registrar.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+
+    SECTION("Current boolean without legacy value must retain its slot")
+    {
+        Properties original(&registrar);
+        original.SetValue<bool>(live_prop, true);
+        AnyData::Document doc = PropertiesSerializer::SaveToDocument(&original, nullptr, hashes, resolver);
+        Properties restored(&registrar);
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, hashes, resolver));
+        CHECK(restored.GetValue<bool>(live_prop));
+        CHECK(restored.GetValue<int32_t>(legacy_prop) == 0);
+    }
+
+    SECTION("Current boolean and explicit legacy integer must not collide")
+    {
+        Properties original(&registrar);
+        original.SetValue<bool>(live_prop, true);
+        original.SetValue<int32_t>(legacy_prop, 7);
+        AnyData::Document doc = PropertiesSerializer::SaveToDocument(&original, nullptr, hashes, resolver);
+        Properties restored(&registrar);
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, hashes, resolver));
+        CHECK(restored.GetValue<bool>(live_prop));
+        CHECK(restored.GetValue<int32_t>(legacy_prop) == 7);
+    }
+
+    SECTION("Explicit false and zero writes retain distinct current slots")
+    {
+        AnyData::Document doc;
+        doc.Emplace("Flag", false);
+        doc.Emplace("LegacyFlag", int64_t {0});
+        Properties restored(&registrar);
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, hashes, resolver));
+        CHECK_FALSE(restored.GetValue<bool>(live_prop));
+        CHECK(restored.GetValue<int32_t>(legacy_prop) == 0);
+    }
+
+    SECTION("Current text serialization must round trip both distinct slots")
+    {
+        Properties original(&registrar);
+        original.SetValue<bool>(live_prop, true);
+        original.SetValue<int32_t>(legacy_prop, 7);
+        map<string, string> saved = original.SaveToText(nullptr);
+        Properties restored(&registrar);
+        REQUIRE_NOTHROW(restored.ApplyFromText(saved));
+        CHECK(restored.GetValue<bool>(live_prop));
+        CHECK(restored.GetValue<int32_t>(legacy_prop) == 7);
+    }
+}
+
+TEST_CASE("PropertiesRetypedRefTypeNamesPreserveCurrentRoundTrips")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    resolver.RegisterRetypedSnapshotFields();
+    resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("RouteSnapshotRefType"), hashes.ToHashedString("Flag"), hashes.ToHashedString("LegacyFlag"));
+    PropertyRegistrar registrar("RetypedRefRoundTripEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto snapshot_prop = registrar.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+    AnyData::Dict fields;
+    fields.Emplace("Flag", true);
+    fields.Emplace("LegacyFlag", int64_t {7});
+    AnyData::Value input {std::move(fields)};
+    Properties props(&registrar);
+    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, input, hashes, resolver));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&props, snapshot_prop, hashes, resolver) == input);
+
+    map<string, string> text = props.SaveToText(nullptr);
+    Properties restored(&registrar);
+    REQUIRE_NOTHROW(restored.ApplyFromText(text));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&restored, snapshot_prop, hashes, resolver) == input);
+
+    AnyData::Dict duplicate;
+    duplicate.Emplace("Flag", int64_t {4});
+    duplicate.Emplace("LegacyFlag", int64_t {7});
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&restored, snapshot_prop, AnyData::Value {std::move(duplicate)}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&restored, snapshot_prop, "Flag 4 LegacyFlag 7", hashes, resolver));
 }
 
 TEST_CASE("PropertiesNumericWidthConversions")
