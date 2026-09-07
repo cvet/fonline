@@ -36,6 +36,8 @@
 #include "Client.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
+#include "ResourceIndex.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -74,7 +76,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(settings->Packaged ? settings->ClientResources : settings->BakeOutput, "Embedded");
+    _resources.AddPackSource(settings->Packaged ? settings->ClientResources : settings->BakeOutput, EMBEDDED_PACK_NAME);
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
     if (!settings->UserWritablePath.empty()) {
@@ -253,8 +255,52 @@ void Updater::FinishResourcesUpdate()
         return;
     }
 
+    RebuildResourceIndex();
+
     WriteLog("Client updater: resources ready, metadata version {}", local_metadata_version);
     _result = UpdaterResult::ResourcesReady;
+}
+
+void Updater::RebuildResourceIndex() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The tree only pays by outliving the launch that built it, and the web filesystem starts empty every
+    // load - so building it there costs the per-pack index parse it exists to save
+    if (build_condition<FO_WEB>()) {
+        return;
+    }
+
+    string index_path;
+
+    // The merged tree is an optimization over mounting each pack, so nothing here may fail the update. The
+    // whole body is guarded, not just the build, so a throw anywhere leaves the client on the per-pack view
+    try {
+        vector<string> pack_dirs = GetClientPackDirs(*_settings);
+        index_path = GetClientResourceIndexPath(*_settings);
+
+        if (IsResourceIndexCurrent(index_path, pack_dirs, _settings->ClientResourceEntries)) {
+            return;
+        }
+
+        vector<ResourceIndexPack> packs;
+        vector<string> pack_paths;
+
+        if (!ResolveResourceIndexPacks(pack_dirs, _settings->ClientResourceEntries, packs, pack_paths)) {
+            WriteLog("Client updater: can't resolve every pack, leaving the merged index to the next run");
+            return;
+        }
+
+        BuildResourceIndex(index_path, pack_paths, packs);
+        WriteLog("Client updater: merged index rebuilt over {} packs", packs.size());
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Client updater: can't build the merged index, {}", ex.what());
+
+        if (!index_path.empty()) {
+            (void)fs_remove_file(index_path);
+        }
+    }
 }
 
 auto Updater::ReadLocalMetadataVersion() const -> string
@@ -310,14 +356,14 @@ void Updater::GetNextFile()
         string prev_path_str = make_final_path(prev_update_file);
         string temp_path_str = make_temp_path(prev_update_file);
 
-        if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
+        if (!IsDownloadedFileHashMatch(temp_path_str, prev_update_file)) {
             WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
             Abort(StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
-            WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
+            WriteLog("Client updater: failed to promote downloaded file from {} to {}, installed file present {}", temp_path_str, prev_path_str, fs_exists(prev_path_str));
             Abort(StrFilesystemError);
             return;
         }
@@ -340,14 +386,14 @@ void Updater::GetNextFile()
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
-                if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash)) {
+                if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
                     WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
                     fs_remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
-                        WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
+                        WriteLog("Client updater: failed to promote existing temp file from {} to {}, installed file present {}", temp_path, prev_path_str, fs_exists(prev_path_str));
                         Abort(StrFilesystemError);
                         return;
                     }
@@ -369,6 +415,16 @@ void Updater::GetNextFile()
 
         if (!dir.empty()) {
             if (!fs_create_directories(dir)) {
+                Abort(StrFilesystemError);
+                return;
+            }
+
+            // Refusing a pack that will not fit leaves the installed one alone, where running the volume dry
+            // mid-transfer leaves a temp file and a download to repeat. See Docs/ClientUpdater.md
+            auto available = fs_available_space(dir);
+
+            if (available.has_value() && *available < next_update_file.RemaningSize) {
+                WriteLog("Client updater: not enough free space for {}, need {}, available {}", next_update_file.Name, next_update_file.RemaningSize, *available);
                 Abort(StrFilesystemError);
                 return;
             }
@@ -528,6 +584,10 @@ void Updater::Net_OnInitData()
         return;
     }
 
+    // Before anything reads the installed files, so a pack that exists only as the backup of an interrupted
+    // replacement is put back rather than counted as missing and downloaded again
+    RecoverInterruptedReplacements();
+
     FileSystem resources;
 
     if (!_binariesMode) {
@@ -632,20 +692,39 @@ void Updater::Net_OnInitData()
 
             if (file_header) {
                 if (file_header.GetSize() == size) {
-                    if (file_header.GetDataSource()->IsDiskDir() && IsDiskFileHashMatch(file_header.GetDiskPath(), size, hash)) {
-                        continue;
+                    // A resource pack answers from its header, and only from it: the published hash is the one
+                    // it carries, so deciding whether the pack is current never reads a multi-gigabyte body
+                    if (IsResourcePackName(fname)) {
+                        ResourcePackHeader pack_header;
+
+                        if (file_header.GetDataSource()->IsDiskDir() && ReadResourcePackHeader(file_header.GetDiskPath(), pack_header) && pack_header.PackHash == hash) {
+                            continue;
+                        }
                     }
+                    else {
+                        if (file_header.GetDataSource()->IsDiskDir() && IsDiskFileHashMatch(file_header.GetDiskPath(), size, hash)) {
+                            continue;
+                        }
 
-                    auto file = resources.ReadFile(fname);
+                        auto file = resources.ReadFile(fname);
 
-                    if (file && IsDataHashMatch(file.GetData(), size, hash)) {
-                        continue;
+                        if (file && IsDataHashMatch(file.GetData(), size, hash)) {
+                            continue;
+                        }
                     }
                 }
             }
         }
         else {
             continue;
+        }
+
+        // Everything the updater does afterwards - the promotion, the sweeps, the next run's comparison -
+        // looks inside the directory it owns, so a name that resolves outside it is never seen again
+        if (!fs_is_contained_relative_path(local_name)) {
+            WriteLog("Client updater: server listed a file the client cannot place, name {}, local {}", fname, local_name);
+            Abort(StrUpdateFailed);
+            return;
         }
 
         UpdateFile update_file;
@@ -659,6 +738,8 @@ void Updater::Net_OnInitData()
     }
 
     reader.VerifyEnd();
+
+    RemoveStaleTempPacks();
 
     if (!_filesToUpdate.empty()) {
         WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
@@ -812,6 +893,94 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     return *local_hash == expected_hash;
 }
 
+void Updater::RecoverInterruptedReplacements() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto recover_in_dir = [](string_view dir) {
+        if (!fs_is_dir(dir)) {
+            return;
+        }
+
+        for (const auto& name : fs_list_dir_file_names(dir)) {
+            if (!name.ends_with(REPLACED_FILE_BACKUP_SUFFIX) || name.size() == REPLACED_FILE_BACKUP_SUFFIX.size()) {
+                continue;
+            }
+
+            string_view live_name = string_view {name}.substr(0, name.size() - REPLACED_FILE_BACKUP_SUFFIX.size());
+
+            string backup_path = strex(dir).combine_path(name).str();
+            string live_path = strex(dir).combine_path(live_name).str();
+
+            // ReplaceFileSafely moves the installed file aside before it renames the new one over it, so a
+            // backup with nothing in its place is the only copy left and putting it back is the repair
+            if (fs_exists(live_path)) {
+                WriteLog("Client updater: removing obsolete backup {}", backup_path);
+                (void)fs_remove_file(backup_path);
+            }
+            else if (fs_rename(backup_path, live_path)) {
+                WriteLog("Client updater: restored {} from an interrupted replacement", live_path);
+            }
+            else {
+                WriteLog("Client updater: can't restore {} from {}", live_path, backup_path);
+            }
+        }
+    };
+
+    recover_in_dir(fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources));
+    recover_in_dir(_binaryDir);
+}
+
+void Updater::RemoveStaleTempPacks() const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string resources_dir = fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources);
+
+    if (!fs_is_dir(resources_dir)) {
+        return;
+    }
+
+    unordered_set<string> wanted;
+
+    for (const auto& update_file : _filesToUpdate) {
+        wanted.emplace(strex("~{}", update_file.Name).str());
+    }
+
+    // fs_iterate_dir hides names starting with '~', which is exactly the set this sweep is looking for
+    for (const auto& name : fs_list_dir_file_names(resources_dir)) {
+        // Only a temp pack of a pack the server no longer lists is stale; one still in the list is the resume
+        // point this run is about to continue from
+        if (!name.starts_with('~') || !IsResourcePackName(name) || wanted.count(name) != 0) {
+            continue;
+        }
+
+        string stale_path = strex(resources_dir).combine_path(name).str();
+        WriteLog("Client updater: removing stale temp pack {}", stale_path);
+        (void)fs_remove_file(stale_path);
+    }
+}
+
+auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (IsResourcePackName(update_file.Name)) {
+        auto local_size = fs_file_size(file_path);
+
+        return local_size.has_value() && *local_size == update_file.Size && VerifyResourcePackFile(file_path, update_file.Hash);
+    }
+
+    return IsDiskFileHashMatch(file_path, update_file.Size, update_file.Hash);
+}
+
+auto Updater::IsResourcePackName(string_view file_name) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return strex(file_name).get_file_extension() == "fores";
+}
+
 auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -837,7 +1006,7 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    string backup_path = strex("{}.bak", final_path).str();
+    string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
     bool final_exists = fs_exists(final_path);
 
     fs_remove_file(backup_path);

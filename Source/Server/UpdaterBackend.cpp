@@ -38,6 +38,7 @@
 #include "Logging.h"
 #include "MetadataRegistration.h"
 #include "Player.h"
+#include "ResourcePack.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
@@ -68,6 +69,12 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         }
 
         size_t file_size = stream_get_size(file);
+        data.Size = numeric_cast<uint64_t>(file_size);
+
+        // A resource pack publishes the hash its header already carries, so neither side hashes the body to
+        // decide whether it is current; anything else is hashed whole, as before
+        ResourcePackHeader pack_header;
+        bool is_resource_pack = ReadResourcePackHeader(disk_path, pack_header);
 
         if (settings.UpdateFilesInMemory) {
             data.InMemory = true;
@@ -77,19 +84,23 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
-            data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(data.MemoryData);
+            data.Hash = is_resource_pack ? pack_header.PackHash : fs_hash_data(data.MemoryData);
         }
         else {
             data.DiskPath = string(disk_path);
-            data.Size = numeric_cast<uint64_t>(file_size);
-            auto file_hash = fs_hash_file(disk_path);
 
-            if (!file_hash.has_value()) {
-                throw UpdaterException("Can't hash resource pack for client", disk_path);
+            if (is_resource_pack) {
+                data.Hash = pack_header.PackHash;
             }
+            else {
+                auto file_hash = fs_hash_file(disk_path);
 
-            data.Hash = *file_hash;
+                if (!file_hash.has_value()) {
+                    throw UpdaterException("Can't hash resource pack for client", disk_path);
+                }
+
+                data.Hash = *file_hash;
+            }
         }
 
         update_files.emplace_back(std::move(data));
@@ -103,9 +114,23 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
 
+    // Packaging writes the engine pack format; the legacy artifacts stay readable, so an install that still
+    // holds one is published as it is rather than reported missing
+    auto find_pack_file = [&client_resources_dir](string_view resource_entry) -> string {
+        for (string_view extension : {".fores", ".zip", ".bos"}) {
+            string pack_name = strex("{}{}", resource_entry, extension).str();
+
+            if (fs_exists(fs_path_to_string(client_resources_dir / fs_make_path(pack_name)))) {
+                return pack_name;
+            }
+        }
+
+        return strex("{}.fores", resource_entry).str();
+    };
+
     for (const auto& resource_entry : settings.ClientResourceEntries) {
-        if (resource_entry != "Embedded") {
-            string pack_name = strex("{}.zip", resource_entry).str();
+        if (resource_entry != EMBEDDED_PACK_NAME) {
+            string pack_name = find_pack_file(resource_entry);
             string pack_disk_path = fs_path_to_string(client_resources_dir / fs_make_path(pack_name));
             auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
             common_update_files.emplace_back(std::move(info));

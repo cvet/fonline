@@ -413,7 +413,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 2;
+static constexpr uint32_t FO_UPDATER_VERSION = 3;
 
 enum class UpdatePlatform : uint8_t
 {

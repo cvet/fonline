@@ -82,6 +82,10 @@ public:
 };
 
 auto GetClientResources(const ClientSettings& settings) -> FileSystem;
+// Where the packs are looked for, in precedence order, and where the merged tree over them lives. The mount
+// and the post-sync rebuild must agree on both, so neither derives them itself
+auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>;
+auto GetClientResourceIndexPath(const ClientSettings& settings) -> string;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
 {

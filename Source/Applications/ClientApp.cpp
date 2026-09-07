@@ -529,7 +529,7 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
     }
 
     string final_path = string(runtime_live_path);
-    string backup_path = strex("{}.bak", final_path).str();
+    string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
     bool final_exists = fs_exists(final_path);
 
     WriteLog("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, final_exists ? "yes" : "no");

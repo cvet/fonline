@@ -36,10 +36,13 @@
 #include "StackTrace.h"
 #include "StringUtils.h"
 
-#if !FO_WINDOWS && !FO_WEB
+#if !FO_WINDOWS
 #include <fcntl.h>
-#include <sys/file.h>
 #include <unistd.h>
+#endif
+
+#if !FO_WINDOWS && !FO_WEB
+#include <sys/file.h>
 #endif
 
 #if FO_LINUX || FO_MAC
@@ -404,12 +407,55 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
     return result;
 }
 
+// Pack offsets are 64-bit, so the file calls must be too. A 32-bit Android ABI keeps off_t at 32 bits and is
+// reached by the wide names; every other platform we build already has a wide off_t, which the assert proves
+#if FO_ANDROID
+static constexpr int32_t LARGE_FILE_OPEN_FLAG = O_LARGEFILE;
+#else
+static_assert(sizeof(off_t) == 8, "off_t must carry a 64-bit file offset, or the wide calls must be named here");
+static constexpr int32_t LARGE_FILE_OPEN_FLAG = 0;
+#endif
+
+static auto seek_file(int32_t fd, int64_t offset, int32_t whence) noexcept -> int64_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_ANDROID
+    return ::lseek64(fd, offset, whence);
+#else
+    return ::lseek(fd, offset, whence);
+#endif
+}
+
+static auto read_file_offset(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // pread carries its own offset, so concurrent readers of one descriptor never fight over a shared cursor
+#if FO_ANDROID
+    return ::pread64(fd, buffer.get(), size, static_cast<int64_t>(offset));
+#else
+    return ::pread(fd, buffer.get(), size, static_cast<int64_t>(offset));
+#endif
+}
+
+static auto truncate_file_to(int32_t fd, uint64_t size) noexcept -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_ANDROID
+    return ::ftruncate64(fd, static_cast<int64_t>(size));
+#else
+    return ::ftruncate(fd, static_cast<int64_t>(size));
+#endif
+}
+
+#if !FO_WEB
 auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
-    int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0666);
+    int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT | LARGE_FILE_OPEN_FLAG, 0666);
 
     if (fd < 0) {
         return -1;
@@ -422,105 +468,118 @@ auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
     }
 
     return fd;
-#else
-    ignore_unused(path);
-    return -1;
-#endif
 }
 
 void posix::close_exclusive_file(int32_t fd) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
     (void)::flock(fd, LOCK_UN);
     (void)::close(fd);
-#else
-    ignore_unused(fd);
-#endif
 }
+#endif
 
 auto posix::seek_file_end(int32_t fd) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
-    return ::lseek(fd, 0, SEEK_END);
-#else
-    ignore_unused(fd);
-    return -1;
-#endif
+    return seek_file(fd, 0, SEEK_END);
 }
 
 auto posix::seek_file_begin(int32_t fd) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
-    return ::lseek(fd, 0, SEEK_SET) >= 0;
-#else
-    ignore_unused(fd);
-    return false;
-#endif
+    return seek_file(fd, 0, SEEK_SET) >= 0;
 }
 
 auto posix::read_file_chunk(int32_t fd, ptr<char> buffer, size_t size) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
     return ::read(fd, buffer.get(), size);
-#else
-    ignore_unused(fd);
-    ignore_unused(buffer);
-    ignore_unused(size);
-    return -1;
-#endif
 }
 
 auto posix::write_file_chunk(int32_t fd, ptr<const char> data, size_t size) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
     return ::write(fd, data.get(), size);
-#else
-    ignore_unused(fd);
-    ignore_unused(data);
-    ignore_unused(size);
-    return -1;
-#endif
 }
 
 auto posix::truncate_file(int32_t fd) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
-    return ::ftruncate(fd, 0) == 0;
-#else
-    ignore_unused(fd);
-    return false;
-#endif
+    return truncate_file_to(fd, 0) == 0;
 }
 
 auto posix::sync_file(int32_t fd) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
     return ::fsync(fd) == 0;
-#else
-    ignore_unused(fd);
-    return false;
-#endif
 }
 
+auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ::open(path.c_str(), O_RDONLY | LARGE_FILE_OPEN_FLAG);
+}
+
+auto posix::open_new_write_file(const string& path) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | LARGE_FILE_OPEN_FLAG, 0666);
+}
+
+void posix::close_file(int32_t fd) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    (void)::close(fd);
+}
+
+auto posix::get_file_size(int32_t fd) noexcept -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return seek_file(fd, 0, SEEK_END);
+}
+
+auto posix::read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return read_file_offset(fd, offset, buffer, size);
+}
+
+auto posix::preallocate_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Reserving the blocks is best effort: a filesystem that cannot do it reports so, and the size still has
+    // to be set, which is what the caller actually depends on
+#if FO_ANDROID
+    if (::posix_fallocate64(fd, 0, static_cast<int64_t>(size)) == 0) {
+        return true;
+    }
+#elif FO_LINUX
+    if (::posix_fallocate(fd, 0, static_cast<int64_t>(size)) == 0) {
+        return true;
+    }
+#endif
+
+    return truncate_file_to(fd, size) == 0;
+}
+
+#if !FO_WEB
 auto posix::run_process_capturing_output(const string& command, const function<void(string_view)>& on_output) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-#if !FO_WEB
     auto command_cstr = make_ptr(command.c_str());
     auto in = make_nptr(::popen(command_cstr.get(), "r"));
 
@@ -538,50 +597,33 @@ auto posix::run_process_capturing_output(const string& command, const function<v
 
     pipe_guard.release();
     return ::pclose(in.get());
-#else
-    ignore_unused(command);
-    ignore_unused(on_output);
-    return 1;
-#endif
 }
+#endif
 
+#if FO_LINUX || FO_MAC
 auto posix::load_library(const string& path) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_LINUX || FO_MAC
     auto path_cstr = make_ptr(path.c_str());
     return ::dlopen(path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
-#else
-    ignore_unused(path);
-    return nullptr;
-#endif
 }
 
 void posix::free_library(nptr<void> module_handle) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_LINUX || FO_MAC
     (void)::dlclose(module_handle.get());
-#else
-    ignore_unused(module_handle);
-#endif
 }
 
 auto posix::get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_LINUX || FO_MAC
     auto symbol_cstr = make_ptr(symbol_name.c_str());
     return ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, symbol_cstr.get());
-#else
-    ignore_unused(module_handle);
-    ignore_unused(symbol_name);
-    return nullptr;
-#endif
 }
+#endif
 
 FO_END_NAMESPACE
 

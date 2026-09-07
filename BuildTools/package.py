@@ -16,6 +16,7 @@ import sys
 import tarfile
 import tempfile
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Callable, Iterable, Literal, Sequence
@@ -105,7 +106,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
-	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
+	parser.add_argument('-compress-level', dest='compress_level', type=int, choices=range(0, 10), help='override the deflate level baking compresses with')
 	return parser.parse_args()
 
 
@@ -310,6 +311,92 @@ def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
+# Компилируется в исполняемый файл, а не отгружается артефактом, поэтому упаковка встраивает его
+# вместо записи пака; движковая сторона держит то же имя в DataSource.h
+EMBEDDED_PACK_NAME = 'Embedded'
+
+RESOURCE_PACK_MAGIC = 0x53524F46
+RESOURCE_PACK_VERSION_MAJOR = 1
+RESOURCE_PACK_VERSION_MINOR = 0
+RESOURCE_PACK_HEADER_SIZE = 72
+RESOURCE_PACK_ENTRY_SIZE = 40
+RESOURCE_PACK_CODEC_STORED = 0
+RESOURCE_PACK_CODEC_DEFLATE = 1
+RESOURCE_PACK_MIN_COMPRESSED_SIZE = 64
+
+FNV_OFFSET = 0xCBF29CE484222325
+FNV_PRIME = 0x100000001B3
+
+
+def fnv1a_64(data: bytes, seed: int = FNV_OFFSET) -> int:
+	# The digest the pack header carries and the updater already computes over whole files
+	value = seed
+	for byte in data:
+		value = ((value ^ byte) * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
+	return value
+
+
+def encode_resource_pack_blob(data: bytes, compress_level: int, min_gain_percent: int) -> tuple[int, bytes]:
+	# Deflate is kept only when it gives back the configured minimum, so data that will not shrink is stored
+	# as it is and costs nothing to read back
+	if len(data) < RESOURCE_PACK_MIN_COMPRESSED_SIZE:
+		return RESOURCE_PACK_CODEC_STORED, data
+
+	compressed = zlib.compress(data, compress_level)
+	max_kept_size = len(data) - len(data) * min_gain_percent // 100
+
+	if len(compressed) >= max_kept_size:
+		return RESOURCE_PACK_CODEC_STORED, data
+
+	return RESOURCE_PACK_CODEC_DEFLATE, compressed
+
+
+def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, str | Path]], compress_level: int, min_gain_percent: int) -> None:
+	"""Write one engine resource pack: header, payload blobs, then the index over them."""
+	assert 0 <= compress_level <= 9, 'Resource pack compression level is out of the zlib range'
+	assert 0 <= min_gain_percent <= 100, 'Resource pack minimum compression gain is not a percentage'
+
+	sorted_entries = sorted(entries, key=lambda entry: entry[0])
+
+	for index in range(1, len(sorted_entries)):
+		assert sorted_entries[index - 1][0] != sorted_entries[index][0], 'Resource pack holds the same path twice: ' + sorted_entries[index][0]
+
+	body = bytearray()
+	index_records: list[tuple[str, int, int, int, int]] = []
+
+	for arcname, file_path in sorted_entries:
+		with open(file_path, 'rb') as src:
+			raw = src.read()
+
+		codec, blob = encode_resource_pack_blob(raw, compress_level, min_gain_percent)
+		index_records.append((arcname, RESOURCE_PACK_HEADER_SIZE + len(body), len(blob), len(raw), codec))
+		body += blob
+
+	data_size = len(body)
+	pool_offset = len(index_records) * RESOURCE_PACK_ENTRY_SIZE
+	index = bytearray()
+	pool = bytearray()
+
+	for arcname, data_offset, stored_size, decoded_size, codec in index_records:
+		path_bytes = arcname.encode('utf-8')
+		index += struct.pack('<IIQQQII', pool_offset + len(pool), len(path_bytes), data_offset, stored_size, decoded_size, codec, 0)
+		pool += path_bytes
+
+	index += pool
+	index_codec, stored_index = encode_resource_pack_blob(bytes(index), compress_level, min_gain_percent)
+	body += stored_index
+
+	header = bytearray(RESOURCE_PACK_HEADER_SIZE)
+	struct.pack_into('<IHH', header, 0, RESOURCE_PACK_MAGIC, RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR)
+	struct.pack_into('<Q', header, 8, fnv1a_64(bytes(body)))
+	struct.pack_into('<QQQ', header, 16, RESOURCE_PACK_HEADER_SIZE + data_size, len(stored_index), len(index))
+	struct.pack_into('<II', header, 40, index_codec, len(index_records))
+	struct.pack_into('<QQ', header, 48, RESOURCE_PACK_HEADER_SIZE, data_size)
+	struct.pack_into('<Q', header, 64, fnv1a_64(bytes(header[:64])))
+
+	with open(archive_path, 'wb') as dst:
+		dst.write(header)
+		dst.write(body)
 def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipInfo, file_path: str) -> bool:
 	if archive_info.file_size != os.path.getsize(file_path):
 		return False
@@ -528,7 +615,8 @@ class Packager:
 	server_res_dir: str = field(init=False)
 	client_res_dir: str = field(init=False)
 	platform_binaries_dir: str = field(init=False)
-	zip_compress_level: int = field(init=False)
+	compress_level: int = field(init=False)
+	resource_pack_min_compress_gain: int = field(init=False)
 	target_output_path: str = field(init=False)
 	baking_path: str | None = field(init=False, default=None)
 	embedded_data: bytes = field(init=False, default=b'')
@@ -542,7 +630,8 @@ class Packager:
 		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
 		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
 		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
-		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
+		self.compress_level = self.args.compress_level if self.args.compress_level is not None else self.fomain.mainSection().getInt('Baking.CompressLevel')
+		self.resource_pack_min_compress_gain = self.fomain.mainSection().getInt('Baking.ResourcePackMinCompressGain')
 		self.target_output_path = self.build_target_output_path()
 
 	def has_pack(self, name: str) -> bool:
@@ -914,7 +1003,7 @@ class Packager:
 	def make_embedded_data_for_target(self, target: str) -> bytes:
 		assert self.baking_path, 'Baking path is not initialized'
 		for pack_name in self.get_target_resource_packs(target):
-			if pack_name == 'Embedded':
+			if pack_name == EMBEDDED_PACK_NAME:
 				files = self.collect_resource_files(pack_name, target)
 				return self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 		raise AssertionError('Embedded resource pack not found for ' + target)
@@ -928,15 +1017,6 @@ class Packager:
 		with open(config_path, 'r', encoding='utf-8-sig') as file:
 			return config_name, file.read().encode()
 
-	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
-		zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
-
-		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for arcname, file_path in zip_entries:
-				self.write_stable_zip_entry(archive, file_path, arcname)
-
-		validate_resource_zip(archive_path, [arcname for arcname, _ in zip_entries])
-
 	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
 		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
 		info.create_system = 3
@@ -948,7 +1028,7 @@ class Packager:
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
 		zip_entries = [os.path.relpath(file_path, base_path).replace(os.sep, '/') for file_path in files]
-		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
+		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.compress_level) as archive:
 			for arcname, file_path in zip(zip_entries, files):
 				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
@@ -963,11 +1043,14 @@ class Packager:
 			os.makedirs(os.path.join(self.target_output_path, self.client_res_dir), exist_ok=True)
 
 	def package_resource_pack(self, pack_name: str, files: Sequence[str], base_res_name: str) -> None:
-		archive_path = os.path.join(self.target_output_path, base_res_name, pack_name + '.zip')
 		assert self.baking_path, 'Baking path is not initialized'
 		base_path = os.path.join(self.baking_path, pack_name)
-		log('Make pack', pack_name, '=>', pack_name + '.zip', '(' + str(len(files)) + ')')
-		self.write_files_zip(archive_path, base_path, files)
+		archive_name = pack_name + '.fores'
+		archive_path = os.path.join(self.target_output_path, base_res_name, archive_name)
+		log('Make pack', pack_name, '=>', archive_name, '(' + str(len(files)) + ')')
+
+		entries = [(os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files]
+		write_resource_pack(archive_path, entries, self.compress_level, self.resource_pack_min_compress_gain)
 
 	def load_config_data(self) -> None:
 		config_name, self.config_data = self.read_config_data(self.args.target)
@@ -988,7 +1071,7 @@ class Packager:
 
 		for pack_name in self.get_target_resource_packs(self.args.target):
 			files = self.collect_resource_files(pack_name, self.args.target)
-			if pack_name == 'Embedded':
+			if pack_name == EMBEDDED_PACK_NAME:
 				log('Make pack', pack_name, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 				self.embedded_data = self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 			else:
@@ -997,15 +1080,10 @@ class Packager:
 
 		if self.args.target == 'Server':
 			for pack_name in self.get_target_resource_packs('Client'):
-				if pack_name == 'Embedded':
+				if pack_name == EMBEDDED_PACK_NAME:
 					continue
 				files = self.collect_resource_files(pack_name, 'Client')
-				log('Make client pack', pack_name, '=>', pack_name + '.zip', '(' + str(len(files)) + ')')
-				self.write_files_zip(
-					os.path.join(self.target_output_path, self.client_res_dir, pack_name + '.zip'),
-					os.path.join(self.baking_path, pack_name),
-					files,
-				)
+				self.package_resource_pack(pack_name, files, self.client_res_dir)
 
 		self.load_config_data()
 
@@ -1502,12 +1580,12 @@ class Packager:
 
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
-			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level)
+			make_zip(self.target_output_path + '.zip', self.target_output_path, self.compress_level)
 
 		if self.has_pack('SingleZip'):
 			log('Add to single zip archive')
 			single_zip_path = os.path.join(self.output_path, os.path.basename(self.output_path) + '.zip')
-			make_zip(single_zip_path, self.target_output_path, self.zip_compress_level, 'a')
+			make_zip(single_zip_path, self.target_output_path, self.compress_level, 'a')
 
 		if self.has_pack('Tar'):
 			log('Create tar archive')
@@ -1684,7 +1762,7 @@ def main() -> None:
 		args = parse_include_args(sys.argv[2:])
 		fomain = foconfig.ConfigParser()
 		fomain.loadFromFile(args.maincfg)
-		compress_level = fomain.mainSection().getInt('Baking.ZipCompressLevel')
+		compress_level = fomain.mainSection().getInt('Baking.CompressLevel')
 		include_package_files(args.input, args.source, args.output, args.target, args.singlezip, compress_level)
 		return
 

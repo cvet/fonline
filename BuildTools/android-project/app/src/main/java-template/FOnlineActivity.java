@@ -67,11 +67,19 @@ public class FOnlineActivity extends SDLActivity {
         final File revisionFile = new File(runtimeRoot, ".asset_revision");
         final String assetRevision = getAssetRevision();
 
-        if (!assetRevision.equals(readSmallTextFile(revisionFile)) || !new File(resourcesDir, "Metadata.zip").isFile()) {
+        if (!assetRevision.equals(readSmallTextFile(revisionFile)) || !hasStagedResources(resourcesDir)) {
             deleteRecursively(resourcesDir);
             copyAssetTree("Resources", resourcesDir);
             writeSmallTextFile(revisionFile, assetRevision);
         }
+    }
+
+    // The revision alone cannot prove the tree survived, so the staged directory is probed as a directory.
+    // Naming one artifact here is what let a pack format change turn this into a re-copy on every launch
+    private boolean hasStagedResources(File resourcesDir) {
+        final String[] children = resourcesDir.list();
+
+        return children != null && children.length > 0;
     }
 
     private File getRuntimeRoot() {

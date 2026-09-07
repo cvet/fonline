@@ -52,7 +52,7 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/package.py`
 - `BuildTools/msicreator/createmsi.py`
-- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_zip_helpers.py`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
@@ -265,7 +265,9 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) i
 Versioned by `FO_UPDATER_VERSION` ([../Source/Common/Common.h](../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. Generation 2 rejects
 generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
-in-process runtime reload. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and
+in-process runtime reload. Generation 3 changes what `hash` means for a resource pack entry - the header
+`PackHash` rather than the whole-file digest - which a generation-2 client would compare against a digest it
+computes itself and re-download for ever, so it is refused the same way. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and
 changes with every build.
 
 ### Handshake
@@ -318,7 +320,7 @@ Each descriptor entry is:
 | `name_len` | `int16` (`-1` terminates the list) | client-relative path length |
 | `name` | `char[name_len]` | client-relative path |
 | `size` | `uint64` | full file size |
-| `hash` | `uint64` | FNV-1a 64-bit hash of the file content |
+| `hash` | `uint64` | FNV-1a 64-bit digest: for a resource pack (`.fores`) the `PackHash` its header carries, for anything else the whole file content |
 | `target` | `UpdateFileTarget` (`uint8`) | `ClientResources` or `ClientBinaries` |
 | `file_index` | `uint32` | server-assigned index for `GetUpdateFile` |
 
@@ -352,9 +354,45 @@ Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Serve
   demand, so a pack replaced under a live server would otherwise reach the client under the hash announced for the
   previous one.
 
-Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
+Once the update list is known, temp files left by an abandoned transfer whose pack the server no longer
+lists are removed (`RemoveStaleTempPacks`), so an interrupted download does not hold its size on the volume
+for ever; a temp file for a pack still on the list is the resume point and is kept.
 
-To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+A promotion that was interrupted between its two renames is repaired first (`RecoverInterruptedReplacements`).
+A successful resource sync ends by rebuilding the merged tree. `FinishResourcesUpdate` calls
+`RebuildResourceIndex`, which skips the work when `IsResourceIndexCurrent` says the tree already describes the
+packs - a sync that changed nothing rewrites nothing - and otherwise merges the packs into `Resources.foindex`
+beside them. Building it is best effort: the tree is an optimization over mounting each pack, so a failure is
+logged, the half-built file is removed, and the update still succeeds with the client taking the per-pack
+view. That is the one place anything writes a `.foindex`; nothing ships or downloads one. The web build skips
+the build outright - see the Platforms section of [ResourcePackFormat.md](ResourcePackFormat.md) for why a tree
+that cannot outlive its launch costs more than it saves.
+
+`ReplaceFileSafely` moves the installed file to `<name>-backup` before renaming the new one into place and puts
+it back when that fails - but the restore can fail for the same reason, and then the only copy of the pack is
+a backup nothing reads. A backup whose live counterpart is missing is renamed back; one whose counterpart is
+present is obsolete and removed. `ApplyStagedBinaryUpdate` in the client host writes the same suffix, taken
+from the same `REPLACED_FILE_BACKUP_SUFFIX`, so one sweep repairs an interrupted swap whichever of the two
+started it. The constant lives in `Updater.h` rather than in either writer precisely because a sweep looks
+files up by that name: two spellings mean the other writer's leftovers are invisible. The updater releases
+every mounted data source at the end of its constructor (`CleanDataSources`) precisely so a pack it is about
+to replace is not open: `open_shared_read_file` shares read and write but not delete, so a live
+`ResourcePackSource` would refuse the rename.
+
+Client-side, the `Updater` writes each portion to a `~<filename>` temp file, proves the finished file once complete, then atomically renames over the live file (`ReplaceFileSafely`). A resource pack is proved by `VerifyResourcePackFile` ([../Source/Common/ResourcePack.cpp](../Source/Common/ResourcePack.cpp)): the header must carry the published `PackHash` and the body, hashed in bounded slices, must reproduce it. Anything else is hashed whole via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
+
+A resource pack never needs that pass at all: the published hash is the one in its header, so "is this pack current" is one header read (`ReadResourcePackHeader`) and no body is hashed at startup. For the remaining whole-file entries, and to avoid rehashing them on every startup, the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+
+Every entry name is checked with `fs_is_contained_relative_path` before it becomes an update target: the
+promotion, both sweeps and the next run's comparison all look inside the directory the updater owns, so an
+entry that would land outside it is never seen again and the update is aborted instead. This is not a defence
+against a hostile server - the signature is what is trusted there - it is refusing to act on a descriptor the
+client cannot carry out.
+
+Before a transfer starts the updater refuses one it cannot finish: `fs_available_space` on the target
+directory must hold the remaining bytes, or the pack is not attempted and the installed one is left alone.
+The space is checked rather than reserved, because the resume protocol reads how much already arrived from
+the temp file's length, and preallocating the full size would make every partial download look complete.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 
@@ -407,6 +445,13 @@ Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>
 **fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
 bad install config never bricks startup.
 
+Android and Web reach the portable branch, and both point `Baking.ClientResources` somewhere the platform
+made writable for them rather than at the install directory: the Android activity stages the packs out of the
+APK into the application's files directory, and the web build runs entirely inside the preloaded Emscripten
+filesystem. Neither has an installer marker, so neither takes the per-user branch. What that costs the merged
+tree - rebuilt with the staged directory on Android, on every launch on Web - is in
+[ResourcePackFormat.md](ResourcePackFormat.md).
+
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
@@ -454,7 +499,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, verifies the exact entry list, and streams every entry through Python's CRC-checking reader; a damaged archive fails packaging before it can become the server's updater source. The `Embedded` pack goes through the same check on its in-memory buffer before it is patched into the executable, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order and post-build validation invariants.
+Client resource packs are written in the engine pack format ([ResourcePackFormat.md](ResourcePackFormat.md)), from sorted normalized paths and with no timestamp anywhere in the file. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same hash in the updater descriptor and does not force clients to redownload every pack. The `Embedded` pack is the one that stays a zip, since it is patched into the executable rather than shipped as a file: the packager reopens its in-memory buffer, verifies the exact entry list and streams every entry through Python's CRC-checking reader before embedding it, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_helpers.py` covers the mtime/order and post-build validation invariants.
 
 The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data.
 
@@ -550,3 +595,4 @@ Local validation steps:
 - [Architecture.md](../../Docs/Architecture.md) â€” engine + game build layout, target table.
 - [Debugging.md](Debugging.md) â€” debugger setup; the host vs runtime split affects which binary the debugger should attach to.
 - [SteamIntegration.md](../../Docs/SteamIntegration.md) â€” alternative distribution channel that bypasses the in-game updater.
+- [ResourcePackFormat.md](ResourcePackFormat.md) â€” the `.fores` pack and the derived `.foindex` tree the sync moves and rebuilds.

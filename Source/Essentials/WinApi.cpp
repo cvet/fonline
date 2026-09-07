@@ -317,6 +317,87 @@ auto winapi::sync_file(int32_t fd) noexcept -> bool
     return ::_commit(fd) == 0;
 }
 
+auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t fd = -1;
+
+    if (::_sopen_s(&fd, path.c_str(), _O_BINARY | _O_RDONLY, _SH_DENYNO, 0) != 0) {
+        return -1;
+    }
+
+    return fd;
+}
+
+auto winapi::open_new_write_file(const string& path) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t fd = -1;
+
+    if (::_sopen_s(&fd, path.c_str(), _O_BINARY | _O_WRONLY | _O_CREAT | _O_TRUNC, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
+        return -1;
+    }
+
+    return fd;
+}
+
+void winapi::close_file(int32_t fd) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    (void)::_close(fd);
+}
+
+auto winapi::get_file_size(int32_t fd) noexcept -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ::_filelengthi64(fd);
+}
+
+auto winapi::read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file_handle = reinterpret_cast<HANDLE>(::_get_osfhandle(fd));
+
+    if (file_handle == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    auto chunk = static_cast<DWORD>(std::min(size, static_cast<size_t>(std::numeric_limits<int32_t>::max())));
+
+    // The offset lives in the OVERLAPPED, not in the handle, so a concurrent reader never moves this one. The
+    // kernel still serializes these calls; FILE_FLAG_OVERLAPPED is the upgrade path if that ever measures
+    OVERLAPPED overlapped = {};
+    overlapped.Offset = static_cast<DWORD>(offset & 0xFFFFFFFFull);
+    overlapped.OffsetHigh = static_cast<DWORD>(offset >> 32);
+
+    DWORD read_bytes = 0;
+
+    if (::ReadFile(file_handle, buffer.get(), chunk, &read_bytes, &overlapped) == FALSE) {
+        // A read that starts exactly at the end of the file is an ordinary empty result, not a failure
+        return ::GetLastError() == ERROR_HANDLE_EOF ? 0 : -1;
+    }
+
+    return static_cast<int64_t>(read_bytes);
+}
+
+auto winapi::preallocate_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (size > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+        return false;
+    }
+
+    // Moves the end of file without writing zeroes. SetFileValidData would also skip the lazy zero fill, but
+    // it needs a volume privilege and would expose stale disk contents, so the cheap and safe form wins
+    return ::_chsize_s(fd, static_cast<int64_t>(size)) == 0;
+}
+
 auto winapi::run_process_capturing_output(const string& command, const function<void(string_view)>& on_output) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();

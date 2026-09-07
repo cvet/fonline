@@ -32,7 +32,9 @@
 //
 
 #include "DiskFileSystem.h"
+#include "Posix.h"
 #include "SafeArithmetics.h"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -90,6 +92,21 @@ auto fs_is_relative_path(string_view path) noexcept -> bool
     return path.empty() || std::filesystem::path {fs_make_path(path)}.is_relative();
 }
 
+auto fs_is_contained_relative_path(string_view path) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Windows calls a leading separator relative - relative to the current drive - yet it still resolves
+    // from a root, so it leaves the directory behind exactly as an absolute path would
+    if (path.empty() || path.front() == '/' || path.front() == '\\') {
+        return false;
+    }
+
+    // Refusing every '..' rather than resolving the path is deliberate: resolution depends on what exists on
+    // disk, and a caller checking a name before creating it needs the answer to hold either way
+    return fs_is_relative_path(path) && path.find("..") == string_view::npos;
+}
+
 auto fs_make_writable_path(string_view user_writable_path, string_view relative) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -133,6 +150,17 @@ auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
     std::error_code ec;
     uintmax_t size = std::filesystem::file_size(std::filesystem::path {fs_make_path(path)}, ec);
     return !ec ? optional<uint64_t> {size} : std::nullopt;
+}
+
+auto fs_available_space(string_view path) noexcept -> optional<uint64_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::error_code ec;
+    auto info = std::filesystem::space(std::filesystem::path {fs_make_path(path)}, ec);
+
+    // The path itself need not exist yet, but its directory must, or the volume cannot be identified
+    return !ec ? optional<uint64_t> {numeric_cast<uint64_t>(info.available)} : std::nullopt;
 }
 
 static auto fs_read_file_impl(string_view path, optional<size_t> max_size) -> optional<string>
@@ -409,6 +437,29 @@ void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visito
     RecursiveDirLook(dir, "", recursive, visitor);
 }
 
+auto fs_list_dir_file_names(string_view dir) noexcept -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> names;
+    std::error_code ec;
+    std::filesystem::directory_iterator it {std::filesystem::path {fs_make_path(dir)}, ec};
+    std::filesystem::directory_iterator end;
+
+    // Every step takes the error code, because the throwing increment would reach a noexcept frame
+    while (!ec && it != end) {
+        if (it->is_regular_file(ec) && !ec) {
+            auto u8_str = it->path().filename().u8string();
+            names.emplace_back(u8_str.begin(), u8_str.end());
+        }
+
+        ec.clear();
+        it.increment(ec);
+    }
+
+    return names;
+}
+
 auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -471,6 +522,240 @@ auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::se
     stream.clear();
     stream.seekg(offset, origin);
     return !!stream;
+}
+
+disk_read_file::disk_read_file(string_view path) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    _descriptor = winapi::open_shared_read_file(string(path));
+#else
+    _descriptor = posix::open_shared_read_file(string(path));
+#endif
+
+    if (_descriptor < 0) {
+        return;
+    }
+
+#if FO_WINDOWS
+    int64_t size = winapi::get_file_size(_descriptor);
+#else
+    int64_t size = posix::get_file_size(_descriptor);
+#endif
+
+    // A descriptor whose length cannot be read is unusable, so it closes rather than pass for an open file
+    if (size < 0) {
+        close();
+        return;
+    }
+
+    _size = static_cast<uint64_t>(size);
+}
+
+disk_read_file::disk_read_file(disk_read_file&& other) noexcept :
+    _descriptor {other._descriptor},
+    _size {other._size}
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    other._descriptor = -1;
+    other._size = 0;
+}
+
+auto disk_read_file::operator=(disk_read_file&& other) noexcept -> disk_read_file&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (this != &other) {
+        close();
+        _descriptor = other._descriptor;
+        _size = other._size;
+        other._descriptor = -1;
+        other._size = 0;
+    }
+
+    return *this;
+}
+
+disk_read_file::~disk_read_file()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    close();
+}
+
+auto disk_read_file::read_at(uint64_t offset, span<uint8_t> buf) const noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+    size_t done = 0;
+
+    while (done != buf.size()) {
+        auto target = make_ptr(buf.data() + done);
+
+#if FO_WINDOWS
+        int64_t read_bytes = winapi::read_file_at(_descriptor, offset + done, target, buf.size() - done);
+#else
+        int64_t read_bytes = posix::read_file_at(_descriptor, offset + done, target, buf.size() - done);
+#endif
+
+        // Zero means the file ended before the span did, which for a declared extent is a corrupt file
+        if (read_bytes <= 0) {
+            return false;
+        }
+
+        done += static_cast<size_t>(read_bytes);
+    }
+
+    return true;
+}
+
+void disk_read_file::close() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_descriptor >= 0) {
+#if FO_WINDOWS
+        winapi::close_file(_descriptor);
+#else
+        posix::close_file(_descriptor);
+#endif
+        _descriptor = -1;
+    }
+
+    _size = 0;
+}
+
+disk_write_file::disk_write_file(string_view path) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    _descriptor = winapi::open_new_write_file(string(path));
+#else
+    _descriptor = posix::open_new_write_file(string(path));
+#endif
+}
+
+disk_write_file::disk_write_file(disk_write_file&& other) noexcept :
+    _descriptor {other._descriptor}
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    other._descriptor = -1;
+}
+
+auto disk_write_file::operator=(disk_write_file&& other) noexcept -> disk_write_file&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (this != &other) {
+        close();
+        _descriptor = other._descriptor;
+        other._descriptor = -1;
+    }
+
+    return *this;
+}
+
+disk_write_file::~disk_write_file()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    close();
+}
+
+auto disk_write_file::write(const_span<uint8_t> buf) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+    size_t done = 0;
+
+    while (done != buf.size()) {
+        auto source = make_ptr(buf.data() + done).reinterpret_as<const char>();
+
+#if FO_WINDOWS
+        int64_t written = winapi::write_file_chunk(_descriptor, source, buf.size() - done);
+#else
+        int64_t written = posix::write_file_chunk(_descriptor, source, buf.size() - done);
+#endif
+
+        if (written <= 0) {
+            return false;
+        }
+
+        done += static_cast<size_t>(written);
+    }
+
+    return true;
+}
+
+auto disk_write_file::seek_to_begin() noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    return winapi::seek_file_begin(_descriptor);
+#else
+    return posix::seek_file_begin(_descriptor);
+#endif
+}
+
+auto disk_write_file::preallocate(uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    return winapi::preallocate_file(_descriptor, size);
+#else
+    return posix::preallocate_file(_descriptor, size);
+#endif
+}
+
+auto disk_write_file::flush() noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    return winapi::sync_file(_descriptor);
+#else
+    return posix::sync_file(_descriptor);
+#endif
+}
+
+void disk_write_file::close() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_descriptor >= 0) {
+#if FO_WINDOWS
+        winapi::close_file(_descriptor);
+#else
+        posix::close_file(_descriptor);
+#endif
+        _descriptor = -1;
+    }
 }
 
 FO_END_NAMESPACE

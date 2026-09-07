@@ -191,6 +191,55 @@ void span_write_object_bytes(span<uint8_t> buffer, size_t& pos, const T& data, s
     span_write_bytes(buffer, pos, make_nptr(&data).void_cast(), size);
 }
 
+// Fixed-width integers at a caller-chosen offset, for the on-disk formats. The object helpers above advance a
+// cursor instead, which cannot address a layout that has reserved gaps in it
+constexpr void span_write_uint16(span<uint8_t> buffer, size_t offset, uint16_t value) noexcept
+{
+    buffer[offset + 0] = static_cast<uint8_t>(value & 0xFF);
+    buffer[offset + 1] = static_cast<uint8_t>((value >> 8) & 0xFF);
+}
+
+constexpr void span_write_uint32(span<uint8_t> buffer, size_t offset, uint32_t value) noexcept
+{
+    for (size_t i = 0; i < 4; ++i) {
+        buffer[offset + i] = static_cast<uint8_t>((value >> (i * 8)) & 0xFF);
+    }
+}
+
+constexpr void span_write_uint64(span<uint8_t> buffer, size_t offset, uint64_t value) noexcept
+{
+    for (size_t i = 0; i < 8; ++i) {
+        buffer[offset + i] = static_cast<uint8_t>((value >> (i * 8)) & 0xFF);
+    }
+}
+
+[[nodiscard]] constexpr auto span_read_uint16(const_span<uint8_t> buffer, size_t offset) noexcept -> uint16_t
+{
+    return static_cast<uint16_t>(buffer[offset + 0]) | static_cast<uint16_t>(static_cast<uint16_t>(buffer[offset + 1]) << 8);
+}
+
+[[nodiscard]] constexpr auto span_read_uint32(const_span<uint8_t> buffer, size_t offset) noexcept -> uint32_t
+{
+    uint32_t value = 0;
+
+    for (size_t i = 0; i < 4; ++i) {
+        value |= static_cast<uint32_t>(buffer[offset + i]) << (i * 8);
+    }
+
+    return value;
+}
+
+[[nodiscard]] constexpr auto span_read_uint64(const_span<uint8_t> buffer, size_t offset) noexcept -> uint64_t
+{
+    uint64_t value = 0;
+
+    for (size_t i = 0; i < 8; ++i) {
+        value |= static_cast<uint64_t>(buffer[offset + i]) << (i * 8);
+    }
+
+    return value;
+}
+
 template<typename T>
     requires(std::is_standard_layout_v<T>)
 void span_write_aligned_object(span<uint8_t> buffer, size_t& pos, const T& data, size_t alignment)

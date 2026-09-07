@@ -122,6 +122,18 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 - `MountDir(dir, recursive, non_cached, maybe_not_available)` for disk directory resources;
 - `MountPack(dir, name, maybe_not_available)` for packed resource data.
 
+`MountPack` probes by extension in a fixed order: `.fores`, then `.zip` and `.bos` (both read as ZIP), then
+`.dat` (Fallout). `.fores` is the engine pack format - one file holding a header, the payload blobs and the
+index over them, with the pack identity readable from the first bytes. Its contract is
+[ResourcePackFormat.md](ResourcePackFormat.md). A file that claims the `FORS` magic and fails validation throws; it is never
+downgraded to an empty source and never falls back to a sibling `.zip` of the same pack.
+
+Listing a source goes through `GetFileNamesGeneric`, which has two overloads over one filter. A source that
+genuinely owns its names - the zip, dat and directory ones, which copy them out of a central directory or a
+disk walk - passes its `vector<string>`. A source built on its own string pool passes a `vector<string_view>`
+into that pool instead, so the pack and the merged tree keep exactly one copy of every path and borrow it for
+the call rather than holding a second list for the life of the mount.
+
 `FileSystem` then combines sources and offers:
 
 - `AddDirSource()`, `AddPackSource()`, `AddPacksSource()`, and `AddCustomSource()`;
@@ -142,7 +154,7 @@ all of it, and a source whose answer depends on the world at call time returns `
 so a source that says nothing keeps being probed - a missed override costs a lookup, a wrong one serves a file that
 has since moved.
 
-Every pack-backed source offers a snapshot - `ZipFile`, `EmbeddedFile`, `FalloutDat`, `FilesList` - and so does the
+Every pack-backed source offers a snapshot - `ResourcePackSource`, `ZipFile`, `EmbeddedFile`, `FalloutDat` - and so does the
 empty stand-in a `maybe_not_available` mount produces when its pack is absent. That last one is not a detail:
 `GetClientResources()` mounts every pack name a second time against the writable overlay so a downloaded pack wins
 over the installed copy, and on a client that has downloaded nothing yet every one of those is absent. If an absent
@@ -170,7 +182,11 @@ container does not preserve.
 
 `Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings remain internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
 
-Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` owns that ordering for both the updater's post-sync metadata check and the gameplay `ClientEngine`; do not reconstruct the pack view independently in either path. The updater writes resource patches into that overlay, so the exact current files that pass validation also win runtime lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
+Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` owns that ordering for both the updater's post-sync metadata check and the gameplay `ClientEngine`; do not reconstruct the pack view independently in either path.
+
+It mounts one source rather than many when it can: if `Resources.foindex` in the writable overlay still describes the packs on disk, that merged tree is the only source mounted, and a lookup is one hash probe plus one positional read into the pack holding the bytes. The check is `IsResourceIndexCurrent()`, which reads each pack's 72-byte header and compares the fold against the index's `PackListHash` - no pack is opened to decide. Anything the check rejects - no index, a stale one, an unreadable header - falls back to mounting each pack, which is always correct and costs only the rebuild; see [ResourcePackFormat.md](ResourcePackFormat.md). A tree that passes the check and then fails to open is not a fallback path but a real failure, and it throws: the index reader going wrong must be visible rather than quietly degrading to the slow view. The merged tree preserves the same precedence the separate mounts have, so the two views resolve every path identically.
+
+The bootstrap is deliberately outside all of this. `Application` builds its own two-pack `FileSystem` for the ImGui default effect - `Embedded` first, then `Core` - and never consults the merged tree, which does not exist that early. The second mount is an override point, not redundancy: a project ships its own `Core` and can replace what the bootstrap pack carries, so the two mounting the same bytes today is a property of the current content rather than a licence to drop one. The updater writes resource patches into that overlay, so the exact current files that pass validation also win runtime lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
 
 ## Low-level disk access
 

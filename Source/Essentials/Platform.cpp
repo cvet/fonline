@@ -193,16 +193,23 @@ auto Platform::LoadModule(const string& module_name) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
+#if FO_WINDOWS || FO_LINUX || FO_MAC
     auto add_extension = [](const string& path, string_view extension) -> string { //
         return path.ends_with(extension) ? path : strex(strex::safe_format, "{}{}", path, extension).str();
     };
+#endif
 
 #if FO_WINDOWS
     return winapi::load_library(add_extension(module_name, ".dll"));
 #elif FO_MAC
     return posix::load_library(add_extension(module_name, ".dylib"));
-#else
+#elif FO_LINUX
     return posix::load_library(add_extension(module_name, ".so"));
+#else
+    // Android links its runtime into the package and the web build has no module system at all, so there is
+    // nothing to load rather than a loader that fails
+    ignore_unused(module_name);
+    return nullptr;
 #endif
 }
 
@@ -216,7 +223,7 @@ void Platform::UnloadModule(nptr<void> module_handle) noexcept
 
 #if FO_WINDOWS
     winapi::free_library(module_handle);
-#else
+#elif FO_LINUX || FO_MAC
     posix::free_library(module_handle);
 #endif
 }
@@ -227,8 +234,11 @@ auto Platform::GetFuncAddr(nptr<void> module_handle, const string& func_name) no
 
 #if FO_WINDOWS
     return winapi::get_proc_address(module_handle, func_name).get();
-#else
+#elif FO_LINUX || FO_MAC
     return posix::get_symbol_address(module_handle, func_name).get();
+#else
+    ignore_unused(module_handle, func_name);
+    return nullptr;
 #endif
 }
 
