@@ -105,6 +105,11 @@ Builds source lists and generated resource files used by later stages. It append
 
 Start here when a new hand-authored source file must become part of a core engine library.
 
+`AddEngineSource(COMMON ...)` also forwards contributed `.h` files to codegen.
+Header classification requires the literal `.h` suffix; its bracketed-dot regex
+retains that meaning across CMake macro argument policies without backslash
+re-interpretation.
+
 ### `Codegen.cmake`
 
 Constructs the code-generation command and output set. It passes project and engine metadata to `BuildTools/codegen.py`, including main config, build hash, generated output path, project names, embedded data capacity, metadata source files, and added common headers.

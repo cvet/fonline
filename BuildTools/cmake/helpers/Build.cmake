@@ -294,7 +294,7 @@ macro(AddEngineSource target)
 		AppendList(FO_${target}_SOURCE ${resolvedFile})
 		AppendList(FO_SOURCE_META_FILES ${resolvedFile})
 
-		StringRegexMatch("\\.h$" isHeader "${resolvedFile}")
+		StringRegexMatch("[.]h$" isHeader "${resolvedFile}")
 
 		if(${target} STREQUAL "COMMON" AND isHeader)
 			AppendList(FO_ADDED_COMMON_HEADERS ${resolvedFile})
