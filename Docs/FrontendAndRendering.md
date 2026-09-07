@@ -459,7 +459,10 @@ OpenGL is the path to inspect for WebAssembly/WebGL behavior. Pair renderer chan
 
 Important behaviors:
 
-- creates D3D device/swap-chain/render-target resources;
+- creates D3D device/swap-chain/render-target resources, and refuses to start when no hardware device is
+  available: the WARP software rasterizer draws every frame on the CPU, so standing in for a missing GPU
+  produces a client that runs and cannot be played. `Render.AllowSoftwareRenderer` (default off) permits that
+  substitution for diagnostic or headless-machine use, and the log then names the device as `Warp`;
 - leaves the refresh rate unspecified for the windowed swap chain so DXGI follows the desktop compositor instead of requiring one hard-coded display mode;
 - creates textures, staging textures, draw buffers, constant buffers, and effects;
 - loads vertex/pixel shader content through the effect loader;
