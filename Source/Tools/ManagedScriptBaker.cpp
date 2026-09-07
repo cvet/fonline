@@ -1905,11 +1905,8 @@ static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::
     FO_VERIFY_AND_THROW(context.Settings, "Baking context has no settings");
 
     std::error_code ec;
-    auto output_dir =
-        std::filesystem::absolute(std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies", ec)
-            .lexically_normal();
-    return ec ? (std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies").lexically_normal()
-              : output_dir;
+    auto output_dir = std::filesystem::absolute(std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies", ec).lexically_normal();
+    return ec ? (std::filesystem::current_path() / fs_make_path(context.Settings->BakeOutput) / fs_make_path(context.PackName) / "Assemblies").lexically_normal() : output_dir;
 }
 
 static auto MakeCsTypeToken(string_view name) -> string
