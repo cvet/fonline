@@ -167,6 +167,10 @@ TEST_CASE("FunctionObjects")
 
         STATIC_REQUIRE(sizeof(move_only_function<void()>) == FUNCTION_INLINE_TARGET_SIZE + 2 * sizeof(void*));
         STATIC_REQUIRE(sizeof(copyable_function<void()>) == sizeof(move_only_function<void()>));
+        STATIC_REQUIRE(sizeof(details::function_storage) == FUNCTION_INLINE_TARGET_SIZE);
+        STATIC_REQUIRE(alignof(details::function_storage) == alignof(std::max_align_t));
+        STATIC_REQUIRE(offsetof(details::function_storage, heap) == 0);
+        STATIC_REQUIRE(offsetof(details::function_storage, inlined) == 0);
     }
 
     SECTION("EmptyState")
@@ -241,6 +245,21 @@ TEST_CASE("FunctionObjects")
         }
 
         REQUIRE(alive == 0);
+    }
+
+    SECTION("FundamentallyAlignedTargetsRemainInlineAfterCopyAndMove")
+    {
+        auto target = [alignment = std::max_align_t {}] { return reinterpret_cast<uintptr_t>(&alignment); };
+        STATIC_REQUIRE(details::function_target_fits_inline<decltype(target)>);
+        copyable_function<uintptr_t()> original = target;
+        copyable_function<uintptr_t()> copy = original;
+        move_only_function<uintptr_t()> moved = std::move(copy);
+
+        REQUIRE(!original.is_heap_allocated());
+        REQUIRE(!moved.is_heap_allocated());
+        REQUIRE(original() % alignof(std::max_align_t) == 0);
+        REQUIRE(moved() % alignof(std::max_align_t) == 0);
+        REQUIRE(original() != moved());
     }
 
     SECTION("MoveOnlyTargetSurvivesRelocation")

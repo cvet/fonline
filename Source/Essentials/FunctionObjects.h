@@ -49,12 +49,12 @@ inline constexpr size_t FUNCTION_INLINE_TARGET_SIZE = 48;
 
 namespace details
 {
-    // Fundamental alignment only: raising it to the new-expression alignment pads the union on MSVC (C4324),
-    // and an over-aligned target is exactly what the heap tier's aligned allocation is for
+    // Natural alignment avoids MSVC padding diagnostics for explicitly aligned union members
     union function_storage
     {
         void* heap;
-        alignas(std::max_align_t) std::byte inlined[FUNCTION_INLINE_TARGET_SIZE];
+        std::byte inlined[FUNCTION_INLINE_TARGET_SIZE];
+        std::max_align_t alignment;
     };
 
     // A throwing move would defeat the noexcept move of the wrapper itself, so such a target goes to the heap

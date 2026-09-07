@@ -116,6 +116,11 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 A target of at most `FUNCTION_INLINE_TARGET_SIZE` bytes that is nothrow-move-constructible lives inside the wrapper; anything larger, over-aligned, or throwing-move goes to the heap. That covers a closure capturing up to six pointers or holding one `string` by value, which is nearly every engine callback, so the common case allocates nothing and the wrapper stays one cache line wide on a 64-bit target. `is_heap_allocated()` reports which path a wrapper took and is what the module's tests assert against. A throwing move is pushed to the heap on purpose: moving the wrapper is `noexcept`, and only a pointer steal can guarantee that.
 
+The 48-byte storage union obtains fundamental alignment from an inactive
+`std::max_align_t` member. Its pointer and byte-buffer offsets remain zero;
+using natural alignment avoids MSVC's Win32 diagnostic for an explicitly
+aligned union member without changing the inline budget or heap boundary.
+
 A `copyable_function` narrows to `move_only_function` by adopting or copying its target in place, never by wrapping it in a second indirection. The reverse conversion does not exist — a move-only target cannot become copyable.
 
 Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_BASIC_STRONG_ASSERT` instead of throwing `std::bad_function_call`. Check with `operator bool` where absence is legitimate. The module sits above `SmartPointers` and `MemorySystem` in the include order, so its heap tier uses the globally replaced `operator new` directly and exits through `ReportFatalAndExit` on exhaustion rather than through `SafeAlloc`.
