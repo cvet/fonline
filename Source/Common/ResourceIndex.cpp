@@ -366,7 +366,7 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
     FO_VERIFY_AND_THROW(index_read, "Can't read the resource index", _fileName);
 
     if (_header.IndexCodec == static_cast<uint32_t>(ResourcePackCodec::Deflate)) {
-        _index = Compressor::Decompress(stored_index, numeric_cast<size_t>(_header.IndexDecodedSize));
+        _index = Compressor::DecompressExact(stored_index, numeric_cast<size_t>(_header.IndexDecodedSize));
     }
     else {
         FO_VERIFY_AND_THROW(_header.IndexStoredSize == _header.IndexDecodedSize, "Stored resource index declares two sizes", _fileName);
@@ -471,7 +471,7 @@ auto ResourceIndexSource::ReadEntryData(const FileEntry& entry) const -> vector<
     FO_VERIFY_AND_THROW(payload_read, "Can't read a resource through the index", _fileName, entry.Path);
 
     if (entry.Codec == static_cast<uint32_t>(ResourcePackCodec::Deflate)) {
-        vector<uint8_t> decoded = Compressor::Decompress(stored, numeric_cast<size_t>(entry.DecodedSize));
+        vector<uint8_t> decoded = Compressor::DecompressExact(stored, numeric_cast<size_t>(entry.DecodedSize));
         FO_VERIFY_AND_THROW(decoded.size() == entry.DecodedSize, "Resource did not decode to its declared size", _fileName, entry.Path);
         return decoded;
     }
