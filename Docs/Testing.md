@@ -67,6 +67,20 @@ compiled only with `FO_ANGELSCRIPT_SCRIPTING`; `Test_ManagedScriptBaker` is comp
 target without re-enabling the retired runtime backend, while the validation project remains the full AngelScript
 backend boundary.
 
+### Managed core-script regression tests
+
+With a .NET 10 SDK, run the offline console harness:
+
+```bash
+dotnet run --project Source/Scripting/Managed/Tests/FOnline.CoreScripts.Tests.csproj
+```
+
+It compiles the real managed invocation, registration and value-type helpers against a minimal generated-API
+fixture. Cases cover ref-result conversion and failure accounting, qualified modules/enums, overload selection,
+cached dispatch allocation, native fallback, isolation from foreign enum assemblies, dictionary signatures,
+async completion, and signed duration boundaries. Native calls are fixture boundaries; embedding projects must
+also bake and run their managed gameplay tests against the actual Mono backend.
+
 ### Unit tests under sanitizers
 
 The unit tests also run under Clang sanitizers via dedicated validators, which select

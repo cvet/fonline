@@ -745,12 +745,15 @@ if(FO_MANAGED_SCRIPTING)
 
     SetValue(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
     SetValue(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
+    file(STRINGS "${FO_ENGINE_ROOT}/ThirdParty/dotnet-runtime" FO_MONO_RUNTIME_VERSION LIMIT_COUNT 1)
+    string(REPLACE "/" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
+    string(REPLACE "\\" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
     # Keep in sync with the marker suffixes in buildtools.py; only the browser subset carries the
     # JavaScript glue, so only it is invalidated when that glue is added
     if(FO_WEB)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue)
     else()
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
     endif()
 
     # dotnet/runtime's own paths sit close to MAX_PATH, and the default location adds the build

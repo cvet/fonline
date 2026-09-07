@@ -47,8 +47,8 @@ public:
     ~ManagedScriptBackend() override;
 
     [[nodiscard]] auto GetDomain() const -> void* { return _domain.get_no_const(); }
-    [[nodiscard]] auto GetMetadata() const noexcept -> EngineMetadata* { return _meta.get_no_const(); }
-    [[nodiscard]] auto GetGlobalEntity() const noexcept -> Entity*;
+    [[nodiscard]] auto GetMetadata() const noexcept -> nptr<EngineMetadata> { return _meta; }
+    [[nodiscard]] auto GetGlobalEntity() const noexcept -> nptr<Entity>;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
     [[nodiscard]] auto GetAliveFlagObject() const -> void*;
 

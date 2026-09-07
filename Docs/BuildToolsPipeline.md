@@ -74,6 +74,12 @@ Adds bundled engine third-party libraries. The stage comment notes that it insta
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
+`setup-mono` and CMake's ready marker include the normalized pinned `ThirdParty/dotnet-runtime` revision and
+runtime triplet. Changing the pin invalidates both the native build and published runtime. Publication validates
+the runtime output, SDK shared-framework directory and Mono core library before replacing the output tree,
+so removed files cannot survive a successful republish. Shared-framework versions sort numerically, with a
+prerelease ordered before the corresponding release.
+
 ### `EngineSources.cmake`
 
 Builds source lists and generated resource files used by later stages. It appends source lists for engine layers such as Essentials, Common, Frontend, Client, Server, Tools, Scripting, and tests. It also prepares app icon/resource data such as the generated Windows `.rc` file.

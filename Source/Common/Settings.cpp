@@ -448,32 +448,36 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-#define SET_RUNTIME_SETTING(sett) \
-    SetEntry(sett, value, false); \
-    break
 #define FIXED_SETTING(type, group, setting_name, ...) \
     case const_hash(#setting_name): \
     case const_hash(#group "." #setting_name): \
-        throw SettingsException("Fixed setting is read-only", name)
+        if (name == #setting_name || name == #group "." #setting_name) { \
+            throw SettingsException("Fixed setting is read-only", name); \
+        } \
+        break
 #define VARIABLE_SETTING(type, group, setting_name, ...) \
     case const_hash(#setting_name): \
     case const_hash(#group "." #setting_name): \
-        SET_RUNTIME_SETTING(setting_name)
+        if (name == #setting_name || name == #group "." #setting_name) { \
+            SetEntry(setting_name, value, false); \
+            return; \
+        } \
+        break
 #define SETTING_GROUP(setting_name, ...)
 #define SETTING_GROUP_END()
 
     switch (const_hash(name.c_str())) {
 #include "Settings.inc"
     default:
-        _customSettings[name] = any_t(value);
         break;
     }
 
-#undef SET_RUNTIME_SETTING
 #undef FIXED_SETTING
 #undef VARIABLE_SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
+
+    _customSettings[name] = any_t(value);
 }
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)

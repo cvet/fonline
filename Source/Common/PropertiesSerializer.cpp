@@ -97,6 +97,7 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
     FO_STRONG_ASSERT(props.get(), "Missing required properties to load into");
 
     bool is_error = false;
+    unordered_set<ptr<const Property>> seen_properties;
 
     for (auto&& [doc_key, doc_value] : doc) {
         // Skip technical fields
@@ -109,6 +110,7 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
             auto prop = props->GetRegistrar()->FindPersistedProperty(doc_key);
 
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
+                FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", doc_key);
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
             }
         }
@@ -1321,12 +1323,17 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     const auto& dict = value.AsDict();
     Properties field_props(fields_registrar);
+    unordered_set<ptr<const Property>> seen_fields;
 
     for (auto&& [field_name, field_value] : dict) {
         auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
+        }
+
+        if (!seen_fields.emplace(field_prop.as_ptr()).second) {
+            throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
         }
 
         PropertiesSerializer::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
@@ -1352,7 +1359,7 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
     }
 
     Properties field_props(fields_registrar);
-    unordered_set<string> seen_fields;
+    unordered_set<ptr<const Property>> seen_fields;
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
         string_view field_name = fields_arr[i].AsString();
@@ -1361,7 +1368,7 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
-        if (!seen_fields.emplace(field_name).second) {
+        if (!seen_fields.emplace(field_prop.as_ptr()).second) {
             throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
         }
 

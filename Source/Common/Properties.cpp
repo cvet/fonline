@@ -1393,6 +1393,7 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
 
     size_t errors = 0;
     auto registrar = GetRegistrar();
+    unordered_set<ptr<const Property>> seen_properties;
 
     for (const auto& [key, value] : key_values) {
         if (key.empty() || key[0] == '$' || key[0] == '_') {
@@ -1435,6 +1436,7 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
         }
 
         try {
+            FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", key);
             ApplyPropertyFromText(prop, value);
         }
         catch (const std::exception& ex) {

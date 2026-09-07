@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
@@ -13,6 +14,11 @@ namespace FOnline
     {
         private const BindingFlags InvokeMethodFlags =
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
+        // Core scripts are compiled into each backend's entry assembly, so these caches are engine-local
+        private static readonly Lazy<Type[]> InvokeTypes = new Lazy<Type[]>(() => typeof(Game).Assembly.GetTypes());
+        private static readonly ConcurrentDictionary<string, MethodInfo[]> InvokeCandidates = new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, Type[]> EnumCandidates = new ConcurrentDictionary<string, Type[]>(StringComparer.Ordinal);
 
         private static int _managedGlobalExceptionCount;
 
@@ -35,56 +41,31 @@ namespace FOnline
         public static bool Invoke<TResult>(string funcName, ref TResult result)
         {
             object?[] args = { result };
-            bool invoked = InvokeCore(funcName, args);
-            if (invoked)
-            {
-                CopyInvokeResult(args, 0, ref result);
-            }
-            return invoked;
+            return InvokeCore(funcName, args) && CopyInvokeResult(args, 0, ref result);
         }
 
         public static bool Invoke<TResult>(string funcName, object? arg0, ref TResult result)
         {
             object?[] args = { arg0, result };
-            bool invoked = InvokeCore(funcName, args);
-            if (invoked)
-            {
-                CopyInvokeResult(args, 1, ref result);
-            }
-            return invoked;
+            return InvokeCore(funcName, args) && CopyInvokeResult(args, 1, ref result);
         }
 
         public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, ref TResult result)
         {
             object?[] args = { arg0, arg1, result };
-            bool invoked = InvokeCore(funcName, args);
-            if (invoked)
-            {
-                CopyInvokeResult(args, 2, ref result);
-            }
-            return invoked;
+            return InvokeCore(funcName, args) && CopyInvokeResult(args, 2, ref result);
         }
 
         public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, ref TResult result)
         {
             object?[] args = { arg0, arg1, arg2, result };
-            bool invoked = InvokeCore(funcName, args);
-            if (invoked)
-            {
-                CopyInvokeResult(args, 3, ref result);
-            }
-            return invoked;
+            return InvokeCore(funcName, args) && CopyInvokeResult(args, 3, ref result);
         }
 
         public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3, ref TResult result)
         {
             object?[] args = { arg0, arg1, arg2, arg3, result };
-            bool invoked = InvokeCore(funcName, args);
-            if (invoked)
-            {
-                CopyInvokeResult(args, 4, ref result);
-            }
-            return invoked;
+            return InvokeCore(funcName, args) && CopyInvokeResult(args, 4, ref result);
         }
 
         public static bool Invoke<TResult>(
@@ -97,12 +78,7 @@ namespace FOnline
             ref TResult result)
         {
             object?[] args = { arg0, arg1, arg2, arg3, arg4, result };
-            bool invoked = InvokeCore(funcName, args);
-            if (invoked)
-            {
-                CopyInvokeResult(args, 5, ref result);
-            }
-            return invoked;
+            return InvokeCore(funcName, args) && CopyInvokeResult(args, 5, ref result);
         }
 
         public static bool Invoke<TResult>(
@@ -116,12 +92,7 @@ namespace FOnline
             ref TResult result)
         {
             object?[] args = { arg0, arg1, arg2, arg3, arg4, arg5, result };
-            bool invoked = InvokeCore(funcName, args);
-            if (invoked)
-            {
-                CopyInvokeResult(args, 6, ref result);
-            }
-            return invoked;
+            return InvokeCore(funcName, args) && CopyInvokeResult(args, 6, ref result);
         }
 
         public static int GetGlobalExceptionCount()
@@ -183,7 +154,7 @@ namespace FOnline
             Type? enumType = FindEnumType(enumName);
             Verify(enumType != null, "Enum type is not found");
             string text = valueName is hstring hvalue ? hvalue.ToString() : Convert.ToString(valueName, CultureInfo.InvariantCulture) ?? string.Empty;
-            Verify(TryParseEnumObject(enumType!, text, out object? result), "Enum value is not found");
+            Verify(TryParseEnumObject(enumType, text, out object? result), "Enum value is not found");
             return Convert.ToInt32(result, CultureInfo.InvariantCulture);
         }
 
@@ -356,18 +327,30 @@ namespace FOnline
                 shortName = shortName.Substring(dot + 1);
             }
 
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            Type[] candidates = EnumCandidates.GetOrAdd(normalized, _ =>
             {
-                foreach (Type type in assembly.GetTypes())
+                Type? fallback = null;
+
+                foreach (Type type in InvokeTypes.Value)
                 {
-                    if (type.IsEnum && (type.FullName == normalized || type.Name == normalized || type.Name == shortName))
+                    if (!type.IsEnum)
                     {
-                        return type;
+                        continue;
+                    }
+                    if (type.FullName == normalized)
+                    {
+                        return new[] { type };
+                    }
+                    if (type.Name == shortName)
+                    {
+                        fallback ??= type;
                     }
                 }
-            }
 
-            return null;
+                return fallback == null ? Array.Empty<Type>() : new[] { fallback };
+            });
+
+            return candidates.Length == 0 ? null : candidates[0];
         }
 
         private static MethodInfo? FindInvokeMethod(string funcName, object?[] args)
@@ -377,13 +360,37 @@ namespace FOnline
                 return null;
             }
 
-            ParseInvokeName(funcName, out string? moduleName, out string methodName);
-
-            Assembly assembly = typeof(Game).Assembly;
-            foreach (Type type in GetInvokeCandidateTypes(assembly, moduleName))
+            MethodInfo[] candidates = InvokeCandidates.GetOrAdd(funcName, name =>
             {
-                MethodInfo? method = FindInvokeMethodOnType(type, methodName, args);
-                if (method != null)
+                ParseInvokeName(name, out string? moduleName, out string methodName);
+                var methods = new List<MethodInfo>();
+
+                foreach (Type type in GetInvokeCandidateTypes(moduleName))
+                {
+                    MethodInfo[] declared = type.GetMethods(InvokeMethodFlags);
+
+                    foreach (MethodInfo method in declared)
+                    {
+                        if (!method.ContainsGenericParameters && method.Name == methodName)
+                        {
+                            methods.Add(method);
+                        }
+                    }
+                    foreach (MethodInfo method in declared)
+                    {
+                        if (!method.ContainsGenericParameters && method.Name == methodName + "_")
+                        {
+                            methods.Add(method);
+                        }
+                    }
+                }
+
+                return methods.ToArray();
+            });
+
+            foreach (MethodInfo method in candidates)
+            {
+                if (IsInvokeMethodCompatible(method, args))
                 {
                     return method;
                 }
@@ -414,59 +421,29 @@ namespace FOnline
             methodName = funcName;
         }
 
-        private static IEnumerable<Type> GetInvokeCandidateTypes(Assembly assembly, string? moduleName)
+        private static IEnumerable<Type> GetInvokeCandidateTypes(string? moduleName)
         {
+            Type? qualifiedType = null;
+
             if (moduleName != null)
             {
-                Type? type = assembly.GetType("LastFrontier." + moduleName);
-                if (type != null)
+                string normalized = moduleName.Replace("::", ".");
+                Assembly assembly = typeof(Game).Assembly;
+                qualifiedType = assembly.GetType(normalized) ?? assembly.GetType("FOnline." + normalized);
+
+                if (qualifiedType != null)
+                {
+                    yield return qualifiedType;
+                }
+            }
+
+            foreach (Type type in InvokeTypes.Value)
+            {
+                if (type != qualifiedType && (moduleName == null || type.Name == moduleName))
                 {
                     yield return type;
                 }
-
-                type = assembly.GetType("FOnline." + moduleName);
-                if (type != null)
-                {
-                    yield return type;
-                }
             }
-
-            Type[] types = assembly.GetTypes();
-            for (int i = 0; i < types.Length; i++)
-            {
-                if (moduleName == null || types[i].Name == moduleName)
-                {
-                    yield return types[i];
-                }
-            }
-        }
-
-        private static MethodInfo? FindInvokeMethodOnType(Type type, string methodName, object?[] args)
-        {
-            MethodInfo? fallback = null;
-            MethodInfo[] methods = type.GetMethods(InvokeMethodFlags);
-            for (int i = 0; i < methods.Length; i++)
-            {
-                MethodInfo method = methods[i];
-                if (method.Name != methodName && method.Name != methodName + "_")
-                {
-                    continue;
-                }
-
-                if (!IsInvokeMethodCompatible(method, args))
-                {
-                    continue;
-                }
-
-                if (method.Name == methodName)
-                {
-                    return method;
-                }
-
-                fallback ??= method;
-            }
-
-            return fallback;
         }
 
         private static bool IsInvokeMethodCompatible(MethodInfo method, object?[] args)
@@ -541,9 +518,13 @@ namespace FOnline
 
             if (nonNullableTarget.IsEnum)
             {
-                return value is string enumText
-                    ? Enum.Parse(nonNullableTarget, enumText)
-                    : Enum.ToObject(nonNullableTarget, value);
+                if (value is string enumText)
+                {
+                    Verify(TryParseEnumObject(nonNullableTarget, enumText, out object? enumValue), "Enum value is not found");
+                    return enumValue;
+                }
+
+                return Enum.ToObject(nonNullableTarget, value);
             }
 
             if (value is IConvertible && typeof(IConvertible).IsAssignableFrom(nonNullableTarget))
@@ -559,9 +540,19 @@ namespace FOnline
             return type.IsByRef ? type.GetElementType()! : type;
         }
 
-        private static void CopyInvokeResult<TResult>(object?[] args, int index, ref TResult result)
+        private static bool CopyInvokeResult<TResult>(object?[] args, int index, ref TResult result)
         {
-            result = args[index] == null ? default! : (TResult)args[index]!;
+            try
+            {
+                object? value = CoerceInvokeArg(typeof(TResult), args[index]);
+                result = value == null ? default! : (TResult)value;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                RecordManagedException(ex, true);
+                return false;
+            }
         }
 
         internal static void ObserveInvokeTask(object? result)
@@ -609,3 +600,4 @@ namespace FOnline
         }
     }
 }
+

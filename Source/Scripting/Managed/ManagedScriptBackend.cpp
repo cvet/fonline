@@ -1598,7 +1598,7 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
     uint32_t getter_handle = mono_gchandle_new(getter, false);
 
     prop->SetGetter([backend, getter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) -> PropertyRawData FO_DEFERRED {
-        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property getter requires an engine context");
 
         PropertyRawData prop_data;
@@ -1643,7 +1643,7 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
     uint32_t setter_handle = mono_gchandle_new(setter, false);
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
-        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
         engine->RunScriptContext([&] {
@@ -1690,7 +1690,7 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
     uint32_t setter_handle = mono_gchandle_new(setter, false);
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
-        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
         engine->RunScriptContext([&] {
@@ -1741,7 +1741,7 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
     // Reaction-only post-set callback: the managed delegate receives just the entity and runs after the value is
     // written
     prop->AddPostSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) FO_DEFERRED {
-        BaseEngine* engine = dynamic_cast<BaseEngine*>(backend->GetMetadata());
+        nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed deferred property setter requires an engine context");
 
         engine->RunScriptContext([&] {
@@ -1989,14 +1989,14 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
     auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
 
     for (ptr<ScriptFuncDesc> func_desc : candidates) {
-        const bool is_void_call = !func_desc->Ret && func_desc->Args.size() == args_count;
-        const bool is_result_call = func_desc->Ret && func_desc->Args.size() + 1 == args_count;
+        bool is_void_call = !func_desc->Ret && func_desc->Args.size() == args_count;
+        bool is_result_call = func_desc->Ret && func_desc->Args.size() + 1 == args_count;
 
         if (!func_desc->Call || (!is_void_call && !is_result_call)) {
             continue;
         }
 
-        const size_t call_args_count = func_desc->Args.size();
+        size_t call_args_count = func_desc->Args.size();
         array<void*, MAX_CALL_ARGS> args_data {};
         array<ManagedNativeValue, MAX_CALL_ARGS> native_args {};
         bool converted = true;
@@ -3072,7 +3072,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
                 return vector<uint8_t> {};
             }
 
-            const span<const uint8_t> serialized = ref.reinterpret_as<DynamicRefTypeInstance>()->GetSerializedRawData(type);
+            span<const uint8_t> serialized = ref.reinterpret_as<DynamicRefTypeInstance>()->GetSerializedRawData(type);
             return vector<uint8_t>(serialized.begin(), serialized.end());
         },
     };
@@ -3365,7 +3365,7 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
             hstring::hash_t hash {};
             mono_field_get_value(value, field, &hash);
 
-            const hstring resolved_hash = ResolveManagedHashValue(backend, hash);
+            hstring resolved_hash = ResolveManagedHashValue(backend, hash);
             MemCopy(raw_data + field_desc.Offset, &resolved_hash, sizeof(resolved_hash));
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
@@ -3405,7 +3405,7 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
             hstring::hash_t hash {};
             mono_field_get_value(value, field, &hash);
 
-            const hstring resolved_hash = ResolveManagedHashValue(backend, hash);
+            hstring resolved_hash = ResolveManagedHashValue(backend, hash);
             hash = resolved_hash.as_hash();
             MemCopy(raw_data + field_desc.Offset, &hash, sizeof(hash));
         }
@@ -4754,7 +4754,7 @@ static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<Entity> entity = entity_ptr ? static_cast<Entity*>(entity_ptr) : backend->GetGlobalEntity();
+    nptr<Entity> entity = entity_ptr ? nptr<Entity>(static_cast<Entity*>(entity_ptr)) : backend->GetGlobalEntity();
 
     if (!entity) {
         throw ScriptSystemException("Managed entity target is null");
@@ -4979,9 +4979,9 @@ static auto CollectAssemblyResources(const FileSystem& resources, string_view ta
     vector<ManagedAssemblyResource> result;
 
     for (const FileHeader& file : resources.FilterFiles("dll", assembly_dir, false)) {
-        const string resource_path {file.GetPath()};
-        const string file_name = strex(resource_path).extract_file_name().str();
-        const auto assembly_file = resources.ReadFile(resource_path);
+        string resource_path {file.GetPath()};
+        string file_name = strex(resource_path).extract_file_name().str();
+        auto assembly_file = resources.ReadFile(resource_path);
 
         if (!assembly_file) {
             throw ScriptSystemException("Can't read Managed assembly from resources", resource_path);
@@ -5020,14 +5020,14 @@ static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>
 
     candidates.emplace_back(std::filesystem::current_path() / "ManagedRuntime");
 
-    if (const auto exe_path = Platform::GetExePath()) {
+    if (auto exe_path = Platform::GetExePath()) {
         auto exe_dir = std::filesystem::path(fs_make_path(*exe_path)).parent_path();
         candidates.emplace_back(exe_dir / "ManagedRuntime");
     }
 
     for (const std::filesystem::path& candidate : candidates) {
         std::error_code ec;
-        const auto normalized = std::filesystem::weakly_canonical(candidate, ec);
+        auto normalized = std::filesystem::weakly_canonical(candidate, ec);
         const std::filesystem::path& runtime_dir = !ec ? normalized : candidate;
 
         if (IsRuntimeLayoutPath(runtime_dir)) {
@@ -5171,13 +5171,13 @@ static auto MakeManagedAssemblyCacheKey(const vector<ManagedAssemblyResource>& a
     uint64_t hash = 1469598103934665603ull;
 
     for (const ManagedAssemblyResource& resource : assembly_resources) {
-        for (const char c : resource.ResourcePath) {
+        for (char c : resource.ResourcePath) {
             AddManagedAssemblyCacheByte(hash, static_cast<uint8_t>(c));
         }
 
         AddManagedAssemblyCacheByte(hash, 0);
 
-        for (const uint8_t byte : resource.Data) {
+        for (uint8_t byte : resource.Data) {
             AddManagedAssemblyCacheByte(hash, byte);
         }
 
@@ -5224,8 +5224,8 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
     restored_paths.reserve(assembly_resources.size());
 
     for (const ManagedAssemblyResource& resource : assembly_resources) {
-        const auto disk_path = cache_root / fs_make_path(resource.ResourcePath);
-        const string disk_dir = fs_path_to_string(disk_path.parent_path());
+        auto disk_path = cache_root / fs_make_path(resource.ResourcePath);
+        string disk_dir = fs_path_to_string(disk_path.parent_path());
 
         if (!fs_create_directories(disk_dir)) {
             throw ScriptSystemException("Can't create Managed assembly cache directory", disk_dir);
@@ -5517,7 +5517,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
 
     ReleaseAliveFlag();
 
-    for (const uint32_t gc_handle : _globalFuncGcHandles) {
+    for (uint32_t gc_handle : _globalFuncGcHandles) {
         if (gc_handle != 0) {
             mono_gchandle_free(gc_handle);
         }
@@ -5605,11 +5605,11 @@ void ManagedScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     _scriptSys = meta.dyn_cast<ScriptSystem>();
 }
 
-auto ManagedScriptBackend::GetGlobalEntity() const noexcept -> Entity*
+auto ManagedScriptBackend::GetGlobalEntity() const noexcept -> nptr<Entity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return dynamic_cast<Entity*>(_meta.get_no_const());
+    return GetMetadata().dyn_cast<Entity>();
 }
 
 void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_view bake_output_dir)
@@ -5695,7 +5695,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     };
 
     for (const ManagedAssemblyResource& resource : resource_assemblies) {
-        if (const auto it = restored_assembly_paths.find(resource.ResourcePath); it != restored_assembly_paths.end()) {
+        if (auto it = restored_assembly_paths.find(resource.ResourcePath); it != restored_assembly_paths.end()) {
             append_assembly_path(it->second);
         }
     }

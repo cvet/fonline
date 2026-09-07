@@ -92,7 +92,7 @@ reach up to its map. Sibling-to-parent escalation and parent-cover reduction wer
 | `FOSYNC002` | An argument for a `[RequiresCover]` parameter that is neither covered by the caller, received from a `[ProvidesCover]` source, nor re-declared. |
 | `FOSYNC003` | An execution-context entry point that does not declare `[RequiresCover]` on the entity the engine already synchronized for it. |
 | `FOSYNC004` | Cover state is probed (`Sync.IsCovered`, `Game.IsEntityLocked`) instead of acquired. |
-| `FOSYNC005` | A raw entity-cover primitive (`Game.Sync`, `Game.SyncRelease`, `Game.TrySyncEntity`) is used outside `Sync`. |
+| `FOSYNC005` | A raw entity-cover primitive (`Game.Sync`, `Game.SyncRelease`) is used outside `Sync`. |
 | `FOSYNC006` | A singleton bucket lock (`Game.Lock`) is not released on every path out of its scope. |
 | `FOSYNC007` | A singleton bucket lock is held across an `await`. |
 | `FOSYNC009` | Cover for a value is not re-proved after an await that released it. |
@@ -409,5 +409,5 @@ an entity reference is taken, an `await` follows, and the reference is used afte
 cover the value at the point of use, because the `await` released and reacquired in between. A value-aware
 discharge (does *this* value have cover *here*) is what turns this class from a runtime crash into a
 diagnostic, and it is the strongest argument for the next increment. That direction is deliberate — it under-reports rather than blocking a build on a
-branch the analyzer cannot yet follow. Cover established through a *parameter* of a called method, and
-entities taken from a covered collection, are not followed yet either.
+branch the analyzer cannot yet follow. Cover established through a *parameter* of a called method is not followed yet. Elements taken from a
+`[ProvidesCover]` collection are tracked as described above; this does not make acquisition path-sensitive.

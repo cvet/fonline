@@ -237,7 +237,18 @@ namespace FOnline
                 return EngineTypeName(type.GetGenericArguments()[0]) + "[]";
             }
 
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.Dictionary<,>))
+            {
+                Type[] arguments = type.GetGenericArguments();
+                return EngineTypeName(arguments[0]) + "=>" + EngineTypeName(arguments[1]);
+            }
+            if (type.IsGenericType)
+            {
+                throw new NotSupportedException("Managed script signature has an unsupported generic type: " + type);
+            }
+
             return type.Name;
         }
     }
 }
+

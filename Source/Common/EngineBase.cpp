@@ -438,7 +438,8 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
         tokens.emplace_back(field_tokens[0]); // Name
         tokens.insert(tokens.end(), field_tokens.begin() + 2, field_tokens.end());
 
-        fields_registrar->RegisterProperty(tokens);
+        auto field = fields_registrar->RegisterProperty(tokens);
+        FO_VERIFY_AND_THROW(!field->IsVirtual(), "RefType fields must have stored values", name, field->GetName());
     }
 
     ref_type.FieldsRegistrar = fields_registrar;

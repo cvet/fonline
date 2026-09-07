@@ -139,6 +139,8 @@ Property flags are load-bearing:
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](Nullability.md).
 
+Stored-name migrations resolve aliases before duplicate detection: a document or text input may name a property or RefType field only once, even when its old and current names differ. Duplicate aliases fail loading instead of making the final value depend on input order. RefType layouts require stored fields; registering a `Virtual` field fails before publishing the layout.
+
 ## Base properties and overlays
 
 A `Properties` instance can have base properties. This is used heavily by prototype-derived runtime entities:

@@ -2898,6 +2898,10 @@ TEST_CASE("PropertiesNameMigrationAppliesOnlyToStoredNames")
     CHECK_NOTHROW(text_props.ApplyFromText(map<string, string> {{"Flag", "9"}}));
     CHECK(text_props.GetValue<int32_t>(legacy_prop) == 9);
     CHECK_FALSE(text_props.GetValue<bool>(live_prop));
+
+    doc.Emplace("LegacyFlag", int64_t {8});
+    CHECK_FALSE(PropertiesSerializer::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
+    CHECK_THROWS(text_props.ApplyFromText(map<string, string> {{"Flag", "9"}, {"LegacyFlag", "10"}}));
 }
 
 TEST_CASE("PropertiesNumericWidthConversions")
@@ -4481,6 +4485,15 @@ TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeShapes")
 
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "Unknown 1", hashes, resolver));
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "Note", hashes, resolver));
+
+    resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("RouteSnapshotRefType"), hashes.ToHashedString("OldNote"), hashes.ToHashedString("Note"));
+    CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "OldNote old", hashes, resolver));
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "OldNote old Note current", hashes, resolver));
+
+    AnyData::Dict duplicate_alias;
+    duplicate_alias.Emplace("OldNote", AnyData::Value {string {"old"}});
+    duplicate_alias.Emplace("Note", AnyData::Value {string {"current"}});
+    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(duplicate_alias)}, hashes, resolver));
 }
 
 TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeCollectionShapes")

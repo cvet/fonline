@@ -94,28 +94,31 @@ namespace FOnline
         {
             var culture = System.Globalization.CultureInfo.InvariantCulture;
 
-            if (ns < 1_000_000L) {
-                return string.Format(culture, "{0}.{1:000} us", ns / 1_000L % 1_000L, ns % 1_000L);
+            string sign = ns < 0 ? "-" : string.Empty;
+            ulong magnitude = ns < 0 ? (ulong)(-(ns + 1)) + 1UL : (ulong)ns;
+
+            if (magnitude < 1_000_000UL) {
+                return sign + string.Format(culture, "{0}.{1:000} us", magnitude / 1_000UL % 1_000UL, magnitude % 1_000UL);
             }
 
-            if (ns < 1_000_000_000L) {
-                return string.Format(culture, "{0}.{1:000} ms", ns / 1_000_000L % 1_000L, ns / 1_000L % 1_000L);
+            if (magnitude < 1_000_000_000UL) {
+                return sign + string.Format(culture, "{0}.{1:000} ms", magnitude / 1_000_000UL % 1_000UL, magnitude / 1_000UL % 1_000UL);
             }
 
-            if (ns < 60_000_000_000L) {
-                return string.Format(culture, "{0}.{1:000} sec", ns / 1_000_000_000L, ns / 1_000_000L % 1_000L);
+            if (magnitude < 60_000_000_000UL) {
+                return sign + string.Format(culture, "{0}.{1:000} sec", magnitude / 1_000_000_000UL, magnitude / 1_000_000UL % 1_000UL);
             }
 
-            long totalSeconds = ns / 1_000_000_000L;
+            ulong totalSeconds = magnitude / 1_000_000_000UL;
 
-            if (totalSeconds < 24L * 60L * 60L) {
-                return string.Format(culture, "{0:00}:{1:00}:{2:00} sec", totalSeconds / 3600L, totalSeconds / 60L % 60L, totalSeconds % 60L);
+            if (totalSeconds < 24UL * 60UL * 60UL) {
+                return sign + string.Format(culture, "{0:00}:{1:00}:{2:00} sec", totalSeconds / 3600UL, totalSeconds / 60UL % 60UL, totalSeconds % 60UL);
             }
 
-            long days = totalSeconds / (24L * 60L * 60L);
+            ulong days = totalSeconds / (24UL * 60UL * 60UL);
 
-            return string.Format(culture, "{0} day{1} {2:00}:{3:00}:{4:00} sec",
-                days, days > 1L ? "s" : "", totalSeconds / 3600L % 24L, totalSeconds / 60L % 60L, totalSeconds % 60L);
+            return sign + string.Format(culture, "{0} day{1} {2:00}:{3:00}:{4:00} sec",
+                days, days > 1UL ? "s" : "", totalSeconds / 3600UL % 24UL, totalSeconds / 60UL % 60UL, totalSeconds % 60UL);
         }
     }
 
@@ -376,3 +379,4 @@ namespace FOnline
         public override string ToString() => $"{{{Collection}}}{{{Key1}}}{{{Key2}}}{{{Key3}}}";
     }
 }
+

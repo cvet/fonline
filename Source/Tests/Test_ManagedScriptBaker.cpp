@@ -194,9 +194,9 @@ static auto ReadTextFile(const std::filesystem::path& path) -> string
     std::ifstream file(path, std::ios::binary);
     REQUIRE(file.good());
 
-    std::ostringstream str;
+    stringstream str;
     str << file.rdbuf();
-    return strex("{}", str.str()).str();
+    return string {str.view()};
 }
 
 static auto WriteFakeManagedMsBuildScript(const std::filesystem::path& dir) -> std::filesystem::path
@@ -508,7 +508,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"DbGetRecord\",") != string::npos);
     CHECK(server_entities.find("public static void DbInsertRecord(\n            hstring collectionName,\n            string id,\n            Dictionary<string, string> keyValues\n        )") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"DbInsertRecord\",") != string::npos);
-    CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_void func)") != string::npos);
+    CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_void? func)") != string::npos);
     CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"StartTimeEvent\",") != string::npos);
     CHECK(server_entities.find("return (uint)__result;") != string::npos);
     CHECK(server_entities.find("public static uint DecodeUtf8(string text, ref int length)") != string::npos);

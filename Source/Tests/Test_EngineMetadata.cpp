@@ -197,6 +197,15 @@ static auto ResolveTestMigrationRule(EngineMetadata& meta, string_view target) -
 
 TEST_CASE("EngineMetadata")
 {
+    SECTION("RefTypeRejectsVirtualFieldsBeforePublishingLayout")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterRefType("StoredRecord");
+        CHECK_THROWS(meta.RegisterRefTypeLayout("StoredRecord", {{"Value", "int32", "Virtual"}}));
+        CHECK_NOTHROW(meta.RegisterRefTypeLayout("StoredRecord", {{"Value", "int32"}}));
+    }
+
     SECTION("BuiltinProtoEntityTypesUseDedicatedProtoFlag")
     {
         EngineMetadata meta {[] { }};

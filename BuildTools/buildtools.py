@@ -2462,8 +2462,8 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	runtime_version = env['FO_DOTNET_RUNTIME'].replace('/', '_').replace('\\', '_')
 	clone_marker = workspace / f'CLONED_{runtime_version}'
 	marker_suffix = resolve_mono_marker_suffix(os_name)
-	built_marker = workspace / f'BUILT_{runtime_triplet}{marker_suffix}'
-	ready_marker = workspace / f'READY_{publish_triplet}{marker_suffix}'
+	built_marker = workspace / f'BUILT_{runtime_version}_{runtime_triplet}{marker_suffix}'
+	ready_marker = workspace / f'READY_{runtime_version}_{publish_triplet}{marker_suffix}'
 
 	# A published runtime tree stands in for the source build. It is what makes a Windows target
 	# reachable from a Linux host at all: dotnet/runtime builds with the host's own toolchain and has
@@ -2506,13 +2506,10 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / runtime_triplet / 'out'
 		if not input_dir.is_dir():
 			raise SystemExit(f'Files not found: {input_dir}')
-		log('Copy from', input_dir, 'to', output_dir)
-		copy_directory(input_dir, output_dir, dirs_exist_ok=True)
-
 		shared_framework_root = runtime_root / '.dotnet' / 'shared' / 'Microsoft.NETCore.App'
 		if not shared_framework_root.is_dir():
 			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
-		shared_framework_dirs = sorted((path for path in shared_framework_root.iterdir() if path.is_dir()), key=lambda path: path.name)
+		shared_framework_dirs = sorted((path for path in shared_framework_root.iterdir() if path.is_dir()), key=lambda path: runtime_framework_version_key(path.name))
 		if not shared_framework_dirs:
 			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
 
@@ -2520,6 +2517,10 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		corelib_path = runtime_root / 'artifacts' / 'bin' / 'mono' / runtime_triplet / 'IL' / 'System.Private.CoreLib.dll'
 		if not corelib_path.is_file():
 			raise SystemExit(f'Mono System.Private.CoreLib not found: {corelib_path}')
+
+		ensure_empty_dir(output_dir)
+		log('Copy from', input_dir, 'to', output_dir)
+		copy_directory(input_dir, output_dir, dirs_exist_ok=True)
 
 		netcoreapp_dir = output_dir / 'lib' / 'netcoreapp'
 		ensure_empty_dir(netcoreapp_dir)
@@ -2535,6 +2536,15 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	run_marker_step(ready_marker, f'Publish runtime {publish_triplet}', publish_runtime)
 
 	log(f'Runtime {publish_triplet} is ready!')
+
+
+def runtime_framework_version_key(version: str) -> tuple[int, int, int, bool, tuple[tuple[bool, int | str], ...]]:
+	match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?', version)
+	if not match:
+		raise SystemExit(f'Invalid shared framework version: {version}')
+	suffix = match.group(4)
+	parts = tuple((not part.isdigit(), int(part) if part.isdigit() else part) for part in suffix.split('.')) if suffix else ()
+	return int(match.group(1)), int(match.group(2)), int(match.group(3)), suffix is None, parts
 
 
 def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: str, ready_marker: Path) -> None:
