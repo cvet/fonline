@@ -439,6 +439,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"

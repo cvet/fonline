@@ -48,6 +48,10 @@ struct AudioManager::Sound
     size_t ConvertedBufCur {};
     int32_t OriginalChannels {};
     int32_t OriginalRate {};
+    // Fixed for the life of the sound: a one-shot effect ends long before the listener moves far enough
+    // for a recomputation to be audible, and the pan is baked into the converted stereo buffer anyway
+    float32_t Attenuation {1.0f};
+    float32_t Pan {};
     bool IsMusic {};
     nanotime NextPlayTime {};
     timespan RepeatTime {};
@@ -116,7 +120,8 @@ void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
 
         if (ProcessSound(sound, silence, mix_buffer)) {
             int32_t volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
-            _audio->MixAudio(output, mix_buffer, numeric_cast<int32_t>(volume));
+            volume = numeric_cast<int32_t>(std::lround(numeric_cast<float32_t>(volume) * sound->Attenuation));
+            _audio->MixAudio(output, mix_buffer, volume);
             ++it;
         }
         else {
@@ -218,7 +223,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     return false;
 }
 
-auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time) -> bool
+auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -231,6 +236,8 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time) 
 
     auto sound_owner = SafeAlloc::MakeUnique<Sound>();
     auto sound = sound_owner.as_ptr();
+    sound->Attenuation = attenuation;
+    sound->Pan = pan;
 
     ov_callbacks callbacks;
 
@@ -425,13 +432,52 @@ auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 
-    if (!_audio->ConvertAudio(AppAudio::AUDIO_FORMAT_S16, sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
+    // Panning happens on the decoder's own S16 output, because the device format the mixer works in belongs
+    // to the frontend. A stereo source keeps the image its author built and takes attenuation alone
+    int32_t channels = sound->OriginalChannels;
+
+    if (sound->Pan != 0.0f && channels == 1) {
+        WidenMonoToPannedStereo(sound->ConvertedBuf, sound->Pan);
+        channels = 2;
+    }
+
+    if (!_audio->ConvertAudio(AppAudio::AUDIO_FORMAT_S16, channels, sound->OriginalRate, sound->ConvertedBuf)) {
         return false;
     }
 
     sound->ConvertedBufCur = 0;
 
     return true;
+}
+
+void AudioManager::WidenMonoToPannedStereo(vector<uint8_t>& buf, float32_t pan)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A stream can decode to nothing, and an empty buffer has no data pointer to widen through
+    if (buf.empty()) {
+        return;
+    }
+
+    // Constant-power law: the pair keeps one loudness across the sweep, where a linear split dips in the middle
+    float32_t angle = (pan + 1.0f) * 0.25f * std::numbers::pi_v<float32_t>;
+    float32_t left_gain = std::cos(angle);
+    float32_t right_gain = std::sin(angle);
+
+    size_t sample_count = buf.size() / sizeof(int16_t);
+    vector<uint8_t> widened;
+    widened.resize(sample_count * 2 * sizeof(int16_t));
+
+    auto source = make_ptr(buf.data()).reinterpret_as<const int16_t>();
+    auto target = make_ptr(widened.data()).reinterpret_as<int16_t>();
+
+    for (size_t i = 0; i < sample_count; i++) {
+        float32_t sample = numeric_cast<float32_t>(*source.offset(i));
+        *target.offset(i * 2) = numeric_cast<int16_t>(std::lround(sample * left_gain));
+        *target.offset(i * 2 + 1) = numeric_cast<int16_t>(std::lround(sample * right_gain));
+    }
+
+    buf = std::move(widened);
 }
 
 void AudioManager::IndexFiles()
@@ -449,7 +495,19 @@ auto AudioManager::PlaySound(string_view name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    return PlaySound(name, 1.0f, 0.0f);
+}
+
+auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t pan) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
     if (!_isActive || _settings->SoundVolume == 0) {
+        return true;
+    }
+
+    // Out of earshot: return before the lookup so a distant event costs neither a file read nor a decode
+    if (attenuation <= 0.0f) {
         return true;
     }
 
@@ -460,7 +518,7 @@ auto AudioManager::PlaySound(string_view name) -> bool
     auto it = _soundNames.find(sound_name);
 
     if (it != _soundNames.end()) {
-        return Load(it->second, false, timespan::zero);
+        return Load(it->second, false, timespan::zero, attenuation, pan);
     }
 
     // Check random pattern 'NAME_X'
@@ -472,7 +530,7 @@ auto AudioManager::PlaySound(string_view name) -> bool
 
     if (count != 0u) {
         int32_t random_index = _randomGenerator.next_between(1, count);
-        return Load(_soundNames.find(strex("{}_{}", sound_name, random_index).str())->second, false, timespan::zero);
+        return Load(_soundNames.find(strex("{}_{}", sound_name, random_index).str())->second, false, timespan::zero, attenuation, pan);
     }
 
     return false;
@@ -488,7 +546,7 @@ auto AudioManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 
     StopMusic();
 
-    return Load(fname, true, repeat_time);
+    return Load(fname, true, repeat_time, 1.0f, 0.0f);
 }
 
 void AudioManager::StopSounds()

@@ -53,8 +53,14 @@ public:
     auto operator=(AudioManager&&) noexcept = delete;
     ~AudioManager();
 
+    // Widens a mono S16 buffer into an interleaved stereo pair carrying the pan, in place
+    static void WidenMonoToPannedStereo(vector<uint8_t>& buf, float32_t pan);
+
     void IndexFiles();
     auto PlaySound(string_view name) -> bool;
+    // Attenuation scales the mixed volume, pan runs from -1 at the left ear to 1 at the right one; how far a
+    // sound carries and how hard it leans is game policy, so the caller decides both
+    auto PlaySound(string_view name, float32_t attenuation, float32_t pan) -> bool;
     auto PlayMusic(string_view fname, timespan repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
@@ -62,7 +68,7 @@ public:
 private:
     struct Sound;
 
-    auto Load(string_view fname, bool is_music, timespan repeat_time) -> bool;
+    auto Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> bool;
     void ProcessSounds(uint8_t silence, span<uint8_t> output);
     auto ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool;
     auto StreamOgg(ptr<Sound> sound) -> bool;

@@ -295,7 +295,19 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
 - `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, and handles Fallout-style animation frame mapping.
-- `AudioManager` owns the sound-name index built from `Audio.SoundFileExtensions`, decodes Ogg Vorbis, and mixes playing sounds into the audio device stream.
+- `AudioManager` owns the sound-name index built from `Audio.SoundFileExtensions`, decodes Ogg Vorbis, and mixes playing sounds into the audio device stream. `PlaySound(name)` plays flat; `PlaySound(name, attenuation, pan)` places the sound, and the script export `Game.PlaySound(name, attenuation, pan)` reaches it.
+
+### Positional audio
+
+The engine mixes, it does not decide. How far a sound carries, how its volume falls with distance and how hard it leans across the stereo image are game rules, so the caller computes both numbers and the engine applies them. An embedding project owns the curve, its radii and the listener it measures from.
+
+- **Attenuation** scales the mixed volume. Zero is the caller's way of saying "out of earshot": `PlaySound` returns before the file is read, so a distant event costs no decode.
+- **Pan** runs from -1 at the left ear to 1 at the right one, and is applied to the decoder's own S16 output rather than after conversion, because the device format belongs to the frontend. A mono source is widened into a gain-applied stereo pair under a constant-power law, so a **positional sound must be authored mono**; a stereo source keeps the image its author built and takes attenuation alone. `WidenMonoToPannedStereo` is pinned by `Test_AudioManager.cpp`.
+
+Both are fixed when the sound starts, which is right for the one-shot effects that make up a sound library and is the documented limit for a looping one.
+
+The engine is deliberately stereo. Surround would answer "in front of or behind me" for a listener standing inside the scene; a project whose camera looks down from above and never rotates makes the player an observer instead, so a sound lower on the screen is not behind them, it is somewhere they are looking straight at.
+
 - `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
 - `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
   image/animation resources, including the optional per-frame silhouette mesh

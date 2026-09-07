@@ -609,6 +609,12 @@ FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view s
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)
+{
+    return client->AudioMngr.PlaySound(soundName, attenuation, pan);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlayMusic(ptr<ClientEngine> client, string_view musicName, timespan repeatTime)
 {
     if (musicName.empty()) {
