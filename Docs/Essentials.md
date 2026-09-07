@@ -272,3 +272,5 @@ See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
 3. Run the smallest matching essentials test and then the broader `RunUnitTests` target when behavior crosses utility boundaries.
 4. For diagnostics changes, also verify [Debugging.md](Debugging.md) stays accurate.
 5. For filesystem/socket/threading changes, validate at least one higher-level consumer if the low-level contract changed.
+
+`fs_iterate_dir` treats a missing directory as an empty source. Other path lookup and traversal errors propagate to the caller; it never reports an inaccessible or malformed path as a complete empty directory.

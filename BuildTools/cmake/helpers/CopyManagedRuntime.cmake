@@ -41,3 +41,5 @@ foreach(runtime_file ${runtime_files})
         file(COPY_FILE "${runtime_file}" "${OUTPUT_DIR}/${runtime_file_name}" ONLY_IF_DIFFERENT)
     endif()
 endforeach()
+
+file(COPY_FILE "${IDENTITY_FILE}" "${OUTPUT_DIR}/${TARGET_NAME}.managed-runtime-id" ONLY_IF_DIFFERENT)

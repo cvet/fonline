@@ -7,10 +7,17 @@ using FOnline;
 
 internal static class Program
 {
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
     {
+        if (args.Length != 0)
+        {
+            return BootstrapScenarios.Run(args[0]);
+        }
         var cases = new (string Name, Action Run)[]
         {
+            ("bootstrap outside a source tree", () => BootstrapScenarios.RunIsolated("outside-source-tree")),
+            ("bootstrap alongside source files", () => BootstrapScenarios.RunIsolated("source-tree")),
+            ("static initialization failure stops startup", () => BootstrapScenarios.RunIsolated("static-failure")),
             ("ref result numeric widening", () => {
                 long result = 1;
                 Check(Game.Invoke("DispatchProbe::WriteInt", ref result), "Invocation failed");

@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -12,7 +11,6 @@ namespace FOnline
 {
     public static class Initializator
     {
-        private const string ManagedModuleInitOwnerMarker = "FO_MANAGED_MODULE_INIT_OWNER";
         private static bool _initializedEarly;
 
         static void InitializeEarly()
@@ -29,10 +27,7 @@ namespace FOnline
             RunScriptFuncRegistrars();
         }
 
-        // Invokes project-supplied [ScriptFuncRegistrar] methods (e.g. dialog demand/result registrars) in the
-        // registration phase so their script funcs reach the engine's cross-backend registry both at runtime and
-        // inside bake-time validation engines, which restore the script subsystem from the compiled assembly the
-        // same way the AngelScript bake restores it from bytecode.
+        // Registrars run before module initialization so bake-time validation can resolve project attributes
         private static void RunScriptFuncRegistrars()
         {
             Assembly assembly = typeof(Initializator).Assembly;
@@ -69,15 +64,7 @@ namespace FOnline
 
             foreach (Type type in assembly.GetTypes())
             {
-                try
-                {
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-                }
-                catch (Exception ex)
-                {
-                    Game.Log("Failed to run type: " + type.Name);
-                    Game.Log(ex.ToString());
-                }
+                RuntimeHelpers.RunClassConstructor(type.TypeHandle);
 
                 foreach (MethodInfo method in type.GetMethods(
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
@@ -87,10 +74,6 @@ namespace FOnline
                         typeof(ModuleInitAttribute));
 
                     if (attr == null)
-                    {
-                        continue;
-                    }
-                    if (HasCoexistingAngelScriptModule(type, allowManagedModuleInitOwner: true))
                     {
                         continue;
                     }
@@ -132,97 +115,6 @@ namespace FOnline
                 task.GetAwaiter().GetResult();
             }
         }
-
-        internal static bool HasCoexistingAngelScriptModule(Type type, bool allowManagedModuleInitOwner = false)
-        {
-            Type moduleType = type;
-            while (moduleType.DeclaringType != null)
-            {
-                moduleType = moduleType.DeclaringType;
-            }
-
-            string moduleName = moduleType.Name;
-            int genericSuffix = moduleName.IndexOf('`');
-            if (genericSuffix != -1)
-            {
-                moduleName = moduleName.Substring(0, genericSuffix);
-            }
-
-            if (!AngelScriptModulePaths.TryGetValue(moduleName, out string? scriptPath))
-            {
-                return false;
-            }
-
-            if (allowManagedModuleInitOwner && IsManagedModuleInitOwner(scriptPath))
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        // Which modules the AngelScript backend owns is a property of the source tree, identical for every engine
-        // in the process, so it is snapshotted once instead of probed per module per engine. Probing with
-        // File.Exists on every call made the answer depend on transient IO: under a parallel suite run one worker
-        // could see a .fos as absent, run a managed [ModuleInit] its AngelScript twin already owns, and fail with
-        // "Lowest callback already added". One enumeration up front removes that window and keeps every engine in
-        // the process consistent with the others.
-        private static readonly Dictionary<string, string> AngelScriptModulePaths = CollectAngelScriptModulePaths();
-
-        private static Dictionary<string, string> CollectAngelScriptModulePaths()
-        {
-            string[] scriptDirs =
-            {
-                "Scripts",
-                Path.Combine("Scripts", "Quests"),
-                Path.Combine("Scripts", "Scenes"),
-                Path.Combine("Scripts", "Tests"),
-                Path.Combine("Scripts", "Debug"),
-            };
-
-            Dictionary<string, string> paths = new Dictionary<string, string>(StringComparer.Ordinal);
-
-            for (int i = 0; i < scriptDirs.Length; i++)
-            {
-                string[] files;
-
-                try
-                {
-                    files = Directory.Exists(scriptDirs[i]) ? Directory.GetFiles(scriptDirs[i], "*.fos") : new string[0];
-                }
-                catch (Exception ex)
-                {
-                    Game.Log("Failed to enumerate AngelScript modules in: " + scriptDirs[i]);
-                    Game.Log(ex.ToString());
-                    continue;
-                }
-
-                foreach (string file in files)
-                {
-                    string moduleName = Path.GetFileNameWithoutExtension(file);
-
-                    if (!paths.ContainsKey(moduleName))
-                    {
-                        paths.Add(moduleName, file);
-                    }
-                }
-            }
-
-            return paths;
-        }
-
-        private static bool IsManagedModuleInitOwner(string scriptPath)
-        {
-            try
-            {
-                return File.ReadAllText(scriptPath).Contains(ManagedModuleInitOwnerMarker, StringComparison.Ordinal);
-            }
-            catch (Exception ex)
-            {
-                Game.Log("Failed to inspect AngelScript module ownership marker: " + scriptPath);
-                Game.Log(ex.ToString());
-                return false;
-            }
-        }
     }
 }
+

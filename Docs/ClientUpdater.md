@@ -20,6 +20,14 @@ module is needed. The headless host/runtime targets use the same dependency.
 The updater protocol is the same machinery used to deliver gameplay resources, but versioned independently from gameplay compatibility so a host released today can ingest tomorrow's runtime module without a host-side rebuild.
 
 
+## Managed runtime companion compatibility
+
+A managed native client requests its platform/architecture target with a `-Managed-<sha256>` suffix. The digest covers the relative paths and contents of its complete `ManagedRuntime` tree; CMake generates it after runtime setup and compiles it into the updater. Each linked binary also gets a matching `.managed-runtime-id` build sidecar.
+
+The server packager verifies that sidecar against the supplied companion tree and publishes native update payloads only under that exact target. A changed runtime tree, a different managed runtime, or a client built without managed support cannot receive that payload. The existing missing-native-update path asks the player to install the full client package; the updater does not stage a library requiring unavailable companions. With identical companions, native library and gameplay assembly updates work normally. `FOnline.ManagedHost.dll` and game assemblies travel in resource packs; they are not installation-level Mono companions.
+
+Changing installation-level Mono files therefore requires distributing a full client package. This is an explicit compatibility boundary, not an atomic multi-file runtime installation protocol. Build sidecars are packaging inputs and are not required in installed clients.
+
 ## Server-side updater backend
 
 The client updater is served by the authoritative server runtime. `ServerEngine` wires an `UpdaterBackend` from `Source/Server/UpdaterBackend.*` during server startup when client packs/resources are prepared. The backend scans client resources and native runtime artifacts, builds target-specific update descriptors, and answers file-portion requests with `NetMessage::UpdateFileData`.

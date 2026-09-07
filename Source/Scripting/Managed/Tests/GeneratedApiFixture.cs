@@ -2,10 +2,13 @@ using System;
 
 namespace FOnline
 {
-    // Minimal generated API shape; native operations fail if a core-only test crosses the ABI
+    // The fixture records registration and fallback calls; unrelated native operations fail explicitly
     internal static class Native
     {
-        public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result, Delegate handler, bool skip) => throw new NotSupportedException();
+        public static readonly System.Collections.Generic.List<string> RegisteredFunctions = new();
+        public static readonly System.Collections.Generic.List<string> RegisteredRemoteCalls = new();
+        public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result, Delegate handler) => RegisteredFunctions.Add(name);
+        public static void RegisterRemoteCallHandler(string name, int parameters, Delegate handler) => RegisteredRemoteCalls.Add(name);
         public static int FallbackCalls;
         public static bool InvokeScriptFunc(string name, object?[] args) { FallbackCalls++; return false; }
         public static void Log(string text) { }
@@ -18,10 +21,6 @@ namespace FOnline
     }
 
     public class Critter { }
-    public static class Initializator
-    {
-        public static bool HasCoexistingAngelScriptModule(Type type) => false;
-    }
     public static partial class Game
     {
         public static void Log(string text) => Native.Log(text);

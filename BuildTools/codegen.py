@@ -109,6 +109,7 @@ class ExportEnumTag:
 
 @dataclass(slots=True)
 class ExportValueTypeTag:
+    source_file: str
     name: str
     native_type: str
     flags: list[str]
@@ -1353,7 +1354,7 @@ def parse_export_value_type_tags(valid_types: set[str]) -> None:
             assert 'Layout' in export_flags, 'No Layout specified in ExportValueType'
             assert export_flags[export_flags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
 
-            codegen_tags['ExportValueType'].append(ExportValueTypeTag(type_name, native_type, export_flags, comment))
+            codegen_tags['ExportValueType'].append(ExportValueTypeTag(abs_path, type_name, native_type, export_flags, comment))
             hash_recursive(compatibility_hasher, (type_name, native_type, export_flags))
 
             assert type_name not in valid_types, 'Type already in valid types'
@@ -2145,7 +2146,7 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
     body_lines: list[str] = []
 
     for value_type_tag in codegen_tags['ExportValueType']:
-        body_lines.append('meta->RegisterValueType("' + value_type_tag.name + '");')
+        body_lines.append('meta->RegisterValueType<' + value_type_tag.native_type + '>("' + value_type_tag.name + '");')
 
     body_lines.append('')
 
@@ -2445,6 +2446,9 @@ def generate_metadata_registration(target: str, is_stub: bool) -> None:
     generated_output.insert_codegen_lines(helper_lines, 'RegisterHelpers')
     generated_output.insert_codegen_lines(extern_lines, 'Global')
     generated_output.insert_codegen_lines(include_lines, 'Includes')
+    value_headers = sorted({os.path.basename(tag.source_file) for tag in codegen_tags['ExportValueType']
+                            if '/Essentials/' not in tag.source_file.replace('\\', '/')})
+    generated_output.insert_codegen_lines(['#include "' + header + '"' for header in value_headers], 'ValueIncludes')
     generated_output.insert_codegen_lines(get_registration_define_lines(target, is_stub), 'Defines')
 
 def run_metadata_registration_codegen() -> None:

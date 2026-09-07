@@ -78,7 +78,7 @@ dotnet run --project Source/Scripting/Managed/Tests/FOnline.CoreScripts.Tests.cs
 It compiles the real managed invocation, registration and value-type helpers against a minimal generated-API
 fixture. Cases cover ref-result conversion and failure accounting, qualified modules/enums, overload selection,
 cached dispatch allocation, native fallback, isolation from foreign enum assemblies, dictionary signatures,
-async completion, and signed duration boundaries. Native calls are fixture boundaries; embedding projects must
+async completion, signed duration boundaries, and isolated bootstrap runs with and without neighboring source files. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
 ### Unit tests under sanitizers

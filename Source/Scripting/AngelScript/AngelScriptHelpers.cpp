@@ -621,7 +621,7 @@ static void CopyScriptStructToPropertyData(const BaseTypeDesc& base_type, ptr<co
         ptr<uint8_t> field_raw = make_ptr(raw_data.data()).offset(field.Offset);
 
         if (field.Type.IsHashedString) {
-            const hstring::hash_t hash = field_script.reinterpret_as<const hstring>()->as_hash();
+            hstring::hash_t hash = field_script.reinterpret_as<const hstring>()->as_hash();
             MemCopy(field_raw, &hash, sizeof(hash));
         }
         else if (field.Type.IsStruct && field.Type.StructLayout != nullptr) {

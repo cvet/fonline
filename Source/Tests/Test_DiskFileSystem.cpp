@@ -99,6 +99,20 @@ TEST_CASE("DiskFileSystem")
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
+#if FO_LINUX || FO_MAC
+    SECTION("IterateDirPropagatesFilesystemErrors")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_failed_lookup");
+        REQUIRE(fs_create_directories(temp_dir));
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        auto loop_path = std::filesystem::path {fs_make_path(temp_dir)} / "loop";
+        std::filesystem::create_directory_symlink("loop", loop_path);
+        bool visited = false;
+        CHECK_THROWS_AS(fs_iterate_dir(fs_path_to_string(loop_path), false, [&](string_view, size_t, uint64_t) { visited = true; }), std::filesystem::filesystem_error);
+        CHECK_FALSE(visited);
+    }
+#endif
+
     SECTION("TouchAndStreamHelpersWork")
     {
         string temp_dir = MakeTempTestDir("diskfs_stream");

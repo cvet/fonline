@@ -59,7 +59,7 @@ FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32_t AS_BYTECODE_CONTAINER_MAGIC = 0x464F4153; // 'FOAS'
+static constexpr uint32_t AS_BYTECODE_CONTAINER_MAGIC = 0x464F4132; // 'FOA2'
 
 // Configuration the bytecode was compiled under
 static constexpr uint8_t AS_BYTECODE_CONFIG_MANAGED = 0x01;
@@ -363,14 +363,14 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     auto reader = DataReader({script_bin.data(), script_bin.size()});
 
-    auto container_magic = reader.Read<uint32_t>();
+    uint32_t container_magic = reader.Read<uint32_t>();
 
     if (container_magic != AS_BYTECODE_CONTAINER_MAGIC) {
         throw ScriptException("Incompatible script bytecode container");
     }
 
-    auto source_pointer_size = reader.Read<uint8_t>();
-    auto source_endian_tag = reader.Read<uint8_t>();
+    uint8_t source_pointer_size = reader.Read<uint8_t>();
+    uint8_t source_endian_tag = reader.Read<uint8_t>();
     uint8_t source_config_flags = reader.Read<uint8_t>();
 
     FO_VERIFY_AND_THROW(source_config_flags == GetScriptBytecodeConfigFlags(), "Script bytecode was compiled for a different build configuration", source_config_flags, GetScriptBytecodeConfigFlags());
@@ -382,14 +382,15 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         WriteLog("Loading cross-endian bytecode: source endian tag {}, local endian tag {}", source_endian_tag, AS_BYTECODE_ENDIAN_TAG);
     }
 
-    vector<AngelScript::asBYTE> buf(reader.Read<uint32_t>());
-    FO_VERIFY_AND_THROW(!buf.empty(), "AngelScript bytecode payload size is zero");
-    reader.ReadObjectArray(span<AngelScript::asBYTE> {buf.data(), buf.size()});
+    uint32_t bytecode_size = reader.Read<uint32_t>();
+    FO_VERIFY_AND_THROW(bytecode_size != 0, "AngelScript bytecode payload size is zero");
+    const_span<uint8_t> bytecode_data = reader.ReadBytes(bytecode_size);
+    vector<AngelScript::asBYTE> buf(bytecode_data.begin(), bytecode_data.end());
 
-    std::vector<uint8_t> lnt_data(reader.Read<uint32_t>());
-    FO_VERIFY_AND_THROW(!buf.empty(), "AngelScript bytecode container has an empty script bytecode payload", script_bin_file.GetPath(), script_bin.size());
-    FO_VERIFY_AND_THROW(!lnt_data.empty(), "AngelScript bytecode container has an empty line-number table payload", script_bin_file.GetPath(), script_bin.size(), buf.size());
-    reader.ReadBytes({lnt_data.data(), lnt_data.size()});
+    uint32_t lnt_size = reader.Read<uint32_t>();
+    FO_VERIFY_AND_THROW(lnt_size != 0, "AngelScript bytecode container has an empty line-number table payload", script_bin_file.GetPath());
+    const_span<uint8_t> lnt_bytes = reader.ReadBytes(lnt_size);
+    std::vector<uint8_t> lnt_data(lnt_bytes.begin(), lnt_bytes.end());
 
     nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 
@@ -443,7 +444,6 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         }
     }
 
-    FO_VERIFY_AND_THROW(script_bin.size() >= sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + buf.size() + sizeof(uint32_t) + lnt_data.size(), "AngelScript bytecode container is shorter than its declared payload sizes", script_bin_file.GetPath(), script_bin.size(), sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + buf.size() + sizeof(uint32_t) + lnt_data.size(), buf.size(), lnt_data.size());
     auto records = DeserializeFunctionAttributeRecords(reader);
     reader.VerifyEnd();
 

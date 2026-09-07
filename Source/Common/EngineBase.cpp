@@ -391,6 +391,8 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
 
     FO_VERIFY_AND_THROW(total_size != 0, "Registered type has zero size");
 
+    FO_VERIFY_AND_THROW(layout_desc.NativeSize == 0 || layout_desc.NativeSize == total_size, "Native value size does not match its registered layout", name, layout_desc.NativeSize, total_size);
+
     layout_desc.Fields = std::move(fields);
     layout_desc.Size = total_size;
     type.Size = total_size;

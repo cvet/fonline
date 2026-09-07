@@ -39,6 +39,8 @@
 
 #include "MetadataRegistration.h"
 
+///@ CodeGen ValueIncludes
+
 ///@ CodeGen Defines
 
 #if !STUB_MODE

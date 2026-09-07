@@ -152,7 +152,7 @@ static auto NormalizeInteropShimName(string_view name) -> string
     }
 
     for (string_view extension : {".so", ".dylib", ".dll", ".a", ".lib"}) {
-        if (const size_t pos = name.find(extension); pos != string_view::npos) {
+        if (size_t pos = name.find(extension); pos != string_view::npos) {
             name = name.substr(0, pos);
             break;
         }

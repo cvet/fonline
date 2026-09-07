@@ -531,7 +531,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        const bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+        bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
 
         if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
@@ -646,7 +646,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        const bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+        bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
 
         if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {

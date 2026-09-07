@@ -53,6 +53,7 @@ namespace
 
         constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
         size_t offset = 0;
+        bool found = false;
 
         while (offset + header_size <= data.size()) {
             uint32_t signature = 0;
@@ -63,20 +64,20 @@ namespace
             MemCopy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
             MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
 
-            const auto message_size_value = numeric_cast<size_t>(message_size);
+            size_t message_size_value = numeric_cast<size_t>(message_size);
 
             FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid network message signature in test output", signature);
             FO_VERIFY_AND_THROW(message_size_value >= header_size && offset + message_size_value <= data.size(), "Invalid network message size in test output", message_size, offset, data.size());
 
             if (message == expected_message) {
-                return true;
+                found = true;
             }
 
             offset += message_size_value;
         }
 
         FO_VERIFY_AND_THROW(offset == data.size(), "Trailing bytes after network messages in test output", offset, data.size());
-        return false;
+        return found;
     }
 
     static auto MakeSettings() -> GlobalSettings
@@ -102,6 +103,27 @@ namespace
                     R"(
 namespace ScriptMethodsTest
 {
+    dict<string, int> MakeInvokeDict()
+    {
+        return {{"answer", 42}};
+    }
+
+    dict<string, array<int>> MakeInvokeArrayDict()
+    {
+        return {{"values", {3, 7}}};
+    }
+
+    int TestInvokeCollectionResults()
+    {
+        dict<string, int> result;
+        if (!InvokeResult("ScriptMethodsTest::MakeInvokeDict", result)) return -1;
+        if (result["answer"] != 42) return -2;
+        dict<string, array<int>> arrays;
+        if (!InvokeResult("ScriptMethodsTest::MakeInvokeArrayDict", arrays)) return -3;
+        if (arrays["values"].length() != 2 || arrays["values"][1] != 7) return -4;
+        return 0;
+    }
+
     int CritterItemTransferInCalls;
     ident CritterItemTransferInSourceId;
     ident CritterItemTransferInResultId;
@@ -3104,6 +3126,14 @@ TEST_CASE("ServerCritterStateOperations")
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
     auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+
+    SECTION("InvokeCollectionResults")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestInvokeCollectionResults"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
 
     SECTION("StateQueries")
     {

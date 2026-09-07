@@ -35,6 +35,38 @@
 
 FO_BEGIN_NAMESPACE
 
+static void ReadRemoteCallStructFields(DataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, ptr<uint8_t> destination);
+
+RemoteCallReadStorage::~RemoteCallReadStorage()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    for (ptr<hstring> value : _structHashes) {
+        std::destroy_at(value.get());
+    }
+}
+
+auto RemoteCallReadStorage::StoreStructBytes(size_t size) -> ptr<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(size != 0, "Remote-call struct size is zero");
+    auto buffer = make_unique_del_ptr(SafeAlloc::MallocAlignedRaw(size, alignof(std::max_align_t)).as_ptr(), [](nptr<void> data) noexcept { SafeAlloc::FreeAlignedRaw(data); });
+    ptr<uint8_t> bytes = make_ptr(buffer.get()).reinterpret_as<uint8_t>();
+    MemFill(bytes, 0, size);
+    _items.emplace_back(std::move(buffer));
+    return bytes;
+}
+
+void RemoteCallReadStorage::StoreStructHash(ptr<uint8_t> address, hstring value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(address.as_uintptr() % alignof(hstring) == 0, "Remote-call hashed field is not aligned");
+    ptr<hstring> field = new (address.get()) hstring(value);
+    _structHashes.emplace_back(field);
+}
+
 void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks)
 {
     FO_STACK_TRACE_ENTRY();
@@ -114,16 +146,34 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
     }
     else if (type.IsStruct) {
         ptr<uint8_t> buf = storage.StoreStructBytes(type.Size);
-
-        for (const auto& field : type.StructLayout->Fields) {
-            ptr<void> field_data = ReadRemoteCallSimple(reader, field.Type, hashes, storage, hooks);
-            MemCopy(buf.offset(field.Offset), field_data, field.Type.Size);
-        }
-
+        ReadRemoteCallStructFields(reader, type, hashes, storage, buf);
         return ptr<void> {buf};
     }
     else {
         FO_UNREACHABLE_PLACE();
+    }
+}
+
+static void ReadRemoteCallStructFields(DataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, ptr<uint8_t> destination)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(type.StructLayout, "Remote-call struct layout is missing", type.Name);
+
+    for (const FieldDesc& field : type.StructLayout->Fields) {
+        FO_VERIFY_AND_THROW(field.Offset <= type.Size && field.Type.Size <= type.Size - field.Offset, "Remote-call field exceeds struct storage", type.Name, field.Name);
+        ptr<uint8_t> field_destination = destination.offset(field.Offset);
+
+        if (field.Type.IsHashedString) {
+            storage.StoreStructHash(field_destination, hashes.ResolveHash(reader.Read<hstring::hash_t>()));
+        }
+        else if (field.Type.IsStruct) {
+            ReadRemoteCallStructFields(reader, field.Type, hashes, storage, field_destination);
+        }
+        else {
+            FO_VERIFY_AND_THROW(field.Type.IsPrimitive || field.Type.IsEnum, "Unsupported remote-call struct field", type.Name, field.Name);
+            reader.ReadBytes({field_destination.get(), field.Type.Size});
+        }
     }
 }
 

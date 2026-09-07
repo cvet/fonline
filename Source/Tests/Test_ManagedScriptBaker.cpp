@@ -37,6 +37,7 @@
 
 #if FO_MANAGED_SCRIPTING
 #include "ManagedScriptBaker.h"
+#include "ManagedScripting.h"
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -278,6 +279,15 @@ static auto MakeManagedGeneratedCs(string_view body) -> string
 
 #endif
 
+TEST_CASE("Managed scripting rejects metadata without a script system")
+{
+#if FO_MANAGED_SCRIPTING
+    EngineMetadata metadata {[] { }};
+    FileSystem resources;
+    CHECK_THROWS_WITH(InitManagedScripting(&metadata, resources), Catch::Matchers::ContainsSubstring("Managed scripting requires a script system"));
+#endif
+}
+
 TEST_CASE("ManagedScriptBaker")
 {
 #if FO_MANAGED_SCRIPTING
@@ -369,6 +379,20 @@ TEST_CASE("ManagedScriptBaker")
     ManagedScriptBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
     CHECK(rig.Outputs.empty());
+
+    int32_t blocked_output_path = GENERATE(0, 1, 2);
+    CAPTURE(blocked_output_path);
+
+    if (blocked_output_path) {
+        auto blocked_output = script_dir / (blocked_output_path == 1 ? "ServerEnums.gen.cs" : "ServerEnums.gen.cs.tmp");
+        REQUIRE(std::filesystem::create_directory(blocked_output));
+        CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(std::filesystem::is_directory(blocked_output));
+        if (blocked_output_path == 1) {
+            CHECK_FALSE(std::filesystem::exists(script_dir / "ServerEnums.gen.cs.tmp"));
+        }
+        return;
+    }
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 

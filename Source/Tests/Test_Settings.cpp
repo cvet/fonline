@@ -283,6 +283,8 @@ TEST_CASE("Settings")
         settings.SetRuntimeSetting(variable_collision, "True");
         CHECK_FALSE(settings.WindowedMouseScroll);
         CHECK(settings.GetCustomSetting(variable_collision) == "True");
+        CHECK(settings.GetRuntimeSetting(variable_collision) == "True");
+        CHECK(settings.GetRuntimeSetting("Hex.WindowedMouseScroll") == settings.GetRuntimeSetting("WindowedMouseScroll"));
 
         string fixed_collision = "Common.GameName";
         fixed_collision.push_back('\0');
@@ -290,6 +292,9 @@ TEST_CASE("Settings")
         settings.SetRuntimeSetting(fixed_collision, "custom");
         CHECK(settings.GameName == original_game_name);
         CHECK(settings.GetCustomSetting(fixed_collision) == "custom");
+        CHECK(settings.GetRuntimeSetting(fixed_collision) == "custom");
+        CHECK(settings.GetRuntimeSetting("Common.GameName") == settings.GameName);
+        CHECK(settings.GetRuntimeSetting("GameName") == settings.GameName);
     }
 
     SECTION("BakingModeSaveReturnsAppliedSettings")

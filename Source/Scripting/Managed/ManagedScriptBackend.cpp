@@ -213,7 +213,7 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
 static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
 static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*;
 static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args) -> int32_t;
-static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler, mono_bool skip_existing_script_func);
+static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler);
 static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_count, MonoObject* handler);
 static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoArray* args_array);
 static void NativeLoopbackRemoteCall(MonoObject* caller, MonoString* name_str, MonoArray* args_array);
@@ -222,7 +222,6 @@ static void NativeLoopbackRemoteCall(MonoObject* caller, MonoString* name_str, M
 static void RegisterInternalCalls();
 
 // Settings access helpers
-static auto GetSettingValueAsString(GlobalSettings* settings, const string& setting_name) -> string;
 static auto GetSettingValueAsString(MonoString* name) -> string;
 static void SetSettingValueFromString(GlobalSettings* settings, string_view setting_name, string value);
 static void SetSettingValueFromString(MonoString* name, string value);
@@ -283,9 +282,6 @@ static auto GetManagedDelegateKey(ptr<const ManagedScriptBackend> backend, MonoO
 static auto GetManagedClass(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& type) -> MonoClass*;
 static auto InvokeNativeHelper(ptr<const ManagedScriptBackend> backend, const char* method_name, uint32_t args_count, void** args) -> MonoObject*;
 static auto InvokeNativeBoolHelper(ptr<const ManagedScriptBackend> backend, const char* method_name, MonoObject* value) -> bool;
-static auto IsManagedByteArray(MonoObject* value) -> bool;
-static auto GetManagedByteArrayItem(ptr<const ManagedScriptBackend> backend, MonoObject* value, size_t index) -> uint8_t;
-static void CopyManagedByteArrayToNative(ptr<const ManagedScriptBackend> backend, MonoObject* value, void* data, size_t size);
 static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value, ManagedScalarValue& storage) -> void*;
 static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ManagedNativeValue& storage) -> void*;
 static void ReconcileMutableDynamicRefTypeOwner(const ComplexTypeDesc& type, ManagedNativeValue& storage) noexcept;
@@ -365,6 +361,7 @@ struct ManagedScalarValue
 {
     alignas(std::max_align_t) std::array<uint8_t, PropertyRawData::LOCAL_BUF_SIZE> Local {};
     vector<uint8_t> Dynamic {};
+    unique_del_nptr<void> NativeStruct {};
     string Text {};
     any_t Any {};
     hstring Hash {};
@@ -372,9 +369,17 @@ struct ManagedScalarValue
     refcount_nptr<DynamicRefTypeInstance> DynamicRefType {};
     void* RefTypePtr {};
 
-    [[nodiscard]] auto Alloc(size_t size) -> void*
+    [[nodiscard]] auto Alloc(const BaseTypeDesc& type) -> void*
     {
         FO_NO_STACK_TRACE_ENTRY();
+
+        if (type.IsStruct) {
+            FO_VERIFY_AND_THROW(type.StructLayout && type.StructLayout->CreateNative, "Native value constructor is missing", type.Name);
+            NativeStruct = type.StructLayout->CreateNative();
+            return NativeStruct.get();
+        }
+
+        size_t size = type.Size;
 
         if (size <= Local.size()) {
             return Local.data();
@@ -1842,7 +1847,7 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
                 ret_data = &ret_storage.RefTypePtr;
             }
             else if (ret_base.IsPrimitive || ret_base.IsEnum || ret_base.IsStruct) {
-                ret_data = ret_storage.Alloc(ret_base.Size);
+                ret_data = ret_storage.Alloc(ret_base);
             }
             else {
                 throw ScriptSystemException("Unsupported Managed method return type", ret_base.Name);
@@ -2061,7 +2066,7 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
                     ret_data = &ret_storage.RefTypePtr;
                 }
                 else if (ret_base.IsPrimitive || ret_base.IsEnum || ret_base.IsStruct) {
-                    ret_data = ret_storage.Alloc(ret_base.Size);
+                    ret_data = ret_storage.Alloc(ret_base);
                 }
                 else {
                     throw ScriptSystemException("Unsupported Managed invoke return type", ret_base.Name);
@@ -2143,7 +2148,7 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
     return INVOKE_STATUS_NO_CANDIDATE;
 }
 
-static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler, mono_bool skip_existing_script_func)
+static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2198,28 +2203,26 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
 
     hstring hashed_func_name = meta->Hashes.ToHashedString(full_name_str);
 
-    if (skip_existing_script_func != 0) {
-        auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
+    auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
 
-        for (ptr<ScriptFuncDesc> candidate : candidates) {
-            if (!candidate->Call || candidate->Ret != ret || candidate->Args.size() != args.size() || !candidate->AttributeChecker(attr_name_str)) {
-                continue;
-            }
+    for (ptr<ScriptFuncDesc> candidate : candidates) {
+        if (!candidate->Call || candidate->Ret != ret || candidate->Args.size() != args.size() || !candidate->AttributeChecker || !candidate->AttributeChecker(attr_name_str)) {
+            continue;
+        }
 
-            bool args_match = true;
+        bool args_match = true;
 
-            for (size_t i = 0; i < args.size(); i++) {
-                if (candidate->Args[i].Type != args[i]) {
-                    args_match = false;
-                    break;
-                }
-            }
-
-            if (args_match) {
-                return;
+        for (size_t i = 0; i < args.size(); i++) {
+            if (candidate->Args[i].Type != args[i]) {
+                args_match = false;
+                break;
             }
         }
+
+        FO_VERIFY_AND_THROW(!args_match, "Script function is already registered", full_name_str, attr_name_str);
     }
+
+    FO_VERIFY_AND_THROW(hashed_func_name, "Managed script function has an empty name");
 
     uint32_t handler_handle = mono_gchandle_new(handler, false);
 
@@ -2327,8 +2330,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
 
     engine->SetRemoteCallHandler(
         name_hashed,
-        [backend = backend.as_ptr(), engine, args, handler_handle, server_side, call_name, max_payload_size, max_collection_size,
-         wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+        [backend = backend.as_ptr(), engine, args, handler_handle, server_side, call_name, max_payload_size, max_collection_size, wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
             FO_VERIFY_AND_THROW(max_payload_size == 0 || data.size() <= max_payload_size, "Remote call payload exceeds structural limit", call_name, data.size(), max_payload_size);
 
             // Attach to the Managed domain up front: building managed List objects for array args (below) invokes mono,
@@ -2564,46 +2566,13 @@ static void RegisterInternalCalls()
 
 // === Settings access helpers ===
 
-static auto GetSettingValueAsString(GlobalSettings* settings, const string& setting_name) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (settings == nullptr) {
-        return {};
-    }
-
-#define GET_SETTING_VALUE(sett) return strex("{}", settings->sett).str()
-#define FIXED_SETTING(type, group, name, ...) \
-    case const_hash(#name): \
-    case const_hash(#group "." #name): \
-        GET_SETTING_VALUE(name)
-#define VARIABLE_SETTING(type, group, name, ...) \
-    case const_hash(#name): \
-    case const_hash(#group "." #name): \
-        GET_SETTING_VALUE(name)
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
-
-    switch (const_hash(setting_name.c_str())) {
-#include "Settings.inc"
-    default:
-        return settings->GetCustomSetting(setting_name);
-    }
-
-#undef GET_SETTING_VALUE
-#undef FIXED_SETTING
-#undef VARIABLE_SETTING
-#undef SETTING_GROUP
-#undef SETTING_GROUP_END
-}
-
 static auto GetSettingValueAsString(MonoString* name) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
     GlobalSettings* settings = GetBackendSettings(GetActiveBackendOrThrow());
     string setting_name = ToStringAndFree(name);
-    return GetSettingValueAsString(settings, setting_name);
+    return settings != nullptr ? settings->GetRuntimeSetting(setting_name) : string {};
 }
 
 static void SetSettingValueFromString(GlobalSettings* settings, string_view setting_name, string value)
@@ -2832,7 +2801,11 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
             *NativeDataProvider::GetHandleSlot(ret_data) = *static_cast<void**>(native_value);
         }
     }
-    else if (base_type.IsPrimitive || base_type.IsEnum || base_type.IsStruct) {
+    else if (base_type.IsStruct) {
+        FO_VERIFY_AND_THROW(base_type.StructLayout && base_type.StructLayout->CopyNative, "Native value assignment is missing", base_type.Name);
+        base_type.StructLayout->CopyNative(ret_data, native_value);
+    }
+    else if (base_type.IsPrimitive || base_type.IsEnum) {
         MemCopy(ret_data, native_value, base_type.Size);
     }
     else {
@@ -2961,7 +2934,11 @@ static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const Co
     else if (base_type.IsEntity) {
         *static_cast<Entity**>(dst) = *static_cast<Entity**>(converted);
     }
-    else if (base_type.IsPrimitive || base_type.IsEnum || base_type.IsStruct) {
+    else if (base_type.IsStruct) {
+        FO_VERIFY_AND_THROW(base_type.StructLayout && base_type.StructLayout->CopyNative, "Native value assignment is missing", base_type.Name);
+        base_type.StructLayout->CopyNative(dst, converted);
+    }
+    else if (base_type.IsPrimitive || base_type.IsEnum) {
         MemCopy(dst, converted, base_type.Size);
     }
     else {
@@ -3366,7 +3343,7 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
             mono_field_get_value(value, field, &hash);
 
             hstring resolved_hash = ResolveManagedHashValue(backend, hash);
-            MemCopy(raw_data + field_desc.Offset, &resolved_hash, sizeof(resolved_hash));
+            *ptr<void>(raw_data + field_desc.Offset).reinterpret_as<hstring>() = resolved_hash;
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
             MonoObject* field_value = mono_field_get_value_object(domain, field, value);
@@ -3786,59 +3763,6 @@ static auto InvokeNativeBoolHelper(ptr<const ManagedScriptBackend> backend, cons
     return *static_cast<mono_bool*>(mono_object_unbox(result)) != 0;
 }
 
-static auto IsManagedByteArray(MonoObject* value) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (value == nullptr) {
-        return false;
-    }
-
-    MonoClass* klass = mono_object_get_class(value);
-    return mono_class_get_rank(klass) == 1 && mono_class_get_element_class(klass) == mono_get_byte_class();
-}
-
-static auto GetManagedByteArrayItem(ptr<const ManagedScriptBackend> backend, MonoObject* value, size_t index) -> uint8_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    int32_t index_value = numeric_cast<int32_t>(index);
-    void* args[] = {value, &index_value};
-    MonoObject* result = InvokeNativeHelper(backend, "GetByteArrayItem", 2, args);
-
-    if (result == nullptr) {
-        throw ScriptSystemException("Managed byte array item read failed");
-    }
-
-    int32_t item = *static_cast<int32_t*>(mono_object_unbox(result));
-    FO_VERIFY_AND_THROW(item >= 0 && item <= UINT8_MAX, "Managed byte array item is out of byte range");
-    return numeric_cast<uint8_t>(item);
-}
-
-static void CopyManagedByteArrayToNative(ptr<const ManagedScriptBackend> backend, MonoObject* value, void* data, size_t size)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!IsManagedByteArray(value)) {
-        throw ScriptSystemException("Managed byte array expected");
-    }
-
-    MonoArray* bytes = reinterpret_cast<MonoArray*>(value);
-
-    if (mono_array_length(bytes) != size) {
-        throw ScriptSystemException("Managed byte array size mismatch", mono_array_length(bytes), size);
-    }
-
-    uint32_t bytes_handle = mono_gchandle_new(value, 0);
-    auto free_bytes_handle = scope_exit([bytes_handle]() noexcept { mono_gchandle_free(bytes_handle); });
-    uint8_t* raw_data = static_cast<uint8_t*>(data);
-
-    for (size_t i = 0; i < size; i++) {
-        MonoObject* rooted_bytes = mono_gchandle_get_target(bytes_handle);
-        raw_data[i] = GetManagedByteArrayItem(backend, rooted_bytes, i);
-    }
-}
-
 // The managed entity hierarchy is not the native one: managed ProtoCritter derives from Critter, while
 // natively it derives from ProtoEntity and shares no base with it - see Docs/Scripts.md
 static void ValidateManagedEntityKind(const BaseTypeDesc& base_type, nptr<Entity> entity)
@@ -3889,12 +3813,9 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
             throw ScriptSystemException("Null passed to Managed value argument", base_type.Name);
         }
 
-        void* data = storage.Alloc(base_type.Size);
+        void* data = storage.Alloc(base_type);
 
-        if (base_type.IsStruct && IsManagedByteArray(value)) {
-            CopyManagedByteArrayToNative(backend, value, data, base_type.Size);
-        }
-        else if (base_type.IsStruct && base_type.StructLayout != nullptr) {
+        if (base_type.IsStruct) {
             CopyManagedStructToNative(backend, base_type, value, data);
         }
         else {
@@ -4018,7 +3939,7 @@ static auto CanConvertManagedSimpleObjectToNative(ptr<const ManagedScriptBackend
         return value == nullptr || ManagedObjectClassMatchesOrDerives(value, FindFOnlineClass(backend, base_type.Name));
     }
     if (base_type.IsPrimitive || base_type.IsEnum || base_type.IsStruct) {
-        return value != nullptr && ((base_type.IsStruct && IsManagedByteArray(value)) || ManagedObjectClassMatches(value, GetValueClass(backend, base_type)));
+        return value != nullptr && ManagedObjectClassMatches(value, GetValueClass(backend, base_type));
     }
 
     return false;
@@ -5219,8 +5140,7 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
         return restored_paths;
     }
 
-    auto cache_root =
-        std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / fs_make_path(MakeManagedAssemblyCacheKey(assembly_resources));
+    auto cache_root = std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / fs_make_path(MakeManagedAssemblyCacheKey(assembly_resources));
     restored_paths.reserve(assembly_resources.size());
 
     for (const ManagedAssemblyResource& resource : assembly_resources) {
@@ -5248,30 +5168,28 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
     FO_STACK_TRACE_ENTRY();
 
     std::filesystem::path bake_root {bake_output_dir};
-    std::error_code ec;
 
-    if (!std::filesystem::is_directory(bake_root, ec)) {
+    if (!std::filesystem::exists(bake_root)) {
         return {};
     }
 
     string target_subdir = strex("{}Assemblies", target_name).str();
 
-    for (std::filesystem::directory_iterator pack_it(bake_root, ec); !ec && pack_it != std::filesystem::directory_iterator(); pack_it.increment(ec)) {
+    for (auto pack_it = std::filesystem::directory_iterator(bake_root); pack_it != std::filesystem::directory_iterator(); ++pack_it) {
         if (!pack_it->is_directory()) {
             continue;
         }
 
         auto target_dir = pack_it->path() / "Assemblies" / fs_make_path(target_subdir);
-        std::error_code dir_ec;
 
-        if (!std::filesystem::is_directory(target_dir, dir_ec)) {
+        if (!std::filesystem::exists(target_dir)) {
             continue;
         }
 
         vector<std::filesystem::path> result;
         bool has_entry = false;
 
-        for (std::filesystem::directory_iterator it(target_dir, dir_ec); !dir_ec && it != std::filesystem::directory_iterator(); it.increment(dir_ec)) {
+        for (auto it = std::filesystem::directory_iterator(target_dir); it != std::filesystem::directory_iterator(); ++it) {
             if (!it->is_regular_file() || it->path().extension() != ".dll") {
                 continue;
             }

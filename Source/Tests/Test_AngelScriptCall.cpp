@@ -284,7 +284,7 @@ namespace CallTest
 
         static auto MakeResources() -> FileSystem
         {
-            const auto metadata_blob = BakerTests::MakeMetadataBlob({
+            auto metadata_blob = BakerTests::MakeMetadataBlob({
                 {"RefType", {{"CallReturnProbe", "Value", "int32", "0"}}},
             });
 
@@ -367,12 +367,12 @@ TEST_CASE("AngelScriptCallShapes")
     call_and_check("CallTest::UseMixedParams", 22);
 
     {
-        const auto candidates = server->FindFuncCandidates(fn("CallTest::MakeManagedReturnProbe"));
+        auto candidates = server->FindFuncCandidates(fn("CallTest::MakeManagedReturnProbe"));
         REQUIRE(candidates.size() == 1);
         ptr<ScriptFuncDesc> func_desc = candidates.front();
         REQUIRE(func_desc->Call);
 
-        const ManagedCallDataAccessor accessor;
+        ManagedCallDataAccessor accessor;
         DynamicRefTypeInstance* return_handle = nullptr;
         refcount_nptr<DynamicRefTypeInstance> retained;
 

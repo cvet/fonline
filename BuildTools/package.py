@@ -22,6 +22,7 @@ from typing import IO, Callable, Iterable, Literal, Sequence
 
 import buildtools
 import foconfig
+from managed_runtime_identity import runtime_identity
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
@@ -793,16 +794,24 @@ class Packager:
 					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
 
 				for output_name, variant_config_data, runtime_variant in variant_specs:
-					payload_key = (request_target_name, output_name)
-					if payload_key in copied_payloads:
-						continue
-
 					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
 					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
 					if not os.path.isfile(runtime_input_path):
 						continue
 
-					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+					payload_target_name = request_target_name
+					identity_path = Path(entry_path) / (runtime_input_name + '.managed-runtime-id')
+					runtime_dir = Path(entry_path) / 'ManagedRuntime'
+					if identity_path.exists() or runtime_dir.exists():
+						identity = identity_path.read_text(encoding='utf-8').strip()
+						if identity != runtime_identity(runtime_dir):
+							raise ValueError('Managed runtime companions differ from the compiled client: ' + entry_path)
+						payload_target_name += '-Managed-' + identity
+					payload_key = (payload_target_name, output_name)
+					if payload_key in copied_payloads:
+						continue
+
+					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, payload_target_name)
 					os.makedirs(payload_dir, exist_ok=True)
 					output_path = os.path.join(payload_dir, output_name + runtime_ext)
 					log('Client runtime update payload', output_path)

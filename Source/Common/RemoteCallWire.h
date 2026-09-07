@@ -33,7 +33,7 @@
 
 #pragma once
 
-// Shared remote-call wire (de)serializer (Phase A2)
+// Shared remote-call wire serialization
 
 #include "Common.h"
 
@@ -58,9 +58,12 @@ struct RemoteCallWireHooks
 class RemoteCallReadStorage final
 {
 public:
+    ~RemoteCallReadStorage();
+
     auto StoreString(string&& value) -> ptr<void> { return make_ptr(&std::get<string>(_items.emplace_back(std::move(value)))).reinterpret_as<void>(); }
     auto StoreHashed(hstring value) -> ptr<void> { return make_ptr(&std::get<hstring>(_items.emplace_back(value))).reinterpret_as<void>(); }
-    auto StoreStructBytes(size_t size) -> ptr<uint8_t> { return std::get<vector<uint8_t>>(_items.emplace_back(vector<uint8_t>(size, 0))).data(); }
+    auto StoreStructBytes(size_t size) -> ptr<uint8_t>;
+    void StoreStructHash(ptr<uint8_t> address, hstring value);
     auto StorePlainBytes() -> ptr<uint8_t> { return std::get<PlainData>(_items.emplace_back(PlainData {})).Bytes; }
 
 private:
@@ -69,7 +72,8 @@ private:
         alignas(uint64_t) uint8_t Bytes[sizeof(uint64_t)] {};
     };
 
-    list<variant<string, hstring, vector<uint8_t>, PlainData>> _items {};
+    list<variant<string, hstring, unique_del_ptr<void>, PlainData>> _items {};
+    vector<ptr<hstring>> _structHashes {};
 };
 
 // Serialize one simple (non-collection) remote-call value to the wire. Mirrors the format the AngelScript

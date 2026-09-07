@@ -40,6 +40,7 @@
 #include "AngelScriptBackend.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
+#include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 #include "Settings.h"
 
@@ -197,11 +198,11 @@ static auto ResolveInvokeResultType(ptr<AngelScript::asIScriptGeneric> gen, Ange
     FO_STACK_TRACE_ENTRY();
 
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
-    const int32_t result_type_id = gen->GetArgTypeId(result_arg);
+    int32_t result_type_id = gen->GetArgTypeId(result_arg);
     auto result_type = ResolveScriptFuncType(as_engine, result_type_id);
 
     if (!result_type) {
-        const nptr<const char> type_decl = as_engine->GetTypeDeclaration(result_type_id, true);
+        nptr<const char> type_decl = as_engine->GetTypeDeclaration(result_type_id, true);
         throw ScriptException("Unsupported invoke result type", type_decl ? type_decl.get() : "<unknown>");
     }
 
@@ -318,9 +319,9 @@ static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
 
     ptr<BaseEngine> engine = GetGameEngine(gen->GetEngine());
     const auto& func_name = *cast_from_void<const string*>(gen->GetAddressOfArg(0));
-    const auto hashed_func_name = engine->Hashes.ToHashedString(func_name);
-    const auto result_type = ResolveInvokeResultType(gen, 1);
-    const auto arg_types = ResolveInvokeArgTypes(gen, 2);
+    hstring hashed_func_name = engine->Hashes.ToHashedString(func_name);
+    auto result_type = ResolveInvokeResultType(gen, 1);
+    auto arg_types = ResolveInvokeArgTypes(gen, 2);
     nptr<ScriptFuncDesc> nullable_func_desc = engine->FindFunc(hashed_func_name, span(arg_types), result_type);
 
     if (!nullable_func_desc) {
@@ -329,19 +330,24 @@ static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
 
     ptr<const ScriptFuncDesc> func_desc = nullable_func_desc.as_ptr();
 
-    // An array out-result arrives as a null handle (?&out does not carry the caller's value), but the callee fills it
-    // through the accessor's ClearArray/AddArrayElement, which need a live array
-    if (result_type.Kind == ComplexTypeKind::Array) {
+    // ?&out starts with a null collection handle; accessors require a live destination
+    if (result_type.Kind == ComplexTypeKind::Array || result_type.Kind == ComplexTypeKind::Dict || result_type.Kind == ComplexTypeKind::DictOfArray) {
         ptr<void> result_addr = gen->GetArgAddress(1);
 
-        if (*cast_from_void<ScriptArray**>(result_addr.get()) == nullptr) {
-            nptr<AngelScript::asITypeInfo> array_type = gen->GetEngine()->GetTypeInfoById(gen->GetArgTypeId(1));
-            FO_VERIFY_AND_THROW(array_type, "InvokeResult array result type is unavailable", func_name);
-            *cast_from_void<ScriptArray**>(result_addr.get()) = ScriptArray::Create(array_type.as_ptr()).release_ownership();
+        if (!NativeDataProvider::ReadHandleSlot(result_addr)) {
+            nptr<AngelScript::asITypeInfo> collection_type = gen->GetEngine()->GetTypeInfoById(gen->GetArgTypeId(1));
+            FO_VERIFY_AND_THROW(collection_type, "InvokeResult collection result type is unavailable", func_name);
+
+            if (result_type.Kind == ComplexTypeKind::Array) {
+                NativeDataProvider::WriteHandleSlot(result_addr, ScriptArray::Create(collection_type.as_ptr()).release_ownership());
+            }
+            else {
+                NativeDataProvider::WriteHandleSlot(result_addr, ScriptDict::Create(collection_type.as_ptr()).release_ownership());
+            }
         }
     }
 
-    const bool result = InvokeResolvedFunction(func_desc, gen, 2, gen->GetArgAddress(1));
+    bool result = InvokeResolvedFunction(func_desc, gen, 2, gen->GetArgAddress(1));
     new (gen->GetAddressOfReturnLocation()) bool(result);
 }
 

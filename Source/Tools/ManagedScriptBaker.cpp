@@ -4186,8 +4186,17 @@ static void WriteTextFileIfChanged(const std::filesystem::path& file_path, strin
     auto temp_path = file_path;
     temp_path += ".tmp";
 
-    ec.clear();
-    (void)std::filesystem::remove(temp_path, ec);
+    bool temp_created = false;
+    auto cleanup_temp = scope_exit([&temp_path, &temp_created]() noexcept {
+        if (!temp_created) {
+            return;
+        }
+
+        safe_call([&temp_path] {
+            std::error_code cleanup_error;
+            (void)std::filesystem::remove(temp_path, cleanup_error);
+        });
+    });
 
     {
         std::ofstream file(temp_path, std::ios::binary | std::ios::trunc);
@@ -4196,24 +4205,24 @@ static void WriteTextFileIfChanged(const std::filesystem::path& file_path, strin
             throw ManagedScriptBakerException(error_message, file_path.string());
         }
 
+        temp_created = true;
         file.write(new_content.data(), numeric_cast<std::streamsize>(new_content.size()));
+        file.flush();
+
+        if (!file) {
+            throw ManagedScriptBakerException(error_message, file_path.string());
+        }
+
+        file.close();
+
+        if (!file) {
+            throw ManagedScriptBakerException(error_message, file_path.string());
+        }
     }
 
-    ec.clear();
-    (void)std::filesystem::remove(file_path, ec);
-
-    if (ec) {
-        std::error_code remove_temp_ec;
-        (void)std::filesystem::remove(temp_path, remove_temp_ec);
-        throw ManagedScriptBakerException(error_message, file_path.string());
-    }
-
-    ec.clear();
     std::filesystem::rename(temp_path, file_path, ec);
 
     if (ec) {
-        std::error_code remove_temp_ec;
-        (void)std::filesystem::remove(temp_path, remove_temp_ec);
         throw ManagedScriptBakerException(error_message, file_path.string());
     }
 }

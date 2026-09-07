@@ -433,11 +433,6 @@ namespace FOnline
             ((IDictionary)dictionary).Add(key, value);
         }
 
-        internal static int GetByteArrayItem(object bytes, int index)
-        {
-            return ((byte[])bytes)[index];
-        }
-
         internal static void SetByteArrayItem(object bytes, int index, int value)
         {
             ((byte[])bytes)[index] = (byte)value;
@@ -718,8 +713,7 @@ namespace FOnline
             string attributeName,
             string[] paramTypeNames,
             string returnTypeName,
-            Delegate handler,
-            bool skipExistingScriptFunc);
+            Delegate handler);
 
         // Registers a managed inbound remote-call handler (a [ServerRemoteCall]/[ClientRemoteCall]/[AdminRemoteCall]
         // method) with the engine. The engine matches `name` to the inbound remote-call metadata (subsystem "cs")

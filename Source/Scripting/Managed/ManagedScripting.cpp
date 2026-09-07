@@ -46,14 +46,13 @@ void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources, str
 {
     FO_STACK_TRACE_ENTRY();
 
+    nptr<EngineMetadata> metadata = meta;
+    nptr<ScriptSystem> script_sys = metadata.dyn_cast<ScriptSystem>();
+    FO_VERIFY_AND_THROW(script_sys, "Managed scripting requires a script system");
+
     auto managed_backend = SafeAlloc::MakeUnique<ManagedScriptBackend>();
     ptr<ManagedScriptBackend> backend = managed_backend;
-
-    nptr<EngineMetadata> metadata = meta;
-
-    if (nptr<ScriptSystem> script_sys = metadata.dyn_cast<ScriptSystem>(); script_sys) {
-        script_sys->RegisterBackend(ScriptSystemBackend::MANAGED_BACKEND_INDEX, std::move(managed_backend));
-    }
+    script_sys->RegisterBackend(ScriptSystemBackend::MANAGED_BACKEND_INDEX, std::move(managed_backend));
 
     backend->RegisterMetadata(meta);
     backend->LoadAssemblies(resources, bake_output_dir);

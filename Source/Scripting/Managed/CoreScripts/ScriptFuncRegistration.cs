@@ -31,12 +31,7 @@ namespace FOnline
             RegisterAttributedScriptFuncs(typeof(LocationInitAttribute), "LocationInit");
         }
 
-        // Register all static methods in the script assembly tagged with `attributeType` as global script functions
-        // carrying `attributeName`. Finds nothing on a side where the tagged methods are not compiled (harmless).
-        // Normal attribute-bound funcs skip coexisting AngelScript modules to avoid duplicate live owners. Transition
-        // bridges may opt in: an exact function already registered by the coexisting backend remains the owner, while
-        // managed-only functions from the same module are still registered.
-        public static void RegisterAttributedScriptFuncs(Type attributeType, string attributeName, bool includeCoexistingAngelScriptModules = false)
+        public static void RegisterAttributedScriptFuncs(Type attributeType, string attributeName)
         {
             Assembly assembly = typeof(ScriptFuncRegistration).Assembly;
 
@@ -47,12 +42,7 @@ namespace FOnline
                 {
                     if (Attribute.GetCustomAttribute(method, attributeType) != null)
                     {
-                        if (!includeCoexistingAngelScriptModules && Initializator.HasCoexistingAngelScriptModule(type))
-                        {
-                            continue;
-                        }
-
-                        RegisterFunc(type, method, attributeName, includeCoexistingAngelScriptModules);
+                        RegisterFunc(type, method, attributeName);
                     }
                 }
             }
@@ -65,7 +55,7 @@ namespace FOnline
 
         public delegate int RefStringFunc(Critter cr, Critter npc, ref string value);
 
-        private static void RegisterFunc(Type type, MethodInfo method, string attributeName, bool skipExistingScriptFunc)
+        private static void RegisterFunc(Type type, MethodInfo method, string attributeName)
         {
             ParameterInfo[] parameters = method.GetParameters();
             string[] paramTypeNames = new string[parameters.Length];
@@ -113,8 +103,7 @@ namespace FOnline
                 attributeName,
                 paramTypeNames,
                 returnTypeName,
-                handler,
-                skipExistingScriptFunc);
+                handler);
         }
 
         private static Type? ResolveByRefDelegateType(MethodInfo method, Type[] delegateParamTypes)

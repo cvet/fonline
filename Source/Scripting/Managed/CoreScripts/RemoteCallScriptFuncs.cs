@@ -21,11 +21,6 @@ namespace FOnline
 
             foreach (Type type in assembly.GetTypes())
             {
-                if (Initializator.HasCoexistingAngelScriptModule(type, allowManagedModuleInitOwner: true))
-                {
-                    continue;
-                }
-
                 foreach (MethodInfo method in type.GetMethods(
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                 {
