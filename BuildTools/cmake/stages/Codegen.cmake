@@ -78,11 +78,16 @@ AppendList(FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp")
 
-FileWrite("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
+SetValue(codegenArgsPath "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
+string(JOIN "\n" codegenArgsContent ${FO_CODEGEN_COMMAND_ARGS})
+string(APPEND codegenArgsContent "\n")
 
-foreach(entry ${FO_CODEGEN_COMMAND_ARGS})
-    FileAppend("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "${entry}\n")
-endforeach()
+if(EXISTS "${codegenArgsPath}")
+    file(READ "${codegenArgsPath}" previousCodegenArgsContent)
+endif()
+if(NOT EXISTS "${codegenArgsPath}" OR NOT codegenArgsContent STREQUAL previousCodegenArgsContent)
+    FileWrite("${codegenArgsPath}" "${codegenArgsContent}")
+endif()
 
 SetValue(FO_CODEGEN_COMMAND
     ${Python3_EXECUTABLE}
@@ -96,7 +101,7 @@ SetValue(codegenTouchCommand
 AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
-    DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE}
+    DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE} "${codegenArgsPath}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
 
