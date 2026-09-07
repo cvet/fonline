@@ -180,7 +180,11 @@ normal Raw/Zip payload or the MSI derived from it; a package carrying the
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the
 same path are a packaging error; the packager never emits ambiguous duplicate
-ZIP names.
+ZIP names. Applications sharing a package root must therefore be built with
+the same runtime payload. `buildtools.py build <platform> full <config>` builds
+the client, server and tools in one CMake tree with one `SetupManagedRuntime`
+output. Both `full` and `toolset` leave `FO_BUILD_ASCOMPILER` to the embedding
+project's default so a managed-only project does not enable AngelScript tools.
 
 The universal package schema has no `EffekseerEditor` binary role. Separately
 built tools are declared alongside `BINARY` parts with

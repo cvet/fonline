@@ -704,6 +704,9 @@ def build_flag_args(target_name: str, config: str | None = None) -> list[str]:
 		raise SystemExit(f'Unknown build target: {target_name}')
 	flags = {name: 0 for name in FLAG_NAMES}
 	flags.update(BUILD_TARGETS[target_name])
+	# Aggregate builds follow the embedding project's scripting backend selection
+	if target_name in ('full', 'toolset'):
+		flags.pop('FO_BUILD_ASCOMPILER')
 	args = [f'-D{name}={value}' for name, value in flags.items()]
 	if config:
 		args.append(f'-DCMAKE_BUILD_TYPE={config}')
@@ -1374,10 +1377,7 @@ def make_output_path_cmake_args(output_path: str, binary_output_postfix: str = '
 
 
 def toolset_flag_args(config_name: str | None = None) -> list[str]:
-	# The baker belongs to every scripting backend, while ASCompiler only exists when the
-	# embedding project enables AngelScript. Leave FO_BUILD_ASCOMPILER to the project's
-	# SetOptionValues default instead of overriding managed-only projects with an invalid pair
-	return [arg for arg in build_flag_args('toolset', config=config_name) if not arg.startswith('-DFO_BUILD_ASCOMPILER=')]
+	return build_flag_args('toolset', config=config_name)
 
 
 def make_toolset_cmake_args(output_path: str, config_name: str | None = None, binary_output_postfix: str = '') -> list[str]:
