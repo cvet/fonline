@@ -449,7 +449,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     ctor_args.emplace_back(std::move(ctor_arg));
                 }
 
-                if (!type->StructLayout->Fields.empty()) {
+                // Direction constructors normalize full-width inputs in ValueTypeExtensions.cs
+                if (!type->StructLayout->Fields.empty() && type->Name != "hdir" && type->Name != "mdir") {
                     out << "\n";
 
                     if (ctor_args.size() > 4 || ctor_args_length > 100) {

@@ -18,6 +18,45 @@ internal static class Program
             ("bootstrap outside a source tree", () => BootstrapScenarios.RunIsolated("outside-source-tree")),
             ("bootstrap alongside source files", () => BootstrapScenarios.RunIsolated("source-tree")),
             ("static initialization failure stops startup", () => BootstrapScenarios.RunIsolated("static-failure")),
+            ("direction constructors normalize both map geometries", () => {
+                var samples = new (int Value, int Hex, int Square)[] {
+                    (0, 0, 0), (6, 0, 6), (7, 1, 7), (8, 2, 0), (-1, 5, 7), (-7, 5, 1),
+                    (int.MinValue, 4, 0), (int.MaxValue, 1, 7)
+                };
+                int previous = Settings.Geometry_MapDirCount;
+                try {
+                    foreach (int count in new[] { 6, 8 }) {
+                        Settings.Geometry_MapDirCount = count;
+                        foreach (var sample in samples) {
+                            Check(new hdir(sample.Value).value == (count == 6 ? sample.Hex : sample.Square), "Wrong normalized direction for " + sample.Value);
+                        }
+                        sbyte signedDirection = -1;
+                        byte unsignedDirection = 255;
+                        Check(new hdir(signedDirection).value == count - 1, "Signed narrow direction bypassed normalization");
+                        Check(new hdir(unsignedDirection).value == (count == 6 ? 3 : 7), "Unsigned direction narrowed before normalization");
+                    }
+                }
+                finally { Settings.Geometry_MapDirCount = previous; }
+                Check(System.Runtime.InteropServices.Marshal.SizeOf<hdir>() == 1, "Direction ABI size changed");
+                Check(typeof(hdir).GetConstructor(new[] { typeof(sbyte) })?.GetParameters()[0].ParameterType == typeof(sbyte), "Existing narrow direction constructor entrypoint was lost");
+            }),
+            ("angle constructors normalize narrow and full-width inputs", () => {
+                var samples = new (int Value, int Angle)[] {
+                    (0, 0), (-1, 359), (360, 0), (721, 1), (int.MinValue, 232), (int.MaxValue, 127)
+                };
+                foreach (var sample in samples) {
+                    Check(new mdir(sample.Value).angle == sample.Angle, "Wrong normalized angle for " + sample.Value);
+                }
+                short negativeAngle = -1;
+                short fullTurn = 360;
+                short minimum = short.MinValue;
+                short maximum = short.MaxValue;
+                Check(new mdir(negativeAngle).angle == 359, "Negative short angle bypassed normalization");
+                Check(new mdir(fullTurn).angle == 0, "Full-turn short angle bypassed normalization");
+                Check(new mdir(minimum).angle == 352 && new mdir(maximum).angle == 7, "Narrow angle limits normalized incorrectly");
+                Check(System.Runtime.InteropServices.Marshal.SizeOf<mdir>() == 2, "Angle ABI size changed");
+                Check(typeof(mdir).GetConstructor(new[] { typeof(short) })?.GetParameters()[0].ParameterType == typeof(short), "Existing narrow angle constructor entrypoint was lost");
+            }),
             ("ref result numeric widening", () => {
                 long result = 1;
                 Check(Game.Invoke("DispatchProbe::WriteInt", ref result), "Invocation failed");

@@ -14,8 +14,8 @@ namespace FOnline
         public static void Log(string text) { }
         public static object GetProperty(string owner, string property, IntPtr entity) => throw new NotSupportedException();
         public static void SetProperty(string owner, string property, IntPtr entity, object value) => throw new NotSupportedException();
-        public static short HdirToMdir(byte value) => throw new NotSupportedException();
-        public static byte MdirHex(short value) => throw new NotSupportedException();
+        public static short HdirToMdir(sbyte value) => throw new NotSupportedException();
+        public static sbyte MdirHex(short value) => throw new NotSupportedException();
         public static short MdirRotateHex(short value, int steps) => throw new NotSupportedException();
         public static short MdirReverse(short value) => throw new NotSupportedException();
     }
@@ -44,7 +44,8 @@ namespace FOnline
     public partial struct nanotime { public long value; public nanotime(long value) { this.value = value; } }
     public partial struct ident { public long value; }
     public partial struct ucolor { public uint value; }
-    public partial struct hdir { public byte value; public hdir(byte value) { this.value = value; } }
+    public static class Settings { public static int Geometry_MapDirCount { get; set; } = 6; }
+    public partial struct hdir { public sbyte value; }
     public partial struct mdir { public short angle; }
     public partial struct ipos8 { public sbyte x, y; }
     public partial struct ipos16 { public short x, y; }

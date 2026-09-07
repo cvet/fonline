@@ -587,6 +587,17 @@ TEST_CASE("ManagedScriptBaker")
     string server_types = ReadTextFile(script_dir / "ServerTypes.gen.cs");
     CHECK(server_types.find("public partial struct hstring") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
+
+    for (string_view target : {"Server", "Client", "Mapper"}) {
+        string types = ReadTextFile(script_dir / fs_make_path(strex("{}Types.gen.cs", target).str()));
+        CHECK(types.find("public partial struct hdir") != string::npos);
+        CHECK(types.find("public sbyte value;") != string::npos);
+        CHECK(types.find("public hdir(") == string::npos);
+        CHECK(types.find("public partial struct mdir") != string::npos);
+        CHECK(types.find("public short angle;") != string::npos);
+        CHECK(types.find("public mdir(") == string::npos);
+    }
+
     CHECK(server_types.find("public partial class ManagedRoute") != string::npos);
     CHECK(server_types.find("public ManagedRoute()\n        {\n        }") != string::npos);
     CHECK(server_types.find("public int Step") != string::npos);

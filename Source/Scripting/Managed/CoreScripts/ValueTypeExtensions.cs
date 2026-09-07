@@ -8,10 +8,24 @@ namespace FOnline
         public static hstring hstr(this string? value) => new hstring(value ?? string.Empty);
     }
 
+    public partial struct hdir
+    {
+        public hdir(sbyte value) : this((int)value) { }
+
+        public hdir(int value)
+        {
+            int directionCount = Settings.Geometry_MapDirCount;
+            int mod = value % directionCount;
+            this.value = (sbyte)(mod < 0 ? mod + directionCount : mod);
+        }
+    }
+
     // AngelScript `mdir` methods are geometry-dependent. `hex` routes through the engine because square-map
     // rounding is engine-owned; hex rotation only needs the direction count.
     public partial struct mdir
     {
+        public mdir(short angle) : this((int)angle) { }
+
         public mdir(hdir dir)
         {
             angle = global::FOnline.Native.HdirToMdir(dir.value);
