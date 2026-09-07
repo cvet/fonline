@@ -163,7 +163,9 @@ Examples of entry points wired here include client, client runtime library, clie
 Effekseer Editor is intentionally absent from this stage and from the
 application target graph. Its standalone `BuildTools/EffekseerEditor/build.ps1`
 entry point configures and builds upstream sources independently of an
-embedding project's FOnline CMake configuration.
+embedding project's FOnline CMake configuration. It reads CMake capabilities
+and supplies `CMAKE_POLICY_VERSION_MINIMUM` only with CMake 4 or newer, where
+that option is supported.
 
 See [Applications.md](Applications.md).
 
