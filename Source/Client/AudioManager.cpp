@@ -432,17 +432,13 @@ auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 
-    // Panning happens on the decoder's own S16 output, because the device format the mixer works in belongs
-    // to the frontend. A stereo source keeps the image its author built and takes attenuation alone
-    int32_t channels = sound->OriginalChannels;
-
-    if (sound->Pan != 0.0f && channels == 1) {
-        WidenMonoToPannedStereo(sound->ConvertedBuf, sound->Pan);
-        channels = 2;
+    if (!_audio->ConvertAudio(AppAudio::AUDIO_FORMAT_S16, sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
+        return false;
     }
 
-    if (!_audio->ConvertAudio(AppAudio::AUDIO_FORMAT_S16, channels, sound->OriginalRate, sound->ConvertedBuf)) {
-        return false;
+    // Safe after conversion because the mixing format is the engine's own S16 stereo, whatever the device runs
+    if (sound->Pan != 0.0f) {
+        ApplyPan(sound->ConvertedBuf, sound->Pan);
     }
 
     sound->ConvertedBufCur = 0;
@@ -450,34 +446,27 @@ auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
     return true;
 }
 
-void AudioManager::WidenMonoToPannedStereo(vector<uint8_t>& buf, float32_t pan)
+void AudioManager::ApplyPan(vector<uint8_t>& buf, float32_t pan)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // A stream can decode to nothing, and an empty buffer has no data pointer to widen through
+    // A stream can decode to nothing, and an empty buffer has no data pointer to walk
     if (buf.empty()) {
         return;
     }
 
-    // Constant-power law: the pair keeps one loudness across the sweep, where a linear split dips in the middle
-    float32_t angle = (pan + 1.0f) * 0.25f * std::numbers::pi_v<float32_t>;
-    float32_t left_gain = std::cos(angle);
-    float32_t right_gain = std::sin(angle);
+    // A balance rather than constant power: lifting the near channel above unity would clip a loud sample,
+    // which is a worse artefact than the three decibels this gives up at full deflection
+    float32_t left_gain = pan > 0.0f ? 1.0f - pan : 1.0f;
+    float32_t right_gain = pan < 0.0f ? 1.0f + pan : 1.0f;
 
-    size_t sample_count = buf.size() / sizeof(int16_t);
-    vector<uint8_t> widened;
-    widened.resize(sample_count * 2 * sizeof(int16_t));
+    size_t frame_count = buf.size() / (sizeof(int16_t) * 2);
+    auto samples = make_ptr(buf.data()).reinterpret_as<int16_t>();
 
-    auto source = make_ptr(buf.data()).reinterpret_as<const int16_t>();
-    auto target = make_ptr(widened.data()).reinterpret_as<int16_t>();
-
-    for (size_t i = 0; i < sample_count; i++) {
-        float32_t sample = numeric_cast<float32_t>(*source.offset(i));
-        *target.offset(i * 2) = numeric_cast<int16_t>(std::lround(sample * left_gain));
-        *target.offset(i * 2 + 1) = numeric_cast<int16_t>(std::lround(sample * right_gain));
+    for (size_t i = 0; i < frame_count; i++) {
+        *samples.offset(i * 2) = numeric_cast<int16_t>(std::lround(numeric_cast<float32_t>(*samples.offset(i * 2)) * left_gain));
+        *samples.offset(i * 2 + 1) = numeric_cast<int16_t>(std::lround(numeric_cast<float32_t>(*samples.offset(i * 2 + 1)) * right_gain));
     }
-
-    buf = std::move(widened);
 }
 
 void AudioManager::IndexFiles()
@@ -486,7 +475,7 @@ void AudioManager::IndexFiles()
 
     for (const string& sound_ext : _settings->SoundFileExtensions) {
         for (const auto& file_header : _resources->FilterFiles(sound_ext)) {
-            _soundNames.emplace(strex(file_header.GetPath()).erase_file_extension().lower(), string(file_header.GetPath()));
+            _soundNames.emplace_back(file_header.GetPath());
         }
     }
 }
@@ -506,34 +495,14 @@ auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t 
         return true;
     }
 
-    // Out of earshot: return before the lookup so a distant event costs neither a file read nor a decode
+    // Out of earshot: return before the read so a distant event costs neither a file read nor a decode
     if (attenuation <= 0.0f) {
         return true;
     }
 
-    // Make 'NAME'
-    string sound_name = strex(name).erase_file_extension().lower();
-
-    // Find base
-    auto it = _soundNames.find(sound_name);
-
-    if (it != _soundNames.end()) {
-        return Load(it->second, false, timespan::zero, attenuation, pan);
-    }
-
-    // Check random pattern 'NAME_X'
-    int32_t count = 0;
-
-    while (_soundNames.find(strex("{}_{}", sound_name, count + 1).str()) != _soundNames.end()) {
-        count++;
-    }
-
-    if (count != 0u) {
-        int32_t random_index = _randomGenerator.next_between(1, count);
-        return Load(_soundNames.find(strex("{}_{}", sound_name, random_index).str())->second, false, timespan::zero, attenuation, pan);
-    }
-
-    return false;
+    // The name is a resource path the caller already resolved: which file a game concept maps to, and how a
+    // set of numbered variants is picked among, is naming convention rather than mixing
+    return Load(name, false, timespan::zero, attenuation, pan);
 }
 
 auto AudioManager::PlayMusic(string_view fname, timespan repeat_time) -> bool

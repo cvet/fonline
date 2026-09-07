@@ -603,6 +603,13 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<Client
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<string> Client_Game_GetSoundNames(ptr<ClientEngine> client)
+{
+    auto sound_names = client->AudioMngr.GetSoundNames();
+    return vector<string> {sound_names.begin(), sound_names.end()};
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
 {
     return client->AudioMngr.PlaySound(soundName);

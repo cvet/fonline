@@ -53,10 +53,9 @@ public:
     auto operator=(AudioManager&&) noexcept = delete;
     ~AudioManager();
 
-    // Widens a mono S16 buffer into an interleaved stereo pair carrying the pan, in place
-    static void WidenMonoToPannedStereo(vector<uint8_t>& buf, float32_t pan);
-
     void IndexFiles();
+    // The resource paths of every indexed sound, for a caller that resolves its own naming conventions
+    [[nodiscard]] auto GetSoundNames() const noexcept -> const_span<string> { return _soundNames; }
     auto PlaySound(string_view name) -> bool;
     // Attenuation scales the mixed volume, pan runs from -1 at the left ear to 1 at the right one; how far a
     // sound carries and how hard it leans is game policy, so the caller decides both
@@ -64,6 +63,9 @@ public:
     auto PlayMusic(string_view fname, timespan repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
+
+    // Leans an interleaved S16 stereo buffer to one side, in place
+    static void ApplyPan(vector<uint8_t>& buf, float32_t pan);
 
 private:
     struct Sound;
@@ -79,10 +81,9 @@ private:
     ptr<IAppAudio> _audio;
     bool _isActive {};
     int32_t _streamingPortion {};
-    map<string, string> _soundNames {};
+    vector<string> _soundNames {};
     vector<unique_ptr<Sound>> _playingSounds;
     vector<uint8_t> _outputBuf {};
-    random_generator _randomGenerator {};
 };
 
 FO_END_NAMESPACE

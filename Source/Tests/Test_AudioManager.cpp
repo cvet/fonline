@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MakeMonoBuffer(const vector<int16_t>& samples) -> vector<uint8_t>
+static auto MakeStereoBuffer(const vector<int16_t>& samples) -> vector<uint8_t>
 {
     vector<uint8_t> buf;
     buf.resize(samples.size() * sizeof(int16_t));
@@ -56,82 +56,80 @@ static auto ReadSample(const vector<uint8_t>& buf, size_t index) -> int16_t
     return *source.offset(index);
 }
 
-TEST_CASE("AudioManagerPanWidening")
+TEST_CASE("AudioManagerPan")
 {
-    SECTION("EachMonoSampleBecomesAStereoPair")
+    SECTION("PanningLeavesTheBufferTheSameSize")
     {
-        vector<uint8_t> buf = MakeMonoBuffer({1000, -2000, 3000});
-        AudioManager::WidenMonoToPannedStereo(buf, 0.0f);
+        vector<uint8_t> buf = MakeStereoBuffer({1000, -2000, 3000, -4000});
+        AudioManager::ApplyPan(buf, -1.0f);
 
-        CHECK(buf.size() == 3 * 2 * sizeof(int16_t));
+        CHECK(buf.size() == 4 * sizeof(int16_t));
     }
 
-    SECTION("ACentredSoundSplitsEvenlyAndKeepsItsLoudness")
+    SECTION("ACentredSoundPassesThroughUntouched")
     {
-        vector<uint8_t> buf = MakeMonoBuffer({10000});
-        AudioManager::WidenMonoToPannedStereo(buf, 0.0f);
+        vector<uint8_t> buf = MakeStereoBuffer({10000, -9000});
+        AudioManager::ApplyPan(buf, 0.0f);
 
-        int16_t left = ReadSample(buf, 0);
-        int16_t right = ReadSample(buf, 1);
-
-        CHECK(left == right);
-        // Constant power puts each side at one over root two rather than half, so the pair keeps its loudness
-        CHECK(left == Catch::Approx(7071).margin(2));
+        CHECK(ReadSample(buf, 0) == 10000);
+        CHECK(ReadSample(buf, 1) == -9000);
     }
 
-    SECTION("HardLeftSilencesTheRightChannelAndKeepsTheSampleWhole")
+    SECTION("HardLeftSilencesTheRightChannelAndKeepsTheLeftWhole")
     {
-        vector<uint8_t> buf = MakeMonoBuffer({10000});
-        AudioManager::WidenMonoToPannedStereo(buf, -1.0f);
+        vector<uint8_t> buf = MakeStereoBuffer({10000, 10000});
+        AudioManager::ApplyPan(buf, -1.0f);
 
-        CHECK(ReadSample(buf, 0) == Catch::Approx(10000).margin(2));
-        CHECK(ReadSample(buf, 1) == Catch::Approx(0).margin(2));
+        CHECK(ReadSample(buf, 0) == 10000);
+        CHECK(ReadSample(buf, 1) == 0);
     }
 
     SECTION("HardRightIsTheMirrorOfHardLeft")
     {
-        vector<uint8_t> buf = MakeMonoBuffer({10000});
-        AudioManager::WidenMonoToPannedStereo(buf, 1.0f);
+        vector<uint8_t> buf = MakeStereoBuffer({10000, 10000});
+        AudioManager::ApplyPan(buf, 1.0f);
 
-        CHECK(ReadSample(buf, 0) == Catch::Approx(0).margin(2));
-        CHECK(ReadSample(buf, 1) == Catch::Approx(10000).margin(2));
+        CHECK(ReadSample(buf, 0) == 0);
+        CHECK(ReadSample(buf, 1) == 10000);
     }
 
-    SECTION("PartialPanLeansWithoutEmptyingTheFarChannel")
+    SECTION("PartialPanFadesTheFarChannelWithoutEmptyingIt")
     {
-        vector<uint8_t> buf = MakeMonoBuffer({10000});
-        AudioManager::WidenMonoToPannedStereo(buf, -0.5f);
+        vector<uint8_t> buf = MakeStereoBuffer({10000, 10000});
+        AudioManager::ApplyPan(buf, -0.5f);
 
-        int16_t left = ReadSample(buf, 0);
-        int16_t right = ReadSample(buf, 1);
-
-        CHECK(left > right);
-        CHECK(right > 0);
+        CHECK(ReadSample(buf, 0) == 10000);
+        CHECK(ReadSample(buf, 1) == Catch::Approx(5000).margin(2));
     }
 
-    SECTION("SignIsPreservedThroughTheGain")
+    SECTION("NoGainEverRisesAboveUnitySoALoudSampleCannotClip")
     {
-        vector<uint8_t> buf = MakeMonoBuffer({-8000});
-        AudioManager::WidenMonoToPannedStereo(buf, -1.0f);
+        vector<uint8_t> buf = MakeStereoBuffer({32767, -32768, 32767, -32768});
+        AudioManager::ApplyPan(buf, -1.0f);
 
-        CHECK(ReadSample(buf, 0) == Catch::Approx(-8000).margin(2));
+        CHECK(ReadSample(buf, 0) == 32767);
+        CHECK(ReadSample(buf, 1) == 0);
+        CHECK(ReadSample(buf, 2) == 32767);
+        CHECK(ReadSample(buf, 3) == 0);
+    }
+
+    SECTION("EveryFrameIsPannedNotJustTheFirst")
+    {
+        vector<uint8_t> buf = MakeStereoBuffer({8000, 8000, 6000, 6000, 4000, 4000});
+        AudioManager::ApplyPan(buf, 1.0f);
+
+        CHECK(ReadSample(buf, 0) == 0);
+        CHECK(ReadSample(buf, 2) == 0);
+        CHECK(ReadSample(buf, 4) == 0);
+        CHECK(ReadSample(buf, 5) == 4000);
     }
 
     SECTION("AnEmptyBufferStaysEmpty")
     {
         vector<uint8_t> buf;
-        AudioManager::WidenMonoToPannedStereo(buf, -1.0f);
+        AudioManager::ApplyPan(buf, -1.0f);
 
         CHECK(buf.empty());
-    }
-
-    SECTION("APeakSampleAtFullGainDoesNotOverflowTheSampleType")
-    {
-        vector<uint8_t> buf = MakeMonoBuffer({32767, -32768});
-        AudioManager::WidenMonoToPannedStereo(buf, -1.0f);
-
-        CHECK(ReadSample(buf, 0) == Catch::Approx(32767).margin(2));
-        CHECK(ReadSample(buf, 2) == Catch::Approx(-32768).margin(2));
     }
 }
 
