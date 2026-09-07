@@ -10,7 +10,11 @@ from pathlib import Path
 def runtime_identity(runtime_dir: Path) -> str:
     if not runtime_dir.is_dir():
         raise ValueError(f'Managed runtime directory not found: {runtime_dir}')
-    files = sorted(path for path in runtime_dir.rglob('*') if path.is_file())
+    # Path comparison folds case on Windows, but the digest must also verify on POSIX
+    files = sorted(
+        (path for path in runtime_dir.rglob('*') if path.is_file()),
+        key=lambda path: path.relative_to(runtime_dir).parts,
+    )
     if not files:
         raise ValueError(f'Managed runtime directory is empty: {runtime_dir}')
     digest = hashlib.sha256()

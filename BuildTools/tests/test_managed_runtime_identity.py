@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 import sys
 from types import SimpleNamespace
 
@@ -126,3 +126,44 @@ def test_native_payload_postfix_preserves_reserved_word_prefixes(
     packager.package_all_client_runtime_update_payloads()
     payloads = Path(packager.target_output_path) / "PlatformBinaries" / ("Linux-x64-Managed-" + runtime_id)
     assert {path.name for path in payloads.glob("*.so")} == {"Game" + output_suffix + ".so"}
+
+
+@pytest.mark.parametrize("path_flavour", [PurePosixPath, PureWindowsPath], ids=["posix", "windows"])
+def test_identity_is_independent_of_build_and_package_host(tmp_path: Path, path_flavour: type[PurePath]) -> None:
+    class HostOrderedPath(type(tmp_path)):
+        def __lt__(self, other):
+            return path_flavour(self.as_posix()) < path_flavour(other.as_posix())
+
+    runtime = tmp_path / "ManagedRuntime"
+    for name in ["bin/a-extra.dll", "bin/A.dll", "LICENSE.txt", "lib/CoreLib.dll"]:
+        path = runtime / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(name.encode("utf-8"))
+
+    assert identity.runtime_identity(HostOrderedPath(runtime)) == "eecbd50a1855f0a8f95412b485c880eb7872a2d5a3aedf2e2f12d16cb464811e"
+
+
+def test_server_payload_accepts_windows_build_identity(tmp_path: Path, monkeypatch) -> None:
+    class WindowsOrderedPath(type(tmp_path)):
+        def __lt__(self, other):
+            return PureWindowsPath(self.as_posix()) < PureWindowsPath(other.as_posix())
+
+    binary_dir = tmp_path / "Binaries" / "Client-Windows-win64"
+    runtime = binary_dir / "ManagedRuntime"
+    for name in ["bin/a-extra.dll", "bin/A.dll", "LICENSE.txt", "lib/CoreLib.dll"]:
+        path = runtime / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(name.encode("utf-8"))
+    runtime_id = identity.runtime_identity(WindowsOrderedPath(runtime))
+    (binary_dir / "LF_ClientLib.managed-runtime-id").write_text(runtime_id)
+    (binary_dir / "LF_ClientLib.build-hash").write_text("build")
+    (binary_dir / "LF_ClientLib.dll").write_bytes(b"native runtime")
+    (binary_dir / "LF_ClientLib.pdb").write_bytes(b"symbols")
+    monkeypatch.setattr(package, "patch_pe_pdb_path", lambda *args: True)
+    packager = make_packager(tmp_path)
+
+    packager.package_all_client_runtime_update_payloads()
+
+    payloads = Path(packager.target_output_path) / "PlatformBinaries" / ("Windows-win64-Managed-" + runtime_id)
+    assert {path.name for path in payloads.glob("*.dll")} == {"Game.dll", "Game_OpenGL.dll"}
+    assert all(path.read_bytes() == b"native runtime" for path in payloads.glob("*.dll"))
