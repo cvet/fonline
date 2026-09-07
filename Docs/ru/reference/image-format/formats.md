@@ -1,0 +1,29 @@
+---
+title: Исходные форматы изображений
+document_id: generated-image-format-formats
+locale: ru
+generated: true
+---
+
+<!-- docs-translation: {"document_id":"generated-image-format-formats","locale":"ru","source_path":"Docs/en/reference/image-format/formats.md","source_sha256":"0cb3d10fd4500fa43bd2a407918d26c25768c3b423b124f2a506117b832f3e61"} -->
+
+# Исходные форматы изображений
+
+> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/ImageFormatInterface.json`, затем выполните `python BuildTools/docs_image_format.py --write`.
+
+[Индекс](index.md) | [Форматы](formats.md) | [FOFRM](fofrm.md) | [Параметры](options.md) | [Запекание](baking.md) | [Runtime](runtime.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/image-format.json) | [Руководство](../../how-to/content/image-format.md)
+
+| Стабильный ID | Расширение | Доступность | Контракт импорта | Источник |
+| --- | --- | --- | --- | --- |
+| <a id="entry-image-format-format-fofrm-4b81940351"></a><code>image-format.format.fofrm</code> | <code>fofrm</code> | baker и штатный runtime | FOFRM компонует относительные ссылки на изображения в одно статическое изображение, анимацию или полный набор направлений и является предпочтительной авторской обёрткой для многокадровых либо содержащих параметры источников. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-frm-c6742490f5"></a><code>image-format.format.frm</code> | <code>frm</code> | baker и штатный runtime | FRM импортирует big-endian timing кадров, offsets, deltas, одну либо полную таблицу направлений, необязательный одноимённый .pal и анимированные индексы стандартной палитры. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-fr0-1ba0e6a185"></a><code>image-format.format.fr0</code> | <code>fr0</code> | baker и штатный runtime | Вход .fr0 обнаруживает нумерованные соседние направления, отклоняет разрыв после начала их загрузки и переименовывает запечённый выход в lowercase .fofrm для путей critter либо в .frm иначе. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-rix-2c90d88847"></a><code>image-format.format.rix</code> | <code>rix</code> | baker и штатный runtime | RIX импортирует одно непрозрачное индексированное изображение со встроенной палитрой и создаёт один RGBA-кадр. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-art-e05fbeb095"></a><code>image-format.format.art</code> | <code>art</code> | baker и штатный runtime | ART импортирует raw/RLE frames, palettes, offsets, frame rate, static или eight-rotation данные и filename options палитры/alpha/mirror/frame. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-spr-8be3e47b47"></a><code>image-format.format.spr</code> | <code>spr</code> | по умолчанию только baker; для штатного runtime оборачивайте в FOFRM | SPR импортирует именованные последовательности, слоёные parts, remap направлений, color offsets, sharing повторных кадров и фиксированные 10 fps, но штатная DefaultSpriteFactory не регистрирует расширение .spr. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp), [Source/Client/DefaultSprites.h](https://github.com/cvet/fonline/blob/master/Source/Client/DefaultSprites.h) |
+| <a id="entry-image-format-format-zar-a8622159ac"></a><code>image-format.format.zar</code> | <code>zar</code> | baker и штатный runtime | ZAR импортирует одно использующее палитру raw/RLE-изображение с alpha в один RGBA-кадр. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-til-9bd4092993"></a><code>image-format.format.til</code> | <code>til</code> | baker и штатный runtime | TIL импортирует вложенные ZAR-кадры как однонаправленную последовательность 10 fps. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-mos-220ef9ebc9"></a><code>image-format.format.mos</code> | <code>mos</code> | baker и штатный runtime | MOS импортирует одно tiled-изображение с палитрой; MOSC предварительно распаковывается, а цвет палитры 0x00FF00 становится прозрачным. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-bam-aef2e14846"></a><code>image-format.format.bam</code> | <code>bam</code> | baker и штатный runtime | BAM импортирует один выбранный cycle или frame, поддерживает packed BAMC и RLE, выводит deltas кадров и считает синий 255 палитры прозрачным. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-png-0e58dd870f"></a><code>image-format.format.png</code> | <code>png</code> | baker и штатный runtime | PNG декодируется через libpng, сокращает 16-битные каналы до 8 бит, раскрывает palette/low-bit grayscale/tRNS и заполняет отсутствующий alpha значением 255 перед созданием одного RGBA-кадра. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |
+| <a id="entry-image-format-format-tga-6de5f96907"></a><code>image-format.format.tga</code> | <code>tga</code> | baker и штатный runtime | TGA поддерживает только raw type 2 либо RLE type 10 TrueColor с 24 или 32 bpp, преобразует BGR(A) в RGBA и переворачивает строки снизу вверх. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |

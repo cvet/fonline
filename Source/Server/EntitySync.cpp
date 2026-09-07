@@ -1369,7 +1369,7 @@ void SyncContext::AcquireLocks(SyncLockList& locks, vector<refcount_ptr<ServerEn
     std::ranges::sort(ops, [](const auto& a, const auto& b) { return a.first < b.first; });
 
     // Stage 1 tries the whole sorted set without parking, rolling the prefix back on contention; stage 2 is the
-    // deadlock breaker for nested contexts and parks holding nothing (Docs/ServerRuntime.md)
+    // deadlock breaker for nested contexts and parks holding nothing
     bool acquired_all = false;
 
     for (int32_t spins = 0; spins < NON_PARKING_SPIN_BUDGET; spins++) {

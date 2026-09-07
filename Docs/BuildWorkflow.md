@@ -1,119 +1,48 @@
 # Build Workflow
 
-This document explains how to approach FOnline builds without hard-coding assumptions from one project into another.
+> Legacy route.
+
+This guide moved to locale-specific canonical routes:
+
+- [English](en/how-to/build/index.md)
+- [Русский](ru/how-to/build/index.md)
 
 ## Source paths inspected
 
-- `../CMakeLists.txt`
-- `../BuildTools/README.md`
-- `../BuildTools/Init.cmake`
-- `../BuildTools/validate.sh`
-- `../BuildTools/validate.cmd`
-- `../BuildTools/buildtools.py`
-- `../BuildTools/cmake/stages/Init.cmake`
-- `../BuildTools/cmake/stages/ProjectOptions.cmake`
-- `../BuildTools/cmake/stages/EngineSources.cmake`
-- `../BuildTools/cmake/stages/Codegen.cmake`
-- `../BuildTools/cmake/stages/ScriptsAndBaking.cmake`
-- `../BuildTools/cmake/stages/Applications.cmake`
-- `../BuildTools/cmake/stages/Packages.cmake`
-- `../BuildTools/cmake/stages/Finalize.cmake`
-- `../BuildTools/cmake/helpers/*.cmake`
-- `../Source/Applications/TestingApp.cpp`
-- `../Source/Tests/README.md`
+Continue with the [canonical guide](en/how-to/build/index.md).
 
 ## Use the embedding project as the build root
 
-FOnline is normally built through a game repository that embeds the engine as `Engine/`. Configure and build from the game root unless a focused engine-only command explicitly says otherwise.
-
-Reasons:
-
-- Target names are project-defined.
-- `.fomain` controls game-specific configuration.
-- Generated scripting APIs are project-dependent.
-- Package names, signing, resources, and deployment settings belong to the product.
-- Platform presets usually live in the embedding project's `CMakePresets.json`.
+Continue with the [canonical guide](en/how-to/build/index.md).
 
 ## Typical workflow
 
-1. Open the game repository root.
-2. Inspect available presets with CMake or the IDE integration used by the project.
-3. Configure the smallest preset that covers your change.
-4. Build the narrowest relevant target.
-5. Run the corresponding test, package, or launch target.
-6. Update documentation if the workflow or behavior changed.
+Continue with the [canonical guide](en/how-to/build/index.md).
+
+## Engine-owned first build
+
+Continue with the [canonical guide](en/how-to/build/index.md).
 
 ## Prerequisites
 
-The exact list depends on host OS and target platform, but common tools include:
+Continue with the [canonical guide](en/how-to/build/index.md).
 
-- Git
-- CMake
-- Python 3
-- A C++20-capable compiler/toolchain
-- Platform SDKs for the targets you build
-- Visual Studio or Build Tools on Windows-oriented workflows
-- Emscripten and Node.js for Web builds
-- JDK and Android NDK for Android builds
+### Windows 7 compatibility lane
 
-Prefer the embedding project's documented setup because it may pin specific SDK/tool versions.
-
-## Fetching through a mirror of your own
-
-`prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from
-whoever publishes them. Each of those is a machine you do not run, and a dropped connection costs the
-job that is waiting on it. An embedding project may put a host of its own in front of them; the engine
-only needs to be told where it is, so nothing about that host is compiled in and everything travels in
-the environment:
-
-| variable | what it configures |
-|---|---|
-| `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
-| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The MSVC SDK tree is built once, stored under `xwin-<version>-<arches>.tar.gz`, and downloaded whole afterwards. |
-| `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
-| `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
-
-Unset, every one of them leaves the download path exactly as it was.
-
-Two behaviours are deliberate. A download is checked against the upstream `Content-Length`, because a
-dropped connection ends the read instead of raising and an archive cut in half unpacks into a failure
-far from its cause. And a workspace cache that is empty, unreachable or refusing is only a **miss**:
-it exists to make the build faster and independent of other people's servers, not to become another
-way for it to fail.
-
-`xwin` fetches the Microsoft packages itself, so mirroring the engine's own downloads does not cover
-it — which is why its *result* is what the workspace cache holds.
+Continue with the [canonical guide](en/how-to/build/index.md).
 
 ## Where build logic lives
 
-- [../BuildTools/README.md](../BuildTools/README.md) — BuildTools overview.
-- [BuildToolsPipeline.md](BuildToolsPipeline.md) — staged CMake pipeline and change routing.
-- `../BuildTools/cmake/` — reusable CMake modules and staged generation/build/package logic.
-- `../CMakeLists.txt` — engine-level CMake entry points.
-- Embedding project root — product-level presets, configuration, and target selection.
+Continue with the [canonical guide](en/how-to/build/index.md).
 
 ## Validation by change type
 
-- **Runtime C++:** build and run the project unit-test target; use [Testing.md](Testing.md) to choose focused suites and understand generated test targets.
-- **CMake/BuildTools:** reconfigure from a clean or relevant build directory and run the affected build/package target; use [BuildToolsPipeline.md](BuildToolsPipeline.md) for stage ownership.
-- **Generated API:** rebuild generation targets, verify scripts compile, and consult [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
-- **Resource baking:** run the relevant normal/forced bake path and consult [BakingPipeline.md](BakingPipeline.md).
-- **Updater:** follow [ClientUpdater.md](ClientUpdater.md).
-- **Web:** follow [WebDebugging.md](WebDebugging.md).
-- **Android:** follow [AndroidDebugging.md](AndroidDebugging.md).
-- **Mapper/tooling:** follow [Tools.md](Tools.md) and [MapperTools.md](MapperTools.md).
-- **Nullability/script boundary:** follow [Scripting.md](Scripting.md), [ScriptMethodsMap.md](ScriptMethodsMap.md), and [Nullability.md](Nullability.md).
-- **Configuration/resources:** follow [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md) and [BakingPipeline.md](BakingPipeline.md).
-- **Essentials/low-level utilities:** follow [Essentials.md](Essentials.md) and run the matching essentials tests from [Testing.md](Testing.md).
+Continue with the [canonical guide](en/how-to/build/index.md).
 
 ## Keep build docs maintainable
 
-Do not copy a full preset list into engine docs. Presets change per game and per branch. Instead, explain ownership and link to the concrete project document that owns exact commands.
+Continue with the [canonical guide](en/how-to/build/index.md).
 
 ## Validation checklist
 
-1. Confirm the command or preset belongs to the embedding project before documenting exact names in engine docs.
-2. For BuildTools changes, reconfigure the smallest affected preset and run the generated target that exercises the changed stage.
-3. For runtime changes, run focused tests first and then the project `RunUnitTests` target when practical.
-4. For package/platform changes, validate the owning package/debug doc in the same change.
-5. Update [BuildToolsPipeline.md](BuildToolsPipeline.md), [Testing.md](Testing.md), or platform docs when the build workflow itself changes.
+Continue with the [canonical guide](en/how-to/build/index.md).

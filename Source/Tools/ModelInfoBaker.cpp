@@ -1202,7 +1202,7 @@ static void ValidateModelWorldExtent(const BakingSettings& settings, const Model
 }
 
 // An attachment renders on the parent skeleton, so a foreign unit space shows up not in the render but in the sprite
-// frame the client sizes from these bounds. See Engine/Docs/BakingPipeline.md
+// frame the client sizes from these bounds
 static void ValidateDirectAttachmentSize(const BakingSettings& settings, const BakedModelMeshInfo& child_info, string_view child_name, string_view fname)
 {
     FO_STACK_TRACE_ENTRY();

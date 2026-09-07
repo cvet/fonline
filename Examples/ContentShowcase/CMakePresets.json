@@ -1,0 +1,162 @@
+{
+  "version": 8,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "showcase-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "cacheVariables": {
+        "FO_BUILD_CLIENT": "ON",
+        "FO_BUILD_SERVER": "ON",
+        "FO_BUILD_MAPPER": "ON",
+        "FO_BUILD_BAKER": "ON"
+      }
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows x64 showcase",
+      "inherits": "showcase-base",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux GCC showcase",
+      "inherits": "showcase-base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "web",
+      "displayName": "WebAssembly/WebGL showcase",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/web",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "$env{FO_EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+        "FO_BUILD_CLIENT": "ON"
+      }
+    },
+    {
+      "name": "web-package-host-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/Build/web-package-host",
+      "cacheVariables": {
+        "FO_BUILD_CLIENT": "OFF",
+        "FO_BUILD_SERVER": "ON",
+        "FO_BUILD_MAPPER": "OFF",
+        "FO_BUILD_BAKER": "ON",
+        "FO_OUTPUT_PATH": "${sourceDir}/Build/web-package-output"
+      }
+    },
+    {
+      "name": "web-package-host-windows",
+      "displayName": "Windows host baker for Web package",
+      "inherits": "web-package-host-base",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "web-package-host-linux",
+      "displayName": "Linux host baker for Web package",
+      "inherits": "web-package-host-base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "web-package",
+      "displayName": "Packaged WebAssembly/WebGL showcase",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/web-package",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "$env{FO_EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+        "FO_BUILD_CLIENT": "ON",
+        "FO_OUTPUT_PATH": "${sourceDir}/Build/web-package-output"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-check",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "targets": ["RunShowcaseChecks"]
+    },
+    {
+      "name": "linux-check",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": ["RunShowcaseChecks"]
+    },
+    {
+      "name": "windows-capture",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "targets": ["RunShowcaseCapture"]
+    },
+    {
+      "name": "linux-capture",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": ["RunShowcaseCapture"]
+    },
+    {
+      "name": "web-check",
+      "configurePreset": "web",
+      "targets": ["RunShowcaseWebChecks"]
+    },
+    {
+      "name": "web-package-host-windows-bake",
+      "configurePreset": "web-package-host-windows",
+      "configuration": "Release",
+      "targets": ["ForceBakeResources", "FOCS_ServerHeadless"]
+    },
+    {
+      "name": "web-package-host-linux-bake",
+      "configurePreset": "web-package-host-linux",
+      "configuration": "Release",
+      "targets": ["ForceBakeResources", "FOCS_ServerHeadless"]
+    },
+    {
+      "name": "web-package-check",
+      "configurePreset": "web-package",
+      "targets": ["RunShowcaseWebPackageChecks"]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "name": "content-showcase",
+  "default_timeout_seconds": 75,
+  "forbidden_markers": [
+    "ScriptException",
+    "FATAL ERROR!",
+    "Module initialization failed"
+  ],
+  "scenarios": [
+    {
+      "id": "content-test",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "ShowcaseContentTest"
+          ],
+          "required_markers": [
+            "showcase_server_started",
+            "showcase_content_test_passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "server-client-assets",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "ShowcaseSmoke"
+          ],
+          "ready_marker": "showcase_server_started",
+          "ready_timeout_seconds": 20,
+          "required_markers": [
+            "showcase_server_world_ready",
+            "showcase_server_smoke_passed"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "ShowcaseSmoke"
+          ],
+          "required_markers": [
+            "showcase_client_connected",
+            "showcase_client_world_ready",
+            "showcase_client_resources_loaded",
+            "showcase_client_smoke_passed",
+            "showcase_client_finish_acknowledged"
+          ]
+        }
+      ]
+    }
+  ]
+}

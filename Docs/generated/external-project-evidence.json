@@ -1,0 +1,1715 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_external_evidence.py",
+  "source_manifest": "BuildTools/ExternalProjectEvidence.json",
+  "source_sha256": "5c986e4d24225e9dfdc7031858d10d1e21bbd093029b5ce0e20b9e24d62555e6",
+  "title": "External Project Evidence And Promotion Inventory",
+  "policy": {
+    "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
+    "dispositions": {
+      "promoted": "Reusable behavior has been re-derived from current Engine sources and has an Engine-owned documentation target.",
+      "boundary-owned": "The Engine owns a reusable boundary, while the concrete implementation and policy remain project-owned.",
+      "promotion-candidate": "The observation may be reusable but cannot become normative until its planned artifact, tests, and ownership gate exist.",
+      "project-owned": "The behavior is game-specific and must not be promoted into the Engine contract."
+    },
+    "priorities": {
+      "P0": "Required for the standalone production documentation contract.",
+      "P1": "Required before the affected public workflow can be claimed production-ready.",
+      "P2": "Useful reusable improvement with no current production claim blocked.",
+      "P3": "Explicit project boundary; revisit only after reusable code is promoted."
+    }
+  },
+  "snapshots": {
+    "last-frontier": {
+      "repository": "lastfrontierdev/lf",
+      "url": "git@github.com:lastfrontierdev/lf.git",
+      "revision": "50b8cb4e9ec706887708640e4474b9f8281097d8",
+      "availability": "private-local-checkout",
+      "role": "Primary mature embedding-project evidence"
+    },
+    "fonline-tla": {
+      "repository": "cvet/fonline-tla",
+      "url": "https://github.com/cvet/fonline-tla.git",
+      "revision": "b603d8fdbc2b2f89f233b2a1938686ead9d8d480",
+      "availability": "public-pinned-checkout",
+      "role": "Independent compatibility and legacy-migration evidence"
+    }
+  },
+  "owners": {
+    "documentation": "Information architecture, entry points, maintenance policy, and publication.",
+    "build-release": "CMake, BuildTools, packaging, updater distribution, and release workflows.",
+    "runtime": "Applications, client/server runtime, entities, persistence, and lifecycle.",
+    "scripting": "AngelScript runtime, generated bindings, metadata, and script contracts.",
+    "content-data": "Configuration, baking, resources, maps, movement, and authored data.",
+    "frontend": "Rendering, client presentation, and frontend behavior.",
+    "networking": "Transport, protocol, connection, and synchronization behavior.",
+    "tooling": "Mapper, editor, and reusable developer tools.",
+    "platform": "Web, Android, and platform-specific build/debug integration.",
+    "quality": "Tests, diagnostics, validation, and contributor safety contracts.",
+    "localization": "Documentation locale parity, terminology, translation review, and language-preserving delivery."
+  },
+  "owner_review_requirements": {
+    "documentation": {
+      "scope": "Information architecture, stable document identity, ownership, maintenance policy, and publication routing.",
+      "required_evidence": [
+        "manifest and route impact",
+        "standalone validation",
+        "generated site and AI delivery freshness"
+      ],
+      "co_review_when": [
+        "a domain contract changes",
+        "locale or publication policy changes",
+        "a public route is added, replaced, or removed"
+      ]
+    },
+    "build-release": {
+      "scope": "CMake, BuildTools, packages, updater distribution, release automation, and reproducible artifacts.",
+      "required_evidence": [
+        "source or executable parser contract",
+        "affected build, package, or updater check",
+        "support and migration disposition"
+      ],
+      "co_review_when": [
+        "platform capability changes",
+        "runtime ABI or payload changes",
+        "credentials, signing, or deployment boundaries are involved"
+      ]
+    },
+    "runtime": {
+      "scope": "Applications, entities, lifecycle, persistence, client/server behavior, and runtime compatibility.",
+      "required_evidence": [
+        "owning source and focused tests",
+        "lifecycle and failure-path analysis",
+        "migration or compatibility impact where applicable"
+      ],
+      "co_review_when": [
+        "script bindings or callbacks change",
+        "network or persistence contracts change",
+        "platform host behavior changes"
+      ]
+    },
+    "scripting": {
+      "scope": "AngelScript runtime, metadata, generated bindings, callbacks, properties, events, and script contracts.",
+      "required_evidence": [
+        "source metadata or binding model",
+        "generated API/reference freshness",
+        "focused compile or runtime test"
+      ],
+      "co_review_when": [
+        "runtime lifecycle changes",
+        "network authority or synchronization changes",
+        "content metadata or migration changes"
+      ]
+    },
+    "content-data": {
+      "scope": "Configuration, baking, authored formats, resources, maps, movement data, and content validation.",
+      "required_evidence": [
+        "parser, baker, or runtime source",
+        "generated format model/reference freshness",
+        "representative bake and validation route"
+      ],
+      "co_review_when": [
+        "rendered or audible output changes",
+        "tool authoring behavior changes",
+        "language or terminology behavior changes"
+      ]
+    },
+    "frontend": {
+      "scope": "Rendering, GUI runtime, media presentation, visual resources, input, and client-visible behavior.",
+      "required_evidence": [
+        "owning render or frontend source",
+        "focused native/runtime check",
+        "visible or audible acceptance on every claimed profile"
+      ],
+      "co_review_when": [
+        "platform backend behavior changes",
+        "content formats or tools change",
+        "accessibility or localization presentation changes"
+      ]
+    },
+    "networking": {
+      "scope": "Transport, protocol, connection state, authority, synchronization, and compatibility boundaries.",
+      "required_evidence": [
+        "protocol or synchronization source",
+        "focused multi-endpoint test",
+        "compatibility and migration disposition"
+      ],
+      "co_review_when": [
+        "runtime entities or persistence change",
+        "script remotes or callbacks change",
+        "security or deployment boundaries change"
+      ]
+    },
+    "tooling": {
+      "scope": "Mapper, editors, viewers, helper command lines, generated tools, and reusable authoring ergonomics.",
+      "required_evidence": [
+        "tool source or executable parser",
+        "focused structural or interaction test",
+        "input, output, persistence, and failure contract"
+      ],
+      "co_review_when": [
+        "content format behavior changes",
+        "frontend interaction changes",
+        "platform packaging or availability changes"
+      ]
+    },
+    "platform": {
+      "scope": "Web, Android, host/target toolchains, platform packaging, device behavior, and backend qualification.",
+      "required_evidence": [
+        "toolchain and target source",
+        "declared build or smoke lane",
+        "device or browser evidence for runtime claims"
+      ],
+      "co_review_when": [
+        "package or release policy changes",
+        "frontend backend behavior changes",
+        "runtime host assumptions change"
+      ]
+    },
+    "quality": {
+      "scope": "Tests, diagnostics, analyzers, validation policy, reproducibility, and evidence quality.",
+      "required_evidence": [
+        "reproduction or source-backed invariant",
+        "focused regression or validator",
+        "clear pass, failure, and residual-risk signals"
+      ],
+      "co_review_when": [
+        "the owning domain contract changes",
+        "a gate is weakened or removed",
+        "manual evidence is used for a production claim"
+      ]
+    },
+    "localization": {
+      "scope": "English/Russian documentation parity, terminology, source freshness, code integrity, and language-preserving delivery.",
+      "required_evidence": [
+        "canonical English source hash",
+        "glossary and code-fence parity",
+        "native-language review and locale link/search checks"
+      ],
+      "co_review_when": [
+        "technical meaning or identifiers change",
+        "site routing or navigation changes",
+        "player-facing terminology overlaps project policy"
+      ]
+    }
+  },
+  "records": [
+    {
+      "id": "project-bootstrap-and-build",
+      "title": "Project bootstrap, staged build, and first launch",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Architecture.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/BuildAndLaunch.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Onboarding.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "CMakeLists.txt"
+        }
+      ],
+      "reusable_claim": "A game consumes an exact Engine revision through staged configure, bake, build, and launch milestones with generated outputs kept non-authoritative.",
+      "disposition": "promoted",
+      "owner": "build-release",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/tutorials/getting-started.md",
+        "Docs/en/how-to/build/embedding-project.md",
+        "Docs/en/how-to/build/index.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/reference/cmake-and-buildtools/pipeline.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "build-release",
+        "documentation",
+        "platform"
+      ],
+      "promotion_gate": "Engine-owned starter and tutorials pass their declared clean-host lanes.",
+      "decision": "Current Engine guides and examples own the reusable workflow; project presets, binaries, ports, and subconfigs stay external."
+    },
+    {
+      "id": "engine-update-reconciliation",
+      "title": "Engine submodule update reconciliation",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/DocumentationMaintenance.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "AGENTS.md"
+        }
+      ],
+      "reusable_claim": "An Engine pin change requires a complete incoming-range audit, generated contract comparison, project integration review, and retained safety state until validation completes.",
+      "disposition": "promoted",
+      "owner": "documentation",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/contributing/documentation/index.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Docs/en/contributing/contract-change-management.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "build-release",
+        "quality"
+      ],
+      "promotion_gate": "The Engine procedure remains executable without either project checkout.",
+      "decision": "The Engine owns reusable reconciliation; each game owns its integration consequences and evidence."
+    },
+    {
+      "id": "generated-content-ownership",
+      "title": "Generated content ownership and dependency order",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/GuiSystem.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "LastFrontier.fomain"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "AGENTS.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "TLA.fomain"
+        }
+      ],
+      "reusable_claim": "Source metadata, authored resources, generators, baking, and runtime outputs form an ordered ownership graph; generated output is repaired at its source.",
+      "disposition": "promoted",
+      "owner": "content-data",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/build/generated-content.md",
+        "Docs/en/explanation/content-pipeline/baking.md",
+        "Docs/en/reference/settings/configuration-and-data-sources.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "content-data",
+        "build-release",
+        "quality"
+      ],
+      "promotion_gate": "Every generated artifact names its source, generator, validation order, and stale-output signal.",
+      "decision": "Reusable ordering is Engine-owned; project generators and concrete outputs retain project ownership."
+    },
+    {
+      "id": "script-architecture-and-lifecycle",
+      "title": "Script modules, lifecycle, authority, and concurrency",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Scripts.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Events.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Properties.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Multithreading.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "AGENTS.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/ScriptStyle.md"
+        }
+      ],
+      "reusable_claim": "Module initialization, callback side, entity covers, async/yield invalidation, events, properties, and generated bindings need explicit ownership and validation.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/explanation/scripting-runtime/index.md",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
+        "Docs/en/reference/metadata/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "scripting",
+        "runtime",
+        "networking",
+        "quality"
+      ],
+      "promotion_gate": "Claims are tied to Engine callback/export source and focused lifecycle or synchronization tests.",
+      "decision": "Engine lifecycle and binding mechanics are promoted; game module maps, events, remotes, properties, and lock groups remain project-owned."
+    },
+    {
+      "id": "nullability-contract",
+      "title": "Script and native nullability",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Scripts.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Nullability.md"
+        }
+      ],
+      "reusable_claim": "Nullable script handles and native pointer annotations require one source-backed vocabulary, diagnostics, and analyzer workflow.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/contributing/coding-contracts/nullability.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "scripting",
+        "runtime",
+        "quality"
+      ],
+      "promotion_gate": "Compiler diagnostics and native-boundary checks enforce the reusable contract; declaration-parity and style analyzers remain explicitly project-owned.",
+      "decision": "The Engine guide, compiler diagnostics, and native-boundary checks are normative; TLA migration notes and Last Frontier analyzers remain evidence only."
+    },
+    {
+      "id": "native-extensions-and-dependencies",
+      "title": "Native extensions and project-local dependencies",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/NativeExtensions.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ProjectThirdPartyMaintenance.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "AGENTS.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "SourceExt"
+        }
+      ],
+      "reusable_claim": "Role-scoped project C++ sources, optional hooks, generated exports, vendored patches, and platform/package guards need explicit source and compatibility ownership.",
+      "disposition": "promoted",
+      "owner": "runtime",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/native-extensions.md",
+        "Docs/en/how-to/native-extensions/project-dependencies.md",
+        "Docs/en/contributing/third-party/index.md",
+        "Docs/en/reference/native-extension/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "runtime",
+        "scripting",
+        "build-release",
+        "platform"
+      ],
+      "promotion_gate": "The Engine-owned sample compiles and exercises a role-scoped extension at an exact revision.",
+      "decision": "Roles, hooks, and binding rules are Engine-owned; SDK integrations and vendored project libraries stay external."
+    },
+    {
+      "id": "prototype-authoring",
+      "title": "Prototype authoring and validation",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Prototypes.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Items"
+        }
+      ],
+      "reusable_claim": "Prototype discovery, identity, inheritance, property applicability, references, migration, and strict values are parser-owned contracts.",
+      "disposition": "promoted",
+      "owner": "content-data",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/content/prototype-format.md",
+        "Docs/en/reference/prototype-format/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "content-data",
+        "scripting",
+        "quality"
+      ],
+      "promotion_gate": "The generated model derives built-in types and properties from current Engine sources.",
+      "decision": "Grammar and built-in properties are Engine-owned; ids, custom metadata, balance, and directory policy stay project-owned."
+    },
+    {
+      "id": "map-authoring-and-materialization",
+      "title": "Map authoring, baking, and materialization",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/MapAuthoring.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Maps"
+        }
+      ],
+      "reusable_claim": "Map sections, placement identity, ownership, mapper round-trip, side-specific baking, and runtime materialization need one parser-backed contract.",
+      "disposition": "promoted",
+      "owner": "content-data",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/content/map-format.md",
+        "Docs/en/reference/map-format/index.md",
+        "Docs/en/how-to/tools/mapper-interactive.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "content-data",
+        "tooling",
+        "runtime",
+        "quality"
+      ],
+      "promotion_gate": "Mapper, baker, loader, and materialization sources agree with generated reference and focused tests.",
+      "decision": "Format and tool mechanics are Engine-owned; map kits, quests, encounters, and level-design policy stay external."
+    },
+    {
+      "id": "text-and-localization-format",
+      "title": "Text packs, languages, and runtime lookup",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Localization.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Texts/Game.engl.fotxt"
+        }
+      ],
+      "reusable_claim": "Text-pack syntax, duplicate variants, ordered language normalization, prototype text, lookup, and renderer color tags are Engine contracts.",
+      "disposition": "promoted",
+      "owner": "content-data",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/content/text-and-localization.md",
+        "Docs/en/reference/text-format/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "content-data",
+        "localization",
+        "frontend",
+        "quality"
+      ],
+      "promotion_gate": "Current parsers, bakers, script methods, and renderer behavior back every format claim.",
+      "decision": "Engine format behavior is promoted; language priority, semantic keys, lexems, pack catalogs, and authored text remain project-owned."
+    },
+    {
+      "id": "model-animation-and-root-motion",
+      "title": "Models, animation timing, and sprite root motion",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/CharacterGenerator.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/DocumentationMaintenance.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Resources/CrittersArt/Critters/TEMPLATE_HumanAnimations.fo3d"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Resources/CrittersArt/Critters/CR_HumanMaleNormal.fo3d"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Resources/CrittersArt/Critters/VH_Jagger.fo3d"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Resources/CrittersArt/Critters/VH_Snowmobile.fo3d"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/Animation.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources/VanBuren/art/critters/_VBMob.fo3d"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources/VanBuren/art/critters/_VBWeapon.fo3d"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources/VanBuren/art/critters/_VBHuman.fo3d"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources/VanBuren/art/critters/VbDog.fo3d"
+        }
+      ],
+      "reusable_claim": "Current model grammar, named animation tuples, include templates, tuple AnimSpeed, one-step aliases, exact temporary geometry exceptions, typed durations, 2D frame offsets, movement phase, and stop-time offset normalization must be re-derived from Engine bakers and runtime rather than legacy assets or historical documentation names.",
+      "disposition": "promoted",
+      "owner": "frontend",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/content/model-format.md",
+        "Docs/en/how-to/content/model-animation.md",
+        "Docs/en/how-to/content/sprite-root-motion.md",
+        "Docs/en/reference/model-format/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "frontend",
+        "content-data",
+        "runtime",
+        "quality"
+      ],
+      "promotion_gate": "Current parser/baker/runtime sources, focused duration and geometry tests, and visible representative assets replace historical token and implementation-name assumptions.",
+      "decision": "Engine mechanics are promoted. Last Frontier's named-template composition is current project evidence; its 3D *_RM import boundary does not prove 2D offset values. TLA's bare AnimEqual, model-level Speed, raw_ptr, and LoadAnimation names are explicit legacy migration evidence, not current alias, tuple-speed, pointer, or loader contracts. No current authored 2D root-motion asset was observed in either pinned project snapshot, so project offset values and gait-quality claims stay non-normative."
+    },
+    {
+      "id": "effects-images-and-shaders",
+      "title": "Effects, images, sprites, and shader resources",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "LastFrontier.fomain"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Resources/Visual/Effects"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Scripts.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "TLA.fomain"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources"
+        }
+      ],
+      "reusable_claim": "Effect state/resources, image inputs, FOFRM composition, baked sprites, factories, atlases, and caches require source-backed format and runtime references.",
+      "disposition": "promoted",
+      "owner": "frontend",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/explanation/rendering/index.md",
+        "Docs/en/how-to/content/effect-format.md",
+        "Docs/en/how-to/content/image-format.md",
+        "Docs/en/reference/effect-format/index.md",
+        "Docs/en/reference/image-format/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "frontend",
+        "content-data",
+        "platform",
+        "quality"
+      ],
+      "promotion_gate": "Baker and runtime models remain current across every claimed renderer/profile.",
+      "decision": "Formats and runtime are Engine-owned; concrete effects, ScriptValue slots, resource precedence, and visual acceptance stay external."
+    },
+    {
+      "id": "particle-authoring-and-runtime",
+      "title": "Particle authoring, baking, tools, and runtime",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Particles.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources"
+        }
+      ],
+      "reusable_claim": "SPARK and Effekseer are independent optional authoring/runtime paths with explicit baking, bounds, renderer, Mapper, and validation contracts.",
+      "disposition": "promoted",
+      "owner": "frontend",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/content/particle-format.md",
+        "Docs/en/how-to/tools/particle-authoring.md",
+        "Docs/en/reference/particle-format/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "frontend",
+        "tooling",
+        "content-data",
+        "platform",
+        "quality"
+      ],
+      "promotion_gate": "Both enabled backends pass source, bake, runtime, tool, and visible integration gates.",
+      "decision": "Engine backend mechanics are promoted; particle catalogs, textures, budgets, and art direction stay project-owned."
+    },
+    {
+      "id": "font-audio-and-video",
+      "title": "Fonts, audio, and video presentation",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/GuiSystem.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources"
+        }
+      ],
+      "reusable_claim": "Font descriptors/layout, supported audio decoders/playback, and Ogg/Theora video paths require separate Engine contracts and visible or audible project acceptance.",
+      "disposition": "promoted",
+      "owner": "frontend",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/content/font-format.md",
+        "Docs/en/how-to/content/audio.md",
+        "Docs/en/how-to/content/video.md",
+        "Docs/en/reference/font-format/index.md",
+        "Docs/en/reference/audio/index.md",
+        "Docs/en/reference/video/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "frontend",
+        "content-data",
+        "platform",
+        "quality"
+      ],
+      "promotion_gate": "Source and native fixtures back capability claims; each project validates shipped assets on every claimed platform.",
+      "decision": "Engine formats/runtime are promoted; catalogs, typography, mastering, subtitles, licensing, and acceptance stay external."
+    },
+    {
+      "id": "mapper-and-focused-viewers",
+      "title": "Mapper, AnimationViewer, and ParticleViewer",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "CMakeLists.txt"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": ".vscode/tasks.json"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/BuildAndLaunch.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/MapAuthoring.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Particles.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/CharacterGenerator.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/DocumentationMaintenance.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/MapperRender.fos"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/MapPreview/generate_map_preview.py"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        }
+      ],
+      "reusable_claim": "Interactive tool controls, persistence, resource mounting, outputs, recovery, and visible review evidence need Engine-owned manuals.",
+      "disposition": "promoted",
+      "owner": "tooling",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/tools/mapper-interactive.md",
+        "Docs/en/how-to/tools/mapper.md",
+        "Docs/en/how-to/tools/animation-particle-viewers.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "tooling",
+        "frontend",
+        "content-data",
+        "quality"
+      ],
+      "promotion_gate": "The stock tools launch against an Engine-owned fixture and changed controls are visibly exercised.",
+      "decision": "Stock tool behavior is Engine-owned; Last Frontier demonstrates project tasks, single-process headless map-preview orchestration, warmup and view plans, developer packaging, assets, and layered acceptance, while the TLA README supplies historical compatibility evidence for a project-owned Mapper target and negative evidence because it has no focused-viewer or reusable capture workflow."
+    },
+    {
+      "id": "profiling-practice",
+      "title": "Client and server profiling",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Profiling.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/ReanimationPlan.md"
+        }
+      ],
+      "reusable_claim": "Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries.",
+      "disposition": "promoted",
+      "owner": "quality",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/how-to/quality/profiling.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "quality",
+        "runtime",
+        "frontend",
+        "build-release"
+      ],
+      "promotion_gate": "At least one representative Engine-owned capture proves native and script zones with exact tools.",
+      "decision": "Profiling mechanics are Engine-owned; scenes, runners, thresholds, and reports stay project-owned."
+    },
+    {
+      "id": "gameplay-test-harness",
+      "title": "Reusable gameplay and integration test harness",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Testing.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/ReanimationPlan.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "AGENTS.md"
+        }
+      ],
+      "reusable_claim": "Games benefit from deterministic fixture setup, boundary-based test selection, narrow-first execution, timeout/log contracts, and cross-layer integration evidence.",
+      "disposition": "promoted",
+      "owner": "quality",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/contributing/testing/index.md",
+        "Docs/en/how-to/testing/gameplay-and-integration.md",
+        "BuildTools/gameplay_test_runner.py",
+        "BuildTools/tests/test_gameplay_test_runner.py",
+        "Examples/GameplayTestHarness",
+        "Examples/MinimalMultiplayer"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "quality",
+        "scripting",
+        "runtime",
+        "documentation"
+      ],
+      "promotion_gate": "The project-neutral runner has deterministic positive/failure/timeout coverage, a synthetic fixture, and real baked headless server/client proof in Minimal Multiplayer.",
+      "decision": "Engine now owns boundary-based test selection plus process readiness, marker, deadline, cleanup, and report semantics. Script test registries, game fixtures/assertions, filters, content, persistence backends, platform labs, and acceptance thresholds stay project-owned."
+    },
+    {
+      "id": "native-analyzers",
+      "title": "Native and script safety analyzers",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/SmartPointerAudit"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/ExceptionSafetyAudit"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Testing.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Nullability.md"
+        }
+      ],
+      "reusable_claim": "Nullability, smart-pointer, exception-safety, thread-safety, and local-variable policies need Engine-owned contracts and source-backed enforcement boundaries; whole-tree analyzers and baselines remain project-owned until promoted with reusable tests.",
+      "disposition": "promoted",
+      "owner": "quality",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/contributing/coding-contracts/nullability.md",
+        "Docs/en/contributing/coding-contracts/smart-pointers.md",
+        "Docs/en/contributing/coding-contracts/exception-safety.md",
+        "Docs/en/contributing/coding-contracts/thread-safety-analysis.md",
+        "Docs/en/contributing/coding-contracts/local-variables.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "quality",
+        "runtime",
+        "scripting"
+      ],
+      "promotion_gate": "Engine documents name exact source/runtime/compiler evidence and distinguish reusable checks from embedding-project analyzers, allowlists, and baselines.",
+      "decision": "Engine contracts and in-repository compiler/runtime checks are normative; whole-tree analyzers, project wrappers, allowlists, and integration baselines stay project-owned until promoted into Engine with tests."
+    },
+    {
+      "id": "project-generators-formatters-and-audits",
+      "title": "Project generators, formatters, and content audits",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/InterfaceEditor"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/DialogAudit"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "AGENTS.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "FormatSource.bat"
+        }
+      ],
+      "reusable_claim": "Generated-file discipline and source-level validation are reusable patterns, but concrete project generators and audits are not automatically Engine tools.",
+      "disposition": "boundary-owned",
+      "owner": "tooling",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/build/generated-content.md",
+        "Docs/en/how-to/build/embedding-project.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [
+        "last-frontier:Tools/InterfaceEditor",
+        "last-frontier:Tools/DialogAudit",
+        "fonline-tla:FormatSource.bat"
+      ],
+      "required_reviews": [
+        "tooling",
+        "content-data",
+        "quality",
+        "documentation"
+      ],
+      "promotion_gate": "Move reusable implementation and tests into Engine before adding any concrete format or command to Engine documentation.",
+      "decision": "Engine documents the ownership pattern; the current GUI/dialog generators, formatters, and audits remain project-owned."
+    },
+    {
+      "id": "dialog-tree-stack",
+      "title": "Dialog tree parser, baker, runtime, editor, and audit",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Dialogs.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/DialogAudit"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Dialogs"
+        }
+      ],
+      "reusable_claim": "Both games have dialog content, but the current schema, parser, baker, runtime, editor, and audit are not reusable Engine components.",
+      "disposition": "project-owned",
+      "owner": "content-data",
+      "priority": "P3",
+      "engine_targets": [],
+      "planned_targets": [],
+      "external_targets": [
+        "last-frontier:Docs/Dialogs.md",
+        "last-frontier:Tools/DialogAudit",
+        "fonline-tla:Dialogs"
+      ],
+      "required_reviews": [
+        "content-data",
+        "scripting",
+        "tooling"
+      ],
+      "promotion_gate": "Revisit only after a project-neutral dialog implementation and focused compatibility tests move into Engine.",
+      "decision": "Do not invent an Engine .fodlg contract from project code or authored files."
+    },
+    {
+      "id": "declarative-gui-authoring",
+      "title": "Declarative GUI authoring and screen generation",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/GuiSystem.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/InterfaceEditor"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Gui"
+        }
+      ],
+      "reusable_claim": "The Engine owns the script GUI runtime, but current declarative file formats, generators, editors, widgets, screens, and styles belong to games.",
+      "disposition": "boundary-owned",
+      "owner": "frontend",
+      "priority": "P3",
+      "engine_targets": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/en/reference/gui-runtime/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [
+        "last-frontier:Docs/GuiSystem.md",
+        "last-frontier:Tools/InterfaceEditor",
+        "fonline-tla:Gui"
+      ],
+      "required_reviews": [
+        "frontend",
+        "tooling",
+        "scripting"
+      ],
+      "promotion_gate": "A declarative format becomes an Engine contract only after its parser/generator, fixtures, and compatibility policy are Engine-owned.",
+      "decision": "Keep runtime mechanics in Engine docs and declarative authoring in each project."
+    },
+    {
+      "id": "ai-control-bridge",
+      "title": "AI observation and control bridge",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/AiControl.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "SourceExt/ClientAiBridge.cpp"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/AiControl.fos"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/AiControlMcp/ai_control_mcp.py"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/AiControl.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "SourceExt/ClientAiBridge.cpp"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/AiControl.fos"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Tools/AiControlMcp/ai_control_mcp.py"
+        }
+      ],
+      "reusable_claim": "Two projects expose AI observation/action bridges, but their schemas, QA commands, MCP adapters, and content semantics are still independently project-owned.",
+      "disposition": "promoted",
+      "owner": "tooling",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/build/embedding-project.md",
+        "Docs/en/how-to/ai-control-protocol.md",
+        "Docs/en/reference/ai-control-protocol/index.md",
+        "BuildTools/ai_control_client.py",
+        "BuildTools/tests/test_ai_control_protocol.py",
+        "Examples/AiControlSample"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "tooling",
+        "runtime",
+        "networking",
+        "quality",
+        "documentation"
+      ],
+      "promotion_gate": "Keep the generated experimental contract, loopback threat boundary, reference client, malformed-peer tests, protocol smoke, and runnable sample current; a native core listener still requires a separate runtime and security promotion.",
+      "decision": "Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned."
+    },
+    {
+      "id": "packaging-platform-and-release",
+      "title": "Cross-platform packaging and release evidence",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Architecture.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/BuildAndLaunch.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": ".github/workflows/ci.yml"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": ".github/workflows/cross-platform-tests.yml"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": ".vscode/tasks.json"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": ".vscode/launch.json"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "CMakeLists.txt"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "LastFrontier.fomain"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/web_runner.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_login_enter_game_web.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_web_token_login_web.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_web_combat_web.py"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": ".github/workflows/build.yml"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "CMakePresets.json"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "TLA.fomain"
+        }
+      ],
+      "reusable_claim": "Package grammar and capability differ from project-qualified host/target release evidence, artifacts, signing, and deployment.",
+      "disposition": "promotion-candidate",
+      "owner": "build-release",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/how-to/build/index.md",
+        "Docs/en/how-to/release/packaging.md",
+        "Docs/en/reference/platforms/support-matrix.md",
+        "Docs/en/reference/packages/index.md",
+        "Docs/en/how-to/platforms/web-debugging.md",
+        "Docs/en/how-to/platforms/android-debugging.md",
+        "Examples/PackagingMatrix"
+      ],
+      "planned_targets": [
+        "Examples/MinimalMultiplayer"
+      ],
+      "external_targets": [],
+      "required_reviews": [
+        "build-release",
+        "platform",
+        "quality",
+        "documentation"
+      ],
+      "promotion_gate": "Each claimed host/target package is reproduced from a public minimal project with immutable CI evidence and explicit capability limits.",
+      "decision": "Grammar, current capability, repeatable release procedure, evidence boundaries, and failure routing are documented. The Web guide now separates the build-gated WebGL2 client, stock package/shell/server behavior, WebSocket and browser runtime limits, production hosting, and project browser/release qualification. Last Frontier supplies a required nightly/manual packaged Chromium route with loopback serving, explicit wasm/isolation headers, WebSocket login/token coverage, and a deterministic rendered workload; TLA supplies independent Emscripten presets/settings but no equivalent checked browser-package lane. The Android guide separately covers ARM build gates, source-capable x86, generated Gradle/APK behavior, Wi-Fi ADB, typed server-host launch, debug-key fallback, unsupported native self-update, and project-owned device/store qualification. Last Frontier supplies current ARM64 local workflow and all-ABI nightly build evidence but no official APK artifact; TLA supplies independent settings/presets and ARM build evidence but no device qualification. The Engine packaging fixture and Minimal Multiplayer's own archive/runtime lane are Windows-green, and both native hosts require commit-addressed CI artifacts. The first landed Linux tutorial-package evidence, an exact remotely reachable example pin, immutable external artifact, and owner-authorized publication remain incomplete."
+    },
+    {
+      "id": "updater-secrets-security-and-recovery",
+      "title": "Updater, secrets, signing, security, and recovery operations",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/BuildAndLaunch.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/AuthLoginFlow.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/SteamIntegration.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Sentry.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "LastFrontier.fomain"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/CodeSign/README.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/CodeSign/sign_windows.cmd"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/CodeSign/sign_windows.sh"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/README.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_smoke.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_compat_outdated.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_binary_update.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_outdated_runs.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_resource_pack.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_resource_pack_missing.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_staging_promotion.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_server_missing_payload.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_installed_selector.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_installed_selector_windows.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_postfix_variants.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_server_stages_windows_pdb.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_updater_restart_windows.py"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "TLA.fomain"
+        }
+      ],
+      "reusable_claim": "Engine updater and host/runtime mechanics are only one part of production delivery: mature projects keep transfer settings environment-specific, validate installed and portable paths with executable package tests, isolate postfix variants, and sign the exact patched runtime bytes served by packaged servers.",
+      "disposition": "promoted",
+      "owner": "build-release",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/explanation/runtime/client-updater.md",
+        "Docs/en/how-to/release/packaging.md",
+        "Docs/en/how-to/release/security-and-secrets.md",
+        "Docs/en/how-to/release/operations.md",
+        "Docs/en/how-to/release/backup-and-recovery.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Docs/en/contributing/third-party/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "build-release",
+        "platform",
+        "runtime",
+        "networking",
+        "quality"
+      ],
+      "promotion_gate": "Document only reusable Engine boundaries with redacted fixtures; require packaged-server evidence for native update claims; project credentials, providers, environments, and incident policy stay external.",
+      "decision": "Updater mechanics, installed/portable and variant acceptance lanes, package-time signing of final patched bytes, secret substitution/redaction/handoff, CI isolation, rotation/revocation, incident routing, process/readiness/rollout/shutdown/rollback, and provider-neutral backup/restore/DR boundaries are promoted. Last Frontier supplies broad executable updater evidence; TLA supplies compatibility/configuration evidence but no equivalent updater pipeline lane, so settings alone are not treated as operational proof. Concrete providers, credentials, environments, retention, RPO/RTO, migrations, and production authority remain project-owned."
+    },
+    {
+      "id": "persistence-and-migration",
+      "title": "Persistence, save migration, and compatibility",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Scripts.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/DocumentationMaintenance.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "DbPendingChanges.oplog"
+        }
+      ],
+      "reusable_claim": "Entity persistence, database backends, migration metadata, compatibility versions, backup, rollout, and rollback need separate Engine and project ownership.",
+      "disposition": "promoted",
+      "owner": "runtime",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/explanation/persistence/index.md",
+        "Docs/en/how-to/release/backup-and-recovery.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Docs/en/explanation/authority-and-networking/index.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "runtime",
+        "networking",
+        "scripting",
+        "quality"
+      ],
+      "promotion_gate": "Engine storage/migration behavior is source-backed; every game validates its schema/data and recovery path before rollout.",
+      "decision": "Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned."
+    },
+    {
+      "id": "gameplay-systems-and-content-policy",
+      "title": "Gameplay systems, content catalogs, and balance policy",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/GameSystems.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/ReanimationPlan.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts"
+        }
+      ],
+      "reusable_claim": "Quest, combat, economy, AI, faction, survival, and other gameplay systems exercise Engine surfaces but do not define reusable Engine behavior.",
+      "disposition": "project-owned",
+      "owner": "scripting",
+      "priority": "P3",
+      "engine_targets": [],
+      "planned_targets": [],
+      "external_targets": [
+        "last-frontier:Docs/GameSystems.md",
+        "last-frontier:Docs/ContentWorkflow.md",
+        "fonline-tla:Scripts"
+      ],
+      "required_reviews": [
+        "scripting",
+        "content-data",
+        "quality"
+      ],
+      "promotion_gate": "Promote only a minimal reusable primitive with Engine-owned source/tests; never generalize a game's rule set into Engine documentation.",
+      "decision": "Keep all gameplay semantics, catalogs, balance, quests, and content acceptance in their game repositories."
+    },
+    {
+      "id": "analytics-liveops-and-support",
+      "title": "Analytics, live operations, support, and product services",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Analytics.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Ops/AGENTS.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        }
+      ],
+      "reusable_claim": "Analytics schemas, support operations, commerce, communications, service providers, and live-ops policy are product concerns rather than Engine contracts.",
+      "disposition": "project-owned",
+      "owner": "runtime",
+      "priority": "P3",
+      "engine_targets": [],
+      "planned_targets": [],
+      "external_targets": [
+        "last-frontier:Docs/Analytics.md",
+        "last-frontier:Docs/Ops/AGENTS.md"
+      ],
+      "required_reviews": [
+        "runtime",
+        "networking",
+        "build-release"
+      ],
+      "promotion_gate": "Only a provider-neutral Engine primitive with source/tests can be promoted; schemas, credentials, KPIs, and procedures remain product-owned.",
+      "decision": "Do not add game operations or service-provider procedures to Engine documentation."
+    },
+    {
+      "id": "angelscript-style-and-refactoring",
+      "title": "AngelScript style, refactoring, and change batching",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "AGENTS.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Scripts.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "LastFrontier.fomain"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/Formatter/format_project.py"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/ScriptStyle.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Docs/Refactoring.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "TLA.fomain"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Tools/Formatter/format_project.py"
+        }
+      ],
+      "reusable_claim": "Module ownership, generated-file discipline, narrow change batches, formatter use, and validation-after-refactor recur across projects, but style rules still mix project policy and migration state.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/scripting/style-and-refactoring.md",
+        "Docs/en/explanation/scripting-runtime/index.md",
+        "Docs/en/contributing/documentation/index.md",
+        "BuildTools/buildtools.py",
+        "BuildTools/tests/test_docs_angelscript_style.py"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "scripting",
+        "quality",
+        "documentation"
+      ],
+      "promotion_gate": "The compact Engine convention is derived from compiler/formatter behavior and Engine CoreScripts, with examples and automated checks independent of project migration plans.",
+      "decision": "Engine owns the enforceable namespace, side/module, formatter, generated-source, mutable-global, attributed-call, batching, and validation baseline. Last Frontier's Test_-only mutable-global/direct-call exceptions and broader project formatter are positive current evidence. TLA's broad production mutable-global allowlist is negative migration evidence, not a reusable default. Project comment language, domain vocabulary, generated formats, migration policy, quality thresholds, and gameplay acceptance remain external."
+    },
+    {
+      "id": "documentation-localization-governance",
+      "title": "Documentation localization and terminology governance",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Localization.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Glossary.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        }
+      ],
+      "reusable_claim": "Bilingual documentation needs one canonical locale, stable IDs, mirrored routes, terminology ownership, source hashes, code parity, native review, and language-preserving links.",
+      "disposition": "promoted",
+      "owner": "localization",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/contributing/documentation/translation.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md",
+        "Docs/translation-glossary.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "localization",
+        "documentation",
+        "quality"
+      ],
+      "promotion_gate": "Locale parity, glossary, hash, code-fence, link, search, and native-speaker review gates are explicit before production publication.",
+      "decision": "The Engine owns its documentation localization process; each game owns player-facing terminology and authored strings."
+    },
+    {
+      "id": "native-debugging-workflows",
+      "title": "Native, mixed-stack, and AngelScript debugging workflows",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": ".vscode/launch.json"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": ".vscode/tasks.json"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "LastFrontier.fomain"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/BuildAndLaunch.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Testing.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/CiChecks/check_debug_workflows.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/CiChecks/test_check_debug_workflows.py"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/PipelineTests/test_crash_diagnostics_linux.py"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": ".vscode/launch.json"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": ".vscode/tasks.json"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "TLA.fomain"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "README.md"
+        }
+      ],
+      "reusable_claim": "A production debugging route separates native symbols and debugger semantics, crash-to-log and dump ownership, mixed script/native traces, explicitly enabled loopback AngelScript attach, multi-process selection, live transport capabilities, and focused regression evidence.",
+      "disposition": "promoted",
+      "owner": "quality",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/troubleshooting/debugging.md",
+        "BuildTools/tests/test_docs_debugging.py"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "quality",
+        "platform",
+        "networking",
+        "documentation"
+      ],
+      "promotion_gate": "Every reusable claim is re-derived from Engine source and native tests; project profiles remain exact pinned evidence, and a static editor profile is never promoted to live endpoint qualification.",
+      "decision": "Last Frontier supplies a strong Windows/Linux native plus AngelScript profile pattern with explicit endpoint enablement, loopback base bind, static validation, and a Linux crash-diagnostic lane. TLA supplies independent compatibility evidence, but its compounds do not explicitly enable the endpoint while its base config disables debugging and uses a wildcard bind; this is negative evidence and not a security or launch template. Engine source and tests remain normative, project target names and incident policy remain external, and the absence of current live endpoint CI is explicit."
+    },
+    {
+      "id": "asset-provenance-and-public-examples",
+      "title": "Tutorial assets, provenance, and public examples",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/ContentWorkflow.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Resources"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "LICENSE"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Resources"
+        }
+      ],
+      "reusable_claim": "Public examples need redistributable minimal assets, exact Engine pins, byte-verified provenance, immutable lesson tags, and pinned/current compatibility evidence.",
+      "disposition": "promoted",
+      "owner": "build-release",
+      "priority": "P0",
+      "engine_targets": [
+        "Docs/en/how-to/build/public-example-repositories.md",
+        "Examples/PublicRepositories.json",
+        "Examples/PublicRepositoryTemplate"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "build-release",
+        "content-data",
+        "documentation",
+        "quality"
+      ],
+      "promotion_gate": "Every public byte has auditable provenance and each tagged example passes its exact-pin and current-Engine lanes.",
+      "decision": "Governance and clean fixtures are Engine-owned; neither project's game assets are copied into public examples without explicit compatible licensing."
+    }
+  ],
+  "summary": {
+    "snapshot_count": 2,
+    "record_count": 30,
+    "source_reference_count": 180,
+    "records_by_disposition": {
+      "boundary-owned": 2,
+      "project-owned": 3,
+      "promoted": 24,
+      "promotion-candidate": 1
+    },
+    "records_by_priority": {
+      "P0": 19,
+      "P1": 4,
+      "P2": 3,
+      "P3": 4
+    },
+    "records_by_owner": {
+      "build-release": 4,
+      "content-data": 5,
+      "documentation": 1,
+      "frontend": 5,
+      "localization": 1,
+      "quality": 4,
+      "runtime": 3,
+      "scripting": 4,
+      "tooling": 3
+    }
+  }
+}

@@ -1,0 +1,378 @@
+---
+layout: default
+title: Testing
+locale: en
+document_id: testing
+permalink: /Docs/en/contributing/testing/
+---
+
+# Testing
+
+> Engine-owned documentation. This page maps the current engine test executable, generated test targets, coverage targets, and every `Source/Tests/Test_*.cpp` suite currently present in the checkout.
+
+## Purpose
+
+Use this page when choosing native validation for an engine change or when adding/removing Catch2 tests. The source-tree README at [Source/Tests/README.md](../../../../Source/Tests/README.md) is a short entry point; this page is the maintained full test map. For deterministic script, content, server, and client process tests in an embedding game, continue with [Gameplay and Integration Testing](../../how-to/testing/gameplay-and-integration.md).
+
+## Source paths inspected
+
+- `Source/Applications/TestingApp.cpp`
+- `Source/Tests/README.md`
+- all current `Source/Tests/Test_*.cpp` files
+- `BuildTools/cmake/stages/EngineSources.cmake`
+- `BuildTools/cmake/stages/Applications.cmake`
+- `BuildTools/cmake/stages/Init.cmake`
+- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/codecoverage.py`
+- `BuildTools/validate.sh`
+- `BuildTools/validate.cmd`
+
+## Test runner model
+
+`Source/Applications/TestingApp.cpp` is the test application entry point. It requires `FO_TESTING_APP`, initializes the application layer with `InitAppForTesting()`, marks `IsTestingInProgress`, and delegates execution to `Catch::Session().run(argc, argv)`.
+
+`BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
+
+`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files, fails closed on unreadable or malformed input, and rejects every reported `CreateFile2` import. Embedding-project CI should run it against all linked Win7 executables and runtime DLLs after linking and before packaging; see the [Windows 7 compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
+
+- `UnitTests` when `FO_UNIT_TESTS` is enabled;
+- `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
+
+The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
+
+## Running tests
+
+Preferred local baseline from a configured build:
+
+```bash
+cmake --build . --config RelWithDebInfo --target RunUnitTests
+```
+
+With `FO_EFFEKSEER_PARTICLES` enabled, the focused `[particle]` Catch2 cases
+invoke the published helper through the production `ParticleBaker` path. They
+cover text compilation, dependency invalidation, malformed XML, and rejection
+of cooked files presented as authored inputs.
+
+The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
+
+Atlas and render-target dump tests use `TexDumpArtifacts` from
+`Source/Tests/Test_DumpArtifacts.h`. A test snapshots the existing
+`TexDump_*` directories before it invokes production dumping, then removes only
+new directories created by that run. This prevents parallel or interrupted
+test sessions from deleting pre-existing diagnostic evidence and keeps cleanup
+scoped to artifacts the test can prove it owns.
+
+With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
+
+For broad validation scenarios, the BuildTools validators can run selected scenarios:
+
+```bash
+Engine/BuildTools/validate.sh unit-tests
+Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
+```
+
+Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
+
+### Unit tests under sanitizers
+
+The unit tests also run under Clang sanitizers via dedicated validators, which select
+the matching `San_*` build type and run `RunUnitTests` instrumented:
+
+```bash
+Engine/BuildTools/validate.sh unit-tests-san-address    # AddressSanitizer (+LeakSanitizer)
+Engine/BuildTools/validate.sh unit-tests-san-memory     # MemorySanitizer (requires Workspace/msan-libcxx)
+Engine/BuildTools/validate.sh unit-tests-san-undefined  # UndefinedBehaviorSanitizer
+Engine/BuildTools/validate.sh unit-tests-san-thread     # ThreadSanitizer
+```
+
+The `validate.yml` workflow runs these as a `unit-tests-sanitizers` matrix job.
+ASan/MSan/UBSan/TSan are blocking legs. The `unit-tests-san-memory` validator prepares
+`Workspace/msan-libcxx` by building LLVM's `libc++`, `libc++abi`, and `libunwind`
+with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROOT`.
+The runtime build applies a narrow libunwind ignorelist so C++ exception and
+sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
+native stack capture and the backward-cpp signal handler are disabled under
+MSan and TSan so the sanitizer runtimes own their reports;
+backward-cpp/libbfd symbolization under TSan also produces prohibitive
+shadow-memory growth. `unit-tests-san-memory-with-origins`
+is available locally as the slower diagnostic variant when a future MSan finding
+needs origin tracking. `San_DataFlow` remains
+intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
+defect detector.
+
+Applications that load `BakerLib` while running under a sanitizer must use a baker
+built with the same `San_*` configuration. Hiding the plugin's ELF exports prevents
+direct symbol interposition, but calls implemented inside the shared C++ runtime may
+still allocate through the host and return to an inline deallocator in the plugin.
+Matching configurations keep the sanitizer runtime and allocator contract identical
+on both sides of that module boundary.
+
+On MSVC, the `San_Address`/`Debug_San_Address` configs additionally link executables with
+`/STACK:8388608` (`AddExecutableApplication` in `BuildTools/cmake/helpers/Build.cmake`):
+ASan's stack-frame inflation overflows the 1 MiB Windows executable default on recursion
+depths that fit every production configuration, so sanitizer runs get the same 8 MiB
+reserve that Linux runs already have from the default rlimit. Production configs keep the
+1 MiB default.
+
+Vendored third-party libraries are excluded from UBSan's `-fsanitize=function` and
+`-fsanitize=alignment` checks (the rest of `-fsanitize=undefined` still applies to them).
+`DisableLibWarnings` adds `-fno-sanitize=function,alignment` on the
+`San_Undefined`/`San_Address_Undefined` configs because several vendored libraries trip
+those two checks by design:
+
+- `function`: AngelScript's script-call dispatch invokes registered C functions through
+  `bool(*)(void*,void*)` and similar signatures, and C callback APIs do the same.
+- `alignment`: AngelScript builds its bytecode in an `asDWORD[]` (4-byte) buffer and packs
+  pointer-sized `asPWORD` operands at 4-byte-aligned slots
+  (`*(asPWORD*)(bc+1) = ...` in `GenerateFactoryStubForTemplateObjectInstance`), which UBSan
+  reports as a misaligned store even though it is correct on every architecture the engine
+  targets.
+
+Both are third-party idioms, not undefined behaviour in engine code, so they must not fail
+the UBSan leg (which CI runs with `halt_on_error=1`). First-party engine code keeps both
+checks fully active.
+
+LeakSanitizer runs as part of the address-sanitizer leg (CI sets `ASAN_OPTIONS=detect_leaks=1`).
+It runs with **no suppression list** — every leak it can report is fixed at the source rather than
+masked. Notable cases:
+
+- backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
+  binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
+  never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
+  (`GetNativeTraceResolver`, serialized by `StackTraceState::NativeResolverLocker`): it is created
+  once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
+  and those libbfd caches remain reachable — LSan does not report them.
+- The AngelScript backend deletes the preprocessor line-number translator during engine userdata
+  cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
+- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
+  `unique_ptr` so every `PropertyRegistrar` (and the `Property` objects it holds) is freed when
+  `EngineMetadata`'s type maps are destroyed.
+
+## Code coverage
+
+When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects the backend from the compiler:
+
+- MSVC / clang-cl: MSVC-style coverage output;
+- Clang: LLVM profile/coverage mapping;
+- GCC: GCC/lcov-style coverage flags.
+
+`BuildTools/cmake/stages/Applications.cmake` wires coverage command targets through `BuildTools/codecoverage.py`:
+
+- `CleanCodeCoverageData`
+- `RunCodeCoverage`
+- `GenerateCodeCoverageReport`
+- `AnalyzeCodeCoverage`
+
+Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+`BuildTools/codecoverage.py` reports first-party production engine sources under
+`Engine/Source/`; it excludes `Source/Tests/`, `ThirdParty/`,
+`GeneratedSource/`, and `Applications/` from the denominator. See
+[Source/Tests/README.md](../../../../Source/Tests/README.md) for current local task
+notes.
+
+Coverage is platform- and environment-specific. Sources not compiled in the current build have no mapping and are reported separately as untouched. Sources that compile but cannot execute in a headless test process belong in `ENVIRONMENT_EXCLUDED_SOURCES` with a written reason; currently this covers device-backed audio/video, Mongo/updater infrastructure, and the deliberately process-killing diagnostic self-test. Loopback sockets and the debugger endpoint remain in the headline. The report shows scoped, all-source, and excluded buckets independently. An exclusion is a routing decision: the owning platform, windowed run, or real-endpoint integration lane must cover it.
+
+### Focused harness patterns
+
+- **ImGui panels:** create a backend-less context, set `ImGuiBackendFlags_RendererHasTextures`, and use `ImGui::LogToBuffer(depth)` to auto-open tree nodes and prove nested text rendered. Collapsing headers opt out and need their IDs seeded in `StateStorage`. Destroy the context at scope exit. To cover widget branches, `ImGuiTestHarness::ActivateItem` needs two frames; address controls under child windows with `ActivateChildItem`, draw only the owning panel so another window's focus request cannot erase activation, and clear stale active IDs between presses.
+- **Server diagnostics:** a sync point does not itself cover entities. Snapshot not-logged-in players under the publication lock, release it before entity locks, and then acquire one replacement cover for the snapshot and registered world. Keep a real not-logged-in fixture in the test.
+- **Inbound remote calls:** entry covers the calling player and its controlled critter. Any second entity needs explicit `Game.Sync`; do not probe an operation expected to violate cover behind script `try/catch`, because the session is torn down before the next probe arrives.
+- **Crash reporting:** test non-terminating crash-stream formatting through a private log file, then restore logging to `NUL` or `/dev/null`. Test terminating reporters out of process with `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit` distinguish early fatal reporting from raw status-only exit.
+- **Fonts without assets:** synthesize `.fofnt` text or BMFont `BMF\3` blocks in memory, provide a matching sprite, and bind with scale in `(0..1]`. `SplitLines` emits rect-sized pages, so use a short rectangle when a test needs multiple outputs.
+- **Logged-in client/server:** declare login remote calls in both metadata blobs with opposite directions and the correct subsystem/namespace, add at least one project-owned persistent `Player` property before login insertion, then create/switch a critter and transfer it into a location/map to reach world-entry replication. Both `.fomap-bin-*` blobs start with `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION`; after the header, the client layout ends after the hash-table and static-item counts.
+- **World reload:** use file-backed JSON, mark expected entities persistent, shut down one server, and start another on the same directory. Reload reaches critters through their owning map or global-map membership; an off-map runtime critter is not restored.
+- **Headless 3D:** bake a non-degenerate triangle, build the description with `ModelInfoBaker`, provide both source and baked mesh entries plus `Metadata.fometa-client` and `ModelAnimationInfo.foinfo`, then instantiate through the null renderer. Build fixture metadata with `BakerTests::MakeMetadataBlob` or `MakeEmptyMetadataBlob`; registration rejects a blob without the required metadata version.
+- **Static maps and mapper disk writes:** write the baked-map format header first, then serialize real `Properties::StoreAllData()` payloads for server map records; zero length is invalid. The server payload continues with hashes, critters, and items, while the shorter client payload contains hashes and static items. Mapper save tests need an actual `InputDirs` Maps root containing a reference `.fomap`; prefer `SaveMapToDir`, because plain `SaveMap` may otherwise write into the process working directory. A per-map static item removal is only observable end to end when the *same* static item id appears in both payloads — the server needs it in `StaticItemsById` to remove and the client needs a view built from it to drop — so `Test_ClientServerIntegration` carries one such item in both map blobs.
+
+## Current test inventory
+
+The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](../../../generated/source-inventory.json). Do not copy the total or full list into prose.
+
+Regenerate and verify it from the engine root:
+
+```bash
+python BuildTools/docs_inventory.py --write
+python BuildTools/docs_inventory.py --check
+```
+
+Use these ownership groups to choose a starting area; the filenames are representative, while the generated JSON is exhaustive:
+
+### Configuration and data sources
+
+- `Source/Tests/Test_CacheStorage.cpp`
+- `Source/Tests/Test_ConfigFile.cpp`
+- `Source/Tests/Test_DataSource.cpp`
+- `Source/Tests/Test_FileSystem.cpp`
+- `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
+
+### Common runtime model
+
+- `Source/Tests/Test_ApplicationHeadless.cpp`
+
+- `Source/Tests/Test_AnyData.cpp`
+- `Source/Tests/Test_Common.cpp`
+- `Source/Tests/Test_EngineMetadata.cpp`
+- `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_EntityProtos.cpp`
+- `Source/Tests/Test_Geometry.cpp`
+- `Source/Tests/Test_LineTracer.cpp`
+- `Source/Tests/Test_MapLoader.cpp`
+- `Source/Tests/Test_Movement.cpp`
+- `Source/Tests/Test_PathFinding.cpp`
+- `Source/Tests/Test_Properties.cpp`
+- `Source/Tests/Test_ProtoManager.cpp`
+- `Source/Tests/Test_TextPack.cpp`
+- `Source/Tests/Test_Timer.cpp`
+- `Source/Tests/Test_TwoDimensionalGrid.cpp`
+
+### Networking and server/client integration
+
+- `Source/Tests/Test_ClientDataValidation.cpp`
+- `Source/Tests/Test_ClientEngine.cpp`
+- `Source/Tests/Test_ClientRuntimeApi.cpp`
+- `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_DataBase.cpp`
+- `Source/Tests/Test_EntitySync.cpp`
+- `Source/Tests/Test_FogOfWar.cpp`
+- `Source/Tests/Test_LocationAndEntityMgmt.cpp`
+- `Source/Tests/Test_ModelAnimation.cpp`
+- `Source/Tests/Test_NetBuffer.cpp`
+- `Source/Tests/Test_NetworkClient.cpp`
+- `Source/Tests/Test_NetworkServer.cpp`
+- `Source/Tests/Test_NetworkUdp.cpp`
+- `Source/Tests/Test_ServerAdvancedOps.cpp`
+- `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEventContracts.cpp`
+- `Source/Tests/Test_ServerItems.cpp`
+- `Source/Tests/Test_ServerMapOperations.cpp`
+
+### Scripting and script-visible APIs
+
+- `Source/Tests/Test_AngelScriptAlignment.cpp`
+- `Source/Tests/Test_AngelScriptAttributes.cpp`
+- `Source/Tests/Test_AngelScriptBytecode.cpp`
+- `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_CommonScriptMethods.cpp`
+- `Source/Tests/Test_ScriptBuiltins.cpp`
+- `Source/Tests/Test_ScriptEntityOps.cpp`
+- `Source/Tests/Test_ServerScriptMethods.cpp`
+
+### Bakers and tools
+
+- `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_BakerSetup.cpp`
+- `Source/Tests/Test_ConfigBaker.cpp`
+- `Source/Tests/Test_EffectBaker.cpp`
+- `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_MapBaker.cpp`
+- `Source/Tests/Test_Mapper.cpp`
+- `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ModelBounds.cpp`
+- `Source/Tests/Test_ModelMeshData.cpp`
+- `Source/Tests/Test_ModelAnimationData.cpp`
+- `Source/Tests/Test_ModelAnimationConverter.cpp`
+- `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
+- `Source/Tests/Test_ModelAnimationRuntime.cpp`
+- `Source/Tests/Test_ModelSpriteLayout.cpp`
+- `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSourceLoader.cpp`
+- `Source/Tests/Test_OzzAnimation.cpp`
+- `Source/Tests/Test_ProtoBaker.cpp`
+- `Source/Tests/Test_ProtoTextBaker.cpp`
+- `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_TextBaker.cpp`
+- `Source/Tests/Test_TextureAtlas.cpp`
+
+The model-animation tests divide the production contract explicitly.
+`Test_ModelMeshData.cpp` exercises the mandatory `LFMODMSH` schema-1 mesh-only
+header and complete recursive payload codec. It covers geometry, skin palettes,
+children, structural validation, trailing data, every truncated header size,
+rejection of old headerless data, and exact byte compatibility with the original
+schema-1 writer layout.
+`Test_ClientEngine.cpp` also bakes a position-only OBJ through `ModelMeshBaker`
+and preloads the resulting bytes through the real `ModelManager` parser. This
+crosses the `BakerLib`/`ClientLib` boundary and catches payload-layout drift that
+a second test-only parser could reproduce instead of detecting.
+`Test_ModelSourceLoader.cpp` covers complete source validation, real minimal
+OBJ/ASCII-FBX extraction, per-call cache single-flight behavior, shared results,
+exception fan-out, and missing inputs. `Test_ModelAnimationData.cpp` exercises the
+little-endian archive, joint-remap, and rig-manifest contracts, including
+truncation, count/length bombs, ordering, metadata mismatches, and bindings.
+`Test_ModelAnimationConverter.cpp` covers canonical conversion and the per-instance
+runtime pose: unaligned/owned loading, body blending, movement replacement,
+reverse and nearest sampling, stable storage, canonical resolution, and numeric
+limits. `Test_ModelAnimationPoseProcedural.cpp` covers bounded procedural pre-rotations
+and exact world-matrix overrides; `Test_ModelAnimationRuntime.cpp` covers the
+validated direct-model rest path, canonical contributed-joint lookup, and
+cross-model joint-link resolution without physical bones.
+`Test_ModelBaker.cpp` covers source-backed model-info generation,
+dependency-mtime invalidation, exact animation-geometry exceptions, `Base`,
+reverse, case-insensitive lookup, and clip deduplication. `Test_ModelAnimation.cpp`
+is the timeline/binding behavior gate: controller copies own mutable event state
+while sharing only immutable Ozz clip metadata.
+
+After source-loader, mesh-wire, or converter changes, `ForceBakeResources` is
+the positive real-content gate: it must parse the project's actual selected FBX
+sources and extract their animations successfully. Run ordinary
+`BakeResources` afterward to check that the dependency-mtime contract leaves an
+unchanged tree incremental-clean.
+
+### Rendering/frontend smoke tests
+
+- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget-activation and window-state harness used for diagnostic-panel coverage.
+
+- `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
+  effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
+  multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
+  chunking, and facade-level scale reapplication without respawn or timing reset.
+- `Source/Tests/Test_ParticleBaker.cpp` — covers `.efkproj` source discovery,
+  `.spark`/`.efkproj` output-key mapping, generated binary validation, and
+  rejection of authored `.spk`/`.efk` runtime inputs. The build/integration
+  bake path exercises the native fixed-profile exporter on real XML projects.
+- `Source/Tests/Test_Rendering.cpp`
+
+### Ownership summary
+
+| Area | Typical coverage and starting points |
+|---|---|
+| Essentials and low-level utilities | Logging, containers, serialization, filesystem, exceptions, memory, platform, smart pointers, stack traces, strings, time, and worker primitives. |
+| Configuration and data sources | Cache storage, config parsing, data sources, filesystems, and `Test_Settings.cpp`. |
+| Common runtime model | Metadata, entities/prototypes, geometry, map loading, movement, line tracing, and path finding. |
+| Networking and server/client integration | Network buffers, connection flows, ordered UDP, server engine/map operations, client runtime ABI, updater, and database behavior. |
+| Scripting and script-visible APIs | AngelScript core, compiler/runtime extensions, entity ops, exports, script methods, and value semantics. |
+| Bakers and tools | Baker, metadata/resource packers, mapper/editor tools, asset processors, and tool-side regressions. |
+| Frontend and rendering | Application init, frontend/rendering smoke cases, headless behavior, and renderer-facing contracts. |
+
+## Validation routing by change type
+
+- Essentials utilities: start with [Essentials.md](../../reference/native/essentials.md) and the essentials tests listed above.
+- Config, file lookup, caches, resource packs: [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md), parser/filesystem/cache tests, and affected bake/runtime consumers.
+- BuildTools/CMake/generation: [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md), [GeneratedApiAndMetadata.md](../../reference/metadata/index.md), codegen/property/metadata tests, and at least one generated target.
+- Bakers/resources: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and the matching baker tests.
+- Runtime entity/map/persistence/networking: [Entity Model](../../explanation/entity-and-property-model/), [Maps and Movement](../../explanation/maps-and-movement.md), [Persistence](../../explanation/persistence/), [Networking](../../explanation/authority-and-networking/), and the focused runtime tests.
+- Client/frontend/server: [Client Runtime](../../explanation/runtime/client.md), [Frontend and Rendering](../../explanation/rendering/), [Server Runtime](../../explanation/runtime/server.md), and the matching integration/smoke tests.
+- Scripting: [Scripting](../../explanation/scripting-runtime/), [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), [Script Methods Map](../../reference/script-api/method-ownership.md), [Nullability](../coding-contracts/nullability.md), and the script/baker/method tests. Route callback attributes to `Test_AngelScriptAttributes`, mutable-global policy to `Test_AngelScriptBaker`, and server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
+
+## Adding or removing tests
+
+1. Add the new `Source/Tests/Test_*.cpp` file with deterministic Catch2 tests.
+2. Add it to `FO_TESTS_SOURCE` in `BuildTools/cmake/stages/EngineSources.cmake`.
+3. Run `python BuildTools/docs_inventory.py --write` so the generated filename list and count stay current.
+4. Update this page only when the new test changes an ownership group or validation route.
+5. Run the focused test binary and, when practical, `RunUnitTests`.
+6. If coverage behavior changed, verify the relevant coverage target.
+
+## Validation checklist
+
+1. `python BuildTools/docs_inventory.py --check` proves the generated filename list and count match `Source/Tests/`.
+2. `python BuildTools/docs_validate.py` proves the generated artifact and documentation links are current.
+3. Target names are described as generated from `FO_DEV_NAME`, not hard-coded as universal engine names.
+4. If `TestingApp.cpp`, `FO_TESTS_SOURCE`, ownership groups, or coverage target wiring changes, update this page in the same change.
+
+## See also
+
+- [Profiling](../../how-to/quality/profiling.md) for Tracy build modes, workload isolation, and
+  performance captures.
+- [Native and AngelScript Debugging](../../troubleshooting/debugging.md) for native and AngelScript diagnosis.

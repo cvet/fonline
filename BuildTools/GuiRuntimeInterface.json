@@ -1,0 +1,620 @@
+{
+  "schema_version": 1,
+  "description": "Source-backed contract for the reusable FOnline AngelScript GUI object model, screen stack, layout, rendering, input dispatch, project hooks, and validation boundaries.",
+  "scope": {
+    "surface": "gui-runtime",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The CoreScripts GUI runtime is production-used but remains experimental until it has a standalone client example, focused runtime fixtures, and an explicit compatibility policy.",
+    "included": [
+      "Gui.fos object types, documented members, callbacks, enums, setting, events, and top-level screen API",
+      "screen registration, creation, stacking, focus, modal, cursor, drag-and-drop, and lifecycle behavior",
+      "anchor, dock, crop, 9-slice, text, grid, item-view, and scroll behavior implemented by the reusable runtime",
+      "Input.fos mouse and keyboard state, dispatch, repeat, and input-loss behavior",
+      "the project hooks required to drive the runtime from client lifecycle and render events"
+    ],
+    "excluded": [
+      ".fogui, .foguischeme, XML, JSON, or any other declarative GUI authoring format",
+      "project-owned GUI generators, visual editors, generated screen catalogs, layouts, styles, and widget libraries",
+      "project screen identifiers beyond the Engine-owned GuiScreen::None sentinel",
+      "project font bindings, image catalogs, localization policy, input actions, gameplay presentation, and accessibility acceptance",
+      "Dear ImGui developer tooling, server host windows, native application chrome, and touch-to-GUI adaptation"
+    ]
+  },
+  "sources": {
+    "gui_script": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+    "input_script": "Source/Scripting/AngelScript/CoreScripts/Input.fos",
+    "client_runtime": "Source/Client/Client.cpp",
+    "tutorial": "Docs/en/tutorials/first-project.md",
+    "native_test_directory": "Source/Tests"
+  },
+  "outputs": {
+    "runtime_side": "client",
+    "type_names": [
+      "Object",
+      "Panel",
+      "Text",
+      "TextInput",
+      "Button",
+      "CheckBox",
+      "RadioButton",
+      "Screen",
+      "Grid",
+      "MessageBox",
+      "Console",
+      "ItemView"
+    ],
+    "type_count": 12,
+    "api_member_count": 160,
+    "callback_signature_count": 39,
+    "screen_api_overload_count": 32,
+    "annotation_count": 8,
+    "enum_values": {
+      "GuiScreen": {
+        "None": 0
+      },
+      "CursorType": {
+        "Default": 0
+      },
+      "MessageBoxType": {
+        "None": 0,
+        "Default": 1,
+        "All": 2
+      },
+      "AnchorStyle": {
+        "None": 0,
+        "Left": 1,
+        "Right": 2,
+        "Top": 4,
+        "Bottom": 8
+      },
+      "DockStyle": {
+        "None": 0,
+        "Left": 1,
+        "Right": 2,
+        "Top": 3,
+        "Bottom": 4,
+        "Fill": 5
+      }
+    },
+    "settings": [
+      "Gui.MsgboxInvert"
+    ],
+    "events": [
+      "Game.OnScreenChange",
+      "Game.OnConsoleMessage"
+    ],
+    "input_subscriptions": [
+      "Game.OnMouseDown",
+      "Game.OnMouseUp",
+      "Game.OnMouseMove",
+      "Game.OnKeyDown",
+      "Game.OnKeyUp",
+      "Game.OnInputLost"
+    ],
+    "repeatable_keys": [
+      "Text",
+      "Space",
+      "Back",
+      "Delete",
+      "Left",
+      "Right"
+    ],
+    "integration_hooks": [
+      "EngineCallback_Start",
+      "EngineCallback_Draw",
+      "EngineCallback_DrawCursor",
+      "EngineCallback_MouseDown",
+      "EngineCallback_MouseUp",
+      "EngineCallback_MouseMove",
+      "EngineCallback_KeyDown",
+      "EngineCallback_KeyUp",
+      "EngineCallback_InputLost",
+      "EngineCallback_Loop",
+      "Callback_OnResolutionChanged",
+      "Callback_OnLanguageChanged"
+    ],
+    "external_screen_initializer": "GuiScreens::InitializeScreens",
+    "key_state_size": 256,
+    "mouse_state_size_expression": "MouseButton::Ext4 + 1",
+    "panel_scroll_animation_ms": 120,
+    "password_reveal_ms": 1000,
+    "press_repeat_initial_ms": 500,
+    "press_repeat_interval_ms": 40,
+    "engine_authored_file_formats": [],
+    "focused_native_test_files": []
+  },
+  "type_notes": {
+    "Object": "Base tree node for activity, geometry, hierarchy, hit testing, focus, dragging, callbacks, lookup, and recursive drawing.",
+    "Panel": "Object with a sprite background, optional 9-slice frame, crop/scissor, and animated vertical or horizontal scrolling.",
+    "Text": "Drawable text node using a bound FontType, FontFlag set, colors, skip-lines state, and optional height measurement.",
+    "TextInput": "Focused editable text node with length, password, carriage, clipboard, and on-screen-keyboard behavior.",
+    "Button": "Panel with pressed, hover, disabled, switched, and condition state.",
+    "CheckBox": "Button with checked state and an OnCheckedChanged callback.",
+    "RadioButton": "CheckBox that clears switched sibling radio buttons under the same parent.",
+    "Screen": "Top-level panel with registration id, modal/multiinstance/close-on-miss behavior, cursor set, movement policy, and top-of-stack state.",
+    "Grid": "Panel that clones a named prototype node into indexed cells and lays them out by columns and padding.",
+    "MessageBox": "Text-derived timestamped message feed with type filtering, inversion, scrolling, and a project-configurable default inversion setting.",
+    "Console": "TextInput-derived command console with activation, history persistence, and submit behavior.",
+    "ItemView": "Grid that obtains client Item handles, filters or sorts them, binds live handles to cells, and invokes item drawing callbacks."
+  },
+  "screen_api_notes": {
+    "RegisterScreen": "Replace any existing registration for an id, store its factory, and precache one instance; multiinstance screens discard that temporary instance.",
+    "ShowScreen": "Show the existing single-instance screen or create a new multiinstance screen, move it to the top, and run show/appear callbacks.",
+    "HideScreen": "Hide one active screen selected by top-of-stack, id, or direct handle.",
+    "HideAllScreens": "Hide active screens from the top until no active screen remains.",
+    "BringToFront": "Move an active screen to the top and transition appear/disappear state without recreating it.",
+    "GetScreen": "Return the registered single instance or the last multiinstance screen for an id.",
+    "GetActiveScreen": "Return the top active screen, optionally restricted to one id.",
+    "IsScreenActive": "Report whether an active screen exists for an id.",
+    "GetActiveScreens": "Return active screens in current stack order.",
+    "GetFocusedObjects": "Drop inactive focused nodes and return a clone of the current focus set.",
+    "SetFocusedObject": "Clear prior focus and focus one node or its complete FocusGroup subtree.",
+    "AddFocusRecursively": "Add an object subtree to the current focus set.",
+    "GetPressedObject": "Return the current pressed node after clearing inactive state.",
+    "GetLastPressedObject": "Return the most recent pressed node after clearing inactive state.",
+    "GetDraggedObject": "Return the current pressed node only when it has entered dragging state.",
+    "GetHoveredObject": "Return the current hovered node after clearing inactive state.",
+    "NextTextInput": "Advance focus to the next active TextInput in the active screen tree.",
+    "FindNextTextInput": "Depth-first helper used by NextTextInput.",
+    "CollectMessageBoxes": "Collect MessageBox nodes from all screens or one object subtree.",
+    "IsConsoleActive": "Report whether any active Console exists globally or under one subtree.",
+    "AddDragAndDropHandler": "Append a handler evaluated in registration order after a dragged mouse release.",
+    "SetDropMenu": "Install the optional external drop-menu input and drawing adapter.",
+    "InvalidateHitCache": "Invalidate the cached CheckHit result after a persistent GUI mutation not covered by the built-in setters.",
+    "CheckHit": "Report whether any active screen tree contains a hittable node at a position.",
+    "IsModalScreenActive": "Report whether any active screen is modal."
+  },
+  "annotation_notes": {
+    "GuiScreen": "Engine declares only None; embedding projects extend the enum with their screen ids.",
+    "CursorType": "Engine declares only Default; embedding projects may extend cursor modes.",
+    "MessageBoxType": "Built-in message filtering values.",
+    "AnchorStyle": "Bit flags selecting parent edges; an unselected axis is centered against the authored parent base size.",
+    "DockStyle": "Exclusive edge/fill layout modes that take precedence over anchor positioning.",
+    "Gui.MsgboxInvert": "Client setting used as the MessageBox default inversion policy.",
+    "Game.OnScreenChange": "Fires after a successful show or hide with the screen id and parameter dictionary.",
+    "Game.OnConsoleMessage": "Fires when the reusable Console submits a message."
+  },
+  "lifecycle_rules": [
+    {
+      "id": "gui-runtime.lifecycle.external-initializer",
+      "name": "Project screen initializer",
+      "stability": "experimental",
+      "requirement": "Provide namespace GuiScreens with void InitializeScreens(); EngineCallback_Start calls it and cannot compile or start without that project contract.",
+      "rationale": "The reusable runtime owns screen mechanics but intentionally does not own a game screen catalog.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void EngineCallback_Start()", "GuiScreens::InitializeScreens();"]
+        },
+        {
+          "path": "Docs/en/tutorials/first-project.md",
+          "anchors": ["Missing `WorldTime`, `GuiScreen`, or `GuiScreens` symbols"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.lifecycle.registration-precache",
+      "name": "Registration and precache",
+      "stability": "experimental",
+      "requirement": "Register each non-None GuiScreen id with a factory; registration replaces the old entry and constructs one screen immediately for initialization and resource precache.",
+      "rationale": "Registration is executable client startup work, not passive metadata loading.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void RegisterScreen", "UnregisterScreen(screenNum);", "// Precache", "Screen screen = CreateScreen(screenNum);"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.lifecycle.single-vs-multiinstance",
+      "name": "Single and multiinstance ownership",
+      "stability": "experimental",
+      "requirement": "Reuse a registered single-instance screen; create a fresh screen for each multiinstance show and remove that instance after hide.",
+      "rationale": "The flag changes construction, persistence, lookup, and teardown semantics.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["if (!screen.IsMultiinstance)", "// Create new instance", "// Remove multiinstance"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.lifecycle.show-hide-order",
+      "name": "Show and hide callback order",
+      "stability": "experimental",
+      "requirement": "Treat Show as active-state setup, OnShow traversal, then OnAppear traversal; treat Hide as OnDisappear, OnHide traversal, inactive state, event fire, and optional multiinstance removal.",
+      "rationale": "Project callbacks often distinguish data refresh from top-of-stack visibility.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["screen._Show(params);", "screen._Appear();", "screen._Disappear();", "screen._Hide();", "Game.OnScreenChange.Fire"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.lifecycle.cursor-screen",
+      "name": "Cursor screen ownership",
+      "stability": "experimental",
+      "requirement": "Register GuiScreen::Cursor as the dedicated always-active CursorScreen and draw it explicitly through EngineCallback_DrawCursor.",
+      "rationale": "The cursor is excluded from the ordinary screen stack and ordinary screen draw pass.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["if (screenNum != GuiScreen::Cursor)", "CursorScreen = screen;", "void EngineCallback_DrawCursor()"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.lifecycle.explicit-refresh",
+      "name": "Explicit resolution and language refresh",
+      "stability": "experimental",
+      "requirement": "Call Callback_OnResolutionChanged after viewport changes and Callback_OnLanguageChanged after language changes.",
+      "rationale": "The reusable runtime does not subscribe these project lifecycle transitions itself.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void Callback_OnResolutionChanged()", "void Callback_OnLanguageChanged()", "_RefreshTextRecursive();", "_RefreshPositionRecursive();"]
+        }
+      ]
+    }
+  ],
+  "layout_rules": [
+    {
+      "id": "gui-runtime.layout.parent-coordinate-space",
+      "name": "Parent coordinate space",
+      "stability": "experimental",
+      "requirement": "Interpret authored positions and sizes relative to the parent; root objects use Settings.View.ScreenWidth and ScreenHeight as the live parent size.",
+      "rationale": "The same layout algorithm serves nested widgets and viewport-level screens.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void _RefreshPosition()", "Settings.View.ScreenWidth", "Settings.View.ScreenHeight"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.layout.dock-precedence",
+      "name": "Dock precedence",
+      "stability": "experimental",
+      "requirement": "When Dock is not None, use the selected Left, Right, Top, Bottom, or Fill rule and ignore Anchor positioning.",
+      "rationale": "Dock and Anchor are alternative layout modes rather than cumulative constraints.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["if (_Dock != DockStyle::None)", "DockStyle::Fill", "// Anchor"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.layout.anchor-center",
+      "name": "Anchor and centering",
+      "stability": "experimental",
+      "requirement": "Anchor selected axes to parent edges; center an axis with no matching edge bit by half the live-size minus authored-base-size delta.",
+      "rationale": "Unanchored controls remain centered when a parent or viewport changes size.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["AnchorStyle::Left", "AnchorStyle::Right", "(parentSize.width - parentBaseSize.width) / 2", "(parentSize.height - parentBaseSize.height) / 2"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.layout.crop-draw-hit",
+      "name": "Crop affects drawing and hit testing",
+      "stability": "experimental",
+      "requirement": "When Panel crop is enabled, scissor descendant drawing and reject hit tests outside the panel rectangle.",
+      "rationale": "Visual clipping and interaction clipping must agree.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["// Cropping panel outside its rect", "Game.PushDrawScissor", "Game.PopDrawScissor"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.layout.frame-nine-slice",
+      "name": "9-slice frame",
+      "stability": "experimental",
+      "requirement": "Use SetFrameImage plus nonnegative cap insets measured in source pixels; the runtime clamps source and destination caps and stretches edges and center.",
+      "rationale": "Frame images can resize without distorting corners or producing invalid UV ranges.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["// 9-slice frame", "void SetCapInsets", "void SetFrameImage", "Game.DrawSpriteRegion"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.layout.scroll-animation",
+      "name": "Panel scrolling",
+      "stability": "experimental",
+      "requirement": "Enable vertical and/or horizontal auto-scroll explicitly; target changes animate for PanelScrollAnimationDurationMs and drawing refreshes active tweens.",
+      "rationale": "Scroll values are stateful layout offsets rather than a renderer-only transform.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["const int PanelScrollAnimationDurationMs = 120;", "_RefreshSmoothScroll();", "void SetAutoScroll"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.layout.grid-prototype",
+      "name": "Grid prototype cloning",
+      "stability": "experimental",
+      "requirement": "Point Grid at a named object prototype, choose a positive column count, and let ResizeGrid clone, index, initialize, and position the cells.",
+      "rationale": "The prototype remains hidden while clones become the live repeated content.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void ResizeGrid(int size)", "// Find cell prototype", "// Create new intsances", "_SetCellIndex"]
+        }
+      ]
+    }
+  ],
+  "input_rules": [
+    {
+      "id": "gui-runtime.input.event-subscriptions",
+      "name": "Input event subscriptions",
+      "stability": "experimental",
+      "requirement": "Include Input.fos once; its ModuleInit subscribes mouse, key, and input-loss Game events and forwards them to Gui engine callbacks.",
+      "rationale": "Projects should not duplicate the same forwarding subscriptions.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Input.fos",
+          "anchors": ["[[ModuleInit]]", "Game.OnMouseDown.Subscribe", "Game.OnKeyDown.Subscribe", "Game.OnInputLost.Subscribe"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.active-screen-hit-order",
+      "name": "Active-screen hit order",
+      "stability": "experimental",
+      "requirement": "Mouse input starts at the top active screen; children are tested from last to first so later children are visually and interactively above earlier siblings.",
+      "rationale": "Screen stack and tree order jointly define hit priority.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["Screen? screen = GetActiveScreen();", "for (int i = _Children.length() - 1; i >= 0; i--)", "FindMouseHit"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.hit-cache",
+      "name": "Per-frame hit-test cache",
+      "stability": "experimental",
+      "requirement": "Cache CheckHit for one Game.FrameTime and query position; invalidate it whenever active state, persistent geometry, screen order, scroll, crop, transparent-hit images, or hittability can change the result.",
+      "rationale": "Cursor drawing, zoom, and movement repeat the same query in one frame, while FindHit walks every active screen tree.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["bool HitCacheValid = false;", "void InvalidateHitCache()", "if (HitCacheValid && HitCacheTime == Game.FrameTime && HitCachePos == pos)"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.modal-and-close-on-miss",
+      "name": "Modal and close-on-miss behavior",
+      "stability": "experimental",
+      "requirement": "Close a close-on-miss screen on an unhandled left click; only a nonmodal screen may search lower active screens for a hit and bring one forward.",
+      "rationale": "Modal screens block fallthrough while nonmodal windows can be reordered by interaction.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["// Close on miss", "screen.IsCloseOnMiss", "// Switch to another screen", "!screen.IsModal"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.focus-console-order",
+      "name": "Keyboard dispatch order",
+      "stability": "experimental",
+      "requirement": "Dispatch global input to active screens from top to bottom, then the active console, then focused objects when the console is absent or inactive.",
+      "rationale": "Global shortcuts, command entry, and focused controls have distinct precedence.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void EngineCallback_KeyDown", "// Global input handler", "// Console input", "// Focused object input"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.press-repeat",
+      "name": "Pressed-object repeat",
+      "stability": "experimental",
+      "requirement": "After mouse down, begin repeated pressed callbacks after 500 ms and continue every 40 ms while the pointer still hits the pressed object.",
+      "rationale": "Controls that use OnMousePressed depend on these fixed timings.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["Time::Milliseconds(500)", "Time::Milliseconds(40)", "pressedObject.IsMouseHit()"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.drag-and-drop",
+      "name": "Drag and drop",
+      "stability": "experimental",
+      "requirement": "Start dragging from a draggable pressed object, draw it in the cursor pass, and evaluate registered drop handlers in order until one returns true.",
+      "rationale": "The runtime owns gesture and dispatch mechanics while projects own transfer semantics.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void StartDragging()", "Object? draggedObject = GetDraggedObject();", "DragAndDropHandlers[i](obj, target)"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.input.loss-reset",
+      "name": "Input-loss reset",
+      "stability": "experimental",
+      "requirement": "On focus/input loss, release tracked keys and mouse buttons, unhover and unfocus objects, cancel a pressed object as lost, and notify the drop menu.",
+      "rationale": "Alt-tab and window-focus changes must not leave sticky input or drag state.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Input.fos",
+          "anchors": ["void InputLost()", "ReleaseKeys();", "ReleaseMouse();"]
+        },
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void EngineCallback_InputLost()", "pressedObject._MouseUp(true)", "dropMenu.InputLost();"]
+        }
+      ]
+    }
+  ],
+  "integration_rules": [
+    {
+      "id": "gui-runtime.integration.no-declarative-parser",
+      "name": "No Engine declarative GUI format",
+      "stability": "experimental",
+      "requirement": "Treat Gui.fos and Input.fos as an AngelScript runtime API; do not claim that Engine parses .fogui, .foguischeme, or another layout format.",
+      "rationale": "Declarative sources and generators belong to embedding projects or a separately versioned companion tool.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["namespace Gui", "class Object", "void RegisterScreen"]
+        },
+        {
+          "path": "Docs/en/tutorials/first-project.md",
+          "anchors": ["project-owned metadata or generated GUI contracts"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.integration.client-hook-bridge",
+      "name": "Client hook bridge",
+      "stability": "experimental",
+      "requirement": "Call EngineCallback_Start, EngineCallback_Loop, EngineCallback_Draw, and optionally EngineCallback_DrawCursor from the embedding client's corresponding events.",
+      "rationale": "The runtime implements these hooks but does not subscribe project render/lifecycle events for itself.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void EngineCallback_Start()", "void EngineCallback_Loop()", "void EngineCallback_Draw()", "void EngineCallback_DrawCursor()"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.integration.render-scope",
+      "name": "Script render scope",
+      "stability": "experimental",
+      "requirement": "Draw GUI only from the client OnRenderIface scope where script drawing is enabled; place the cursor pass at the project-selected top layer.",
+      "rationale": "Native ClientEngine enables script drawing around OnRenderIface and processes video before ending the scene.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": ["CanDrawInScripts = true;", "OnRenderIface.Fire();", "ProcessVideo();", "SprMngr.EndScene();"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.integration.font-image-dependencies",
+      "name": "Font and image dependencies",
+      "stability": "experimental",
+      "requirement": "Bind every FontType used by Text nodes and deliver every sprite referenced by Panel or Button before showing affected screens.",
+      "rationale": "The GUI runtime delegates text layout and sprite loading/drawing to the reusable font and image systems.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["Game.DrawText", "Sprite::Sprite", "spr.Load(imageName)"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.integration.project-enum-extension",
+      "name": "Project enum extension",
+      "stability": "experimental",
+      "requirement": "Extend GuiScreen and CursorType through project metadata without redefining the Engine sentinels.",
+      "rationale": "Engine supplies reusable baseline values while each game owns its screen and cursor catalog.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["///@ Enum GuiScreen None = 0", "///@ Enum CursorType Default = 0"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.integration.touch-boundary",
+      "name": "Touch adaptation boundary",
+      "stability": "experimental",
+      "requirement": "Do not assume Input.fos routes native touch events into GUI mouse callbacks; provide and validate project/platform adaptation when touch interaction is required.",
+      "rationale": "ClientEngine emits separate touch events while the reusable Input module subscribes only mouse, key, and input-loss events.",
+      "source": [
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": ["OnTouchDown.Fire", "OnTouchMove.Fire", "OnTouchUp.Fire"]
+        },
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Input.fos",
+          "anchors": ["Game.OnMouseDown.Subscribe", "Game.OnKeyDown.Subscribe", "Game.OnInputLost.Subscribe"]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "gui-runtime.validation.generated-contract",
+      "name": "Generated runtime contract",
+      "stability": "experimental",
+      "requirement": "Regenerate and check gui-runtime.json and its reference pages whenever Gui.fos, Input.fos, client input/render dispatch, or this interface manifest changes.",
+      "rationale": "The model fails on class/API/callback/annotation/timing/source drift before prose can silently become stale.",
+      "source": [
+        {
+          "path": "BuildTools/GuiRuntimeInterface.json",
+          "anchors": ["\"surface\": \"gui-runtime\"", "\"api_member_count\": 160"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.validation.client-compilation",
+      "name": "Embedding client compilation",
+      "stability": "experimental",
+      "requirement": "Compile and bake an embedding client that supplies project enum values, GuiScreens::InitializeScreens, screen factories, and lifecycle/render hook calls.",
+      "rationale": "Engine-only source checks cannot prove the required cross-module AngelScript symbols or generated screen code.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["CreateScreenFunc", "ScreenCreators", "GuiScreens::InitializeScreens();"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.validation.visible-layout-input",
+      "name": "Visible layout and input",
+      "stability": "experimental",
+      "requirement": "Validate representative screens at every supported resolution and input profile, including anchors, docks, crop, 9-slice, focus, close-on-miss, modal ordering, repeat, drag, and input loss.",
+      "rationale": "Compilation and headless execution do not prove geometry, draw order, alpha hit testing, clipping, or user interaction.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void _RefreshPosition()", "Object? FindHit", "void EngineCallback_MouseDown", "void EngineCallback_Draw"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.validation.language-font",
+      "name": "Language and font acceptance",
+      "stability": "experimental",
+      "requirement": "Switch every shipped language in a visible client, run Callback_OnLanguageChanged, and inspect wrapping, clipping, glyph coverage, focus colors, text input, and message feeds.",
+      "rationale": "The GUI runtime refreshes text callbacks and geometry but cannot validate project translations or bound font coverage.",
+      "source": [
+        {
+          "path": "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
+          "anchors": ["void Callback_OnLanguageChanged()", "_RefreshTextRecursive();", "Game.DrawText"]
+        }
+      ]
+    },
+    {
+      "id": "gui-runtime.validation.fixture-gap",
+      "name": "Focused fixture gap",
+      "stability": "experimental",
+      "requirement": "Keep the surface experimental until Engine has a self-contained client fixture that constructs screens, drives input, renders pixels, changes resolution/language, and proves teardown.",
+      "rationale": "Current native tests do not directly execute the CoreScripts GUI runtime.",
+      "source": [
+        {
+          "path": "Source/Tests/README.md",
+          "anchors": ["## Current test suites"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="1842" viewBox="0 0 480 1842" role="img" aria-labelledby="documentation-delivery-mobile-title documentation-delivery-mobile-description">
+  <title id="documentation-delivery-mobile-title">Documentation delivery for people and AI</title>
+  <desc id="documentation-delivery-mobile-description">One canonical Markdown corpus is projected into GitHub Pages, machine-readable AI routes, and review evidence. Mobile reading order groups the same source-owned nodes and lists their connections.</desc>
+  <style>
+    text { font-family: Inter, Segoe UI, Arial, sans-serif; fill: #17211c; }
+    .diagram-title { font-size: 24px; font-weight: 700; }
+    .band-title { font-size: 18px; font-weight: 700; }
+    .node-title { font-size: 17px; font-weight: 700; }
+    .node-line { font-size: 15px; fill: #35433b; }
+    .connection { font-size: 15px; fill: #35433b; }
+    .source-note { font-size: 13px; fill: #58675f; }
+  </style>
+  <rect width="480" height="1842" rx="6" fill="#f8faf8" stroke="#c9d2cc"/>
+  <text class="diagram-title" x="240" y="38" text-anchor="middle">Documentation delivery for people</text>
+  <text class="diagram-title" x="240" y="67" text-anchor="middle">and AI</text>
+  <rect x="18" y="100" width="444" height="270" rx="6" fill="#fff1cf" fill-opacity="0.38" stroke="#8a5a00" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="134" text-anchor="middle">Canonical sources</text>
+  <rect x="38" y="154" width="404" height="88" rx="6" fill="#fff1cf" stroke="#8a5a00" stroke-width="2"/>
+  <text class="node-title" x="240" y="183" text-anchor="middle">Versioned Markdown</text>
+  <text class="node-line" x="240" y="207" text-anchor="middle">owning technical docs</text>
+  <text class="node-line" x="240" y="225" text-anchor="middle">links and examples</text>
+  <rect x="38" y="258" width="404" height="88" rx="6" fill="#edf1ee" stroke="#59645d" stroke-width="2"/>
+  <text class="node-title" x="240" y="287" text-anchor="middle">Source manifest</text>
+  <text class="node-line" x="240" y="311" text-anchor="middle">IDs, owners, routes</text>
+  <text class="node-line" x="240" y="329" text-anchor="middle">locale and policy</text>
+  <rect x="18" y="386" width="444" height="270" rx="6" fill="#e7f0fa" fill-opacity="0.38" stroke="#2d5e91" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="420" text-anchor="middle">Deterministic projection</text>
+  <rect x="38" y="440" width="404" height="88" rx="6" fill="#e7f0fa" stroke="#2d5e91" stroke-width="2"/>
+  <text class="node-title" x="240" y="469" text-anchor="middle">Site generators</text>
+  <text class="node-line" x="240" y="493" text-anchor="middle">navigation, search</text>
+  <text class="node-line" x="240" y="511" text-anchor="middle">routes and diagrams</text>
+  <rect x="38" y="544" width="404" height="88" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="240" y="573" text-anchor="middle">AI generators</text>
+  <text class="node-line" x="240" y="597" text-anchor="middle">bundles, public index</text>
+  <text class="node-line" x="240" y="615" text-anchor="middle">evaluation evidence</text>
+  <rect x="18" y="672" width="444" height="270" rx="6" fill="#e4f3f2" fill-opacity="0.38" stroke="#287274" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="706" text-anchor="middle">Published consumers</text>
+  <rect x="38" y="726" width="404" height="88" rx="6" fill="#e4f3f2" stroke="#287274" stroke-width="2"/>
+  <text class="node-title" x="240" y="755" text-anchor="middle">Human site</text>
+  <text class="node-line" x="240" y="779" text-anchor="middle">GitHub Pages + Jekyll</text>
+  <text class="node-line" x="240" y="797" text-anchor="middle">fonline.ru</text>
+  <rect x="38" y="830" width="404" height="88" rx="6" fill="#dff3e9" stroke="#176b55" stroke-width="2"/>
+  <text class="node-title" x="240" y="859" text-anchor="middle">AI routes</text>
+  <text class="node-line" x="240" y="883" text-anchor="middle">llms + manifest</text>
+  <text class="node-line" x="240" y="901" text-anchor="middle">generated JSON models</text>
+  <rect x="18" y="958" width="444" height="374" rx="6" fill="#fbe6e2" fill-opacity="0.38" stroke="#a33a2b" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="992" text-anchor="middle">One revision, proved</text>
+  <rect x="38" y="1012" width="404" height="88" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="240" y="1041" text-anchor="middle">Source and artifact</text>
+  <text class="node-line" x="240" y="1065" text-anchor="middle">freshness, hashes, links</text>
+  <rect x="38" y="1116" width="404" height="88" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="240" y="1145" text-anchor="middle">Rendered browser</text>
+  <text class="node-line" x="240" y="1169" text-anchor="middle">desktop, mobile, WCAG</text>
+  <rect x="38" y="1220" width="404" height="88" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="240" y="1249" text-anchor="middle">Review evidence</text>
+  <text class="node-line" x="240" y="1273" text-anchor="middle">_site, reports, screenshots</text>
+  <text class="band-title" x="240" y="1376" text-anchor="middle">Connections</text>
+  <text class="connection" x="240" y="1404" text-anchor="middle">Versioned Markdown to Site generators</text>
+  <text class="connection" x="240" y="1448" text-anchor="middle">Source manifest to Site generators</text>
+  <text class="connection" x="240" y="1492" text-anchor="middle">Source manifest to AI generators</text>
+  <text class="connection" x="240" y="1536" text-anchor="middle">Site generators to Human site</text>
+  <text class="connection" x="240" y="1580" text-anchor="middle">AI generators to AI routes</text>
+  <text class="connection" x="240" y="1624" text-anchor="middle">Human site to Source and artifact</text>
+  <text class="connection" x="240" y="1668" text-anchor="middle">AI routes to Source and artifact</text>
+  <text class="connection" x="240" y="1712" text-anchor="middle">Source and artifact to Rendered browser</text>
+  <text class="connection" x="240" y="1756" text-anchor="middle">Rendered browser to Review evidence</text>
+  <text class="source-note" x="240" y="1814" text-anchor="middle">Full provenance and exact hashes: Docs/generated/diagrams.json</text>
+</svg>

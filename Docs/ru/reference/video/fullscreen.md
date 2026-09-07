@@ -1,0 +1,26 @@
+---
+title: Контракт полноэкранного видео
+document_id: generated-video-fullscreen
+locale: ru
+generated: true
+---
+
+<!-- docs-translation: {"document_id":"generated-video-fullscreen","locale":"ru","source_path":"Docs/en/reference/video/fullscreen.md","source_sha256":"a45b3f8d9d4ee7bbca06419768304084f69ceaacc817c8e281ff041b13a72e9d"} -->
+
+# Контракт полноэкранного видео
+
+> Сгенерированный справочник. Не редактируйте его источник напрямую. Обновите `BuildTools/VideoInterface.json`, затем выполните `python BuildTools/docs_video.py --write`.
+
+[Индекс](index.md) | [Форматы](formats.md) | [Доставка](delivery.md) | [Декодирование](decoding.md) | [Полный экран](fullscreen.md) | [Встроенное](embedded.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/video.json) | [Руководство](../../how-to/content/video.md)
+
+| Стабильный ID | Правило | Требование | Причина | Источник |
+| --- | --- | --- | --- | --- |
+| <a id="entry-video-fullscreen-play-api-de65cd8b3b"></a><code>video.fullscreen.play-api</code> | Точка входа полноэкранного воспроизведения | Используйте Game.PlayVideo(videoName, canInterrupt, enqueue) для встроенного полноэкранного тракта. | Экспортированный клиентский метод делегирует ClientEngine.PlayVideo. | [Source/Scripting/ClientGlobalScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientGlobalScriptMethods.cpp) |
+| <a id="entry-video-fullscreen-replace-1e5f62d475"></a><code>video.fullscreen.replace</code> | Замена очищает текущую очередь | Запрос без enqueue заменяет активный ролик и очищает все элементы очереди до попытки загрузить новый путь. | PlayVideo сбрасывает _video и очищает _videoQueue до поиска ресурса. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-enqueue-76a49c4052"></a><code>video.fullscreen.enqueue</code> | Очередь при активном ролике | Устанавливайте enqueue только для добавления после уже активного полноэкранного ролика; без активного ролика запрос стартует сразу и очищает устаревшую очередь. | Ветка enqueue зависит от _video, а ProcessVideo последовательно запускает элементы очереди. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-interrupt-e5e732024c"></a><code>video.fullscreen.interrupt</code> | Прерывание вводом | При true в canInterrupt события key-down, mouse-down и touch останавливают активный ролик; проектируйте проектную политику пропуска вокруг этого широкого набора. | ProcessInputEvent останавливает ролик до обычной обработки ввода для перечисленных классов событий. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-music-pair-00da3bde95"></a><code>video.fullscreen.music-pair</code> | Связка с отдельной музыкой | Используйте video-path&#124;music-path, чтобы остановить текущую музыку и запустить рядом с видео отдельный однократный музыкальный ресурс; дополнительные разделители не образуют плейлист. | PlayVideo разделяет запрос, загружает первый компонент и использует только names[1] для музыки SoundManager. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-music-stop-41d6c7a9c0"></a><code>video.fullscreen.music-stop</code> | Завершение останавливает музыку | Ожидайте, что завершение или прерывание полноэкранного ролика остановит текущую музыкальную группу клиента, включая музыку, не запущенную видео. | ProcessVideo безусловно вызывает StopMusic, когда активный ролик сообщает об остановке. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-draw-order-91c0ddf57c"></a><code>video.fullscreen.draw-order</code> | Позднее полноэкранное рисование | Ожидайте рисование встроенного кадра после Game.OnRenderIface с растяжением на всю текущую цель рендеринга без alpha blending. | MainLoop вызывает ProcessVideo после OnRenderIface, а DrawTexture без исходной/целевой областей заполняет цель. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp), [Source/Client/SpriteManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.cpp) |
+| <a id="entry-video-fullscreen-missing-file-51a07ec443"></a><code>video.fullscreen.missing-file</code> | Отсутствующий полноэкранный ресурс | Проверяйте существование полноэкранного ресурса до переходов; отсутствующий файл без сообщения оставляет воспроизведение неактивным после очистки текущего ролика и очереди. | Void-путь PlayVideo возвращается при ошибке ReadFile и не предоставляет результата ошибки. | [Source/Client/Client.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp) |
+| <a id="entry-video-fullscreen-status-837b0a80f8"></a><code>video.fullscreen.status</code> | Состояние воспроизведения включает очередь | Интерпретируйте Game.IsVideoPlaying как состояние active-or-queued, а не доказательство видимого сейчас кадра. | ClientEngine сообщает true для активного воспроизведения или непустой очереди. | [Source/Client/Client.h](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h) |

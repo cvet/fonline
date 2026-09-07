@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "capture": {
+    "width": 1280,
+    "height": 800,
+    "target_fps": 60
+  },
+  "source": {
+    "max_provenance_assets": 16,
+    "max_total_asset_bytes": 1250000,
+    "max_single_asset_bytes": 350000,
+    "max_static_map_items": 12,
+    "max_particle_capacity": 32,
+    "max_audio_duration_ms": 500
+  },
+  "runtime_limitations": [
+    "Headless smoke validates loading and lifecycle, not audible output or GPU pixels.",
+    "The reference capture uses Direct3D 11; Linux OpenGL and WebGL captures remain separate publication evidence.",
+    "The FOFRM NextX and NextY values demonstrate authored presentation metadata and do not move game entities."
+  ]
+}

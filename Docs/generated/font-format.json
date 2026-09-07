@@ -1,0 +1,1257 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_font_format.py",
+  "source_manifest": "BuildTools/FontFormatInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed contract for FOnline FOFNT and binary BMFont descriptors, client font binding, text layout, rendering, scaling, caching, and validation.",
+  "scope": {
+    "surface": "font-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The two runtime descriptor formats and client layout behavior are supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance.",
+    "included": [
+      ".fofnt text descriptors and their glyph metrics",
+      "binary BMFont v3 .fnt descriptors accepted by the client",
+      "raw-copy delivery and separately baked font images",
+      "Game.BindFont dispatch, font slots, atlas placement, and startup fallback",
+      "bind-time downscaling, grayscale conversion, border generation, and effects",
+      "TextFormat flags, wrapping, alignment, measurement, inline colors, and caching",
+      "source-backed diagnostics and validation routing"
+    ],
+    "excluded": [
+      "embedding-project font names, slot catalogs, GUI assignments, and typography policy",
+      "font licensing, redistribution rights, and language-specific glyph acceptance",
+      "BMFont text or XML descriptors, which the runtime does not parse",
+      ".bmfc authoring-tool configuration semantics",
+      "vector font or runtime TTF/OTF rasterization, which the client does not provide",
+      "project-local localization packs and authored display strings"
+    ]
+  },
+  "sources": {
+    "font_manager": "Source/Client/FontManager.cpp",
+    "font_manager_header": "Source/Client/FontManager.h",
+    "client_global_scripts": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
+    "updater": "Source/Client/Updater.cpp",
+    "file_reader_header": "Source/Common/FileSystem.h",
+    "font_resources": "Resources/Core/Fonts",
+    "tests": [
+      "Source/Tests/Test_Mapper.cpp",
+      "Source/Tests/Test_ClientServerIntegration.cpp"
+    ]
+  },
+  "outputs": {
+    "runtime_extensions": [
+      "fofnt",
+      "fnt"
+    ],
+    "authoring_sidecar_extensions": [
+      "bmfc"
+    ],
+    "raw_copy_extensions": [
+      "fofnt",
+      "bmfc",
+      "fnt",
+      "acm",
+      "ogg",
+      "wav",
+      "ogv",
+      "json",
+      "ini"
+    ],
+    "raw_copy_passthrough": true,
+    "fofnt_max_version": 2,
+    "fofnt_keys": [
+      "Version",
+      "Image",
+      "LineHeight",
+      "YAdvance",
+      "End",
+      "Letter",
+      "PositionX",
+      "PositionY",
+      "Width",
+      "Height",
+      "OffsetX",
+      "OffsetY",
+      "XAdvance"
+    ],
+    "bmfont": {
+      "signature": "BMF",
+      "version": 3,
+      "padding_word": "0x01010101",
+      "page_count": 1,
+      "char_record_size": 20,
+      "signed_fields": [],
+      "unsigned_fields": [
+        "xoffset",
+        "yoffset",
+        "xadvance"
+      ]
+    },
+    "font_slots": [
+      {
+        "name": "Default",
+        "value": 0,
+        "description": "No additional behavior"
+      }
+    ],
+    "font_flags": [
+      {
+        "name": "None",
+        "value": 0,
+        "description": "No additional behavior"
+      },
+      {
+        "name": "NoWrap",
+        "value": 1,
+        "description": "On rect-width overflow truncate the rest of the text instead of wrapping it to the next line"
+      },
+      {
+        "name": "TruncateLine",
+        "value": 2,
+        "description": "On rect-width overflow skip remaining glyphs until the next '\\n' instead of wrapping"
+      },
+      {
+        "name": "CenterX",
+        "value": 4,
+        "description": "Horizontally center each line within the rect"
+      },
+      {
+        "name": "CenterY",
+        "value": 8,
+        "description": "Vertically center the text block within the rect"
+      },
+      {
+        "name": "AlignRight",
+        "value": 16,
+        "description": "Right-align each line within the rect"
+      },
+      {
+        "name": "AlignBottom",
+        "value": 32,
+        "description": "Vertically align the text block to the rect's bottom edge; also flips TextFormat::SkipLines from \"skip from top\" to \"skip from bottom\""
+      },
+      {
+        "name": "KeepTail",
+        "value": 64,
+        "description": "When the text block is taller than the rect, render its tail (skip the leading overflowing lines)"
+      },
+      {
+        "name": "NoColorize",
+        "value": 128,
+        "description": "Strip inline color tags (@color:0x...@ / @color@), but render text with the base color as-is"
+      },
+      {
+        "name": "Justify",
+        "value": 256,
+        "description": "Justify each line: distribute extra spaces between words to fill the rect width"
+      },
+      {
+        "name": "Bordered",
+        "value": 512,
+        "description": "Render glyphs from the bordered/outlined font texture variant instead of the regular one"
+      }
+    ],
+    "default_scale": 1.0,
+    "scale_range": {
+      "minimum_exclusive": 0.0,
+      "maximum_inclusive": 1.0
+    },
+    "atlas_type": "IfaceSprites",
+    "cache_invalidation_frames": 3,
+    "inline_color_prefix": "@color",
+    "updater_default_font": "Fonts/Default.fofnt",
+    "runtime_side": "client",
+    "bundled_descriptors": {
+      "fofnt": [
+        "Big.fofnt",
+        "BigNumbers.fofnt",
+        "Default.fofnt",
+        "Fallout.fofnt",
+        "Fat.fofnt",
+        "Numbers.fofnt",
+        "OldDefault.fofnt",
+        "SandNumbers.fofnt",
+        "Special.fofnt",
+        "Thin.fofnt"
+      ],
+      "fnt": [
+        "CourierNewSmall.fnt",
+        "DefaultExt.fnt"
+      ],
+      "bmfc": [
+        "CourierNewSmall.bmfc",
+        "Settings.bmfc"
+      ]
+    }
+  },
+  "formats": [
+    {
+      "id": "font-format.format.fofnt",
+      "name": "FOFNT text descriptor",
+      "extension": ".fofnt",
+      "role": "Runtime descriptor",
+      "stability": "experimental",
+      "requirement": "Use the Engine text descriptor when authoring explicit image, line, and per-codepoint glyph metrics.",
+      "rationale": "Game.BindFont dispatches the exact lowercase .fofnt suffix to FontManager::BindFoFont.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "fontFname.ends_with(\".fofnt\")",
+            "BindFoFont"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.format.bmfont-binary-v3",
+      "name": "Binary BMFont v3 descriptor",
+      "extension": ".fnt",
+      "role": "Runtime descriptor",
+      "stability": "experimental",
+      "requirement": "Export BMFont binary version 3 with one texture page and one-pixel padding on every side of each glyph.",
+      "rationale": "The client reads the binary BMF header and fixed block layout; text and XML BMFont files are not accepted.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "BindBmfFont",
+            "make_signature('B', 'M', 'F', 3)",
+            "Font must have exactly one texture"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.format.bmfc-sidecar",
+      "name": "BMFont authoring sidecar",
+      "extension": ".bmfc",
+      "role": "Raw-copied authoring sidecar; not a runtime descriptor",
+      "stability": "internal",
+      "requirement": "Treat .bmfc as an optional BMFont tool configuration file and never pass it to Game.BindFont.",
+      "rationale": "The default raw-copy list contains bmfc, but the runtime extension dispatch contains only fofnt and fnt.",
+      "source": [
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "RawCopyFileExtensions",
+            "\"bmfc\""
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Unknown font file extension",
+            "fontFname.ends_with(\".fnt\")"
+          ]
+        }
+      ]
+    }
+  ],
+  "fofnt_fields": [
+    {
+      "id": "font-format.fofnt.version",
+      "name": "Version",
+      "syntax": "Version <integer>",
+      "stability": "experimental",
+      "requirement": "Make Version the first parsed key; author version 2 for current resources. Values greater than 2 are rejected.",
+      "rationale": "The parser requires the first key to be Version and uses 2 as its current maximum accepted version.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key != \"Version\"",
+            "version > 2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.image",
+      "name": "Image",
+      "syntax": "Image <relative-resource>[*]",
+      "stability": "experimental",
+      "requirement": "Name a non-empty image resource relative to the descriptor; append * to request grayscale normalization and runtime tinting.",
+      "rationale": "The current loader accesses image_name.back() without an empty guard, so authoring validation must enforce this mandatory field before runtime; the trailing marker is removed before relative resource resolution.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"Image\"",
+            "image_name.back() == '*'",
+            "Font image file not found"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.line-height",
+      "name": "LineHeight",
+      "syntax": "LineHeight <integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the glyph-line height in pixels, or leave it zero/omitted to derive the maximum authored glyph height.",
+      "rationale": "BuildFont replaces zero LineHeight with the maximum glyph height after optional scaling.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"LineHeight\"",
+            "font->LineHeight = max_h"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.y-advance",
+      "name": "YAdvance",
+      "syntax": "YAdvance <integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the extra vertical gap added between consecutive text lines.",
+      "rationale": "Layout advances by LineHeight plus YAdvance and scales the value at bind time.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"YAdvance\"",
+            "font.YAdvance = scale_value(font.YAdvance)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.letter",
+      "name": "Letter",
+      "syntax": "Letter '<UTF-8-codepoint>'",
+      "stability": "experimental",
+      "requirement": "Start each glyph record with Letter and one valid UTF-8 codepoint after the first apostrophe.",
+      "rationale": "The parser decodes exactly one codepoint to select the glyph map entry; later duplicate records overwrite earlier metrics.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"Letter\"",
+            "utf8::Decode(letter_pos, letter_len)",
+            "font_data.Letters[letter]"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.position-x",
+      "name": "PositionX",
+      "syntax": "PositionX <integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the glyph rectangle's left coordinate in the image.",
+      "rationale": "BuildFont converts this position, expanded by one padding pixel, into texture coordinates.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"PositionX\"",
+            "letter.TexPos.x"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.position-y",
+      "name": "PositionY",
+      "syntax": "PositionY <integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the glyph rectangle's top coordinate in the image.",
+      "rationale": "BuildFont converts this position, expanded by one padding pixel, into texture coordinates.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"PositionY\"",
+            "letter.TexPos.y"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.width",
+      "name": "Width",
+      "syntax": "Width <integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the visible glyph rectangle width, excluding the one-pixel sampling border.",
+      "rationale": "Rendering samples Width plus two pixels and bind-time scaling rewrites the visible size.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"Width\"",
+            "l.Size.width + 2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.height",
+      "name": "Height",
+      "syntax": "Height <integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the visible glyph rectangle height, excluding the one-pixel sampling border.",
+      "rationale": "Rendering samples Height plus two pixels and the maximum height can define an omitted LineHeight.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"Height\"",
+            "l.Size.height + 2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.offset-x",
+      "name": "OffsetX",
+      "syntax": "OffsetX <signed-integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the signed horizontal bearing in Engine coordinates; drawing places the quad at cursor X minus OffsetX.",
+      "rationale": "The descriptor value is stored unchanged and subtracted when generating glyph vertices.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"OffsetX\"",
+            "curx - l.Offset.x - 1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.offset-y",
+      "name": "OffsetY",
+      "syntax": "OffsetY <signed-integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the signed vertical bearing in Engine coordinates; drawing places the quad at cursor Y minus OffsetY.",
+      "rationale": "The descriptor value is stored unchanged and subtracted when generating glyph vertices.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"OffsetY\"",
+            "cury - l.Offset.y - 1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.x-advance",
+      "name": "XAdvance",
+      "syntax": "XAdvance <signed-integer-pixels>",
+      "stability": "experimental",
+      "requirement": "Set the horizontal cursor advance after the glyph; include an explicit space glyph when spaces must consume width.",
+      "rationale": "The glyph advance drives wrapping and drawing, and the space glyph's XAdvance becomes SpaceWidth.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key == \"XAdvance\"",
+            "font->SpaceWidth = font->Letters",
+            "curx += l.XAdvance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.fofnt.end-and-comments",
+      "name": "End and comments",
+      "syntax": "End | #comment | ;comment",
+      "stability": "experimental",
+      "requirement": "Terminate the useful descriptor with End; # and ; begin comments only when encountered inside the whitespace-delimited key token.",
+      "rationale": "End stops parsing, while the parser strips comment markers from the current key token rather than implementing a line-oriented comment grammar.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "key.find('#')",
+            "key.find(';')",
+            "key == \"End\""
+          ]
+        }
+      ]
+    }
+  ],
+  "bmfont_rules": [
+    {
+      "id": "font-format.bmfont.binary-v3-signature",
+      "name": "Binary v3 signature",
+      "stability": "experimental",
+      "requirement": "The first four bytes must be B, M, F, and binary-format version 3.",
+      "rationale": "Any other signature or BMFont version is rejected before block parsing.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "make_signature('B', 'M', 'F', 3)",
+            "Invalid font signature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.block-order",
+      "name": "Fixed block order",
+      "stability": "experimental",
+      "requirement": "Export Info, Common, Pages, and Chars blocks in standard binary order without interposed optional blocks.",
+      "rationale": "The parser advances by each block size and reads the next block payload directly; it does not search by block type.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "// Info",
+            "// Common",
+            "// Pages",
+            "// Chars"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.info-padding",
+      "name": "One-pixel exporter padding",
+      "stability": "experimental",
+      "requirement": "Set BMFont Info padding up, right, down, and left to exactly one pixel each.",
+      "rationale": "The loader requires the four padding bytes to equal 0x01010101 and later removes one pixel from each side of every glyph rectangle.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "0x01010101u",
+            "Wrong padding in font"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.single-page",
+      "name": "Single texture page",
+      "stability": "experimental",
+      "requirement": "Export exactly one texture page.",
+      "rationale": "The Common block page count must be one; multi-page BMFont descriptors are rejected.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "Font must have exactly one texture",
+            "reader.GetLEUInt16() != 1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.relative-page-image",
+      "name": "Relative page image",
+      "stability": "experimental",
+      "requirement": "Store a NUL-terminated page filename resolvable relative to the .fnt descriptor directory.",
+      "rationale": "The Pages payload is read as one string and combined with the descriptor directory before sprite loading.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "reader.GetStrNT()",
+            "extract_dir().combine_path(image_name)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.char-records",
+      "name": "Twenty-byte character records",
+      "stability": "experimental",
+      "requirement": "Encode each Chars record in the 20-byte BMFont v3 layout. The format defines signed xoffset, yoffset, and xadvance fields, but the current loader reads all three as unsigned little-endian uint16 values; avoid negative metrics until that runtime defect is fixed separately.",
+      "rationale": "Bundled fonts contain negative bearings, so this source-backed limitation must remain visible instead of being documented as correct signed decoding.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "reader.GetLEUInt32() / 20",
+            "uint16_t ox = reader.GetLEUInt16()",
+            "uint16_t oy = reader.GetLEUInt16()",
+            "uint16_t xa = reader.GetLEUInt16()"
+          ]
+        },
+        {
+          "path": "Source/Common/FileSystem.h",
+          "anchors": [
+            "GetLEUInt16()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.metric-conversion",
+      "name": "Engine metric conversion",
+      "stability": "experimental",
+      "requirement": "Reserve one transparent pixel around every glyph; the loader shifts x/y inward, removes two pixels from width/height, negates bearings, and adds one pixel to xadvance.",
+      "rationale": "The Engine samples an expanded rectangle for antialiasing and optional border dilation while keeping the visible glyph metrics separate.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "let.Pos.x = x + 1",
+            "let.Size.width = w - 2",
+            "let.Offset.x = -numeric_cast<int32_t>(ox)",
+            "let.XAdvance = xa + 1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.line-metrics",
+      "name": "Derived line metrics",
+      "stability": "experimental",
+      "requirement": "Expect Engine LineHeight to use the visible W glyph height when W exists, otherwise Common.base; YAdvance is half that resulting height.",
+      "rationale": "The BMFont Common.lineHeight field is used for bearing conversion but is not copied directly into the Engine line height.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "font_data.Letters.count",
+            "font_data.YAdvance = font_data.LineHeight / 2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.bmfont.gray-bordered",
+      "name": "Grayscale and border preparation",
+      "stability": "experimental",
+      "requirement": "Binary BMFont bindings always normalize nontransparent pixels to gray and create a second bordered atlas copy.",
+      "rationale": "This makes runtime tinting and FontFlag::Bordered available without descriptor-specific switches.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "font_data.MakeGray = true",
+            "// Create bordered instance"
+          ]
+        }
+      ]
+    }
+  ],
+  "binding_rules": [
+    {
+      "id": "font-format.binding.extension-dispatch",
+      "name": "Exact extension dispatch",
+      "stability": "experimental",
+      "requirement": "Call Game.BindFont with an exact lowercase .fofnt or .fnt path; every other suffix throws a script exception.",
+      "rationale": "Dispatch uses case-sensitive ends_with checks and does not sniff descriptor content.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_BindFont",
+            "fontFname.ends_with(\".fofnt\")",
+            "fontFname.ends_with(\".fnt\")",
+            "Unknown font file extension"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.binding.raw-copy",
+      "name": "Descriptor raw-copy boundary",
+      "stability": "experimental",
+      "requirement": "Keep fofnt and fnt in Baking.RawCopyFileExtensions so descriptor bytes reach baked resources unchanged.",
+      "rationale": "There is no dedicated font descriptor baker; RawCopyBaker preserves path and bytes.",
+      "source": [
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "RawCopyFileExtensions",
+            "\"fofnt\"",
+            "\"fnt\""
+          ]
+        },
+        {
+          "path": "Source/Tools/RawCopyBaker.cpp",
+          "anchors": [
+            "_context->WriteData(file.GetPath(), file.GetData())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.binding.image-resource",
+      "name": "Separately baked image",
+      "stability": "experimental",
+      "requirement": "Ship the referenced image as an independently supported image resource in the same pack and preserve its relative path.",
+      "rationale": "The descriptor is raw-copied, but its image is loaded through SpriteManager and the normal image-format pipeline.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "extract_dir().combine_path(image_name)",
+            "_sprMngr->LoadSprite",
+            "Font image file not found"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.binding.font-slots",
+      "name": "Project-extensible font slots",
+      "stability": "experimental",
+      "requirement": "Bind every FontType slot before it is measured or drawn; the Engine names only Default = 0 and embedding scripts may extend the enum through codegen annotations.",
+      "rationale": "FontType is an indexed loaded-font table, and unloaded or out-of-range slots throw.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.h",
+          "anchors": [
+            "enum class FontType",
+            "Default = 0",
+            "scripts may add more entries"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.binding.iface-atlas",
+      "name": "Interface sprite atlas",
+      "stability": "experimental",
+      "requirement": "Script-bound fonts allocate their normal and optional bordered textures in AtlasType::IfaceSprites.",
+      "rationale": "Both Game.BindFont descriptor branches pass the same interface atlas type.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "AtlasType::IfaceSprites",
+            "BindFoFont",
+            "BindBmfFont"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.binding.bind-time-scale",
+      "name": "Bind-time downscale",
+      "stability": "experimental",
+      "requirement": "Pass a finite defaultScale in (0, 1]; use a larger authored bitmap and downscale it rather than requesting runtime upscaling.",
+      "rationale": "Binding area-averages glyph pixels and rounds metrics once; values above one and nonpositive or nonfinite values are rejected.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "ResolveFontScale",
+            "scale > 0.0f && scale <= 1.0f",
+            "BakeFontScale"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.binding.rebind",
+      "name": "Slot replacement and cache reset",
+      "stability": "experimental",
+      "requirement": "Treat a repeated binding of the same slot as replacement; all cached layouts are discarded before the rebuilt font is used.",
+      "rationale": "StoreFont replaces the optional table entry, rebuilds atlas data, and clears the format cache.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "void FontManager::StoreFont",
+            "_allFonts[index].emplace",
+            "_formatCache.clear()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.binding.updater-default",
+      "name": "Updater fallback font",
+      "stability": "experimental",
+      "requirement": "Keep Fonts/Default.fofnt available for the built-in updater path unless the host replaces that resource contract deliberately.",
+      "rationale": "Updater binds the Default slot from that exact path with skip-if-loaded behavior.",
+      "source": [
+        {
+          "path": "Source/Client/Updater.cpp",
+          "anchors": [
+            "Fonts/Default.fofnt",
+            "AtlasType::IfaceSprites",
+            "true"
+          ]
+        }
+      ]
+    }
+  ],
+  "layout_rules": [
+    {
+      "id": "font-format.layout.text-format",
+      "name": "TextFormat value",
+      "stability": "experimental",
+      "requirement": "Pass a Font slot, FontFlag bitmask, and nonnegative SkipLines count as TextFormat.",
+      "rationale": "The exported value type is a fixed 12-byte layout consumed by measurement and drawing.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.h",
+          "anchors": [
+            "struct TextFormat",
+            "FontType Font",
+            "FontFlag Flags",
+            "int32_t SkipLines",
+            "sizeof(TextFormat) == 12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.wrap-overflow",
+      "name": "Width overflow and wrapping",
+      "stability": "experimental",
+      "requirement": "With finite width, default layout wraps at the latest space or tab and inserts a line break before an overlong token when no break point exists.",
+      "rationale": "Layout mutates its cached text copy to establish line boundaries without changing the caller's source string.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "curx + x_advance > r.x + r.width",
+            "str[j] = '\\n'",
+            "str.insert"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.no-wrap-and-truncate",
+      "name": "NoWrap and TruncateLine",
+      "stability": "experimental",
+      "requirement": "NoWrap ends draw text at the first width overflow; TruncateLine removes overflowing glyphs through the next authored newline.",
+      "rationale": "These flags intentionally choose different loss behavior and should not be treated as synonyms.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "FontFlag::NoWrap",
+            "FontFlag::TruncateLine",
+            "str.resize",
+            "str.erase"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.horizontal-alignment",
+      "name": "Horizontal alignment",
+      "stability": "experimental",
+      "requirement": "CenterX and AlignRight position each line independently inside the supplied rectangle; do not combine contradictory alignment flags.",
+      "rationale": "The initial and every post-newline X coordinate are recalculated from that line's measured width.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "FontFlag::CenterX",
+            "FontFlag::AlignRight",
+            "fi.LineWidth[curstr]"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.vertical-alignment",
+      "name": "Vertical alignment",
+      "stability": "experimental",
+      "requirement": "CenterY centers the visible block and AlignBottom places it against the rectangle bottom using LineHeight and YAdvance.",
+      "rationale": "Vertical placement depends on the number of lines that fit, not the total source-string byte length.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "FontFlag::CenterY",
+            "FontFlag::AlignBottom",
+            "fi.LinesInRect * font->LineHeight"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.skip-lines-and-tail",
+      "name": "SkipLines and KeepTail",
+      "stability": "experimental",
+      "requirement": "SkipLines removes leading lines by default and trailing lines with AlignBottom; KeepTail discards leading overflow so the newest visible lines remain.",
+      "rationale": "These mechanisms serve pagination and log-tail behavior but use different counters and overflow conditions.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "skip_from_bottom",
+            "skip_line_end",
+            "FontFlag::KeepTail",
+            "fi.LinesAll - fi.LinesInRect"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.justification",
+      "name": "Justification",
+      "stability": "experimental",
+      "requirement": "Justify distributes remaining finite rectangle width over breakable spaces on wrapped non-skipped lines.",
+      "rationale": "Tabs are fixed at four SpaceWidth units and are not justification opportunities.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "FontFlag::Justify",
+            "fi.LineSpaceWidth",
+            "font->SpaceWidth * 4"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.utf8-and-missing-glyphs",
+      "name": "UTF-8 and missing glyphs",
+      "stability": "experimental",
+      "requirement": "Author every required Unicode codepoint; invalid UTF-8 and absent glyphs consume no glyph width and render no fallback symbol.",
+      "rationale": "The layout maps invalid sequences to codepoint zero and unknown codepoints to zero advance, while drawing skips missing map entries.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "utf8::Decode",
+            "utf8::IsValid(letter) ? letter : 0",
+            "it == font->Letters.end()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.layout.measurement",
+      "name": "Measurement matches layout",
+      "stability": "experimental",
+      "requirement": "Use Game.GetTextInfo and related line helpers with the same rectangle and TextFormat used for drawing, but do not infer draw-only NoWrap truncation from measurement.",
+      "rationale": "Measurement and drawing share GetOrFormat, skips, line metrics, and bind-time scale; NoWrap truncation is intentionally gated to Draw mode.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "GetTextInfo",
+            "FormatMode::LineCount",
+            "result_size"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_GetTextInfo",
+            "Client_Game_GetTextLines"
+          ]
+        }
+      ]
+    }
+  ],
+  "rendering_rules": [
+    {
+      "id": "font-format.rendering.one-pixel-sampling-border",
+      "name": "One-pixel sampling border",
+      "stability": "experimental",
+      "requirement": "Leave at least one pixel of valid transparent padding around every glyph rectangle and around the image edge.",
+      "rationale": "Texture coordinates and submitted quads expand each visible glyph by one pixel on all sides.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "letter.Pos.x",
+            "x - 1.0f",
+            "w + 2.0f",
+            "l.Size.width + 2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.rendering.grayscale-tint",
+      "name": "Grayscale normalization and tint",
+      "stability": "experimental",
+      "requirement": "Use a trailing * on FOFNT Image, or binary BMFont, when the bitmap should be normalized to middle gray and tinted by draw color.",
+      "rationale": "Nontransparent RGB becomes 128/128/128 while alpha is preserved; transparent pixels are cleared.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "font->MakeGray",
+            "ucolor {128, 128, 128, a}",
+            "ucolor {0, 0, 0, 0}"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.rendering.bordered-copy",
+      "name": "Bordered atlas copy",
+      "stability": "experimental",
+      "requirement": "Reserve transparent padding for a one-pixel black dilation; FontFlag::Bordered selects the generated second texture.",
+      "rationale": "The loader duplicates the image and fills transparent neighbors of visible pixels before calculating bordered UVs.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "// Fill border",
+            "ucolor {0, 0, 0, 255}",
+            "FontFlag::Bordered",
+            "FontTexBordered"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.rendering.bind-time-resampling",
+      "name": "Area-average downsampling",
+      "stability": "experimental",
+      "requirement": "Expect defaultScale below one to rewrite the bound atlas region and integer glyph metrics once, with no per-widget font scale.",
+      "rationale": "The scaler uses alpha-weighted area averages, clears the original glyph rectangle, and keeps the same top-left position.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "Area-average resample",
+            "alpha-weighted color",
+            "Clear the original rect",
+            "letter.Size = {dst_w, dst_h}"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.rendering.font-effect",
+      "name": "Shared and per-slot font effect",
+      "stability": "experimental",
+      "requirement": "Fonts start with the Engine shared font effect; a per-slot EffectType::Font override replaces it and a null override returns to the shared effect.",
+      "rationale": "Draw batching keys include the selected texture and RenderEffect pointer.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "SetFontEffect",
+            "Effects.Font",
+            "SourceEffect != font->DrawEffect"
+          ]
+        },
+        {
+          "path": "Source/Client/Client.cpp",
+          "anchors": [
+            "EffectType::Font",
+            "FontMngr.SetFontEffect"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.rendering.inline-color",
+      "name": "Inline color tags",
+      "stability": "experimental",
+      "requirement": "Use @color:BBGGRR@ or @color:AABBGGRR@, optionally with a 0x prefix, to push a color and @color@ to restore the previous color; NoColorize strips valid tags without applying them.",
+      "rationale": "Formatting removes valid markers before wrapping and records color transitions by output byte offset.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "InlineColorTagPrefix",
+            "ParseInlineColorTag",
+            "FontFlag::NoColorize",
+            "dots_history"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.rendering.layout-cache",
+      "name": "Three-frame layout cache",
+      "stability": "internal",
+      "requirement": "Do not depend on cached layout identity or lifetime; the cache key includes text, font, flags, skips, rectangle size, color, and mode and expires after three unused frames.",
+      "rationale": "The cache is a client implementation detail and is cleared whenever fonts are stored or cleared.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "CACHE_INVALIDATION_FRAME_COUNT = 3",
+            "key_parts",
+            "LastUsedFrame",
+            "_formatCache.clear()"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "font-format.validation.descriptor-and-image-presence",
+      "name": "Descriptor and image presence",
+      "stability": "experimental",
+      "requirement": "Fail the asset gate when the descriptor is missing, FOFNT omits Image, or the relative image cannot load as an atlas sprite. The runtime reports missing descriptor and image files, but currently has no explicit empty-Image guard.",
+      "rationale": "Pre-runtime validation must cover the omitted-Image case because the loader reaches image_name.back() before it can produce a diagnostic.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "Font file not found",
+            "image_name.back() == '*'",
+            "Font image file not found"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.validation.fofnt-header",
+      "name": "FOFNT header and UTF-8",
+      "stability": "experimental",
+      "requirement": "Reject a FOFNT whose first key is not Version, whose version exceeds 2, or whose Letter line does not contain one valid UTF-8 codepoint.",
+      "rationale": "These are hard parser failures rather than recoverable missing-glyph cases.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "Version' signature not found",
+            "Font version not supported",
+            "Invalid letter specification",
+            "Invalid UTF-8 letter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.validation.bmfont-header",
+      "name": "BMFont header, padding, and pages",
+      "stability": "experimental",
+      "requirement": "Reject BMFont descriptors that are not binary v3, do not use 1/1/1/1 padding, or declare any page count other than one.",
+      "rationale": "The runtime has explicit exceptions for all three incompatibilities.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "Invalid font signature",
+            "Wrong padding in font",
+            "Font must have exactly one texture"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.validation.signed-bmfont-metrics",
+      "name": "Unsigned BMFont metric limitation",
+      "stability": "experimental",
+      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with GetLEUInt16 even though bundled binary fonts contain negative bearings.",
+      "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "uint16_t ox = reader.GetLEUInt16()",
+            "uint16_t oy = reader.GetLEUInt16()",
+            "uint16_t xa = reader.GetLEUInt16()"
+          ]
+        },
+        {
+          "path": "Source/Common/FileSystem.h",
+          "anchors": [
+            "auto GetLEUInt16() -> uint16_t"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.validation.scale-range",
+      "name": "Scale range",
+      "stability": "experimental",
+      "requirement": "Reject NaN, infinity, zero, negative values, and values greater than one before mutating the font table or atlas.",
+      "rationale": "The Engine supports deterministic bind-time downscaling, not bitmap upscaling.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "std::isfinite(scale)",
+            "Font scale must be in range (0..1]"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.validation.generated-contract",
+      "name": "Generated contract drift",
+      "stability": "experimental",
+      "requirement": "Regenerate and check the font-format model whenever parser keys, binary constants, font enums, binding dispatch, raw-copy defaults, scale, cache, or bundled descriptors change.",
+      "rationale": "The checked model makes silent source/documentation drift fail CI.",
+      "source": [
+        {
+          "path": "BuildTools/docs_font_format.py",
+          "anchors": [
+            "generate_font_format_model",
+            "_derive_outputs",
+            "--check"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.validation.engine-tests",
+      "name": "Engine regression gates",
+      "stability": "experimental",
+      "requirement": "Run the focused documentation test and the full generated Engine unit-test target after FontManager or font descriptor changes.",
+      "rationale": "Structural checks pin source-derived contracts while native tests cover resource and client construction paths.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_Mapper.cpp",
+          "anchors": [
+            "AddMinimalFont",
+            "Version 2",
+            "MakeMinimalBakedSprite"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientServerIntegration.cpp",
+          "anchors": [
+            "Default.fofnt"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.validation.embedding-project",
+      "name": "Embedding-project bake and visible check",
+      "stability": "experimental",
+      "requirement": "Bake descriptor and image resources, run measurement tests for every bound scale, and visibly inspect regular, bordered, wrapped, aligned, localized, and missing-glyph cases.",
+      "rationale": "A raw-copy success cannot prove glyph coverage, atlas padding, typography, backend rendering, or GUI fit.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_BindFont",
+            "Client_Game_GetTextInfo",
+            "Client_Game_DrawText"
+          ]
+        },
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "FontFlag::Bordered",
+            "FormatText",
+            "DrawText"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 57,
+    "format_count": 3,
+    "fofnt_field_count": 13,
+    "bmfont_rule_count": 9,
+    "binding_rule_count": 8,
+    "layout_rule_count": 9,
+    "rendering_rule_count": 7,
+    "validation_rule_count": 8,
+    "entries_by_stability": {
+      "experimental": 55,
+      "internal": 2
+    }
+  },
+  "contract_digest": "fbbd65366de988ee1d0d93b5ae07d9f96feb9de9da930cfb8db6433548957975"
+}

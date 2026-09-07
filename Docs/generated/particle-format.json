@@ -1,0 +1,2901 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_particle_format.py",
+  "source_manifest": "BuildTools/ParticleFormatInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed contract for FOnline particle authoring, baking, runtime backends, Mapper tooling, integrations, and validation.",
+  "scope": {
+    "surface": "particle-format",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "SPARK and Effekseer are independent optional backends. Embedding projects must pin an Engine revision and explicitly enable, test, and support the formats they ship.",
+    "included": [
+      "SPARK .spark authoring and baked .spk delivery",
+      "Effekseer .efkproj authoring and baked .efk delivery",
+      "backend-neutral particle runtime and sprite integration",
+      "Mapper preview and SPARK authoring tools",
+      "resource, model, and client-script integration",
+      "source-backed validation and production gates"
+    ],
+    "excluded": [
+      "embedding-project particle catalogs, filenames, visual policy, and budgets",
+      "project-selected effects, textures, models, and acceptance scenes",
+      "unsupported Effekseer renderer families and advanced capabilities",
+      "upstream editor behavior that is not present in the bundled tools",
+      "generated .spk and .efk files as authored source"
+    ]
+  },
+  "sources": [
+    "BuildTools/cmake/ProjectInterface.json",
+    "BuildTools/cmake/stages/Init.cmake",
+    "Source/Tools/ParticleBaker.cpp",
+    "Source/Tools/EffekseerCompiler.cpp",
+    "Source/Client/ParticleRuntime.h",
+    "Source/Client/ParticleRuntime.cpp",
+    "Source/Client/VisualParticles.cpp",
+    "Source/Client/ParticleSprites.cpp",
+    "Source/Client/SparkExtension.cpp",
+    "Source/Client/EffekseerExtension.cpp",
+    "Source/Tools/ParticleEditor.cpp",
+    "Source/Tools/SparkParticleEditor.cpp",
+    "BuildTools/EffekseerEditor/build.ps1",
+    "BuildTools/buildtools.py",
+    "Source/Tools/ModelInfoBaker.cpp",
+    "Source/Client/ModelInstance.cpp",
+    "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "Source/Scripting/ClientCritterScriptMethods.cpp",
+    "Source/Tests/Test_ParticleBaker.cpp",
+    "Source/Tests/Test_EffekseerParticleRuntime.cpp"
+  ],
+  "outputs": {
+    "authored_extensions": [
+      "spark",
+      "efkproj"
+    ],
+    "runtime_extensions": [
+      "spk",
+      "efk"
+    ],
+    "backend_options": {
+      "spark": "FO_SPARK_PARTICLES",
+      "effekseer": "FO_EFFEKSEER_PARTICLES"
+    },
+    "bake_transforms": {
+      "spark": "spk",
+      "efkproj": "efk"
+    },
+    "runtime_side": "client",
+    "authored_binaries_rejected": true,
+    "spark_runtime_magic": "SPK\\u0000",
+    "effekseer_runtime_magic": "SKFE"
+  },
+  "object_families": [
+    {
+      "id": "particle-format.family.spark",
+      "name": "SPARK backend",
+      "members": [
+        ".spark",
+        ".spk"
+      ],
+      "stability": "experimental",
+      "requirement": "Enable FO_SPARK_PARTICLES to compile the SPARK baker, runtime backend, and Mapper authoring subeditor.",
+      "rationale": "Backend selection is explicit and independent of Effekseer.",
+      "source": [
+        {
+          "path": "BuildTools/cmake/ProjectInterface.json",
+          "anchors": [
+            "\"name\": \"FO_SPARK_PARTICLES\"",
+            "\"description\": \"Compile the SPARK particle baker, runtime backend, and Mapper authoring tools.\""
+          ]
+        },
+        {
+          "path": "BuildTools/cmake/stages/Init.cmake",
+          "anchors": [
+            "FO_SPARK_PARTICLES=$<BOOL:${FO_SPARK_PARTICLES}>"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleRuntime.cpp",
+          "anchors": [
+            "#if FO_SPARK_PARTICLES",
+            "SparkParticleRuntimeBackend"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.effekseer",
+      "name": "Effekseer backend",
+      "members": [
+        ".efkproj",
+        ".efk"
+      ],
+      "stability": "experimental",
+      "requirement": "Enable FO_EFFEKSEER_PARTICLES to compile the fixed-profile project compiler and Effekseer runtime backend.",
+      "rationale": "Backend selection is explicit and independent of SPARK.",
+      "source": [
+        {
+          "path": "BuildTools/cmake/ProjectInterface.json",
+          "anchors": [
+            "\"name\": \"FO_EFFEKSEER_PARTICLES\"",
+            "\"description\": \"Compile the Effekseer project compiler and runtime backend.\""
+          ]
+        },
+        {
+          "path": "BuildTools/cmake/stages/Init.cmake",
+          "anchors": [
+            "FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleRuntime.cpp",
+          "anchors": [
+            "#if FO_EFFEKSEER_PARTICLES",
+            "EffekseerParticleRuntimeBackend"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.core",
+      "name": "Core",
+      "members": [
+        "System",
+        "Group"
+      ],
+      "stability": "experimental",
+      "requirement": "Author exactly one System root object and compose one or more Group objects beneath its groups attribute.",
+      "rationale": "The SPARK loader accepts one and only one System and the runtime/render paths consume its groups.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp",
+          "anchors": [
+            "// Core",
+            "registerObject<System>()",
+            "registerObject<Group>()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.interpolators",
+      "name": "Interpolators",
+      "members": [
+        "FloatDefaultInitializer",
+        "ColorDefaultInitializer",
+        "FloatRandomInitializer",
+        "ColorRandomInitializer",
+        "FloatSimpleInterpolator",
+        "ColorSimpleInterpolator",
+        "FloatRandomInterpolator",
+        "ColorRandomInterpolator",
+        "FloatGraphInterpolator",
+        "ColorGraphInterpolator"
+      ],
+      "stability": "experimental",
+      "requirement": "Use only the registered float and color initializer/interpolator tags for particle parameter evolution.",
+      "rationale": "The XML loader constructs object tags through the IOManager registry.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp",
+          "anchors": [
+            "// Interpolators",
+            "registerObject<FloatDefaultInitializer>()",
+            "registerObject<ColorGraphInterpolator>()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.zones",
+      "name": "Zones",
+      "members": [
+        "Point",
+        "Sphere",
+        "Plane",
+        "Ring",
+        "Box",
+        "Cylinder"
+      ],
+      "stability": "experimental",
+      "requirement": "Emitter and zoned-modifier references may use the six registered geometric zone tags.",
+      "rationale": "Other SPARK zone implementations are not available to authored Engine resources unless registered and editor-supported.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp",
+          "anchors": [
+            "// Zones",
+            "registerObject<Point>()",
+            "registerObject<Cylinder>()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.emitters",
+      "name": "Emitters",
+      "members": [
+        "StaticEmitter",
+        "RandomEmitter",
+        "StraightEmitter",
+        "SphericEmitter",
+        "NormalEmitter"
+      ],
+      "stability": "experimental",
+      "requirement": "Groups may contain the five registered emitter tags.",
+      "rationale": "Registration and editor creation controls define the portable authored emitter set.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp",
+          "anchors": [
+            "// Emitters",
+            "registerObject<StaticEmitter>()",
+            "registerObject<NormalEmitter>()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.modifiers",
+      "name": "Modifiers",
+      "members": [
+        "Gravity",
+        "Friction",
+        "Obstacle",
+        "Rotator",
+        "Collider",
+        "Destroyer",
+        "Vortex",
+        "EmitterAttacher",
+        "PointMass",
+        "RandomForce",
+        "LinearForce"
+      ],
+      "stability": "experimental",
+      "requirement": "Groups may contain the eleven registered modifier tags.",
+      "rationale": "The list is the complete modifier surface recognized by both the loader and stock editor.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp",
+          "anchors": [
+            "// Modifiers",
+            "registerObject<Gravity>()",
+            "registerObject<LinearForce>()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.actions",
+      "name": "Actions",
+      "members": [
+        "ActionSet",
+        "SpawnParticlesAction"
+      ],
+      "stability": "experimental",
+      "requirement": "Birth/death action references may use ActionSet and SpawnParticlesAction.",
+      "rationale": "These are the only action object tags registered by the vendored SPARK build.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Manager.cpp",
+          "anchors": [
+            "// Actions",
+            "registerObject<ActionSet>()",
+            "registerObject<SpawnParticlesAction>()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.family.renderer",
+      "name": "Renderer",
+      "members": [
+        "SparkQuadRenderer"
+      ],
+      "stability": "experimental",
+      "requirement": "Use the Engine-owned SparkQuadRenderer tag for particle rendering.",
+      "rationale": "The Engine registers this custom renderer once before loading particle resources and exposes no other SPARK renderer to the editor.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "io_mngr.ensureObjectRegistered<SparkQuadRenderer>()",
+            "isObjectRegistered<SparkQuadRenderer>()"
+          ]
+        }
+      ]
+    }
+  ],
+  "objects": [
+    {
+      "id": "particle-format.object.spark-source",
+      "name": "SPARK source",
+      "format": ".spark",
+      "role": "authored",
+      "backend": "spark",
+      "stability": "experimental",
+      "requirement": "Author SPARK systems as XML in .spark files and reference the corresponding .spk path from game content.",
+      "rationale": "ParticleBaker parses XML and emits the runtime binary; runtime never loads the source file.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "if (ext == \"spark\")",
+            "loadFromBuffer(\"xml\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.spark-runtime",
+      "name": "SPARK runtime binary",
+      "format": ".spk",
+      "role": "generated",
+      "backend": "spark",
+      "stability": "internal",
+      "requirement": "Treat .spk as generated baked output and never check it into an authored resource source.",
+      "rationale": "ParticleBaker rejects authored .spk files and the runtime backend advertises only spk.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "Authored SPARK particles must use the text .spark format"
+          ]
+        },
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "return {\"spk\"};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.effekseer-source",
+      "name": "Effekseer project source",
+      "format": ".efkproj",
+      "role": "authored",
+      "backend": "effekseer",
+      "stability": "experimental",
+      "requirement": "Author Effekseer effects as text .efkproj projects and reference the corresponding .efk path from game content.",
+      "rationale": "The fixed-profile compiler converts project XML into the runtime binary during baking.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "if (ext == \"efkproj\")",
+            "CompileEffekseerProject"
+          ]
+        },
+        {
+          "path": "Source/Tools/EffekseerCompiler.cpp",
+          "anchors": [
+            "EffekseerProject XML document"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.effekseer-runtime",
+      "name": "Effekseer runtime binary",
+      "format": ".efk",
+      "role": "generated",
+      "backend": "effekseer",
+      "stability": "internal",
+      "requirement": "Treat .efk as generated baked output and never check it into an authored resource source.",
+      "rationale": "ParticleBaker rejects authored .efk files, validates SKFE output, and the runtime backend advertises only efk.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "Authored Effekseer particles must use the text .efkproj format",
+            "actual_magic != \"SKFE\""
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "return {\"efk\"};"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.system",
+      "name": "System",
+      "class_name": "System",
+      "xml_tag": "System",
+      "family": "Core",
+      "stability": "experimental",
+      "requirement": "The <System> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Transformable"
+      ],
+      "declared_attributes": [
+        {
+          "name": "groups",
+          "type": "ATTRIBUTE_TYPE_REFS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Core/SPK_System.h",
+          "anchors": [
+            "System"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.group",
+      "name": "Group",
+      "class_name": "Group",
+      "xml_tag": "Group",
+      "family": "Core",
+      "stability": "experimental",
+      "requirement": "The <Group> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Transformable"
+      ],
+      "declared_attributes": [
+        {
+          "name": "capacity",
+          "type": "ATTRIBUTE_TYPE_UINT32"
+        },
+        {
+          "name": "life time",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "immortal",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "still",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "distance computation enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "sorting enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "radius",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "color interpolator",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "scale interpolator",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "mass interpolator",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "angle interpolator",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "texture index interpolator",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "rotation speed interpolator",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "emitters",
+          "type": "ATTRIBUTE_TYPE_REFS"
+        },
+        {
+          "name": "modifiers",
+          "type": "ATTRIBUTE_TYPE_REFS"
+        },
+        {
+          "name": "birth action",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "death action",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "renderer",
+          "type": "ATTRIBUTE_TYPE_REF"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Core/SPK_Group.h",
+          "anchors": [
+            "Group"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.float-default-initializer",
+      "name": "FloatDefaultInitializer",
+      "class_name": "FloatDefaultInitializer",
+      "xml_tag": "FloatDefaultInitializer",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <FloatDefaultInitializer> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "value",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_DefaultInitializer.h",
+          "anchors": [
+            "FloatDefaultInitializer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.color-default-initializer",
+      "name": "ColorDefaultInitializer",
+      "class_name": "ColorDefaultInitializer",
+      "xml_tag": "ColorDefaultInitializer",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <ColorDefaultInitializer> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "value",
+          "type": "ATTRIBUTE_TYPE_COLOR"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_DefaultInitializer.h",
+          "anchors": [
+            "ColorDefaultInitializer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.float-random-initializer",
+      "name": "FloatRandomInitializer",
+      "class_name": "FloatRandomInitializer",
+      "xml_tag": "FloatRandomInitializer",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <FloatRandomInitializer> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "values",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInitializer.h",
+          "anchors": [
+            "FloatRandomInitializer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.color-random-initializer",
+      "name": "ColorRandomInitializer",
+      "class_name": "ColorRandomInitializer",
+      "xml_tag": "ColorRandomInitializer",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <ColorRandomInitializer> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "values",
+          "type": "ATTRIBUTE_TYPE_COLORS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInitializer.h",
+          "anchors": [
+            "ColorRandomInitializer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.float-simple-interpolator",
+      "name": "FloatSimpleInterpolator",
+      "class_name": "FloatSimpleInterpolator",
+      "xml_tag": "FloatSimpleInterpolator",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <FloatSimpleInterpolator> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "values",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_SimpleInterpolator.h",
+          "anchors": [
+            "FloatSimpleInterpolator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.color-simple-interpolator",
+      "name": "ColorSimpleInterpolator",
+      "class_name": "ColorSimpleInterpolator",
+      "xml_tag": "ColorSimpleInterpolator",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <ColorSimpleInterpolator> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "values",
+          "type": "ATTRIBUTE_TYPE_COLORS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_SimpleInterpolator.h",
+          "anchors": [
+            "ColorSimpleInterpolator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.float-random-interpolator",
+      "name": "FloatRandomInterpolator",
+      "class_name": "FloatRandomInterpolator",
+      "xml_tag": "FloatRandomInterpolator",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <FloatRandomInterpolator> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "values",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInterpolator.h",
+          "anchors": [
+            "FloatRandomInterpolator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.color-random-interpolator",
+      "name": "ColorRandomInterpolator",
+      "class_name": "ColorRandomInterpolator",
+      "xml_tag": "ColorRandomInterpolator",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <ColorRandomInterpolator> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "values",
+          "type": "ATTRIBUTE_TYPE_COLORS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_RandomInterpolator.h",
+          "anchors": [
+            "ColorRandomInterpolator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.float-graph-interpolator",
+      "name": "FloatGraphInterpolator",
+      "class_name": "FloatGraphInterpolator",
+      "xml_tag": "FloatGraphInterpolator",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <FloatGraphInterpolator> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "graph keys",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "graph values",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "graph values 2",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "interpolation type",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "interpolation param",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "looping enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "scale variation",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "offset variation",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_GraphInterpolator.h",
+          "anchors": [
+            "FloatGraphInterpolator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.color-graph-interpolator",
+      "name": "ColorGraphInterpolator",
+      "class_name": "ColorGraphInterpolator",
+      "xml_tag": "ColorGraphInterpolator",
+      "family": "Interpolators",
+      "stability": "experimental",
+      "requirement": "The <ColorGraphInterpolator> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Interpolator<T>"
+      ],
+      "declared_attributes": [
+        {
+          "name": "graph keys",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "graph values",
+          "type": "ATTRIBUTE_TYPE_COLORS"
+        },
+        {
+          "name": "graph values 2",
+          "type": "ATTRIBUTE_TYPE_COLORS"
+        },
+        {
+          "name": "interpolation type",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "interpolation param",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "looping enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "scale variation",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "offset variation",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Interpolators/SPK_GraphInterpolator.h",
+          "anchors": [
+            "ColorGraphInterpolator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.point",
+      "name": "Point",
+      "class_name": "Point",
+      "xml_tag": "Point",
+      "family": "Zones",
+      "stability": "experimental",
+      "requirement": "The <Point> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Zone"
+      ],
+      "declared_attributes": [],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Zones/SPK_Point.h",
+          "anchors": [
+            "Point"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.sphere",
+      "name": "Sphere",
+      "class_name": "Sphere",
+      "xml_tag": "Sphere",
+      "family": "Zones",
+      "stability": "experimental",
+      "requirement": "The <Sphere> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Zone"
+      ],
+      "declared_attributes": [
+        {
+          "name": "radius",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Zones/SPK_Sphere.h",
+          "anchors": [
+            "Sphere"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.plane",
+      "name": "Plane",
+      "class_name": "Plane",
+      "xml_tag": "Plane",
+      "family": "Zones",
+      "stability": "experimental",
+      "requirement": "The <Plane> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Zone"
+      ],
+      "declared_attributes": [
+        {
+          "name": "normal",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Zones/SPK_Plane.h",
+          "anchors": [
+            "Plane"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.ring",
+      "name": "Ring",
+      "class_name": "Ring",
+      "xml_tag": "Ring",
+      "family": "Zones",
+      "stability": "experimental",
+      "requirement": "The <Ring> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Zone"
+      ],
+      "declared_attributes": [
+        {
+          "name": "normal",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "radius",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Zones/SPK_Ring.h",
+          "anchors": [
+            "Ring"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.box",
+      "name": "Box",
+      "class_name": "Box",
+      "xml_tag": "Box",
+      "family": "Zones",
+      "stability": "experimental",
+      "requirement": "The <Box> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Zone"
+      ],
+      "declared_attributes": [
+        {
+          "name": "dimensions",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "up",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "front",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Zones/SPK_Box.h",
+          "anchors": [
+            "Box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.cylinder",
+      "name": "Cylinder",
+      "class_name": "Cylinder",
+      "xml_tag": "Cylinder",
+      "family": "Zones",
+      "stability": "experimental",
+      "requirement": "The <Cylinder> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Zone"
+      ],
+      "declared_attributes": [
+        {
+          "name": "height",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "radius",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "axis",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Zones/SPK_Cylinder.h",
+          "anchors": [
+            "Cylinder"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.static-emitter",
+      "name": "StaticEmitter",
+      "class_name": "StaticEmitter",
+      "xml_tag": "StaticEmitter",
+      "family": "Emitters",
+      "stability": "experimental",
+      "requirement": "The <StaticEmitter> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Emitter"
+      ],
+      "declared_attributes": [],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Emitters/SPK_StaticEmitter.h",
+          "anchors": [
+            "StaticEmitter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.random-emitter",
+      "name": "RandomEmitter",
+      "class_name": "RandomEmitter",
+      "xml_tag": "RandomEmitter",
+      "family": "Emitters",
+      "stability": "experimental",
+      "requirement": "The <RandomEmitter> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Emitter"
+      ],
+      "declared_attributes": [],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Emitters/SPK_RandomEmitter.h",
+          "anchors": [
+            "RandomEmitter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.straight-emitter",
+      "name": "StraightEmitter",
+      "class_name": "StraightEmitter",
+      "xml_tag": "StraightEmitter",
+      "family": "Emitters",
+      "stability": "experimental",
+      "requirement": "The <StraightEmitter> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Emitter"
+      ],
+      "declared_attributes": [
+        {
+          "name": "direction",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Emitters/SPK_StraightEmitter.h",
+          "anchors": [
+            "StraightEmitter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.spheric-emitter",
+      "name": "SphericEmitter",
+      "class_name": "SphericEmitter",
+      "xml_tag": "SphericEmitter",
+      "family": "Emitters",
+      "stability": "experimental",
+      "requirement": "The <SphericEmitter> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Emitter"
+      ],
+      "declared_attributes": [
+        {
+          "name": "direction",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "angles",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Emitters/SPK_SphericEmitter.h",
+          "anchors": [
+            "SphericEmitter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.normal-emitter",
+      "name": "NormalEmitter",
+      "class_name": "NormalEmitter",
+      "xml_tag": "NormalEmitter",
+      "family": "Emitters",
+      "stability": "experimental",
+      "requirement": "The <NormalEmitter> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Emitter"
+      ],
+      "declared_attributes": [
+        {
+          "name": "normal zone",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "inverted normals",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Emitters/SPK_NormalEmitter.h",
+          "anchors": [
+            "NormalEmitter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.gravity",
+      "name": "Gravity",
+      "class_name": "Gravity",
+      "xml_tag": "Gravity",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <Gravity> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "value",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_BasicModifiers.h",
+          "anchors": [
+            "Gravity"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.friction",
+      "name": "Friction",
+      "class_name": "Friction",
+      "xml_tag": "Friction",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <Friction> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "value",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_BasicModifiers.h",
+          "anchors": [
+            "Friction"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.obstacle",
+      "name": "Obstacle",
+      "class_name": "Obstacle",
+      "xml_tag": "Obstacle",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <Obstacle> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "ZonedModifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "bouncing ratio",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "friction",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Obstacle.h",
+          "anchors": [
+            "Obstacle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.rotator",
+      "name": "Rotator",
+      "class_name": "Rotator",
+      "xml_tag": "Rotator",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <Rotator> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Rotator.h",
+          "anchors": [
+            "Rotator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.collider",
+      "name": "Collider",
+      "class_name": "Collider",
+      "xml_tag": "Collider",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <Collider> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "elasticity",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Collider.h",
+          "anchors": [
+            "Collider"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.destroyer",
+      "name": "Destroyer",
+      "class_name": "Destroyer",
+      "xml_tag": "Destroyer",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <Destroyer> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "ZonedModifier"
+      ],
+      "declared_attributes": [],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Destroyer.h",
+          "anchors": [
+            "Destroyer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.vortex",
+      "name": "Vortex",
+      "class_name": "Vortex",
+      "xml_tag": "Vortex",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <Vortex> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "position",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "direction",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "rotation speed",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "attraction speed",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "angular speed enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "linear speed enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "eye radius",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "killing particles enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_Vortex.h",
+          "anchors": [
+            "Vortex"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.emitter-attacher",
+      "name": "EmitterAttacher",
+      "class_name": "EmitterAttacher",
+      "xml_tag": "EmitterAttacher",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <EmitterAttacher> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "base emitter",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "orientation enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "rotation enabled",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "target group",
+          "type": "ATTRIBUTE_TYPE_REF"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_EmitterAttacher.h",
+          "anchors": [
+            "EmitterAttacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.point-mass",
+      "name": "PointMass",
+      "class_name": "PointMass",
+      "xml_tag": "PointMass",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <PointMass> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "position",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "mass",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        },
+        {
+          "name": "offset",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_PointMass.h",
+          "anchors": [
+            "PointMass"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.random-force",
+      "name": "RandomForce",
+      "class_name": "RandomForce",
+      "xml_tag": "RandomForce",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <RandomForce> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Modifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "values",
+          "type": "ATTRIBUTE_TYPE_VECTORS"
+        },
+        {
+          "name": "period",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_RandomForce.h",
+          "anchors": [
+            "RandomForce"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.linear-force",
+      "name": "LinearForce",
+      "class_name": "LinearForce",
+      "xml_tag": "LinearForce",
+      "family": "Modifiers",
+      "stability": "experimental",
+      "requirement": "The <LinearForce> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "ZonedModifier"
+      ],
+      "declared_attributes": [
+        {
+          "name": "value",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "relative value",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "squared speed",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "parameter",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "factor type",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "coefficient",
+          "type": "ATTRIBUTE_TYPE_FLOAT"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Modifiers/SPK_LinearForce.h",
+          "anchors": [
+            "LinearForce"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.action-set",
+      "name": "ActionSet",
+      "class_name": "ActionSet",
+      "xml_tag": "ActionSet",
+      "family": "Actions",
+      "stability": "experimental",
+      "requirement": "The <ActionSet> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Action"
+      ],
+      "declared_attributes": [
+        {
+          "name": "actions",
+          "type": "ATTRIBUTE_TYPE_REFS"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Actions/SPK_ActionSet.h",
+          "anchors": [
+            "ActionSet"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.spawn-particles-action",
+      "name": "SpawnParticlesAction",
+      "class_name": "SpawnParticlesAction",
+      "xml_tag": "SpawnParticlesAction",
+      "family": "Actions",
+      "stability": "experimental",
+      "requirement": "The <SpawnParticlesAction> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Action"
+      ],
+      "declared_attributes": [
+        {
+          "name": "spawning numbers",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "base emitter",
+          "type": "ATTRIBUTE_TYPE_REF"
+        },
+        {
+          "name": "target group",
+          "type": "ATTRIBUTE_TYPE_REF"
+        }
+      ],
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/Actions/SPK_SpawnParticlesAction.h",
+          "anchors": [
+            "SpawnParticlesAction"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.object.spark-quad-renderer",
+      "name": "SparkQuadRenderer",
+      "class_name": "SparkQuadRenderer",
+      "xml_tag": "SparkQuadRenderer",
+      "family": "Renderer",
+      "stability": "experimental",
+      "requirement": "The <SparkQuadRenderer> XML tag is registered and editable by the stock particle editor.",
+      "rationale": "Unregistered object tags make the SPARK graph fail to load.",
+      "descriptor_parents": [
+        "Renderer"
+      ],
+      "declared_attributes": [
+        {
+          "name": "draw in scene",
+          "type": "ATTRIBUTE_TYPE_BOOL"
+        },
+        {
+          "name": "effect",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "blend mode",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "texture",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "scale",
+          "type": "ATTRIBUTE_TYPE_FLOATS"
+        },
+        {
+          "name": "atlas dimensions",
+          "type": "ATTRIBUTE_TYPE_UINT32S"
+        },
+        {
+          "name": "look orientation",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "up orientation",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "locked axis",
+          "type": "ATTRIBUTE_TYPE_STRING"
+        },
+        {
+          "name": "locked look vector",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        },
+        {
+          "name": "locked up vector",
+          "type": "ATTRIBUTE_TYPE_VECTOR"
+        }
+      ],
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.h",
+          "anchors": [
+            "SparkQuadRenderer"
+          ]
+        }
+      ]
+    }
+  ],
+  "xml_rules": [
+    {
+      "id": "particle-format.xml.spark-graph",
+      "name": "SPARK XML graph",
+      "stability": "experimental",
+      "requirement": "A .spark source must be accepted by the vendored SPARK XML loader and contain a usable System graph.",
+      "rationale": "Baking fails when loadFromBuffer(\"xml\", ...) returns no system.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "Failed to load SPARK particle XML",
+            "loadFromBuffer(\"xml\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.spark-textures",
+      "name": "SPARK texture paths",
+      "stability": "experimental",
+      "requirement": "SPARK texture paths must be relative, contain no line-control characters, and remain inside the particle's resource source.",
+      "rationale": "The baker rejects absolute and escaping paths before producing .spk.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "SPARK particle texture path must be relative",
+            "SPARK particle texture path escapes its resource source"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.effekseer-project",
+      "name": "Effekseer project XML",
+      "stability": "experimental",
+      "requirement": "An .efkproj source must be a non-empty EffekseerProject XML document supported by the fixed compiler profile.",
+      "rationale": "The native compiler rejects malformed XML and unsupported profile features during baking.",
+      "source": [
+        {
+          "path": "Source/Tools/EffekseerCompiler.cpp",
+          "anchors": [
+            "Effekseer project is empty",
+            "Effekseer source is not an EffekseerProject XML document",
+            "fixed project profile"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.effekseer-dependencies",
+      "name": "Effekseer dependency paths",
+      "stability": "experimental",
+      "requirement": "Keep compiler-reported dependencies relative and inside the directory resource source that owns the project.",
+      "rationale": "Dependency snapshots and compilation resolve against the physical project directory and reject escapes.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "Effekseer project dependency path must be relative",
+            "Effekseer project dependency escapes its directory resource source"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.root",
+      "name": "SPARK document root",
+      "stability": "experimental",
+      "syntax": "<SPARK>...</SPARK>",
+      "requirement": "The document element must be named SPARK exactly.",
+      "rationale": "The XML loader rejects missing or differently named roots before graph construction.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Extensions/IOConverters/SPK_IO_XMLLoader.cpp",
+          "anchors": [
+            "must be <SPARK>",
+            "std::string(\"SPARK\") != root.name()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.single-system",
+      "name": "Exactly one System",
+      "stability": "experimental",
+      "requirement": "The graph must contain exactly one System object; nested helper objects do not replace it and a second System is invalid.",
+      "rationale": "Graph validation selects the sole System as the load result.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Loader.cpp",
+          "anchors": [
+            "One and only one system is allowed in the graph",
+            "if (nbSystems != 1)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.object-tags",
+      "name": "Registered object tags",
+      "stability": "experimental",
+      "requirement": "Every object element name must match one of the registered object tags in the generated catalog.",
+      "rationale": "Graph::addNode fails when IOManager cannot construct the named object.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Core/IO/SPK_IO_Loader.cpp",
+          "anchors": [
+            "manager.createObject(name)",
+            "is not registered"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.attributes",
+      "name": "Attribute elements",
+      "stability": "experimental",
+      "syntax": "<attrib id=\"attribute name\" value=\"...\" />",
+      "requirement": "Serialize descriptor values as attrib children with a non-empty id matching the object's descriptor attribute name.",
+      "rationale": "The loader ignores non-attrib children at attribute level and looks up each id in the descriptor.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Extensions/IOConverters/SPK_IO_XMLLoader.cpp",
+          "anchors": [
+            "std::string(\"attrib\") == attrib.name()",
+            "name = attrib.attribute(\"id\").value()",
+            "desc.getAttribute(name)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.values",
+      "name": "Value attribute or text",
+      "stability": "experimental",
+      "requirement": "A scalar or array value may be written in the attrib value XML attribute or as element text; value takes precedence when both exist.",
+      "rationale": "XMLLoader::getValue checks the value attribute first and otherwise reads child text.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Extensions/IOConverters/SPK_IO_XMLLoader.cpp",
+          "anchors": [
+            "element.attribute(\"value\")",
+            "return element.child_value()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.arrays",
+      "name": "Semicolon arrays",
+      "stability": "experimental",
+      "syntax": "value=\"first;second;third\"",
+      "requirement": "Separate array values with semicolons; each element is converted independently and at least one converted value is required before assignment.",
+      "rationale": "convert2Array splits only on semicolons and returns false for an empty conversion result.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/include/Extensions/IOConverters/SPK_IO_XMLLoader.h",
+          "anchors": [
+            "str.find(';',oldPos)",
+            "return !values.empty()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.references",
+      "name": "Nested objects and references",
+      "stability": "experimental",
+      "requirement": "Reference attributes may nest an object directly or identify a previously described shared object through ref; arrays of references use nested objects and Ref children.",
+      "rationale": "The loader resolves both inline graph nodes and integer reference IDs, while the saver emits references according to graph sharing.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Extensions/IOConverters/SPK_IO_XMLLoader.cpp",
+          "anchors": [
+            "ATTRIBUTE_TYPE_REF",
+            "ATTRIBUTE_TYPE_REFS",
+            "std::string(\"Ref\") == child.name()"
+          ]
+        },
+        {
+          "path": "ThirdParty/spark/spark/src/Extensions/IOConverters/SPK_IO_XMLSaver.cpp",
+          "anchors": [
+            "XML_REFERENCE_RULE_WHEN_NEEDED",
+            "parent.append_child(\"Ref\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.xml.names-and-unknowns",
+      "name": "Names and unknown attributes",
+      "stability": "experimental",
+      "requirement": "Write an object's optional display name in its name XML attribute. Unknown non-empty attrib ids are logged as warnings and skipped rather than becoming custom data.",
+      "rationale": "Names have a dedicated descriptor path, and typoed attributes do not affect the loaded object.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Extensions/IOConverters/SPK_IO_XMLLoader.cpp",
+          "anchors": [
+            "element.attribute(\"name\")",
+            "does not exist"
+          ]
+        }
+      ]
+    }
+  ],
+  "renderer_fields": [
+    {
+      "id": "particle-format.renderer.spark-draw-route",
+      "name": "SPARK draw route",
+      "backend": "spark",
+      "field": "DrawInScene",
+      "default": "false",
+      "stability": "experimental",
+      "requirement": "Use atlas rendering for ordinary particle sprites; enable DrawInScene when the effect must share the map scene and depth path.",
+      "rationale": "The SPARK runtime promotes the complete particle system to direct-scene rendering when a renderer requests it.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SparkParticleRuntimeSystem::GetDrawInScene",
+            "renderer->GetDrawInScene()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.spark-resources",
+      "name": "SPARK effect and texture",
+      "backend": "spark",
+      "field": "EffectName / TextureName",
+      "default": "empty",
+      "stability": "experimental",
+      "requirement": "Select a baked FOnline effect and a texture path valid for the particle resource source.",
+      "rationale": "SparkQuadRenderer imports both values and uses FOnline rendering resources.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "data.EffectName = spark_renderer->GetEffectName()",
+            "data.TextureName = spark_renderer->GetTextureName()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-direct-scene",
+      "name": "Effekseer direct-scene route",
+      "backend": "effekseer",
+      "field": "GetDrawInScene",
+      "default": "true",
+      "stability": "experimental",
+      "requirement": "Treat Effekseer effects as direct-scene particles and validate their supported renderer capabilities in the FOnline client.",
+      "rationale": "The Effekseer runtime supplies callback geometry to FOnline rather than using the atlas route.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "EffekseerParticleRuntimeSystem::GetDrawInScene",
+            "return true;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-geometry",
+      "name": "Effekseer callback geometry",
+      "backend": "effekseer",
+      "field": "Sprite / Ring / Ribbon / Track / Model",
+      "default": "Engine-owned renderers",
+      "stability": "experimental",
+      "requirement": "Use only Root, None, Sprite, Ring, Ribbon, Track, and Model nodes; the five drawing families are converted to Engine-owned callback geometry.",
+      "rationale": "The FOnline runtime does not use Effekseer's graphics backend and fails closed on unimplemented node families.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "class FOnlineEffekseerSpriteRenderer",
+            "class FOnlineEffekseerRingRenderer",
+            "class FOnlineEffekseerRibbonRenderer",
+            "class FOnlineEffekseerTrackRenderer",
+            "class FOnlineEffekseerModelRenderer",
+            "only Root, None, Sprite, Ring, Ribbon, Track, and Model nodes are supported"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-material-profile",
+      "name": "Effekseer material and sampling profile",
+      "backend": "effekseer",
+      "field": "material / blend / filter / wrap",
+      "default": "Default material; authored sampling",
+      "stability": "experimental",
+      "requirement": "Use the Default material, Normal/Add/Sub blending, nearest or linear filtering, and Clamp or Repeat wrapping. Multiply blending, mirrored wrapping, advanced texture slots, custom materials, soft particles, falloff, and flipbook interpolation are rejected.",
+      "rationale": "The callback renderers implement a deliberately bounded material profile and validate it before drawing.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "ValidateStaticNodeMaterial",
+            "multiply blending is unsupported",
+            "mirrored texture wrapping is unsupported",
+            "advanced material, soft-particle, or flipbook features are unsupported"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-depth-cull-sort",
+      "name": "Effekseer depth, culling, and sorting",
+      "backend": "effekseer",
+      "field": "ZTest / ZWrite / Culling / ZSort",
+      "default": "authored per node",
+      "stability": "experimental",
+      "requirement": "Sprite and Ring may use stable camera-depth sorting; Ribbon, Track, and Model reject Z-sort. Per-node ZTest/ZWrite select an effect depth variant, and Model face culling selects the Engine draw cull mode.",
+      "rationale": "Draw state and ordering are preserved only where the callback geometry can implement them without breaking strip or model topology.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "StableSortSnapshotsByCameraDepth",
+            "ResolveDepthVariant",
+            "Z-sorted strip nodes are unsupported",
+            "Z-sorted model nodes are unsupported",
+            "ConvertEffekseerCulling",
+            "effect->DepthVariant = render_state->DepthVariant",
+            "effect->CullMode = _node->CullMode"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-distortion",
+      "name": "Effekseer sprite distortion",
+      "backend": "effekseer",
+      "field": "BackDistortion / DistortionIntensity",
+      "default": "disabled",
+      "stability": "experimental",
+      "requirement": "Use scene distortion only on Sprite nodes with a distortion texture and finite intensity; the draw samples a deferred scene-background snapshot through BackgroundTex and ParticleSamplingBuf.",
+      "rationale": "Only sprite geometry supplies the refracting plane required by the Engine distortion effect.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "only Sprite nodes can refract the scene",
+            "RenderDistortion",
+            "effect->BackgroundTex = background.Texture",
+            "effect->ParticleSamplingBuf->ParticleSampling[2] = _node->DistortionIntensity"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleRuntime.h",
+          "anchors": [
+            "ParticleSceneBackgroundProvider"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effekseer-global-exclusions",
+      "name": "Effekseer global exclusions",
+      "backend": "effekseer",
+      "field": "GPU particles and external resources",
+      "default": "unsupported",
+      "stability": "experimental",
+      "requirement": "Do not use GPU particles, normal textures, sounds, custom materials, external curves, or procedural models. Referenced static model resources must load and pass FOnline validation.",
+      "rationale": "The runtime rejects unsupported global resources before accepting the effect.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "GPU particles are unsupported",
+            "normal textures, sounds, custom materials, and external curves are unsupported",
+            "model resource failed validation or loading"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.draw-in-scene",
+      "name": "Direct scene rendering",
+      "attribute": "draw in scene",
+      "attribute_type": "ATTRIBUTE_TYPE_BOOL",
+      "default": "false",
+      "stability": "experimental",
+      "requirement": "When any group renderer enables draw in scene, the whole ParticleSprite uses the direct map-scene path instead of atlas refresh.",
+      "rationale": "A ParticleSprite has one render route, selected after scanning all groups.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"draw in scene\", ATTRIBUTE_TYPE_BOOL)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.effect",
+      "name": "Quad effect",
+      "attribute": "effect",
+      "attribute_type": "ATTRIBUTE_TYPE_STRING",
+      "default": "empty",
+      "stability": "experimental",
+      "requirement": "Name a baked .fofx resource compatible with EffectUsage::QuadSprite; the renderer loads it through EffectManager.",
+      "rationale": "Blend, depth, and shader behavior come from the selected Engine effect.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"effect\", ATTRIBUTE_TYPE_STRING)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.blend-mode",
+      "name": "Inert blend mode declaration",
+      "attribute": "blend mode",
+      "attribute_type": "ATTRIBUTE_TYPE_STRING",
+      "default": "unused",
+      "stability": "deprecated",
+      "requirement": "Do not author blend mode: the descriptor declares it, but SparkQuadRenderer neither imports, exports, nor applies it. Select blending in the .fofx effect instead.",
+      "rationale": "Treating this field as active would create resources whose appearance depends on a control the runtime ignores.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"blend mode\", ATTRIBUTE_TYPE_STRING)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.texture",
+      "name": "Particle texture",
+      "attribute": "texture",
+      "attribute_type": "ATTRIBUTE_TYPE_STRING",
+      "default": "empty",
+      "stability": "experimental",
+      "requirement": "Resolve a supported sprite resource relative to the .spark source directory and load its atlas texture through the provided texture loader.",
+      "rationale": "Relative texture names keep particle packs relocatable while reusing the Engine image pipeline.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"texture\", ATTRIBUTE_TYPE_STRING)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.scale",
+      "name": "Quad scale",
+      "attribute": "scale",
+      "attribute_type": "ATTRIBUTE_TYPE_FLOATS",
+      "default": "1;1",
+      "stability": "experimental",
+      "requirement": "One value changes X while retaining default Y; two values set X and Y particle-quad scale.",
+      "rationale": "The Engine maps the field directly to SPARK QuadRenderBehavior scale.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"scale\", ATTRIBUTE_TYPE_FLOATS)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.atlas-dimensions",
+      "name": "Texture atlas dimensions",
+      "attribute": "atlas dimensions",
+      "attribute_type": "ATTRIBUTE_TYPE_UINT32S",
+      "default": "1;1",
+      "stability": "experimental",
+      "requirement": "One value sets the X cell count; two set X and Y. The particle texture-index parameter chooses atlas cells.",
+      "rationale": "Atlas dimensions control UV subdivision rather than the Engine TextureAtlas allocator.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"atlas dimensions\", ATTRIBUTE_TYPE_UINT32S)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.look-orientation",
+      "name": "Look orientation",
+      "attribute": "look orientation",
+      "attribute_type": "ATTRIBUTE_TYPE_STRING",
+      "default": "LOOK_CAMERA_PLANE",
+      "values": [
+        "LOOK_CAMERA_PLANE",
+        "LOOK_CAMERA_POINT",
+        "LOOK_AXIS",
+        "LOOK_POINT"
+      ],
+      "stability": "experimental",
+      "requirement": "Use one of the four recognized look-orientation names; other strings leave the default orientation unchanged.",
+      "rationale": "String parsing is an explicit closed branch in SparkQuadRenderer import.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"look orientation\", ATTRIBUTE_TYPE_STRING)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.up-orientation",
+      "name": "Up orientation",
+      "attribute": "up orientation",
+      "attribute_type": "ATTRIBUTE_TYPE_STRING",
+      "default": "UP_CAMERA",
+      "values": [
+        "UP_CAMERA",
+        "UP_DIRECTION",
+        "UP_AXIS",
+        "UP_POINT"
+      ],
+      "stability": "experimental",
+      "requirement": "Use one of the four recognized up-orientation names; other strings leave the default orientation unchanged.",
+      "rationale": "The renderer maps these exact names to SPARK oriented-quad modes.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"up orientation\", ATTRIBUTE_TYPE_STRING)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.locked-axis",
+      "name": "Locked axis",
+      "attribute": "locked axis",
+      "attribute_type": "ATTRIBUTE_TYPE_STRING",
+      "default": "LOCK_UP",
+      "values": [
+        "LOCK_LOOK",
+        "LOCK_UP"
+      ],
+      "stability": "experimental",
+      "requirement": "Use LOCK_LOOK or LOCK_UP when an axis-based orientation mode needs one vector held fixed.",
+      "rationale": "Only these two names are imported and exported.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"locked axis\", ATTRIBUTE_TYPE_STRING)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.locked-look-vector",
+      "name": "Locked look vector",
+      "attribute": "locked look vector",
+      "attribute_type": "ATTRIBUTE_TYPE_VECTOR",
+      "default": "(0,0,1)",
+      "stability": "experimental",
+      "requirement": "Provide the world/local look vector used by the selected oriented-quad mode.",
+      "rationale": "The value is imported directly into SPARK's lookVector.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"locked look vector\", ATTRIBUTE_TYPE_VECTOR)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.renderer.locked-up-vector",
+      "name": "Locked up vector",
+      "attribute": "locked up vector",
+      "attribute_type": "ATTRIBUTE_TYPE_VECTOR",
+      "default": "(0,1,0)",
+      "stability": "experimental",
+      "requirement": "Provide the world/local up vector used by the selected oriented-quad mode.",
+      "rationale": "The value is imported directly into SPARK's upVector.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SPK_ATTRIBUTE(\"locked up vector\", ATTRIBUTE_TYPE_VECTOR)"
+          ]
+        }
+      ]
+    }
+  ],
+  "tooling_rules": [
+    {
+      "id": "particle-format.tooling.mapper-preview",
+      "name": "Backend-neutral Mapper preview",
+      "stability": "experimental",
+      "requirement": "Preview baked .spk and .efk resources through the Mapper particle window using explicit placement, seed, scale, offset, and optional prewarm.",
+      "rationale": "The preview uses the same ParticleSystem facade and runtime extensions as the game.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleEditor.cpp",
+          "anchors": [
+            "_extensions = _particleFactory->GetExtensions()",
+            "PlayWithSeed(_seed)",
+            "SetScale(_scale)",
+            "if (_prewarm)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.tooling.spark-editor",
+      "name": "Mapper SPARK editor",
+      "stability": "experimental",
+      "requirement": "Edit raw .spark assets in Mapper, save through the SPARK XML saver, then rebake and recreate the .spk preview.",
+      "rationale": "The editor reads source assets while previewing the baked runtime form.",
+      "source": [
+        {
+          "path": "Source/Tools/SparkParticleEditor.cpp",
+          "anchors": [
+            "Search .spark sources...",
+            "change_file_extension(\"spk\")",
+            "getSaver(\"xml\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.tooling.effekseer-editor",
+      "name": "Standalone Effekseer Editor",
+      "stability": "experimental",
+      "requirement": "Build and stage the Windows Effekseer authoring tool through buildtools.py build-auxiliary; do not ship it as a game runtime dependency.",
+      "rationale": "The editor has an isolated auxiliary build and staged payload.",
+      "source": [
+        {
+          "path": "BuildTools/buildtools.py",
+          "anchors": [
+            "The Effekseer Editor auxiliary build requires Windows",
+            "BuildTools' / 'EffekseerEditor' / 'build.ps1"
+          ]
+        },
+        {
+          "path": "BuildTools/EffekseerEditor/build.ps1",
+          "anchors": [
+            "Effekseer Editor staged to"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.tooling.incremental-effekseer",
+      "name": "Effekseer dependency cache",
+      "stability": "experimental",
+      "requirement": "Let ParticleBaker track compiler-reported dependency snapshots; force a full rebake after changing compiler behavior.",
+      "rationale": "The cache invalidates an effect when its project or dependencies change.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "GetEffekseerDependencyCachePath",
+            "BuildEffekseerDependencySnapshot",
+            "Failed to write Effekseer dependency cache"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.tooling.normalized-round-trip",
+      "name": "Serializer-normalized round trip",
+      "stability": "experimental",
+      "requirement": "Expect Save to rewrite object ordering, optional/default fields, nesting, references, and formatting according to the SPARK graph serializer; review the semantic diff.",
+      "rationale": "The editor saves an object graph, not a token-preserving XML syntax tree.",
+      "source": [
+        {
+          "path": "ThirdParty/spark/spark/src/Extensions/IOConverters/SPK_IO_XMLSaver.cpp",
+          "anchors": [
+            "while ((node = graph.getNextNode()) != NULL)",
+            "writeNode(root,*node,graph)",
+            "doc.save_file"
+          ]
+        }
+      ]
+    }
+  ],
+  "runtime_rules": [
+    {
+      "id": "particle-format.runtime.backend-composition",
+      "name": "Backend composition",
+      "stability": "experimental",
+      "requirement": "Compile only the particle backends selected by FO_SPARK_PARTICLES and FO_EFFEKSEER_PARTICLES.",
+      "rationale": "CreateParticleRuntimeBackends is the single feature-aware composition point.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleRuntime.cpp",
+          "anchors": [
+            "CreateParticleRuntimeBackends",
+            "#if FO_SPARK_PARTICLES",
+            "#if FO_EFFEKSEER_PARTICLES"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.extension-routing",
+      "name": "Runtime extension routing",
+      "stability": "experimental",
+      "requirement": "Reference baked .spk or .efk paths; ParticleManager selects a backend by its advertised extension.",
+      "rationale": "Authored source extensions are not runtime sprite formats.",
+      "source": [
+        {
+          "path": "Source/Client/VisualParticles.cpp",
+          "anchors": [
+            "ParticleManager::GetExtensions",
+            "ParticleManager::CreateParticle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.seed",
+      "name": "Seeded respawn",
+      "stability": "experimental",
+      "requirement": "Use an explicit seed when deterministic replay or comparison is required.",
+      "rationale": "The neutral facade forwards the seed to the selected backend.",
+      "source": [
+        {
+          "path": "Source/Client/VisualParticles.cpp",
+          "anchors": [
+            "ParticleSystem::Respawn(int32_t seed)",
+            "_runtimeSystem->Respawn(seed)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.scale",
+      "name": "Runtime scale",
+      "stability": "experimental",
+      "requirement": "Apply finite positive scale through ParticleSystem and revalidate bounds, depth, and attachment placement.",
+      "rationale": "Scale is part of the backend-neutral runtime setup and forces a transform refresh.",
+      "source": [
+        {
+          "path": "Source/Client/VisualParticles.cpp",
+          "anchors": [
+            "ParticleSystem::SetScale",
+            "ApplyRuntimeSetup()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.baked-bounds",
+      "name": "Mandatory baked bounds",
+      "stability": "experimental",
+      "requirement": "Bake each particle system's simulated position box and maximum billboard radius into the runtime resource. SPARK rejects a system that never shows a particle; Effekseer appends and validates a mandatory bounds trailer.",
+      "rationale": "Static measured bounds replace manual draw dimensions and avoid recomputing a particle AABB every frame.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "deterministic run of a throwaway copy",
+            "SPARK particle system showed no visible particles while baking its bounds",
+            "SimulateEffekseerBounds",
+            "AppendEffekseerBoundsTrailer"
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "ReadEffekseerBoundsTrailer",
+            "Baked Effekseer binary is missing its mandatory bounds trailer magic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.bounds-semantics",
+      "name": "Position box and billboard radius",
+      "stability": "experimental",
+      "requirement": "Treat ParticleBounds3D.PositionMin/PositionMax as world positions transformed by the full placement matrix, and BillboardRadius as camera-facing padding transformed by placement scale only.",
+      "rationale": "Rotating or sweeping billboard radius as a world point overstates the frame and can still misrepresent its screen footprint.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleRuntime.h",
+          "anchors": [
+            "struct ParticleBounds3D",
+            "MakeParticleBounds",
+            "TransformParticleBounds"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.live-bounds",
+      "name": "Live bounds",
+      "stability": "experimental",
+      "requirement": "GetLiveBounds returns transformed baked bounds only while the backend has live particles or instances; dormant and finished systems reserve no model-frame space.",
+      "rationale": "Occasional attached effects must expand their owning model only while visible.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "SparkParticleRuntimeSystem::GetLiveBounds",
+            "getNbParticles() == 0",
+            "TransformParticleBounds"
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "EffekseerParticleRuntimeSystem::GetLiveBounds",
+            "GetInstanceCount(_impl->Handle) == 0",
+            "TransformParticleBounds"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "model_particle.Particle->GetLiveBounds()",
+            "force_full_frame = true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.sprite-frame",
+      "name": "Automatic particle sprite frame",
+      "stability": "experimental",
+      "requirement": "ParticleSystem projects baked bounds through the map-camera tilt, adds billboard and antialiasing margins, and derives atlas size, emitter offset, and world transform automatically. Invalid or unavailable bounds fall back to Render.DefaultParticleDrawWidth/Height.",
+      "rationale": "ParticleSprite allocation follows measured effect content without an authored draw-size field.",
+      "source": [
+        {
+          "path": "Source/Client/VisualParticles.cpp",
+          "anchors": [
+            "ParticleSystem::ComputeSpriteFrame",
+            "DefaultParticleDrawWidth",
+            "baked->BillboardRadius",
+            "layout.DrawSize"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "ComputeSpriteFrame",
+            "FindAtlasPlace(atlas_type, layout.DrawSize)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.prewarm",
+      "name": "Prewarm",
+      "stability": "experimental",
+      "requirement": "Use prewarm only when the effect must enter already simulated, and include its cost in the project performance gate.",
+      "rationale": "The runtime advances the selected backend and resets facade timing to the reported elapsed time.",
+      "source": [
+        {
+          "path": "Source/Client/VisualParticles.cpp",
+          "anchors": [
+            "ParticleSystem::Prewarm",
+            "_runtimeSystem->Prewarm()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.update-cadence",
+      "name": "Update cadence",
+      "stability": "experimental",
+      "requirement": "Render.Animation3dFPS sets the millisecond particle update threshold; zero leaves the threshold at zero and therefore permits an update every frame.",
+      "rationale": "Particle simulation cadence shares the 3D animation setting rather than owning an independent particle FPS.",
+      "source": [
+        {
+          "path": "Source/Client/VisualParticles.cpp",
+          "anchors": [
+            "Animation3dFPS != 0",
+            "_animUpdateThreshold",
+            "NeedDraw() const"
+          ]
+        },
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "Animation3dFPS, 30"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.atlas-path",
+      "name": "Default offscreen-atlas path",
+      "stability": "experimental",
+      "requirement": "With draw in scene false, updates render the SPARK system into an intermediate render target and copy it into the sprite atlas; normal sprite batching draws the resulting quad.",
+      "rationale": "The default path preserves ordinary sprite ordering and batching at the cost of flattening particle depth.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "if (!_drawInScene)",
+            "DrawToAtlas()",
+            "DrawParticleToAtlas"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.scene-path",
+      "name": "Direct map-scene path",
+      "stability": "experimental",
+      "requirement": "With draw in scene true, ParticleSprite is direct-draw and renders SPARK geometry against the map projection and shared depth target instead of refreshing its atlas region.",
+      "rationale": "World-space particles can be occluded by standing sprites and models according to the selected .fofx depth state.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleSprites.h",
+          "anchors": [
+            "IsDirectDraw() const",
+            "return _drawInScene;"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "void ParticleSprite::DrawInScene",
+            "MakeMapAnchoredProj"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.sprite-semantics",
+      "name": "ParticleSprite animation semantics",
+      "stability": "experimental",
+      "requirement": "ParticleSprite is non-copyable and never hit-tests; Play respawns, Stop is a no-op, SetTime and SetDir are ignored, and IsPlaying mirrors SPARK active state.",
+      "rationale": "Generic Sprite animation controls do not map to SPARK timeline or direction selection.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleSprites.h",
+          "anchors": [
+            "IsCopyable() const",
+            "return false;",
+            "IsPlaying() const"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "return false;",
+            "_particle->Respawn()",
+            "void ParticleSprite::Stop()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.world-scale",
+      "name": "Shared model and particle scale",
+      "stability": "experimental",
+      "requirement": "Render.ModelProjFactor is screen pixels per 3D world unit for models and in-scene particles. The Engine default is 40.0; embedding projects may override it consistently.",
+      "rationale": "ParticleSprite and model projection use the same scale setting, so project overrides affect both.",
+      "source": [
+        {
+          "path": "Source/Common/Settings.inc",
+          "anchors": [
+            "ModelProjFactor, 40.0f",
+            "scales 3D models and in-scene particles"
+          ]
+        },
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "settings.ModelProjFactor"
+          ]
+        }
+      ]
+    }
+  ],
+  "integration_rules": [
+    {
+      "id": "particle-format.integration.sprite",
+      "name": "Sprite integration",
+      "stability": "experimental",
+      "requirement": "Load particle sprites through ParticleSpriteFactory and let the backend choose atlas or direct-scene rendering.",
+      "rationale": "The factory exposes enabled runtime extensions and constructs ParticleSprite from ParticleManager.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "ParticleSpriteFactory::GetExtensions",
+            "_particleMngr.CreateParticle(path)",
+            "particle->GetDrawInScene()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.model",
+      "name": "Model attachment",
+      "stability": "experimental",
+      "requirement": "Use AttachParticles with a baked runtime resource and a valid model bone, then verify transforms and lifetime in a visible scene.",
+      "rationale": "The model baker verifies the resource and runtime creates the particle at the target joint.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"AttachParticles\"",
+            "ValidateModelDescriptionBakedFileExists"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "Particle model link target bone not found",
+            "CreateParticle(link.ChildName)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.client-script",
+      "name": "Client script controls",
+      "stability": "experimental",
+      "requirement": "Use the client API for seeded playback, prewarm, scale, or live critter-bone effects and handle a false result where the API reports one.",
+      "rationale": "The exported methods narrow generic sprites to particle sprites before applying backend-neutral controls.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_SetParticleScale",
+            "Client_Game_PlayParticleWithSeed",
+            "Client_Game_PrewarmParticle"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_RunParticle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.project-boundary",
+      "name": "Embedding-project ownership",
+      "stability": "stable",
+      "requirement": "Keep particle catalogs, visual policy, backend selection, resource provenance, performance budgets, and acceptance scenes in project documentation.",
+      "rationale": "The Engine documents reusable mechanics but cannot define a game's assets or production targets.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleRuntime.h",
+          "anchors": [
+            "class ParticleRuntimeBackend",
+            "struct ParticleRuntimeServices"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.critter-run-particle",
+      "name": "Critter model particle",
+      "stability": "experimental",
+      "requirement": "Critter.RunParticle creates a named particle on a model bone only in FO_ENABLE_3D builds; the export is a no-op otherwise.",
+      "rationale": "The script method depends on an active ModelInstance and is not a 2D critter-sprite fallback.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_RunParticle",
+            "#if FO_ENABLE_3D",
+            "model->RunParticle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.model-attachment",
+      "name": ".fo3d AttachParticles",
+      "stability": "experimental",
+      "syntax": "AttachParticles <particle.spk|particle.efk> Link <bone>",
+      "requirement": "A layer/value-selected .fo3d link stores a global baked .spk or .efk path and requires a valid target bone; it lives only while the selected link remains active.",
+      "rationale": "ModelInfoBaker validates the resource and bone, and runtime creates/removes the particle with model composition.",
+      "source": [
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "token == \"Attach\" || token == \"AttachParticles\"",
+            "state.Link->IsParticles",
+            "ValidateModelDescriptionBoneReference"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "Particle model link has no target bone",
+            "keep_alive_particles"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "particle-format.validation.documentation",
+      "name": "Documentation contract",
+      "stability": "stable",
+      "requirement": "Run docs_particle_format.py --check and its focused unit test after changing particle formats, backends, tools, or integrations.",
+      "rationale": "The manifest validates every source anchor and generated page.",
+      "source": [
+        {
+          "path": "BuildTools/ParticleFormatInterface.json",
+          "anchors": [
+            "particle-format.validation.documentation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.validation.baker-tests",
+      "name": "Particle baker tests",
+      "stability": "experimental",
+      "requirement": "Run the ParticleBaker unit tests after changing source formats, transforms, path checks, compiler output, or dependency invalidation.",
+      "rationale": "The native suite exercises both backend bake boundaries.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_ParticleBaker.cpp",
+          "anchors": [
+            "TEST_CASE(\"ParticleBaker\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.validation.effekseer-runtime",
+      "name": "Effekseer runtime tests",
+      "stability": "experimental",
+      "requirement": "Run the focused Effekseer runtime tests after changing compiler/runtime geometry, sorting, batching, textures, seed, or scale.",
+      "rationale": "The suite checks deterministic callback geometry and supported runtime behavior.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer particle runtime produces deterministic FOnline callback geometry",
+            "Particle facade reapplies scale"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.validation.project-bake",
+      "name": "Embedding-project bake",
+      "stability": "stable",
+      "requirement": "Rebake an affected embedding project and reject authored .spk/.efk, malformed sources, missing dependencies, and stale generated resources.",
+      "rationale": "Only the project bake sees its complete resource graph and feature selection.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleBaker.cpp",
+          "anchors": [
+            "Authored SPARK particles must use",
+            "Authored Effekseer particles must use",
+            "Effekseer core rejected compiled particle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.validation.visible-scene",
+      "name": "Visible runtime validation",
+      "stability": "stable",
+      "requirement": "Inspect every affected backend and integration route in Mapper and a representative client scene, including depth, clipping, lifetime, transforms, and performance.",
+      "rationale": "Successful compilation cannot prove visual correctness or gameplay timing.",
+      "source": [
+        {
+          "path": "Source/Tools/ParticleEditor.cpp",
+          "anchors": [
+            "Mapper particle preview started"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.validation.render-routes",
+      "name": "Both render routes",
+      "stability": "experimental",
+      "requirement": "Visibly check atlas particles and direct-scene particles at their real draw order, camera angle, scale, depth occluders, and supported renderer backends.",
+      "rationale": "Headless parsing cannot prove framing, alpha, blend, depth, orientation, or world-scale behavior.",
+      "source": [
+        {
+          "path": "Source/Client/ParticleSprites.cpp",
+          "anchors": [
+            "DrawParticleToAtlas",
+            "DrawInScene"
+          ]
+        },
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "EffectUsage::QuadSprite"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.validation.model-route",
+      "name": "Model attachment route",
+      "stability": "experimental",
+      "requirement": "For AttachParticles or Critter.RunParticle changes, visibly verify the target bone, offset, active layer lifetime, animation, and FO_ENABLE_3D profile.",
+      "rationale": "ParticleSprite tests do not exercise model-bone ownership or projection.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_ModelBaker.cpp",
+          "anchors": [
+            "AttachParticles"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "keep_alive_particles",
+            "Particle model link has no target bone"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 113,
+    "backend_count": 2,
+    "format_count": 4,
+    "graph_object_count": 37,
+    "xml_rule_count": 12,
+    "renderer_field_count": 19,
+    "tooling_rule_count": 5,
+    "runtime_rule_count": 14,
+    "integration_rule_count": 6,
+    "validation_rule_count": 7,
+    "stability_counts": {
+      "deprecated": 1,
+      "experimental": 106,
+      "internal": 2,
+      "stable": 4
+    }
+  },
+  "contract_digest": "ee23fe2920f262d74a4326496487ca45d265fca9f9860b4ae21b0530d92c6daf"
+}

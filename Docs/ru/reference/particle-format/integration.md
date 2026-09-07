@@ -1,0 +1,23 @@
+---
+title: Контракт интеграции частиц
+document_id: generated-particle-format-integration
+locale: ru
+generated: true
+---
+
+<!-- docs-translation: {"document_id":"generated-particle-format-integration","locale":"ru","source_path":"Docs/en/reference/particle-format/integration.md","source_sha256":"3379ce391bb65b455d5013934f94fdc786a0634919b54d3c2b99c9866652bb34"} -->
+
+# Контракт интеграции частиц
+
+> Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/ParticleFormatInterface.json`, затем выполните `python BuildTools/docs_particle_format.py --write`.
+
+[Индекс справочника](index.md) | [Правила исходников](xml.md) | [Форматы и backend-ы](objects.md) | [Отрисовка](renderer.md) | [Инструменты](tooling.md) | [Runtime](runtime.md) | [Интеграция](integration.md) | [Проверка](validation.md) | [Каноническая JSON-модель](../../../generated/particle-format.json) | [Руководство](../../how-to/content/particle-format.md) | [Инструменты авторинга](../../how-to/tools/particle-authoring.md)
+
+| Стабильный ID | Правило | Требование | Причина | Источник |
+| --- | --- | --- | --- | --- |
+| <a id="entry-particle-format-integration-sprite-de6d20af68"></a><code>particle-format.integration.sprite</code> | Интеграция спрайтов | Загружайте спрайты частиц через ParticleSpriteFactory и позволяйте подсистеме выбирать рендеринг через атлас или напрямую в сцену. | Фабрика предоставляет включённые runtime-расширения и создаёт ParticleSprite из ParticleManager. | [Source/Client/ParticleSprites.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleSprites.cpp) |
+| <a id="entry-particle-format-integration-model-e2b153fc92"></a><code>particle-format.integration.model</code> | Привязка к модели | Используйте AttachParticles с запечённым runtime-ресурсом и допустимой костью модели, затем проверяйте трансформации и время жизни в видимой сцене. | Бейкер модели проверяет ресурс, а runtime создаёт частицу на целевом сочленении. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp)<br>[Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |
+| <a id="entry-particle-format-integration-client-script-3c35e6ad00"></a><code>particle-format.integration.client-script</code> | Клиентское управление из скрипта | Используйте клиентский API для воспроизведения с seed, prewarm, масштаба или активных эффектов на кости криттера и обрабатывайте результат false там, где API его возвращает. | Экспортированные методы сужают универсальные спрайты до спрайтов частиц перед применением независимого от подсистемы управления. | [Source/Scripting/ClientGlobalScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientGlobalScriptMethods.cpp)<br>[Source/Scripting/ClientCritterScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientCritterScriptMethods.cpp) |
+| <a id="entry-particle-format-integration-project-boundary-87d72207f8"></a><code>particle-format.integration.project-boundary</code> | Ответственность встраивающего проекта | Храните каталоги частиц, визуальную политику, выбор подсистем, происхождение ресурсов, бюджеты производительности и приёмочные сцены в документации проекта. | Движок документирует переиспользуемую механику, но не может определять игровые ресурсы или производственные цели. | [Source/Client/ParticleRuntime.h](https://github.com/cvet/fonline/blob/master/Source/Client/ParticleRuntime.h) |
+| <a id="entry-particle-format-integration-critter-run-particle-b803c79a33"></a><code>particle-format.integration.critter-run-particle</code> | Частица на модели криттера | Critter.RunParticle создаёт именованную частицу на кости модели только в сборках FO_ENABLE_3D; иначе экспорт ничего не делает. | Скриптовый метод требует активный ModelInstance и не является запасным маршрутом для 2D-спрайта криттера. | [Source/Scripting/ClientCritterScriptMethods.cpp](https://github.com/cvet/fonline/blob/master/Source/Scripting/ClientCritterScriptMethods.cpp) |
+| <a id="entry-particle-format-integration-model-attachment-6fac6386d9"></a><code>particle-format.integration.model-attachment</code> | AttachParticles в .fo3d | Выбранная слоем и значением связь .fo3d хранит глобальный путь запечённого .spk или .efk и требует допустимую целевую кость; частица существует, только пока выбранная связь активна. | ModelInfoBaker проверяет ресурс и кость, а runtime создаёт и удаляет частицу вместе с композицией модели. | [Source/Tools/ModelInfoBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ModelInfoBaker.cpp)<br>[Source/Client/ModelInstance.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/ModelInstance.cpp) |

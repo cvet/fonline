@@ -1,6 +1,6 @@
 # FOnline Engine : Third-party packages
 
-Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintenance.md).
+Maintenance workflow: [ThirdParty Maintenance](../Docs/en/contributing/third-party/).
 
 * AcmDecoder by Abel - ACM sound format reader
 * AngelScript - [2.39.0 WIP 17.08.26 (0e6b5503)](https://github.com/anjo76/angelscript/commit/0e6b5503c27f1df1e48f75dde7166c4e66a3b03f)

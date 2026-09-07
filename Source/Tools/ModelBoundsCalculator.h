@@ -45,7 +45,7 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(ModelBoundsException);
 
 // How a bounds pass measures the posed geometry. Both modes walk the same timeline, because a coarser one
-// misses the extreme of a fast arc and clips a model. See Engine/Docs/BakingPipeline.md
+// misses the extreme of a fast arc and clips a model
 enum class ModelBoundsMeasurement : uint8_t
 {
     // Every skinned vertex at every sample: the exact envelope
@@ -56,7 +56,7 @@ enum class ModelBoundsMeasurement : uint8_t
 };
 
 // One baked model prepared for repeated bounds queries, so a model measured against hundreds of clips
-// reads its vertex data once. See Engine/Docs/BakingPipeline.md
+// reads its vertex data once
 class ModelBoundsSampler final
 {
 public:

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "name": "synthetic-gameplay-smoke",
+  "default_timeout_seconds": 5,
+  "forbidden_markers": [
+    "synthetic_catastrophic_failure"
+  ],
+  "scenarios": [
+    {
+      "id": "server-client-handshake",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{python}",
+            "{fixture}",
+            "--ready",
+            "synthetic_server_ready",
+            "--delay-ms",
+            "150",
+            "--marker",
+            "synthetic_server_passed"
+          ],
+          "ready_marker": "synthetic_server_ready",
+          "ready_timeout_seconds": 2,
+          "required_markers": [
+            "synthetic_server_ready",
+            "synthetic_server_passed"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{python}",
+            "{fixture}",
+            "--marker",
+            "synthetic_client_connected",
+            "--marker",
+            "synthetic_client_passed"
+          ],
+          "required_markers": [
+            "synthetic_client_connected",
+            "synthetic_client_passed"
+          ]
+        }
+      ]
+    }
+  ]
+}

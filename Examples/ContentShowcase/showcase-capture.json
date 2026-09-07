@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "name": "content-showcase-capture",
+  "default_timeout_seconds": 120,
+  "forbidden_markers": [
+    "ScriptException",
+    "FATAL ERROR!",
+    "Module initialization failed",
+    "showcase_client_capture_failed"
+  ],
+  "scenarios": [
+    {
+      "id": "native-renderer-capture",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "{capture_subconfig}"
+          ],
+          "ready_marker": "showcase_server_started",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "showcase_server_world_ready",
+            "showcase_server_smoke_passed"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "{capture_subconfig}"
+          ],
+          "required_markers": [
+            "showcase_client_world_ready",
+            "showcase_client_resources_loaded",
+            "showcase_client_capture_samples_saved=12",
+            "showcase_client_finish_acknowledged"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -57,6 +57,17 @@ enum class DisconnectReason : uint8_t
     LoginFailed = 9,
     ReplacedByReconnect = 10,
 };
+///@ EnumValueDoc DisconnectReason None // Indicates that the connection has not recorded a close cause.
+///@ EnumValueDoc DisconnectReason ClientClosed // Indicates that the transport reported the peer disappearing; voluntary quit and network loss are indistinguishable.
+///@ EnumValueDoc DisconnectReason InactivityTimeout // Indicates that no inbound message arrived before the configured inactivity deadline.
+///@ EnumValueDoc DisconnectReason PingTimeout // Indicates that the peer did not answer the previous server ping.
+///@ EnumValueDoc DisconnectReason LoginTimeout // Indicates that a pre-login connection made no progress before the configured login deadline.
+///@ EnumValueDoc DisconnectReason ProtocolError // Indicates malformed or unexpected protocol data or failed connection publication.
+///@ EnumValueDoc DisconnectReason UpdaterError // Indicates that the client requested an invalid updater file or range.
+///@ EnumValueDoc DisconnectReason ServerShutdown // Indicates an orderly server shutdown.
+///@ EnumValueDoc DisconnectReason ScriptRequest // Indicates that server script called Player.HardDisconnect().
+///@ EnumValueDoc DisconnectReason LoginFailed // Indicates that login was rolled back after a server-side failure.
+///@ EnumValueDoc DisconnectReason ReplacedByReconnect // Indicates that a new login for the same account replaced this session.
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;
 

@@ -39,7 +39,7 @@
 FO_BEGIN_NAMESPACE
 
 // Element bytes held by one block. The standard deque fixes its block at 16 bytes, so every element wider
-// than a pointer costs a heap block of its own; Docs/Essentials.md records the measurement
+// than a pointer costs a heap block of its own
 inline constexpr size_t DEQUE_BLOCK_BYTES = 512;
 
 // Blocks never hold fewer elements than this, so a wide element still amortises its allocations

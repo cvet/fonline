@@ -120,10 +120,14 @@ def check_binary(binary: Path) -> list[ImportedSymbol]:
     return sorted((item for item in read_imports(binary) if item.name in FORBIDDEN_IMPORTS), key=lambda item: (item.library, item.name))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Reject CreateFile2 from Windows 7-compatible PE binaries")
-    parser.add_argument("binaries", nargs="+", type=Path)
-    args = parser.parse_args()
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="check_windows7_imports.py", description="Reject CreateFile2 from Windows 7-compatible PE binaries")
+    parser.add_argument("binaries", nargs="+", type=Path, help="linked PE executable or DLL to inspect")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = create_parser().parse_args(argv)
 
     failed = False
     for binary in args.binaries:

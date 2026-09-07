@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "source_locale": "en",
+  "target_locale": "ru",
+  "terms": [
+    {
+      "term": "FOnline",
+      "russian": "FOnline",
+      "policy": "preserve",
+      "note": "Product and engine name; never transliterate."
+    },
+    {
+      "term": "Engine",
+      "russian": "движок",
+      "policy": "contextual",
+      "note": "Translate the concept; preserve `Engine/` and identifiers."
+    },
+    {
+      "term": "embedding project",
+      "russian": "встраивающий игровой проект",
+      "policy": "translate",
+      "note": "A game repository that consumes FOnline."
+    },
+    {
+      "term": "game project",
+      "russian": "игровой проект",
+      "policy": "translate",
+      "note": "Prefer this shorter form after ownership is established."
+    },
+    {
+      "term": "authoritative server",
+      "russian": "авторитетный сервер",
+      "policy": "translate",
+      "note": "Server that owns game-state decisions."
+    },
+    {
+      "term": "client",
+      "russian": "клиент",
+      "policy": "translate",
+      "note": "Preserve identifiers and target names."
+    },
+    {
+      "term": "headless",
+      "russian": "без графического интерфейса",
+      "policy": "contextual",
+      "note": "Use `headless` in code/target names; explain it in prose."
+    },
+    {
+      "term": "mapper",
+      "russian": "редактор карт Mapper",
+      "policy": "contextual",
+      "note": "Use Mapper for the application name."
+    },
+    {
+      "term": "baker",
+      "russian": "сборщик ресурсов",
+      "policy": "contextual",
+      "note": "Use `Baker` and baker class names for identifiers."
+    },
+    {
+      "term": "baking",
+      "russian": "сборка ресурсов",
+      "policy": "translate",
+      "note": "Avoid culinary literal translations."
+    },
+    {
+      "term": "resource pack",
+      "russian": "пакет ресурсов",
+      "policy": "translate",
+      "note": "Preserve `[ResourcePack]` as syntax."
+    },
+    {
+      "term": "sub-config",
+      "russian": "подконфигурация",
+      "policy": "translate",
+      "note": "Preserve `[SubConfig]` and `-ApplySubConfig`."
+    },
+    {
+      "term": "prototype",
+      "russian": "прототип",
+      "policy": "translate",
+      "note": "Preserve prototype IDs and file extensions."
+    },
+    {
+      "term": "property",
+      "russian": "свойство",
+      "policy": "translate",
+      "note": "Preserve property names and metadata tags."
+    },
+    {
+      "term": "entity",
+      "russian": "сущность",
+      "policy": "translate",
+      "note": "Use consistently for the Engine entity model."
+    },
+    {
+      "term": "remote call",
+      "russian": "удалённый вызов",
+      "policy": "translate",
+      "note": "Preserve `RemoteCall` annotations and generated IDs."
+    },
+    {
+      "term": "metadata",
+      "russian": "метаданные",
+      "policy": "translate",
+      "note": "Preserve file names and `MetadataBaker`."
+    },
+    {
+      "term": "generated content",
+      "russian": "сгенерированные данные",
+      "policy": "translate",
+      "note": "Choose source/output wording appropriate to the layer."
+    },
+    {
+      "term": "source of truth",
+      "russian": "источник истины",
+      "policy": "translate",
+      "note": "Use for authoritative ownership, not merely a useful reference."
+    },
+    {
+      "term": "runtime",
+      "russian": "среда выполнения",
+      "policy": "contextual",
+      "note": "Preserve runtime identifiers and client-runtime ABI names."
+    },
+    {
+      "term": "build-gated",
+      "russian": "проверяемый сборкой в CI",
+      "policy": "translate",
+      "note": "Use the exact support-matrix meaning."
+    },
+    {
+      "term": "smoke test",
+      "russian": "smoke-тест",
+      "policy": "contextual",
+      "note": "A narrow process-level route, not broad qualification."
+    },
+    {
+      "term": "source-capable",
+      "russian": "доступный в исходниках без обязательной CI-проверки",
+      "policy": "translate",
+      "note": "Do not shorten to supported."
+    },
+    {
+      "term": "support matrix",
+      "russian": "матрица поддержки",
+      "policy": "translate",
+      "note": "Keep evidence levels distinct."
+    },
+    {
+      "term": "breaking change",
+      "russian": "ломающее изменение",
+      "policy": "translate",
+      "note": "Use for contract compatibility, not any large edit."
+    },
+    {
+      "term": "migration",
+      "russian": "миграция",
+      "policy": "translate",
+      "note": "Distinguish data, API, route, and documentation migrations."
+    },
+    {
+      "term": "compatibility version",
+      "russian": "версия совместимости",
+      "policy": "translate",
+      "note": "Preserve `CompatibilityVersion`."
+    },
+    {
+      "term": "client host/runtime ABI",
+      "russian": "ABI хоста и runtime-модуля клиента",
+      "policy": "contextual",
+      "note": "Keep ABI and concrete API identifiers unchanged."
+    },
+    {
+      "term": "updater protocol",
+      "russian": "протокол обновления",
+      "policy": "translate",
+      "note": "Do not merge with gameplay compatibility."
+    },
+    {
+      "term": "current",
+      "russian": "текущая версия",
+      "policy": "contextual",
+      "note": "The rolling documentation channel; do not translate as stable."
+    },
+    {
+      "term": "stable",
+      "russian": "стабильный",
+      "policy": "translate",
+      "note": "Use only for an explicit stability promise."
+    },
+    {
+      "term": "experimental",
+      "russian": "экспериментальный",
+      "policy": "translate",
+      "note": "Preserve the contract status."
+    },
+    {
+      "term": "deprecated",
+      "russian": "устаревающий",
+      "policy": "translate",
+      "note": "A supported transition state, not already removed."
+    },
+    {
+      "term": "internal",
+      "russian": "внутренний",
+      "policy": "translate",
+      "note": "No public compatibility promise."
+    }
+  ]
+}
