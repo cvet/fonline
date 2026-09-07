@@ -361,8 +361,12 @@ for ever; a temp file for a pack still on the list is the resume point and is ke
 A promotion that was interrupted between its two renames is repaired first (`RecoverInterruptedReplacements`).
 A successful resource sync ends by rebuilding the merged tree. `FinishResourcesUpdate` calls
 `RebuildResourceIndex`, which skips the work when `IsResourceIndexCurrent` says the tree already describes the
-packs - a sync that changed nothing rewrites nothing - and otherwise merges the packs into `Resources.foindex`
-beside them. Building it is best effort: the tree is an optimization over mounting each pack, so a failure is
+installed pack suffix after `Embedded` - a sync that changed nothing rewrites nothing - and otherwise
+merges that suffix into `Resources.foindex` under the writable resource root, creating the directory if
+needed. Embedded and earlier packs keep their normal mounts, as do writable overlay packs, which still
+win over the entire installed layer. This avoids looking for a nonexistent `Embedded.fores` and preserves
+mount precedence; see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). Building it is
+best effort: the tree is an optimization over mounting each pack, so a failure is
 logged, the half-built file is removed, and the update still succeeds with the client taking the per-pack
 view. That is the one place anything writes a `.foindex`; nothing ships or downloads one. The web build skips
 the build outright - see the Platforms section of [ResourcePackFormat.md](ResourcePackFormat.md) for why a tree

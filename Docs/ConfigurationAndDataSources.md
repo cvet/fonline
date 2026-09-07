@@ -184,7 +184,19 @@ container does not preserve.
 
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` owns that ordering for both the updater's post-sync metadata check and the gameplay `ClientEngine`; do not reconstruct the pack view independently in either path.
 
-It mounts one source rather than many when it can: if `Resources.foindex` in the writable overlay still describes the packs on disk, that merged tree is the only source mounted, and a lookup is one hash probe plus one positional read into the pack holding the bytes. The check is `IsResourceIndexCurrent()`, which reads each pack's 72-byte header and compares the fold against the index's `PackListHash` - no pack is opened to decide. Anything the check rejects - no index, a stale one, an unreadable header - falls back to mounting each pack, which is always correct and costs only the rebuild; see [ResourcePackFormat.md](ResourcePackFormat.md). A tree that passes the check and then fails to open is not a fallback path but a real failure, and it throws: the index reader going wrong must be visible rather than quietly degrading to the slow view. The merged tree preserves the same precedence the separate mounts have, so the two views resolve every path identically.
+`GetClientResources()` can replace the installed pack suffix after the last `Embedded` entry with one
+`Resources.foindex` source. `Embedded` has no disk artifact, so it and the packs before it retain their
+configured mounts. The index is stored under the writable resource root but describes that suffix in the
+installed directory only. Writable overlay packs are mounted afterward in their original order; merging
+selected installed and writable copies by pack name would change precedence and lose files supplied only
+by the older installed copy. An absolute `ClientResources` path is mounted once even when `UserWritablePath`
+is set.
+
+`IsResourceIndexCurrent()` checks pack headers, the index header and its stored extent. Missing, stale or
+truncated indexes use ordinary pack mounts. If the header is current but parsing the index body fails,
+the client logs the error, deletes the disposable index and mounts the packs; the next updater rebuild
+recreates it. The index reader itself still rejects invalid data. A failure to mount an authoritative
+pack propagates normally. See [ResourcePackFormat.md](ResourcePackFormat.md).
 
 The bootstrap is deliberately outside all of this. `Application` builds its own two-pack `FileSystem` for the ImGui default effect - `Embedded` first, then `Core` - and never consults the merged tree, which does not exist that early. The second mount is an override point, not redundancy: a project ships its own `Core` and can replace what the bootstrap pack carries, so the two mounting the same bytes today is a property of the current content rather than a licence to drop one. The updater writes resource patches into that overlay, so the exact current files that pass validation also win runtime lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
 

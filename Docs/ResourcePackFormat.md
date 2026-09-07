@@ -145,7 +145,12 @@ It holds no payload of its own - every entry points into a `.fores`.
 It is built locally and is disposable. Nothing ships it, nothing downloads it, and deleting it costs one
 rebuild. A client keeps it as `Resources.foindex` beside the packs under its writable root, and
 `GetClientResources()` mounts it only when `IsResourceIndexCurrent()` says it still describes what is on disk,
-falling back to mounting each pack otherwise.
+falling back to mounting each pack otherwise. The client caches the installed pack suffix after the last
+`Embedded` entry (`GetResourceIndexPackNames`); Embedded lives in the executable and cannot be resolved as a
+`.fores`. Earlier configured packs and Embedded keep their individual mounts, and writable overlay packs
+are mounted afterward. This preserves directory precedence and files still supplied by installed packs,
+while avoiding repeated index parsing for the large installed content suffix. The generic builder can
+merge any explicitly supplied disk pack list.
 
 ### Header
 
@@ -200,13 +205,19 @@ pack changes its `PackHash`, and an added, removed or reordered pack changes the
 one 72-byte read per pack, not a mount.
 
 The index is rebuilt whenever it does not describe what is on disk: it is missing, it fails header validation,
-its `PackListHash` differs from the current pack list, or any pack it names is absent or carries a different
-hash. There is no partial update - the rebuild reads the packs and replaces the file, writing through a
-neighbouring temporary and renaming over the target, so an interrupted rebuild leaves the previous index
-intact. A rebuild never writes into a `.fores`.
+its stored extent is truncated, its `PackListHash` differs from the indexed pack list, or any indexed pack
+is absent or carries a different hash. There is no partial update - the rebuild reads the packs and replaces
+the file, writing through a
+neighbouring temporary before replacing the target. An interrupted promotion may leave the index absent;
+the next sync rebuilds it. A rebuild never writes into a `.fores`.
 
-A reader that meets a stale index throws rather than falling back, because a merged tree that half-describes
-the packs is worse than no tree: the caller's answer is to rebuild.
+The reader rejects unknown codecs, pool offsets and lengths outside the decoded buffer, and entry extents
+outside the owning pack's payload region before using them. Table-size arithmetic is widened before
+multiplication so the same checks hold on 32-bit targets.
+
+The reader throws on malformed or stale indexes. Client mounting catches this error at the disposable-cache
+boundary, logs it and removes the index, then mounts the authoritative packs. The updater can rebuild the
+missing index during its next rebuild pass; corruption in a pack itself remains a mount failure.
 
 ## Platforms
 

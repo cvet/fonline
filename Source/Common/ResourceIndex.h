@@ -83,13 +83,15 @@ auto ComputeResourceIndexPackListHash(const vector<ResourceIndexPack>& packs) no
 // Header only. A file that cannot be read or does not validate answers false, which the caller treats as a
 // rebuild trigger rather than an error
 auto ReadResourceIndexHeader(string_view path, ResourceIndexHeader& header) noexcept -> bool;
+// Only the suffix after Embedded can be replaced by one disk-backed mount without changing its precedence
+auto GetResourceIndexPackNames(const vector<string>& pack_names) -> vector<string>;
 // Resolves each name against the directories in priority order and reads the hash from each pack's header,
 // so deciding whether the index still holds costs one small read per pack instead of a mount
 auto ResolveResourceIndexPacks(const vector<string>& pack_dirs, const vector<string>& pack_names, vector<ResourceIndexPack>& packs, vector<string>& pack_paths) noexcept -> bool;
 // Whether the index on disk still describes exactly these packs, answered from headers alone so a caller can
 // decide to mount it without opening one
 auto IsResourceIndexCurrent(string_view path, const vector<string>& pack_dirs, const vector<string>& pack_names) noexcept -> bool;
-// Merges the packs in the given order, last one winning a shared path, and replaces the index atomically. The
+// Merges the packs in the given order, last one winning a shared path, and publishes the completed index. The
 // packs are read and released; nothing is ever written back into a `.fores`
 void BuildResourceIndex(string_view path, const vector<string>& pack_paths, const vector<ResourceIndexPack>& packs, ResourcePackWriteSettings settings = {});
 

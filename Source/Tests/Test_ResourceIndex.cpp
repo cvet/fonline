@@ -163,6 +163,55 @@ static void WriteStoredZip(string_view path, const vector<std::pair<string, stri
 
 TEST_CASE("ResourceIndex")
 {
+    SECTION("KeepsEmbeddedAndItsPredecessorsOutsideTheDiskIndex")
+    {
+        CHECK(GetResourceIndexPackNames({"Metadata", "Embedded", "Core", "Art"}) == vector<string> {"Core", "Art"});
+        CHECK(GetResourceIndexPackNames({"Core", "Art"}) == vector<string> {"Core", "Art"});
+        CHECK(GetResourceIndexPackNames({"Art", "Embedded"}).empty());
+    }
+
+    SECTION("RejectsMalformedIndexRecordsBeforeUsingTheirOffsets")
+    {
+        string dir = MakeTempIndexDir("index_record_bounds");
+        auto cleanup = scope_exit([&dir]() noexcept { (void)fs_remove_dir_tree(dir); });
+        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        vector<string> dirs {dir};
+        WritePack(dir, "Data", {{"File.txt", "payload"}});
+
+        vector<ResourceIndexPack> packs;
+        vector<string> pack_paths;
+        REQUIRE(ResolveResourceIndexPacks(dirs, {"Data"}, packs, pack_paths));
+        BuildResourceIndex(index_path, pack_paths, packs, ResourcePackWriteSettings {0, 100});
+        auto original = fs_read_file(index_path);
+        REQUIRE(original.has_value());
+        vector<uint8_t> bytes(original->begin(), original->end());
+
+        SECTION("PackNamePastPool")
+        {
+            span_write_uint32(bytes, RESOURCE_INDEX_HEADER_SIZE, std::numeric_limits<uint32_t>::max());
+        }
+        SECTION("PathPastPool")
+        {
+            span_write_uint32(bytes, RESOURCE_INDEX_HEADER_SIZE + RESOURCE_INDEX_PACK_SIZE, std::numeric_limits<uint32_t>::max());
+        }
+        SECTION("PayloadOutsidePack")
+        {
+            span_write_uint64(bytes, RESOURCE_INDEX_HEADER_SIZE + RESOURCE_INDEX_PACK_SIZE + 16, std::numeric_limits<uint64_t>::max());
+        }
+        SECTION("PayloadInsidePackHeader")
+        {
+            span_write_uint64(bytes, RESOURCE_INDEX_HEADER_SIZE + RESOURCE_INDEX_PACK_SIZE + 16, 0);
+        }
+        SECTION("UnknownIndexCodec")
+        {
+            span_write_uint32(bytes, 40, 2);
+            span_write_uint64(bytes, 64, HashResourceBytes(RESOURCE_PACK_HASH_SEED, {bytes.data(), 64}));
+        }
+
+        REQUIRE(fs_write_file(index_path, bytes));
+        CHECK_THROWS_AS(ResourceIndexSource(index_path, dirs), VerificationException);
+    }
+
     SECTION("MergesPacksWithTheLastOneWinning")
     {
         string dir = MakeTempIndexDir("index_merge");
@@ -414,6 +463,7 @@ TEST_CASE("ResourceIndex")
         string truncated = strex(dir).combine_path("Truncated.foindex").str();
         REQUIRE(fs_write_file(truncated, original->substr(0, original->size() - 4)));
         CHECK_THROWS(ResourceIndexSource {truncated, dirs});
+        CHECK_FALSE(IsResourceIndexCurrent(truncated, dirs, {"Data"}));
 
         CHECK(fs_remove_dir_tree(dir));
     }

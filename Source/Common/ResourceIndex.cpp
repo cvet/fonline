@@ -182,7 +182,27 @@ auto ReadResourceIndexHeader(string_view path, ResourceIndexHeader& header) noex
         return false;
     }
 
-    return ParseHeaderBytes(buf, header);
+    if (!ParseHeaderBytes(buf, header)) {
+        return false;
+    }
+
+    uint64_t file_size = file.get_size();
+    return header.IndexOffset >= RESOURCE_INDEX_HEADER_SIZE && header.IndexStoredSize <= file_size && header.IndexOffset <= file_size - header.IndexStoredSize && header.IndexCodec <= static_cast<uint32_t>(ResourcePackCodec::Deflate);
+}
+
+auto GetResourceIndexPackNames(const vector<string>& pack_names) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto first = pack_names.begin();
+
+    for (auto it = pack_names.begin(); it != pack_names.end(); ++it) {
+        if (*it == EMBEDDED_PACK_NAME) {
+            first = std::next(it);
+        }
+    }
+
+    return {first, pack_names.end()};
 }
 
 auto ResolveResourceIndexPacks(const vector<string>& pack_dirs, const vector<string>& pack_names, vector<ResourceIndexPack>& packs, vector<string>& pack_paths) noexcept -> bool
@@ -304,8 +324,7 @@ void BuildResourceIndex(string_view path, const vector<string>& pack_paths, cons
     array<uint8_t, RESOURCE_INDEX_HEADER_SIZE> header_bytes = {};
     BuildHeaderBytes(header, header_bytes);
 
-    // Written beside the target and renamed over it, so a reader never meets a half-written tree and an
-    // interrupted rebuild leaves the previous index in place
+    // The temporary keeps partial writes out of the live name; interruption during promotion requires a rebuild
     string temp_path = strex("{}.tmp", path).str();
 
     // A full disk throws mid-write and nothing revisits this name, so the partial file goes out with the throw
@@ -358,9 +377,11 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
     auto fits_in_file = [&](uint64_t offset, uint64_t size) { return offset >= RESOURCE_INDEX_HEADER_SIZE && size <= *file_size && offset <= *file_size - size; };
     FO_VERIFY_AND_THROW(fits_in_file(_header.IndexOffset, _header.IndexStoredSize), "Resource index extent is outside the file", _fileName);
 
-    size_t pack_table_size = numeric_cast<size_t>(_header.PackCount) * RESOURCE_INDEX_PACK_SIZE;
-    size_t entry_table_size = numeric_cast<size_t>(_header.EntryCount) * RESOURCE_INDEX_ENTRY_SIZE;
-    FO_VERIFY_AND_THROW(_header.IndexDecodedSize >= pack_table_size + entry_table_size, "Resource index is too small for what it declares", _fileName);
+    uint64_t tables_size = numeric_cast<uint64_t>(_header.PackCount) * RESOURCE_INDEX_PACK_SIZE + numeric_cast<uint64_t>(_header.EntryCount) * RESOURCE_INDEX_ENTRY_SIZE;
+    FO_VERIFY_AND_THROW(_header.IndexDecodedSize >= tables_size, "Resource index is too small for what it declares", _fileName);
+    size_t pool_begin = numeric_cast<size_t>(tables_size);
+    size_t pack_table_size = numeric_cast<size_t>(numeric_cast<uint64_t>(_header.PackCount) * RESOURCE_INDEX_PACK_SIZE);
+    FO_VERIFY_AND_THROW(_header.IndexCodec <= static_cast<uint32_t>(ResourcePackCodec::Deflate), "Resource index uses an unknown codec", _fileName);
 
     vector<uint8_t> stored_index(numeric_cast<size_t>(_header.IndexStoredSize));
     bool index_read = _file.read_at(_header.IndexOffset, stored_index);
@@ -381,13 +402,15 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
     _packWriteTimes.reserve(_header.PackCount);
     vector<ResourceIndexPack> packs;
     packs.reserve(_header.PackCount);
+    vector<ResourcePackHeader> pack_headers;
+    pack_headers.reserve(_header.PackCount);
 
     for (uint32_t i = 0; i < _header.PackCount; ++i) {
         size_t record_offset = numeric_cast<size_t>(i) * RESOURCE_INDEX_PACK_SIZE;
         uint32_t name_offset = span_read_uint32(_index, record_offset + PACK_OFFSET_NAME_OFFSET);
         uint32_t name_length = span_read_uint32(_index, record_offset + PACK_OFFSET_NAME_LENGTH);
-        FO_VERIFY_AND_THROW(name_length != 0 && name_offset >= pack_table_size + entry_table_size, "Resource index pack name is outside the pool", _fileName);
-        FO_VERIFY_AND_THROW(name_length <= _index.size() - name_offset, "Resource index pack name runs past the pool", _fileName);
+        FO_VERIFY_AND_THROW(name_length != 0 && name_offset >= pool_begin, "Resource index pack name is outside the pool", _fileName);
+        FO_VERIFY_AND_THROW(name_offset <= _index.size() && name_length <= _index.size() - name_offset, "Resource index pack name runs past the pool", _fileName);
 
         string pack_name {reinterpret_cast<const char*>(_index.data()) + name_offset, name_length};
         uint64_t pack_hash = span_read_uint64(_index, record_offset + PACK_OFFSET_PACK_HASH);
@@ -395,6 +418,7 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
         // Resolved the same way the build resolved it, and refused when the file on disk is not the one the
         // tree was merged from - a stale index must be rebuilt, never read through
         string resolved_path;
+        ResourcePackHeader resolved_header;
 
         for (const auto& dir : pack_dirs) {
             string candidate = strex(dir).combine_path(strex("{}.fores", pack_name)).str();
@@ -402,6 +426,7 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 
             if (ReadResourcePackHeader(candidate, pack_header) && pack_header.PackHash == pack_hash) {
                 resolved_path = candidate;
+                resolved_header = pack_header;
             }
         }
 
@@ -409,6 +434,9 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 
         disk_read_file pack_file {resolved_path};
         FO_VERIFY_AND_THROW(!!pack_file, "Can't open a pack the resource index names", resolved_path);
+        uint64_t pack_size = pack_file.get_size();
+        FO_VERIFY_AND_THROW(resolved_header.VersionMajor == RESOURCE_PACK_VERSION_MAJOR && resolved_header.DataOffset >= RESOURCE_PACK_HEADER_SIZE && resolved_header.DataSize <= pack_size && resolved_header.DataOffset <= pack_size - resolved_header.DataSize, "Resource index names a pack with an invalid data region", resolved_path);
+        pack_headers.emplace_back(resolved_header);
         _packFiles.emplace_back(std::move(pack_file));
         _packWriteTimes.emplace_back(fs_last_write_time(resolved_path));
         packs.emplace_back(ResourceIndexPack {std::move(pack_name), pack_hash});
@@ -426,8 +454,8 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
         FileEntry entry;
         uint32_t path_offset = span_read_uint32(_index, entry_offset + ENTRY_OFFSET_PATH_OFFSET);
         uint32_t path_length = span_read_uint32(_index, entry_offset + ENTRY_OFFSET_PATH_LENGTH);
-        FO_VERIFY_AND_THROW(path_length != 0 && path_offset >= pack_table_size + entry_table_size, "Resource index path is outside the pool", _fileName);
-        FO_VERIFY_AND_THROW(path_length <= _index.size() - path_offset, "Resource index path runs past the pool", _fileName);
+        FO_VERIFY_AND_THROW(path_length != 0 && path_offset >= pool_begin, "Resource index path is outside the pool", _fileName);
+        FO_VERIFY_AND_THROW(path_offset <= _index.size() && path_length <= _index.size() - path_offset, "Resource index path runs past the pool", _fileName);
 
         entry.Path = string_view {reinterpret_cast<const char*>(_index.data()) + path_offset, path_length};
         entry.PackIndex = span_read_uint32(_index, entry_offset + ENTRY_OFFSET_PACK_INDEX);
@@ -438,6 +466,8 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 
         FO_VERIFY_AND_THROW(entry.PackIndex < _header.PackCount, "Resource index entry names a pack that is not listed", _fileName, entry.Path);
         FO_VERIFY_AND_THROW(entry.Codec <= static_cast<uint32_t>(ResourcePackCodec::Deflate), "Resource index entry has an unknown codec", _fileName, entry.Path);
+        const ResourcePackHeader& pack_header = pack_headers[entry.PackIndex];
+        FO_VERIFY_AND_THROW(entry.StoredSize <= pack_header.DataSize && entry.DataOffset >= pack_header.DataOffset && entry.DataOffset - pack_header.DataOffset <= pack_header.DataSize - entry.StoredSize, "Resource index entry extent is outside its pack data", _fileName, entry.Path);
 
         if (entry.Codec == static_cast<uint32_t>(ResourcePackCodec::Stored)) {
             FO_VERIFY_AND_THROW(entry.StoredSize == entry.DecodedSize, "Stored resource index entry declares two sizes", _fileName, entry.Path);

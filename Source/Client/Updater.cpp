@@ -278,19 +278,22 @@ void Updater::RebuildResourceIndex() const
     try {
         vector<string> pack_dirs = GetClientPackDirs(*_settings);
         index_path = GetClientResourceIndexPath(*_settings);
+        vector<string> indexed_packs = GetResourceIndexPackNames(_settings->ClientResourceEntries);
 
-        if (IsResourceIndexCurrent(index_path, pack_dirs, _settings->ClientResourceEntries)) {
+        if (indexed_packs.empty() || IsResourceIndexCurrent(index_path, {pack_dirs.front()}, indexed_packs)) {
             return;
         }
 
         vector<ResourceIndexPack> packs;
         vector<string> pack_paths;
 
-        if (!ResolveResourceIndexPacks(pack_dirs, _settings->ClientResourceEntries, packs, pack_paths)) {
+        if (!ResolveResourceIndexPacks({pack_dirs.front()}, indexed_packs, packs, pack_paths)) {
             WriteLog("Client updater: can't resolve every pack, leaving the merged index to the next run");
             return;
         }
 
+        bool index_dir_ready = fs_create_directories(strex(index_path).extract_dir().str());
+        FO_VERIFY_AND_THROW(index_dir_ready, "Can't create the resource index directory", index_path);
         BuildResourceIndex(index_path, pack_paths, packs);
         WriteLog("Client updater: merged index rebuilt over {} packs", packs.size());
     }

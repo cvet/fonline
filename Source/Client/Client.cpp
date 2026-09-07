@@ -52,7 +52,11 @@ auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
     if (settings.Packaged && !settings.UserWritablePath.empty()) {
-        pack_dirs.emplace_back(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
+        string writable_dir = fs_make_writable_path(settings.UserWritablePath, settings.ClientResources);
+
+        if (writable_dir != pack_dirs.front()) {
+            pack_dirs.emplace_back(std::move(writable_dir));
+        }
     }
 
     return pack_dirs;
@@ -75,15 +79,36 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     FileSystem resources;
     vector<string> pack_dirs = GetClientPackDirs(settings);
     string index_path = GetClientResourceIndexPath(settings);
+    vector<string> indexed_packs = GetResourceIndexPackNames(settings.ClientResourceEntries);
+    bool index_mounted = false;
 
-    // One merged tree when the packs on disk are the ones it was built from. It is disposable, so anything
-    // the check rejects falls back to the per-pack mounts and costs only the rebuild
-    if (IsResourceIndexCurrent(index_path, pack_dirs, settings.ClientResourceEntries)) {
-        resources.AddCustomSource(SafeAlloc::MakeUnique<ResourceIndexSource>(index_path, pack_dirs));
-        return resources;
+    // Embedded keeps its configured position; writable mounts still override the entire installed layer
+    if (settings.Packaged && !indexed_packs.empty() && IsResourceIndexCurrent(index_path, {pack_dirs.front()}, indexed_packs)) {
+        unique_nptr<ResourceIndexSource> index;
+
+        try {
+            index = SafeAlloc::MakeUnique<ResourceIndexSource>(index_path, vector<string> {pack_dirs.front()});
+        }
+        catch (const std::exception& ex) {
+            WriteLog("Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
+            (void)fs_remove_file(index_path);
+        }
+
+        if (index) {
+            size_t prefix_size = settings.ClientResourceEntries.size() - indexed_packs.size();
+
+            for (size_t i = 0; i < prefix_size; ++i) {
+                resources.AddPackSource(pack_dirs.front(), settings.ClientResourceEntries[i]);
+            }
+
+            resources.AddCustomSource(index.take_not_null());
+            index_mounted = true;
+        }
     }
 
-    resources.AddPacksSource(pack_dirs.front(), settings.ClientResourceEntries);
+    if (!index_mounted) {
+        resources.AddPacksSource(pack_dirs.front(), settings.ClientResourceEntries);
+    }
 
     for (size_t i = 1; i < pack_dirs.size(); ++i) {
         for (const string& pack : settings.ClientResourceEntries) {

@@ -58,6 +58,7 @@
 #include "ModelSourceLoader.h"
 #include "ModelSprites.h"
 #include "PlayerView.h"
+#include "ResourceIndex.h"
 #include "SettingsStorage.h"
 #include "Test_BakerHelpers.h"
 #include "Test_DumpArtifacts.h"
@@ -2010,6 +2011,73 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
     EngineMetadata metadata {[] { }};
     metadata.RegisterSide(EngineSideKind::ClientSide);
     CHECK_NOTHROW(RegisterDynamicMetadata(&metadata, recovered_metadata));
+}
+
+TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
+{
+    if (!CanUseDirectoryBackedClientResourceFixtures()) {
+        SKIP("Directory-backed prefix and overlay fixtures require an unpackaged test binary");
+    }
+
+    string dir = MakeTempClientResourceDir("merged_index");
+    string install = strex("lf_client_index_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+    auto cleanup = scope_exit([&dir, &install]() noexcept {
+        (void)fs_remove_dir_tree(dir);
+        (void)fs_remove_dir_tree(install);
+    });
+    string writable = strex(dir).combine_path("Writable").str();
+    string overlay = fs_make_writable_path(writable, install);
+
+    REQUIRE(fs_write_file(strex(install).combine_path("Before/Shared.txt").str(), string_view {"before"}));
+    REQUIRE(fs_write_file(strex(install).combine_path("Embedded/Shared.txt").str(), string_view {"embedded"}));
+    REQUIRE(fs_write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"bootstrap"}));
+    REQUIRE(fs_write_file(strex(install).combine_path("Art/Shared.txt").str(), string_view {"art"}));
+    REQUIRE(fs_write_file(strex(overlay).combine_path("Before/Overlay.txt").str(), string_view {"writable"}));
+
+    {
+        ResourcePackWriter writer {strex(install).combine_path("Art.fores").str()};
+        string payload = "art";
+        writer.AddFile("Shared.txt", {reinterpret_cast<const uint8_t*>(payload.data()), payload.size()});
+        writer.AddFile("Overlay.txt", {reinterpret_cast<const uint8_t*>(payload.data()), payload.size()});
+        writer.Finish();
+    }
+
+    GlobalSettings settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Packaged, true);
+    BakerTests::OverrideSetting(settings.ClientResources, install);
+    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {"Before", "Embedded", "Art"});
+    settings.UserWritablePath = writable;
+
+    vector<ResourceIndexPack> packs;
+    vector<string> pack_paths;
+    vector<string> indexed_names = GetResourceIndexPackNames(settings.ClientResourceEntries);
+    REQUIRE(ResolveResourceIndexPacks({install}, indexed_names, packs, pack_paths));
+    string index_path = GetClientResourceIndexPath(settings);
+    REQUIRE(fs_create_directories(strex(index_path).extract_dir().str()));
+    BuildResourceIndex(index_path, pack_paths, packs, ResourcePackWriteSettings {0, 100});
+
+    SECTION("MountsTheIndexWithoutDroppingBootstrapOrOverlayFiles")
+    {
+        FileSystem resources = GetClientResources(settings);
+        CHECK(resources.ReadFileText("Shared.txt") == "art");
+        CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK(resources.ReadFileText("Overlay.txt") == "writable");
+        CHECK(resources.ReadFileHeader("Shared.txt").GetDataSource()->GetPackName() == index_path);
+    }
+
+    SECTION("DiscardsACorruptDerivedIndexAndMountsThePacks")
+    {
+        auto original = fs_read_file(index_path);
+        REQUIRE(original.has_value());
+        vector<uint8_t> bytes(original->begin(), original->end());
+        span_write_uint32(bytes, RESOURCE_INDEX_HEADER_SIZE + RESOURCE_INDEX_PACK_SIZE, std::numeric_limits<uint32_t>::max());
+        REQUIRE(fs_write_file(index_path, bytes));
+
+        FileSystem resources = GetClientResources(settings);
+        CHECK(resources.ReadFileText("Shared.txt") == "art");
+        CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK_FALSE(fs_exists(index_path));
+    }
 }
 
 TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
