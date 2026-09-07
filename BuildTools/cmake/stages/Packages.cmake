@@ -76,7 +76,7 @@ foreach(package ${FO_PACKAGES})
                     -source "${includeSourceGlob}"
                     -output "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}"
                     -target "${includeTargetPath}"
-                    -singlezip "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}.zip")
+                    -singlezip "${FO_OUTPUT_PATH}/${FO_DEV_NAME}-${package}/${FO_DEV_NAME}-${package}.zip")
         endforeach()
     endif()
 endforeach()

@@ -210,7 +210,8 @@ built tools are declared alongside `BINARY` parts with
 `INCLUDE <source-path-glob> <target-path-in-pack>`. The source glob is relative
 to `FO_OUTPUT_PATH`. After the ordinary binary parts are assembled, the generic
 packager replaces the included target tree and updates an existing `SingleZip`
-without duplicate or stale entries. This path is covered by
+at `<output>/<devname>-<package>/<devname>-<package>.zip`, alongside the staged
+package payload, without duplicate or stale entries. This path is covered by
 `BuildTools/tests/test_package_include.py`.
 
 Start here when platform package layout, package target naming, package script arguments, or package-time installer metadata changes.
