@@ -50,6 +50,13 @@ The executable target can also be invoked directly when you need Catch2 argument
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. When the run fails, the helper also echoes the captured output before failing, so a failure is diagnosable from the build output alone — on CI the log file never leaves the runner, and the exit code by itself does not say which test or assertion broke.
 The generated `RunUnitTests` target captures the complete test process output under the configured build tree's `Testing/` directory and prints the Catch2 success summary. On a real non-zero process exit it replays the captured output before failing. This keeps expected diagnostics from negative compiler/parser tests from being reclassified as build errors by native build frontends such as MSBuild.
 
+The `validate` workflow also runs a standalone `windows-file-io` job on a
+hosted Windows runner. CMake discovers Visual Studio and builds the diagnostic
+with both static and dynamic CRTs; this job has no engine or game build dependency.
+Its `windows-file-io` artifact retains the factual JSON, compiler logs, executables
+and available embedded manifests even when a probe fails. See the
+[filesystem diagnostic contract](Essentials.md#filesystem-compression-sockets-and-work-threads).
+
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
 ```bash

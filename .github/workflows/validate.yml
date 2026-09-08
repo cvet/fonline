@@ -67,6 +67,23 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
+  windows-file-io:
+    name: Probe native Windows file paths
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+    - name: Compare file open and directory enumeration with both CRTs
+      run: python BuildTools/probe_windows_file_io.py --output Workspace/windows-file-io.json
+    - uses: actions/upload-artifact@v6
+      if: always()
+      with:
+        name: windows-file-io
+        path: Workspace/windows-file-io*
+        if-no-files-found: error
   windows:
     name: Windows validate (${{ matrix.app }})
     runs-on: windows-2025
