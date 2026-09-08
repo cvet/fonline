@@ -58,6 +58,13 @@ The exact list depends on host OS and target platform, but common tools include:
 
 Prefer the embedding project's documented setup because it may pin specific SDK/tool versions.
 
+Linux managed builds compile position-independent objects and link executable targets as PIE.
+On x64, Mono's JIT requires low-address executable mappings; a large native `brk` heap in a
+non-PIE host can occupy that address range before the first managed call and make a small JIT
+allocation fail with `ENOMEM` despite available memory. Shared libraries retain PIC objects,
+including in MemorySanitizer configurations; the executable-only `-pie` option must not be
+applied to shared or module targets.
+
 ## Fetching through a mirror of your own
 
 `prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from

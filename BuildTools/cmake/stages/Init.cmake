@@ -470,17 +470,23 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	AddNativeOptimizationFlags()
 	AddLinkOptionsList(-rdynamic)
 
-	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
+	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY) OR FO_MANAGED_SCRIPTING)
 		AddCompileOptionsList(-fPIC)
 	else()
 		AddLinkOptionsList($<$<NOT:${expr_MemorySanitizerConfigs}>:-no-pie>)
+	endif()
+
+	if(FO_MANAGED_SCRIPTING)
+		# Mono's x64 JIT needs low-address mappings. A non-PIE brk heap can occupy that
+		# entire range before the first managed call when native allocations grow large
+		AddLinkOptionsList($<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-pie>)
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# PIC objects link into both shared libraries and PIE executables. Do not append -fPIE
 		# after the global -fPIC above: Clang uses the last relocation model and would make
 		# static Baker dependencies unsuitable for LF_BakerLib.so
-		if(NOT FO_BUILD_BAKER AND NOT (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
+		if(NOT FO_BUILD_BAKER AND NOT (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY) AND NOT FO_MANAGED_SCRIPTING)
 			AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fPIE>)
 		endif()
 		AddLinkOptionsList($<$<AND:${expr_MemorySanitizerConfigs},$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>>:-pie>)

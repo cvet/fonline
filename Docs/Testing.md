@@ -246,6 +246,35 @@ expected exception tests remain catchable.
 - `AnalyzeCodeCoverage`
 
 Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+Coverage-only configurations also provide the ordinary `<DevName>_ServerHeadless` and
+`<DevName>_Baker` executable targets. They link the same instrumented core libraries as
+`<DevName>_CodeCoverage`; no second configuration or production runtime rebuild is required.
+They do not enable the windowed applications or the baker plugin. Clang/GCC companion
+applications, including the managed script baker, register a `quick_exit` coverage flush on
+platforms where `ExitApp` uses it (Linux/Windows; Apple, Android, and Web retain `exit`),
+because the engine's ordinary shutdown bypasses the compiler runtime's `atexit` writer.
+
+For native LLVM coverage of script-driven integration tests, first run `RunCodeCoverage`,
+then run the embedding project's real integration tests with an absolute
+`LLVM_PROFILE_FILE=<coverage-output>/raw/integration-%m-%p.profraw`. Keep bake/setup profiles
+in a separate directory so setup execution cannot replace gameplay acceptance. Verify every
+integration process succeeds and produces its own nonempty profile; a unit-test profile
+alone does not prove that an integration process contributed. Use the original instrumented
+executables as coverage objects, even if the tests run byte-identical staged copies.
+
+Finally invoke `BuildTools/codecoverage.py report` directly with the existing
+`--workspace-root`, `--build-dir`, `--binary`, `--backend llvm`, and `--output-dir` arguments,
+adding `--object <instrumented-server>` for the integration executable. `--object` is repeatable
+for additional executables/shared libraries and supported by LLVM `report`/`full` only.
+The collector disables debuginfod lookup and rejects binary IDs missing from the supplied
+objects. LLVM merges profiles before exporting all supplied objects together; shared source lines
+remain a union, while uncovered lines in integration-only source files stay in the denominator.
+Do not invoke `GenerateCodeCoverageReport` or `AnalyzeCodeCoverage` after integration tests:
+the former depends on `RunCodeCoverage`, and both start a fresh unit collection that removes
+previous profiles. `full` likewise starts a fresh run; use `report` to preserve integration data.
+`BuildTools/tests/test_codecoverage_llvm_objects.py` exercises the collector with actual
+instrumented processes, including quick exit, shared source mapping, and failing inputs.
+
 The engine validation workflow uploads coverage through the pinned Codecov action
 release 7.0.0. Its composite action uses a Node 24 helper and preserves CLI signature
 verification, token authentication and failure propagation for upload errors.
