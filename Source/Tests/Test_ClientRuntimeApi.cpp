@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "ClientRuntimeApi.h"
+#include "ClientSessionMarker.h"
 #include "Settings.h"
 #include "Updater.h"
 
@@ -277,6 +278,57 @@ TEST_CASE("ClientRuntimeApi")
         CHECK_FALSE(ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name).has_value());
         CHECK(fs_remove_dir_tree(temp_dir));
     }
+}
+
+TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
+{
+    std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_session_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    string temp_dir = fs_path_to_string(base);
+    // An absolute path stands for the resolved writable root: fs_make_writable_path leaves it as given
+    string marker = MakeClientSessionMarkerPath(fs_resolve_path(strex(temp_dir).combine_path("client.session").str()));
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    // A run that never started leaves nothing to report
+    CHECK(!TakePreviousClientSession(marker).has_value());
+
+    BeginClientSession(marker);
+    REQUIRE(fs_exists(marker));
+
+    // Every stage the shutdown reaches replaces the one before it, so the file always states how far it got
+    SetClientShutdownStage(marker, ClientShutdownStage::MainLoopExited);
+    SetClientShutdownStage(marker, ClientShutdownStage::ShutdownHookDone);
+
+    auto interrupted = TakePreviousClientSession(marker);
+    REQUIRE(interrupted.has_value());
+    CHECK(interrupted->Stage == ClientShutdownStage::ShutdownHookDone);
+    CHECK(interrupted->StageName == "ShutdownHookDone");
+    CHECK(interrupted->BuildHash == string(FO_BUILD_HASH));
+    CHECK(!interrupted->StartedAt.empty());
+
+    // Taking it consumes it: the same interrupted run must not be reported by every later launch
+    CHECK(!fs_exists(marker));
+    CHECK(!TakePreviousClientSession(marker).has_value());
+
+    // A clean exit leaves nothing for the next run to find
+    BeginClientSession(marker);
+    SetClientShutdownStage(marker, ClientShutdownStage::RuntimeUnloaded);
+    EndClientSession(marker);
+    CHECK(!fs_exists(marker));
+    CHECK(!TakePreviousClientSession(marker).has_value());
+
+    // Staging a marker that was never begun writes nothing: the host records stages after the runtime
+    // returned, and by then a clean exit may already have cleared the file
+    SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
+    CHECK(!fs_exists(marker));
+
+    // An unreadable marker is consumed rather than reported for ever
+    REQUIRE(fs_write_file(marker, "not a marker"));
+    auto unparsable = TakePreviousClientSession(marker);
+    REQUIRE(unparsable.has_value());
+    CHECK(unparsable->Stage == ClientShutdownStage::Running);
+    CHECK(!fs_exists(marker));
+
+    CHECK(fs_remove_dir_tree(temp_dir));
 }
 
 FO_END_NAMESPACE

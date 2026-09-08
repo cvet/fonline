@@ -98,6 +98,12 @@ A typical client lifetime has these phases:
 
 When changing startup or shutdown behavior, keep script events, manager lifetime, entity registration, and network callbacks in sync; these paths are tightly coupled.
 
+**Terminal states report themselves.** A client that ends badly used to leave no trace we could read: the updater's fatal failures call `Application::ShowErrorMessage` directly, which never reaches the exception callback the crash reporter chains, and a shutdown that hangs is past the point where anything can be sent. Two things close that.
+
+`ShowUpdaterFailure` (`Source/Client/Updater.cpp`) reports every terminal `UpdaterResult` before it shows the dialog, carrying the result name, the binary update target, the platform and the build. `ServerMissingNativeUpdate` in particular means the server offered no native modules for this client's target — a distribution problem no player can fix by reinstalling, and one we would otherwise hear about only through a screenshot.
+
+`ClientSessionMarker` (`Source/Client/ClientSessionMarker.{h,cpp}`) records how far shutdown got. The runtime writes the marker once the application is initialized, updates it at each stage (`MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`), the host updates the two stages that happen after the runtime returns (`RuntimeReturned`, `RuntimeUnloaded`) and clears the file immediately before `ExitApp`. A marker still present on the next launch means the previous run never finished, and the runtime reports it — with the stage — once the crash reporter is alive. The file sits in the client's writable root, resolved from settings by the runtime and handed to the host through `ClientRuntimeResult::WritableRoot` — the host loads no settings and cannot resolve it, and a root the two halves disagree on records nothing. That root is the same one the cache, the resource overlay and the log use, so an installed client whose own directory is read-only still records its shutdown. `Source/Tests/Test_ClientRuntimeApi.cpp` pins the round trip.
+
 ## Server connection and message dispatch
 
 `ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) owns the client-side transport state. It hides whether the current connection is interthread, TCP sockets, or UDP-capable sockets.

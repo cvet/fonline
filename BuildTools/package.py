@@ -28,6 +28,10 @@ from managed_runtime_identity import runtime_identity
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
+# Mirrors CanSelfUpdateNativeModules() in Source/Client/Updater.cpp: only these clients fetch native
+# modules from the server. Android and iOS update through their store, Web through its bundle, so no
+# runtime payload is staged for them and none may be demanded of a server package
+SELF_UPDATING_CLIENT_PLATFORMS = ('Windows', 'Linux', 'macOS')
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
 INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
@@ -92,6 +96,8 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-target', dest='target', required=True, choices=TARGET_CHOICES, help='package target type')
 	parser.add_argument('-platform', dest='platform', required=True, choices=PLATFORM_CHOICES, help='platform type')
 	parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
+	parser.add_argument('-expect-client-runtime', dest='expect_client_runtime', action='append', default=[],
+		help='Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable')
 	# Windows: win32 win64 win32-win7 win64-win7
 	# Linux: x64
 	# Android: arm32 arm64 x86
@@ -778,6 +784,10 @@ class Packager:
 
 	def package_all_client_runtime_update_payloads(self) -> None:
 		copied_payloads: set[tuple[str, str]] = set()
+		# A variant that never reaches PlatformBinaries leaves its players with 'update the client
+		# manually' and nothing to act on, so every skip states its reason and the declared variants
+		# are verified before the package is called done
+		skipped_entries: list[str] = []
 		client_embedded_data = self.make_embedded_data_for_target('Client')
 		_, client_config_data = self.read_config_data('Client')
 
@@ -811,6 +821,19 @@ class Packager:
 				default_runtime_variant = BinaryVariant()
 				headless_runtime_variant = BinaryVariant(role='Headless')
 
+				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
+				if not os.path.isfile(build_hash_path):
+					skipped_entries.append(entry_name + ': no build hash file at ' + build_hash_path)
+					log('Client runtime update payload skipped', entry_name, 'no build hash file')
+					continue
+
+				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
+					build_hash = file.read().strip()
+				if build_hash != self.args.buildhash:
+					skipped_entries.append(entry_name + ': built from ' + build_hash + ', package is ' + self.args.buildhash)
+					log('Client runtime update payload skipped', entry_name, 'build hash', build_hash, '!= package build hash', self.args.buildhash)
+					continue
+
 				suffix = ''
 				variant_entry_name = entry_name[:-(len(entry_postfix) + 1)] if entry_postfix else entry_name
 				if variant_entry_name.endswith(('-Profiling_Total', '-Profiling_OnDemand', '-Profiling_Total-Debug', '-Profiling_OnDemand-Debug')):
@@ -836,6 +859,8 @@ class Packager:
 					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
 					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
 					if not os.path.isfile(runtime_input_path):
+						skipped_entries.append(entry_name + ': no runtime library at ' + runtime_input_path)
+						log('Client runtime update payload skipped', entry_name, 'no runtime library', runtime_input_path)
 						continue
 
 					build_hash_path = Path(entry_path) / (runtime_input_name + '.build-hash')
@@ -890,6 +915,40 @@ class Packager:
 							shutil.copy(host_pdb_input, host_pdb_out)
 
 					copied_payloads.add(payload_key)
+
+		self.verify_expected_client_runtime_payloads(copied_payloads, skipped_entries)
+
+	def verify_expected_client_runtime_payloads(self, copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> None:
+		# The server package declares which client variants it distributes. Without this check a variant
+		# that was not built, or was built from another commit, is dropped in silence and the first
+		# report comes from a player told to update the client by hand
+		for expectation in self.args.expect_client_runtime:
+			parts = expectation.split(':')
+			assert len(parts) in (2, 3), 'Expected client runtime must be Platform:arch[:postfix], got: ' + expectation
+			platform, arch = parts[0], parts[1]
+			postfix = parts[2] if len(parts) == 3 else ''
+
+			if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
+				continue
+
+			if platform == 'Android':
+				entry_arch = resolve_android_abi(arch)
+			elif platform == 'Windows':
+				entry_arch = buildtools.resolve_windows_binary_arch(arch)
+			else:
+				entry_arch = arch
+			binary_entry = 'Client-' + platform + '-' + entry_arch + ('-' + postfix if postfix else '')
+			target_name = self.build_runtime_update_target_name(binary_entry)
+			assert target_name is not None, 'Expected client runtime names an unknown platform/arch: ' + expectation
+
+			output_name = self.args.nicename + ('_' + postfix if postfix else '')
+			if (target_name, output_name) in copied_payloads:
+				continue
+
+			reasons = '; '.join(skipped_entries) if skipped_entries else 'no client binaries directory was found for it'
+			raise AssertionError(
+				'Client runtime payload missing from the server package: expected ' + output_name + ' under PlatformBinaries/' + target_name
+				+ ' (from ' + binary_entry + '). Clients of this variant would be told to update manually. Skipped entries: ' + reasons)
 
 	def merge_additional_config_data(self, *entries: str | None) -> str | None:
 		lines = [entry for entry in entries if entry]

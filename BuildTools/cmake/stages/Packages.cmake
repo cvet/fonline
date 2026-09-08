@@ -47,6 +47,25 @@ foreach(package ${FO_PACKAGES})
 
         AppendList(packageCommands -input "${FO_OUTPUT_PATH}")
 
+        # A server package distributes the client runtimes for every client variant of the same
+        # package. Declaring them here is what makes a variant that never got built fail the
+        # packaging instead of silently leaving those players unable to update
+        if("${target}" STREQUAL "Server")
+            foreach(siblingEntry ${Package_${package}_Parts})
+                StringReplace("," ";" siblingEntry ${siblingEntry})
+                ListGet(siblingEntry 0 siblingTarget)
+                ListGet(siblingEntry 1 siblingPlatform)
+                ListGet(siblingEntry 2 siblingArch)
+                ListGet(siblingEntry 5 siblingPostfix)
+
+                # Every client variant is declared; the packager drops the platforms that never fetch
+                # native modules, so that rule lives next to the rest of its platform knowledge
+                if("${siblingTarget}" STREQUAL "Client")
+                    AppendList(packageCommands -expect-client-runtime "${siblingPlatform}:${siblingArch}:${siblingPostfix}")
+                endif()
+            endforeach()
+        endif()
+
         if(NOT "${binaryOutputPostfix}" STREQUAL "")
             AppendList(packageCommands -binary-output-postfix "${binaryOutputPostfix}")
         endif()

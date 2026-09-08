@@ -35,6 +35,7 @@
 
 #include "Application.h"
 #include "Client.h"
+#include "ClientSessionMarker.h"
 #include "ClientRuntimeApi.h"
 #include "MetadataRegistration.h"
 #include "Settings.h"
@@ -61,6 +62,7 @@ struct ClientAppData
 FO_GLOBAL_DATA(ClientAppData, Data);
 
 static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result) noexcept;
+static void ReportPreviousUncleanSession(string_view marker_path) noexcept;
 static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
 
@@ -101,6 +103,26 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     return true;
 }
 
+// A marker left behind means the previous run never reached its clean exit. Reported, not thrown: this
+// run is healthy, and the exception object is what carries the stage into the crash reporter
+static void ReportPreviousUncleanSession(string_view marker_path) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto previous = TakePreviousClientSession(marker_path);
+
+    if (!previous.has_value()) {
+        return;
+    }
+
+    WriteLog("Client runtime DLL: previous session did not exit cleanly, stage {}, build {}, started {}", previous->StageName, previous->BuildHash, previous->StartedAt);
+
+    safe_call([&] {
+        ClientSessionException ex("Previous client session did not exit cleanly", previous->StageName, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
+        ReportExceptionAndContinue(ex);
+    });
+}
+
 static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -113,11 +135,21 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         runtime_result->RequestedCompatibilityVersion = nullptr;
     }
 
+    // Outside the try, because the stages recorded below it run after the catch as well. Resolved once
+    // settings are loaded, then handed to the host: only the runtime can answer where the client writes
+    string session_marker;
+
     try {
         WriteLog("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
         InitApp(args, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
         WriteLog("Client runtime DLL: compatibility version: {}", GetApp()->Settings.CompatibilityVersion);
+
+        // The crash reporter is alive only from here, and a run that hung on the way out could report
+        // nothing at the time. Whatever the previous run left behind is delivered now
+        session_marker = MakeClientSessionMarkerPath(GetApp()->Settings.UserWritablePath);
+        ReportPreviousUncleanSession(session_marker);
+        BeginClientSession(session_marker);
 
         auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
 
@@ -128,9 +160,11 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         }
 
         WriteLog("Client runtime DLL: main loop exited");
+        SetClientShutdownStage(session_marker, ClientShutdownStage::MainLoopExited);
 
         bool quit_success = GetApp()->GetRequestedQuitSuccess();
         CleanupClientApp();
+        SetClientShutdownStage(session_marker, ClientShutdownStage::ClientStopped);
 
         if (runtime_result) {
             if (Data->ReloadRequested) {
@@ -163,8 +197,11 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         ResetApp();
     }
 
+    SetClientShutdownStage(session_marker, ClientShutdownStage::ApplicationReset);
+
     WriteLog("Client runtime DLL: calling application shutdown hook");
     safe_call([] { ApplicationShutdownHook(); });
+    SetClientShutdownStage(session_marker, ClientShutdownStage::ShutdownHookDone);
 
     string_view result_kind = "none";
     bool result_success = false;

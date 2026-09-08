@@ -35,6 +35,7 @@
 
 #include "Application.h"
 #include "Client.h"
+#include "ClientSessionMarker.h"
 #include "ClientRuntimeApi.h"
 #include "MetadataRegistration.h"
 #include "Settings.h"
@@ -72,7 +73,7 @@ struct RequestedClientRuntime
 };
 
 static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool;
-static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<ClientRuntimeHostResult>;
+static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime, string_view session_marker) -> optional<ClientRuntimeHostResult>;
 static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool;
 static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult;
 static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResult;
@@ -86,6 +87,7 @@ static auto IsInstalledClientLayout() -> bool;
 static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>;
 static auto GetCurrentClientRuntimeFileName() -> string;
 static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result);
+static auto ResolveClientSessionMarkerPath(CommandLineArgs args) -> string;
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
@@ -110,6 +112,9 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    // The same settings the runtime will load, resolved by the same code, so both halves of the client
+    // record the session in one place without the runtime having to hand the path back
+    string session_marker = ResolveClientSessionMarkerPath(args);
     auto requested_runtime = ResolveRequestedClientRuntime(args);
     bool can_self_update = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
 
@@ -120,10 +125,13 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
     bool can_load_bundled_runtime = requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && can_self_update);
 
     if (can_load_bundled_runtime) {
-        auto loaded_runtime_result = RunClientFromLibrary(args, requested_runtime);
+        auto loaded_runtime_result = RunClientFromLibrary(args, requested_runtime, session_marker);
         auto loaded_result = RunClientRuntimeHostPass(loaded_runtime_result, PromoteStagedReloadForRestart);
 
         if (loaded_result.has_value()) {
+            // Cleared once nothing else can hang: a marker still on disk past this point is exactly
+            // what the next run reports
+            EndClientSession(session_marker);
             return loaded_result.value();
         }
 
@@ -142,10 +150,11 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
     auto embedded_result = RunClientRuntimeHostPass(embedded_runtime_result, PromoteStagedReloadForRestart);
 
     FO_VERIFY_AND_THROW(embedded_result.has_value(), "Embedded client runtime pass did not return a result");
+    EndClientSession(session_marker);
     return embedded_result.value();
 }
 
-static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<ClientRuntimeHostResult>
+static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime, string_view session_marker) -> optional<ClientRuntimeHostResult>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -175,15 +184,19 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
 
     WriteLog("Client runtime host: loaded DLL {}, runtime {}, build {}, compatibility {}, ABI {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat, exports.Metadata.HostAbiVersion);
 
-    auto unload_runtime = scope_exit([&]() noexcept {
-        WriteLog("Client runtime host: unloading DLL {}, runtime {}, build {}, compatibility {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat);
-        Platform::UnloadModule(runtime_module);
-        WriteLog("Client runtime host: unloaded DLL {}", requested_runtime.Path);
-    });
-
+    // Declared before the unload guard so it is still alive when that guard runs: destructors go in
+    // reverse, and the guard reads the writable root the runtime reported
     ClientRuntimeHostResult runtime_result {};
     runtime_result.Result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
     runtime_result.LoadedBuildHash = loaded_build_hash;
+
+    auto unload_runtime = scope_exit([&]() noexcept {
+        SetClientShutdownStage(session_marker, ClientShutdownStage::RuntimeReturned);
+        WriteLog("Client runtime host: unloading DLL {}, runtime {}, build {}, compatibility {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat);
+        Platform::UnloadModule(runtime_module);
+        WriteLog("Client runtime host: unloaded DLL {}", requested_runtime.Path);
+        SetClientShutdownStage(session_marker, ClientShutdownStage::RuntimeUnloaded);
+    });
     vector<char*> runtime_args(args.size());
 
     for (size_t index = 0; index < args.size(); ++index) {
@@ -653,6 +666,23 @@ static auto GetCurrentClientRuntimeFileName() -> string
     return strex("{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
 }
 
+static auto ResolveClientSessionMarkerPath(CommandLineArgs args) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string writable_root;
+
+    // Best effort: a client that cannot even read its settings has nothing to record, and the record is
+    // diagnostics rather than something the run depends on
+    safe_call([&] {
+        auto settings = LoadAppSettings(args);
+        ResolveUserWritablePath(settings);
+        writable_root = settings.UserWritablePath;
+    });
+
+    return MakeClientSessionMarkerPath(writable_root);
+}
+
 static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
 {
     FO_STACK_TRACE_ENTRY();
@@ -672,4 +702,5 @@ static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
     else {
         runtime_result.RequestedCompatibilityVersion.clear();
     }
+
 }

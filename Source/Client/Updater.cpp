@@ -64,6 +64,8 @@ static constexpr string_view ClientBinaryStagingSuffix = "-staging";
 static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
+static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view;
+static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept;
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
@@ -1172,11 +1174,51 @@ auto GetCurrentClientRuntimeLibraryName() -> string
     return string(FO_DEV_NAME);
 }
 
+static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (result) {
+    case UpdaterResult::ResourcesReady:
+        return "ResourcesReady";
+    case UpdaterResult::BinariesStaged:
+        return "BinariesStaged";
+    case UpdaterResult::PlatformUnsupported:
+        return "PlatformUnsupported";
+    case UpdaterResult::ServerMissingNativeUpdate:
+        return "ServerMissingNativeUpdate";
+    case UpdaterResult::UpdaterOutdated:
+        return "UpdaterOutdated";
+    case UpdaterResult::Failed:
+        return "Failed";
+    case UpdaterResult::MetadataMismatch:
+        return "MetadataMismatch";
+    default:
+        return "Unknown";
+    }
+}
+
+// Reported, not thrown: the caller still owns the dialog and the quit that follows. Constructing the
+// exception is what carries a fixed message, context values and a stack trace into the crash reporter
+static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    safe_call([&] {
+        ClientUpdateException ex("Client update did not complete", UpdaterResultToString(result), target_name, GetUpdatePlatformName(GetCurrentUpdatePlatform()), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+        ReportExceptionAndContinue(ex);
+    });
+}
+
 void ShowUpdaterFailure(UpdaterResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
     string_view target_name = GetCurrentBinaryUpdateTargetName();
+
+    // The dialog reaches one player; this reaches us. Every terminal failure here ends the client, and
+    // without a report the only trace is a screenshot the player chooses to send
+    ReportUpdaterFailure(result, target_name);
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:

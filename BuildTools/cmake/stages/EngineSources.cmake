@@ -241,6 +241,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/ClientEntity.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientRuntimeApi.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ClientRuntimeApi.h"
+    "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterView.cpp"

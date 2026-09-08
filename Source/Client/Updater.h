@@ -45,6 +45,8 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(ClientUpdateException);
+
 enum class UpdaterResult : uint8_t
 {
     ResourcesReady = 0, // Gameplay compat OK; resources are now in sync, caller may start the game

@@ -67,7 +67,7 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    _subKey = strex("Software\\FOnline\\{}", app_name).str();
+    _subKey = strex("Software\\{}\\{}", FO_NICE_NAME, app_name).str();
 
 #else
     // Keep tool settings out of the resource cache: a dedicated per-application directory in the user data base.
@@ -75,7 +75,7 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
     string base = Platform::GetUserDataBase();
 
     if (!base.empty()) {
-        string dir = strex(base).combine_path("FOnline").combine_path(app_name).str();
+        string dir = strex(base).combine_path(FO_NICE_NAME).combine_path(app_name).str();
         _cache = SafeAlloc::MakeUnique<CacheStorage>(dir);
     }
 #endif
