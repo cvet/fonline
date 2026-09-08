@@ -141,7 +141,7 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         std::error_code ec;
-        std::filesystem::remove_all(_path, ec);
+        (void)std::filesystem::remove_all(_path, ec);
     }
 
     [[nodiscard]] auto Path() const noexcept -> const std::filesystem::path& { return _path; }
@@ -629,11 +629,11 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public ident Id\n        {\n            get\n            {\n                return new ident(global::FOnline.Native.GetEntityId(_entityPtr));") != string::npos);
 
     std::error_code ec;
-    std::filesystem::remove(script_dir / "UnitProject.gen.csproj", ec);
+    (void)std::filesystem::remove(script_dir / "UnitProject.gen.csproj", ec);
     ec.clear();
-    std::filesystem::remove(script_dir / "ServerEnums.gen.cs", ec);
+    (void)std::filesystem::remove(script_dir / "ServerEnums.gen.cs", ec);
     ec.clear();
-    std::filesystem::remove(script_dir / "UnitProject.gen.sln", ec);
+    (void)std::filesystem::remove(script_dir / "UnitProject.gen.sln", ec);
     WriteTextFile(script_dir / "NoWorkObsolete.gen.cs", MakeManagedGeneratedCs("namespace Demo { public static class NoWorkObsoleteGeneratedCode {} }\n"));
 
     unordered_set<string> checked_output_paths;
