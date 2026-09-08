@@ -52,6 +52,9 @@
 #include <mongoc/mongoc-retry-backoff-generator-private.h>
 #include <mongoc/mongoc-retryable-cmd-private.h>
 #include <mongoc/mongoc-rpc-private.h>
+
+// (FOnline Patch) Compile protocol consistency checks with real symbols instead of an empty archive member
+#include <mongoc/mongoc-opcode.c>
 #include <mongoc/mongoc-scram-private.h>
 #include <mongoc/mongoc-set-private.h>
 #include <mongoc/mongoc-stream-private.h>

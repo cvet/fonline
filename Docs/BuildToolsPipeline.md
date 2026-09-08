@@ -86,6 +86,14 @@ provides all of its entry points. Glslang includes its SPIRV-Tools bridge only
 with the optimizer enabled. This avoids empty archive members on Apple;
 engine-owned source inventories remain unconditional.
 
+MongoDB selects its crypto, TLS, encryption and OS implementation sources from
+the enabled features. Its protocol flag/opcode consistency assertions remain
+mandatory parts of its RPC and cluster translation units. The checks produce
+no standalone empty archive members, including with Xcode's object libraries.
+`BuildTools/tests/test_mongoc_archive_inputs.py` checks enabled backend selection,
+client/BSON operations, and rejection of deliberately mismatched protocol flags
+and opcodes.
+
 `setup-mono` and CMake's ready marker include the normalized pinned `ThirdParty/dotnet-runtime` revision and
 runtime triplet. Changing the pin invalidates both the native build and published runtime. Publication validates
 the runtime output, SDK shared-framework directory and Mono core library before replacing the output tree,
