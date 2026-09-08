@@ -17,6 +17,7 @@ namespace FOnline
 
         private readonly Queue<Action> _continuations = new Queue<Action>();
         private readonly SynchronizationContext? _previous;
+        private readonly ScriptSynchronizationContext? _synchronousOwner;
         private bool _synchronous;
 
         private ScriptSynchronizationContext(bool synchronous)
@@ -35,6 +36,10 @@ namespace FOnline
                 {
                     SynchronousContexts.Add(this);
                 }
+                else if (_previous is ScriptSynchronizationContext parent)
+                {
+                    _synchronousOwner = parent.GetSynchronousOwner();
+                }
             }
 
             SetSynchronizationContext(this);
@@ -47,9 +52,15 @@ namespace FOnline
 
         internal static void VerifyCanYield()
         {
-            if (Current is ScriptSynchronizationContext context && context._synchronous)
+            if (Current is ScriptSynchronizationContext context)
             {
-                throw new InvalidOperationException("A synchronous script callback cannot yield an engine timer");
+                lock (SchedulerGate)
+                {
+                    if (context.GetSynchronousOwner() != null)
+                    {
+                        throw new InvalidOperationException("A synchronous script callback cannot yield an engine timer");
+                    }
+                }
             }
         }
 
@@ -62,10 +73,15 @@ namespace FOnline
                     return;
                 }
 
-                _continuations.Enqueue(() => callback(state));
+                ScriptSynchronizationContext? owner = GetSynchronousOwner();
 
-                if (!_synchronous)
+                if (owner != null)
                 {
+                    owner._continuations.Enqueue(() => Run(() => callback(state)));
+                }
+                else
+                {
+                    _continuations.Enqueue(() => callback(state));
                     ReadyContexts.Enqueue(this);
                 }
 
@@ -200,6 +216,16 @@ namespace FOnline
 
                 Monitor.PulseAll(SchedulerGate);
             }
+        }
+
+        private ScriptSynchronizationContext? GetSynchronousOwner()
+        {
+            if (_synchronous)
+            {
+                return this;
+            }
+
+            return _synchronousOwner != null && _synchronousOwner._synchronous ? _synchronousOwner : null;
         }
 
         private void Run(Action continuation)

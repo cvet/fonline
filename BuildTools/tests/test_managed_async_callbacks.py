@@ -32,6 +32,7 @@ internal static class Program
     private static int resumedThread;
     private static int unrelatedStage;
     private static bool runModule;
+    private static readonly ManualResetEventSlim NestedReturned = new();
 
 
     private static int Main(string[] args)
@@ -41,6 +42,11 @@ internal static class Program
         string kind = args[1];
         ownerThread = Environment.CurrentManagedThreadId;
         if (kind.StartsWith("guard-")) return CheckInitializationGuard(kind == "guard-reject");
+        if (kind == "nested-result-yield") return NestedResultYield();
+        if (kind == "nested-result-external") return NestedResultExternal();
+        if (kind == "nested-sync-in-async") return NestedSyncInAsync();
+        if (kind == "detached-child") return DetachedChild();
+        if (kind == "sync-shutdown") return SynchronousShutdown();
         if (kind == "late-result") return LateResult(boundary);
         if (kind == "nested") return Nested();
         if (kind == "shutdown") return Shutdown();
@@ -106,6 +112,135 @@ internal static class Program
         return 23;
     }
 
+
+    private static async Task YieldChild()
+    {
+        await Game.YieldAsync(0);
+    }
+
+    private static async Task<int> CaptureYieldChild()
+    {
+        Task child = Task.CompletedTask;
+        try
+        {
+            Native.InvokeCallback((Func<Task>)(() => child = YieldChild()), Array.Empty<object>());
+            Console.WriteLine("NESTED_YIELD_REGISTERED timers=" + Game.TimerCount);
+            await child;
+        }
+        catch (Exception ex)
+        {
+            if (ex.ToString().Contains("A synchronous script callback cannot yield an engine timer")) return 42;
+            throw;
+        }
+        return -1;
+    }
+
+    private static int NestedResultYield()
+    {
+        object? result = Native.InvokeCallback((Func<Task<int>>)CaptureYieldChild, Array.Empty<object>());
+        Console.WriteLine("NESTED_RESULT_YIELD result=" + result + " timers=" + Game.TimerCount);
+        return result is int value && value == 42 && Game.TimerCount == 0 ? 0 : 40;
+    }
+
+    private static async Task<int> CaptureExternalChild()
+    {
+        Task child = Task.CompletedTask;
+        Native.InvokeCallback((Func<Task>)(() => child = DelayedResult()), Array.Empty<object>());
+        if (child.IsCompleted) throw new Exception("nested child completed before release");
+        NestedReturned.Set();
+        await child;
+        return 42;
+    }
+
+    private static int NestedResultExternal()
+    {
+        Thread worker = new(() =>
+        {
+            if (!NestedReturned.Wait(5000)) return;
+            Resume.SetResult(true);
+            Console.WriteLine("NESTED_EXTERNAL_COMPLETED");
+        });
+        worker.Start();
+        object? result = Native.InvokeCallback((Func<Task<int>>)CaptureExternalChild, Array.Empty<object>());
+        worker.Join();
+        Console.WriteLine("NESTED_RESULT_EXTERNAL result=" + result + " owner=" + (resumedThread == ownerThread));
+        return result is int value && value == 42 && resumedThread == ownerThread && Game.GetGlobalExceptionCount() == 0 ? 0 : 41;
+    }
+
+    private static async Task OuterAsynchronousCallback()
+    {
+        object? result = Native.InvokeCallback((Func<Task<int>>)DelayedResult, Array.Empty<object>());
+        if (result is not int value || value != 42) throw new Exception("nested synchronous result lost");
+        await Second.Task;
+        stage = 3;
+        resumedThread = Environment.CurrentManagedThreadId;
+    }
+
+    private static int NestedSyncInAsync()
+    {
+        Thread worker = new(() =>
+        {
+            if (SpinWait.SpinUntil(() => Volatile.Read(ref stage) == 1, 5000)) Resume.SetResult(true);
+        });
+        worker.Start();
+        Native.InvokeCallback((Func<Task>)OuterAsynchronousCallback, Array.Empty<object>());
+        worker.Join();
+        bool returnedAfterSync = stage == 2;
+        Second.SetResult(true);
+        if (!PumpUntil(() => stage == 3)) return 42;
+        Console.WriteLine("NESTED_SYNC_IN_ASYNC returned=" + returnedAfterSync + " owner=" + (resumedThread == ownerThread));
+        return returnedAfterSync && resumedThread == ownerThread && Game.GetGlobalExceptionCount() == 0 ? 0 : 43;
+    }
+
+    private static async Task DeferredChild()
+    {
+        stage = 1;
+        await Resume.Task;
+        await Game.YieldAsync(0);
+        stage = 2;
+        resumedThread = Environment.CurrentManagedThreadId;
+    }
+
+    private static Task<int> DetachFromResult()
+    {
+        Native.InvokeCallback((Func<Task>)DeferredChild, Array.Empty<object>());
+        return Task.FromResult(42);
+    }
+
+    private static int DetachedChild()
+    {
+        object? result = Native.InvokeCallback((Func<Task<int>>)DetachFromResult, Array.Empty<object>());
+        Thread worker = new(() => Resume.SetResult(true));
+        worker.Start(); worker.Join();
+        bool deferred = stage == 1 && Game.TimerCount == 0;
+        Native.PumpContinuations();
+        if (Game.TimerCount != 1) return 44;
+        Game.FireTimer();
+        if (!PumpUntil(() => stage == 2)) return 45;
+        Console.WriteLine("DETACHED_CHILD result=" + result + " deferred=" + deferred + " owner=" + (resumedThread == ownerThread) + " timers=" + Game.TimerCount);
+        return result is int value && value == 42 && deferred && resumedThread == ownerThread && Game.GetGlobalExceptionCount() == 0 ? 0 : 46;
+    }
+
+    private static int SynchronousShutdown()
+    {
+        Thread worker = new(() =>
+        {
+            if (SpinWait.SpinUntil(() => Volatile.Read(ref stage) == 1, 5000)) Native.ShutdownContinuations();
+        });
+        worker.Start();
+        bool rejected = false;
+        try
+        {
+            Native.InvokeCallback((Func<Task<int>>)DelayedResult, Array.Empty<object>());
+        }
+        catch (ObjectDisposedException)
+        {
+            rejected = true;
+        }
+        worker.Join();
+        Console.WriteLine("SYNC_SHUTDOWN rejected=" + rejected + " stage=" + stage);
+        return rejected && stage == 1 ? 0 : 47;
+    }
 
     private static int CheckInitializationGuard(bool expectRejection)
     {
@@ -473,3 +608,16 @@ def test_initialize_early_rejects_async_void_before_registration(callback_probe,
     assert result.returncode == 0, result.stdout + result.stderr
     expected = "GUARD rejected=True registrations=0" if reject else "GUARD rejected=False registrations=2"
     assert expected in result.stdout
+
+
+@pytest.mark.parametrize("kind, marker", [
+    ("nested-result-yield", "NESTED_RESULT_YIELD result=42 timers=0"),
+    ("nested-result-external", "NESTED_RESULT_EXTERNAL result=42 owner=True"),
+    ("nested-sync-in-async", "NESTED_SYNC_IN_ASYNC returned=True owner=True"),
+    ("detached-child", "DETACHED_CHILD result=42 deferred=True owner=True timers=1"),
+    ("sync-shutdown", "SYNC_SHUTDOWN rejected=True stage=1"),
+])
+def test_nested_invocation_preserves_synchronous_owner(callback_probe, kind, marker):
+    result = run_probe(callback_probe, "callback", kind)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert marker in result.stdout
