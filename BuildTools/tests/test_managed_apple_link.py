@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -40,8 +41,8 @@ def test_managed_headless_apple_link_has_its_own_runtime_dependencies(
     (sdk / "usr/lib").mkdir(parents=True)
     commands = []
 
-    def run(command: list[str]) -> subprocess.CompletedProcess[str]:
-        result = subprocess.run(command, capture_output=True, text=True)
+    def run(command: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
         commands.append({"command": command, "returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr})
         return result
 
@@ -60,6 +61,8 @@ def test_managed_headless_apple_link_has_its_own_runtime_dependencies(
         "System/Library/Frameworks/Foundation.framework/Foundation": "void* NSTemporaryDirectory(void) { return (void*)0; }",
         "System/Library/Frameworks/CoreFoundation.framework/CoreFoundation": "long CFDictionaryGetCount(void* value) { return value != (void*)0; }",
     }
+    if runtime_os != "osx":
+        system_libraries["usr/lib/libicucore.dylib"] = "int u_toupper(int value) { return value; }"
     for index, (relative, body) in enumerate(system_libraries.items()):
         output = sdk / relative
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -84,6 +87,8 @@ def test_managed_headless_apple_link_has_its_own_runtime_dependencies(
         "mono-component-marshal-ilgen-stub-static": "int marshal_probe;",
         "minipal": "int minipal_probe;",
     }
+    if runtime_os != "osx":
+        archives["System.Globalization.Native"] += "\nextern int u_toupper(int); int casing_probe(void) { return u_toupper(97); }"
     for index, (name, body) in enumerate(archives.items()):
         obj = object_file(f"runtime_{index}", body)
         result = run([archiver, "rcs", str(runtime / f"lib/lib{name}.a"), str(obj)])
@@ -98,6 +103,9 @@ def test_managed_headless_apple_link_has_its_own_runtime_dependencies(
         "extern void* mono_probe(void);\nextern void* native_probe(void);\nextern long globalization_probe(void);\n"
         "long client_probe(void) { return (mono_probe() != (void*)0) + (native_probe() != (void*)0) + globalization_probe(); }\n"
     )
+    if runtime_os != "osx":
+        with (source / "client.c").open("a") as output:
+            output.write("extern int casing_probe(void); int client_casing_probe(void) { return casing_probe(); }\n")
     (source / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\nproject(ManagedAppleLink C)\n"
         f'include("{(BUILDTOOLS_DIR / "Init.cmake").as_posix()}")\n'
@@ -128,4 +136,12 @@ def test_managed_headless_apple_link_has_its_own_runtime_dependencies(
     assert not (build / "link-directories.txt").read_text()
     libraries = (build / "runtime-libraries.txt").read_text().splitlines()
     assert {str(runtime / f"lib/lib{name}.a") for name in archives}.issubset(libraries)
+    assert ("icucore" in libraries) == (runtime_os != "osx")
     assert not (runtime / "lib/Release").exists()
+    if runtime_os != "osx":
+        link_command = shlex.split((build / "CMakeFiles/ManagedHeadless.dir/link.txt").read_text())
+        link_command.remove("-licucore")
+        link_command[link_command.index("-o") + 1] = "missing-icu.dylib"
+        negative = run(link_command, cwd=build)
+        assert negative.returncode != 0 and "undefined symbol: u_toupper" in negative.stderr, negative.stdout + negative.stderr
+    (tmp_path / "commands.json").write_text(json.dumps(commands, indent=2))

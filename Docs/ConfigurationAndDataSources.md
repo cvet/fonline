@@ -77,6 +77,10 @@ The parser stores owned strings internally and returns `string_view` values from
 
 ## Runtime settings
 
+For an unpackaged executable without `ApplyConfig`, `LoadAppSettings` searches the current directory
+and its ancestors for `FO_MAIN_CONFIG`. The filesystem root is the final candidate; if no config is
+found there, startup reports `Config file not found` instead of revisiting the root indefinitely.
+
 `Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. `Settings.h` exposes:
 
 - `ResourcePackInfo` — name, input directories/files, include/exclude glob patterns, side flags, and baker list.

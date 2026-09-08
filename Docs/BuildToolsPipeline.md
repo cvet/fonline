@@ -172,6 +172,12 @@ to library search paths, although Mono publishes directly under the triplet's
 macOS arm64/x64, iOS arm64, and the x64 simulator with SDK symbol fixtures; installed
 Apple SDK builds remain the platform acceptance check.
 
+iOS device and simulator targets also link `icucore`: their hybrid globalization
+shim calls ICU directly, so the system library must follow the published static
+archive into the final executable. macOS uses the runtime's dynamic ICU lookup.
+The Apple link regression includes an iOS ICU symbol and verifies that removing
+the dependency makes the actual Mach-O link fail.
+
 Source-built Apple runtimes receive narrowly anchored patches to the pinned Mono
 sources before compilation. JIT-only locals and tables follow the existing JIT
 guards; fixed EventPipe array bounds use C integer constant expressions. Native
@@ -182,6 +188,16 @@ call's integer conversion. CMake policies CMP0156 and CMP0179, when available,
 deduplicate static archives for linkers that support rescanning them. Diagnostics
 remain enabled. These patches preserve the published runtime layout and are
 idempotent; an unexpected upstream source shape stops setup for review.
+
+iOS source builds preserve signed collation option masks when calling the native
+helpers and initialize the sendfile fallback's buffer bound before cleanup jumps.
+Vector I/O checks API availability at runtime before using `preadv` and `pwritev`
+(iOS 14 or newer); older supported systems use the existing `pread`/`pwrite`
+loops. This preserves the deployment minimum, positional offsets, partial I/O,
+and interrupted-call retry behavior. The regression compiles availability
+annotations for device and simulator targets, then executes both paths with
+real file I/O on the host. The `_apple_sources` cache marker covers
+these corrections together with the common Apple source patches.
 
 Android source builds also match the native elliptic-curve diagnostic's variadic
 format to an explicit unsigned enum conversion. The source patch preserves the
@@ -198,6 +214,13 @@ clobber preserve Mono's full ordering; other architectures retain their upstream
 implementation. Regression coverage compiles the Android x86 PIC path and, when
 a Linux i386 loader and libc are installed, executes concurrent operations at
 both four- and eight-byte alignment.
+
+Android and Apple source patches have separate `BUILT` and `READY` marker
+suffixes, synchronized between `buildtools.py` and the CMake runtime target.
+Existing caches with the older suffix rebuild and republish those runtimes once;
+the cloned source is retained. Linux, Windows, and browser marker keys stay
+unchanged. Change the affected platform's suffix when its patch contract changes,
+so a ready cache cannot bypass new source edits.
 
 Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
 interop generator's dependency path from a completed runtime checkout. Deleting that checkout then

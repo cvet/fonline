@@ -14,7 +14,7 @@ import buildtools  # noqa: E402
 
 
 # The upstream anchors retain their exact spelling; the runtime probe executes
-# the definitions inserted by the production patch, including its CAS loop.
+# the definitions inserted by the production patch, including its CAS loop
 UPSTREAM = """#if !defined (BROKEN_64BIT_ATOMICS_INTRINSIC)
 static inline gint64 mono_atomic_cas_i64(volatile gint64 *dest, gint64 exch, gint64 comp)
 {

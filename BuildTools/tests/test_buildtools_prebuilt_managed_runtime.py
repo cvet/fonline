@@ -76,8 +76,90 @@ def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
     # the two places leaves runners serving a runtime built the old way
     stage = (BUILDTOOLS_DIR / "cmake" / "stages" / "ThirdParty.cmake").read_text(encoding="utf-8")
 
-    for suffix in (_buildtools.MONO_BROWSER_SUBSET_MARKER_SUFFIX, _buildtools.MONO_SUBSET_MARKER_SUFFIX):
+    for suffix in (
+        _buildtools.MONO_BROWSER_SUBSET_MARKER_SUFFIX,
+        _buildtools.MONO_ANDROID_SOURCE_MARKER_SUFFIX,
+        _buildtools.MONO_APPLE_SOURCE_MARKER_SUFFIX,
+        _buildtools.MONO_SUBSET_MARKER_SUFFIX,
+    ):
         assert f"READY_${{FO_MONO_RUNTIME_VERSION}}_${{FO_MONO_TRIPLET}}{suffix})" in stage, suffix
+
+
+@pytest.mark.skipif(shutil.which("cmake") is None, reason="CMake is required")
+@pytest.mark.parametrize("target,flags", [
+    ("linux", []), ("windows", []), ("browser", ["FO_WEB"]), ("android", ["FO_ANDROID"]),
+    ("osx", ["FO_MAC"]), ("ios", ["FO_IOS"]), ("iossimulator", ["FO_IOS"]),
+])
+def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, flags: list[str]) -> None:
+    stage = (BUILDTOOLS_DIR / "cmake/stages/ThirdParty.cmake").read_text(encoding="utf-8")
+    start = stage.index("    if(FO_WEB)\n", stage.index("# Managed scripting runtime (Mono)"))
+    end = stage.index("    endif()", start) + len("    endif()")
+    script = tmp_path / "marker.cmake"
+    script.write_text(
+        "macro(SetValue name)\n  set(${name} ${ARGN})\nendmacro()\n"
+        "set(FO_MONO_RUNTIME_VERSION v10.0.11)\n"
+        f"set(FO_MONO_TRIPLET {target}.x64.Release)\n"
+        + "".join(f"set({flag} ON)\n" for flag in flags)
+        + stage[start:end]
+        + f'\nfile(WRITE "{(tmp_path / "marker.txt").as_posix()}" "${{FO_MONO_READY_MARKER}}")\n',
+        encoding="utf-8",
+    )
+    result = subprocess.run([shutil.which("cmake"), "-P", str(script)], capture_output=True, text=True)
+    assert result.returncode == 0 and not result.stderr, result.stdout + result.stderr
+    assert (tmp_path / "marker.txt").read_text() == f"READY_v10.0.11_{target}.x64.Release{_buildtools.resolve_mono_marker_suffix(target)}"
+
+
+@pytest.mark.parametrize("target", ["android", "osx", "ios", "iossimulator"])
+def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, target: str) -> None:
+    env = setup_mono_env(tmp_path, "")
+    workspace = Path(env["FO_WORKSPACE"])
+    runtime = workspace / "runtime"
+    runtime.mkdir(parents=True)
+    triplet = f"{target}.x64.Release"
+    (workspace / "CLONED_v10.0.11").touch()
+    for phase in ("BUILT", "READY"):
+        (workspace / f"{phase}_v10.0.11_{triplet}{_buildtools.MONO_SUBSET_MARKER_SUFFIX}").touch()
+    published = make_published_tree(workspace / "output/mono", triplet)
+    archive = published / "lib/libmonosgen-2.0.a"
+    calls = []
+
+    def reject_clone(*args, **kwargs):
+        raise AssertionError("source patch invalidation must retain the cloned source")
+
+    def build(_command, path, **kwargs):
+        calls.append("build")
+        assert path == runtime and kwargs["target_os"] == target
+        out = runtime / "artifacts/obj/mono" / triplet / "out/lib"
+        out.mkdir(parents=True)
+        (out / "libmonosgen-2.0.a").write_text("patched runtime", encoding="utf-8")
+        framework = runtime / ".dotnet/shared/Microsoft.NETCore.App/10.0.11"
+        framework.mkdir(parents=True)
+        (framework / "System.Runtime.dll").write_text("framework", encoding="utf-8")
+        corelib = runtime / "artifacts/bin/mono" / triplet / "IL/System.Private.CoreLib.dll"
+        corelib.parent.mkdir(parents=True)
+        corelib.write_text("patched corelib", encoding="utf-8")
+
+    monkeypatch.setattr(_buildtools, "clone_git_repo", reject_clone)
+    for name in ("patch_runtime_zlib_warning_level", "patch_runtime_apple_sources", "patch_runtime_ios_sources", "patch_runtime_android_sources", "patch_runtime_android_x86_atomics"):
+        monkeypatch.setattr(_buildtools, name, lambda path, name=name: calls.append(name))
+    monkeypatch.setattr(_buildtools, "run_runtime_build", build)
+    monkeypatch.setattr(_buildtools, "copy_interop_shim_libraries", lambda *args: calls.append("publish"))
+    resolve = _buildtools.resolve_mono_marker_suffix
+    with monkeypatch.context() as old_markers:
+        old_markers.setattr(_buildtools, "resolve_mono_marker_suffix", lambda _target: _buildtools.MONO_SUBSET_MARKER_SUFFIX)
+        _buildtools.setup_mono(target, "x64", "Release", env)
+    assert calls == [] and archive.read_text() == "archive"
+    _buildtools.setup_mono(target, "x64", "Release", env)
+    assert archive.read_text() == "patched runtime"
+    expected_patch = ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics"] if target == "android" else ["patch_runtime_apple_sources"]
+    if target in ("ios", "iossimulator"):
+        expected_patch.append("patch_runtime_ios_sources")
+    assert calls == ["patch_runtime_zlib_warning_level", *expected_patch, "build", "publish"]
+    for phase in ("BUILT", "READY"):
+        assert (workspace / f"{phase}_v10.0.11_{triplet}{resolve(target)}").is_file()
+    calls.clear()
+    _buildtools.setup_mono(target, "x64", "Release", env)
+    assert calls == []
 
 
 def test_mono_whole_program_optimization_is_dropped(tmp_path: Path) -> None:

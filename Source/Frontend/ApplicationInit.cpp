@@ -257,7 +257,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
                     break;
                 }
                 else {
-                    if (dir.has_parent_path()) {
+                    if (dir.has_parent_path() && dir.parent_path() != dir) {
                         dir = dir.parent_path();
                     }
                     else {

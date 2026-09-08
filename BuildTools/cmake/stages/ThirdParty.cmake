@@ -755,10 +755,13 @@ if(FO_MANAGED_SCRIPTING)
     file(STRINGS "${FO_ENGINE_ROOT}/ThirdParty/dotnet-runtime" FO_MONO_RUNTIME_VERSION LIMIT_COUNT 1)
     string(REPLACE "/" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
     string(REPLACE "\\" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
-    # Keep in sync with the marker suffixes in buildtools.py; only the browser subset carries the
-    # JavaScript glue, so only it is invalidated when that glue is added
+    # Keep in sync with buildtools.py so subset and source patches invalidate only their platforms
     if(FO_WEB)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue)
+    elseif(FO_ANDROID)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_android_sources)
+    elseif(FO_MAC OR FO_IOS)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_apple_sources)
     else()
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
     endif()
@@ -891,6 +894,10 @@ if(FO_MANAGED_SCRIPTING)
     elseif(FO_MAC OR FO_IOS)
         # Static Mono and its PAL shims require these even when no SDL frontend is linked
         AppendList(FO_COMMON_SYSTEM_LIBS "-framework Foundation" "-framework CoreFoundation" objc)
+
+        if(FO_IOS)
+            AppendList(FO_COMMON_SYSTEM_LIBS icucore)
+        endif()
     elseif(FO_WEB)
         # The JS flavour, not the wasm one: the engine builds with -sDISABLE_EXCEPTION_CATCHING=0 rather
         # than -fwasm-exceptions, and the wasm flavour then wants an unwinder the link does not have.

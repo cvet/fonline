@@ -2350,9 +2350,11 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
 
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
-# subset changes: an unchanged marker leaves an already-prepared host on a runtime built the old way
+# subset or source patches change: an unchanged marker leaves a prepared host on the old runtime
 MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
+MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
+MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources'
 
 
 def resolve_mono_runtime_subset(os_name: str) -> str:
@@ -2365,7 +2367,16 @@ def resolve_mono_runtime_subset(os_name: str) -> str:
 
 
 def resolve_mono_marker_suffix(os_name: str) -> str:
-	return MONO_BROWSER_SUBSET_MARKER_SUFFIX if os_name == 'browser' else MONO_SUBSET_MARKER_SUFFIX
+	if os_name == 'browser':
+		return MONO_BROWSER_SUBSET_MARKER_SUFFIX
+
+	if os_name == 'android':
+		return MONO_ANDROID_SOURCE_MARKER_SUFFIX
+
+	if os_name in ('osx', 'ios', 'iossimulator'):
+		return MONO_APPLE_SOURCE_MARKER_SUFFIX
+
+	return MONO_SUBSET_MARKER_SUFFIX
 
 
 PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
@@ -2515,6 +2526,69 @@ def patch_runtime_apple_sources(runtime_root: Path) -> None:
 
 		path.write_text(text, encoding='utf-8')
 		log('Patched Apple runtime source:', path)
+
+
+def patch_runtime_ios_sources(runtime_root: Path) -> None:
+	path = runtime_root / 'src/native/libs/System.Globalization.Native/pal_collation.m'
+	text = path.read_text(encoding='utf-8')
+	marker = '// (FOnline Patch) Collation helpers consume signed option masks without an enum round trip'
+	if marker not in text:
+		if text.count('(CompareOptions)comparisonOptions') != 9 or text.count('(CompareOptions)options') != 2:
+			raise SystemExit(f'Cannot patch iOS collation option casts, expected anchors not found in {path}')
+
+		text = text.replace('(CompareOptions)comparisonOptions', 'comparisonOptions').replace('(CompareOptions)options', 'options')
+		text = text.replace('        if (!IsComparisonOptionSupported(', '        ' + marker + '\n        if (!IsComparisonOptionSupported(')
+		path.write_text(text, encoding='utf-8')
+		log('Patched iOS collation option casts:', path)
+
+	path = runtime_root / 'src/native/libs/System.Native/pal_networking.c'
+	text = path.read_text(encoding='utf-8')
+	original = '    size_t bufferLength = Min((size_t)count, 80 * 1024 * sizeof(char));'
+	replacement = '    // (FOnline Patch) The buffer bound is initialized before any jump to error'
+	if replacement not in text:
+		anchor = '    char* buffer = NULL;\n\n    // Save the original input file position'
+		if text.count(anchor) != 1 or text.count(original) != 1:
+			raise SystemExit(f'Cannot patch iOS sendfile cleanup, unique anchors not found in {path}')
+
+		text = text.replace(original, replacement, 1)
+		text = text.replace(anchor, '    char* buffer = NULL;\n' + original + '\n\n    // Save the original input file position', 1)
+		path.write_text(text, encoding='utf-8')
+		log('Patched iOS sendfile cleanup:', path)
+
+	path = runtime_root / 'src/native/libs/System.Native/pal_io.c'
+	text = path.read_text(encoding='utf-8')
+	marker = '// (FOnline Patch) SDK declarations do not guarantee availability on the running Apple OS'
+	for operation in ('Read', 'Write'):
+		signature = f'int64_t SystemNative_P{operation}V('
+		if text.count(signature) != 1:
+			raise SystemExit(f'Cannot patch iOS vector I/O, unique signature not found in {path}: {signature}')
+
+		start = text.index(signature)
+		end = text.index('\n}\n', start) + len('\n}\n')
+		original = text[start:end]
+		if marker in original:
+			continue
+
+		condition = f'#if HAVE_P{operation.upper()}V && !defined(TARGET_WASM)'
+		parts = original.split(condition, 1)
+		if len(parts) != 2 or parts[1].count('\n#else\n') != 1 or parts[1].count('\n#endif\n') != 1:
+			raise SystemExit(f'Cannot patch iOS vector I/O, expected native/fallback branches not found in {path}: {signature}')
+
+		branch, remainder = parts[1].split('\n#else\n', 1)
+		fallback, footer = remainder.split('\n#endif\n', 1)
+		branch_comment, branch = branch.split('\n', 1)
+		indent = lambda block: '\n'.join('    ' + line if line else '' for line in block.split('\n'))
+		replacement = (parts[0] + condition + branch_comment + '\n'
+			'#if defined(TARGET_APPLE)\n    ' + marker + '\n'
+			'    if (__builtin_available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *))\n#endif\n'
+			'    {\n' + indent(branch) + '\n    }\n'
+			'#if defined(TARGET_APPLE)\n    else\n#endif\n#endif\n'
+			f'#if !HAVE_P{operation.upper()}V || defined(TARGET_WASM) || defined(TARGET_APPLE)\n'
+			'    {\n' + indent(fallback) + '\n    }\n#endif\n' + footer)
+		text = text.replace(original, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched iOS vector I/O availability:', path)
 
 
 def patch_runtime_android_x86_atomics(runtime_root: Path) -> None:
@@ -2723,6 +2797,9 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		if os_name in ('osx', 'ios', 'iossimulator'):
 			patch_runtime_apple_sources(runtime_root)
+
+		if os_name in ('ios', 'iossimulator'):
+			patch_runtime_ios_sources(runtime_root)
 
 		if os_name == 'android':
 			patch_runtime_android_sources(runtime_root)
