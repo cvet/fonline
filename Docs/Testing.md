@@ -95,6 +95,12 @@ compiled only with `FO_ANGELSCRIPT_SCRIPTING`; `Test_ManagedScriptBaker` is comp
 target without re-enabling the retired runtime backend. Ordinary unit validators retain the full
 AngelScript backend boundary.
 
+`BakerTests::TestRig` keeps sources and outputs in memory and leaves `BakeOutput` empty, so map/proto
+bakers cannot load unrelated managed assemblies or particle caches from the process working directory.
+Tests that exercise disk output, assembly packaging or dependency caches must explicitly set a private
+bake directory; this includes dry-run managed project generation. The MapBaker regression plants a
+foreign assembly under the working directory and verifies isolation plus explicit disk opt-in.
+
 `Test_ServerEntityLifetime` runs for every scripting-backend configuration. Its two `[lifetime]`
 cases start a real server using in-memory metadata/prototypes and retain native owners of
 Critter, Item, Map, Location and Player. One releases those owners on another joined thread

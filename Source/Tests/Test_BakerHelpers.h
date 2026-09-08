@@ -498,6 +498,9 @@ namespace BakerTests
             Settings(true)
         {
             Settings.ApplyDefaultSettings();
+
+            // In-memory fixtures must not load assemblies or caches from the working directory
+            OverrideSetting(Settings.BakeOutput, string {});
             OverrideSetting(Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
             // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
             // as the compile-time ones; the gate-test re-overrides this on its own rig

@@ -350,6 +350,7 @@ TEST_CASE("ManagedScriptBaker")
 
     TestRig rig;
     rig.Settings.ApplyConfigAtPath("ManagedRoot.fomain", temp_dir.Path().string());
+    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
     OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
     OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {"ManagedSupport/CoreScripts", "Scripts/Managed"});
     OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, "Scripts/Managed");
@@ -722,6 +723,7 @@ TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisi
     ScopedCurrentPath current_path(temp_dir.Path());
 
     TestRig rig;
+    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
     OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
     OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
     OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
@@ -765,6 +767,7 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     ScopedEnvVar msbuild_root {"FO_FAKE_MSBUILD_ROOT", fake_msbuild_root.string()};
 
     TestRig rig;
+    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
     OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
     OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
     OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
