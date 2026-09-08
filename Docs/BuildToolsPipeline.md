@@ -165,6 +165,17 @@ to library search paths, although Mono publishes directly under the triplet's
 macOS arm64/x64, iOS arm64, and the x64 simulator with SDK symbol fixtures; installed
 Apple SDK builds remain the platform acceptance check.
 
+Source-built Apple runtimes receive narrowly anchored patches to the pinned Mono
+sources before compilation. JIT-only locals and tables follow the existing JIT
+guards; fixed EventPipe array bounds use C integer constant expressions. Native
+PAL conversions are explicit and cleanup jumps do not cross initialized locals.
+The `getdomainname` configure probe checks the function's parameter type directly,
+so its result does not depend on whether the compiler diagnoses a particular
+call's integer conversion. CMake policies CMP0156 and CMP0179, when available,
+deduplicate static archives for linkers that support rescanning them. Diagnostics
+remain enabled. These patches preserve the published runtime layout and are
+idempotent; an unexpected upstream source shape stops setup for review.
+
 Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
 interop generator's dependency path from a completed runtime checkout. Deleting that checkout then
 makes another build fail with CS8784 even though its own `Microsoft.Interop.SourceGeneration.dll`

@@ -1661,7 +1661,6 @@ def prepare_msan_libcxx_workspace(env: Mapping[str, str]) -> None:
 		'-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind',
 		'-DLLVM_USE_SANITIZER=Memory',
 		'-DLLVM_ENABLE_ASSERTIONS=OFF',
-		'-DLLVM_INCLUDE_BENCHMARKS=OFF',
 		'-DLLVM_INCLUDE_DOCS=OFF',
 		'-DLLVM_INCLUDE_TESTS=OFF',
 		'-DLIBCXX_ENABLE_SHARED=ON',
@@ -2425,6 +2424,82 @@ def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
 	log('Patched', path, '- preserved the zlib-ng warning level')
 
 
+def patch_runtime_apple_sources(runtime_root: Path) -> None:
+	patches = {
+		'src/mono/CMakeLists.txt': (
+			('cmake_minimum_required(VERSION 3.20)\n',
+			 'cmake_minimum_required(VERSION 3.20)\n\n'
+			 '# (FOnline Patch) Apple linkers rescan static archives; emit each dependency once\n'
+			 'if(POLICY CMP0156)\n  cmake_policy(SET CMP0156 NEW)\nendif()\n'
+			 'if(POLICY CMP0179)\n  cmake_policy(SET CMP0179 NEW)\nendif()\n'),
+		),
+		'src/mono/mono/mini/mini-generic-sharing.c': (
+			('\tgint16 pindex;\n\tint args_start;\n\tstatic GHashTable *cache;',
+			 '\tgint16 pindex;\n#ifndef DISABLE_JIT // (FOnline Patch) The argument offset is only consumed by JIT emission\n\tint args_start;\n#endif\n\tstatic GHashTable *cache;'),
+			('\targs_start = pindex;\n\tif (sig->hasthis)\n\t\targs_start ++;',
+			 '#ifndef DISABLE_JIT\n\targs_start = pindex;\n\tif (sig->hasthis)\n\t\targs_start ++;\n#endif'),
+		),
+		'src/mono/mono/mini/mini-arm64.c': (
+			('static char opcode_simd_status[OP_LAST - OP_START];',
+			 '#ifndef DISABLE_JIT // (FOnline Patch) The SIMD opcode table is only used by the JIT\nstatic char opcode_simd_status[OP_LAST - OP_START];\n#endif'),
+		),
+		'src/native/eventpipe/ep-session.c': (
+			('const int max_static_io_capacity = 30;',
+			 'enum { max_static_io_capacity = 30 }; // (FOnline Patch) A C array bound requires an integer constant expression'),
+			('const int extension_activity_ids_max_len = 2 * (1 + EP_ACTIVITY_ID_SIZE);',
+			 'enum { extension_activity_ids_max_len = 2 * (1 + EP_ACTIVITY_ID_SIZE) }; // (FOnline Patch) Keep the activity buffer a fixed-size C array'),
+		),
+		'src/native/libs/System.Native/pal_interfaceaddresses.c': (
+			('uint8_t* buffer = malloc(byteCount);',
+			 'uint8_t* buffer = (uint8_t*)malloc(byteCount); // (FOnline Patch) Explicit C/C++ pointer conversion'),
+			('        buffer = malloc(byteCount);',
+			 '        buffer = (uint8_t*)malloc(byteCount); // (FOnline Patch) Explicit C/C++ pointer conversion'),
+		),
+		'src/native/libs/System.Native/pal_process.c': (
+			('getGroupsBuffer = malloc(sizeof(uint32_t) * Int32ToSizeT(groupsLength));',
+			 'getGroupsBuffer = (uint32_t*)malloc(sizeof(uint32_t) * Int32ToSizeT(groupsLength)); // (FOnline Patch) Explicit C/C++ pointer conversion'),
+		),
+		'src/native/libs/System.Native/pal_signal.c': (
+			('*posixSignal = signalCode;',
+			 '*posixSignal = (PosixSignal)signalCode; // (FOnline Patch) Preserve the unrecognized native signal in the enum storage'),
+		),
+		'src/native/libs/System.Net.Security.Native/pal_gssapi.c': (
+			("char* ptrSlash = memchr(inputName, '/', inputNameLen);",
+			 "char* ptrSlash = (char*)memchr(inputName, '/', inputNameLen); // (FOnline Patch) Explicit C/C++ pointer conversion"),
+		),
+		'src/native/libs/System.Native/pal_networking.c': (
+			('    struct ifaddrs* addrs = NULL;\n#endif',
+			 '    struct ifaddrs* addrs = NULL;\n'
+			 '    // (FOnline Patch) Declare cleanup-scope locals before any jump to cleanup\n'
+			 '    char name[_POSIX_HOST_NAME_MAX];\n    bool includeIPv4Loopback = true;\n    bool includeIPv6Loopback = true;\n#endif'),
+			('    char name[_POSIX_HOST_NAME_MAX];\n    result = gethostname((char*)name, _POSIX_HOST_NAME_MAX);\n\n    bool includeIPv4Loopback = true;\n    bool includeIPv6Loopback = true;',
+			 '    // (FOnline Patch) Loopback flags are initialized before cleanup jumps\n    result = gethostname((char*)name, _POSIX_HOST_NAME_MAX);'),
+		),
+		'src/native/libs/configure.cmake': (
+			('        int dummy = getdomainname(name, namelen);',
+			 '        // (FOnline Patch) Compare the parameter type; a constant length can hide narrowing\n'
+			 '        int (*getdomainname_sizet)(char*, size_t) = getdomainname;\n'
+			 '        int dummy = getdomainname_sizet(name, namelen);'),
+		),
+	}
+
+	for relative, replacements in patches.items():
+		path = runtime_root / relative
+		text = path.read_text(encoding='utf-8')
+
+		for anchor, replacement in replacements:
+			if replacement in text:
+				continue
+
+			if text.count(anchor) != 1:
+				raise SystemExit(f'Cannot patch the Apple runtime source, unique anchor not found in {path}: {anchor.strip()}')
+
+			text = text.replace(anchor, replacement, 1)
+
+		path.write_text(text, encoding='utf-8')
+		log('Patched Apple runtime source:', path)
+
+
 def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
 	native_root = runtime_root / 'artifacts' / 'bin' / 'native'
 	candidates = sorted(native_root.glob(f'*-{os_name}-{config}-{arch}'))
@@ -2542,6 +2617,10 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	def build_runtime() -> None:
 		patch_runtime_zlib_warning_level(runtime_root)
+
+		if os_name in ('osx', 'ios', 'iossimulator'):
+			patch_runtime_apple_sources(runtime_root)
+
 		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root, target_os=os_name)
 
 	run_marker_step(built_marker, 'Build runtime', build_runtime)

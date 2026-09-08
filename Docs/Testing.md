@@ -233,6 +233,9 @@ expected exception tests remain catchable.
 - `AnalyzeCodeCoverage`
 
 Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+The engine validation workflow uploads coverage through the pinned Codecov action
+release 7.0.0. Its composite action uses a Node 24 helper and preserves CLI signature
+verification, token authentication and failure propagation for upload errors.
 `BuildTools/codecoverage.py` reports first-party production engine sources under
 `Engine/Source/`; it excludes `Source/Tests/`, `ThirdParty/`,
 `GeneratedSource/`, and `Applications/` from the denominator. See
