@@ -357,7 +357,7 @@ For a **`Mutable`** nullable handle property the **setter** parameter is registe
 The engine no longer bundles an AngelScript CoreScripts library. Instead, the AngelScript backend registers the
 conventional variadic `verify(cond, message, ...)` macro programmatically in every fresh preprocessing context:
 
-```
+```angelscript
 #define verify(cond, ...) if (!(cond)) throw(__VA_ARGS__)
 ```
 

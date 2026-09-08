@@ -25,7 +25,7 @@ def termination_probe(request, tmp_path_factory):
     declaration = next(line for line in header.splitlines() if line.startswith("[[noreturn]] extern void ExitApp("))
     start = source.index("void ExitApp(bool success) noexcept\n{")
     end = source.index("\n}\n", start) + len("\n}\n")
-    # Compile the exact canonical declaration/body. Platform macros only select its existing CRT branch.
+    # Compile the exact canonical declaration/body. Platform macros only select its existing CRT branch
     probe = "\n".join([
         "#include <chrono>", "#include <cstdint>", "#include <cstdio>", "#include <cstdlib>",
         "#include <cstring>", "#include <thread>",
