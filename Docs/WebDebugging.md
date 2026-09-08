@@ -64,6 +64,35 @@ Current package layout:
 
 `package-web-debug` currently packages with `-pack Raw+WebServer`, which is why each output directory includes a generated `web-server.py` used by the launch tasks.
 
+### Resource delivery bundles
+
+`package.py` preloads resource archives and the managed class library in deterministic bundles of at
+most 256 MiB of input data each. An individual file larger than that limit fails packaging. The files
+retain their virtual filesystem paths and payload bytes; only the delivery containers change to
+`Resources-0.data`, `Resources-1.data`, and so on. `Resources.js` remains the single script entrypoint
+and combines the standalone Emscripten loaders, each with its own startup dependency. The client
+cannot finish startup until every bundle has loaded; a failed download keeps its dependency pending.
+
+The limit bounds each download and contiguous allocation, not total browser memory. LZ4 retains all
+compressed bundles in JavaScript memory and decompresses blocks on demand. Splitting neither reduces
+the total asset payload nor guarantees a lower peak when downloads overlap.
+
+The standalone packager's `--quiet` option acknowledges only its `FORCE_FILESYSTEM` reminder:
+[Init.cmake](../BuildTools/cmake/stages/Init.cmake) already requires `-sFORCE_FILESYSTEM=1` and `-sLZ4=1`. Other diagnostics remain
+on inherited stderr, and any nonzero packager exit fails the package. No `--from-emcc` mode or stderr
+filter is used. File lists travel through UTF-8 response files so Windows command-line limits do not
+truncate a bundle.
+
+The focused regression uses the actual pinned tool and its generated loaders:
+
+```bash
+FO_TEST_EMSCRIPTEN_ROOT="$FO_EMSDK/upstream/emscripten" python3 -m pytest ../BuildTools/tests/test_package_web_resources.py
+```
+
+It covers payload hashes, paths containing spaces and `@`, bundle boundaries, delayed/missing bundle
+dependencies, and preserved warnings/errors. The loader fixture supplies filesystem callbacks; a
+packaging change also needs an embedding project's real browser startup and gameplay validation.
+
 ### VS Code launch
 
 Current `../../.vscode/launch.json` entries are:

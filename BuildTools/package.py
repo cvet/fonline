@@ -8,6 +8,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import stat
 import struct
@@ -55,6 +56,7 @@ RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
 RUNTIME_COMPANION_DIRECTORIES = ('ManagedRuntime',)
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
+WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -488,6 +490,51 @@ def include_package_files(
 
 	log('Include', source_glob, '=>', target_root)
 	update_package_include_single_zip(single_zip_path, package_root, target_root, compress_level)
+
+
+def package_web_resources(
+	output_path: Path,
+	file_packager_path: Path,
+	preload_files: Sequence[tuple[Path, str]],
+	max_bundle_size: int = WEB_ASSET_BUNDLE_LIMIT,
+) -> None:
+	assert 0 < max_bundle_size <= WEB_ASSET_BUNDLE_LIMIT, 'Invalid Web asset bundle limit'
+	assert preload_files, 'Web package requires preloaded files'
+	bundles: list[list[tuple[Path, str]]] = [[]]
+	bundle_size = 0
+	seen_paths: set[str] = set()
+	for source_path, virtual_path in sorted(preload_files, key=lambda entry: entry[1]):
+		assert virtual_path not in seen_paths, f'Duplicate Web asset path: {virtual_path}'
+		seen_paths.add(virtual_path)
+		file_size = source_path.stat().st_size
+		assert file_size <= max_bundle_size, f'Web asset exceeds bundle limit: {virtual_path} ({file_size} bytes)'
+		if bundles[-1] and bundle_size + file_size > max_bundle_size:
+			bundles.append([])
+			bundle_size = 0
+		bundles[-1].append((source_path, virtual_path))
+		bundle_size += file_size
+
+	with tempfile.TemporaryDirectory(prefix='web-preload-', dir=output_path) as temporary_path:
+		loader_path = Path(temporary_path) / 'Resources.js'
+		with loader_path.open('w', encoding='utf-8', newline='\n') as loader:
+			for index, files in enumerate(bundles):
+				bundle_name = f'Resources-{index}'
+				bundle_loader_path = Path(temporary_path) / (bundle_name + '.js')
+				arguments = [(output_path / (bundle_name + '.data')).as_posix(), '--preload']
+				arguments.extend(source.as_posix().replace('@', '@@') + '@' + target.replace('@', '@@') for source, target in files)
+				# Init.cmake guarantees FORCE_FILESYSTEM; --quiet acknowledges only that standalone reminder
+				arguments.extend(['--js-output=' + bundle_loader_path.as_posix(), '--lz4', '--quiet'])
+				response_path = Path(temporary_path) / (bundle_name + '.rsp.utf-8')
+				response_path.write_text(shlex.join(arguments), encoding='utf-8')
+				log('Package Web asset bundle', bundle_name, f'({len(files)} files, {sum(source.stat().st_size for source, _ in files)} bytes)')
+				result = subprocess.call(
+					[sys.executable or 'python3', str(file_packager_path), '@' + str(response_path)],
+					env={**os.environ, 'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': str(WEB_ASSET_BUNDLE_LIMIT // (1024 * 1024))},
+				)
+				assert result == 0, f'Emscripten tools/file_packager.py failed for {bundle_name}: {result}'
+				loader.write(bundle_loader_path.read_text(encoding='utf-8'))
+				loader.write('\n')
+		loader_path.replace(output_path / 'Resources.js')
 
 
 def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
@@ -1233,23 +1280,16 @@ class Packager:
 		managed_runtime_lib_path = os.path.join(bin_path, 'ManagedRuntime', 'lib', 'netcoreapp')
 		assert os.path.isdir(managed_runtime_lib_path), f'Managed runtime assemblies not found: {managed_runtime_lib_path}'
 
-		packager_args = [
-			sys.executable if sys.executable else 'python3',
-			file_packager_path,
-			os.path.join(self.target_output_path, 'Resources.data').replace('\\', '/'),
-			'--preload',
-			os.path.join(self.target_output_path, self.client_res_dir).replace('\\', '/') + '@' + self.client_res_dir,
-			'--preload',
-			managed_runtime_lib_path.replace('\\', '/') + '@ManagedRuntime/lib/netcoreapp',
-			'--js-output=' + os.path.join(self.target_output_path, 'Resources.js').replace('\\', '/'),
-			'--lz4',
+		preload_roots = [
+			(Path(self.target_output_path) / self.client_res_dir, self.client_res_dir),
+			(Path(managed_runtime_lib_path), 'ManagedRuntime/lib/netcoreapp'),
 		]
-		log('Call emscripten packager:')
-		for arg in packager_args:
-			log('-', arg)
-
-		result = subprocess.call(packager_args)
-		assert result == 0, 'Emscripten tools/file_packager.py failed'
+		preload_files = [
+			(file_path, '/' + virtual_root + '/' + file_path.relative_to(root).as_posix())
+			for root, virtual_root in preload_roots
+			for file_path in root.rglob('*') if file_path.is_file()
+		]
+		package_web_resources(Path(self.target_output_path), Path(file_packager_path), preload_files)
 
 		shutil.rmtree(os.path.join(self.target_output_path, self.client_res_dir), True)
 
