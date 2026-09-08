@@ -95,6 +95,13 @@ compiled only with `FO_ANGELSCRIPT_SCRIPTING`; `Test_ManagedScriptBaker` is comp
 target without re-enabling the retired runtime backend. Ordinary unit validators retain the full
 AngelScript backend boundary.
 
+`Test_ServerEntityLifetime` runs for every scripting-backend configuration. Its two `[lifetime]`
+cases start a real server using in-memory metadata/prototypes and retain native owners of
+Critter, Item, Map, Location and Player. One releases those owners on another joined thread
+after shutdown and destruction of the server; the other releases them before shutdown to
+exercise normal destructor invariants. ASan runs detect stale engine access during deferred
+release. The fixture uses no embedding-project assemblies, resource packs or database files.
+
 ### Managed core-script regression tests
 
 With a .NET 10 SDK, run the offline console harness:
@@ -501,7 +508,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **103** `Test_*.cpp` suites.
+Current count: **108** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -580,6 +587,7 @@ Current count: **103** `Test_*.cpp` suites.
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEntityLifetime.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
@@ -603,6 +611,7 @@ Current count: **103** `Test_*.cpp` suites.
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_ImageWriter.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`

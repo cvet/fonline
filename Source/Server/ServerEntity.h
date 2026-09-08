@@ -98,6 +98,8 @@ protected:
 
     auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
 
+    [[nodiscard]] auto IsEngineShutdownInProgress() const noexcept -> bool { return _engineShutdownInProgress->load(); }
+
     ptr<ServerEngine> _engine;
 
 private:
@@ -105,6 +107,8 @@ private:
     void SetPersistent(bool persistent) noexcept; // Invoked by EntityManager
     void SetExplicitlyPersistent(bool explicitly_persistent); // Invoked by EntityManager
 
+    // Native refs held by managed wrappers can survive their engine; teardown must not dereference _engine
+    shared_ptr<const std::atomic_bool> _engineShutdownInProgress;
     ident_t _id;
     bool _initCalled {};
     bool _isPersistent {};

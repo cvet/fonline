@@ -682,7 +682,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 
         // Worker pool
         int32_t worker_threads = Settings->SingleThreadedLogic ? 1 : Settings->WorkerThreads;
-        _workerPool.emplace("ServerPool", worker_threads, &_shutdownInProgress, /*start_paused*/ true);
+        _workerPool.emplace("ServerPool", worker_threads, _shutdownInProgress.as_ptr(), /*start_paused*/ true);
 
         TimeEventManager::DispatcherHooks hooks;
         hooks.Schedule = [this](refcount_ptr<Entity> entity, uint32_t event_id, timespan delay) { OnTimeEventSchedule(std::move(entity), event_id, delay); };
@@ -1104,7 +1104,7 @@ auto ServerEngine::IsConnectionAdmissionOpen() const -> bool
 
     scoped_lock locker {_connectionAdmissionLocker};
 
-    return _connectionAdmissionOpen && _started && !_shutdownInProgress;
+    return _connectionAdmissionOpen && _started && !IsShutdownInProgress();
 }
 
 // Zero until the pool is created in InitMetadataJob, so an aborted startup reports no workers rather than faulting
@@ -1125,7 +1125,7 @@ void ServerEngine::Shutdown()
 
     WriteLog("Stop server");
 
-    _shutdownInProgress.store(true, std::memory_order_release);
+    _shutdownInProgress->store(true, std::memory_order_release);
 
     // Shutdown runs on a caller thread with no SyncContext, so one is stood up here to satisfy the invariant
     // that any entity touch happens under a primary context
@@ -1393,7 +1393,7 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
 
     scoped_lock quiescence_locker {_quiescenceLocker};
 
-    if (!_started || _shutdownInProgress) {
+    if (!_started || IsShutdownInProgress()) {
         throw ServerQuiescenceException("Server quiescence requires a running server");
     }
     if (GameTime.IsPaused()) {
@@ -2141,7 +2141,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 
     unique_lock admission_locker {_connectionAdmissionLocker};
 
-    if (!_connectionAdmissionOpen || !_started || _shutdownInProgress) {
+    if (!_connectionAdmissionOpen || !_started || IsShutdownInProgress()) {
         net_connection->Disconnect();
         return;
     }
