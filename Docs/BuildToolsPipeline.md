@@ -98,6 +98,13 @@ archives even when no client target is built. Client builds also retain the
 static CRT; builds with neither client nor managed scripting retain `/MD` or
 `/MDd`. Existing Mono caches already use this contract and need no rebuild.
 
+Nested runtime builds remove Xcode's legacy `TARGETNAME` environment variable before invoking
+MSBuild. MSBuild treats environment property names case-insensitively and otherwise names every
+task and generator output `SetupManagedRuntime.dll`, causing duplicate publish files and failed
+generator loads. Other Xcode SDK and toolchain variables remain available. The BuildTools
+regression publishes two actual SDK projects under a poisoned target name and verifies distinct
+assemblies; successful runtime caches retain their identity.
+
 Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
 target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
 zlib-ng retains its own `/W3`, additional diagnostics and `/WX`; this prevents
@@ -151,7 +158,7 @@ Creates custom targets for script compilation and resource baking. Current respo
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
 - Managed script generation and compilation through the `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`, wired to the `CompileManagedScripts` target) when Managed scripting is enabled, with `SetupManagedRuntime` preparing the Mono runtime, Mono corelib, and managed .NET runtime assemblies under the CMake build tree before managed-linked applications are built. It also builds and publishes the interop shims (`libs.native`) and `libminipal`, which CoreLib reaches the OS through on every non-Windows platform — `Interop.Sys` is `libSystem.Native`, and the first managed call already needs it. The shims are linked statically and resolved at run time from a generated entry-point table (`BuildTools/generate_pinvoke_table.py`) served through a Mono dl fallback, because Windows and WebAssembly cannot load them as shared libraries. For the browser the subset additionally carries `mono.wasmruntime`, whose JavaScript glue is published beside the runtime and passed to the Emscripten link as `--pre-js` / `--js-library` / `--extern-post-js`.
-  The runtime is built with the **host's** toolchain, so `SetupManagedRuntime` follows the host and not the target: `buildtools.py setup-mono` runs through `setup-mono.cmd` on Windows and `setup-mono.sh` everywhere else. One target is out of reach that way — `dotnet/runtime` has no Windows cross-target, so a non-Windows host cannot produce `windows.<arch>.<config>` at all. For that case the runtime is built once on Windows and handed over: point **`FO_MANAGED_RUNTIME_PREBUILT`** at a directory holding published `output/mono/<triplet>` trees (or at a single triplet's tree) and `setup-mono` adopts it in place of the source build, writing the same ready marker. Without it, a Windows target on a non-Windows host is refused at configure time with the reason rather than failing later inside `dotnet/runtime`.
+  The runtime is built with the **host's** toolchain, so `SetupManagedRuntime` follows the host and not the target: CMake invokes `buildtools.py setup-mono` with its configured Python interpreter; that helper invokes the runtime's `build.cmd` on Windows and `build.sh` elsewhere. One target is out of reach that way — `dotnet/runtime` has no Windows cross-target, so a non-Windows host cannot produce `windows.<arch>.<config>` at all. For that case the runtime is built once on Windows and handed over: point **`FO_MANAGED_RUNTIME_PREBUILT`** at a directory holding published `output/mono/<triplet>` trees (or at a single triplet's tree) and `setup-mono` adopts it in place of the source build, writing the same ready marker. Without it, a Windows target on a non-Windows host is refused at configure time with the reason rather than failing later inside `dotnet/runtime`.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.

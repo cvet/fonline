@@ -965,10 +965,12 @@ def resolve_visual_studio_2022_dev_cmd() -> Path | None:
 
 
 def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
+	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
+	# unrelated runtime projects the same output filename, breaking generators and task publishing
+	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in ('makeflags', 'mflags', 'targetname')}
 	if os.name != 'nt':
 		# The outer CMake build passes down a make jobserver its nested make cannot join, and the browser
 		# subset turns that into a hard error, so the inherited job-control flags are dropped here
-		build_env = {name: value for name, value in os.environ.items() if name not in ('MAKEFLAGS', 'MFLAGS')}
 		run(['./build.sh', *build_args], cwd=runtime_root, env=build_env)
 		return
 
@@ -990,7 +992,7 @@ def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
 	# leading "." from its search path when NoDefaultCurrentDirectoryInExePath is set in the environment
 	# (a common Windows hardening setting), and the bare name then fails with "not recognized as an
 	# internal or external command" even though cwd is correct
-	run(['cmd', '/d', '/c', str(wrapper), *build_args], cwd=runtime_root)
+	run(['cmd', '/d', '/c', str(wrapper), *build_args], cwd=runtime_root, env=build_env)
 
 
 def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
