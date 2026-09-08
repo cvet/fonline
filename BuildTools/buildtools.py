@@ -965,9 +965,10 @@ def resolve_visual_studio_2022_dev_cmd() -> Path | None:
 
 
 def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
-	# A shared Roslyn server can keep generator dependency paths from another runtime checkout after
-	# that completed workspace is removed; a private compiler resolves this build's actual companions
-	build_args = [*build_args, '-p:UseSharedCompilation=false']
+	# Private compilers avoid generator dependency paths retained from deleted runtime checkouts.
+	# PowerShell treats -p as an ambiguous script parameter; /p passes through to MSBuild
+	property_prefix = '/p:' if os.name == 'nt' else '-p:'
+	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false']
 	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
 	# unrelated runtime projects the same output filename, breaking generators and task publishing
 	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in ('makeflags', 'mflags', 'targetname')}

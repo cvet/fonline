@@ -118,6 +118,10 @@ interop generator's dependency path from a completed runtime checkout. Deleting 
 makes another build fail with CS8784 even though its own `Microsoft.Interop.SourceGeneration.dll`
 exists. A private compiler loads the current checkout's generator companions, so completed
 workspaces can be cleaned without invalidating another build's analyzer context.
+Windows passes the property with MSBuild's `/p:` spelling through `build.cmd` and
+PowerShell; `-p:` is ambiguous with the runtime script's named parameters. Unix
+builds retain `-p:`. The regression exercises PowerShell parameter binding with
+the conflicting runtime parameter names and preserves unrelated properties.
 
 Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
 target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
