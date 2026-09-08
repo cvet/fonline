@@ -34,6 +34,13 @@ For an embedding project with dev name `LF`, the standard generated names are `L
 
 ## Running tests
 
+Client script probes can deliver lifecycle notifications through
+`Game.SimulateDisconnect()`, `Game.SimulateConnectingFailed()` and
+`Game.SimulateInfoMessage(infoMessage, extraText)`.
+These APIs invoke the native subscriber chains without changing the transport,
+so a probe can observe notification handling and still report over its existing
+connection. Use an actual connection to validate transport behavior.
+
 Preferred local baseline from a configured build:
 
 ```bash

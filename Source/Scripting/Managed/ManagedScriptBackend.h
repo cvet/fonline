@@ -55,6 +55,7 @@ public:
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
     void BindRequiredStuff();
+    void Process() override;
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc, uint32_t gc_handle);
     void AddRemoteCallHandlerGcHandle(uint32_t gc_handle) { _globalFuncGcHandles.emplace_back(gc_handle); }
 
@@ -70,6 +71,8 @@ private:
     nptr<void> _domain {};
     nptr<void> _managedHostImage {};
     vector<nptr<void>> _images {};
+    vector<nptr<void>> _continuationPumps {};
+    vector<nptr<void>> _continuationShutdowns {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _globalFuncGcHandles {};
     uint32_t _loadScopeGcHandle {};

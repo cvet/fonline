@@ -1250,16 +1250,20 @@ void BaseEngine::FrameAdvance()
 
     GameTime.FrameAdvance(IsRunInDebugger() || Settings->DisableNetworking);
 
-    LockForPropertyAccess();
-    auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
+    {
+        LockForPropertyAccess();
+        auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
 
-    SetFrameTime(GameTime.GetFrameTime());
-    SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
-    SetFramesPerSecond(GameTime.GetFramesPerSecond());
+        SetFrameTime(GameTime.GetFrameTime());
+        SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
+        SetFramesPerSecond(GameTime.GetFramesPerSecond());
 
-    if (GameTime.IsTimeSynchronized()) {
-        SetSynchronizedTime(GameTime.GetSynchronizedTime());
+        if (GameTime.IsTimeSynchronized()) {
+            SetSynchronizedTime(GameTime.GetSynchronizedTime());
+        }
     }
+
+    ProcessBackends();
 }
 
 auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t

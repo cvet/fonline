@@ -22,9 +22,26 @@ namespace FOnline
             }
 
             _initializedEarly = true;
+            ValidateAsyncMethods();
             ScriptFuncRegistration.RegisterEngineAttributeFuncs();
             RemoteCallScriptFuncs.RegisterRemoteCalls();
             RunScriptFuncRegistrars();
+        }
+
+        private static void ValidateAsyncMethods()
+        {
+            foreach (Type type in typeof(Initializator).Assembly.GetTypes())
+            {
+                foreach (MethodInfo method in type.GetMethods(
+                    BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    if (method.ReturnType == typeof(void) && method.IsDefined(typeof(AsyncStateMachineAttribute), false))
+                    {
+                        throw new InvalidOperationException(
+                            "Async void script methods are not supported; return Task: " + type.FullName + "." + method.Name);
+                    }
+                }
+            }
         }
 
         // Registrars run before module initialization so bake-time validation can resolve project attributes
@@ -58,6 +75,8 @@ namespace FOnline
 
         static void Initialize()
         {
+            using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(true);
+
             List<Tuple<int, MethodInfo>> moduleInits = new List<Tuple<int, MethodInfo>>();
 
             Assembly assembly = typeof(Initializator).Assembly;
@@ -112,7 +131,7 @@ namespace FOnline
                         method.Name);
                 }
 
-                task.GetAwaiter().GetResult();
+                context.Wait(task);
             }
         }
     }

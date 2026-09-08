@@ -793,6 +793,8 @@ public:
     static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
     static constexpr int32_t MANAGED_BACKEND_INDEX = 1;
     virtual ~ScriptSystemBackend() = default;
+
+    virtual void Process() { }
 };
 
 namespace ScriptTypeIndex
@@ -822,6 +824,7 @@ public:
 
     void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
     void ShutdownBackends();
+    void ProcessBackends();
 
     template<typename T>
         requires(std::is_base_of_v<ScriptSystemBackend, T>)

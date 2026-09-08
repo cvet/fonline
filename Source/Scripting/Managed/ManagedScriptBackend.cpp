@@ -152,6 +152,7 @@ static auto NativeGetHash(MonoString* text) -> uint64_t;
 static auto NativeGetHashStr(uint64_t value) -> MonoString*;
 static auto NativeGetBackendAliveFlag() -> MonoArray*;
 static auto NativeGetBackend() -> void*;
+static auto NativeRunScriptContinuation(MonoObject* continuation) -> MonoString*;
 static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> void*;
 static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> mono_bool;
 static auto NativeGetProtoEntityCount(MonoString* type_name) -> int32_t;
@@ -770,6 +771,32 @@ static auto NativeGetBackendAliveFlag() -> MonoArray*
     }
 
     return static_cast<MonoArray*>(flag);
+}
+
+static auto NativeRunScriptContinuation(MonoObject* continuation) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        auto backend = GetActiveBackendOrThrow();
+        auto engine = backend->GetMetadata().dyn_cast<BaseEngine>();
+        FO_VERIFY_AND_THROW(engine, "Managed continuation requires an engine context");
+        FO_VERIFY_AND_THROW(continuation != nullptr, "Managed continuation is null");
+
+        engine->RunScriptContext([&] {
+            ActiveBackendScope active_backend {backend};
+            MonoObject* exception = nullptr;
+            mono_runtime_delegate_invoke(continuation, nullptr, &exception);
+            ThrowIfManagedException(exception, "Managed continuation failed");
+        });
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return mono_string_new(mono_domain_get(), ex.what());
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
 }
 
 static auto NativeGetBackend() -> void*
@@ -2502,6 +2529,7 @@ static void RegisterInternalCalls()
 {
     FO_STACK_TRACE_ENTRY();
 
+    mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
     mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
     mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
     mono_add_internal_call("FOnline.Native::GetHash", reinterpret_cast<const void*>(NativeGetHash));
@@ -5433,6 +5461,23 @@ ManagedScriptBackend::~ManagedScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
 
+    safe_call([this] {
+        if (_continuationShutdowns.empty()) {
+            return;
+        }
+
+        ActiveBackendScope active_backend {this};
+        MonoDomain* domain = GetDomainOrThrow(_domain.get());
+        FO_VERIFY_AND_THROW(mono_thread_attach(domain) != nullptr, "Failed to attach continuation shutdown to Managed runtime domain");
+
+        for (nptr<void> shutdown : _continuationShutdowns) {
+            MonoObject* exception = nullptr;
+            mono_runtime_invoke(shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, &exception);
+            ThrowIfManagedException(exception, "Managed continuation shutdown failed");
+        }
+    });
+    _continuationPumps.clear();
+    _continuationShutdowns.clear();
     ReleaseAliveFlag();
 
     for (uint32_t gc_handle : _globalFuncGcHandles) {
@@ -5449,6 +5494,25 @@ ManagedScriptBackend::~ManagedScriptBackend()
     // Mono VM state is process-wide. Server/client/mapper backends may coexist
     // in one process, so shutdown is left to process teardown
     _domain = nullptr;
+}
+
+void ManagedScriptBackend::Process()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_continuationPumps.empty()) {
+        return;
+    }
+
+    ActiveBackendScope active_backend {this};
+    MonoDomain* domain = GetDomainOrThrow(_domain.get());
+    FO_VERIFY_AND_THROW(mono_thread_attach(domain) != nullptr, "Failed to attach continuation pump to Managed runtime domain");
+
+    for (nptr<void> pump : _continuationPumps) {
+        MonoObject* exception = nullptr;
+        mono_runtime_invoke(pump.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, &exception);
+        ThrowIfManagedException(exception, "Managed continuation pump failed");
+    }
 }
 
 void ManagedScriptBackend::AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc, uint32_t gc_handle)
@@ -5648,6 +5712,14 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                 throw ScriptSystemException("Managed image is null for loaded entry assembly");
             }
 
+            MonoClass* native_class = mono_class_from_name(image, "FOnline", "Native");
+            FO_VERIFY_AND_THROW(native_class != nullptr, "Managed Native class not found for continuation pump");
+            MonoMethod* pump = mono_class_get_method_from_name(native_class, "PumpContinuations", 0);
+            MonoMethod* shutdown = mono_class_get_method_from_name(native_class, "ShutdownContinuations", 0);
+            FO_VERIFY_AND_THROW(pump != nullptr && shutdown != nullptr, "Managed continuation scheduler methods not found");
+
+            _continuationPumps.emplace_back(pump);
+            _continuationShutdowns.emplace_back(shutdown);
             _images.emplace_back(image);
             InvokeInitializator(assembly.get(), "InitializeEarly");
 

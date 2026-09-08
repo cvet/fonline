@@ -306,6 +306,16 @@ void ScriptSystem::ShutdownBackends()
     _backends.clear();
 }
 
+void ScriptSystem::ProcessBackends()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& [index, backend] : _backends) {
+        ignore_unused(index);
+        backend->Process();
+    }
+}
+
 void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();

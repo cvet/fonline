@@ -111,7 +111,7 @@ static void AppendCsCallableDeclaration(ostringstream& out, string_view indent, 
 static auto MakeCsArgumentNames(const_span<ArgDesc> args) -> vector<string>;
 static auto MakeCsTypeName(const ComplexTypeDesc& type, bool nullable) -> string;
 static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string;
-static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args) -> vector<string>;
+static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_callbacks = false) -> vector<string>;
 static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is_global, const_span<ArgDesc> args) -> vector<string>;
 static void AppendGeneratedHeader(ostringstream& out);
 static void AppendGeneratedFooter(ostringstream& out);
@@ -135,7 +135,7 @@ static void AppendMutableEventArgAssignments(ostringstream& out, const_span<ArgD
 static void AppendProperty(ostringstream& out, const string& type_name, const string& property_name, bool writable, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names, optional<string_view> initializer);
 static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, string_view owner_type_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendSettingProperty(ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names);
-static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures);
+static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures, bool async_callbacks);
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool;
 static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
 static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, unordered_set<string>& member_names);
@@ -427,6 +427,11 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             }
 
             AppendCsCallableDeclaration(out, "    ", strex("public delegate {} ", MakeCsTypeName(ret)).str(), EscapeCsIdentifier(name), arg_declarations, ";");
+
+            if (!ret) {
+                AppendCsCallableDeclaration(out, "    ", "public delegate global::System.Threading.Tasks.Task ", EscapeCsIdentifier(name + "Async"), arg_declarations, ";");
+            }
+
             out << "\n";
         }
 
@@ -2190,7 +2195,7 @@ static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string
     return " = default";
 }
 
-static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args) -> vector<string>
+static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_callbacks) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2210,7 +2215,13 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args) -> vector<strin
             declaration += "ref ";
         }
 
-        declaration += MakeCsTypeName(arg.Type, arg.Nullable);
+        if (async_callbacks && arg.Type.Kind == ComplexTypeKind::Callback && arg.Type.CallbackArgs && !arg.Type.CallbackArgs->front()) {
+            declaration += MakeCallbackDelegateName(arg.Type) + "Async?";
+        }
+        else {
+            declaration += MakeCsTypeName(arg.Type, arg.Nullable);
+        }
+
         declaration += " ";
         declaration += arg_names[i];
         declaration += MakeCsDefaultValueSuffix(arg);
@@ -2389,6 +2400,13 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", property.ToString(), setter);\n";
         out << CS_INDENT << "}\n\n";
+
+        for (string_view method_name : {"AddPropertyDeferredSetter", "AddPropertySetter"}) {
+            out << CS_INDENT << "public static void " << method_name << "(" << enum_type << " property, global::System.Func<" << entity_type << ", global::System.Threading.Tasks.Task> setter)\n";
+            out << CS_INDENT << "{\n";
+            out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", property.ToString(), setter);\n";
+            out << CS_INDENT << "}\n\n";
+        }
 
         unordered_set<string> seen_value_types;
         vector<string> value_types;
@@ -3193,7 +3211,7 @@ static void AppendSettingProperty(ostringstream& out, const ComplexTypeDesc& typ
     out << CS_INDENT << "}\n\n";
 }
 
-static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures)
+static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures, bool async_callbacks)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3207,7 +3225,7 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
         method_name += "Method";
     }
 
-    auto arg_declarations = MakeCsArgumentDeclarations(method.Args);
+    auto arg_declarations = MakeCsArgumentDeclarations(method.Args, async_callbacks);
     string args = JoinCsCommaList(arg_declarations);
     string ret = MakeCsTypeName(method.Ret);
     string signature = strex("{}({})", method_name, args).str();
@@ -3474,7 +3492,13 @@ static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods,
     AppendMethodProperties(out, methods, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names);
 
     for (size_t method_index = 0; method_index < methods.size(); method_index++) {
-        AppendMethod(out, methods[method_index], method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures);
+        const MethodDesc& method = methods[method_index];
+        AppendMethod(out, method, method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures, false);
+        bool is_timer_method = method.Name == "StartTimeEvent" || method.Name == "CountTimeEvent" || method.Name == "StopTimeEvent" || method.Name == "RepeatTimeEvent" || method.Name == "SetTimeEventData";
+
+        if (is_timer_method && std::ranges::any_of(method.Args, [](const ArgDesc& arg) { return arg.Type.Kind == ComplexTypeKind::Callback && arg.Type.CallbackArgs && !arg.Type.CallbackArgs->empty() && !arg.Type.CallbackArgs->front(); })) {
+            AppendMethod(out, method, method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures, true);
+        }
     }
 }
 

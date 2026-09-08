@@ -57,6 +57,8 @@ namespace FOnline
             bool hasExplicitResult,
             object[] args)
         {
+            using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasExplicitResult);
+
             try
             {
                 object? result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
@@ -67,7 +69,7 @@ namespace FOnline
                     if (hasExplicitResult)
                     {
                         // Native event dispatch cannot advance the subscriber chain until it knows whether to stop.
-                        task.GetAwaiter().GetResult();
+                        context.Wait(task);
                         object? taskResult = task.GetType().GetProperty("Result")?.GetValue(task);
 
                         if (taskResult is EventResult eventResult)
@@ -106,6 +108,12 @@ namespace FOnline
 
         internal static object? InvokeCallback(Delegate handler, object[] args)
         {
+            MethodInfo delegateInvoke = handler.GetType().GetMethod("Invoke") ??
+                throw new InvalidOperationException("Delegate type is missing its Invoke method");
+            Type declaredReturnType = delegateInvoke.ReturnType;
+            bool hasResult = declaredReturnType.IsGenericType && declaredReturnType.GetGenericTypeDefinition() == typeof(Task<>);
+            using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasResult);
+
             try
             {
                 // A by-ref parameter is written by the callee, and the caller reads it back out of the very array it
@@ -125,10 +133,9 @@ namespace FOnline
                     return result;
                 }
 
-                Type declaredReturnType = handler.Method.ReturnType;
-                if (declaredReturnType.IsGenericType && declaredReturnType.GetGenericTypeDefinition() == typeof(Task<>))
+                if (hasResult)
                 {
-                    task.GetAwaiter().GetResult();
+                    context.Wait(task);
                     return declaredReturnType.GetProperty("Result")!.GetValue(result);
                 }
 
@@ -152,6 +159,24 @@ namespace FOnline
                 throw;
             }
         }
+
+        internal static void PumpContinuations()
+        {
+            ScriptSynchronizationContext.Pump();
+        }
+
+        internal static void ShutdownContinuations()
+        {
+            ScriptSynchronizationContext.Shutdown();
+        }
+
+        internal static void RunScriptContinuation(Action continuation)
+        {
+            ThrowNativeError(RunScriptContinuationInternal(continuation));
+        }
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern string? RunScriptContinuationInternal(Action continuation);
 
         private static void CopyBackByRefArgs(Delegate handler, object[] invokeArgs, object[] args)
         {

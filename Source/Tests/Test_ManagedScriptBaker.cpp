@@ -522,6 +522,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public System.Collections.Generic.List<ManagedInner> GetManagedEntrys()") != string::npos);
     CHECK(server_entities.find("public ManagedInner? GetManagedEntry(ident id)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetInnerEntity(_entityPtr, \"ManagedEntry\", id.value)") != string::npos);
+    CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::System.Func<Critter, global::System.Threading.Tasks.Task> setter)") != string::npos);
+    CHECK(server_entities.find("public static void AddPropertyDeferredSetter(CritterProperty property, global::System.Func<Critter, global::System.Threading.Tasks.Task> setter)") != string::npos);
     CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::FOnline.PropertySetter<Critter, short> setter)") != string::npos);
     CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::FOnline.PropertySetterWithProperty<Critter, CritterProperty, short> setter)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.AddPropertySetterWithProperty(\"Critter\", property.ToString(), setter);") != string::npos);
@@ -533,6 +535,12 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static void DbInsertRecord(\n            hstring collectionName,\n            string id,\n            Dictionary<string, string> keyValues\n        )") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"DbInsertRecord\",") != string::npos);
     CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_void? func)") != string::npos);
+    CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_voidAsync? func)") != string::npos);
+    CHECK(server_entities.find("public static int CountTimeEvent(Callback_voidAsync? func)") != string::npos);
+    CHECK(server_entities.find("public static void StopTimeEvent(Callback_voidAsync? func)") != string::npos);
+    CHECK(server_entities.find("public static void RepeatTimeEvent(Callback_voidAsync? func, timespan repeat)") != string::npos);
+    CHECK(server_entities.find("Callback_void_CritterAsync? func") != string::npos);
+
     CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n                \"Game\",\n                \"StartTimeEvent\",") != string::npos);
     CHECK(server_entities.find("return (uint)__result;") != string::npos);
     CHECK(server_entities.find("public static uint DecodeUtf8(string text, ref int length)") != string::npos);
@@ -585,6 +593,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(client_types.find("\"__Factory\",\n                2,\n                IntPtr.Zero,") != string::npos);
 
     string server_types = ReadTextFile(script_dir / "ServerTypes.gen.cs");
+    CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_voidAsync();") != string::npos);
+    CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_bool") == string::npos);
     CHECK(server_types.find("public partial struct hstring") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
 
