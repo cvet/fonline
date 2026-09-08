@@ -106,7 +106,9 @@ cases start a real server using in-memory metadata/prototypes and retain native 
 Critter, Item, Map, Location and Player. One releases those owners on another joined thread
 after shutdown and destruction of the server; the other releases them before shutdown to
 exercise normal destructor invariants. ASan runs detect stale engine access during deferred
-release. The fixture uses no embedding-project assemblies, resource packs or database files.
+release. When AngelScript is enabled, the fixture compiles its own minimal server bytecode
+against the same in-memory metadata before startup. The fixture uses no embedding-project
+assemblies, resource packs or database files.
 
 ### Managed core-script regression tests
 

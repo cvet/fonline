@@ -69,6 +69,9 @@ static auto MakeServerEntityLifetimeResources() -> FileSystem
 
     auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEntityLifetimeRuntime");
     source->AddFile("Metadata.fometa-server", metadata);
+#if FO_ANGELSCRIPT_SCRIPTING
+    source->AddFile("ServerEntityLifetime.fos-bin-server", BakerTests::CompileInlineScripts(&proto_engine, "ServerEntityLifetimeScripts", {{"Scripts/ServerEntityLifetime.fos", "void LifetimeFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
+#endif
     source->AddFile("LifetimeCritter.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, proto_engine.Hashes.ToHashedString("Critter"), "LifetimeCritter"));
     source->AddFile("LifetimeItem.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.ToHashedString("Item"), "LifetimeItem"));
     source->AddFile("LifetimeLocation.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, proto_engine.Hashes.ToHashedString("Location"), "LifetimeLocation"));
