@@ -142,6 +142,17 @@ TEST_CASE("DiskFileSystem")
         REQUIRE(literal_entries.size() == 1);
         CHECK(literal_entries.front() == "child.bin");
         REQUIRE(fs_remove_dir_tree(literal_dir));
+        string short_dir = strex(temp_dir).combine_path("short-dir").str();
+        string literal_short_dir = string {"\\\\?\\"} + short_dir + ". ";
+        std::ranges::replace(literal_short_dir, '/', '\\');
+        string literal_short_child = literal_short_dir + "\\child.bin";
+        REQUIRE(fs_write_file(strex(short_dir).combine_path("child.bin").str(), content));
+        REQUIRE(fs_write_file(literal_short_child, literal_content));
+        REQUIRE(fs_remove_dir_tree(short_dir + ". "));
+        CHECK_FALSE(fs_exists(short_dir));
+        REQUIRE(fs_read_file(literal_short_child).has_value());
+        CHECK(*fs_read_file(literal_short_child) == literal_content);
+        REQUIRE(fs_remove_dir_tree(literal_short_dir));
 #endif
 
         REQUIRE(fs_rename(file_path, renamed_path));
@@ -149,7 +160,11 @@ TEST_CASE("DiskFileSystem")
         REQUIRE(fs_read_file(renamed_path).has_value());
         CHECK(*fs_read_file(renamed_path) == content);
         REQUIRE(fs_remove_file(renamed_path));
-        CHECK(fs_remove_dir_tree(temp_dir));
+        string long_dir = fs_path_to_string(native_file.parent_path());
+        REQUIRE(fs_exists(long_dir));
+        REQUIRE(fs_remove_dir_tree(temp_dir));
+        CHECK_FALSE(fs_exists(long_dir));
+        CHECK_FALSE(fs_exists(temp_dir));
     }
 
     SECTION("IterateDirRespectsRecursiveFlag")

@@ -220,7 +220,7 @@ Duration formatting retains 64-bit hour and day counts and keeps the existing mi
 
 TCP and UDP transfer calls retain signed 32-bit byte counts. The requested buffer size is checked before the OS call; a successful result cannot exceed that size. Checked return conversion preserves `-1` errors (including would-block), zero-length results and TCP end-of-stream. `Test_NetSockets` exercises these outcomes over real loopback sockets.
 
-Windows disk I/O resolves ordinary paths through the native full-path operation before adding the extended namespace at the Win32 directory-length boundary. Reads, writes, metadata queries, renames, removal and directory iteration share this conversion, including relative paths beneath a long current directory. Ordinary drive and UNC paths retain Windows dot/space and separator normalization; already extended or device paths remain literal inputs. Resolution failures follow each API's existing error-result contract. Lexical helpers (`fs_make_path`, `fs_path_to_string`, `fs_resolve_path`, and writable-path policy) do not add the I/O prefix, and directory visitors still receive relative resource names. `Test_DiskFileSystem.cpp` exercises Unicode paths beyond 320 native characters and Windows ordinary-versus-literal trailing-name behavior.
+Windows disk I/O resolves ordinary paths through the native full-path operation before adding the extended namespace at the Win32 directory-length boundary. Reads, writes, metadata queries, renames, removal and directory iteration share this conversion, including relative paths beneath a long current directory. Recursive removal adds the namespace even for a short root: the standard library constructs descendant paths internally, and those descendants can cross the length boundary. Ordinary drive and UNC paths retain Windows dot/space and separator normalization; already extended or device paths remain literal inputs. Resolution failures follow each API's existing error-result contract. Lexical helpers (`fs_make_path`, `fs_path_to_string`, `fs_resolve_path`, and writable-path policy) do not add the I/O prefix, and directory visitors still receive relative resource names. `Test_DiskFileSystem.cpp` exercises Unicode paths beyond 320 native characters, removal of their remaining directory tree and Windows ordinary-versus-literal trailing-name behavior.
 
 For a native Windows path-length investigation, run
 `python BuildTools/probe_windows_file_io.py --output Workspace/file-io.json`.
@@ -233,7 +233,8 @@ existing writable share; otherwise UNC I/O is explicitly untested. This probes
 the native library boundary without changing the engine's lexical path APIs or
 requiring a game build. The same run compiles the exact path-conversion and
 create/write/open/rename/remove functions extracted from `DiskFileSystem.cpp`,
-checks long Unicode file operations, and distinguishes ordinary trailing
+checks long Unicode file operations and recursive removal beneath a short root,
+records the unprefixed `remove_all` control separately, and distinguishes ordinary trailing
 dot/space normalization from literal extended names. Its manifest records each
 function hash and the harness aliases; full engine linkage and directory-visitor
 dispatch remain covered by the native unit suite. UNC conversion is checked

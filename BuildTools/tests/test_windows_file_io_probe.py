@@ -49,10 +49,12 @@ def test_fixture_rejects_overlong_root() -> None:
 def test_engine_probe_compiles_exact_canonical_function_bodies() -> None:
     native, manifest = PROBE.engine_probe_source()
     canonical = PROBE.ENGINE_SOURCE.read_text(encoding="utf-8")
-    assert len(manifest["extracted_functions"]) == 7
+    assert len(manifest["extracted_functions"]) == 8
     for signature in PROBE.ENGINE_SIGNATURES:
         start = canonical.rindex(signature)
         end = canonical.index("\n}\n", start) + len("\n}\n")
         assert canonical[start:end] in native
+    declaration = next(line for line in canonical.splitlines() if line.startswith("static auto fs_make_io_path(") and line.endswith(";"))
+    assert declaration in native
     assert manifest["harness_aliases"]["string_view"] == "std::string_view"
     assert "Full engine linkage" in manifest["proof_scope"]

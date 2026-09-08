@@ -77,12 +77,13 @@ set_property(TARGET file_io_dynamic PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedD
 ENGINE_SOURCE = Path(__file__).resolve().parents[1] / "Source/Essentials/DiskFileSystem.cpp"
 ENGINE_SIGNATURES = (
     "auto fs_make_path(string_view path)",
-    "static auto fs_make_io_path(string_view path, std::error_code& ec)",
+    "static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended)",
     "auto fs_create_directories(string_view dir)",
     "auto fs_write_file(string_view path, string_view content)",
     "auto fs_open_ifstream(string_view path, std::ios::openmode mode)",
     "auto fs_rename(string_view from_path, string_view to_path)",
     "auto fs_remove_file(string_view path)",
+    "auto fs_remove_dir_tree(string_view dir)",
 )
 ENGINE_HARNESS = r"""
 #include <filesystem>
@@ -106,10 +107,53 @@ static std::string utf8(const std::filesystem::path& path)
 }
 int wmain(int argc, wchar_t** argv)
 {
-    if (argc != 3) return 2;
+    if (argc != 3 && argc != 4) return 2;
     const std::string input = utf8(std::filesystem::path{argv[2]});
     std::error_code ec;
     const auto resolved = fs_make_io_path(input, ec);
+    if (std::wstring_view{argv[1]} == L"remove_tree") {
+        if (argc != 4 || ec) return 6;
+        const std::string child = utf8(std::filesystem::path{argv[3]});
+        const bool created_before = fs_write_file(child, "descendant");
+        if (!created_before) return 7;
+        const auto removed_before = std::filesystem::remove_all(resolved, ec);
+        const int before_error = ec.value();
+        std::error_code exists_error;
+        const bool root_remained = std::filesystem::exists(resolved, exists_error);
+        const bool negative_reproduced = before_error != 0 && root_remained && !exists_error;
+        const bool created_after = fs_write_file(child, "descendant");
+        const bool removed_after = fs_remove_dir_tree(input);
+        const bool root_gone = !std::filesystem::exists(resolved, exists_error) && !exists_error;
+        const auto resolved_child = fs_make_io_path(child, exists_error);
+        const bool child_gone = !exists_error && !std::filesystem::exists(resolved_child, exists_error) && !exists_error;
+        std::cout << "{\"root_utf16_length\":" << resolved.native().size()
+                  << ",\"child_utf16_length\":" << std::filesystem::path{argv[3]}.native().size()
+                  << ",\"unprefixed_root\":" << (!resolved.native().starts_with(LR"(\\?\)") ? "true" : "false")
+                  << ",\"before_error\":" << before_error
+                  << ",\"before_removed_count\":" << removed_before
+                  << ",\"negative_reproduced\":" << (negative_reproduced ? "true" : "false")
+                  << ",\"created_after\":" << (created_after ? "true" : "false")
+                  << ",\"removed_after\":" << (removed_after ? "true" : "false")
+                  << ",\"root_gone\":" << (root_gone ? "true" : "false")
+                  << ",\"child_gone\":" << (child_gone ? "true" : "false") << "}\n";
+        return created_after && removed_after && root_gone && child_gone ? 0 : 8;
+    }
+    if (std::wstring_view{argv[1]} == L"directory_names") {
+        const std::string literal = utf8(fs_make_io_path(input, ec, true)) + ". ";
+        const bool written = !ec && fs_write_file(input + "\\child.bin", "ordinary") && fs_write_file(literal + "\\child.bin", "literal");
+        const bool ordinary_removed = fs_remove_dir_tree(input + ". ");
+        const bool ordinary_gone = !std::filesystem::exists(resolved, ec) && !ec;
+        bool literal_retained = false;
+        {
+            auto stream = fs_open_ifstream(literal + "\\child.bin", std::ios::binary);
+            const std::string payload{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
+            literal_retained = stream.is_open() && payload == "literal";
+        }
+        const bool literal_removed = fs_remove_dir_tree(literal);
+        const bool passed = written && ordinary_removed && ordinary_gone && literal_retained && literal_removed;
+        std::cout << (passed ? "true" : "false");
+        return passed ? 0 : 9;
+    }
     if (std::wstring_view{argv[1]} == L"names") {
         const std::string literal = utf8(resolved) + ". ";
         const bool written = fs_write_file(input, "ordinary") && fs_write_file(literal, "literal");
@@ -122,9 +166,11 @@ int wmain(int argc, wchar_t** argv)
         std::cout << (matched && removed ? "true" : "false");
         return matched && removed ? 0 : 5;
     }
-    if (std::wstring_view{argv[1]} == L"resolve") {
+    if (std::wstring_view{argv[1]} == L"resolve" || std::wstring_view{argv[1]} == L"resolve_recursive") {
         if (ec) return 3;
-        std::cout << utf8(resolved);
+        const auto output = std::wstring_view{argv[1]} == L"resolve_recursive" ? fs_make_io_path(input, ec, true) : resolved;
+        if (ec) return 3;
+        std::cout << utf8(output);
         return 0;
     }
     const bool written = fs_write_file(input, "FOnline native long-path probe\n");
@@ -156,6 +202,7 @@ int wmain(int argc, wchar_t** argv)
 
 def engine_probe_source() -> tuple[str, dict[str, object]]:
     source = ENGINE_SOURCE.read_text(encoding="utf-8")
+    declaration = next(line for line in source.splitlines() if line.startswith("static auto fs_make_io_path(") and line.endswith(";"))
     functions: list[str] = []
     for signature in ENGINE_SIGNATURES:
         start = source.rindex(signature)
@@ -164,13 +211,14 @@ def engine_probe_source() -> tuple[str, dict[str, object]]:
         if "\n{" not in function or ";" in function.split("\n", 1)[0]:
             raise ValueError(f"Expected an out-of-line canonical definition: {signature}")
         functions.append(function)
-    native = ENGINE_HARNESS + "\n".join(functions) + ENGINE_MAIN
+    native = ENGINE_HARNESS + declaration + "\n" + "\n".join(functions) + ENGINE_MAIN
     return native, {
         "source_file": "Source/Essentials/DiskFileSystem.cpp",
         "source_sha256": hashlib.sha256(ENGINE_SOURCE.read_bytes()).hexdigest(),
         "extracted_functions": {signature: hashlib.sha256(function.encode()).hexdigest() for signature, function in zip(ENGINE_SIGNATURES, functions)},
+        "extracted_declaration_sha256": hashlib.sha256(declaration.encode()).hexdigest(),
         "harness_aliases": {"string_view": "std::string_view", "FO_WINDOWS": "1", "stack_trace_macros": "no-op", "ignore_unused": "void expression (marks the argument used)"},
-        "proof_scope": "Exact path conversion and create/write/open/rename/remove function bodies; STL directory enumeration through that conversion. Full engine linkage, allocator and visitor dispatch remain native unit-test responsibilities.",
+        "proof_scope": "Exact path conversion and create/write/open/rename/remove function bodies, including recursive removal and its canonical helper declaration. STL directory enumeration uses that conversion; the negative control uses remove_all with the ordinary two-argument conversion. Full engine linkage, allocator and visitor dispatch remain native unit-test responsibilities.",
         "native_source_sha256": hashlib.sha256(native.encode()).hexdigest(),
     }
 
@@ -179,6 +227,7 @@ def probe_engine_paths(binaries: dict[str, Path], base: Path) -> dict[str, objec
     path = make_case_path(base / "Юникод", 320).with_name("данные.bin")
     cases: list[dict[str, object]] = []
     semantics: list[dict[str, object]] = []
+    recursive_removal: list[dict[str, object]] = []
     forms = [("absolute", str(path)), ("relative", os.path.relpath(path, base)), ("extended", extended_path(str(path)))]
     long_unc = "\\\\server\\share\\" + "nested\\" * 45 + "file.bin"
     expected_forms = [
@@ -196,10 +245,28 @@ def probe_engine_paths(binaries: dict[str, Path], base: Path) -> dict[str, objec
             cases.append(case)
         result = subprocess.run([str(executable), "names", str(path)], cwd=base, text=True, encoding="utf-8", capture_output=True)
         semantics.append({"runtime": runtime, "case": "ordinary_and_literal_names_are_distinct_files", "exit_code": result.returncode, "matches": result.returncode == 0 and result.stdout == "true"})
+        directory = base / f"directory-names-{runtime}"
+        result = subprocess.run([str(executable), "directory_names", str(directory)], cwd=base, text=True, encoding="utf-8", capture_output=True)
+        semantics.append({"runtime": runtime, "case": "ordinary_and_literal_directory_removal_are_distinct", "exit_code": result.returncode, "matches": result.returncode == 0 and result.stdout == "true"})
+        for form in ("absolute", "relative"):
+            root = base / f"recursive-{runtime}-{form}"
+            if utf16_length(str(root)) >= 248:
+                raise ValueError(f"Recursive-removal control requires a short root: {root}")
+            child = make_case_path(root / "Юникод", 360)
+            argument = str(root) if form == "absolute" else os.path.relpath(root, base)
+            result = subprocess.run([str(executable), "remove_tree", argument, str(child)], cwd=base, text=True, encoding="utf-8", capture_output=True)
+            case = {"runtime": runtime, "form": form, "root": argument, "child": str(child), "absolute_root_utf16_length": utf16_length(str(root)), "exit_code": result.returncode}
+            case.update(json.loads(result.stdout) if result.stdout.startswith("{") else {"diagnostic": result.stdout + result.stderr})
+            recursive_removal.append(case)
         for name, argument, expected in expected_forms:
             result = subprocess.run([str(executable), "resolve", argument], cwd=base, text=True, encoding="utf-8", capture_output=True)
             semantics.append({"runtime": runtime, "case": name, "input": argument, "expected": expected, "actual": result.stdout, "exit_code": result.returncode, "matches": result.returncode == 0 and result.stdout == expected})
-    return {"cases": cases, "semantics": semantics, "unc_io_tested": False, "passed": all(case["exit_code"] == 0 for case in cases) and all(case["matches"] for case in semantics)}
+        recursive_forms = [("short_unc_recursive", r"\\server\share\short", r"\\?\UNC\server\share\short")]
+        recursive_forms.extend(expected_forms)
+        for name, argument, expected in recursive_forms:
+            result = subprocess.run([str(executable), "resolve_recursive", argument], cwd=base, text=True, encoding="utf-8", capture_output=True)
+            semantics.append({"runtime": runtime, "case": name + "_recursive", "input": argument, "expected": expected, "actual": result.stdout, "exit_code": result.returncode, "matches": result.returncode == 0 and result.stdout == expected})
+    return {"cases": cases, "semantics": semantics, "recursive_removal": recursive_removal, "recursive_negative_reproduced": all(case.get("negative_reproduced", False) for case in recursive_removal), "unc_io_tested": False, "passed": all(case["exit_code"] == 0 for case in cases + recursive_removal) and all(case["matches"] for case in semantics)}
 
 
 def extended_path(path: str) -> str:

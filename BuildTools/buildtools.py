@@ -973,7 +973,7 @@ def resolve_visual_studio_2022_dev_cmd() -> Path | None:
 	return dev_cmd if dev_cmd.exists() else None
 
 
-def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
+def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: str) -> None:
 	# Private compilers avoid generator dependency paths retained from deleted runtime checkouts.
 	# PowerShell treats -p as an ambiguous script parameter; /p passes through to MSBuild
 	property_prefix = '/p:' if os.name == 'nt' else '-p:'
@@ -981,6 +981,10 @@ def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
 	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
 	# unrelated runtime projects the same output filename, breaking generators and task publishing
 	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in ('makeflags', 'mflags', 'targetname')}
+	if target_os in ('ios', 'iossimulator'):
+		# Mono supplies the target SDK explicitly; its macOS cross-AOT tools must not inherit that SDK
+		build_env.pop('SDKROOT', None)
+
 	if os.name != 'nt':
 		# The outer CMake build passes down a make jobserver its nested make cannot join, and the browser
 		# subset turns that into a hard error, so the inherited job-control flags are dropped here
@@ -2538,7 +2542,7 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	def build_runtime() -> None:
 		patch_runtime_zlib_warning_level(runtime_root)
-		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root)
+		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root, target_os=os_name)
 
 	run_marker_step(built_marker, 'Build runtime', build_runtime)
 

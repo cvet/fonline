@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto fs_make_io_path(string_view path, std::error_code& ec) -> std::filesystem::path;
+static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended = false) -> std::filesystem::path;
 
 auto fs_make_path(string_view path) -> std::u8string
 {
@@ -326,7 +326,7 @@ auto fs_remove_dir_tree(string_view dir) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    auto fs_dir = fs_make_io_path(dir, ec);
+    auto fs_dir = fs_make_io_path(dir, ec, true);
 
     if (ec) {
         return false;
@@ -571,12 +571,13 @@ auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::se
     return !!stream;
 }
 
-static auto fs_make_io_path(string_view path, std::error_code& ec) -> std::filesystem::path
+static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended) -> std::filesystem::path
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     auto fs_path = std::filesystem::path {fs_make_path(path)};
     ignore_unused(ec);
+    ignore_unused(force_extended);
 
 #if FO_WINDOWS
     if (fs_path.empty() || fs_path.native().starts_with(LR"(\\?\)") || fs_path.native().starts_with(LR"(\\.\)")) {
@@ -596,7 +597,7 @@ static auto fs_make_io_path(string_view path, std::error_code& ec) -> std::files
     // Win32 directory creation reserves room for an 8.3 name below MAX_PATH
     constexpr size_t long_path_start = 248;
 
-    if (fs_path.native().size() >= long_path_start || absolute_path.native().size() >= long_path_start) {
+    if (force_extended || fs_path.native().size() >= long_path_start || absolute_path.native().size() >= long_path_start) {
         const auto& native_path = absolute_path.native();
 
         if (native_path.starts_with(LR"(\\)")) {

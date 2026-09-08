@@ -139,9 +139,22 @@ static CRT; builds with neither client nor managed scripting retain `/MD` or
 Nested runtime builds remove Xcode's legacy `TARGETNAME` environment variable before invoking
 MSBuild. MSBuild treats environment property names case-insensitively and otherwise names every
 task and generator output `SetupManagedRuntime.dll`, causing duplicate publish files and failed
-generator loads. Other Xcode SDK and toolchain variables remain available. The BuildTools
+generator loads. The BuildTools
 regression publishes two actual SDK projects under a poisoned target name and verifies distinct
 assemblies; successful runtime caches retain their identity.
+
+For iOS device and simulator runtimes, the nested build also removes inherited
+`SDKROOT`. Mono supplies the target SDK in its CMake arguments, while its cross-AOT
+compiler runs on macOS and must discover the macOS SDK. Otherwise CMake initializes
+the host compiler's sysroot from Xcode's iOS environment and rejects host APIs such
+as `system()`. `DEVELOPER_DIR` and other toolchain inputs remain available; ordinary
+macOS runtime builds retain an explicitly selected `SDKROOT`. The regression runs
+actual Darwin/iOS CMake configuration with SDK-discovery fixtures, checks the wrong
+host sysroot before isolation, and verifies both the corrected host SDK and the
+unchanged target SDK. It does not replace a managed Apple build with installed SDKs.
+Retry a failed build from this environment error with a fresh runtime object tree:
+an existing CMake cache retains its previously selected SDK even after the parent
+environment is corrected. Successful runtime caches remain valid.
 
 Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
 interop generator's dependency path from a completed runtime checkout. Deleting that checkout then

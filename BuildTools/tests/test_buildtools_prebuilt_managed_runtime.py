@@ -198,8 +198,9 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
         if label == "Build runtime":
             action()
 
-    def check_patched_before_build(args: list[str], runtime_root: Path) -> None:
+    def check_patched_before_build(args: list[str], runtime_root: Path, *, target_os: str) -> None:
         assert runtime_root == runtime
+        assert target_os == "linux"
         assert "list(REMOVE_ITEM fo_zlib_compile_options" in wrapper.read_text(encoding="utf-8")
         calls.append(args)
 

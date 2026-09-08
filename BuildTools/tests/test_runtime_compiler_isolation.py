@@ -99,7 +99,7 @@ def test_runtime_generator_dependencies_survive_another_build_tree_cleanup(tmp_p
                 script = runtime / "build.sh"
                 script.write_text(f'#!/bin/sh\nexec {shlex.quote(dotnet)} build Consumer.csproj --nologo -v:minimal "$@"\n')
                 script.chmod(0o755)
-            buildtools.run_runtime_build(["-p:SharedCompilationId=" + pipe], runtime)
+            buildtools.run_runtime_build(["-p:SharedCompilationId=" + pipe], runtime, target_os="linux")
 
             generated = list((runtime / "generated").rglob("LibraryImports.g.cs"))
             assert len(generated) == 1

@@ -57,5 +57,5 @@ def test_windows_runtime_properties_pass_powershell_parameter_binding(tmp_path, 
     monkeypatch.setattr(buildtools, "os", SimpleNamespace(name="nt", environ=os.environ))
     monkeypatch.setattr(buildtools, "resolve_visual_studio_2022_dev_cmd", lambda: None)
     monkeypatch.setattr(buildtools, "run", run_windows_command)
-    buildtools.run_runtime_build(["/p:ExistingProperty=preserved"], runtime)
+    buildtools.run_runtime_build(["/p:ExistingProperty=preserved"], runtime, target_os="windows")
     assert observed == ["/p:ExistingProperty=preserved", "/p:UseSharedCompilation=false"]
