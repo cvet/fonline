@@ -100,6 +100,8 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 `FatalError.*` is the early, native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and then delegates only the mechanical process termination to `BasicCore::ExitApp(false)`. It owns `ReportFatalAndExit`, `ReportStrongAssertAndExit`, and `FO_BASIC_STRONG_ASSERT`; it deliberately does not construct exception objects or depend on the later `ExceptionHandling` module. `ExitApp(false)` itself remains status-only because its callers include both controlled command failures and fatal invariant failures.
 
+`ExitApp` never returns: desktop Windows/Linux use `std::quick_exit`, while web, Apple and Android use `std::exit`. The selected CRT function owns termination and its registered cleanup callbacks; neither path unwinds automatic local objects. There is no fallback work after either terminal call. `BuildTools/tests/test_process_termination.py` compiles the exact engine declaration and body with unreachable-code diagnostics enabled, then checks success/failure status, the selected CRT callbacks and destructor behavior in separate processes.
+
 `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Debugging.md](Debugging.md).
 
 ### Memory, pointers, and lifetime utilities
