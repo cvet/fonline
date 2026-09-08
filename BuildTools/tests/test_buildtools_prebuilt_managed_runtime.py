@@ -109,16 +109,20 @@ def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, 
     assert (tmp_path / "marker.txt").read_text() == f"READY_v10.0.11_{target}.x64.Release{_buildtools.resolve_mono_marker_suffix(target)}"
 
 
-@pytest.mark.parametrize("target", ["android", "osx", "ios", "iossimulator"])
-def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, target: str) -> None:
+@pytest.mark.parametrize("target,legacy_apple_patch", [
+    ("android", False), ("osx", False), ("ios", False), ("iossimulator", False),
+    ("osx", True), ("ios", True), ("iossimulator", True),
+])
+def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, target: str, legacy_apple_patch: bool) -> None:
     env = setup_mono_env(tmp_path, "")
     workspace = Path(env["FO_WORKSPACE"])
     runtime = workspace / "runtime"
     runtime.mkdir(parents=True)
     triplet = f"{target}.x64.Release"
+    previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + ("_apple_sources" if legacy_apple_patch else "")
     (workspace / "CLONED_v10.0.11").touch()
     for phase in ("BUILT", "READY"):
-        (workspace / f"{phase}_v10.0.11_{triplet}{_buildtools.MONO_SUBSET_MARKER_SUFFIX}").touch()
+        (workspace / f"{phase}_v10.0.11_{triplet}{previous_suffix}").touch()
     published = make_published_tree(workspace / "output/mono", triplet)
     archive = published / "lib/libmonosgen-2.0.a"
     calls = []
@@ -146,7 +150,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     monkeypatch.setattr(_buildtools, "copy_interop_shim_libraries", lambda *args: calls.append("publish"))
     resolve = _buildtools.resolve_mono_marker_suffix
     with monkeypatch.context() as old_markers:
-        old_markers.setattr(_buildtools, "resolve_mono_marker_suffix", lambda _target: _buildtools.MONO_SUBSET_MARKER_SUFFIX)
+        old_markers.setattr(_buildtools, "resolve_mono_marker_suffix", lambda _target: previous_suffix)
         _buildtools.setup_mono(target, "x64", "Release", env)
     assert calls == [] and archive.read_text() == "archive"
     _buildtools.setup_mono(target, "x64", "Release", env)

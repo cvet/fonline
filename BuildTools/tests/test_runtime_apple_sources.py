@@ -194,11 +194,23 @@ def test_apple_native_source_corrections_compile_without_masking_diagnostics(run
 
 @pytest.mark.skipif(not shutil.which("cmake") or not (shutil.which("clang-20") or shutil.which("clang")), reason="CMake and Clang are required")
 @pytest.mark.parametrize("parameter_type", ["int", "size_t"])
-@pytest.mark.parametrize("conversion_diagnostics", [True, False])
-def test_domain_name_probe_checks_the_function_type_independently_of_conversion_diagnostics(runtime: Path, parameter_type: str, conversion_diagnostics: bool) -> None:
-    if not conversion_diagnostics:
-        probe = runtime / "src/native/libs/configure.cmake"
-        probe.write_text(probe.read_text().replace("-Werror -Weverything", "-Werror"))
+@pytest.mark.parametrize("flags", [
+    "-Werror -Weverything", "-Werror",
+    "-Werror -Weverything -Wno-error=incompatible-function-pointer-types -Wno-error=incompatible-function-pointer-types-strict",
+    "-w -Wno-error=incompatible-function-pointer-types",
+])
+@pytest.mark.parametrize("legacy_patch", [False, True])
+def test_domain_name_probe_checks_the_function_type_independently_of_conversion_diagnostics(runtime: Path, parameter_type: str, flags: str, legacy_patch: bool) -> None:
+    probe = runtime / "src/native/libs/configure.cmake"
+    previous_probe = (
+        "        // (FOnline Patch) Compare the parameter type; a constant length can hide narrowing\n"
+        "        int (*getdomainname_sizet)(char*, size_t) = getdomainname;\n"
+        "        int dummy = getdomainname_sizet(name, namelen);"
+    )
+    text = probe.read_text().replace("-Werror -Weverything", flags)
+    if legacy_patch:
+        text = text.replace("        int dummy = getdomainname(name, namelen);", previous_probe)
+    probe.write_text(text)
     source = runtime.parent / "sdk signature"
     source.mkdir()
     (source / "unistd.h").write_text(f"#include <stddef.h>\nint getdomainname(char*, {parameter_type});\n")
@@ -212,7 +224,10 @@ def test_domain_name_probe_checks_the_function_type_independently_of_conversion_
     for variant in ("before", "after"):
         if variant == "after":
             buildtools.patch_runtime_apple_sources(runtime)
-        build = source / variant
+            first_patch = probe.read_bytes()
+            buildtools.patch_runtime_apple_sources(runtime)
+            assert probe.read_bytes() == first_patch
+        build = source / "build"
         result = subprocess.run([
             shutil.which("cmake"), "-S", str(source), "-B", str(build),
             f"-DCMAKE_C_COMPILER={shutil.which('clang-20') or shutil.which('clang')}",
@@ -220,5 +235,10 @@ def test_domain_name_probe_checks_the_function_type_independently_of_conversion_
         assert result.returncode == 0, result.stdout + result.stderr
         assert "CMake Warning" not in result.stdout + result.stderr
         results[variant] = (build / "result.txt").read_text()
-    assert results["before"] == ("1" if parameter_type == "size_t" or not conversion_diagnostics else "")
+    accepted_before = (
+        parameter_type == "size_t" or flags.startswith("-w ")
+        or (not legacy_patch and flags == "-Werror")
+        or (legacy_patch and "-Wno-error=incompatible-function-pointer-types" in flags)
+    )
+    assert results["before"] == ("1" if accepted_before else "")
     assert results["after"] == ("1" if parameter_type == "size_t" else "")

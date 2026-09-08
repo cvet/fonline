@@ -2354,7 +2354,7 @@ MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
 MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
-MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources'
+MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 
 
 def resolve_mono_runtime_subset(os_name: str) -> str:
@@ -2505,15 +2505,29 @@ def patch_runtime_apple_sources(runtime_root: Path) -> None:
 		),
 		'src/native/libs/configure.cmake': (
 			('        int dummy = getdomainname(name, namelen);',
-			 '        // (FOnline Patch) Compare the parameter type; a constant length can hide narrowing\n'
-			 '        int (*getdomainname_sizet)(char*, size_t) = getdomainname;\n'
-			 '        int dummy = getdomainname_sizet(name, namelen);'),
+			 '        // (FOnline Patch) A signature mismatch must fail even when warnings are disabled\n'
+			 '        char signature_matches[__builtin_types_compatible_p(__typeof__(&getdomainname), int (*)(char*, size_t)) ? 1 : -1];\n'
+			 '        int dummy = getdomainname(name, namelen);\n'
+			 '        (void)signature_matches;'),
+			('HAVE_GETDOMAINNAME_SIZET)',
+			 'HAVE_GETDOMAINNAME_SIZET_EXACT)\n'
+			 '# (FOnline Patch) Recheck caches populated by the former warning-based probe\n'
+			 'set(HAVE_GETDOMAINNAME_SIZET "${HAVE_GETDOMAINNAME_SIZET_EXACT}")'),
 		),
 	}
 
 	for relative, replacements in patches.items():
 		path = runtime_root / relative
 		text = path.read_text(encoding='utf-8')
+		if relative == 'src/native/libs/configure.cmake':
+			legacy_probe = ('        // (FOnline Patch) Compare the parameter type; a constant length can hide narrowing\n'
+				'        int (*getdomainname_sizet)(char*, size_t) = getdomainname;\n'
+				'        int dummy = getdomainname_sizet(name, namelen);')
+			if legacy_probe in text:
+				if text.count(legacy_probe) != 1:
+					raise SystemExit(f'Cannot upgrade the Apple runtime signature probe, unique anchor not found in {path}')
+
+				text = text.replace(legacy_probe, '        int dummy = getdomainname(name, namelen);', 1)
 
 		for anchor, replacement in replacements:
 			if replacement in text:

@@ -182,9 +182,10 @@ Source-built Apple runtimes receive narrowly anchored patches to the pinned Mono
 sources before compilation. JIT-only locals and tables follow the existing JIT
 guards; fixed EventPipe array bounds use C integer constant expressions. Native
 PAL conversions are explicit and cleanup jumps do not cross initialized locals.
-The `getdomainname` configure probe checks the function's parameter type directly,
-so its result does not depend on whether the compiler diagnoses a particular
-call's integer conversion. CMake policies CMP0156 and CMP0179, when available,
+The `getdomainname` configure probe checks the function's parameter type with a
+compile-time array bound: a mismatch is a compiler error even if warning
+diagnostics are disabled or demoted. Its separate CMake cache result also replaces
+values produced by the former warning-based probe. CMake policies CMP0156 and CMP0179, when available,
 deduplicate static archives for linkers that support rescanning them. Diagnostics
 remain enabled. These patches preserve the published runtime layout and are
 idempotent; an unexpected upstream source shape stops setup for review.
@@ -196,8 +197,11 @@ Vector I/O checks API availability at runtime before using `preadv` and `pwritev
 loops. This preserves the deployment minimum, positional offsets, partial I/O,
 and interrupted-call retry behavior. The regression compiles availability
 annotations for device and simulator targets, then executes both paths with
-real file I/O on the host. The `_apple_sources` cache marker covers
-these corrections together with the common Apple source patches.
+real file I/O on the host. The `_apple_sources_v2` cache marker covers
+these corrections together with the common Apple source patches, and forces one
+rebuild and republication of runtimes with the former signature probe. Setup
+upgrades an already patched source checkout without recloning it; subsequent
+invocations reuse the corrected runtime. Other platforms keep their cache keys.
 
 Android source builds also match the native elliptic-curve diagnostic's variadic
 format to an explicit unsigned enum conversion. The source patch preserves the
