@@ -212,6 +212,8 @@ When vendoring or updating a library, check whether it has an allocator hook and
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
 
+Windows disk I/O resolves ordinary paths through the native full-path operation before adding the extended namespace at the Win32 directory-length boundary. Reads, writes, metadata queries, renames, removal and directory iteration share this conversion, including relative paths beneath a long current directory. Ordinary drive and UNC paths retain Windows dot/space and separator normalization; already extended or device paths remain literal inputs. Resolution failures follow each API's existing error-result contract. Lexical helpers (`fs_make_path`, `fs_path_to_string`, `fs_resolve_path`, and writable-path policy) do not add the I/O prefix, and directory visitors still receive relative resource names. `Test_DiskFileSystem.cpp` exercises Unicode paths beyond 320 native characters and Windows ordinary-versus-literal trailing-name behavior.
+
 For a native Windows path-length investigation, run
 `python BuildTools/probe_windows_file_io.py --output Workspace/file-io.json`.
 The diagnostic builds small MSVC programs with static and dynamic CRTs, records
@@ -221,7 +223,13 @@ a short-path control. It retains executables, compiler logs and available
 embedded manifests beside the JSON report. `--unc-root` optionally tests an
 existing writable share; otherwise UNC I/O is explicitly untested. This probes
 the native library boundary without changing the engine's lexical path APIs or
-requiring a game build.
+requiring a game build. The same run compiles the exact path-conversion and
+create/write/open/rename/remove functions extracted from `DiskFileSystem.cpp`,
+checks long Unicode file operations, and distinguishes ordinary trailing
+dot/space normalization from literal extended names. Its manifest records each
+function hash and the harness aliases; full engine linkage and directory-visitor
+dispatch remain covered by the native unit suite. UNC conversion is checked
+lexically even when no writable share was supplied.
 
 When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
 

@@ -44,3 +44,15 @@ def test_fixture_reaches_exact_utf16_boundary(length: int) -> None:
 def test_fixture_rejects_overlong_root() -> None:
     with pytest.raises(ValueError, match="root is too long"):
         PROBE.make_case_path(Path("C:/" + "a" * 250), 259)
+
+
+def test_engine_probe_compiles_exact_canonical_function_bodies() -> None:
+    native, manifest = PROBE.engine_probe_source()
+    canonical = PROBE.ENGINE_SOURCE.read_text(encoding="utf-8")
+    assert len(manifest["extracted_functions"]) == 7
+    for signature in PROBE.ENGINE_SIGNATURES:
+        start = canonical.rindex(signature)
+        end = canonical.index("\n}\n", start) + len("\n}\n")
+        assert canonical[start:end] in native
+    assert manifest["harness_aliases"]["string_view"] == "std::string_view"
+    assert "Full engine linkage" in manifest["proof_scope"]
