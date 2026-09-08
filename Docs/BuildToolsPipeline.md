@@ -79,6 +79,13 @@ MSVC x64 path selects `ASM_MASM`. MongoDB's AWS authentication is explicitly
 disabled alongside its TLS support, matching the driver's effective feature
 set without requesting an authentication mode that requires TLS.
 
+Vendored archive inputs follow their implementations: LibreSSL omits empty
+archive fillers, compatibility objects without platform shims, and the generic
+AES core when amd64 assembly
+provides all of its entry points. Glslang includes its SPIRV-Tools bridge only
+with the optimizer enabled. This avoids empty archive members on Apple;
+engine-owned source inventories remain unconditional.
+
 `setup-mono` and CMake's ready marker include the normalized pinned `ThirdParty/dotnet-runtime` revision and
 runtime triplet. Changing the pin invalidates both the native build and published runtime. Publication validates
 the runtime output, SDK shared-framework directory and Mono core library before replacing the output tree,
