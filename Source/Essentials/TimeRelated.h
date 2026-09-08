@@ -287,13 +287,13 @@ struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_N
             std::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
-            int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
+            int64_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
             int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
             std::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
-            int32_t day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
+            int64_t day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
             int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
             int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;

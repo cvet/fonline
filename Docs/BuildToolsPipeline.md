@@ -37,6 +37,29 @@ Important consequences:
 - Prefer stage responsibilities and option names over hard-coded generated target names.
 - Validate build changes through an embedding project preset whenever possible.
 
+## Apple deployment target
+
+`ThirdParty/iOS-sdk` supplies the minimum iOS deployment version through
+`buildtools.py` and the iOS toolchain; it does not select the installed Xcode SDK.
+The canonical minimum is `26.0`, matching the effective target that modern Clang
+already derives from the obsolete `19.0` version name. LLVM's
+[Darwin version alignment](https://github.com/llvm/llvm-project/commit/88f041f3e05e26617856cc096d2e2864dfaa1c7b)
+remaps iOS 19 to 26. Using the canonical name avoids the deployment override
+diagnostic without changing that effective minimum. Supporting an older iOS
+release requires a separate product compatibility decision.
+
+Apple static archives retain guarded translation units and module anchors even
+when they contain no symbols. `CMAKE_STATIC_LINKER_FLAGS` passes only
+`-no_warning_for_no_symbols` to Xcode's `OTHER_LIBTOOLFLAGS` for static and
+object libraries. The iOS toolchain puts the same option directly into its
+explicit libtool archive commands for Ninja and Makefiles. Other generators
+using `ar` or `llvm-ar` receive no libtool-only option. This diagnostic
+policy leaves source inventories intact and does not suppress compiler warnings,
+other archive diagnostics, or invalid-input errors. Linux and dynamic-linker
+flags are unchanged. `test_apple_archive_diagnostics.py` configures the actual
+stage and checks real Mach-O archives with empty and callable members, plus
+missing and malformed input failures.
+
 ## Stage files
 
 The staged pipeline lives in `BuildTools/cmake/stages/`. Canonical stage order is defined by `BuildTools/Init.cmake`: `Init`, `ProjectOptions`, `ThirdParty`, `EngineSources`, `Codegen`, `CoreLibs`, `Applications`, `ScriptsAndBaking`, `Packages`, `Finalize`.
@@ -93,6 +116,13 @@ no standalone empty archive members, including with Xcode's object libraries.
 `BuildTools/tests/test_mongoc_archive_inputs.py` checks enabled backend selection,
 client/BSON operations, and rejection of deliberately mismatched protocol flags
 and opcodes.
+
+`FO_DOTNET_DIR` is a configuration input, so temporary stage-state resets must
+preserve its CMake cache value. A nonempty cache override takes precedence over
+the environment; otherwise the environment value is used, then the default
+`${CMAKE_CURRENT_BINARY_DIR}/dotnet`. Paths containing spaces follow the same
+rules. `test_managed_runtime_directory.py` checks the real state initialization
+and directory-resolution block without starting a runtime build.
 
 `setup-mono` and CMake's ready marker include the normalized pinned `ThirdParty/dotnet-runtime` revision and
 runtime triplet. Changing the pin invalidates both the native build and published runtime. Publication validates

@@ -161,6 +161,17 @@ TEST_CASE("TimeRelated")
         CHECK(day_text == "2 days 01:00:00 sec");
     }
 
+    SECTION("DurationFormatterMinuteAndDayBoundaries")
+    {
+        CHECK(std::format("{}", timespan {}) == "0.000 us");
+        CHECK(std::format("{}", timespan {std::chrono::milliseconds {59999}}) == "59.999 sec");
+        CHECK(std::format("{}", timespan {std::chrono::minutes {1}}) == "00:01:00 sec");
+        CHECK(std::format("{}", timespan {std::chrono::seconds {86399}}) == "23:59:59 sec");
+        CHECK(std::format("{}", timespan {std::chrono::hours {24}}) == "1 day 00:00:00 sec");
+        CHECK(std::format("{}", timespan {std::chrono::hours {48}}) == "2 days 00:00:00 sec");
+        CHECK(std::format("{}", timespan {std::numeric_limits<int64_t>::max()}) == "106751 days 23:47:16 sec");
+    }
+
     SECTION("TimespanAndSynctimeFormatter")
     {
         auto ts_text = std::format("{}", timespan {std::chrono::milliseconds {1500}});

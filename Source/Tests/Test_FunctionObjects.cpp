@@ -194,6 +194,33 @@ TEST_CASE("FunctionObjects")
         REQUIRE(!from_null_pointer);
     }
 
+    SECTION("FunctionReferencesAndNullablePointers")
+    {
+        move_only_function<int32_t(int32_t)> from_reference = DoubleValue;
+        copyable_function<int32_t(int32_t)> copyable_reference = DoubleValue;
+        copyable_function<int32_t(int32_t)> copied_reference = copyable_reference;
+
+        CHECK(from_reference(21) == 42);
+        CHECK(copyable_reference(9) == 18);
+        CHECK(copied_reference(7) == 14);
+        CHECK_FALSE(from_reference.is_heap_allocated());
+        CHECK_FALSE(copyable_reference.is_heap_allocated());
+
+        using function_pointer = decltype(&DoubleValue);
+        using member_pointer = decltype(&MemberTarget::Triple);
+        function_pointer empty_function = nullptr;
+        member_pointer empty_member = nullptr;
+        move_only_function<int32_t(int32_t)> empty_move_function = empty_function;
+        copyable_function<int32_t(int32_t)> empty_copy_function = empty_function;
+        move_only_function<int32_t(const MemberTarget&, int32_t)> empty_move_member = empty_member;
+        copyable_function<int32_t(const MemberTarget&, int32_t)> empty_copy_member = empty_member;
+
+        CHECK_FALSE(empty_move_function);
+        CHECK_FALSE(empty_copy_function);
+        CHECK_FALSE(empty_move_member);
+        CHECK_FALSE(empty_copy_member);
+    }
+
     SECTION("InlineStorageKeepsCommonTargetsOffTheHeap")
     {
         int32_t counter = 0;

@@ -631,6 +631,11 @@ else()
 	AbortMessage("Unknown OS")
 endif()
 
+if((FO_MAC OR FO_IOS) AND CMAKE_GENERATOR STREQUAL "Xcode")
+	# Guarded modules may intentionally contribute no symbols; retain every archive member
+	string(APPEND CMAKE_STATIC_LINKER_FLAGS " -no_warning_for_no_symbols")
+endif()
+
 # Vulkan support (enabled by default; opt out with FO_DISABLE_VULKAN). No external Vulkan SDK is
 # needed: the build compiles against the Vulkan headers vendored with SDL3, and the loader is resolved
 # dynamically through SDL at runtime (see Rendering-Vulkan.cpp), so vulkan-1.lib is not linked and the

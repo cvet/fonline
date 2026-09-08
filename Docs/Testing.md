@@ -73,13 +73,27 @@ Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
-The validation project (`Engine/BuildTools/validation-project`) enables `FO_ANGELSCRIPT_SCRIPTING` and keeps `FO_MANAGED_SCRIPTING` off, so validators stay offline-friendly and do not pull in the Mono runtime build (`SetupManagedRuntime` / `setup-mono` clones and builds the pinned `dotnet/runtime` source, a heavy network step). The managed (C#/Mono) backend and `Test_ManagedScriptBaker` are exercised through the embedding project's managed build (the `auto-managed` preset), not through the validators.
+The validation project (`Engine/BuildTools/validation-project`) defaults to `FO_ANGELSCRIPT_SCRIPTING`
+with `FO_MANAGED_SCRIPTING` off. Ordinary validators retain these defaults and avoid the heavy
+Mono source build. The explicit `managed-mac-client`, `managed-ios-simulator-client` and
+`managed-ios-device-client` scenarios instead build the same engine-owned scaffold with managed
+scripting enabled and AngelScript disabled. They run normal native client compilation and linking,
+including `SetupManagedRuntime` and the generated runtime identity. They require an Apple host,
+Xcode, a .NET 10 SDK and network access to the pinned `dotnet/runtime` source.
+
+The manual `validate` workflow accepts `job=managed-apple` to run only four managed Apple builds:
+native macOS x64 and arm64, iOS x64 simulator and unsigned iOS arm64 device. `job=all` also runs
+the ordinary matrix. Automatic push/PR validation keeps the existing ordinary matrix; managed
+Apple builds are explicit because of their additional runtime build cost. The device build disables
+code signing and proves compilation/linking, not installation, signing or on-device execution.
+These engine-only builds need no embedding-project code, resources or credentials. Embedding
+projects must still validate their own managed assemblies, packages and live runtime behavior.
 
 The unit-test executable follows the configured scripting backends. AngelScript-only test translation units are
 compiled only with `FO_ANGELSCRIPT_SCRIPTING`; `Test_ManagedScriptBaker` is compiled only with
 `FO_MANAGED_SCRIPTING`. A managed-only embedding project can therefore build and run its local `RunUnitTests`
-target without re-enabling the retired runtime backend, while the validation project remains the full AngelScript
-backend boundary.
+target without re-enabling the retired runtime backend. Ordinary unit validators retain the full
+AngelScript backend boundary.
 
 ### Managed core-script regression tests
 

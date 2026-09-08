@@ -50,6 +50,8 @@
 #if FO_OPENGL_ES
 
 #if FO_IOS
+// ForceOpenGL and the automatic fallback retain Apple's OpenGLES declarations
+#define GLES_SILENCE_DEPRECATION
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
 #else

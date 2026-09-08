@@ -321,7 +321,7 @@ private:
 
         // A null function or member pointer produces an empty wrapper, so a call hits the assert instead of
         // jumping through the null target
-        if constexpr (std::is_pointer_v<target_type> || std::is_member_pointer_v<target_type>) {
+        if constexpr (std::is_pointer_v<std::remove_reference_t<T>> || std::is_member_pointer_v<target_type>) {
             if (target == nullptr) {
                 return;
             }
@@ -467,7 +467,7 @@ private:
     {
         using target_type = std::decay_t<T>;
 
-        if constexpr (std::is_pointer_v<target_type> || std::is_member_pointer_v<target_type>) {
+        if constexpr (std::is_pointer_v<std::remove_reference_t<T>> || std::is_member_pointer_v<target_type>) {
             if (target == nullptr) {
                 return;
             }

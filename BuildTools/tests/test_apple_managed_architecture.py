@@ -3,11 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 import pytest
 
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BUILDTOOLS_DIR))
+
+import buildtools
 
 
 @pytest.mark.skipif(shutil.which("cmake") is None, reason="CMake is required")
@@ -54,3 +58,17 @@ def test_ios_runtime_architecture_matches_native_target(tmp_path: Path, platform
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert (build / "architecture.txt").read_text() == expected
+
+
+def test_canonical_ios_minimum_reaches_actual_configure_command(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("FO_ENGINE_ROOT", str(BUILDTOOLS_DIR.parent))
+    monkeypatch.setenv("FO_WORKSPACE", str(tmp_path / "workspace"))
+    monkeypatch.setattr(buildtools, "resolve_apple_cmake", lambda: "cmake")
+
+    env = buildtools.resolve_env()
+    command = buildtools.make_platform_configure_cmd("ios", str(tmp_path), [], env)
+
+    assert "-DDEPLOYMENT_TARGET=26.0" in command
+    assert [arg for arg in command if arg.startswith("-DDEPLOYMENT_TARGET=")] == ["-DDEPLOYMENT_TARGET=26.0"]
+    assert "-DPLATFORM=SIMULATOR64" in command
+    assert "Xcode" in command

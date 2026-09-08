@@ -34,6 +34,7 @@ class ValidationTarget(TypedDict):
 	run_target: NotRequired[str]
 	workspace_parts: NotRequired[tuple[str, ...]]
 	msan_libcxx: NotRequired[bool]
+	cmake_args: NotRequired[tuple[str, ...]]
 
 
 def make_flag_map(*enabled_flag_names: str) -> FlagMap:
@@ -48,6 +49,7 @@ def make_validation_target(
 	run_target_name: str | None = None,
 	workspace_parts: Sequence[str] = (),
 	msan_libcxx: bool = False,
+	cmake_args: Sequence[str] = (),
 ) -> ValidationTarget:
 	validation_target: ValidationTarget = {
 		'platform': platform_name,
@@ -62,6 +64,8 @@ def make_validation_target(
 		validation_target['workspace_parts'] = tuple(workspace_parts)
 	if msan_libcxx:
 		validation_target['msan_libcxx'] = True
+	if cmake_args:
+		validation_target['cmake_args'] = tuple(cmake_args)
 	return validation_target
 
 
@@ -130,6 +134,8 @@ BUILD_TARGETS: dict[str, FlagMap] = {
 
 AUXILIARY_BUILD_TARGETS = ('effekseer-editor',)
 
+MANAGED_VALIDATION_CMAKE_ARGS = ('-DFO_MANAGED_SCRIPTING=ON', '-DFO_ANGELSCRIPT_SCRIPTING=OFF')
+
 VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	**make_validation_target_set('linux', 'linux', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('linux-gcc', 'linux', COMMON_VALIDATION_TARGET_NAMES, compiler_name='gcc'),
@@ -147,6 +153,9 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
 	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
+	'managed-mac-client': make_validation_target('mac', 'client', 'Release', cmake_args=MANAGED_VALIDATION_CMAKE_ARGS),
+	'managed-ios-simulator-client': make_validation_target('ios', 'client', 'Release', cmake_args=MANAGED_VALIDATION_CMAKE_ARGS),
+	'managed-ios-device-client': make_validation_target('ios', 'client', 'Release', cmake_args=(*MANAGED_VALIDATION_CMAKE_ARGS, '-DPLATFORM=OS64', '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO')),
 }
 
 ANDROID_PLATFORMS = ('android-arm32', 'android-arm64', 'android-x86')
@@ -2298,7 +2307,7 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 	target_name = validation['target']
 	config = validation['config']
 	compiler_name = validation.get('compiler', 'clang')
-	extra_cmake_args: list[str] = []
+	extra_cmake_args = list(validation.get('cmake_args', ()))
 	run_env = make_platform_configure_env(platform_name, compiler_name)
 
 	if validation.get('msan_libcxx'):

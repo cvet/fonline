@@ -151,6 +151,15 @@ Mono's `iossimulator` architecture follows the normalized native target processo
 (`x64`), independently of the build host. The `OS64` device target uses
 `ios/arm64`. Simulator builds do not validate device signing or execution.
 
+For the managed backend, run `buildtools.py validate managed-mac-client`,
+`managed-ios-simulator-client`, or `managed-ios-device-client` on an Apple host.
+These explicit Release scenarios enable managed scripting and disable AngelScript
+in the engine-owned validation scaffold. The device scenario selects `OS64` and
+disables code signing; the simulator scenario retains `SIMULATOR64`/x64. They
+build the pinned Mono runtime and link the native client, but do not install or
+execute an application. The manual `validate` workflow's `managed-apple` selection
+covers macOS x64/arm64 and both iOS scenarios without embedding-project inputs.
+
 `tests/test_apple_managed_architecture.py` configures the real Init stage with
 managed scripting enabled and checks both simulator and device runtime identities
 without requiring an Apple SDK. Native linking and managed execution still need

@@ -123,6 +123,8 @@ The 48-byte storage union obtains fundamental alignment from an inactive
 using natural alignment avoids MSVC's Win32 diagnostic for an explicitly
 aligned union member without changing the inline budget or heap boundary.
 
+Function references bind directly as nonempty targets. Null function pointers and null member pointers create empty wrappers; both move-only and copyable wrappers preserve that distinction.
+
 A `copyable_function` narrows to `move_only_function` by adopting or copying its target in place, never by wrapping it in a second indirection. The reverse conversion does not exist — a move-only target cannot become copyable.
 
 Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_BASIC_STRONG_ASSERT` instead of throwing `std::bad_function_call`. Check with `operator bool` where absence is legitimate. The module sits above `SmartPointers` and `MemorySystem` in the include order, so its heap tier uses the globally replaced `operator new` directly and exits through `ReportFatalAndExit` on exhaustion rather than through `SafeAlloc`.
@@ -210,9 +212,13 @@ When vendoring or updating a library, check whether it has an allocator hook and
 
 `DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `DataReader::Read<T>()` and `DataWriter::Write<T>()` copy standard-layout values through byte copies so serialized streams do not depend on buffer alignment. The zero-copy `ReadPtr<T>(size)` overload is only for raw byte/string views (`uint8_t`, `char`, or `void`); typed values that need alignment must use `Read<T>()` or `ReadPtr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives. `iround` rejects non-finite and out-of-int64-range floating-point input before rounding so no value undefined for `std::llround` can reach it. `HashStorage::SetResolveHashFailureHandler` lets higher layers observe failed hash resolution in both throwing and flagged no-throw lookup paths without teaching essentials about a specific recovery policy.
 
+Duration formatting retains 64-bit hour and day counts and keeps the existing minute/day display boundaries. `Test_TimeRelated` covers these boundaries and the largest nanosecond duration.
+
 ### Filesystem, compression, sockets, and work threads
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
+
+TCP and UDP transfer calls retain signed 32-bit byte counts. The requested buffer size is checked before the OS call; a successful result cannot exceed that size. Checked return conversion preserves `-1` errors (including would-block), zero-length results and TCP end-of-stream. `Test_NetSockets` exercises these outcomes over real loopback sockets.
 
 Windows disk I/O resolves ordinary paths through the native full-path operation before adding the extended namespace at the Win32 directory-length boundary. Reads, writes, metadata queries, renames, removal and directory iteration share this conversion, including relative paths beneath a long current directory. Ordinary drive and UNC paths retain Windows dot/space and separator normalization; already extended or device paths remain literal inputs. Resolution failures follow each API's existing error-result contract. Lexical helpers (`fs_make_path`, `fs_path_to_string`, `fs_resolve_path`, and writable-path policy) do not add the I/O prefix, and directory visitors still receive relative resource names. `Test_DiskFileSystem.cpp` exercises Unicode paths beyond 320 native characters and Windows ordinary-versus-literal trailing-name behavior.
 
