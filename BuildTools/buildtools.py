@@ -2424,6 +2424,23 @@ def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
 	log('Patched', path, '- preserved the zlib-ng warning level')
 
 
+def patch_runtime_android_sources(runtime_root: Path) -> None:
+	path = runtime_root / 'src/native/libs/System.Security.Cryptography.Native.Android/pal_ecc_import_export.c'
+	text = path.read_text(encoding='utf-8')
+	original = 'LOG_ERROR("Unuspported curve type specified: %d", curveType);'
+	replacement = ('// (FOnline Patch) Match the enum argument to the unsigned variadic format\n'
+		'        LOG_ERROR("Unuspported curve type specified: %u", (unsigned int)curveType);')
+
+	if replacement in text:
+		return
+
+	if text.count(original) != 1:
+		raise SystemExit(f'Cannot patch Android runtime enum format, unique anchor not found in {path}')
+
+	path.write_text(text.replace(original, replacement, 1), encoding='utf-8')
+	log('Patched Android runtime enum format:', path)
+
+
 def patch_runtime_apple_sources(runtime_root: Path) -> None:
 	patches = {
 		'src/mono/CMakeLists.txt': (
@@ -2498,6 +2515,92 @@ def patch_runtime_apple_sources(runtime_root: Path) -> None:
 
 		path.write_text(text, encoding='utf-8')
 		log('Patched Apple runtime source:', path)
+
+
+def patch_runtime_android_x86_atomics(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'atomic.h'
+	text = path.read_text(encoding='utf-8')
+	anchor = '#if !defined (BROKEN_64BIT_ATOMICS_INTRINSIC)\n'
+	atomics = '''#if defined (HOST_ANDROID) && defined (HOST_X86)
+/* (FOnline Patch) Android x86 permits four-byte-aligned gint64 storage; cmpxchg8b preserves that ABI without a GC-unsafe library lock */
+static inline gint64 mono_atomic_cas_i64(volatile gint64 *dest, gint64 exch, gint64 comp)
+{
+	__asm__ __volatile__ ("lock; cmpxchg8b %1"
+		: "+A" (comp), "+m" (*dest)
+		: "b" ((guint32)exch), "c" ((guint32)((guint64)exch >> 32))
+		: "memory", "cc");
+	return comp;
+}
+
+static inline gint64 mono_atomic_fetch_add_i64(volatile gint64 *dest, gint64 add)
+{
+	gint64 old_val = 0, expected;
+	do {
+		expected = old_val;
+		old_val = mono_atomic_cas_i64 (dest, (gint64)((guint64)expected + (guint64)add), expected);
+	} while (old_val != expected);
+	return old_val;
+}
+
+static inline gint64 mono_atomic_add_i64(volatile gint64 *dest, gint64 add)
+{
+	return (gint64)((guint64)mono_atomic_fetch_add_i64 (dest, add) + (guint64)add);
+}
+
+static inline gint64 mono_atomic_inc_i64(volatile gint64 *dest)
+{
+	return mono_atomic_add_i64 (dest, 1);
+}
+
+static inline gint64 mono_atomic_dec_i64(volatile gint64 *dest)
+{
+	return mono_atomic_add_i64 (dest, -1);
+}
+
+static inline gint64 mono_atomic_load_i64(volatile gint64 *src)
+{
+	return mono_atomic_cas_i64 (src, 0, 0);
+}
+
+#elif !defined (BROKEN_64BIT_ATOMICS_INTRINSIC)
+'''
+	exchange_anchor = '''static inline gint64 mono_atomic_xchg_i64(volatile gint64 *val, gint64 new_val)
+{
+	gint64 old_val;
+	do {
+		old_val = *val;
+	} while (mono_atomic_cas_i64 (val, new_val, old_val) != old_val);
+	return old_val;
+}'''
+	exchange = '''static inline gint64 mono_atomic_xchg_i64(volatile gint64 *val, gint64 new_val)
+{
+#if defined (HOST_ANDROID) && defined (HOST_X86)
+	/* (FOnline Patch) Seed retries from CAS observations instead of a potentially torn plain load */
+	gint64 old_val = 0, expected;
+	do {
+		expected = old_val;
+		old_val = mono_atomic_cas_i64 (val, new_val, expected);
+	} while (old_val != expected);
+#else
+	gint64 old_val;
+	do {
+		old_val = *val;
+	} while (mono_atomic_cas_i64 (val, new_val, old_val) != old_val);
+#endif
+	return old_val;
+}'''
+
+	for original, replacement in ((anchor, atomics), (exchange_anchor, exchange)):
+		if replacement in text:
+			continue
+
+		if text.count(original) != 1:
+			raise SystemExit(f'Cannot patch Android x86 Mono atomics, unique anchor not found in {path}: {original.splitlines()[0]}')
+
+		text = text.replace(original, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched Android x86 runtime atomics:', path)
 
 
 def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
@@ -2620,6 +2723,10 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		if os_name in ('osx', 'ios', 'iossimulator'):
 			patch_runtime_apple_sources(runtime_root)
+
+		if os_name == 'android':
+			patch_runtime_android_sources(runtime_root)
+			patch_runtime_android_x86_atomics(runtime_root)
 
 		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root, target_os=os_name)
 

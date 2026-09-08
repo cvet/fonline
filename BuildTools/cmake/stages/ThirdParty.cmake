@@ -807,19 +807,6 @@ if(FO_MANAGED_SCRIPTING)
         AppendList(FO_MONO_SETUP_ENV "ANDROID_SDK_ROOT=$ENV{FO_ANDROID_SDK_ROOT}")
     endif()
 
-    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
-        COMMAND ${CMAKE_COMMAND} -E env ${FO_MONO_SETUP_ENV}
-            "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/buildtools.py"
-            setup-mono ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
-        WORKING_DIRECTORY ${FO_DOTNET_DIR}
-        COMMENT "Setup Managed runtime"
-        VERBATIM)
-
-    AddCommandTarget(SetupManagedRuntime
-        DEPENDS ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
-        WORKING_DIRECTORY ${FO_DOTNET_DIR})
-    AppendList(FO_GEN_DEPENDENCIES SetupManagedRuntime)
-
     # CoreLib reaches the OS through these shims, so they belong to the runtime rather than being an
     # extra. They are linked statically everywhere: Windows and WebAssembly cannot dlopen them at all
     if(FO_WEB)
@@ -883,9 +870,17 @@ if(FO_MANAGED_SCRIPTING)
         minipal)
 
     foreach(runtimeLib ${FO_MANAGED_RUNTIME_LIBS})
+        if(IS_ABSOLUTE "${runtimeLib}")
+            SetValue(runtimeArchive "${runtimeLib}")
+        else()
+            SetValue(runtimeArchive "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${runtimeLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        endif()
+
+        AppendList(FO_MANAGED_RUNTIME_ARCHIVES "${runtimeArchive}")
+
         # Xcode adds a configuration subdirectory to search paths; published Mono archives have none
-        if((FO_MAC OR FO_IOS) AND NOT IS_ABSOLUTE "${runtimeLib}")
-            SetValue(runtimeLib "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${runtimeLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        if(FO_MAC OR FO_IOS)
+            SetValue(runtimeLib "${runtimeArchive}")
         endif()
 
         AppendList(FO_COMMON_SYSTEM_LIBS "${runtimeLib}")
@@ -903,9 +898,27 @@ if(FO_MANAGED_SCRIPTING)
         # enables SIMD - taking the nosimd tables leaves their entries empty for opcodes it still runs
         AppendList(FO_COMMON_SYSTEM_LIBS mono-icall-table mono-wasm-eh-js mono-wasm-simd)
 
+        foreach(runtimeLib mono-ee-interp mono-icall-table mono-wasm-eh-js mono-wasm-simd)
+            AppendList(FO_MANAGED_RUNTIME_ARCHIVES "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${runtimeLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        endforeach()
+
         # Mono's browser runtime imports its scheduler and entropy from JavaScript. dotnet's own glue only
         # links stubs there and fills them from its JS host, which the engine does not run - so it supplies
         # the implementations itself, see Docs/WebDebugging.md, "Managed Runtime On Wasm"
         AddLinkOptionsList(--js-library ${FO_BUILDTOOLS_DIR}/web/managed-runtime.lib.js)
     endif()
+
+    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+        BYPRODUCTS ${FO_MANAGED_RUNTIME_ARCHIVES}
+        COMMAND ${CMAKE_COMMAND} -E env ${FO_MONO_SETUP_ENV}
+            "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/buildtools.py"
+            setup-mono ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR}
+        COMMENT "Setup Managed runtime"
+        VERBATIM)
+
+    AddCommandTarget(SetupManagedRuntime
+        DEPENDS ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR})
+    AppendList(FO_GEN_DEPENDENCIES SetupManagedRuntime)
 endif()

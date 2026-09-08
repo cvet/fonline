@@ -130,6 +130,13 @@ the runtime output, SDK shared-framework directory and Mono core library before 
 so removed files cannot survive a successful republish. Shared-framework versions sort numerically, with a
 prerelease ordered before the corresponding release.
 
+The ready-marker command declares the published static archives as CMake `BYPRODUCTS`, using
+the same configuration-specific runtime paths as the linker. Ninja requires a file-producing
+rule for these archives before it can schedule a clean build; a target dependency on
+`SetupManagedRuntime` alone cannot supply that rule. `test_managed_runtime_byproducts.py`
+reproduces the missing-rule failure and builds a real shared-library consumer with Ninja and
+Ninja Multi-Config in Debug and Release, then verifies that a repeated build reuses the runtime.
+
 Windows targets with managed scripting use the static MSVC runtime (`/MT`, or
 `/MTd` for Debug configurations), matching the published Mono and minipal
 archives even when no client target is built. Client builds also retain the
@@ -175,6 +182,22 @@ call's integer conversion. CMake policies CMP0156 and CMP0179, when available,
 deduplicate static archives for linkers that support rescanning them. Diagnostics
 remain enabled. These patches preserve the published runtime layout and are
 idempotent; an unexpected upstream source shape stops setup for review.
+
+Android source builds also match the native elliptic-curve diagnostic's variadic
+format to an explicit unsigned enum conversion. The source patch preserves the
+reported curve values and keeps format diagnostics enabled. Its regression
+compiles the diagnostic for all three Android architectures and executes it on
+the host, including rejection of ambiguous or changed upstream source anchors.
+
+Android x86 Mono builds use `lock cmpxchg8b` for 64-bit atomics and derive the
+other operations from CAS observations. This preserves the ABI's four-byte
+alignment of `gint64`, including fields exposed through managed `Interlocked`,
+without assuming eight-byte alignment or introducing a library mutex that could
+deadlock during GC suspension. The locked instruction and compiler memory
+clobber preserve Mono's full ordering; other architectures retain their upstream
+implementation. Regression coverage compiles the Android x86 PIC path and, when
+a Linux i386 loader and libc are installed, executes concurrent operations at
+both four- and eight-byte alignment.
 
 Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
 interop generator's dependency path from a completed runtime checkout. Deleting that checkout then
