@@ -778,7 +778,10 @@ if(FO_MANAGED_SCRIPTING)
     FileMakeDirectory(${FO_DOTNET_DIR})
 
     AddIncludeDirectories(${FO_MANAGED_RUNTIME_DIR}/include/mono-2.0)
-    AddLinkDirectories(${FO_MANAGED_RUNTIME_DIR}/lib)
+
+    if(NOT FO_MAC AND NOT FO_IOS)
+        AddLinkDirectories(${FO_MANAGED_RUNTIME_DIR}/lib)
+    endif()
 
     # dotnet/runtime builds the managed runtime with the host's own toolchain and has no Windows
     # cross-target, so a Windows target reachable by clang-cl still leaves the runtime out of reach.
@@ -870,7 +873,7 @@ if(FO_MANAGED_SCRIPTING)
         AppendList(FO_COMMON_SYSTEM_LIBS mono-ee-interp)
     endif()
 
-    AppendList(FO_COMMON_SYSTEM_LIBS
+    SetValue(FO_MANAGED_RUNTIME_LIBS
         monosgen-2.0
         mono-component-debugger-stub-static
         mono-component-diagnostics_tracing-stub-static
@@ -879,8 +882,20 @@ if(FO_MANAGED_SCRIPTING)
         ${FO_MANAGED_SHIM_ARCHIVES}
         minipal)
 
+    foreach(runtimeLib ${FO_MANAGED_RUNTIME_LIBS})
+        # Xcode adds a configuration subdirectory to search paths; published Mono archives have none
+        if((FO_MAC OR FO_IOS) AND NOT IS_ABSOLUTE "${runtimeLib}")
+            SetValue(runtimeLib "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${runtimeLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        endif()
+
+        AppendList(FO_COMMON_SYSTEM_LIBS "${runtimeLib}")
+    endforeach()
+
     if(FO_WINDOWS)
         AppendList(FO_COMMON_SYSTEM_LIBS bcrypt)
+    elseif(FO_MAC OR FO_IOS)
+        # Static Mono and its PAL shims require these even when no SDL frontend is linked
+        AppendList(FO_COMMON_SYSTEM_LIBS "-framework Foundation" "-framework CoreFoundation" objc)
     elseif(FO_WEB)
         # The JS flavour, not the wasm one: the engine builds with -sDISABLE_EXCEPTION_CATCHING=0 rather
         # than -fwasm-exceptions, and the wasm flavour then wants an unwinder the link does not have.

@@ -156,6 +156,15 @@ Retry a failed build from this environment error with a fresh runtime object tre
 an existing CMake cache retains its previously selected SDK even after the parent
 environment is corrected. Successful runtime caches remain valid.
 
+Managed Apple targets link Foundation, CoreFoundation, and the Objective-C runtime
+through the common managed dependency set. These dependencies belong to Mono and
+its static native shims, including headless targets that do not link SDL. Runtime
+archives use full paths on Apple: Xcode otherwise adds a configuration subdirectory
+to library search paths, although Mono publishes directly under the triplet's
+`lib` directory. The regression builds and links actual Mach-O shared libraries for
+macOS arm64/x64, iOS arm64, and the x64 simulator with SDK symbol fixtures; installed
+Apple SDK builds remain the platform acceptance check.
+
 Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
 interop generator's dependency path from a completed runtime checkout. Deleting that checkout then
 makes another build fail with CS8784 even though its own `Microsoft.Interop.SourceGeneration.dll`
