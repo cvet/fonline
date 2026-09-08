@@ -231,6 +231,7 @@ static void SetSettingValueFromString(MonoString* name, string value);
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*;
 static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend, MonoString* owner_type, MonoString* property_name, bool require_virtual, bool require_marshalable_value) -> ptr<const Property>;
 static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call);
+static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call);
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call);
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data);
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>;
@@ -391,7 +392,7 @@ struct ManagedScalarValue
     }
 };
 
-// Roots the bridged managed List/Dictionary object with a GC handle for the lifetime of the bridge
+// A GC handle preserves managed objects across native allocation and invocation boundaries
 struct ManagedObjectRoot
 {
     ManagedObjectRoot() = default;
@@ -532,8 +533,9 @@ struct ManagedDataAccessor final : DataAccessor
         }
 
         MonoObject* key = GetManagedDictionaryKey(dict->Backend.as_ptr(), dict->GetObject(), index);
+        ptr<void> native_key = ConvertManagedSimpleObjectToNative(dict->Backend.as_ptr(), *dict->Type.KeyType, key, dict->Keys[index]);
         MonoObject* value = GetManagedDictionaryValue(dict->Backend.as_ptr(), dict->GetObject(), index);
-        return pair<ptr<void>, ptr<void>>(ConvertManagedSimpleObjectToNative(dict->Backend.as_ptr(), *dict->Type.KeyType, key, dict->Keys[index]), ConvertManagedSimpleObjectToNative(dict->Backend.as_ptr(), dict->Type.BaseType, value, dict->Values[index]));
+        return pair<ptr<void>, ptr<void>>(native_key, ConvertManagedSimpleObjectToNative(dict->Backend.as_ptr(), dict->Type.BaseType, value, dict->Values[index]));
     }
 
     [[nodiscard]] auto GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc> override
@@ -560,9 +562,10 @@ struct ManagedDataAccessor final : DataAccessor
 
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         FO_VERIFY_AND_THROW(dict->Type.KeyType, "Dictionary bridge has no key type");
-        MonoObject* managed_key = BoxNativeSimpleValue(dict->Backend.as_ptr(), *dict->Type.KeyType, key.get());
+        ManagedObjectRoot managed_key;
+        managed_key.SetObject(BoxNativeSimpleValue(dict->Backend.as_ptr(), *dict->Type.KeyType, key.get()));
         MonoObject* managed_value = BoxNativeSimpleValue(dict->Backend.as_ptr(), dict->Type.BaseType, value.get());
-        AddManagedDictionaryItem(dict->Backend.as_ptr(), dict->GetObject(), managed_key, managed_value);
+        AddManagedDictionaryItem(dict->Backend.as_ptr(), dict->GetObject(), managed_key.GetObject(), managed_value);
     }
 };
 
@@ -1643,18 +1646,20 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
                 throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
             }
 
-            MonoObject* handler = mono_gchandle_get_target(getter_handle);
-
-            if (handler == nullptr) {
+            if (mono_gchandle_get_target(getter_handle) == nullptr) {
                 throw ScriptSystemException("Managed property getter delegate was collected", prop->GetName());
             }
 
-            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-            MonoArray* args_array = mono_array_new(domain, mono_get_object_class(), 1);
-            mono_array_setref(args_array, 0, entity_obj);
+            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 1)), 0);
+            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
-            MonoObject* result = InvokeManagedCallbackHandler(backend, handler, args_array);
-            prop_data = ConvertManagedObjectToPropertyData(backend, prop, result);
+            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            mono_array_setref(get_args_array(), 0, entity_obj);
+
+            ManagedObjectRoot result;
+            result.SetObject(InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(getter_handle), get_args_array()));
+            prop_data = ConvertManagedObjectToPropertyData(backend, prop, result.GetObject());
         });
         return prop_data;
     });
@@ -1687,21 +1692,22 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
                 throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
             }
 
-            MonoObject* handler = mono_gchandle_get_target(setter_handle);
-
-            if (handler == nullptr) {
+            if (mono_gchandle_get_target(setter_handle) == nullptr) {
                 throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
             }
 
+            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 2)), 0);
+            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
+
             MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            mono_array_setref(get_args_array(), 0, entity_obj);
             MonoObject* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-            MonoArray* args_array = mono_array_new(domain, mono_get_object_class(), 2);
-            mono_array_setref(args_array, 0, entity_obj);
-            mono_array_setref(args_array, 1, value_obj);
+            mono_array_setref(get_args_array(), 1, value_obj);
 
-            (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+            (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
 
-            MonoObject* modified_value = mono_array_get(args_array, MonoObject*, 1);
+            MonoObject* modified_value = mono_array_get(get_args_array(), MonoObject*, 1);
             prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
         });
     });
@@ -1734,23 +1740,24 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
                 throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
             }
 
-            MonoObject* handler = mono_gchandle_get_target(setter_handle);
-
-            if (handler == nullptr) {
+            if (mono_gchandle_get_target(setter_handle) == nullptr) {
                 throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
             }
 
+            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 3)), 0);
+            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
+
             MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            mono_array_setref(get_args_array(), 0, entity_obj);
             MonoObject* property_obj = CreatePropertyEnumObject(backend, owner_type_name, prop);
+            mono_array_setref(get_args_array(), 1, property_obj);
             MonoObject* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-            MonoArray* args_array = mono_array_new(domain, mono_get_object_class(), 3);
-            mono_array_setref(args_array, 0, entity_obj);
-            mono_array_setref(args_array, 1, property_obj);
-            mono_array_setref(args_array, 2, value_obj);
+            mono_array_setref(get_args_array(), 2, value_obj);
 
-            (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+            (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
 
-            MonoObject* modified_value = mono_array_get(args_array, MonoObject*, 2);
+            MonoObject* modified_value = mono_array_get(get_args_array(), MonoObject*, 2);
             prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
         });
     });
@@ -1785,17 +1792,18 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
                 throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
             }
 
-            MonoObject* handler = mono_gchandle_get_target(setter_handle);
-
-            if (handler == nullptr) {
+            if (mono_gchandle_get_target(setter_handle) == nullptr) {
                 throw ScriptSystemException("Managed deferred property setter delegate was collected", prop->GetName());
             }
 
-            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-            MonoArray* args_array = mono_array_new(domain, mono_get_object_class(), 1);
-            mono_array_setref(args_array, 0, entity_obj);
+            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 1)), 0);
+            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
-            (void)InvokeManagedCallbackHandler(backend, handler, args_array);
+            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+            mono_array_setref(get_args_array(), 0, entity_obj);
+
+            (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
         });
     });
 }
@@ -2693,6 +2701,17 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
 {
     FO_STACK_TRACE_ENTRY();
 
+    nptr<EngineMetadata> meta = backend->GetMetadata();
+    nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
+    FO_VERIFY_AND_THROW(engine, "Managed callback dispatch requires an engine context");
+
+    engine->RunScriptContext([&] { DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call); });
+}
+
+static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)
+{
+    FO_STACK_TRACE_ENTRY();
+
     ActiveBackendScope active_backend {backend};
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -2701,24 +2720,23 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
         throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
     }
 
-    MonoObject* handler = mono_gchandle_get_target(handler_handle);
-
-    if (handler == nullptr) {
+    if (mono_gchandle_get_target(handler_handle) == nullptr) {
         throw ScriptSystemException("Managed callback delegate was collected");
     }
     if (call.ArgsData.size() != args.size()) {
         throw ScriptSystemException("Managed callback argument count mismatch");
     }
 
-    MonoArray* args_array = mono_array_new(domain, mono_get_object_class(), args.size());
+    uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), args.size())), 0);
+    auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+    auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
     for (size_t i = 0; i < args.size(); i++) {
         MonoObject* arg = BoxNativeCallValue(backend, args[i], ptr<void>(call.ArgsData[i]).get(), call.Accessor.get());
-        mono_array_setref(args_array, i, arg);
+        mono_array_setref(get_args_array(), i, arg);
     }
 
-    // Resolve FOnline.Native via the backend's loaded images, not the handler's class image: a handler may be a
-    // System delegate (e.g
+    // Delegate types can belong to system assemblies; Native belongs to the backend's loaded scripts
     MonoClass* native_class = FindFOnlineClass(backend, "Native");
 
     if (native_class == nullptr) {
@@ -2731,19 +2749,20 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
         throw ScriptSystemException("Managed Native.InvokeCallback method not found");
     }
 
-    void* invoke_args[] = {handler, args_array};
+    void* invoke_args[] = {mono_gchandle_get_target(handler_handle), get_args_array()};
     MonoObject* exception = nullptr;
-    MonoObject* result = mono_runtime_invoke(invoke_callback, nullptr, invoke_args, &exception);
+    ManagedObjectRoot result;
+    result.SetObject(mono_runtime_invoke(invoke_callback, nullptr, invoke_args, &exception));
     ThrowIfManagedException(exception, "Managed callback failed");
 
     for (size_t i = 0; i < args.size(); i++) {
         if (args[i].IsMutable) {
-            CopyManagedCallbackByRefArg(backend, args[i], mono_array_get(args_array, MonoObject*, i), ptr<void>(call.ArgsData[i]));
+            CopyManagedCallbackByRefArg(backend, args[i], mono_array_get(get_args_array(), MonoObject*, i), ptr<void>(call.ArgsData[i]));
         }
     }
 
     if (ret) {
-        CopyManagedCallbackReturnValue(backend, ret, result, call);
+        CopyManagedCallbackReturnValue(backend, ret, result.GetObject(), call);
     }
 }
 
@@ -2773,12 +2792,14 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
 
     if (type.Kind == ComplexTypeKind::Array) {
         // Rebuild the caller's array from the managed List return (the reverse of BoxNativeCallValue's Array read)
+        ManagedObjectRoot list;
+        list.SetObject(value);
         accessor->ClearArray(ret_data);
 
-        size_t array_size = value != nullptr ? GetManagedListCount(backend, value) : 0;
+        size_t array_size = GetManagedListCount(backend, list.GetObject());
 
         for (size_t i = 0; i < array_size; i++) {
-            MonoObject* element = GetManagedListItem(backend, value, i);
+            MonoObject* element = GetManagedListItem(backend, list.GetObject(), i);
             ManagedScalarValue element_storage;
             void* element_value = ConvertManagedSimpleObjectToNative(backend, type.BaseType, element, element_storage);
             accessor->AddArrayElement(ret_data, element_value);
@@ -2909,29 +2930,32 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
         return BoxNativeSimpleValue(backend, type.BaseType, data);
     }
     if (type.Kind == ComplexTypeKind::Array) {
-        MonoObject* list = CreateManagedList(backend, type.BaseType);
+        ManagedObjectRoot list;
+        list.SetObject(CreateManagedList(backend, type.BaseType));
         size_t size = accessor->GetArraySize(data);
 
         for (size_t i = 0; i < size; i++) {
             MonoObject* item = BoxNativeSimpleValue(backend, type.BaseType, accessor->GetArrayElement(data, i).get());
-            AddManagedListItem(backend, list, item);
+            AddManagedListItem(backend, list.GetObject(), item);
         }
 
-        return list;
+        return list.GetObject();
     }
     if (type.Kind == ComplexTypeKind::Dict) {
         FO_VERIFY_AND_THROW(type.KeyType, "Dictionary type has no key type");
-        MonoObject* dictionary = CreateManagedDictionary(backend, *type.KeyType, type.BaseType);
+        ManagedObjectRoot dictionary;
+        dictionary.SetObject(CreateManagedDictionary(backend, *type.KeyType, type.BaseType));
         size_t size = accessor->GetDictSize(data);
 
         for (size_t i = 0; i < size; i++) {
             auto [key, value] = accessor->GetDictElement(data, i);
-            MonoObject* managed_key = BoxNativeSimpleValue(backend, *type.KeyType, key.get());
+            ManagedObjectRoot managed_key;
+            managed_key.SetObject(BoxNativeSimpleValue(backend, *type.KeyType, key.get()));
             MonoObject* managed_value = BoxNativeSimpleValue(backend, type.BaseType, value.get());
-            AddManagedDictionaryItem(backend, dictionary, managed_key, managed_value);
+            AddManagedDictionaryItem(backend, dictionary.GetObject(), managed_key.GetObject(), managed_value);
         }
 
-        return dictionary;
+        return dictionary.GetObject();
     }
 
     throw ScriptSystemException("Unsupported Managed return type", type.BaseType.Name);
@@ -3033,7 +3057,8 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
     mono_bool has_result = subscription->HasExplicitResult ? 1 : 0;
     void* args[] = {mono_gchandle_get_target(subscription->Handler), &has_result, get_args_array()};
     MonoObject* exception = nullptr;
-    MonoObject* ret = mono_runtime_invoke(invoke_event, nullptr, args, &exception);
+    ManagedObjectRoot ret;
+    ret.SetObject(mono_runtime_invoke(invoke_event, nullptr, args, &exception));
     ThrowIfManagedException(exception, "Managed event handler failed");
 
     for (size_t i = 0; i < subscription->Args.size(); i++) {
@@ -3043,11 +3068,11 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
         }
     }
 
-    if (ret == nullptr) {
+    if (ret.GetObject() == nullptr) {
         return Entity::EventResult::ContinueChain;
     }
 
-    auto result = *static_cast<int32_t*>(mono_object_unbox(ret));
+    auto result = *static_cast<int32_t*>(mono_object_unbox(ret.GetObject()));
     return static_cast<Entity::EventResult>(result);
 }
 
@@ -3176,9 +3201,10 @@ static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_v
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* entity_class = FindFOnlineClass(backend, type_name);
-    MonoObject* obj = mono_object_new(domain, entity_class);
+    ManagedObjectRoot obj;
+    obj.SetObject(mono_object_new(domain, entity_class));
 
-    if (obj == nullptr) {
+    if (obj.GetObject() == nullptr) {
         throw ScriptSystemException("Can't create Managed entity wrapper", type_name);
     }
 
@@ -3191,9 +3217,9 @@ static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_v
     void* entity_ptr = entity.void_cast();
     void* args[] = {&entity_ptr};
     MonoObject* exception = nullptr;
-    mono_runtime_invoke(ctor, obj, args, &exception);
+    mono_runtime_invoke(ctor, obj.GetObject(), args, &exception);
     ThrowIfManagedException(exception, "Managed entity wrapper constructor failed");
-    return obj;
+    return obj.GetObject();
 }
 
 static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, string_view owner_type_name, ptr<const Property> prop) -> MonoObject*
@@ -3232,15 +3258,16 @@ static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, c
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
-    MonoObject* obj = mono_object_new(domain, klass);
+    ManagedObjectRoot obj;
+    obj.SetObject(mono_object_new(domain, klass));
 
-    if (obj == nullptr) {
+    if (obj.GetObject() == nullptr) {
         throw ScriptSystemException("Can't create Managed ref type wrapper", base_type.Name);
     }
 
     void* args[] = {&ref_ptr};
-    InvokeManagedConstructor(klass, obj, 1, args, base_type.Name);
-    return obj;
+    InvokeManagedConstructor(klass, obj.GetObject(), 1, args, base_type.Name);
+    return obj.GetObject();
 }
 
 static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> MonoObject*
@@ -3251,13 +3278,14 @@ static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, 
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
-    MonoObject* obj = mono_object_new(domain, klass);
+    ManagedObjectRoot obj;
+    obj.SetObject(mono_object_new(domain, klass));
 
-    if (obj == nullptr) {
+    if (obj.GetObject() == nullptr) {
         throw ScriptSystemException("Can't create Managed dynamic ref type", base_type.Name);
     }
 
-    InvokeManagedConstructor(klass, obj, 0, nullptr, base_type.Name);
+    InvokeManagedConstructor(klass, obj.GetObject(), 0, nullptr, base_type.Name);
 
     ptr<const PropertyRegistrar> fields_registrar = base_type.RefType->FieldsRegistrar;
     size_t data_pos = 0;
@@ -3294,7 +3322,7 @@ static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, 
         if (!field_raw_data.empty()) {
             MonoObject* field_value = BoxPropertyValue(backend, field_prop.get(), field_raw_data);
             string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
-            SetManagedPropertyValue(backend, obj, field_name, field_value);
+            SetManagedPropertyValue(backend, obj.GetObject(), field_name, field_value);
         }
     }
 
@@ -3302,7 +3330,7 @@ static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, 
         throw ScriptSystemException("Corrupted Managed dynamic ref type data", base_type.Name);
     }
 
-    return obj;
+    return obj.GetObject();
 }
 
 static auto CreateRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr) -> MonoObject*
@@ -3334,13 +3362,15 @@ static auto CreateDynamicRefTypeFromManaged(ptr<ManagedScriptBackend> backend, c
         return {};
     }
 
+    ManagedObjectRoot value_root;
+    value_root.SetObject(value);
     auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrar.get());
     ptr<const PropertyRegistrar> fields_registrar = base_type.RefType->FieldsRegistrar;
 
     for (size_t i = 1; i < fields_registrar->GetPropertiesCount(); i++) {
         auto field_prop = fields_registrar->GetPropertyByIndexUnsafe(i);
         string field_name = MakeManagedDynamicRefTypePropertyName(field_prop);
-        MonoObject* field_value = GetManagedPropertyValue(backend, value, field_name);
+        MonoObject* field_value = GetManagedPropertyValue(backend, value_root.GetObject(), field_name);
         PropertyRawData field_data = ConvertManagedObjectToPropertyData(backend, field_prop.get(), field_value);
         ref_instance->SetValue(field_prop, field_data);
     }
@@ -3355,6 +3385,8 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
     FO_VERIFY_AND_THROW(base_type.StructLayout != nullptr, "Struct layout is missing");
 
+    ManagedObjectRoot value_root;
+    value_root.SetObject(value);
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
     uint8_t* raw_data = static_cast<uint8_t*>(data);
@@ -3368,13 +3400,13 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
 
         if (field_desc.Type.IsHashedString) {
             hstring::hash_t hash {};
-            mono_field_get_value(value, field, &hash);
+            mono_field_get_value(value_root.GetObject(), field, &hash);
 
             hstring resolved_hash = ResolveManagedHashValue(backend, hash);
             *ptr<void>(raw_data + field_desc.Offset).reinterpret_as<hstring>() = resolved_hash;
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
-            MonoObject* field_value = mono_field_get_value_object(domain, field, value);
+            MonoObject* field_value = mono_field_get_value_object(domain, field, value_root.GetObject());
 
             if (field_value == nullptr) {
                 throw ScriptSystemException("Managed struct field read failed", base_type.Name, field_desc.Name);
@@ -3383,7 +3415,7 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
             CopyManagedStructToNative(backend, field_desc.Type, field_value, raw_data + field_desc.Offset);
         }
         else {
-            mono_field_get_value(value, field, raw_data + field_desc.Offset);
+            mono_field_get_value(value_root.GetObject(), field, raw_data + field_desc.Offset);
         }
     }
 }
@@ -3395,6 +3427,8 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
     FO_VERIFY_AND_THROW(base_type.StructLayout != nullptr, "Struct layout is missing");
 
+    ManagedObjectRoot value_root;
+    value_root.SetObject(value);
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
     uint8_t* raw_data = static_cast<uint8_t*>(data);
@@ -3408,14 +3442,14 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
 
         if (field_desc.Type.IsHashedString) {
             hstring::hash_t hash {};
-            mono_field_get_value(value, field, &hash);
+            mono_field_get_value(value_root.GetObject(), field, &hash);
 
             hstring resolved_hash = ResolveManagedHashValue(backend, hash);
             hash = resolved_hash.as_hash();
             MemCopy(raw_data + field_desc.Offset, &hash, sizeof(hash));
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
-            MonoObject* field_value = mono_field_get_value_object(domain, field, value);
+            MonoObject* field_value = mono_field_get_value_object(domain, field, value_root.GetObject());
 
             if (field_value == nullptr) {
                 throw ScriptSystemException("Managed struct field read failed", base_type.Name, field_desc.Name);
@@ -3424,7 +3458,7 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
             CopyManagedStructToPropertyData(backend, field_desc.Type, field_value, raw_data + field_desc.Offset);
         }
         else {
-            mono_field_get_value(value, field, raw_data + field_desc.Offset);
+            mono_field_get_value(value_root.GetObject(), field, raw_data + field_desc.Offset);
         }
     }
 }
@@ -3438,9 +3472,10 @@ static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const Ba
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
-    MonoObject* obj = mono_object_new(domain, klass);
+    ManagedObjectRoot obj;
+    obj.SetObject(mono_object_new(domain, klass));
 
-    if (obj == nullptr) {
+    if (obj.GetObject() == nullptr) {
         throw ScriptSystemException("Can't create Managed struct", base_type.Name);
     }
 
@@ -3456,7 +3491,7 @@ static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const Ba
         if (field_desc.Type.IsHashedString) {
             const hstring& hash = *reinterpret_cast<const hstring*>(raw_data + field_desc.Offset);
             hstring::hash_t managed_hash = MakeManagedHashValue(backend, hash);
-            mono_field_set_value(obj, field, &managed_hash);
+            mono_field_set_value(obj.GetObject(), field, &managed_hash);
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
             MonoObject* field_value = CreateStructObject(backend, field_desc.Type, const_cast<uint8_t*>(raw_data + field_desc.Offset));
@@ -3465,14 +3500,14 @@ static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const Ba
                 throw ScriptSystemException("Managed struct field create failed", base_type.Name, field_desc.Name);
             }
 
-            mono_field_set_value(obj, field, mono_object_unbox(field_value));
+            mono_field_set_value(obj.GetObject(), field, mono_object_unbox(field_value));
         }
         else {
-            mono_field_set_value(obj, field, const_cast<uint8_t*>(raw_data + field_desc.Offset));
+            mono_field_set_value(obj.GetObject(), field, const_cast<uint8_t*>(raw_data + field_desc.Offset));
         }
     }
 
-    return obj;
+    return obj.GetObject();
 }
 
 static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> MonoObject*
@@ -3485,9 +3520,10 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
-    MonoObject* obj = mono_object_new(domain, klass);
+    ManagedObjectRoot obj;
+    obj.SetObject(mono_object_new(domain, klass));
 
-    if (obj == nullptr) {
+    if (obj.GetObject() == nullptr) {
         throw ScriptSystemException("Can't create Managed property struct", base_type.Name);
     }
 
@@ -3503,7 +3539,7 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
         if (field_desc.Type.IsHashedString) {
             hstring::hash_t managed_hash {};
             MemCopy(&managed_hash, data + field_desc.Offset, sizeof(managed_hash));
-            mono_field_set_value(obj, field, &managed_hash);
+            mono_field_set_value(obj.GetObject(), field, &managed_hash);
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
             MonoObject* field_value = CreatePropertyStructObject(backend, field_desc.Type, {data + field_desc.Offset, field_desc.Type.Size});
@@ -3512,14 +3548,14 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
                 throw ScriptSystemException("Managed property struct field create failed", base_type.Name, field_desc.Name);
             }
 
-            mono_field_set_value(obj, field, mono_object_unbox(field_value));
+            mono_field_set_value(obj.GetObject(), field, mono_object_unbox(field_value));
         }
         else {
-            mono_field_set_value(obj, field, const_cast<uint8_t*>(data + field_desc.Offset));
+            mono_field_set_value(obj.GetObject(), field, const_cast<uint8_t*>(data + field_desc.Offset));
         }
     }
 
-    return obj;
+    return obj.GetObject();
 }
 
 static auto GetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, MonoObject* obj, string_view property_name) -> MonoObject*
@@ -3644,9 +3680,10 @@ static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, con
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* key_class = GetManagedClass(backend, key_type);
     MonoClass* value_class = GetManagedClass(backend, value_type);
-    MonoReflectionType* key_reflection_type = mono_type_get_object(domain, mono_class_get_type(key_class));
+    ManagedObjectRoot key_reflection_type;
+    key_reflection_type.SetObject(reinterpret_cast<MonoObject*>(mono_type_get_object(domain, mono_class_get_type(key_class))));
     MonoReflectionType* value_reflection_type = mono_type_get_object(domain, mono_class_get_type(value_class));
-    void* args[] = {key_reflection_type, value_reflection_type};
+    void* args[] = {key_reflection_type.GetObject(), value_reflection_type};
     MonoObject* dictionary = InvokeNativeHelper(backend, "CreateDictionary", 2, args);
 
     if (dictionary == nullptr) {
@@ -3663,9 +3700,10 @@ static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backen
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* key_class = GetManagedClass(backend, key_type);
     MonoClass* element_class = GetManagedClass(backend, element_type);
-    MonoReflectionType* key_reflection_type = mono_type_get_object(domain, mono_class_get_type(key_class));
+    ManagedObjectRoot key_reflection_type;
+    key_reflection_type.SetObject(reinterpret_cast<MonoObject*>(mono_type_get_object(domain, mono_class_get_type(key_class))));
     MonoReflectionType* element_reflection_type = mono_type_get_object(domain, mono_class_get_type(element_class));
-    void* args[] = {key_reflection_type, element_reflection_type};
+    void* args[] = {key_reflection_type.GetObject(), element_reflection_type};
     MonoObject* dictionary = InvokeNativeHelper(backend, "CreateDictionaryOfList", 2, args);
 
     if (dictionary == nullptr) {
@@ -4083,12 +4121,13 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
     const BaseTypeDesc& base_type = prop->GetBaseType();
 
     if (prop->IsArray()) {
-        MonoObject* list = CreateManagedList(backend, base_type);
+        ManagedObjectRoot list;
+        list.SetObject(CreateManagedList(backend, base_type));
         const uint8_t* data = raw_data.data();
         const uint8_t* data_end = raw_data.data() + raw_data.size();
 
         if (raw_data.empty()) {
-            return list;
+            return list.GetObject();
         }
 
         if (prop->IsArrayOfString()) {
@@ -4100,7 +4139,7 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
                 uint32_t str_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
                 string text = span_read_string(data_span, data_pos, str_size);
                 MonoObject* item = reinterpret_cast<MonoObject*>(mono_string_new_len(GetDomainOrThrow(backend->GetDomain()), text.data(), numeric_cast<uint32_t>(text.size())));
-                AddManagedListItem(backend, list, item);
+                AddManagedListItem(backend, list.GetObject(), item);
             }
 
             data = raw_data.data() + data_pos;
@@ -4118,7 +4157,7 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
                 uint32_t ref_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
                 auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_size, MAX_SERIALIZED_ALIGNMENT);
                 MonoObject* item = CreateDynamicRefTypeObject(backend, base_type, ref_data);
-                AddManagedListItem(backend, list, item);
+                AddManagedListItem(backend, list.GetObject(), item);
             }
 
             data = raw_data.data() + data_pos;
@@ -4129,7 +4168,7 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
 
             for (size_t i = 0; i < arr_size; i++) {
                 MonoObject* item = BoxSimplePropertyValue(backend, base_type, {data, base_type.Size});
-                AddManagedListItem(backend, list, item);
+                AddManagedListItem(backend, list.GetObject(), item);
                 data += base_type.Size;
             }
         }
@@ -4138,7 +4177,7 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
             throw ScriptSystemException("Corrupted Managed array property tail", prop->GetName());
         }
 
-        return list;
+        return list.GetObject();
     }
     if (prop->IsDict()) {
         if (!IsManagedBridgeDictionaryProperty(prop)) {
@@ -4146,10 +4185,11 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
         }
 
         const BaseTypeDesc& key_type = prop->GetDictKeyType();
-        MonoObject* dictionary = prop->IsDictOfArray() ? CreateManagedDictionaryOfList(backend, key_type, base_type) : CreateManagedDictionary(backend, key_type, base_type);
+        ManagedObjectRoot dictionary;
+        dictionary.SetObject(prop->IsDictOfArray() ? CreateManagedDictionaryOfList(backend, key_type, base_type) : CreateManagedDictionary(backend, key_type, base_type));
 
         if (raw_data.empty()) {
-            return dictionary;
+            return dictionary.GetObject();
         }
         if (key_type.Size == 0 || (!prop->IsDictOfArray() && base_type.Size == 0)) {
             throw ScriptSystemException("Corrupted Managed dictionary property", prop->GetName());
@@ -4160,10 +4200,12 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
 
         while (data_pos < raw_data.size()) {
             auto key_data = span_read_aligned_bytes(data_span, data_pos, key_type.Size, alignment_for_size(key_type.Size));
-            MonoObject* key = BoxSimplePropertyValue(backend, key_type, key_data);
+            ManagedObjectRoot key;
+            key.SetObject(BoxSimplePropertyValue(backend, key_type, key_data));
 
             if (prop->IsDictOfArray()) {
-                MonoObject* list = CreateManagedList(backend, base_type);
+                ManagedObjectRoot list;
+                list.SetObject(CreateManagedList(backend, base_type));
                 uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
                 for (uint32_t i = 0; i < arr_size; i++) {
@@ -4179,15 +4221,15 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
                         item = BoxSimplePropertyValue(backend, base_type, item_data);
                     }
 
-                    AddManagedListItem(backend, list, item);
+                    AddManagedListItem(backend, list.GetObject(), item);
                 }
 
-                AddManagedDictionaryItem(backend, dictionary, key, list);
+                AddManagedDictionaryItem(backend, dictionary.GetObject(), key.GetObject(), list.GetObject());
             }
             else {
                 auto value_data = span_read_aligned_bytes(data_span, data_pos, base_type.Size, alignment_for_size(base_type.Size));
                 MonoObject* item = BoxSimplePropertyValue(backend, base_type, value_data);
-                AddManagedDictionaryItem(backend, dictionary, key, item);
+                AddManagedDictionaryItem(backend, dictionary.GetObject(), key.GetObject(), item);
             }
         }
 
@@ -4195,7 +4237,7 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
             throw ScriptSystemException("Corrupted Managed dictionary property tail", prop->GetName());
         }
 
-        return dictionary;
+        return dictionary.GetObject();
     }
 
     return BoxSimplePropertyValue(backend, base_type, raw_data);
@@ -4264,6 +4306,10 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
     if (!prop->IsArray() && !prop->IsDict()) {
         return ConvertManagedSimpleObjectToPropertyData(backend, base_type, value);
     }
+
+    ManagedObjectRoot collection;
+    collection.SetObject(value);
+
     if (prop->IsDict()) {
         if (!IsManagedBridgeDictionaryProperty(prop)) {
             throw ScriptSystemException("Managed dictionary property type is not supported", prop->GetName());
@@ -4271,7 +4317,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
 
         PropertyRawData prop_data;
         const BaseTypeDesc& key_type = prop->GetDictKeyType();
-        size_t dict_size = GetManagedDictionaryCount(backend, value);
+        size_t dict_size = GetManagedDictionaryCount(backend, collection.GetObject());
 
         if (dict_size == 0) {
             return prop_data;
@@ -4281,7 +4327,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
         data.reserve(dict_size * (key_type.Size + base_type.Size));
 
         for (size_t i = 0; i < dict_size; i++) {
-            MonoObject* key = GetManagedDictionaryKey(backend, value, i);
+            MonoObject* key = GetManagedDictionaryKey(backend, collection.GetObject(), i);
             PropertyRawData key_data = ConvertManagedSimpleObjectToPropertyData(backend, key_type, key);
 
             if (key_data.GetSize() != key_type.Size) {
@@ -4290,15 +4336,17 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
 
             AppendAlignedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(key_data.GetPtr().get()), key_data.GetSize()}, alignment_for_size(key_data.GetSize()));
 
-            MonoObject* item = GetManagedDictionaryValue(backend, value, i);
+            MonoObject* item = GetManagedDictionaryValue(backend, collection.GetObject(), i);
 
             if (prop->IsDictOfArray()) {
-                size_t arr_size = GetManagedListCount(backend, item);
+                ManagedObjectRoot list;
+                list.SetObject(item);
+                size_t arr_size = GetManagedListCount(backend, list.GetObject());
                 uint32_t arr_size_value = numeric_cast<uint32_t>(arr_size);
                 AppendAlignedRawValue(data, arr_size_value, sizeof(uint32_t));
 
                 for (size_t j = 0; j < arr_size; j++) {
-                    MonoObject* list_item = GetManagedListItem(backend, item, j);
+                    MonoObject* list_item = GetManagedListItem(backend, list.GetObject(), j);
                     PropertyRawData item_data = ConvertManagedSimpleObjectToPropertyData(backend, base_type, list_item);
 
                     if (prop->IsDictOfArrayOfString()) {
@@ -4331,7 +4379,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
     }
 
     PropertyRawData prop_data;
-    size_t arr_size = GetManagedListCount(backend, value);
+    size_t arr_size = GetManagedListCount(backend, collection.GetObject());
 
     if (arr_size == 0) {
         return prop_data;
@@ -4344,7 +4392,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
         AppendAlignedRawValue(data, arr_size_value, sizeof(uint32_t));
 
         for (size_t i = 0; i < arr_size; i++) {
-            MonoObject* item = GetManagedListItem(backend, value, i);
+            MonoObject* item = GetManagedListItem(backend, collection.GetObject(), i);
             string text = ToStringAndFree(reinterpret_cast<MonoString*>(item));
             uint32_t text_size = numeric_cast<uint32_t>(text.size());
             AppendAlignedRawValue(data, text_size, sizeof(uint32_t));
@@ -4360,7 +4408,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
         AppendRawValue(data, arr_size_value);
 
         for (size_t i = 0; i < arr_size; i++) {
-            MonoObject* item = GetManagedListItem(backend, value, i);
+            MonoObject* item = GetManagedListItem(backend, collection.GetObject(), i);
             refcount_nptr<DynamicRefTypeInstance> ref_instance = CreateDynamicRefTypeFromManaged(backend, base_type, item);
             span<const uint8_t> raw_data;
 
@@ -4377,7 +4425,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
         data.reserve(arr_size * base_type.Size);
 
         for (size_t i = 0; i < arr_size; i++) {
-            MonoObject* item = GetManagedListItem(backend, value, i);
+            MonoObject* item = GetManagedListItem(backend, collection.GetObject(), i);
             PropertyRawData item_data = ConvertManagedSimpleObjectToPropertyData(backend, base_type, item);
 
             if (item_data.GetSize() != base_type.Size) {

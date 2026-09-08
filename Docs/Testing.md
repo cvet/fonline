@@ -109,6 +109,35 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
+The native callback GC probe uses an existing Linux Mono embedding runtime (its `include/mono-2.0`
+and `lib` directories), Clang, and the .NET 10 SDK on `PATH`:
+
+```bash
+FO_MANAGED_CALLBACK_RUNTIME=/path/to/mono/linux.x64.Release \
+  python3 -m pytest BuildTools/tests/test_managed_callback_gc_roots.py
+```
+
+It compiles the canonical `DispatchManagedCallbackInContext` body and managed callback helpers against
+small argument-conversion fixtures. Real Mono collections cover eleven mixed scalar arguments,
+a mutable string with a return value, and cleanup after a boxing exception. The Mono profiler
+checks strong-handle lifetime at the boxing and copy-back boundaries: native conservative stack
+scanning can otherwise keep an unrooted object alive. This proves the native ownership contract;
+WebAssembly collection and browser behavior still require a Web runtime check.
+
+An existing Linux Makefiles unit-test build also supplies the actual `SyncContext` and `EntityLock`
+implementations for the callback scope probe:
+
+```bash
+FO_MANAGED_CALLBACK_BUILD=/path/to/native/build \
+  python3 -m pytest BuildTools/tests/test_managed_callback_context.py
+```
+
+This probe compiles the canonical callback wrapper and `ServerEngine::RunScriptContext` method
+on a small fixture host. Releasing or replacing the callback's cover, including an exceptional
+return, must preserve the caller's context and physical lock while releasing the callback's own
+lock. It records the native link inputs and verifies that they remain unchanged during linking.
+A running server with real managed remote calls remains the end-to-end acceptance check.
+
 ### Unit tests under sanitizers
 
 The unit tests also run under Clang sanitizers via dedicated validators, which select
