@@ -212,6 +212,17 @@ When vendoring or updating a library, check whether it has an allocator hook and
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
 
+For a native Windows path-length investigation, run
+`python BuildTools/probe_windows_file_io.py --output Workspace/file-io.json`.
+The diagnostic builds small MSVC programs with static and dynamic CRTs, records
+ordinary absolute, relative and extended-path `ifstream`/directory-enumeration
+results at 259, 260, 262 and 320 UTF-16 units, and checks file contents against
+a short-path control. It retains executables, compiler logs and available
+embedded manifests beside the JSON report. `--unc-root` optionally tests an
+existing writable share; otherwise UNC I/O is explicitly untested. This probes
+the native library boundary without changing the engine's lexical path APIs or
+requiring a game build.
+
 When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
 
 #### Waiting
