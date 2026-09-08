@@ -105,6 +105,12 @@ generator loads. Other Xcode SDK and toolchain variables remain available. The B
 regression publishes two actual SDK projects under a poisoned target name and verifies distinct
 assemblies; successful runtime caches retain their identity.
 
+Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
+interop generator's dependency path from a completed runtime checkout. Deleting that checkout then
+makes another build fail with CS8784 even though its own `Microsoft.Interop.SourceGeneration.dll`
+exists. A private compiler loads the current checkout's generator companions, so completed
+workspaces can be cleaned without invalidating another build's analyzer context.
+
 Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
 target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
 zlib-ng retains its own `/W3`, additional diagnostics and `/WX`; this prevents
