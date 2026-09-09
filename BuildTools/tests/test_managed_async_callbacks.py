@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
@@ -485,17 +486,25 @@ def callback_probe(tmp_path_factory):
     return build_probe(dotnet, output, PROBE_SOURCE)
 
 
+def replace_internal_call(source, declaration, replacement):
+    pattern = re.compile(
+        r"(?m)^(?P<indent>[ \t]*)\[MethodImpl\(MethodImplOptions\.InternalCall\)\]\r?\n"
+        + r"(?P=indent)" + re.escape(declaration) + r"$"
+    )
+    source, count = pattern.subn(lambda match: match.group("indent") + replacement, source)
+    assert count == 1
+    return source
+
+
 def build_probe(dotnet, output, probe_source):
     for name in ("Native.cs", "ScriptInvoke.cs", "Attributes.cs", "Verify.cs", "Async.cs", "ScriptSynchronizationContext.cs", "Initializator.cs"):
         source = (CORE / name).read_text(encoding="utf-8")
         if name == "Native.cs":
             # External logging and native continuation entry are the only substituted boundaries
-            declaration = "[MethodImpl(MethodImplOptions.InternalCall)]\n        internal static extern void Log(string text);"
-            assert source.count(declaration) == 1
-            source = source.replace(declaration, 'internal static void Log(string text) => Console.WriteLine("ENGINE_RECORDED " + text);')
-            continuation = "[MethodImpl(MethodImplOptions.InternalCall)]\n        private static extern string? RunScriptContinuationInternal(Action continuation);"
-            assert source.count(continuation) == 1
-            source = source.replace(continuation, "private static string? RunScriptContinuationInternal(Action continuation) { continuation(); return null; }")
+            source = replace_internal_call(source, "internal static extern void Log(string text);",
+                                           'internal static void Log(string text) => Console.WriteLine("ENGINE_RECORDED " + text);')
+            source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(Action continuation);",
+                                           "private static string? RunScriptContinuationInternal(Action continuation) { continuation(); return null; }")
         (output / name).write_text(source, encoding="utf-8")
     (output / "Probe.csproj").write_text(PROJECT, encoding="utf-8")
     (output / "Program.cs").write_text(probe_source, encoding="utf-8")
