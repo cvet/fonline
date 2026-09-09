@@ -5803,9 +5803,11 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                     throw ScriptSystemException("Failed to initialize Managed runtime domain");
                 }
 
+#if !FO_WEB
                 // mono_jit_init_version attaches its caller; adopt that attachment into this scope so the
                 // long-lived engine initialization worker is detached after the first backend is loaded
                 attachment_mode = ManagedThreadAttachmentMode::AdoptExisting;
+#endif
             }
         }
 

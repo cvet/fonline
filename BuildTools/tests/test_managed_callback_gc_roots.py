@@ -435,3 +435,14 @@ def test_runtime_initialization_attachment_is_adopted_and_reusable(mono_callback
     (executable.parent / "runtime-init.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "RUNTIME_INIT status=0 detached=1" in result.stdout
+
+
+def test_web_runtime_initialization_preserves_interpreter_thread_attachment():
+    source = BACKEND.read_text(encoding="utf-8")
+    assignment = "attachment_mode = ManagedThreadAttachmentMode::AdoptExisting;"
+    assignment_pos = source.index(assignment)
+    guard_start = source.rfind("#if !FO_WEB", 0, assignment_pos)
+
+    assert guard_start != -1
+    guard_end = source.index("#endif", guard_start)
+    assert guard_start < assignment_pos < guard_end

@@ -205,6 +205,11 @@ link are specific to the browser and easy to break by "simplifying" them:
   multi-engine server model, which implements suspension with signals - WebAssembly has none, and the
   browser client is single-threaded anyway. Left on, SGen walks off the end of the card table during
   `collect_nursery`. The setting is skipped on web.
+- **The interpreter attachment lives for the page lifetime.** `mono_jit_init_version` attaches the
+  browser main thread and creates its interpreter TLS context. Native hosts adopt and detach that
+  implicit initialization attachment before a long-lived worker returns to the engine scheduler, but
+  the single-threaded browser keeps it: detaching the browser thread invalidates the current interpreter
+  context and the next managed call aborts in `interp_free_context`.
 - **Nothing on the managed side may memory-map a file.** `AssemblyName.GetAssemblyName` does, so
   `ManagedLoadContextHost` reads the assembly's simple name through a `PEReader` over a `FileStream`
   instead. Excluding `SystemNative_MMap` from the table is what surfaces this, as an ordinary
