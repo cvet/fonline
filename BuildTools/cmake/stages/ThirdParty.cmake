@@ -66,6 +66,9 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
     # overrides in MemorySystem.cpp; rpmalloc must not emit its malloc/operator
     # replacements (ENABLE_OVERRIDE defaults to 1 since rpmalloc 2.0).
     TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
+    if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+        TargetCompileDefinitions(rpmalloc PRIVATE RPMALLOC_ENABLE_TESTS=1)
+    endif()
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
     TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
     # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
