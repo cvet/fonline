@@ -60,6 +60,7 @@ NATIVE_PREFIX = r'''
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 #include <mono/jit/jit.h>
@@ -75,7 +76,10 @@ NATIVE_PREFIX = r'''
 #include <mono/utils/mono-publib.h>
 
 #define FO_STACK_TRACE_ENTRY()
+#define FO_NO_STACK_TRACE_ENTRY()
+#define FO_VERIFY_AND_THROW(condition, ...) do { if (!(condition)) throw ScriptSystemException("Managed thread attachment failed"); } while (false)
 using ScriptSystemException = std::runtime_error;
+template<class F> void safe_call(F&& action) noexcept { try { action(); } catch (...) { } }
 template<class T> using vector = std::vector<T>;
 template<class T> class ptr
 {
@@ -132,6 +136,11 @@ struct ManagedScriptBackend
     int32_t ThrowAt {-1};
     bool CheckRoots {true};
     MonoDomain* GetDomain() { return Domain; }
+    auto SnapshotHandles()
+    {
+        std::lock_guard guard(Profiler->Lock);
+        return Profiler->Handles;
+    }
     bool HasRoot(MonoClass* klass)
     {
         std::lock_guard guard(Profiler->Lock);
@@ -200,12 +209,57 @@ int main(int argc, char** argv)
     mono_set_assemblies_path((runtime + "/lib/netcoreapp").c_str());
     mono_config_parse(nullptr);
     (void)mono_dl_fallback_register(LoadShim, FindShim, CloseShim, nullptr);
+    if (std::strcmp(argv[3], "runtime-init") == 0) {
+        int32_t status = 0;
+        std::thread worker([&] {
+            MonoDomain* worker_domain = mono_jit_init_version("CallbackRootProbe", "v4.0.30319");
+            if (worker_domain == nullptr || mono_thread_current() == nullptr) {
+                status = 98;
+                return;
+            }
+
+            uint32_t flag_handle = 0;
+            {
+                ManagedThreadAttachment managed_thread {worker_domain, ManagedThreadAttachmentMode::AdoptExisting};
+                MonoArray* flag = mono_array_new(worker_domain, mono_get_boolean_class(), 1);
+                flag_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(flag), false);
+                mono_gc_collect(mono_gc_max_generation());
+                flag = reinterpret_cast<MonoArray*>(mono_gchandle_get_target(flag_handle));
+                mono_array_set(flag, uint8_t, 0, 1);
+            }
+
+            if (mono_thread_current() != nullptr) {
+                status = 97;
+                return;
+            }
+
+            ReleaseManagedGcHandle(worker_domain, flag_handle);
+            if (flag_handle != 0 || mono_thread_current() != nullptr) {
+                status = 94;
+                return;
+            }
+
+            {
+                ManagedThreadAttachment managed_thread {worker_domain};
+                if (mono_thread_current() == nullptr) status = 96;
+            }
+
+            if (mono_thread_current() != nullptr) status = 95;
+        });
+        worker.join();
+        std::printf("RUNTIME_INIT status=%d detached=%d\n", status, status == 0);
+        return status;
+    }
+
     MonoDomain* domain = mono_jit_init_version("CallbackRootProbe", "v4.0.30319");
     MonoAssembly* assembly = mono_domain_assembly_open(domain, argv[2]);
     if (assembly == nullptr) return 91;
     MonoImage* image = mono_assembly_get_image(assembly);
     MonoClass* program = mono_class_from_name(image, "", "Program");
     bool by_ref = std::strcmp(argv[3], "by-ref") == 0;
+    bool external_thread = std::strcmp(argv[3], "external-thread") == 0 || std::strcmp(argv[3], "external-thread-throw") == 0;
+    bool adopt_existing_throw = std::strcmp(argv[3], "adopt-existing-throw") == 0;
+    bool adopt_existing = std::strcmp(argv[3], "adopt-existing") == 0 || adopt_existing_throw;
     MonoMethod* factory = mono_class_get_method_from_name(program, by_ref ? "CreateByRef" : "CreateScalars", 0);
     MonoObject* exception = nullptr;
     MonoObject* handler = mono_runtime_invoke(factory, nullptr, nullptr, &exception);
@@ -215,9 +269,10 @@ int main(int argc, char** argv)
     mono_profiler_set_gc_handle_created_callback(profiler_handle, HandleCreated);
     mono_profiler_set_gc_handle_deleted_callback(profiler_handle, HandleDeleted);
     uint32_t handler_handle = mono_gchandle_new(handler, false);
-    auto initial_handles = profiler.Handles;
     ManagedScriptBackend backend {domain, image, &profiler};
-    if (std::strcmp(argv[3], "throw-boxing") == 0) backend.ThrowAt = 4;
+    auto initial_handles = backend.SnapshotHandles();
+    if (std::strcmp(argv[3], "throw-boxing") == 0 || std::strcmp(argv[3], "external-thread-throw") == 0 ||
+        std::strcmp(argv[3], "adopt-existing-throw") == 0) backend.ThrowAt = 4;
     if (std::strcmp(argv[3], "observe-unrooted") == 0) backend.CheckRoots = false;
     std::string text = "scope";
     int64_t a = 1, b = 2;
@@ -231,23 +286,74 @@ int main(int argc, char** argv)
     FuncCallData call;
     call.ArgsData = by_ref ? vector<void*>{&text} : vector<void*>{&a, &b, &text, &c, &d, &e, &f, &g, &h, &i, &j};
     int32_t status = 0;
-    try {
+    auto dispatch = [&] {
         DispatchManagedCallbackInContext(&backend, handler_handle, int_type, args, call);
         if (backend.ThrowAt >= 0) status = 93;
         if (call.Result != (by_ref ? 73 : 39) || text != (by_ref ? "changed" : "scope")) status = 94;
-    }
-    catch (const std::exception& error) {
+    };
+    auto handle_exception = [&](const std::exception& error) {
         std::printf("EXCEPTION %s\n", error.what());
         if (backend.ThrowAt < 0 || std::strcmp(error.what(), "Requested boxing failure") != 0) status = 95;
+    };
+    auto invoke = [&] {
+        try {
+            dispatch();
+        }
+        catch (const std::exception& error) {
+            handle_exception(error);
+        }
+    };
+    bool worker_detached = !external_thread && !adopt_existing;
+    if (external_thread || adopt_existing) {
+        std::thread worker([&] {
+            if (adopt_existing) {
+                MonoThread* implicit_attachment = mono_thread_attach(domain);
+                if (implicit_attachment == nullptr) {
+                    status = 98;
+                    return;
+                }
+
+                try {
+                    ManagedThreadAttachment managed_thread {domain, ManagedThreadAttachmentMode::AdoptExisting};
+                    if (adopt_existing_throw) {
+                        dispatch();
+                    }
+                    else {
+                        invoke();
+                    }
+                }
+                catch (const std::exception& error) {
+                    handle_exception(error);
+                }
+            }
+            else {
+                invoke();
+            }
+
+            worker_detached = mono_thread_current() == nullptr;
+        });
+        worker.join();
+        if (!worker_detached) status = 97;
     }
-    if (profiler.Handles != initial_handles) {
-        std::printf("LEAK handles=%zu\n", profiler.Handles.size());
+    else {
+        invoke();
+    }
+    auto callback_handles = backend.SnapshotHandles();
+    if (external_thread || adopt_existing) {
+        // Mono may retain its own weak Thread handle until a later registry sweep; it is not a callback root.
+        std::erase_if(callback_handles, [](const auto& entry) { return std::strcmp(mono_class_get_name(entry.second.second), "Thread") == 0; });
+    }
+    if (callback_handles != initial_handles) {
+        std::printf("LEAK handles=%zu\n", callback_handles.size());
+        for (auto [handle, info] : callback_handles) {
+            std::printf("HANDLE id=%u type=%d class=%s\n", handle, static_cast<int>(info.first), mono_class_get_name(info.second));
+        }
         status = 96;
     }
     mono_gchandle_free(handler_handle);
     mono_profiler_set_gc_handle_created_callback(profiler_handle, nullptr);
     mono_profiler_set_gc_handle_deleted_callback(profiler_handle, nullptr);
-    std::printf("RESULT status=%d boxes=%d collections=%d return=%d text=%s\n", status, backend.BoxCalls, backend.Collections, call.Result, text.c_str());
+    std::printf("RESULT status=%d boxes=%d collections=%d return=%d text=%s detached=%d\n", status, backend.BoxCalls, backend.Collections, call.Result, text.c_str(), worker_detached);
     return status;
 }
 '''
@@ -261,9 +367,14 @@ def extract_function(source: str, declaration: str) -> str:
 
 def build_native_probe(output: Path, runtime: Path, compiler: str, backend_source: str) -> Path:
     declaration = "static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)"
+    attachment_start = backend_source.index("enum class ManagedThreadAttachmentMode\n{")
+    attachment_class = backend_source.index("class ManagedThreadAttachment final\n{", attachment_start)
+    attachment_end = backend_source.index("\n};", attachment_class) + len("\n};")
+    release_handle = extract_function(backend_source, "static void ReleaseManagedGcHandle(MonoDomain* domain, uint32_t& handle) noexcept")
     root_start = backend_source.index("struct ManagedObjectRoot\n{")
     root_end = backend_source.index("\n};", root_start) + len("\n};")
-    source = NATIVE_PREFIX + backend_source[root_start:root_end] + "\n" + extract_function(backend_source, declaration) + NATIVE_MAIN
+    source = (NATIVE_PREFIX + backend_source[attachment_start:attachment_end] + "\n" + release_handle +
+              backend_source[root_start:root_end] + "\n" + extract_function(backend_source, declaration) + NATIVE_MAIN)
     path = output / "callback.cpp"
     path.write_text(source, encoding="utf-8")
     executable = output / "callback"
@@ -297,9 +408,13 @@ def mono_callback_probe(tmp_path_factory):
 
 
 @pytest.mark.parametrize(("mode", "expected"), [
-    ("scalars", "boxes=11 collections=11 return=39 text=scope"),
-    ("by-ref", "boxes=1 collections=2 return=73 text=changed"),
-    ("throw-boxing", "boxes=5 collections=4 return=0 text=scope"),
+    ("scalars", "boxes=11 collections=11 return=39 text=scope detached=1"),
+    ("by-ref", "boxes=1 collections=2 return=73 text=changed detached=1"),
+    ("throw-boxing", "boxes=5 collections=4 return=0 text=scope detached=1"),
+    ("external-thread", "boxes=11 collections=11 return=39 text=scope detached=1"),
+    ("external-thread-throw", "boxes=5 collections=4 return=0 text=scope detached=1"),
+    ("adopt-existing", "boxes=11 collections=11 return=39 text=scope detached=1"),
+    ("adopt-existing-throw", "boxes=5 collections=4 return=0 text=scope detached=1"),
 ])
 def test_callback_roots_survive_collection_and_release_on_exit(mono_callback_probe, mode, expected):
     executable, runtime, assembly = mono_callback_probe
@@ -310,3 +425,13 @@ def test_callback_roots_survive_collection_and_release_on_exit(mono_callback_pro
     assert result.returncode == 0, result.stdout + result.stderr
     assert "RESULT status=0 " + expected in result.stdout
     assert "LEAK" not in result.stdout
+
+
+def test_runtime_initialization_attachment_is_adopted_and_reusable(mono_callback_probe):
+    executable, runtime, assembly = mono_callback_probe
+    result = subprocess.run([str(executable), str(runtime), str(assembly), "runtime-init"],
+                            capture_output=True, text=True, timeout=30,
+                            preexec_fn=managed_callbacks.disable_core_dump)
+    (executable.parent / "runtime-init.log").write_text(result.stdout + result.stderr, encoding="utf-8")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "RUNTIME_INIT status=0 detached=1" in result.stdout
