@@ -262,6 +262,8 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             DEPENDS ${FO_GEN_DEPENDENCIES}
             EXTRA_SOURCES ${testBuildSources})
 
+        TargetCompileDefinitions(${target} PRIVATE RPMALLOC_ENABLE_TESTS=1)
+
         if("${name}" STREQUAL "CodeCoverage")
             SetValue(coverageTool
                 ${Python3_EXECUTABLE}

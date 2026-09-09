@@ -318,6 +318,16 @@ rpmalloc_usable_size(void* ptr);
 RPMALLOC_EXPORT void
 rpmalloc_linker_reference(void);
 
+#if defined(RPMALLOC_ENABLE_TESTS)
+//! (FOnline Patch) Force later-page commit failures in allocator contract tests
+RPMALLOC_EXPORT void
+rpmalloc_test_set_span_commit_failures(int failures);
+
+//! (FOnline Patch) Return the number of unconsumed injected failures
+RPMALLOC_EXPORT int
+rpmalloc_test_get_span_commit_failures(void);
+#endif
+
 #if RPMALLOC_FIRST_CLASS_HEAPS
 
 //! Heap type
