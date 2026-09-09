@@ -127,6 +127,66 @@ private:
     nptr<ManagedScriptBackend> _previous {};
 };
 
+// Native workers outlive managed callbacks. Preserve inherited attachments, but detach attachments created or
+// explicitly adopted for one native-to-managed call before the worker returns to the engine scheduler.
+enum class ManagedThreadAttachmentMode
+{
+    PreserveExisting,
+    AdoptExisting,
+};
+
+class ManagedThreadAttachment final
+{
+public:
+    explicit ManagedThreadAttachment(MonoDomain* domain, ManagedThreadAttachmentMode mode = ManagedThreadAttachmentMode::PreserveExisting)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        MonoThread* current_thread = mono_thread_current();
+
+        if (current_thread == nullptr) {
+            _attachedThread = mono_thread_attach(domain);
+            FO_VERIFY_AND_THROW(_attachedThread != nullptr, "Failed to attach native thread to Managed runtime domain");
+        }
+        else if (mode == ManagedThreadAttachmentMode::AdoptExisting) {
+            _attachedThread = current_thread;
+        }
+    }
+
+    ManagedThreadAttachment(const ManagedThreadAttachment&) = delete;
+    ManagedThreadAttachment(ManagedThreadAttachment&&) noexcept = delete;
+    auto operator=(const ManagedThreadAttachment&) = delete;
+    auto operator=(ManagedThreadAttachment&&) noexcept = delete;
+
+    ~ManagedThreadAttachment()
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (_attachedThread != nullptr) {
+            mono_thread_detach(_attachedThread);
+        }
+    }
+
+private:
+    MonoThread* _attachedThread {};
+};
+
+static void ReleaseManagedGcHandle(MonoDomain* domain, uint32_t& handle) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (handle == 0) {
+        return;
+    }
+
+    safe_call([&] {
+        FO_VERIFY_AND_THROW(domain != nullptr, "Managed runtime domain is unavailable during GC handle release");
+        ManagedThreadAttachment managed_thread {domain};
+        mono_gchandle_free(handle);
+        handle = 0;
+    });
+}
+
 // Forward declarations of the internal marshaling/bridge helper structs (defined below).
 struct ManagedScalarValue;
 struct ManagedObjectRoot;
@@ -452,6 +512,7 @@ struct ManagedDictBridgeData : ManagedObjectRoot
 struct ManagedCallbackBridgeData
 {
     nptr<ManagedScriptBackend> Backend {};
+    MonoDomain* Domain {};
     ComplexTypeDesc Type {};
     uint32_t Handler {};
     hstring Name {};
@@ -460,9 +521,7 @@ struct ManagedCallbackBridgeData
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (Handler != 0) {
-            mono_gchandle_free(Handler);
-        }
+        ReleaseManagedGcHandle(Domain, Handler);
     }
 };
 
@@ -581,6 +640,7 @@ struct ManagedNativeValue : ManagedScalarValue
 struct ManagedEventSubscription
 {
     nptr<ManagedScriptBackend> Backend {};
+    MonoDomain* Domain {};
     MonoImage* Image {};
     vector<ComplexTypeDesc> Args {};
     uint32_t Handler {};
@@ -590,9 +650,7 @@ struct ManagedEventSubscription
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (Handler != 0) {
-            mono_gchandle_free(Handler);
-        }
+        ReleaseManagedGcHandle(Domain, Handler);
     }
 };
 
@@ -614,7 +672,7 @@ auto ManagedScriptBackend::GetAliveFlagObject() const -> void*
     return _aliveFlagGcHandle != 0 ? mono_gchandle_get_target(_aliveFlagGcHandle) : nullptr;
 }
 
-// The alive flag is a pinned one-element managed bool array. Wrappers that outlive deterministic disposal (e.g
+// The alive flag is a rooted one-element managed bool array. Wrappers that outlive deterministic disposal (e.g
 void ManagedScriptBackend::CreateAliveFlag()
 {
     FO_STACK_TRACE_ENTRY();
@@ -639,6 +697,8 @@ void ManagedScriptBackend::ReleaseAliveFlag()
     FO_STACK_TRACE_ENTRY();
 
     if (_aliveFlagGcHandle != 0) {
+        MonoDomain* domain = GetDomainOrThrow(_domain.get());
+        ManagedThreadAttachment managed_thread {domain};
         MonoObject* flag_obj = mono_gchandle_get_target(_aliveFlagGcHandle);
 
         if (flag_obj != nullptr) {
@@ -1399,6 +1459,7 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
     auto entity = ResolveEntity(backend, entity_ptr);
     auto subscription = SafeAlloc::MakeShared<ManagedEventSubscription>();
     subscription->Backend = backend;
+    subscription->Domain = GetDomainOrThrow(backend->GetDomain());
     subscription->Image = mono_class_get_image(mono_object_get_class(handler));
     subscription->Handler = mono_gchandle_new(handler, false);
     subscription->HasExplicitResult = has_explicit_result != 0;
@@ -1668,9 +1729,7 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            if (mono_thread_attach(domain) == nullptr) {
-                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-            }
+            ManagedThreadAttachment managed_thread {domain};
 
             if (mono_gchandle_get_target(getter_handle) == nullptr) {
                 throw ScriptSystemException("Managed property getter delegate was collected", prop->GetName());
@@ -1719,9 +1778,7 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            if (mono_thread_attach(domain) == nullptr) {
-                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-            }
+            ManagedThreadAttachment managed_thread {domain};
 
             if (mono_gchandle_get_target(setter_handle) == nullptr) {
                 throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
@@ -1772,9 +1829,7 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            if (mono_thread_attach(domain) == nullptr) {
-                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-            }
+            ManagedThreadAttachment managed_thread {domain};
 
             if (mono_gchandle_get_target(setter_handle) == nullptr) {
                 throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
@@ -1829,9 +1884,7 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            if (mono_thread_attach(domain) == nullptr) {
-                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-            }
+            ManagedThreadAttachment managed_thread {domain};
 
             if (mono_gchandle_get_target(setter_handle) == nullptr) {
                 throw ScriptSystemException("Managed deferred property setter delegate was collected", prop->GetName());
@@ -2419,9 +2472,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
             // and this handler may run on the engine's network-receive thread
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            if (mono_thread_attach(domain) == nullptr) {
-                throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-            }
+            ManagedThreadAttachment managed_thread {domain};
 
             DataReader reader(data);
             RemoteCallReadStorage storage;
@@ -2765,9 +2816,7 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-    if (mono_thread_attach(domain) == nullptr) {
-        throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-    }
+    ManagedThreadAttachment managed_thread {domain};
 
     if (mono_gchandle_get_target(handler_handle) == nullptr) {
         throw ScriptSystemException("Managed callback delegate was collected");
@@ -2958,11 +3007,9 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
     };
     func_desc->AttributeChecker = [](string_view /*attribute*/) -> bool { return true; };
 
-    return make_unique_del_ptr(std::move(func_desc).release(), [handler_handle](ScriptFuncDesc* desc) {
-        if (handler_handle != 0) {
-            mono_gchandle_free(handler_handle);
-        }
-
+    MonoDomain* domain = callback->Domain;
+    return make_unique_del_ptr(std::move(func_desc).release(), [domain, handler_handle](ScriptFuncDesc* desc) mutable {
+        ReleaseManagedGcHandle(domain, handler_handle);
         delete desc;
     });
 }
@@ -3068,9 +3115,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
     MonoDomain* domain = GetDomainOrThrow(subscription->Backend->GetDomain());
 
-    if (mono_thread_attach(domain) == nullptr) {
-        throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-    }
+    ManagedThreadAttachment managed_thread {domain};
 
     if (mono_gchandle_get_target(subscription->Handler) == nullptr) {
         return Entity::EventResult::ContinueChain;
@@ -3968,6 +4013,7 @@ static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, cons
         if (value == nullptr) {
             storage.Callback = SafeAlloc::MakeUnique<ManagedCallbackBridgeData>();
             storage.Callback->Backend = backend;
+            storage.Callback->Domain = GetDomainOrThrow(backend->GetDomain());
             storage.Callback->Type = type;
             return storage.Callback.get();
         }
@@ -3975,6 +4021,7 @@ static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, cons
         string delegate_key = GetManagedDelegateKey(backend, value);
         storage.Callback = SafeAlloc::MakeUnique<ManagedCallbackBridgeData>();
         storage.Callback->Backend = backend;
+        storage.Callback->Domain = GetDomainOrThrow(backend->GetDomain());
         storage.Callback->Type = type;
         storage.Callback->Handler = mono_gchandle_new(value, false);
         storage.Callback->Name = backend->GetMetadata()->Hashes.ToHashedString(strex("ManagedCallback:{}", delegate_key).str());
@@ -5154,11 +5201,6 @@ static void ConfigureManagedRuntime()
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 #endif
 
-#if FO_THREAD_SANITIZER
-    // Mono is not TSan-instrumented, so its concurrent sweeper cannot publish its synchronization to the host runtime
-    SetEnvironmentVariableDefault("MONO_GC_PARAMS", "no-concurrent-sweep");
-#endif
-
     auto runtime_dir = FindManagedRuntimeDir();
 
     // Continuing without it only defers the failure into Mono, which aborts on a bare `corlib' assertion
@@ -5524,12 +5566,18 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
         return;
     }
 
-    try {
-        nptr<MonoDomain> domain = _domain.reinterpret_as<MonoDomain>();
-        nptr<MonoImage> host_image = _managedHostImage.reinterpret_as<MonoImage>();
-        MonoObject* load_scope = mono_gchandle_get_target(load_scope_handle);
+    nptr<MonoDomain> domain = _domain.reinterpret_as<MonoDomain>();
 
-        if (domain && host_image && load_scope != nullptr && mono_thread_attach(domain.get()) != nullptr) {
+    try {
+        nptr<MonoImage> host_image = _managedHostImage.reinterpret_as<MonoImage>();
+        if (domain && host_image) {
+            ManagedThreadAttachment managed_thread {domain.get()};
+            MonoObject* load_scope = mono_gchandle_get_target(load_scope_handle);
+
+            if (load_scope == nullptr) {
+                throw ScriptSystemException("Managed load-context scope was collected before release");
+            }
+
             MonoClass* host_class = mono_class_from_name(host_image.get(), MANAGED_HOST_NAMESPACE.data(), MANAGED_HOST_CLASS_NAME.data());
             MonoMethod* release_method = host_class != nullptr ? mono_class_get_method_from_name(host_class, "ReleaseLoadScope", 1) : nullptr;
 
@@ -5555,7 +5603,7 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
         WriteLog("Managed load-context release failed with an unknown exception");
     }
 
-    mono_gchandle_free(load_scope_handle);
+    ReleaseManagedGcHandle(domain.get(), load_scope_handle);
     _managedHostImage = nullptr;
 }
 
@@ -5563,35 +5611,46 @@ ManagedScriptBackend::~ManagedScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
 
-    safe_call([this] {
-        if (_continuationShutdowns.empty()) {
-            return;
-        }
+    if (_domain) {
+        bool managed_teardown_complete = false;
 
-        ActiveBackendScope active_backend {this};
-        MonoDomain* domain = GetDomainOrThrow(_domain.get());
-        FO_VERIFY_AND_THROW(mono_thread_attach(domain) != nullptr, "Failed to attach continuation shutdown to Managed runtime domain");
+        safe_call([this, &managed_teardown_complete] {
+            MonoDomain* domain = GetDomainOrThrow(_domain.get());
+            ManagedThreadAttachment managed_thread {domain};
 
-        for (nptr<void> shutdown : _continuationShutdowns) {
-            MonoObject* exception = nullptr;
-            mono_runtime_invoke(shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, &exception);
-            ThrowIfManagedException(exception, "Managed continuation shutdown failed");
-        }
-    });
-    _continuationPumps.clear();
-    _continuationShutdowns.clear();
-    ReleaseAliveFlag();
+            safe_call([this] {
+                ActiveBackendScope active_backend {this};
 
-    for (uint32_t gc_handle : _persistentGcHandles) {
-        if (gc_handle != 0) {
-            mono_gchandle_free(gc_handle);
-        }
+                for (nptr<void> shutdown : _continuationShutdowns) {
+                    MonoObject* exception = nullptr;
+                    mono_runtime_invoke(shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, &exception);
+                    ThrowIfManagedException(exception, "Managed continuation shutdown failed");
+                }
+            });
+
+            ReleaseAliveFlag();
+
+            for (uint32_t gc_handle : _persistentGcHandles) {
+                if (gc_handle != 0) {
+                    mono_gchandle_free(gc_handle);
+                }
+            }
+
+            _persistentGcHandles.clear();
+            _globalFuncs.clear();
+            _images.clear();
+            ReleaseLoadScope();
+            managed_teardown_complete = true;
+        });
+
+        FO_STRONG_ASSERT(managed_teardown_complete, "Managed backend teardown did not complete");
     }
 
+    _continuationPumps.clear();
+    _continuationShutdowns.clear();
     _persistentGcHandles.clear();
     _globalFuncs.clear();
     _images.clear();
-    ReleaseLoadScope();
 
     // Mono VM state is process-wide. Server/client/mapper backends may coexist
     // in one process, so shutdown is left to process teardown
@@ -5608,7 +5667,7 @@ void ManagedScriptBackend::Process()
 
     ActiveBackendScope active_backend {this};
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
-    FO_VERIFY_AND_THROW(mono_thread_attach(domain) != nullptr, "Failed to attach continuation pump to Managed runtime domain");
+    ManagedThreadAttachment managed_thread {domain};
 
     for (nptr<void> pump : _continuationPumps) {
         MonoObject* exception = nullptr;
@@ -5645,9 +5704,7 @@ void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* metho
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
 
-    if (mono_thread_attach(domain) == nullptr) {
-        throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-    }
+    ManagedThreadAttachment managed_thread {domain};
 
     MonoAssembly* massembly = static_cast<MonoAssembly*>(assembly);
     FO_VERIFY_AND_THROW(massembly, "Managed assembly is null");
@@ -5711,6 +5768,8 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     FO_VERIFY_AND_THROW(_meta, "Engine metadata is not registered");
     FO_VERIFY_AND_THROW(_scriptSys, "Script system is not available");
 
+    ManagedThreadAttachmentMode attachment_mode = ManagedThreadAttachmentMode::PreserveExisting;
+
     if (!_domain) {
         MonoDomain* domain = nullptr;
 
@@ -5743,6 +5802,10 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                 if (domain == nullptr) {
                     throw ScriptSystemException("Failed to initialize Managed runtime domain");
                 }
+
+                // mono_jit_init_version attaches its caller; adopt that attachment into this scope so the
+                // long-lived engine initialization worker is detached after the first backend is loaded.
+                attachment_mode = ManagedThreadAttachmentMode::AdoptExisting;
             }
         }
 
@@ -5751,9 +5814,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
 
-    if (mono_thread_attach(domain) == nullptr) {
-        throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
-    }
+    ManagedThreadAttachment managed_thread {domain, attachment_mode};
 
     RegisterInternalCalls();
 
