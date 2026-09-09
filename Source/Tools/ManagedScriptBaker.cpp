@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr string_view CS_INDENT = "        ";
+constexpr string_view CS_INDENT = "    ";
 constexpr string_view MANAGED_HOST_PROJECT_NAME = "FOnline.ManagedHost";
 constexpr string_view MANAGED_HOST_ASSEMBLY_FILE_NAME = "FOnline.ManagedHost.dll";
 constexpr string_view MANAGED_HOST_SOURCE_FILE_NAME = "ManagedLoadContextHost.cs";
@@ -114,7 +114,6 @@ static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string;
 static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_callbacks = false) -> vector<string>;
 static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is_global, const_span<ArgDesc> args) -> vector<string>;
 static void AppendGeneratedHeader(ostringstream& out);
-static void AppendGeneratedFooter(ostringstream& out);
 static void AppendHstringType(ostringstream& out);
 static void AppendEntityBaseClass(ostringstream& out);
 static auto MakePropertyInitializer(const string& type_name, optional<string_view> explicit_initializer) -> optional<string>;
@@ -387,17 +386,16 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
         for (const auto& [enum_name, enum_values] : MakeSortedEnums(meta)) {
             const BaseTypeDesc& enum_type = meta.GetBaseType(enum_name);
-            out << "    public enum " << EscapeCsIdentifier(enum_name) << " : " << MakeEnumUnderlyingCsType(enum_type) << "\n";
-            out << "    {\n";
+            out << "public enum " << EscapeCsIdentifier(enum_name) << " : " << MakeEnumUnderlyingCsType(enum_type) << "\n";
+            out << "{\n";
 
             for (const auto& [value_name, value] : enum_values) {
                 out << CS_INDENT << EscapeCsIdentifier(value_name) << " = " << value << ",\n";
             }
 
-            out << "    }\n\n";
+            out << "}\n\n";
         }
 
-        AppendGeneratedFooter(out);
         WriteGeneratedFile(project_dir, target_name, "Enums", out.str());
     }
 
@@ -437,8 +435,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
         for (const auto& type : MakeSortedBaseTypes(meta)) {
             if (type->IsStruct && type->StructLayout != nullptr) {
-                out << "    public partial struct " << EscapeCsIdentifier(type->Name) << "\n";
-                out << "    {\n";
+                out << "public partial struct " << EscapeCsIdentifier(type->Name) << "\n";
+                out << "{\n";
 
                 vector<string> ctor_args;
                 size_t ctor_args_length = 0;
@@ -542,13 +540,13 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n";
                 }
 
-                out << "    }\n\n";
+                out << "}\n\n";
             }
             else if (type->IsRefType && type->RefType != nullptr) {
                 unordered_set<string> member_names;
 
-                out << "    public partial class " << EscapeCsIdentifier(type->Name) << "\n";
-                out << "    {\n";
+                out << "public partial class " << EscapeCsIdentifier(type->Name) << "\n";
+                out << "{\n";
 
                 if (type->RefType->FieldsRegistrar != nullptr) {
                     out << CS_INDENT << "public " << EscapeCsIdentifier(type->Name) << "()\n";
@@ -578,11 +576,10 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 }
 
                 AppendMethods(out, type->RefType->Methods, type->Name, false, type->RefType->FieldsRegistrar == nullptr, type->RefType->FieldsRegistrar == nullptr, false, member_names);
-                out << "    }\n\n";
+                out << "}\n\n";
             }
         }
 
-        AppendGeneratedFooter(out);
         WriteGeneratedFile(project_dir, target_name, "Types", out.str());
     }
 
@@ -639,7 +636,6 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         AppendRemoteCallerSurface(out, meta, target_name);
         AppendPropertyCallbackRegistrars(out, meta);
 
-        AppendGeneratedFooter(out);
         WriteGeneratedFile(project_dir, target_name, "Entities", out.str());
     }
 
@@ -663,8 +659,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 AppendCsCallableDeclaration(out, "    ", "public delegate EventResult ", EscapeCsIdentifier(result_delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "    ", "public delegate global::System.Threading.Tasks.Task<EventResult> ", EscapeCsIdentifier(async_result_delegate_name), event_arg_declarations, ";");
                 out << "\n";
-                out << "    public sealed class " << EscapeCsIdentifier(event_type_name) << "\n";
-                out << "    {\n";
+                out << "public sealed class " << EscapeCsIdentifier(event_type_name) << "\n";
+                out << "{\n";
                 out << CS_INDENT << "private readonly IntPtr _entityPtr;\n";
                 out << CS_INDENT << "private readonly Dictionary<(Delegate Handler, IntPtr Backend), IntPtr> _nativeSubscriptions =\n";
                 out << CS_INDENT << "    new Dictionary<(Delegate Handler, IntPtr Backend), IntPtr>();\n";
@@ -873,19 +869,18 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n";
                 }
 
-                out << "    }\n\n";
+                out << "}\n\n";
             }
         }
 
-        AppendGeneratedFooter(out);
         WriteGeneratedFile(project_dir, target_name, "Events", out.str());
     }
 
     {
         ostringstream out;
         AppendGeneratedHeader(out);
-        out << "    public static partial class Settings\n";
-        out << "    {\n";
+        out << "public static partial class Settings\n";
+        out << "{\n";
 
         unordered_set<string> setting_names;
         map<string, const BaseTypeDesc*> sorted_settings;
@@ -921,8 +916,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             AppendSettingProperty(out, setting_type, EscapeCsIdentifier(accessor_name), setting_name, setting_names);
         }
 
-        out << "    }\n";
-        AppendGeneratedFooter(out);
+        out << "}\n";
         WriteGeneratedFile(project_dir, target_name, "Settings", out.str());
     }
 }
@@ -2271,20 +2265,12 @@ static void AppendGeneratedHeader(ostringstream& out)
     FO_STACK_TRACE_ENTRY();
 
     out << GENERATED_CS_DISCLAIMER;
-    // Generated files carry an <auto-generated/> banner, so the nullable annotation context is not inherited from the
-    // project and must be stated explicitly (CS8669)
-    out << "#nullable enable annotations\n\n";
+    out << "namespace FOnline;\n\n";
     out << "using System;\n";
     out << "using System.Collections.Generic;\n\n";
-    out << "namespace FOnline\n";
-    out << "{\n";
-}
-
-static void AppendGeneratedFooter(ostringstream& out)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    out << "}\n";
+    // An <auto-generated/> banner cuts the file off from the project nullable context (CS8669), so it is stated here;
+    // annotations only, because this marshalling is not written to satisfy flow analysis
+    out << "#nullable enable annotations\n\n";
 }
 
 // Emits Game.SetPropertyGetter / Game.AddPropertySetter overloads, one group per non-global entity type, so scripts
@@ -2305,8 +2291,8 @@ static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& 
 
     std::ranges::sort(cs_calls, {}, [](ptr<const RemoteCallDesc> call) { return call->Name.as_str(); });
 
-    out << "    public readonly struct RemoteCaller\n";
-    out << "    {\n";
+    out << "public readonly struct RemoteCaller\n";
+    out << "{\n";
     out << CS_INDENT << "private readonly Entity _caller;\n";
     out << "\n";
     out << CS_INDENT << "public RemoteCaller(Entity caller)\n";
@@ -2327,23 +2313,23 @@ static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& 
         out << CS_INDENT << "}\n";
     }
 
-    out << "    }\n\n";
+    out << "}\n\n";
 
     if (target_name == "Server") {
-        out << "    public partial class Player\n";
-        out << "    {\n";
+        out << "public partial class Player\n";
+        out << "{\n";
         out << CS_INDENT << "public RemoteCaller ClientCall => new RemoteCaller(this);\n";
-        out << "    }\n\n";
-        out << "    public partial class Critter\n";
-        out << "    {\n";
+        out << "}\n\n";
+        out << "public partial class Critter\n";
+        out << "{\n";
         out << CS_INDENT << "public RemoteCaller PlayerClientCall => new RemoteCaller(this);\n";
-        out << "    }\n\n";
+        out << "}\n\n";
     }
     else {
-        out << "    public partial class Player\n";
-        out << "    {\n";
+        out << "public partial class Player\n";
+        out << "{\n";
         out << CS_INDENT << "public RemoteCaller ServerCall => new RemoteCaller(this);\n";
-        out << "    }\n\n";
+        out << "}\n\n";
     }
 }
 
@@ -2359,8 +2345,8 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
         enum_names.emplace(enum_entry.first);
     }
 
-    out << "    public static partial class Game\n";
-    out << "    {\n";
+    out << "public static partial class Game\n";
+    out << "{\n";
 
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
         if (desc->IsGlobal) {
@@ -2446,7 +2432,7 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
         }
     }
 
-    out << "    }\n\n";
+    out << "}\n\n";
 }
 
 static void AppendPropertyInfoAccessor(ostringstream& out, string_view type_name, ptr<const PropertyRegistrar> registrar, const map<int32_t, string>& enum_values)
@@ -2513,8 +2499,8 @@ static void AppendPropertyInfoAccessors(ostringstream& out, const EngineMetadata
         enum_values_by_index.emplace(enum_name, std::move(values_by_index));
     }
 
-    out << "    public static partial class Game\n";
-    out << "    {\n";
+    out << "public static partial class Game\n";
+    out << "{\n";
 
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
         auto enum_it = enum_values_by_index.find(strex("{}Property", type_name).str());
@@ -2536,15 +2522,15 @@ static void AppendPropertyInfoAccessors(ostringstream& out, const EngineMetadata
         AppendPropertyInfoAccessor(out, type_name, desc->PropRegistrar.get(), enum_it->second);
     }
 
-    out << "    }\n\n";
+    out << "}\n\n";
 }
 
 static void AppendHstringType(ostringstream& out)
 {
     FO_STACK_TRACE_ENTRY();
 
-    out << "    public partial struct hstring\n";
-    out << "    {\n";
+    out << "public partial struct hstring\n";
+    out << "{\n";
     out << CS_INDENT << "public ulong Value;\n\n";
     out << CS_INDENT << "public hstring(ulong value)\n";
     out << CS_INDENT << "{\n";
@@ -2584,15 +2570,15 @@ static void AppendHstringType(ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    return Value.GetHashCode();\n";
     out << CS_INDENT << "}\n";
-    out << "    }\n\n";
+    out << "}\n\n";
 }
 
 static void AppendEntityBaseClass(ostringstream& out)
 {
     FO_STACK_TRACE_ENTRY();
 
-    out << "    public partial class Entity : System.IEquatable<Entity>\n";
-    out << "    {\n";
+    out << "public partial class Entity : System.IEquatable<Entity>\n";
+    out << "{\n";
     out << CS_INDENT << "public ident Id\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
@@ -2734,7 +2720,7 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "        return _entityPtr;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n";
-    out << "    }\n\n";
+    out << "}\n\n";
 }
 
 static auto MakePropertyInitializer(const string& type_name, optional<string_view> explicit_initializer) -> optional<string>
@@ -3667,13 +3653,13 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
     string_view owner = native_owner_name.empty() ? class_name : native_owner_name;
 
     if (is_static) {
-        out << "    public static partial class Game\n";
+        out << "public static partial class Game\n";
     }
     else {
-        out << "    public partial class " << EscapeCsIdentifier(class_name) << " : " << EscapeCsIdentifier(base_name) << "\n";
+        out << "public partial class " << EscapeCsIdentifier(class_name) << " : " << EscapeCsIdentifier(base_name) << "\n";
     }
 
-    out << "    {\n";
+    out << "{\n";
 
     if (!is_static) {
         out << CS_INDENT << "public " << EscapeCsIdentifier(class_name) << "() : base()\n";
@@ -3710,7 +3696,7 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
         out << CS_INDENT << "        return true;\n";
         out << CS_INDENT << "    }\n";
         out << CS_INDENT << "}\n";
-        out << "    }\n\n";
+        out << "}\n\n";
         return;
     }
 
@@ -3758,7 +3744,7 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
         }
     }
 
-    out << "    }\n\n";
+    out << "}\n\n";
 }
 
 static void AppendComponentClasses(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc)
@@ -3771,8 +3757,8 @@ static void AppendComponentClasses(ostringstream& out, string_view owner_type_na
         unordered_set<string> member_names;
         string component_type = strex("{}{}Component", owner_type_name, component_name).str();
 
-        out << "    public partial class " << EscapeCsIdentifier(component_type) << " : Entity\n";
-        out << "    {\n";
+        out << "public partial class " << EscapeCsIdentifier(component_type) << " : Entity\n";
+        out << "{\n";
         out << CS_INDENT << "public " << EscapeCsIdentifier(component_type) << "() : base()\n";
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "}\n\n";
@@ -3781,7 +3767,7 @@ static void AppendComponentClasses(ostringstream& out, string_view owner_type_na
         out << CS_INDENT << "}\n\n";
         // A component class derives from Entity (`: Entity`), so its shadow-named properties need `new`
         AppendEntityProperties(out, desc.PropRegistrar.get(), owner_type_name, component_name, false, true, false, true, member_names);
-        out << "    }\n\n";
+        out << "}\n\n";
 
         ignore_unused(prop);
     }
@@ -3897,8 +3883,8 @@ static void AppendEmptyDerivedEntity(ostringstream& out, string_view class_name,
 {
     FO_STACK_TRACE_ENTRY();
 
-    out << "    public partial class " << EscapeCsIdentifier(class_name) << " : " << EscapeCsIdentifier(base_name) << "\n";
-    out << "    {\n";
+    out << "public partial class " << EscapeCsIdentifier(class_name) << " : " << EscapeCsIdentifier(base_name) << "\n";
+    out << "{\n";
     out << CS_INDENT << "public " << EscapeCsIdentifier(class_name) << "() : base()\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "}\n\n";
@@ -3919,7 +3905,7 @@ static void AppendEmptyDerivedEntity(ostringstream& out, string_view class_name,
         out << CS_INDENT << "}\n";
     }
 
-    out << "    }\n\n";
+    out << "}\n\n";
 }
 
 static void AppendPropertyGroupGetters(ostringstream& out, const EngineMetadata& meta)
@@ -3959,8 +3945,8 @@ static void AppendPropertyGroupGetters(ostringstream& out, const EngineMetadata&
 
         string enum_type = EscapeCsIdentifier(property_enum_name);
 
-        out << "    public static partial class " << EscapeCsIdentifier(strex("{}PropertyGroup", type_name).str()) << "\n";
-        out << "    {\n";
+        out << "public static partial class " << EscapeCsIdentifier(strex("{}PropertyGroup", type_name).str()) << "\n";
+        out << "{\n";
 
         bool first = true;
 
@@ -3987,7 +3973,7 @@ static void AppendPropertyGroupGetters(ostringstream& out, const EngineMetadata&
             out << CS_INDENT << "}\n";
         }
 
-        out << "    }\n\n";
+        out << "}\n\n";
     }
 }
 
@@ -4023,10 +4009,10 @@ static void AppendCustomEntityProtoGetters(ostringstream& out, const EngineMetad
         return;
     }
 
-    out << "    // Proto getters for custom entity protos + fixed types (mirrors AngelScript register_entity_protos /\n";
-    out << "    // register_fixed_type); the built-in entities expose Game.GetProto* via metadata instead.\n";
-    out << "    public static partial class Game\n";
-    out << "    {\n";
+    out << "// Proto getters for custom entity protos + fixed types (mirrors AngelScript register_entity_protos /\n";
+    out << "// register_fixed_type); the built-in entities expose Game.GetProto* via metadata instead.\n";
+    out << "public static partial class Game\n";
+    out << "{\n";
 
     bool first = true;
 
@@ -4061,7 +4047,7 @@ static void AppendCustomEntityProtoGetters(ostringstream& out, const EngineMetad
         out << CS_INDENT << "}\n";
     }
 
-    out << "    }\n\n";
+    out << "}\n\n";
 }
 
 static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
@@ -4265,7 +4251,13 @@ static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_
 
     string file_name = MakeGeneratedManagedApiFileName(target_name, suffix);
     auto file_path = project_dir / fs_make_path(file_name);
-    WriteTextFileIfChanged(file_path, content, "Can't create generated C# file");
+
+    // Each emitted declaration ends on a blank line, which without a namespace body to close leaves the file
+    // itself ending on one; every source here ends with exactly one newline
+    string trimmed = strex(content).trim().str();
+    trimmed += '\n';
+
+    WriteTextFileIfChanged(file_path, trimmed, "Can't create generated C# file");
 
     std::error_code ec;
     std::filesystem::remove(project_dir / fs_make_path(strex("{}{}.cs", target_name, suffix)), ec);

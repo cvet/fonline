@@ -1,4 +1,4 @@
-#nullable enable
+namespace FOnline.ManagedHost;
 
 using System;
 using System.Collections.Generic;
@@ -8,123 +8,120 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
 
-namespace FOnline.ManagedHost
+public static class ManagedLoadContextHost
 {
-    public static class ManagedLoadContextHost
+    public static object CreateLoadScope(
+        string contextName,
+        string[] assemblyPaths,
+        string[] entryAssemblyPaths)
     {
-        public static object CreateLoadScope(
-            string contextName,
-            string[] assemblyPaths,
-            string[] entryAssemblyPaths)
-        {
-            ManagedAssemblyLoadContext context = new ManagedAssemblyLoadContext(contextName, assemblyPaths);
-            Assembly[] entryAssemblies = new Assembly[entryAssemblyPaths.Length];
+        ManagedAssemblyLoadContext context = new ManagedAssemblyLoadContext(contextName, assemblyPaths);
+        Assembly[] entryAssemblies = new Assembly[entryAssemblyPaths.Length];
 
-            for (int i = 0; i < entryAssemblyPaths.Length; i++)
+        for (int i = 0; i < entryAssemblyPaths.Length; i++)
+        {
+            entryAssemblies[i] = context.LoadFromAssemblyPath(Path.GetFullPath(entryAssemblyPaths[i]));
+        }
+
+        return new ManagedLoadScope(context, entryAssemblies);
+    }
+
+    public static Assembly[] GetEntryAssemblies(object scope)
+    {
+        return GetScope(scope).EntryAssemblies;
+    }
+
+    public static void ReleaseLoadScope(object scope)
+    {
+        GetScope(scope).Release();
+    }
+
+    private static ManagedLoadScope GetScope(object scope)
+    {
+        if (scope is not ManagedLoadScope loadScope)
+        {
+            throw new ArgumentException("Invalid managed load scope", nameof(scope));
+        }
+
+        return loadScope;
+    }
+
+    private sealed class ManagedLoadScope
+    {
+        private ManagedAssemblyLoadContext? _context;
+
+        public ManagedLoadScope(ManagedAssemblyLoadContext context, Assembly[] entryAssemblies)
+        {
+            _context = context;
+            EntryAssemblies = entryAssemblies;
+        }
+
+        public Assembly[] EntryAssemblies { get; private set; }
+
+        public void Release()
+        {
+            if (_context == null)
             {
-                entryAssemblies[i] = context.LoadFromAssemblyPath(Path.GetFullPath(entryAssemblyPaths[i]));
+                return;
             }
 
-            return new ManagedLoadScope(context, entryAssemblies);
+            EntryAssemblies = Array.Empty<Assembly>();
+            _context = null;
         }
+    }
 
-        public static Assembly[] GetEntryAssemblies(object scope)
-        {
-            return GetScope(scope).EntryAssemblies;
-        }
+    private sealed class ManagedAssemblyLoadContext : AssemblyLoadContext
+    {
+        private readonly Dictionary<string, string> _assemblyPaths =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        public static void ReleaseLoadScope(object scope)
+        public ManagedAssemblyLoadContext(string name, string[] assemblyPaths)
+            : base(name, isCollectible: false)
         {
-            GetScope(scope).Release();
-        }
-
-        private static ManagedLoadScope GetScope(object scope)
-        {
-            if (scope is not ManagedLoadScope loadScope)
+            for (int i = 0; i < assemblyPaths.Length; i++)
             {
-                throw new ArgumentException("Invalid managed load scope", nameof(scope));
-            }
+                string path = Path.GetFullPath(assemblyPaths[i]);
+                string? assemblyName;
 
-            return loadScope;
-        }
-
-        private sealed class ManagedLoadScope
-        {
-            private ManagedAssemblyLoadContext? _context;
-
-            public ManagedLoadScope(ManagedAssemblyLoadContext context, Assembly[] entryAssemblies)
-            {
-                _context = context;
-                EntryAssemblies = entryAssemblies;
-            }
-
-            public Assembly[] EntryAssemblies { get; private set; }
-
-            public void Release()
-            {
-                if (_context == null)
+                try
                 {
-                    return;
-                }
+                    // Read through a stream rather than AssemblyName.GetAssemblyName, which memory-maps the
+                    // file: WebAssembly has no mmap, and only the simple name is needed here
+                    using FileStream stream = File.OpenRead(path);
+                    using PEReader peReader = new PEReader(stream, PEStreamOptions.PrefetchMetadata);
 
-                EntryAssemblies = Array.Empty<Assembly>();
-                _context = null;
-            }
-        }
-
-        private sealed class ManagedAssemblyLoadContext : AssemblyLoadContext
-        {
-            private readonly Dictionary<string, string> _assemblyPaths =
-                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            public ManagedAssemblyLoadContext(string name, string[] assemblyPaths)
-                : base(name, isCollectible: false)
-            {
-                for (int i = 0; i < assemblyPaths.Length; i++)
-                {
-                    string path = Path.GetFullPath(assemblyPaths[i]);
-                    string? assemblyName;
-
-                    try
-                    {
-                        // Read through a stream rather than AssemblyName.GetAssemblyName, which memory-maps the
-                        // file: WebAssembly has no mmap, and only the simple name is needed here
-                        using FileStream stream = File.OpenRead(path);
-                        using PEReader peReader = new PEReader(stream, PEStreamOptions.PrefetchMetadata);
-
-                        if (!peReader.HasMetadata)
-                        {
-                            continue;
-                        }
-
-                        MetadataReader metadataReader = peReader.GetMetadataReader();
-                        assemblyName = metadataReader.GetString(metadataReader.GetAssemblyDefinition().Name);
-                    }
-                    catch (BadImageFormatException)
+                    if (!peReader.HasMetadata)
                     {
                         continue;
                     }
 
-                    if (string.IsNullOrEmpty(assemblyName))
-                    {
-                        throw new InvalidOperationException("Managed assembly has no simple name: " + path);
-                    }
-                    if (!_assemblyPaths.TryAdd(assemblyName, path))
-                    {
-                        throw new InvalidOperationException("Duplicate managed assembly name: " + assemblyName);
-                    }
+                    MetadataReader metadataReader = peReader.GetMetadataReader();
+                    assemblyName = metadataReader.GetString(metadataReader.GetAssemblyDefinition().Name);
                 }
-            }
-
-            protected override Assembly? Load(AssemblyName assemblyName)
-            {
-                if (assemblyName.Name != null && _assemblyPaths.TryGetValue(assemblyName.Name, out string? path))
+                catch (BadImageFormatException)
                 {
-                    return LoadFromAssemblyPath(path);
+                    continue;
                 }
 
-                return null;
+                if (string.IsNullOrEmpty(assemblyName))
+                {
+                    throw new InvalidOperationException("Managed assembly has no simple name: " + path);
+                }
+                if (!_assemblyPaths.TryAdd(assemblyName, path))
+                {
+                    throw new InvalidOperationException("Duplicate managed assembly name: " + assemblyName);
+                }
             }
+        }
+
+        protected override Assembly? Load(AssemblyName assemblyName)
+        {
+            if (assemblyName.Name != null && _assemblyPaths.TryGetValue(assemblyName.Name, out string? path))
+            {
+                return LoadFromAssemblyPath(path);
+            }
+
+            return null;
         }
     }
 }
