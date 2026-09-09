@@ -5133,6 +5133,11 @@ static void ConfigureManagedRuntime()
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 #endif
 
+#if FO_THREAD_SANITIZER
+    // Mono is not TSan-instrumented, so its concurrent sweeper cannot publish its synchronization to the host runtime
+    SetEnvironmentVariableDefault("MONO_GC_PARAMS", "no-concurrent-sweep");
+#endif
+
     auto runtime_dir = FindManagedRuntimeDir();
 
     // Continuing without it only defers the failure into Mono, which aborts on a bare `corlib' assertion

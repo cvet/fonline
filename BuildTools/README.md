@@ -195,7 +195,11 @@ runtime build also passes `BuildTools/sanitizers/msan-runtime-ignorelist.txt` so
 libunwind does not self-report on ABI register snapshots during C++ exception or
 sanitizer-report unwinding. The `unit-tests-san-memory` validator prepares it
 automatically before configuring `San_Memory`; use the explicit workspace command
-only when pre-warming a CI host or debugging the runtime build.
+only when pre-warming a CI host or debugging the runtime build. Linux Mono source setup
+also initializes each POSIX signal-action object and publishes its bytes through MSan's
+weak runtime hook. This keeps the uninstrumented runtime archive compatible with an
+MSan-instrumented host; the Linux source marker invalidates already prepared runtimes
+when that patch changes.
 
 Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
 
