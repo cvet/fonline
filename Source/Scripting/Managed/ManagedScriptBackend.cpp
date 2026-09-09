@@ -128,7 +128,7 @@ private:
 };
 
 // Native workers outlive managed callbacks. Preserve inherited attachments, but detach attachments created or
-// explicitly adopted for one native-to-managed call before the worker returns to the engine scheduler.
+// explicitly adopted for one native-to-managed call before the worker returns to the engine scheduler
 enum class ManagedThreadAttachmentMode
 {
     PreserveExisting,
@@ -5804,7 +5804,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                 }
 
                 // mono_jit_init_version attaches its caller; adopt that attachment into this scope so the
-                // long-lived engine initialization worker is detached after the first backend is loaded.
+                // long-lived engine initialization worker is detached after the first backend is loaded
                 attachment_mode = ManagedThreadAttachmentMode::AdoptExisting;
             }
         }
