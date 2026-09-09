@@ -993,7 +993,6 @@ static auto ResolveManagedGenericProperty(void* entity_ptr, int32_t prop_index, 
 
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
-    entity->ValidateAccess();
 
     auto nullable_prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
 
@@ -1021,6 +1020,10 @@ static auto NativeGetEntityValueAsIntImpl(void* entity_ptr, int32_t prop_index) 
     FO_STACK_TRACE_ENTRY();
 
     auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, false);
+    entity->LockForPropertyAccessShared();
+    auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccessShared(); });
+
+    entity->ValidateAccess();
     return entity->GetValueAsInt(prop);
 }
 
@@ -1045,6 +1048,10 @@ static void NativeSetEntityValueAsIntImpl(void* entity_ptr, int32_t prop_index, 
     FO_STACK_TRACE_ENTRY();
 
     auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, true);
+    entity->LockForPropertyAccess();
+    auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
+
+    entity->ValidateAccess();
     entity->SetValueAsInt(prop, value);
 }
 
@@ -1067,6 +1074,10 @@ static auto NativeGetEntityValueAsAnyImpl(void* entity_ptr, int32_t prop_index) 
 
     MonoDomain* domain = GetDomainOrThrow(mono_domain_get());
     auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, false);
+    entity->LockForPropertyAccessShared();
+    auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccessShared(); });
+
+    entity->ValidateAccess();
     any_t value = entity->GetValueAsAny(prop);
     return mono_string_new_len(domain, value.data(), numeric_cast<uint32_t>(value.size()));
 }
@@ -1092,6 +1103,10 @@ static void NativeSetEntityValueAsAnyImpl(void* entity_ptr, int32_t prop_index, 
     FO_STACK_TRACE_ENTRY();
 
     auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, true);
+    entity->LockForPropertyAccess();
+    auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
+
+    entity->ValidateAccess();
     entity->SetValueAsAny(prop, any_t {ToStringAndFree(value)});
 }
 
@@ -1528,6 +1543,9 @@ static auto NativeGetPropertyImpl(MonoString* owner_type, MonoString* property_n
 
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
+    entity->LockForPropertyAccessShared();
+    auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccessShared(); });
+
     entity->ValidateAccess();
     string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrar()->FindProperty(property_name_str);
@@ -1578,6 +1596,9 @@ static void NativeSetPropertyImpl(MonoString* owner_type, MonoString* property_n
 
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
+    entity->LockForPropertyAccess();
+    auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
+
     entity->ValidateAccess();
     string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrar()->FindProperty(property_name_str);
