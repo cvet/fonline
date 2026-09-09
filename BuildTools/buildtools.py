@@ -980,7 +980,10 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false']
 	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
 	# unrelated runtime projects the same output filename, breaking generators and task publishing
-	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in ('makeflags', 'mflags', 'targetname')}
+	# The nested runtime selects its own host toolchain. Outer MSBuild search paths may name optional
+	# components absent from that toolchain, and Roslyn rejects invalid LIB entries
+	outer_build_variables = {'include', 'lib', 'libpath', 'makeflags', 'mflags', 'targetname'}
+	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in outer_build_variables}
 	if target_os in ('ios', 'iossimulator'):
 		# Mono supplies the target SDK explicitly; its macOS cross-AOT tools must not inherit that SDK
 		build_env.pop('SDKROOT', None)
