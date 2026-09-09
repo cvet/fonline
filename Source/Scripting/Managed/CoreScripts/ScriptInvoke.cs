@@ -15,8 +15,10 @@ public static partial class Game
 
     // Core scripts are compiled into each backend's entry assembly, so these caches are engine-local
     private static readonly Lazy<Type[]> InvokeTypes = new Lazy<Type[]>(() => typeof(Game).Assembly.GetTypes());
-    private static readonly ConcurrentDictionary<string, MethodInfo[]> InvokeCandidates = new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
-    private static readonly ConcurrentDictionary<string, Type[]> EnumCandidates = new ConcurrentDictionary<string, Type[]>(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, MethodInfo[]> InvokeCandidates =
+        new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Type[]> EnumCandidates =
+        new ConcurrentDictionary<string, Type[]>(StringComparer.Ordinal);
 
     private static int _managedGlobalExceptionCount;
 
@@ -60,34 +62,22 @@ public static partial class Game
         return InvokeCore(funcName, args) && CopyInvokeResult(args, 3, ref result);
     }
 
-    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3, ref TResult result)
+    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
+                                       ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, result };
         return InvokeCore(funcName, args) && CopyInvokeResult(args, 4, ref result);
     }
 
-    public static bool Invoke<TResult>(
-        string funcName,
-        object? arg0,
-        object? arg1,
-        object? arg2,
-        object? arg3,
-        object? arg4,
-        ref TResult result)
+    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
+                                       object? arg4, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, arg4, result };
         return InvokeCore(funcName, args) && CopyInvokeResult(args, 5, ref result);
     }
 
-    public static bool Invoke<TResult>(
-        string funcName,
-        object? arg0,
-        object? arg1,
-        object? arg2,
-        object? arg3,
-        object? arg4,
-        object? arg5,
-        ref TResult result)
+    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
+                                       object? arg4, object? arg5, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, arg4, arg5, result };
         return InvokeCore(funcName, args) && CopyInvokeResult(args, 6, ref result);
@@ -111,8 +101,7 @@ public static partial class Game
     // same bounded exception accounting that AngelScript provided for caught script exceptions.
     public static void RecordCaughtException(Exception exception)
     {
-        if (exception == null)
-        {
+        if (exception == null) {
             throw new ArgumentNullException(nameof(exception));
         }
 
@@ -138,8 +127,7 @@ public static partial class Game
     public static TEnum ParseEnumValue<TEnum>(object value)
         where TEnum : struct, Enum
     {
-        if (TryParseEnumValue(value, out TEnum result))
-        {
+        if (TryParseEnumValue(value, out TEnum result)) {
             return result;
         }
 
@@ -151,7 +139,9 @@ public static partial class Game
     {
         Type? enumType = FindEnumType(enumName);
         Verify(enumType != null, "Enum type is not found");
-        string text = valueName is hstring hvalue ? hvalue.ToString() : Convert.ToString(valueName, CultureInfo.InvariantCulture) ?? string.Empty;
+        string text = valueName is hstring hvalue
+                        ? hvalue.ToString()
+                        : Convert.ToString(valueName, CultureInfo.InvariantCulture) ?? string.Empty;
         Verify(TryParseEnumObject(enumType, text, out object? result), "Enum value is not found");
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }
@@ -173,31 +163,26 @@ public static partial class Game
 
     private static async Task<bool> InvokeCoreAsync(string funcName, object?[] args)
     {
-        try
-        {
+        try {
             MethodInfo? method = FindInvokeMethod(funcName, args);
-            if (method == null)
-            {
+            if (method == null) {
                 return Native.InvokeScriptFunc(funcName, args);
             }
 
             CoerceInvokeArgs(method, args);
             object? result = method.Invoke(null, args);
 
-            if (result is Task task)
-            {
+            if (result is Task task) {
                 await task;
             }
 
             return true;
         }
-        catch (TargetInvocationException ex)
-        {
+        catch (TargetInvocationException ex) {
             RecordManagedException(ex.InnerException ?? ex, true);
             return false;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
         }
@@ -205,11 +190,9 @@ public static partial class Game
 
     private static bool InvokeCore(string funcName, object?[] args)
     {
-        try
-        {
+        try {
             MethodInfo? method = FindInvokeMethod(funcName, args);
-            if (method == null)
-            {
+            if (method == null) {
                 return Native.InvokeScriptFunc(funcName, args);
             }
 
@@ -218,13 +201,11 @@ public static partial class Game
             ObserveInvokeTask(result);
             return true;
         }
-        catch (TargetInvocationException ex)
-        {
+        catch (TargetInvocationException ex) {
             RecordManagedException(ex.InnerException ?? ex, true);
             return false;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
         }
@@ -233,32 +214,26 @@ public static partial class Game
     private static bool TryParseEnumValue<TEnum>(object value, out TEnum result)
         where TEnum : struct, Enum
     {
-        if (value is TEnum typed)
-        {
+        if (value is TEnum typed) {
             result = typed;
             return true;
         }
 
-        if (value is hstring hvalue)
-        {
+        if (value is hstring hvalue) {
             return TryParseEnumValue(hvalue.ToString(), out result);
         }
 
-        if (value is string svalue)
-        {
+        if (value is string svalue) {
             return TryParseEnumValue(svalue, out result);
         }
 
-        try
-        {
-            if (value is IConvertible)
-            {
+        try {
+            if (value is IConvertible) {
                 result = (TEnum)Enum.ToObject(typeof(TEnum), value);
                 return Enum.IsDefined(typeof(TEnum), result);
             }
         }
-        catch
-        {
+        catch {
         }
 
         result = default;
@@ -270,8 +245,7 @@ public static partial class Game
     {
         string normalized = NormalizeEnumValueName(valueName);
 
-        if (Enum.TryParse(normalized, false, out result))
-        {
+        if (Enum.TryParse(normalized, false, out result)) {
             return true;
         }
 
@@ -282,22 +256,18 @@ public static partial class Game
     {
         string normalized = NormalizeEnumValueName(valueName);
 
-        try
-        {
+        try {
             result = Enum.Parse(enumType, normalized, false);
             return true;
         }
-        catch
-        {
+        catch {
         }
 
-        try
-        {
+        try {
             result = Enum.Parse(enumType, normalized, true);
             return true;
         }
-        catch
-        {
+        catch {
             result = null;
             return false;
         }
@@ -307,8 +277,7 @@ public static partial class Game
     {
         string normalized = valueName.Replace("::", ".").Replace(" ", string.Empty);
         int dot = normalized.LastIndexOf('.');
-        if (dot >= 0)
-        {
+        if (dot >= 0) {
             normalized = normalized.Substring(dot + 1);
         }
 
@@ -320,76 +289,66 @@ public static partial class Game
         string normalized = enumName.Replace("::", ".").Replace(" ", string.Empty);
         string shortName = normalized;
         int dot = shortName.LastIndexOf('.');
-        if (dot >= 0)
-        {
+        if (dot >= 0) {
             shortName = shortName.Substring(dot + 1);
         }
 
-        Type[] candidates = EnumCandidates.GetOrAdd(normalized, _ =>
-        {
-            Type? fallback = null;
+        Type[] candidates =
+            EnumCandidates.GetOrAdd(normalized,
+                                    _ =>
+                                    {
+                                        Type? fallback = null;
 
-            foreach (Type type in InvokeTypes.Value)
-            {
-                if (!type.IsEnum)
-                {
-                    continue;
-                }
-                if (type.FullName == normalized)
-                {
-                    return new[] { type };
-                }
-                if (type.Name == shortName)
-                {
-                    fallback ??= type;
-                }
-            }
+                                        foreach (Type type in InvokeTypes.Value) {
+                                            if (!type.IsEnum) {
+                                                continue;
+                                            }
+                                            if (type.FullName == normalized) {
+                                                return new[] { type };
+                                            }
+                                            if (type.Name == shortName) {
+                                                fallback ??= type;
+                                            }
+                                        }
 
-            return fallback == null ? Array.Empty<Type>() : new[] { fallback };
-        });
+                                        return fallback == null ? Array.Empty<Type>() : new[] { fallback };
+                                    });
 
         return candidates.Length == 0 ? null : candidates[0];
     }
 
     private static MethodInfo? FindInvokeMethod(string funcName, object?[] args)
     {
-        if (string.IsNullOrWhiteSpace(funcName))
-        {
+        if (string.IsNullOrWhiteSpace(funcName)) {
             return null;
         }
 
-        MethodInfo[] candidates = InvokeCandidates.GetOrAdd(funcName, name =>
-        {
+        MethodInfo[] candidates = InvokeCandidates.GetOrAdd(funcName,
+                                                            name =>
+                                                            {
             ParseInvokeName(name, out string? moduleName, out string methodName);
             var methods = new List<MethodInfo>();
 
-            foreach (Type type in GetInvokeCandidateTypes(moduleName))
-            {
+            foreach (Type type in GetInvokeCandidateTypes(moduleName)) {
                 MethodInfo[] declared = type.GetMethods(InvokeMethodFlags);
 
-                foreach (MethodInfo method in declared)
-                {
-                    if (!method.ContainsGenericParameters && method.Name == methodName)
-                    {
+                foreach (MethodInfo method in declared) {
+                    if (!method.ContainsGenericParameters && method.Name == methodName) {
                         methods.Add(method);
                     }
                 }
-                foreach (MethodInfo method in declared)
-                {
-                    if (!method.ContainsGenericParameters && method.Name == methodName + "_")
-                    {
+                foreach (MethodInfo method in declared) {
+                    if (!method.ContainsGenericParameters && method.Name == methodName + "_") {
                         methods.Add(method);
                     }
                 }
             }
 
             return methods.ToArray();
-        });
+                                                            });
 
-        foreach (MethodInfo method in candidates)
-        {
-            if (IsInvokeMethodCompatible(method, args))
-            {
+        foreach (MethodInfo method in candidates) {
+            if (IsInvokeMethodCompatible(method, args)) {
                 return method;
             }
         }
@@ -400,16 +359,14 @@ public static partial class Game
     private static void ParseInvokeName(string funcName, out string? moduleName, out string methodName)
     {
         int separator = funcName.LastIndexOf("::", StringComparison.Ordinal);
-        if (separator != -1)
-        {
+        if (separator != -1) {
             moduleName = funcName.Substring(0, separator);
             methodName = funcName.Substring(separator + 2);
             return;
         }
 
         separator = funcName.LastIndexOf('.');
-        if (separator != -1)
-        {
+        if (separator != -1) {
             moduleName = funcName.Substring(0, separator);
             methodName = funcName.Substring(separator + 1);
             return;
@@ -423,22 +380,18 @@ public static partial class Game
     {
         Type? qualifiedType = null;
 
-        if (moduleName != null)
-        {
+        if (moduleName != null) {
             string normalized = moduleName.Replace("::", ".");
             Assembly assembly = typeof(Game).Assembly;
             qualifiedType = assembly.GetType(normalized) ?? assembly.GetType("FOnline." + normalized);
 
-            if (qualifiedType != null)
-            {
+            if (qualifiedType != null) {
                 yield return qualifiedType;
             }
         }
 
-        foreach (Type type in InvokeTypes.Value)
-        {
-            if (type != qualifiedType && (moduleName == null || type.Name == moduleName))
-            {
+        foreach (Type type in InvokeTypes.Value) {
+            if (type != qualifiedType && (moduleName == null || type.Name == moduleName)) {
                 yield return type;
             }
         }
@@ -447,16 +400,13 @@ public static partial class Game
     private static bool IsInvokeMethodCompatible(MethodInfo method, object?[] args)
     {
         ParameterInfo[] parameters = method.GetParameters();
-        if (parameters.Length != args.Length)
-        {
+        if (parameters.Length != args.Length) {
             return false;
         }
 
-        for (int i = 0; i < parameters.Length; i++)
-        {
+        for (int i = 0; i < parameters.Length; i++) {
             Type paramType = UnwrapByRef(parameters[i].ParameterType);
-            if (!CanCoerceInvokeArg(paramType, args[i]))
-            {
+            if (!CanCoerceInvokeArg(paramType, args[i])) {
                 return false;
             }
         }
@@ -466,25 +416,21 @@ public static partial class Game
 
     private static bool CanCoerceInvokeArg(Type targetType, object? value)
     {
-        if (value == null)
-        {
+        if (value == null) {
             return !targetType.IsValueType || Nullable.GetUnderlyingType(targetType) != null;
         }
 
         Type valueType = value.GetType();
-        if (targetType.IsAssignableFrom(valueType))
-        {
+        if (targetType.IsAssignableFrom(valueType)) {
             return true;
         }
 
         Type nonNullableTarget = Nullable.GetUnderlyingType(targetType) ?? targetType;
-        if (nonNullableTarget == typeof(hstring) && value is string)
-        {
+        if (nonNullableTarget == typeof(hstring) && value is string) {
             return true;
         }
 
-        if (nonNullableTarget.IsEnum)
-        {
+        if (nonNullableTarget.IsEnum) {
             return value is string || value is IConvertible;
         }
 
@@ -494,8 +440,7 @@ public static partial class Game
     private static void CoerceInvokeArgs(MethodInfo method, object?[] args)
     {
         ParameterInfo[] parameters = method.GetParameters();
-        for (int i = 0; i < parameters.Length; i++)
-        {
+        for (int i = 0; i < parameters.Length; i++) {
             Type paramType = UnwrapByRef(parameters[i].ParameterType);
             args[i] = CoerceInvokeArg(paramType, args[i]);
         }
@@ -503,21 +448,17 @@ public static partial class Game
 
     private static object? CoerceInvokeArg(Type targetType, object? value)
     {
-        if (value == null || targetType.IsInstanceOfType(value))
-        {
+        if (value == null || targetType.IsInstanceOfType(value)) {
             return value;
         }
 
         Type nonNullableTarget = Nullable.GetUnderlyingType(targetType) ?? targetType;
-        if (nonNullableTarget == typeof(hstring) && value is string text)
-        {
+        if (nonNullableTarget == typeof(hstring) && value is string text) {
             return hstring.FromString(text);
         }
 
-        if (nonNullableTarget.IsEnum)
-        {
-            if (value is string enumText)
-            {
+        if (nonNullableTarget.IsEnum) {
+            if (value is string enumText) {
                 Verify(TryParseEnumObject(nonNullableTarget, enumText, out object? enumValue), "Enum value is not found");
                 return enumValue;
             }
@@ -525,8 +466,7 @@ public static partial class Game
             return Enum.ToObject(nonNullableTarget, value);
         }
 
-        if (value is IConvertible && typeof(IConvertible).IsAssignableFrom(nonNullableTarget))
-        {
+        if (value is IConvertible && typeof(IConvertible).IsAssignableFrom(nonNullableTarget)) {
             return Convert.ChangeType(value, nonNullableTarget, CultureInfo.InvariantCulture);
         }
 
@@ -540,14 +480,12 @@ public static partial class Game
 
     private static bool CopyInvokeResult<TResult>(object?[] args, int index, ref TResult result)
     {
-        try
-        {
+        try {
             object? value = CoerceInvokeArg(typeof(TResult), args[index]);
             result = value == null ? default! : (TResult)value;
             return true;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
         }
@@ -555,15 +493,12 @@ public static partial class Game
 
     internal static void ObserveInvokeTask(object? result)
     {
-        if (result is not Task task)
-        {
+        if (result is not Task task) {
             return;
         }
 
-        if (task.IsCompleted)
-        {
-            if (task.IsFaulted && task.Exception != null)
-            {
+        if (task.IsCompleted) {
+            if (task.IsFaulted && task.Exception != null) {
                 RecordManagedException(task.Exception, true);
             }
             return;
@@ -572,8 +507,7 @@ public static partial class Game
         _ = task.ContinueWith(
             static failedTask =>
             {
-                if (failedTask.Exception != null)
-                {
+                if (failedTask.Exception != null) {
                     // Deferred fault runs on a foreign thread, so only the global counter is
                     // incremented here. GetContextExceptionCount reflects synchronous faults only.
                     RecordManagedExceptionGlobal(failedTask.Exception, true);
@@ -591,8 +525,7 @@ public static partial class Game
     private static void RecordManagedExceptionGlobal(Exception ex, bool log)
     {
         Interlocked.Increment(ref _managedGlobalExceptionCount);
-        if (log)
-        {
+        if (log) {
             Native.Log(ex.ToString());
         }
     }

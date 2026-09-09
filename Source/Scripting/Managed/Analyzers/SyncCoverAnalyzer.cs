@@ -45,7 +45,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
     // Asking whether cover is held, rather than taking it. `Sync.IsCovered` is the model's own probe and
     // `Game.IsEntityLocked` the engine's.
-    private static readonly string[] CoverProbeNames = {"IsCovered", "IsEntityLocked"};
+    private static readonly string[] CoverProbeNames = { "IsCovered", "IsEntityLocked" };
 
     // The raw entity-cover primitives, meaning the ones a Sync helper can replace.
     //
@@ -56,22 +56,21 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     // covers it, answering false when the entity is gone. Every Sync helper takes an entity, so none can
     // stand in for it -- a handle retained across a yield may already be dead, which is exactly when this
     // is the right call. Flagging it would report code for using the only tool that fits.
-    private static readonly string[] RawSyncPrimitiveNames = {"Sync", "SyncRelease"};
+    private static readonly string[] RawSyncPrimitiveNames = { "Sync", "SyncRelease" };
 
     // The Game methods whose subject is an entity to cover. Game also carries the whole rest of the
     // script surface, so a rule about acquisitions must name these rather than take the type as a whole:
     // a static item passed to Game.Verify as failure context or to Game.CallStaticItemFunction as its
     // subject is an ordinary argument, not an acquisition.
     private static readonly string[] GameCoverPrimitiveNames =
-        {"Sync", "SyncRelease", "Lock", "Unlock", "TrySyncEntity", "IsEntityLocked"};
+        { "Sync", "SyncRelease", "Lock", "Unlock", "TrySyncEntity", "IsEntityLocked" };
 
     // Methods that BEGIN an execution context: the engine dispatcher establishes cover for the arguments
     // it hands them, so their entity parameters arrive already covered and need no annotation. This is
     // sound only because such methods are called by their attribute rule and never directly from regular
     // code -- the project convention that keeps an entry point's assumption from leaking into an ordinary
     // call chain.
-    private static readonly string[] EntryPointAttributeFullNames =
-    {
+    private static readonly string[] EntryPointAttributeFullNames = {
         "FOnline.EventAttribute",
         "FOnline.TimeEventAttribute",
         "FOnline.ServerRemoteCallAttribute",
@@ -90,168 +89,140 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     private const string Category = "Synchronization";
 
     internal static readonly DiagnosticDescriptor NonEntityTargetRule = new DiagnosticDescriptor(
-        id: "FOSYNC001",
-        title: "Cover annotation on a non-entity target",
-        messageFormat: "'{0}' is not an entity, so a cover annotation on it means nothing",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "[RequiresCover] and [ProvidesCover] describe synchronization cover for an engine entity. "
-            + "Applying one to a value that is neither an Entity nor a collection of entities declares a "
-            + "contract that can never be satisfied or checked.");
+        id: "FOSYNC001", title: "Cover annotation on a non-entity target",
+        messageFormat: "'{0}' is not an entity, so a cover annotation on it means nothing", category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "[RequiresCover] and [ProvidesCover] describe synchronization cover for an engine entity. " +
+            "Applying one to a value that is neither an Entity nor a collection of entities declares a " +
+            "contract that can never be satisfied or checked.");
 
     internal static readonly DiagnosticDescriptor UndischargedCoverRule = new DiagnosticDescriptor(
-        id: "FOSYNC002",
-        title: "Cover obligation is neither acquired nor propagated",
-        messageFormat:
-            "'{0}' requires the caller to hold cover for '{1}'; '{2}' neither acquires it, receives it from a "
-            + "[ProvidesCover] source, nor declares [RequiresCover]",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "Calling a method with a [RequiresCover] parameter obliges the caller to have established "
-            + "synchronization cover for the argument. Acquire it (Sync.Lock / Sync.Widen*), pass a value "
-            + "that came from a [ProvidesCover] source, or re-declare [RequiresCover] so the obligation "
-            + "travels to the next caller.");
+        id: "FOSYNC002", title: "Cover obligation is neither acquired nor propagated",
+        messageFormat: "'{0}' requires the caller to hold cover for '{1}'; '{2}' neither acquires it, receives it from a " +
+            "[ProvidesCover] source, nor declares [RequiresCover]",
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "Calling a method with a [RequiresCover] parameter obliges the caller to have established " +
+            "synchronization cover for the argument. Acquire it (Sync.Lock / Sync.Widen*), pass a value " +
+            "that came from a [ProvidesCover] source, or re-declare [RequiresCover] so the obligation " +
+            "travels to the next caller.");
 
     internal static readonly DiagnosticDescriptor EntryPointCoverRule = new DiagnosticDescriptor(
-        id: "FOSYNC003",
-        title: "Entry point does not declare the cover the engine gives it",
+        id: "FOSYNC003", title: "Entry point does not declare the cover the engine gives it",
         messageFormat: "'{0}' is an execution-context entry point; declare [RequiresCover] on '{1}', which the engine has already synchronized",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "The engine synchronizes the subject it dispatches an execution context on -- a remote call's "
-            + "Player, an event's own entity -- before the handler runs. Stating that with [RequiresCover] "
-            + "makes the guarantee checkable and lets the obligation flow to everything the handler calls; "
-            + "leaving it off means callees cannot rely on a contract that in fact holds.");
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "The engine synchronizes the subject it dispatches an execution context on -- a remote call's " +
+            "Player, an event's own entity -- before the handler runs. Stating that with [RequiresCover] " +
+            "makes the guarantee checkable and lets the obligation flow to everything the handler calls; " +
+            "leaving it off means callees cannot rely on a contract that in fact holds.");
 
     internal static readonly DiagnosticDescriptor CoverProbeRule = new DiagnosticDescriptor(
-        id: "FOSYNC004",
-        title: "Cover is probed instead of acquired",
+        id: "FOSYNC004", title: "Cover is probed instead of acquired",
         messageFormat: "'{0}' asks whether cover is held; acquire what this code needs with Sync.Lock / Sync.Widen instead",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "A probe answers what was true a moment ago, and code that branches on it either does the work "
-            + "unprotected on one path or silently skips it on the other. Production code should state what "
-            + "it needs and take it. Tests are the honest exception -- asserting that a call did or did not "
-            + "widen the caller cover is exactly how the sync contract is pinned -- so lower this rule for "
-            + "test sources in the embedding project's .editorconfig rather than working around it.");
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "A probe answers what was true a moment ago, and code that branches on it either does the work " +
+            "unprotected on one path or silently skips it on the other. Production code should state what " +
+            "it needs and take it. Tests are the honest exception -- asserting that a call did or did not " +
+            "widen the caller cover is exactly how the sync contract is pinned -- so lower this rule for " +
+            "test sources in the embedding project's .editorconfig rather than working around it.");
 
     internal static readonly DiagnosticDescriptor RawSyncPrimitiveRule = new DiagnosticDescriptor(
-        id: "FOSYNC005",
-        title: "Raw synchronization primitive used outside the Sync module",
+        id: "FOSYNC005", title: "Raw synchronization primitive used outside the Sync module",
         messageFormat: "'{0}' is a raw synchronization primitive; use the Sync helpers, which acquire atomically and re-prove after migration",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "The Sync helpers are not thin wrappers: they acquire multi-root packages as one step and retry "
-            + "with a re-proof that nothing migrated in between. Reaching for the primitive directly gets the "
-            + "first half and silently drops the second. This does not cover the Game singleton bucket lock "
-            + "(Game.Lock / Game.Unlock), which guards property storage rather than entity cover.");
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "The Sync helpers are not thin wrappers: they acquire multi-root packages as one step and retry " +
+            "with a re-proof that nothing migrated in between. Reaching for the primitive directly gets the " +
+            "first half and silently drops the second. This does not cover the Game singleton bucket lock " +
+            "(Game.Lock / Game.Unlock), which guards property storage rather than entity cover.");
 
     internal static readonly DiagnosticDescriptor SingletonLockLeakRule = new DiagnosticDescriptor(
-        id: "FOSYNC006",
-        title: "Singleton lock is not released on every path",
+        id: "FOSYNC006", title: "Singleton lock is not released on every path",
         messageFormat: "'{0}' leaves the singleton lock held on this path; release it with Game.Unlock() before the scope ends",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "The singleton bucket is deliberately kept outside the entity-cover set, so it survives every "
-            + "later Sync acquisition in the same job and nothing drops it implicitly. A job that ends still "
-            + "holding one does not merely block others: SyncContext's destructor asserts the bucket is empty "
-            + "(FO_STRONG_ASSERT), which is an always-on deterministic exit.");
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "The singleton bucket is deliberately kept outside the entity-cover set, so it survives every " +
+            "later Sync acquisition in the same job and nothing drops it implicitly. A job that ends still " +
+            "holding one does not merely block others: SyncContext's destructor asserts the bucket is empty " +
+            "(FO_STRONG_ASSERT), which is an always-on deterministic exit.");
 
     internal static readonly DiagnosticDescriptor SingletonLockAcrossAwaitRule = new DiagnosticDescriptor(
-        id: "FOSYNC007",
-        title: "Singleton lock is held across an await",
+        id: "FOSYNC007", title: "Singleton lock is held across an await",
         messageFormat: "the singleton lock is held across this await; take it after the await, or release it before",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "The lock is owned by the thread that took it: UnlockSingleton throws unless the releasing thread "
-            + "is the holder. A continuation may resume on a different thread, so an await between Lock and "
-            + "Unlock turns the release into a throw rather than a slow path -- and everything the await waits "
-            + "on runs while the bucket is held.");
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "The lock is owned by the thread that took it: UnlockSingleton throws unless the releasing thread " +
+            "is the holder. A continuation may resume on a different thread, so an await between Lock and " +
+            "Unlock turns the release into a throw rather than a slow path -- and everything the await waits " +
+            "on runs while the bucket is held.");
 
     internal static readonly DiagnosticDescriptor CoverLostToAwaitRule = new DiagnosticDescriptor(
-        id: "FOSYNC009",
-        title: "Cover for a value is not re-proved after an await",
+        id: "FOSYNC009", title: "Cover for a value is not re-proved after an await",
         messageFormat: "'{0}' was covered before awaiting {1}, but nothing re-proved it after; the call here needs cover for it",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description:
-            "An await releases the caller cover: the continuation may resume on another thread, and the world "
-            + "moves while it waits. A value covered before the await is not covered after it, so the entity may "
-            + "have been destroyed or relocated in between. The re-proof is a Sync call naming that value, and its "
-            + "result is an answer to act on -- the acquisition can legitimately fail because the entity is gone.");
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "An await releases the caller cover: the continuation may resume on another thread, and the world " +
+            "moves while it waits. A value covered before the await is not covered after it, so the entity may " +
+            "have been destroyed or relocated in between. The re-proof is a Sync call naming that value, and its " +
+            "result is an answer to act on -- the acquisition can legitimately fail because the entity is gone.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-        ImmutableArray.Create(NonEntityTargetRule, UndischargedCoverRule, EntryPointCoverRule, CoverProbeRule, RawSyncPrimitiveRule,
-            SingletonLockLeakRule, SingletonLockAcrossAwaitRule, CoverLostToAwaitRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics {
+        get;
+    } = ImmutableArray.Create(NonEntityTargetRule, UndischargedCoverRule, EntryPointCoverRule, CoverProbeRule,
+                              RawSyncPrimitiveRule, SingletonLockLeakRule, SingletonLockAcrossAwaitRule,
+                              CoverLostToAwaitRule);
 
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterCompilationStartAction(compilationStart =>
-        {
-            Compilation compilation = compilationStart.Compilation;
+        context.RegisterCompilationStartAction(
+            compilationStart =>
+            {
+                Compilation compilation = compilationStart.Compilation;
 
-            INamedTypeSymbol? requiresCover = compilation.GetTypeByMetadataName(RequiresCoverAttributeFullName);
-            INamedTypeSymbol? providesCover = compilation.GetTypeByMetadataName(ProvidesCoverAttributeFullName);
-            INamedTypeSymbol? preservesCover = compilation.GetTypeByMetadataName(PreservesCoverAttributeFullName);
-            INamedTypeSymbol? entityType = compilation.GetTypeByMetadataName(EntityTypeFullName);
+                INamedTypeSymbol? requiresCover = compilation.GetTypeByMetadataName(RequiresCoverAttributeFullName);
+                INamedTypeSymbol? providesCover = compilation.GetTypeByMetadataName(ProvidesCoverAttributeFullName);
+                INamedTypeSymbol? preservesCover = compilation.GetTypeByMetadataName(PreservesCoverAttributeFullName);
+                INamedTypeSymbol? entityType = compilation.GetTypeByMetadataName(EntityTypeFullName);
 
-            if (requiresCover == null || entityType == null) {
-                return;
-            }
-
-            INamedTypeSymbol? syncType = compilation.GetTypeByMetadataName(SyncTypeFullName);
-            INamedTypeSymbol? gameType = compilation.GetTypeByMetadataName(GameTypeFullName);
-
-            var entryMarkers = new List<INamedTypeSymbol>();
-
-            foreach (string name in EntryPointAttributeFullNames) {
-                INamedTypeSymbol? marker = compilation.GetTypeByMetadataName(name);
-
-                if (marker != null) {
-                    entryMarkers.Add(marker);
+                if (requiresCover == null || entityType == null) {
+                    return;
                 }
-            }
 
-            var model = new CoverModel(requiresCover, providesCover, preservesCover, entityType, syncType, gameType, entryMarkers);
+                INamedTypeSymbol? syncType = compilation.GetTypeByMetadataName(SyncTypeFullName);
+                INamedTypeSymbol? gameType = compilation.GetTypeByMetadataName(GameTypeFullName);
 
-            compilationStart.RegisterSymbolAction(
-                symbolContext => AnalyzeDeclaration(symbolContext, model),
-                SymbolKind.Method);
+                var entryMarkers = new List<INamedTypeSymbol>();
 
-            compilationStart.RegisterSyntaxNodeAction(
-                nodeContext => AnalyzeInvocation(nodeContext, model),
-                SyntaxKind.InvocationExpression);
+                foreach (string name in EntryPointAttributeFullNames) {
+                    INamedTypeSymbol? marker = compilation.GetTypeByMetadataName(name);
 
-            compilationStart.RegisterSyntaxNodeAction(
-                nodeContext => AnalyzeSyncSurfaceUse(nodeContext, model),
-                SyntaxKind.InvocationExpression);
+                    if (marker != null) {
+                        entryMarkers.Add(marker);
+                    }
+                }
 
-            compilationStart.RegisterSyntaxNodeAction(
-                nodeContext => AnalyzeSingletonLock(nodeContext, model),
-                SyntaxKind.InvocationExpression);
+                var model = new CoverModel(requiresCover,
+                                           providesCover,
+                                           preservesCover,
+                                           entityType,
+                                           syncType,
+                                           gameType,
+                                           entryMarkers);
 
-            compilationStart.RegisterSyntaxNodeAction(
-                nodeContext => AnalyzeEntryPointDeclaration(nodeContext, model),
-                SyntaxKind.MethodDeclaration);
-        });
+                compilationStart.RegisterSymbolAction(symbolContext => AnalyzeDeclaration(symbolContext, model),
+                                                      SymbolKind.Method);
+
+                compilationStart.RegisterSyntaxNodeAction(nodeContext => AnalyzeInvocation(nodeContext, model),
+                                                          SyntaxKind.InvocationExpression);
+
+                compilationStart.RegisterSyntaxNodeAction(nodeContext => AnalyzeSyncSurfaceUse(nodeContext, model),
+                                                          SyntaxKind.InvocationExpression);
+
+                compilationStart.RegisterSyntaxNodeAction(nodeContext => AnalyzeSingletonLock(nodeContext, model),
+                                                          SyntaxKind.InvocationExpression);
+
+                compilationStart.RegisterSyntaxNodeAction(nodeContext =>
+                                                              AnalyzeEntryPointDeclaration(nodeContext, model),
+                                                          SyntaxKind.MethodDeclaration);
+            });
     }
 
     // FOSYNC001 -- a cover annotation only means something on an entity (or a collection of entities).
@@ -270,12 +241,12 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         if (model.HasProvidesCoverOnReturn(method) && !model.IsEntityish(method.ReturnType)) {
             Location location = method.Locations.FirstOrDefault() ?? Location.None;
 
-            context.ReportDiagnostic(
-                Diagnostic.Create(NonEntityTargetRule, location, "the return value"));
+            context.ReportDiagnostic(Diagnostic.Create(NonEntityTargetRule, location, "the return value"));
         }
     }
 
-    private static void Report(SymbolAnalysisContext context, CoverModel model, IParameterSymbol parameter, string display)
+    private static void Report(SymbolAnalysisContext context, CoverModel model, IParameterSymbol parameter,
+                               string display)
     {
         Location location = parameter.Locations.FirstOrDefault() ?? Location.None;
 
@@ -290,7 +261,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
 
-        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol is not IMethodSymbol callee) {
+        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken)
+                .Symbol is not IMethodSymbol callee) {
             return;
         }
 
@@ -300,8 +272,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        bool onSync = model.SyncType != null && SymbolEqualityComparer.Default.Equals(callee.ContainingType, model.SyncType);
-        bool onGame = model.GameType != null && SymbolEqualityComparer.Default.Equals(callee.ContainingType, model.GameType);
+        bool onSync =
+            model.SyncType != null && SymbolEqualityComparer.Default.Equals(callee.ContainingType, model.SyncType);
+        bool onGame =
+            model.GameType != null && SymbolEqualityComparer.Default.Equals(callee.ContainingType, model.GameType);
 
         if (!onSync && !onGame) {
             return;
@@ -313,7 +287,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         if (onGame && System.Array.IndexOf(RawSyncPrimitiveNames, callee.Name) >= 0) {
-            context.ReportDiagnostic(Diagnostic.Create(RawSyncPrimitiveRule, invocation.GetLocation(), "Game." + callee.Name));
+            context.ReportDiagnostic(
+                Diagnostic.Create(RawSyncPrimitiveRule, invocation.GetLocation(), "Game." + callee.Name));
         }
     }
 
@@ -328,7 +303,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol is not IMethodSymbol callee ||
+        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken)
+                .Symbol is not IMethodSymbol callee ||
             callee.Name != "Lock" || !SymbolEqualityComparer.Default.Equals(callee.ContainingType, model.GameType)) {
             return;
         }
@@ -356,7 +332,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             // A path that leaves the scope without releasing.
             foreach (SyntaxNode exit in next.DescendantNodesAndSelf()) {
                 if (exit is ReturnStatementSyntax or ThrowStatementSyntax) {
-                    context.ReportDiagnostic(Diagnostic.Create(SingletonLockLeakRule, exit.GetLocation(), "Game.Lock()"));
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(SingletonLockLeakRule, exit.GetLocation(), "Game.Lock()"));
                     return;
                 }
             }
@@ -365,12 +342,14 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         context.ReportDiagnostic(Diagnostic.Create(SingletonLockLeakRule, invocation.GetLocation(), "Game.Lock()"));
     }
 
-    private static bool ContainsSingletonUnlock(SyntaxNode node, SemanticModel semantics, CoverModel model, CancellationToken cancellationToken)
+    private static bool ContainsSingletonUnlock(SyntaxNode node, SemanticModel semantics, CoverModel model,
+                                                CancellationToken cancellationToken)
     {
-        foreach (InvocationExpressionSyntax candidate in node.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>()) {
+        foreach (InvocationExpressionSyntax candidate in node.DescendantNodesAndSelf()
+                     .OfType<InvocationExpressionSyntax>()) {
             if (semantics.GetSymbolInfo(candidate, cancellationToken).Symbol is IMethodSymbol symbol &&
-                symbol.Name == "Unlock" && candidate.ArgumentList.Arguments.Count == 0 &&
-                model.GameType != null && SymbolEqualityComparer.Default.Equals(symbol.ContainingType, model.GameType)) {
+                symbol.Name == "Unlock" && candidate.ArgumentList.Arguments.Count == 0 && model.GameType != null &&
+                SymbolEqualityComparer.Default.Equals(symbol.ContainingType, model.GameType)) {
                 return true;
             }
         }
@@ -410,7 +389,16 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         //
         // It reports only where the ordinary discharge is satisfied, so a value with no cover at all is
         // FOSYNC002's to report and is not said twice.
-        ReportCoverLostToAwait(context, model, body, invocation, callee, demanding, demandsReceiver, caller, semantics, cancellationToken);
+        ReportCoverLostToAwait(context,
+                               model,
+                               body,
+                               invocation,
+                               callee,
+                               demanding,
+                               demandsReceiver,
+                               caller,
+                               semantics,
+                               cancellationToken);
 
         // A caller that re-declares the obligation passes it on; that is a discharge here.
         if (caller != null && caller.Parameters.Any(model.HasRequiresCover)) {
@@ -438,13 +426,11 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             if (!model.IsAlwaysCovered(semantics.GetTypeInfo(receiver, cancellationToken).Type) &&
                 !model.ComesFromProvidedCover(receiver, semantics, cancellationToken) &&
                 !model.CoveredByEarlierCall(body, receiver, semantics, cancellationToken)) {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        UndischargedCoverRule,
-                        receiver.GetLocation(),
-                        callee.Name,
-                        "the receiver",
-                        caller?.Name ?? "the enclosing member"));
+                context.ReportDiagnostic(Diagnostic.Create(UndischargedCoverRule,
+                                                           receiver.GetLocation(),
+                                                           callee.Name,
+                                                           "the receiver",
+                                                           caller?.Name ?? "the enclosing member"));
             }
         }
 
@@ -464,26 +450,24 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
             // Cover can also be established mid-flight by handing the value to a [ProvidesCover]
             // parameter of some earlier call -- Sync.Widen* is not the only way to acquire it.
-            if (argument != null &&
-                model.CoveredByEarlierCall(body, argument, semantics, cancellationToken)) {
+            if (argument != null && model.CoveredByEarlierCall(body, argument, semantics, cancellationToken)) {
                 continue;
             }
 
-            context.ReportDiagnostic(
-                Diagnostic.Create(
-                    UndischargedCoverRule,
-                    (argument ?? (ExpressionSyntax)invocation).GetLocation(),
-                    callee.Name,
-                    parameter.Name,
-                    caller?.Name ?? "the enclosing member"));
+            context.ReportDiagnostic(Diagnostic.Create(UndischargedCoverRule,
+                                                       (argument ?? (ExpressionSyntax)invocation).GetLocation(),
+                                                       callee.Name,
+                                                       parameter.Name,
+                                                       caller?.Name ?? "the enclosing member"));
         }
-
     }
 
     // The gate in front of the per-value check: only values whose obligation is otherwise discharged.
     private static void ReportCoverLostToAwait(SyntaxNodeAnalysisContext context, CoverModel model, SyntaxNode body,
-        InvocationExpressionSyntax invocation, IMethodSymbol callee, List<IParameterSymbol> demanding, bool demandsReceiver,
-        IMethodSymbol? caller, SemanticModel semantics, CancellationToken cancellationToken)
+                                               InvocationExpressionSyntax invocation, IMethodSymbol callee,
+                                               List<IParameterSymbol> demanding, bool demandsReceiver,
+                                               IMethodSymbol? caller, SemanticModel semantics,
+                                               CancellationToken cancellationToken)
     {
         // Inside Sync itself these calls are the mechanism, not a consumer of it -- the same exemption the
         // ordinary discharge makes below, and it has to be repeated here because this check runs first.
@@ -498,10 +482,16 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         if (demandsReceiver && invocation.Expression is MemberAccessExpressionSyntax memberAccess) {
             ExpressionSyntax receiver = memberAccess.Expression;
 
-            if (propagates || acquires ||
-                model.ComesFromProvidedCover(receiver, semantics, cancellationToken) ||
+            if (propagates || acquires || model.ComesFromProvidedCover(receiver, semantics, cancellationToken) ||
                 model.CoveredByEarlierCall(body, receiver, semantics, cancellationToken)) {
-                ReportIfCoverLostToAwait(context, model, body, invocation, receiver, caller, semantics, cancellationToken);
+                ReportIfCoverLostToAwait(context,
+                                         model,
+                                         body,
+                                         invocation,
+                                         receiver,
+                                         caller,
+                                         semantics,
+                                         cancellationToken);
             }
         }
 
@@ -512,10 +502,16 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            if (propagates || acquires ||
-                model.ComesFromProvidedCover(argument, semantics, cancellationToken) ||
+            if (propagates || acquires || model.ComesFromProvidedCover(argument, semantics, cancellationToken) ||
                 model.CoveredByEarlierCall(body, argument, semantics, cancellationToken)) {
-                ReportIfCoverLostToAwait(context, model, body, invocation, argument, caller, semantics, cancellationToken);
+                ReportIfCoverLostToAwait(context,
+                                         model,
+                                         body,
+                                         invocation,
+                                         argument,
+                                         caller,
+                                         semantics,
+                                         cancellationToken);
             }
         }
     }
@@ -528,8 +524,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     // cover survived to this point. Position in source order, not a control flow graph -- see the rule's
     // documentation for what that costs.
     private static void ReportIfCoverLostToAwait(SyntaxNodeAnalysisContext context, CoverModel model, SyntaxNode body,
-        InvocationExpressionSyntax invocation, ExpressionSyntax value, IMethodSymbol? caller, SemanticModel semantics,
-        CancellationToken cancellationToken)
+                                                 InvocationExpressionSyntax invocation, ExpressionSyntax value,
+                                                 IMethodSymbol? caller, SemanticModel semantics,
+                                                 CancellationToken cancellationToken)
     {
         if (model.IsAlwaysCovered(semantics.GetTypeInfo(value, cancellationToken).Type)) {
             return;
@@ -583,16 +580,13 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        string awaitedName = semantics.GetSymbolInfo(lastAwait.Expression, cancellationToken).Symbol is IMethodSymbol awaitedMethod
-            ? awaitedMethod.Name
-            : "the call";
+        string awaitedName =
+            semantics.GetSymbolInfo(lastAwait.Expression, cancellationToken).Symbol is IMethodSymbol awaitedMethod
+                ? awaitedMethod.Name
+                : "the call";
 
         context.ReportDiagnostic(
-            Diagnostic.Create(
-                CoverLostToAwaitRule,
-                value.GetLocation(),
-                value.ToString(),
-                awaitedName));
+            Diagnostic.Create(CoverLostToAwaitRule, value.GetLocation(), value.ToString(), awaitedName));
     }
 
     // Source order is not execution order. Two sides of an if/else both come "before" a later line in the
@@ -655,7 +649,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         return null;
     }
 
-    private static IParameterSymbol? BoundParameter(InvocationExpressionSyntax invocation, IMethodSymbol callee, ArgumentSyntax argument)
+    private static IParameterSymbol? BoundParameter(InvocationExpressionSyntax invocation, IMethodSymbol callee,
+                                                    ArgumentSyntax argument)
     {
         if (argument.NameColon?.Name.Identifier.ValueText is string named) {
             return callee.Parameters.FirstOrDefault(p => p.Name == named);
@@ -681,7 +676,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     }
 
     private static bool ReProvesCover(SyntaxNode body, int windowStart, int windowEnd, ISymbol tracked,
-        CoverModel model, SemanticModel semantics, CancellationToken cancellationToken)
+                                      CoverModel model, SemanticModel semantics, CancellationToken cancellationToken)
     {
         if (model.SyncType == null) {
             return false;
@@ -714,9 +709,11 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 }
 
                 // Names the value anywhere in the acquisition, including inside a collection of roots.
-                foreach (IdentifierNameSyntax mention in argument.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>()) {
+                foreach (IdentifierNameSyntax mention in argument.DescendantNodesAndSelf()
+                             .OfType<IdentifierNameSyntax>()) {
                     if (SymbolEqualityComparer.Default.Equals(
-                            semantics.GetSymbolInfo(mention, cancellationToken).Symbol, tracked)) {
+                            semantics.GetSymbolInfo(mention, cancellationToken).Symbol,
+                            tracked)) {
                         return true;
                     }
                 }
@@ -737,7 +734,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     {
         var declaration = (MethodDeclarationSyntax)context.Node;
 
-        if (context.SemanticModel.GetDeclaredSymbol(declaration, context.CancellationToken) is not IMethodSymbol method) {
+        if (context.SemanticModel.GetDeclaredSymbol(declaration, context.CancellationToken)
+                is not IMethodSymbol method) {
             return;
         }
 
@@ -759,11 +757,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
             if (!model.HasRequiresCover(parameter)) {
                 context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        EntryPointCoverRule,
-                        DeclarationLocation(parameter, method, context.CancellationToken),
-                        method.Name,
-                        parameter.Name));
+                    Diagnostic.Create(EntryPointCoverRule,
+                                      DeclarationLocation(parameter, method, context.CancellationToken),
+                                      method.Name,
+                                      parameter.Name));
             }
 
             return;
@@ -774,7 +771,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     // discharges the obligation. That direction is deliberate -- it under-reports rather than blocking a
     // build on a branch the analyzer cannot yet follow. Path sensitivity wants a ControlFlowGraph walk,
     // not a wider syntax scan.
-    private static bool AcquiresCover(SyntaxNode body, SemanticModel semantics, CoverModel model, CancellationToken cancellationToken)
+    private static bool AcquiresCover(SyntaxNode body, SemanticModel semantics, CoverModel model,
+                                      CancellationToken cancellationToken)
     {
         if (model.SyncType == null) {
             return false;
@@ -801,7 +799,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
     // The whole parameter declaration, not just its identifier: it is what a reader wants highlighted, and
     // it is where an inserted attribute has to go -- `[RequiresCover] Critter cr`, never `Critter [..] cr`.
-    private static Location DeclarationLocation(IParameterSymbol parameter, IMethodSymbol method, CancellationToken cancellationToken)
+    private static Location DeclarationLocation(IParameterSymbol parameter, IMethodSymbol method,
+                                                CancellationToken cancellationToken)
     {
         foreach (SyntaxReference reference in parameter.DeclaringSyntaxReferences) {
             if (reference.GetSyntax(cancellationToken) is ParameterSyntax syntax) {
@@ -812,7 +811,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         return parameter.Locations.FirstOrDefault() ?? method.Locations.FirstOrDefault() ?? Location.None;
     }
 
-    private static ExpressionSyntax? ArgumentFor(InvocationExpressionSyntax invocation, IMethodSymbol callee, IParameterSymbol parameter)
+    private static ExpressionSyntax? ArgumentFor(InvocationExpressionSyntax invocation, IMethodSymbol callee,
+                                                 IParameterSymbol parameter)
     {
         SeparatedSyntaxList<ArgumentSyntax> arguments = invocation.ArgumentList.Arguments;
 
@@ -827,7 +827,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            if (i < callee.Parameters.Length && SymbolEqualityComparer.Default.Equals(callee.Parameters[i], parameter)) {
+            if (i < callee.Parameters.Length &&
+                SymbolEqualityComparer.Default.Equals(callee.Parameters[i], parameter)) {
                 return argument.Expression;
             }
         }
@@ -857,7 +858,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         private readonly List<INamedTypeSymbol> _entryMarkers;
 
-        public CoverModel(INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover, INamedTypeSymbol? preservesCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType, INamedTypeSymbol? gameType, List<INamedTypeSymbol> entryMarkers)
+        public CoverModel(INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover,
+                          INamedTypeSymbol? preservesCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType,
+                          INamedTypeSymbol? gameType, List<INamedTypeSymbol> entryMarkers)
         {
             _requiresCover = requiresCover;
             _providesCover = providesCover;
@@ -888,7 +891,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return HasAttribute(parameter.GetAttributes(), _requiresCover);
         }
 
-
         // On a method the attribute names the receiver, which no parameter can express.
         public bool HasRequiresCoverOnMethod(IMethodSymbol method)
         {
@@ -913,7 +915,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         {
             for (ITypeSymbol? current = type; current != null; current = current.BaseType) {
                 foreach (ISymbol member in current.GetMembers(AlwaysCoveredMemberName)) {
-                    if (member is IPropertySymbol { IsOverride: true }) {
+                    if (member is IPropertySymbol { IsOverride : true }) {
                         return true;
                     }
                 }
@@ -944,10 +946,12 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         public bool PreservesCover(IMethodSymbol method)
         {
             return _preservesCover != null &&
-                method.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, _preservesCover));
+                   method.GetAttributes().Any(
+                       a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, _preservesCover));
         }
 
-        public bool ComesFromProvidedCover(ExpressionSyntax expression, SemanticModel semantics, CancellationToken cancellationToken)
+        public bool ComesFromProvidedCover(ExpressionSyntax expression, SemanticModel semantics,
+                                           CancellationToken cancellationToken)
         {
             if (_providesCover == null) {
                 return false;
@@ -1015,7 +1019,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         // how a helper establishes cover for something it does not return. Body-scoped like the rest of
         // the discharge rule, so it under-reports rather than blocking a build on control flow the
         // analyzer cannot yet follow.
-        public bool CoveredByEarlierCall(SyntaxNode body, ExpressionSyntax expression, SemanticModel semantics, CancellationToken cancellationToken)
+        public bool CoveredByEarlierCall(SyntaxNode body, ExpressionSyntax expression, SemanticModel semantics,
+                                         CancellationToken cancellationToken)
         {
             if (_providesCover == null) {
                 return false;
@@ -1027,7 +1032,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 return false;
             }
 
-            foreach (InvocationExpressionSyntax candidate in body.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
+            foreach (InvocationExpressionSyntax candidate in body.DescendantNodes()
+                         .OfType<InvocationExpressionSyntax>()) {
                 if (semantics.GetSymbolInfo(candidate, cancellationToken).Symbol is not IMethodSymbol callee) {
                     continue;
                 }
@@ -1049,7 +1055,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
             return false;
         }
-
 
         private bool IsEntity(ITypeSymbol type)
         {

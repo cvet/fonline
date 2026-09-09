@@ -23,8 +23,7 @@ public static partial class Game
     // verify(cond, message) -- the common form. Throws when the invariant is broken.
     public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message)
     {
-        if (!condition)
-        {
+        if (!condition) {
             throw new System.InvalidOperationException(message);
         }
     }
@@ -34,8 +33,7 @@ public static partial class Game
     public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message,
                               params object?[] args)
     {
-        if (!condition)
-        {
+        if (!condition) {
             throw new System.InvalidOperationException(BuildMessage(message, args));
         }
     }
@@ -66,8 +64,7 @@ public static partial class Game
     public static T VerifyNotNull<T>([System.Diagnostics.CodeAnalysis.NotNull] T? value, string message)
         where T : class
     {
-        if (value == null)
-        {
+        if (value == null) {
             throw new System.InvalidOperationException(message);
         }
 
@@ -83,15 +80,13 @@ public static partial class Game
 
     private static string BuildMessage(string message, object?[] args)
     {
-        if (args == null || args.Length == 0)
-        {
+        if (args == null || args.Length == 0) {
             return message;
         }
 
         var builder = new System.Text.StringBuilder(message);
 
-        for (int i = 0; i < args.Length; i++)
-        {
+        for (int i = 0; i < args.Length; i++) {
             builder.Append("\n- ");
             builder.Append(args[i]?.ToString() ?? "null");
         }

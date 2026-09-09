@@ -186,7 +186,7 @@ WINDOWS_BUILD_BY_PLATFORM = {
 FORMAT_PATTERNS = [
 	'**/*.cpp',
 	'**/*.h',
-	'**/*.fos',
+	'**/*.cs',
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')

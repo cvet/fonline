@@ -33,13 +33,10 @@ public static class ScriptFuncRegistration
     {
         Assembly assembly = typeof(ScriptFuncRegistration).Assembly;
 
-        foreach (Type type in assembly.GetTypes())
-        {
-            foreach (MethodInfo method in type.GetMethods(
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
-            {
-                if (Attribute.GetCustomAttribute(method, attributeType) != null)
-                {
+        foreach (Type type in assembly.GetTypes()) {
+            foreach (MethodInfo method in type.GetMethods(BindingFlags.Static | BindingFlags.Public |
+                                                          BindingFlags.NonPublic | BindingFlags.DeclaredOnly)) {
+                if (Attribute.GetCustomAttribute(method, attributeType) != null) {
                     RegisterFunc(type, method, attributeName);
                 }
             }
@@ -60,17 +57,14 @@ public static class ScriptFuncRegistration
         Type[] delegateParamTypes = new Type[parameters.Length];
         bool hasByRef = false;
 
-        for (int i = 0; i < parameters.Length; i++)
-        {
+        for (int i = 0; i < parameters.Length; i++) {
             Type parameterType = parameters[i].ParameterType;
 
-            if (parameterType.IsByRef)
-            {
+            if (parameterType.IsByRef) {
                 hasByRef = true;
                 paramTypeNames[i] = EngineTypeName(parameterType.GetElementType()!) + "&";
             }
-            else
-            {
+            else {
                 paramTypeNames[i] = EngineTypeName(parameterType);
             }
 
@@ -81,55 +75,44 @@ public static class ScriptFuncRegistration
 
         // Build a matching Action<...>/Func<...> delegate type so the static method can be wrapped as a Delegate
         // and invoked later via Native.InvokeCallback (DynamicInvoke).
-        Type? delegateType = hasByRef
-            ? ResolveByRefDelegateType(method, delegateParamTypes)
-            : method.ReturnType == typeof(void)
-                ? Expression.GetActionType(delegateParamTypes)
-                : Expression.GetFuncType(delegateParamTypes.Append(method.ReturnType).ToArray());
+        Type? delegateType = hasByRef ? ResolveByRefDelegateType(method, delegateParamTypes)
+                           : method.ReturnType == typeof(void)
+                               ? Expression.GetActionType(delegateParamTypes)
+                               : Expression.GetFuncType(delegateParamTypes.Append(method.ReturnType).ToArray());
 
-        if (delegateType == null)
-        {
-            Game.Log($"Managed script func '{type.Name}::{method.Name}' has an unsupported by-ref signature; skipping registration");
+        if (delegateType == null) {
+            Game.Log(
+                $"Managed script func '{type.Name}::{method.Name}' has an unsupported by-ref signature; skipping registration");
             return;
         }
 
         Delegate handler = Delegate.CreateDelegate(delegateType, method);
         string fullName = type.Name + "::" + method.Name;
 
-        Native.RegisterGlobalScriptFunc(
-            fullName,
-            attributeName,
-            paramTypeNames,
-            returnTypeName,
-            handler);
+        Native.RegisterGlobalScriptFunc(fullName, attributeName, paramTypeNames, returnTypeName, handler);
     }
 
     private static Type? ResolveByRefDelegateType(MethodInfo method, Type[] delegateParamTypes)
     {
-        if (delegateParamTypes.Length != 3 || delegateParamTypes[0] != typeof(Critter) || delegateParamTypes[1] != typeof(Critter) ||
-            delegateParamTypes[2] != typeof(string).MakeByRefType())
-        {
+        if (delegateParamTypes.Length != 3 || delegateParamTypes[0] != typeof(Critter) ||
+            delegateParamTypes[1] != typeof(Critter) || delegateParamTypes[2] != typeof(string).MakeByRefType()) {
             return null;
         }
 
-        if (method.ReturnType == typeof(void))
-        {
+        if (method.ReturnType == typeof(void)) {
             return typeof(RefStringAction);
         }
 
         return method.ReturnType == typeof(int) ? typeof(RefStringFunc) : null;
     }
 
-
     private static Type GetRegisteredReturnType(Type returnType)
     {
-        if (returnType == typeof(Task))
-        {
+        if (returnType == typeof(Task)) {
             return typeof(void);
         }
 
-        if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
-        {
+        if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>)) {
             return returnType.GetGenericArguments()[0];
         }
 
@@ -141,96 +124,79 @@ public static class ScriptFuncRegistration
     // used directly.
     public static string EngineTypeName(Type type)
     {
-        if (type == typeof(void))
-        {
+        if (type == typeof(void)) {
             return "void";
         }
 
-        if (type == typeof(bool))
-        {
+        if (type == typeof(bool)) {
             return "bool";
         }
 
-        if (type == typeof(sbyte))
-        {
+        if (type == typeof(sbyte)) {
             return "int8";
         }
 
-        if (type == typeof(byte))
-        {
+        if (type == typeof(byte)) {
             return "uint8";
         }
 
-        if (type == typeof(short))
-        {
+        if (type == typeof(short)) {
             return "int16";
         }
 
-        if (type == typeof(ushort))
-        {
+        if (type == typeof(ushort)) {
             return "uint16";
         }
 
-        if (type == typeof(int))
-        {
+        if (type == typeof(int)) {
             return "int32";
         }
 
-        if (type == typeof(uint))
-        {
+        if (type == typeof(uint)) {
             return "uint32";
         }
 
-        if (type == typeof(long))
-        {
+        if (type == typeof(long)) {
             return "int64";
         }
 
-        if (type == typeof(ulong))
-        {
+        if (type == typeof(ulong)) {
             return "uint64";
         }
 
-        if (type == typeof(float))
-        {
+        if (type == typeof(float)) {
             return "float32";
         }
 
-        if (type == typeof(double))
-        {
+        if (type == typeof(double)) {
             return "float64";
         }
 
-        if (type == typeof(string))
-        {
+        if (type == typeof(string)) {
             return "string";
         }
 
-        if (type == typeof(object))
-        {
+        if (type == typeof(object)) {
             return "any";
         }
 
         // Collections map to the engine array type name "element[]" so the registered signature matches the
         // FindFunc<...> an AngelScript array arg produces (the engine builds an Array ComplexTypeDesc for it).
         // Covers List<T> (the managed idiom) and T[]; the engine marshals both ends as the same array.
-        if (type.IsArray)
-        {
+        if (type.IsArray) {
             return EngineTypeName(type.GetElementType()!) + "[]";
         }
 
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.List<>))
-        {
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.List<>)) {
             return EngineTypeName(type.GetGenericArguments()[0]) + "[]";
         }
 
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.Dictionary<,>))
-        {
+        if (type.IsGenericType &&
+            type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.Dictionary<, >)) {
             Type[] arguments = type.GetGenericArguments();
             return EngineTypeName(arguments[0]) + "=>" + EngineTypeName(arguments[1]);
         }
-        if (type.IsGenericType)
-        {
+        if (type.IsGenericType) {
             throw new NotSupportedException("Managed script signature has an unsupported generic type: " + type);
         }
 

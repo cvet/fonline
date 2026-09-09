@@ -8,7 +8,9 @@ public static class HStringExtensions
 
 public partial struct hdir
 {
-    public hdir(sbyte value) : this((int)value) { }
+    public hdir(sbyte value) : this((int)value)
+    {
+    }
 
     public hdir(int value)
     {
@@ -22,7 +24,9 @@ public partial struct hdir
 // rounding is engine-owned; hex rotation only needs the direction count.
 public partial struct mdir
 {
-    public mdir(short angle) : this((int)angle) { }
+    public mdir(short angle) : this((int)angle)
+    {
+    }
 
     public mdir(hdir dir)
     {
@@ -75,18 +79,26 @@ public partial struct timespan
     // the Time core script (Time.Milliseconds/Seconds/…).
     public timespan(long value, int place)
     {
-        switch (place)
-        {
-            case 0: this.value = value; break;
-            case 1: this.value = value * 1_000L; break;
-            case 2: this.value = value * 1_000_000L; break;
-            case 3: this.value = value * 1_000_000_000L; break;
-            default: throw new System.ArgumentException("Invalid time place");
+        switch (place) {
+        case 0:
+            this.value = value;
+            break;
+        case 1:
+            this.value = value * 1_000L;
+            break;
+        case 2:
+            this.value = value * 1_000_000L;
+            break;
+        case 3:
+            this.value = value * 1_000_000_000L;
+            break;
+        default:
+            throw new System.ArgumentException("Invalid time place");
         }
     }
 
-    public static bool operator <(timespan a, timespan b) => a.value < b.value;
-    public static bool operator >(timespan a, timespan b) => a.value > b.value;
+    public static bool operator<(timespan a, timespan b) => a.value < b.value;
+    public static bool operator>(timespan a, timespan b) => a.value > b.value;
     public static bool operator <=(timespan a, timespan b) => a.value <= b.value;
     public static bool operator >=(timespan a, timespan b) => a.value >= b.value;
     public static timespan operator +(timespan a, timespan b) => new timespan(a.value + b.value);
@@ -114,23 +126,38 @@ public partial struct timespan
         }
 
         if (magnitude < 1_000_000_000UL) {
-            return sign + string.Format(culture, "{0}.{1:000} ms", magnitude / 1_000_000UL % 1_000UL, magnitude / 1_000UL % 1_000UL);
+            return sign + string.Format(culture,
+                                        "{0}.{1:000} ms",
+                                        magnitude / 1_000_000UL % 1_000UL,
+                                        magnitude / 1_000UL % 1_000UL);
         }
 
         if (magnitude < 60_000_000_000UL) {
-            return sign + string.Format(culture, "{0}.{1:000} sec", magnitude / 1_000_000_000UL, magnitude / 1_000_000UL % 1_000UL);
+            return sign + string.Format(culture,
+                                        "{0}.{1:000} sec",
+                                        magnitude / 1_000_000_000UL,
+                                        magnitude / 1_000_000UL % 1_000UL);
         }
 
         ulong totalSeconds = magnitude / 1_000_000_000UL;
 
         if (totalSeconds < 24UL * 60UL * 60UL) {
-            return sign + string.Format(culture, "{0:00}:{1:00}:{2:00} sec", totalSeconds / 3600UL, totalSeconds / 60UL % 60UL, totalSeconds % 60UL);
+            return sign + string.Format(culture,
+                                        "{0:00}:{1:00}:{2:00} sec",
+                                        totalSeconds / 3600UL,
+                                        totalSeconds / 60UL % 60UL,
+                                        totalSeconds % 60UL);
         }
 
         ulong days = totalSeconds / (24UL * 60UL * 60UL);
 
-        return sign + string.Format(culture, "{0} day{1} {2:00}:{3:00}:{4:00} sec",
-            days, days > 1UL ? "s" : "", totalSeconds / 3600UL % 24UL, totalSeconds / 60UL % 60UL, totalSeconds % 60UL);
+        return sign + string.Format(culture,
+                                    "{0} day{1} {2:00}:{3:00}:{4:00} sec",
+                                    days,
+                                    days > 1UL ? "s" : "",
+                                    totalSeconds / 3600UL % 24UL,
+                                    totalSeconds / 60UL % 60UL,
+                                    totalSeconds % 60UL);
     }
 }
 
@@ -140,18 +167,26 @@ public partial struct synctime
     // to the stored millisecond count. Sub-millisecond inputs truncate just like duration_cast<milliseconds>.
     public synctime(long value, int place)
     {
-        switch (place)
-        {
-            case 0: this.value = value / 1_000_000L; break;
-            case 1: this.value = value / 1_000L; break;
-            case 2: this.value = value; break;
-            case 3: this.value = value * 1_000L; break;
-            default: throw new System.ArgumentException("Invalid time place");
+        switch (place) {
+        case 0:
+            this.value = value / 1_000_000L;
+            break;
+        case 1:
+            this.value = value / 1_000L;
+            break;
+        case 2:
+            this.value = value;
+            break;
+        case 3:
+            this.value = value * 1_000L;
+            break;
+        default:
+            throw new System.ArgumentException("Invalid time place");
         }
     }
 
-    public static bool operator <(synctime a, synctime b) => a.value < b.value;
-    public static bool operator >(synctime a, synctime b) => a.value > b.value;
+    public static bool operator<(synctime a, synctime b) => a.value < b.value;
+    public static bool operator>(synctime a, synctime b) => a.value > b.value;
     public static bool operator <=(synctime a, synctime b) => a.value <= b.value;
     public static bool operator >=(synctime a, synctime b) => a.value >= b.value;
     public static synctime operator +(synctime a, timespan b) => new synctime(a.value + b.milliseconds);
@@ -171,18 +206,19 @@ public partial struct ident
     public ident(string text)
     {
         text = text.Trim();
-        if (text.Length == 0)
-        {
+        if (text.Length == 0) {
             value = 0;
             return;
         }
-        if (text.StartsWith("0x", System.StringComparison.OrdinalIgnoreCase))
-        {
-            value = long.Parse(text.Substring(2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture);
+        if (text.StartsWith("0x", System.StringComparison.OrdinalIgnoreCase)) {
+            value = long.Parse(text.Substring(2),
+                               System.Globalization.NumberStyles.HexNumber,
+                               System.Globalization.CultureInfo.InvariantCulture);
         }
-        else
-        {
-            value = long.Parse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture);
+        else {
+            value = long.Parse(text,
+                               System.Globalization.NumberStyles.Integer,
+                               System.Globalization.CultureInfo.InvariantCulture);
         }
     }
 
@@ -236,8 +272,8 @@ public partial struct ucolor
 // AngelScriptTypes.cpp nanotime registration.
 public partial struct nanotime
 {
-    public static bool operator <(nanotime a, nanotime b) => a.value < b.value;
-    public static bool operator >(nanotime a, nanotime b) => a.value > b.value;
+    public static bool operator<(nanotime a, nanotime b) => a.value < b.value;
+    public static bool operator>(nanotime a, nanotime b) => a.value > b.value;
     public static bool operator <=(nanotime a, nanotime b) => a.value <= b.value;
     public static bool operator >=(nanotime a, nanotime b) => a.value >= b.value;
     public static nanotime operator +(nanotime a, timespan b) => new nanotime(a.value + b.value);
@@ -269,7 +305,8 @@ internal static class SpatialFormat
         var parts = new string[fields.Length];
 
         for (int i = 0; i < fields.Length; i++) {
-            parts[i] = System.Convert.ToString(fields[i], System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+            parts[i] =
+                System.Convert.ToString(fields[i], System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
         }
 
         return string.Join(" ", parts);
@@ -293,8 +330,8 @@ public partial struct frect
 
 public partial struct ipos
 {
-    public static bool operator <(ipos a, ipos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
-    public static bool operator >(ipos a, ipos b) => b < a;
+    public static bool operator<(ipos a, ipos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
+    public static bool operator>(ipos a, ipos b) => b < a;
     public static bool operator <=(ipos a, ipos b) => !(b < a);
     public static bool operator >=(ipos a, ipos b) => !(a < b);
     public static ipos operator +(ipos a, ipos b) => new ipos(a.x + b.x, a.y + b.y);
@@ -308,8 +345,8 @@ public partial struct ipos
 
 public partial struct fpos
 {
-    public static bool operator <(fpos a, fpos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
-    public static bool operator >(fpos a, fpos b) => b < a;
+    public static bool operator<(fpos a, fpos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
+    public static bool operator>(fpos a, fpos b) => b < a;
     public static bool operator <=(fpos a, fpos b) => !(b < a);
     public static bool operator >=(fpos a, fpos b) => !(a < b);
     public static fpos operator +(fpos a, fpos b) => new fpos(a.x + b.x, a.y + b.y);
@@ -321,8 +358,8 @@ public partial struct fpos
 
 public partial struct isize
 {
-    public static bool operator <(isize a, isize b) => a.width != b.width ? a.width < b.width : a.height < b.height;
-    public static bool operator >(isize a, isize b) => b < a;
+    public static bool operator<(isize a, isize b) => a.width != b.width ? a.width < b.width : a.height < b.height;
+    public static bool operator>(isize a, isize b) => b < a;
     public static bool operator <=(isize a, isize b) => !(b < a);
     public static bool operator >=(isize a, isize b) => !(a < b);
 
@@ -331,8 +368,8 @@ public partial struct isize
 
 public partial struct fsize
 {
-    public static bool operator <(fsize a, fsize b) => a.width != b.width ? a.width < b.width : a.height < b.height;
-    public static bool operator >(fsize a, fsize b) => b < a;
+    public static bool operator<(fsize a, fsize b) => a.width != b.width ? a.width < b.width : a.height < b.height;
+    public static bool operator>(fsize a, fsize b) => b < a;
     public static bool operator <=(fsize a, fsize b) => !(b < a);
     public static bool operator >=(fsize a, fsize b) => !(a < b);
 
@@ -341,9 +378,11 @@ public partial struct fsize
 
 public partial struct irect
 {
-    public static bool operator <(irect a, irect b) =>
-        a.x != b.x ? a.x < b.x : a.y != b.y ? a.y < b.y : a.width != b.width ? a.width < b.width : a.height < b.height;
-    public static bool operator >(irect a, irect b) => b < a;
+    public static bool operator<(irect a, irect b) => a.x != b.x         ? a.x < b.x
+                                                    : a.y != b.y         ? a.y < b.y
+                                                    : a.width != b.width ? a.width < b.width
+                                                                         : a.height < b.height;
+    public static bool operator>(irect a, irect b) => b < a;
     public static bool operator <=(irect a, irect b) => !(b < a);
     public static bool operator >=(irect a, irect b) => !(a < b);
 
@@ -359,8 +398,8 @@ public partial struct mpos
         y = short.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    public static bool operator <(mpos a, mpos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
-    public static bool operator >(mpos a, mpos b) => b < a;
+    public static bool operator<(mpos a, mpos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
+    public static bool operator>(mpos a, mpos b) => b < a;
     public static bool operator <=(mpos a, mpos b) => !(b < a);
     public static bool operator >=(mpos a, mpos b) => !(a < b);
     public bool fitTo(msize size) => x >= 0 && y >= 0 && x < size.width && y < size.height;
@@ -369,8 +408,8 @@ public partial struct mpos
 
 public partial struct msize
 {
-    public static bool operator <(msize a, msize b) => a.width != b.width ? a.width < b.width : a.height < b.height;
-    public static bool operator >(msize a, msize b) => b < a;
+    public static bool operator<(msize a, msize b) => a.width != b.width ? a.width < b.width : a.height < b.height;
+    public static bool operator>(msize a, msize b) => b < a;
     public static bool operator <=(msize a, msize b) => !(b < a);
     public static bool operator >=(msize a, msize b) => !(a < b);
 
@@ -383,10 +422,19 @@ public partial struct msize
 // exactly as TextPackKey::FromParts/ToHashedString does; omitted keys default to the empty hstring.
 public partial struct TextPackKey
 {
-    public TextPackKey(TextPackName collection, hstring key1) : this(collection, key1, default, default) { }
-    public TextPackKey(TextPackName collection, hstring key1, hstring key2) : this(collection, key1, key2, default) { }
-    public TextPackKey(TextPackName collection, string key1) : this(collection, new hstring(key1), default, default) { }
-    public TextPackKey(TextPackName collection, string key1, string key2) : this(collection, new hstring(key1), new hstring(key2), default) { }
+    public TextPackKey(TextPackName collection, hstring key1) : this(collection, key1, default, default)
+    {
+    }
+    public TextPackKey(TextPackName collection, hstring key1, hstring key2) : this(collection, key1, key2, default)
+    {
+    }
+    public TextPackKey(TextPackName collection, string key1) : this(collection, new hstring(key1), default, default)
+    {
+    }
+    public TextPackKey(TextPackName collection, string key1, string key2)
+        : this(collection, new hstring(key1), new hstring(key2), default)
+    {
+    }
 
     public override string ToString() => $"{{{Collection}}}{{{Key1}}}{{{Key2}}}{{{Key3}}}";
 }

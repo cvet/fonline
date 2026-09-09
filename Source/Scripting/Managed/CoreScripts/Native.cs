@@ -10,129 +10,130 @@ using System.Threading.Tasks;
 // Invoked by the engine when a virtual property with a managed setter is written; the setter may
 // mutate value, and the engine stores the result. Registered via Game.AddPropertySetter.
 public delegate void PropertySetter<TEntity, TValue>(TEntity entity, ref TValue value);
-public delegate void PropertySetterWithProperty<TEntity, TProperty, TValue>(TEntity entity, TProperty property, ref TValue value);
+public delegate void PropertySetterWithProperty<TEntity, TProperty, TValue>(TEntity entity, TProperty property,
+                                                                            ref TValue value);
 
 internal static class Native
 {
-    internal static T? WrapEntity<T>(IntPtr entityPtr) where T : Entity
+    // The generated non-nullable members prove the pointer before they wrap it -- a property that reads a
+    // component the entity has, an element of a list built from live pointers. A null here would mean the
+    // native side broke that contract, so it is an invariant failure rather than a value to hand back
+    internal static T WrapEntityNotNull<T>(IntPtr entityPtr)
+        where T : Entity
     {
-        if (entityPtr == IntPtr.Zero)
-        {
+        T? entity = WrapEntity<T>(entityPtr);
+        Game.Verify(entity != null, "Entity pointer must not be null");
+        return entity;
+    }
+
+    // A mutable argument is read back out of the array the native call just wrote into, so the slot holds the
+    // value the callee produced; an empty one would mean the call did not run to the end
+    internal static T UnboxArg<T>(object? value)
+    {
+        Game.Verify(value != null, "Mutable argument must be written by the call");
+        return (T)value;
+    }
+
+    internal static T? WrapEntity<T>(IntPtr entityPtr)
+        where T : Entity
+    {
+        if (entityPtr == IntPtr.Zero) {
             return null;
         }
 
-        return (T)Activator.CreateInstance(
-            typeof(T),
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            null,
-            new object[]
-            {
-                entityPtr,
-            },
-            null)!;
+        return (T)Activator.CreateInstance(typeof(T),
+                                           BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                                           null,
+                                           new object[] {
+                                               entityPtr,
+                                           },
+                                           null)!;
     }
 
     internal static T? WrapRef<T>(IntPtr refPtr)
     {
-        if (refPtr == IntPtr.Zero)
-        {
+        if (refPtr == IntPtr.Zero) {
             return default;
         }
 
-        return (T)Activator.CreateInstance(
-            typeof(T),
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            null,
-            new object[]
-            {
-                refPtr,
-            },
-            null)!;
+        return (T)Activator.CreateInstance(typeof(T),
+                                           BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                                           null,
+                                           new object[] {
+                                               refPtr,
+                                           },
+                                           null)!;
     }
 
-    internal static EventResult InvokeEvent(
-        Delegate handler,
-        bool hasExplicitResult,
-        object[] args)
+    internal static EventResult InvokeEvent(Delegate handler, bool hasExplicitResult, object?[] args)
     {
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasExplicitResult);
 
-        try
-        {
+        try {
             object? result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
             Task? task = result as Task;
 
-            if (task != null)
-            {
-                if (hasExplicitResult)
-                {
+            if (task != null) {
+                if (hasExplicitResult) {
                     // Native event dispatch cannot advance the subscriber chain until it knows whether to stop.
                     context.Wait(task);
                     object? taskResult = task.GetType().GetProperty("Result")?.GetValue(task);
 
-                    if (taskResult is EventResult eventResult)
-                    {
+                    if (taskResult is EventResult eventResult) {
                         return eventResult;
                     }
 
                     throw new InvalidOperationException("Async result event handlers must return Task<EventResult>");
                 }
 
-                if (task.IsCompleted)
-                {
+                if (task.IsCompleted) {
                     task.GetAwaiter().GetResult();
                 }
-                else
-                {
+                else {
                     Game.ObserveInvokeTask(task);
                 }
 
                 return EventResult.ContinueChain;
             }
 
-            if (hasExplicitResult)
-            {
+            if (hasExplicitResult) {
                 return (EventResult)result!;
             }
 
             return EventResult.ContinueChain;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Game.RecordManagedException(UnwrapInvocationException(ex), true);
             return EventResult.StopChain;
         }
     }
 
-    internal static object? InvokeCallback(Delegate handler, object[] args)
+    internal static object? InvokeCallback(Delegate handler, object?[] args)
     {
         MethodInfo delegateInvoke = handler.GetType().GetMethod("Invoke") ??
-            throw new InvalidOperationException("Delegate type is missing its Invoke method");
+                                    throw new InvalidOperationException("Delegate type is missing its Invoke method");
         Type declaredReturnType = delegateInvoke.ReturnType;
-        bool hasResult = declaredReturnType.IsGenericType && declaredReturnType.GetGenericTypeDefinition() == typeof(Task<>);
+        bool hasResult =
+            declaredReturnType.IsGenericType && declaredReturnType.GetGenericTypeDefinition() == typeof(Task<>);
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasResult);
 
-        try
-        {
+        try {
             // A by-ref parameter is written by the callee, and the caller reads it back out of the very array it
             // handed over. AdaptInvokeArgs may hand DynamicInvoke a copy, so the written values are carried back
-            object[] invokeArgs = AdaptInvokeArgs(handler, args);
+            object?[] invokeArgs = AdaptInvokeArgs(handler, args);
             object? result = handler.DynamicInvoke(invokeArgs);
 
-            if (!ReferenceEquals(invokeArgs, args))
-            {
+            if (!ReferenceEquals(invokeArgs, args)) {
                 CopyBackByRefArgs(handler, invokeArgs, args);
             }
 
             Task? task = result as Task;
 
-            if (task == null)
-            {
+            if (task == null) {
                 return result;
             }
 
-            if (hasResult)
-            {
+            if (hasResult) {
                 context.Wait(task);
                 return declaredReturnType.GetProperty("Result")!.GetValue(result);
             }
@@ -140,19 +141,16 @@ internal static class Native
             // Task-returning script functions are registered as native void callbacks. Waiting here would
             // block the script pump that must fire Game.YieldAsync's completion event, so let the callback
             // continue asynchronously and retain deferred exception accounting.
-            if (task.IsCompleted)
-            {
+            if (task.IsCompleted) {
                 task.GetAwaiter().GetResult();
             }
-            else
-            {
+            else {
                 Game.ObserveInvokeTask(task);
             }
 
             return null;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Game.RecordManagedException(UnwrapInvocationException(ex), false);
             throw;
         }
@@ -176,49 +174,38 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern string? RunScriptContinuationInternal(Action continuation);
 
-    private static void CopyBackByRefArgs(Delegate handler, object[] invokeArgs, object[] args)
+    private static void CopyBackByRefArgs(Delegate handler, object?[] invokeArgs, object?[] args)
     {
         ParameterInfo[] parameters = handler.Method.GetParameters();
 
-        for (int i = 0; i < args.Length && i < parameters.Length && i < invokeArgs.Length; i++)
-        {
-            if (parameters[i].ParameterType.IsByRef)
-            {
+        for (int i = 0; i < args.Length && i < parameters.Length && i < invokeArgs.Length; i++) {
+            if (parameters[i].ParameterType.IsByRef) {
                 args[i] = invokeArgs[i];
             }
         }
     }
 
-    private static object[] AdaptInvokeArgs(Delegate handler, object[] args)
+    private static object?[] AdaptInvokeArgs(Delegate handler, object?[] args)
     {
         ParameterInfo[] parameters = handler.Method.GetParameters();
-        object[]? adaptedArgs = null;
+        object?[]? adaptedArgs = null;
 
-        for (int i = 0; i < args.Length && i < parameters.Length; i++)
-        {
+        for (int i = 0; i < args.Length && i < parameters.Length; i++) {
             Type parameterType = parameters[i].ParameterType;
 
-            if (parameterType == typeof(Dictionary<string, string>) &&
-                args[i] is IDictionary source &&
-                !(args[i] is Dictionary<string, string>))
-            {
-                adaptedArgs = adaptedArgs ?? (object[])args.Clone();
+            if (parameterType == typeof(Dictionary<string, string>) && args[i] is IDictionary source &&
+                !(args[i] is Dictionary<string, string>)) {
+                adaptedArgs = adaptedArgs ?? (object?[])args.Clone();
                 adaptedArgs[i] = StringifyDictionary(source);
             }
-            else if (parameterType == typeof(List<string>) &&
-                args[i] is IEnumerable sourceList &&
-                !(args[i] is List<string>) &&
-                !(args[i] is string))
-            {
-                adaptedArgs = adaptedArgs ?? (object[])args.Clone();
+            else if (parameterType == typeof(List<string>) && args[i] is IEnumerable sourceList &&
+                     !(args[i] is List<string>) && !(args[i] is string)) {
+                adaptedArgs = adaptedArgs ?? (object?[])args.Clone();
                 adaptedArgs[i] = StringifyList(sourceList);
             }
-            else if (parameterType == typeof(List<object>) &&
-                args[i] is IEnumerable sourceObjectList &&
-                !(args[i] is List<object>) &&
-                !(args[i] is string))
-            {
-                adaptedArgs = adaptedArgs ?? (object[])args.Clone();
+            else if (parameterType == typeof(List<object>) && args[i] is IEnumerable sourceObjectList &&
+                     !(args[i] is List<object>) && !(args[i] is string)) {
+                adaptedArgs = adaptedArgs ?? (object?[])args.Clone();
                 adaptedArgs[i] = ObjectList(sourceObjectList);
             }
         }
@@ -230,12 +217,10 @@ internal static class Native
     {
         Dictionary<string, string> result = new Dictionary<string, string>();
 
-        foreach (DictionaryEntry entry in source)
-        {
+        foreach (DictionaryEntry entry in source) {
             string? key = entry.Key as string;
 
-            if (key == null)
-            {
+            if (key == null) {
                 continue;
             }
 
@@ -249,8 +234,7 @@ internal static class Native
     {
         List<string> result = new List<string>();
 
-        foreach (object entry in source)
-        {
+        foreach (object entry in source) {
             result.Add(entry?.ToString() ?? string.Empty);
         }
 
@@ -261,8 +245,7 @@ internal static class Native
     {
         List<object> result = new List<object>();
 
-        foreach (object entry in source)
-        {
+        foreach (object entry in source) {
             result.Add(entry);
         }
 
@@ -272,9 +255,7 @@ internal static class Native
     private static Exception UnwrapInvocationException(Exception ex)
     {
         TargetInvocationException? invocation = ex as TargetInvocationException;
-        return invocation != null && invocation.InnerException != null
-            ? invocation.InnerException
-            : ex;
+        return invocation != null && invocation.InnerException != null ? invocation.InnerException : ex;
     }
 
     internal static bool IsList(object value)
@@ -302,30 +283,24 @@ internal static class Native
     {
         Delegate[] invocationList = handler.GetInvocationList();
 
-        for (int i = 0; i < invocationList.Length; i++)
-        {
+        for (int i = 0; i < invocationList.Length; i++) {
             Delegate item = invocationList[i];
             MethodInfo method = item.Method;
 
-            if (Attribute.GetCustomAttribute(method, typeof(TAttribute)) != null)
-            {
+            if (Attribute.GetCustomAttribute(method, typeof(TAttribute)) != null) {
                 continue;
             }
 
-            string message =
-                GetMethodName(method) + " must be marked " + GetAttributeName(typeof(TAttribute));
+            string message = GetMethodName(method) + " must be marked " + GetAttributeName(typeof(TAttribute));
             throw new InvalidOperationException(message);
         }
     }
 
     private static string GetMethodName(MethodInfo method)
     {
-        string? typeName = method.DeclaringType != null
-            ? method.DeclaringType.FullName
-            : string.Empty;
+        string? typeName = method.DeclaringType != null ? method.DeclaringType.FullName : string.Empty;
 
-        if (string.IsNullOrEmpty(typeName))
-        {
+        if (string.IsNullOrEmpty(typeName)) {
             return method.Name;
         }
 
@@ -337,8 +312,7 @@ internal static class Native
         const string suffix = "Attribute";
         string name = attributeType.Name;
 
-        if (name.EndsWith(suffix, StringComparison.Ordinal))
-        {
+        if (name.EndsWith(suffix, StringComparison.Ordinal)) {
             name = name.Substring(0, name.Length - suffix.Length);
         }
 
@@ -347,22 +321,19 @@ internal static class Native
 
     internal static string GetDelegateKey(Delegate handler)
     {
-        if (handler == null)
-        {
+        if (handler == null) {
             return string.Empty;
         }
 
         string key = string.Empty;
         Delegate[] invocationList = handler.GetInvocationList();
 
-        for (int i = 0; i < invocationList.Length; i++)
-        {
+        for (int i = 0; i < invocationList.Length; i++) {
             Delegate item = invocationList[i];
             MethodInfo method = item.Method;
             object? target = item.Target;
 
-            if (key.Length != 0)
-            {
+            if (key.Length != 0) {
                 key += "|";
             }
 
@@ -398,10 +369,8 @@ internal static class Native
     internal static object GetDictionaryKey(object value, int index)
     {
         int i = 0;
-        foreach (DictionaryEntry entry in (IDictionary)value)
-        {
-            if (i == index)
-            {
+        foreach (DictionaryEntry entry in (IDictionary)value) {
+            if (i == index) {
                 return entry.Key;
             }
 
@@ -414,10 +383,8 @@ internal static class Native
     internal static object? GetDictionaryValue(object value, int index)
     {
         int i = 0;
-        foreach (DictionaryEntry entry in (IDictionary)value)
-        {
-            if (i == index)
-            {
+        foreach (DictionaryEntry entry in (IDictionary)value) {
+            if (i == index) {
                 return entry.Value;
             }
 
@@ -429,8 +396,7 @@ internal static class Native
 
     internal static object CreateList(Type elementType)
     {
-        return Activator.CreateInstance(
-            typeof(List<>).MakeGenericType(elementType))!;
+        return Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType))!;
     }
 
     internal static void AddListItem(object list, object value)
@@ -440,15 +406,13 @@ internal static class Native
 
     internal static object CreateDictionary(Type keyType, Type valueType)
     {
-        return Activator.CreateInstance(
-            typeof(Dictionary<,>).MakeGenericType(keyType, valueType))!;
+        return Activator.CreateInstance(typeof(Dictionary<, >).MakeGenericType(keyType, valueType))!;
     }
 
     internal static object CreateDictionaryOfList(Type keyType, Type elementType)
     {
         Type listType = typeof(List<>).MakeGenericType(elementType);
-        return Activator.CreateInstance(
-            typeof(Dictionary<,>).MakeGenericType(keyType, listType))!;
+        return Activator.CreateInstance(typeof(Dictionary<, >).MakeGenericType(keyType, listType))!;
     }
 
     internal static void AddDictionaryItem(object dictionary, object key, object value)
@@ -557,7 +521,7 @@ internal static class Native
     // propIndex is the property enum's member value.
     internal static int GetEntityValueAsInt(IntPtr entityPtr, int propIndex)
     {
-        string? error;
+        string ? error;
         int value = GetEntityValueAsIntInternal(entityPtr, propIndex, out error);
         ThrowNativeError(error);
         return value;
@@ -576,7 +540,7 @@ internal static class Native
 
     internal static string GetEntityValueAsAny(IntPtr entityPtr, int propIndex)
     {
-        string? error;
+        string ? error;
         string? value = GetEntityValueAsAnyInternal(entityPtr, propIndex, out error);
         ThrowNativeError(error);
         return value!;
@@ -594,111 +558,64 @@ internal static class Native
     private static extern string? SetEntityValueAsAnyInternal(IntPtr entityPtr, int propIndex, string value);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr SubscribeEvent(
-        string ownerType,
-        string eventName,
-        IntPtr entityPtr,
-        Delegate handler,
-        bool hasExplicitResult,
-        int priority);
+    internal static extern IntPtr SubscribeEvent(string ownerType, string eventName, IntPtr entityPtr, Delegate handler,
+                                                 bool hasExplicitResult, int priority);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void UnsubscribeEvent(
-        string eventName,
-        IntPtr entityPtr,
-        IntPtr subscription);
+    internal static extern void UnsubscribeEvent(string eventName, IntPtr entityPtr, IntPtr subscription);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern int FireEvent(
-        string ownerType,
-        string eventName,
-        IntPtr entityPtr,
-        object[] args);
+    internal static extern int FireEvent(string ownerType, string eventName, IntPtr entityPtr, object?[] args);
 
-    internal static object GetProperty(
-        string ownerType,
-        string propertyName,
-        IntPtr entityPtr)
+    internal static object GetProperty(string ownerType, string propertyName, IntPtr entityPtr)
     {
-        string? error;
+        string ? error;
         object? value = GetPropertyInternal(ownerType, propertyName, entityPtr, out error);
         ThrowNativeError(error);
         return value!;
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern object? GetPropertyInternal(
-        string ownerType,
-        string propertyName,
-        IntPtr entityPtr,
-        out string? error);
+    private static extern object? GetPropertyInternal(string ownerType, string propertyName, IntPtr entityPtr,
+                                                      out string? error);
 
-    internal static void SetProperty(
-        string ownerType,
-        string propertyName,
-        IntPtr entityPtr,
-        object value)
+    internal static void SetProperty(string ownerType, string propertyName, IntPtr entityPtr, object? value)
     {
         ThrowNativeError(SetPropertyInternal(ownerType, propertyName, entityPtr, value));
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? SetPropertyInternal(
-        string ownerType,
-        string propertyName,
-        IntPtr entityPtr,
-        object value);
+    private static extern string? SetPropertyInternal(string ownerType, string propertyName, IntPtr entityPtr,
+                                                      object? value);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void SetPropertyGetter(
-        string ownerType,
-        string propertyName,
-        Delegate getter);
+    internal static extern void SetPropertyGetter(string ownerType, string propertyName, Delegate getter);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void AddPropertySetter(
-        string ownerType,
-        string propertyName,
-        Delegate setter);
+    internal static extern void AddPropertySetter(string ownerType, string propertyName, Delegate setter);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void AddPropertySetterWithProperty(
-        string ownerType,
-        string propertyName,
-        Delegate setter);
+    internal static extern void AddPropertySetterWithProperty(string ownerType, string propertyName, Delegate setter);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void AddPropertyDeferredSetter(
-        string ownerType,
-        string propertyName,
-        Delegate setter);
+    internal static extern void AddPropertyDeferredSetter(string ownerType, string propertyName, Delegate setter);
 
-    internal static object CallMethod(
-        string ownerType,
-        string methodName,
-        int methodIndex,
-        IntPtr entityPtr,
-        object[] args)
+    internal static object CallMethod(string ownerType, string methodName, int methodIndex, IntPtr entityPtr,
+                                      object?[] args)
     {
-        string? error;
+        string ? error;
         object? value = CallMethodInternal(ownerType, methodName, methodIndex, entityPtr, args, out error);
         ThrowNativeError(error);
         return value!;
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern object? CallMethodInternal(
-        string ownerType,
-        string methodName,
-        int methodIndex,
-        IntPtr entityPtr,
-        object[] args,
-        out string? error);
+    private static extern object? CallMethodInternal(string ownerType, string methodName, int methodIndex,
+                                                     IntPtr entityPtr, object?[] args, out string? error);
 
     private static void ThrowNativeError(string? error)
     {
-        if (error != null)
-        {
+        if (error != null) {
             throw new InvalidOperationException(error);
         }
     }
@@ -719,8 +636,7 @@ internal static class Native
     {
         int status = InvokeScriptFuncStatus(funcName, args);
 
-        if (status == ScriptInvokeStatusFailed)
-        {
+        if (status == ScriptInvokeStatusFailed) {
             throw new InvalidOperationException("Script function invocation failed: " + funcName);
         }
 
@@ -731,12 +647,8 @@ internal static class Native
     // marker attribute, so a consumer that resolves funcs by attribute (ScriptSystem::FindFunc) can invoke it.
     // paramTypeNames/returnTypeName are engine base-type names; the engine builds the matching signature.
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void RegisterGlobalScriptFunc(
-        string fullName,
-        string attributeName,
-        string[] paramTypeNames,
-        string returnTypeName,
-        Delegate handler);
+    internal static extern void RegisterGlobalScriptFunc(string fullName, string attributeName, string[] paramTypeNames,
+                                                         string returnTypeName, Delegate handler);
 
     // Registers a managed inbound remote-call handler (a [ServerRemoteCall]/[ClientRemoteCall]/[AdminRemoteCall]
     // method) with the engine. The engine matches `name` to the inbound remote-call metadata (subsystem "cs")
@@ -745,21 +657,18 @@ internal static class Native
     // (including the leading Player on the server side) for an arity sanity-check. No-op when the name is not
     // inbound on this side (e.g. the opposite side's outbound caller).
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void RegisterRemoteCallHandler(
-        string name,
-        int paramCount,
-        Delegate handler);
+    internal static extern void RegisterRemoteCallHandler(string name, int paramCount, Delegate handler);
 
     // Serializes the boxed args (shared RemoteCallWire format) and sends the named outbound "cs" remote call to
     // the remote peer via the engine. `caller` is the entity the call is bound to (e.g. the Player).
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void SendRemoteCall(object? caller, string name, object[] args);
+    internal static extern void SendRemoteCall(object? caller, string name, object?[] args);
 
     // Diagnostic/test: serializes the boxed args and dispatches them through the engine's real inbound
     // remote-call path in-process (no network peer), invoking the registered handler for the named inbound
     // "cs" remote call. Used to exercise the managed serialize -> deserialize -> dispatch glue on one side.
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void LoopbackRemoteCall(object? caller, string name, object[] args);
+    internal static extern void LoopbackRemoteCall(object? caller, string name, object?[] args);
 
     internal static bool GetSettingBool(string name)
     {
@@ -825,13 +734,11 @@ internal static class Native
     {
         List<T> result = new List<T>();
 
-        if (string.IsNullOrWhiteSpace(value))
-        {
+        if (string.IsNullOrWhiteSpace(value)) {
             return result;
         }
 
-        foreach (string part in value.Split(SettingListSeparators, StringSplitOptions.RemoveEmptyEntries))
-        {
+        foreach (string part in value.Split(SettingListSeparators, StringSplitOptions.RemoveEmptyEntries)) {
             result.Add(parse(part));
         }
 
@@ -840,15 +747,13 @@ internal static class Native
 
     private static string JoinSettingList<T>(IEnumerable<T> values, Func<T, string> format)
     {
-        if (values == null)
-        {
+        if (values == null) {
             return string.Empty;
         }
 
         List<string> parts = new List<string>();
 
-        foreach (T value in values)
-        {
+        foreach (T value in values) {
             parts.Add(format(value));
         }
 
@@ -857,59 +762,92 @@ internal static class Native
 
     private static bool ParseSettingBool(string value)
     {
-        if (int.TryParse(value, out int intValue))
-        {
+        if (int.TryParse(value, out int intValue)) {
             return intValue != 0;
         }
 
         return bool.Parse(value);
     }
 
-    internal static List<bool> GetSettingBoolList(string name) => ParseSettingList(GetSettingString(name), ParseSettingBool);
+    internal static List<bool> GetSettingBoolList(string name) => ParseSettingList(GetSettingString(name),
+                                                                                   ParseSettingBool);
 
-    internal static void SetSettingBoolList(string name, List<bool> value) => SetSettingString(name, JoinSettingList(value, item => item ? "True" : "False"));
+    internal static void SetSettingBoolList(string name, List<bool> value) =>
+        SetSettingString(name, JoinSettingList(value, item => item ? "True" : "False"));
 
-    internal static List<sbyte> GetSettingSByteList(string name) => ParseSettingList(GetSettingString(name), item => sbyte.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<sbyte> GetSettingSByteList(string name) => ParseSettingList(
+        GetSettingString(name), item => sbyte.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                    System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingSByteList(string name, List<sbyte> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingSByteList(string name, List<sbyte> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<byte> GetSettingByteList(string name) => ParseSettingList(GetSettingString(name), item => byte.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<byte> GetSettingByteList(string name) =>
+        ParseSettingList(GetSettingString(name), item => byte.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                                    System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingByteList(string name, List<byte> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingByteList(string name, List<byte> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<short> GetSettingShortList(string name) => ParseSettingList(GetSettingString(name), item => short.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<short> GetSettingShortList(string name) => ParseSettingList(
+        GetSettingString(name), item => short.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                    System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingShortList(string name, List<short> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingShortList(string name, List<short> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<ushort> GetSettingUShortList(string name) => ParseSettingList(GetSettingString(name), item => ushort.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<ushort> GetSettingUShortList(string name) => ParseSettingList(
+        GetSettingString(name), item => ushort.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                     System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingUShortList(string name, List<ushort> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingUShortList(string name, List<ushort> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<int> GetSettingIntList(string name) => ParseSettingList(GetSettingString(name), item => int.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<int> GetSettingIntList(string name) =>
+        ParseSettingList(GetSettingString(name), item => int.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                                   System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingIntList(string name, List<int> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingIntList(string name, List<int> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<uint> GetSettingUIntList(string name) => ParseSettingList(GetSettingString(name), item => uint.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<uint> GetSettingUIntList(string name) =>
+        ParseSettingList(GetSettingString(name), item => uint.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                                    System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingUIntList(string name, List<uint> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingUIntList(string name, List<uint> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<long> GetSettingLongList(string name) => ParseSettingList(GetSettingString(name), item => long.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<long> GetSettingLongList(string name) =>
+        ParseSettingList(GetSettingString(name), item => long.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                                    System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingLongList(string name, List<long> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingLongList(string name, List<long> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<ulong> GetSettingULongList(string name) => ParseSettingList(GetSettingString(name), item => ulong.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<ulong> GetSettingULongList(string name) => ParseSettingList(
+        GetSettingString(name), item => ulong.Parse(item, System.Globalization.NumberStyles.Integer,
+                                                    System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingULongList(string name, List<ulong> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingULongList(string name, List<ulong> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<float> GetSettingFloatList(string name) => ParseSettingList(GetSettingString(name), item => float.Parse(item, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<float> GetSettingFloatList(string name) => ParseSettingList(
+        GetSettingString(name), item => float.Parse(item, System.Globalization.NumberStyles.Float,
+                                                    System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingFloatList(string name, List<float> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingFloatList(string name, List<float> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<double> GetSettingDoubleList(string name) => ParseSettingList(GetSettingString(name), item => double.Parse(item, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture));
+    internal static List<double> GetSettingDoubleList(string name) => ParseSettingList(
+        GetSettingString(name), item => double.Parse(item, System.Globalization.NumberStyles.Float,
+                                                     System.Globalization.CultureInfo.InvariantCulture));
 
-    internal static void SetSettingDoubleList(string name, List<double> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    internal static void SetSettingDoubleList(string name, List<double> value) => SetSettingString(
+        name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    internal static List<string> GetSettingStringList(string name) => ParseSettingList(GetSettingString(name), item => item);
+    internal static List<string> GetSettingStringList(string name) => ParseSettingList(GetSettingString(name),
+                                                                                       item => item);
 
-    internal static void SetSettingStringList(string name, List<string> value) => SetSettingString(name, JoinSettingList(value, item => item ?? string.Empty));
+    internal static void SetSettingStringList(string name, List<string> value) =>
+        SetSettingString(name, JoinSettingList(value, item => item ?? string.Empty));
 }

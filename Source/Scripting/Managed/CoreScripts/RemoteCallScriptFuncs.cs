@@ -17,13 +17,10 @@ internal static class RemoteCallScriptFuncs
     {
         Assembly assembly = typeof(RemoteCallScriptFuncs).Assembly;
 
-        foreach (Type type in assembly.GetTypes())
-        {
-            foreach (MethodInfo method in type.GetMethods(
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
-            {
-                if (IsRemoteCall(method))
-                {
+        foreach (Type type in assembly.GetTypes()) {
+            foreach (MethodInfo method in type.GetMethods(BindingFlags.Static | BindingFlags.Public |
+                                                          BindingFlags.NonPublic | BindingFlags.DeclaredOnly)) {
+                if (IsRemoteCall(method)) {
                     RegisterRemoteCall(method);
                 }
             }
@@ -32,9 +29,9 @@ internal static class RemoteCallScriptFuncs
 
     private static bool IsRemoteCall(MethodInfo method)
     {
-        return Attribute.GetCustomAttribute(method, typeof(ServerRemoteCallAttribute)) != null
-            || Attribute.GetCustomAttribute(method, typeof(ClientRemoteCallAttribute)) != null
-            || Attribute.GetCustomAttribute(method, typeof(AdminRemoteCallAttribute)) != null;
+        return Attribute.GetCustomAttribute(method, typeof(ServerRemoteCallAttribute)) != null ||
+               Attribute.GetCustomAttribute(method, typeof(ClientRemoteCallAttribute)) != null ||
+               Attribute.GetCustomAttribute(method, typeof(AdminRemoteCallAttribute)) != null;
     }
 
     private static void RegisterRemoteCall(MethodInfo method)
@@ -42,8 +39,7 @@ internal static class RemoteCallScriptFuncs
         ParameterInfo[] parameters = method.GetParameters();
         Type[] delegateParamTypes = new Type[parameters.Length];
 
-        for (int i = 0; i < parameters.Length; i++)
-        {
+        for (int i = 0; i < parameters.Length; i++) {
             delegateParamTypes[i] = parameters[i].ParameterType;
         }
 
@@ -52,31 +48,23 @@ internal static class RemoteCallScriptFuncs
         Type delegateType = Expression.GetActionType(delegateParamTypes);
         Delegate handler;
 
-        if (method.ReturnType == typeof(void))
-        {
+        if (method.ReturnType == typeof(void)) {
             handler = Delegate.CreateDelegate(delegateType, method);
         }
-        else if (typeof(Task).IsAssignableFrom(method.ReturnType))
-        {
-            ParameterExpression[] lambdaParameters = delegateParamTypes
-                .Select((type, index) => Expression.Parameter(type, "arg" + index))
-                .ToArray();
+        else if (typeof(Task).IsAssignableFrom(method.ReturnType)) {
+            ParameterExpression[] lambdaParameters =
+                delegateParamTypes.Select((type, index) => Expression.Parameter(type, "arg" + index)).ToArray();
             MethodCallExpression invokeHandler = Expression.Call(method, lambdaParameters);
-            MethodCallExpression observeTask = Expression.Call(
-                typeof(RemoteCallScriptFuncs),
-                nameof(ObserveRemoteCallTask),
-                Type.EmptyTypes,
-                Expression.Convert(invokeHandler, typeof(Task)));
+            MethodCallExpression observeTask = Expression.Call(typeof(RemoteCallScriptFuncs),
+                                                               nameof(ObserveRemoteCallTask),
+                                                               Type.EmptyTypes,
+                                                               Expression.Convert(invokeHandler, typeof(Task)));
 
             handler = Expression.Lambda(delegateType, observeTask, lambdaParameters).Compile();
         }
-        else
-        {
+        else {
             throw new InvalidOperationException(
-                "Remote call method must return void or Task: " +
-                method.DeclaringType?.FullName +
-                "." +
-                method.Name);
+                "Remote call method must return void or Task: " + method.DeclaringType?.FullName + "." + method.Name);
         }
 
         Native.RegisterRemoteCallHandler(method.Name, parameters.Length, handler);

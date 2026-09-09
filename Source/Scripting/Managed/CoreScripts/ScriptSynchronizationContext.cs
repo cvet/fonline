@@ -9,8 +9,10 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 {
     // Core scripts belong to one backend's collectible entry assembly, including this scheduler state
     private static readonly object SchedulerGate = new object();
-    private static readonly Queue<ScriptSynchronizationContext> ReadyContexts = new Queue<ScriptSynchronizationContext>();
-    private static readonly HashSet<ScriptSynchronizationContext> SynchronousContexts = new HashSet<ScriptSynchronizationContext>();
+    private static readonly Queue<ScriptSynchronizationContext> ReadyContexts =
+        new Queue<ScriptSynchronizationContext>();
+    private static readonly HashSet<ScriptSynchronizationContext> SynchronousContexts =
+        new HashSet<ScriptSynchronizationContext>();
     private static bool _closed;
 
     private readonly Queue<Action> _continuations = new Queue<Action>();
@@ -25,17 +27,14 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
         lock (SchedulerGate)
         {
-            if (_closed)
-            {
+            if (_closed) {
                 throw new ObjectDisposedException(nameof(ScriptSynchronizationContext));
             }
 
-            if (synchronous)
-            {
+            if (synchronous) {
                 SynchronousContexts.Add(this);
             }
-            else if (_previous is ScriptSynchronizationContext parent)
-            {
+            else if (_previous is ScriptSynchronizationContext parent) {
                 _synchronousOwner = parent.GetSynchronousOwner();
             }
         }
@@ -50,12 +49,10 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
     internal static void VerifyCanYield()
     {
-        if (Current is ScriptSynchronizationContext context)
-        {
+        if (Current is ScriptSynchronizationContext context) {
             lock (SchedulerGate)
             {
-                if (context.GetSynchronousOwner() != null)
-                {
+                if (context.GetSynchronousOwner() != null) {
                     throw new InvalidOperationException("A synchronous script callback cannot yield an engine timer");
                 }
             }
@@ -66,19 +63,16 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
     {
         lock (SchedulerGate)
         {
-            if (_closed)
-            {
+            if (_closed) {
                 return;
             }
 
             ScriptSynchronizationContext? owner = GetSynchronousOwner();
 
-            if (owner != null)
-            {
+            if (owner != null) {
                 owner._continuations.Enqueue(() => Run(() => callback(state)));
             }
-            else
-            {
+            else {
                 _continuations.Enqueue(() => callback(state));
                 ReadyContexts.Enqueue(this);
             }
@@ -101,17 +95,14 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
     {
         SetSynchronizationContext(_previous);
 
-        if (_synchronous)
-        {
+        if (_synchronous) {
             lock (SchedulerGate)
             {
                 SynchronousContexts.Remove(this);
                 _synchronous = false;
 
-                if (!_closed)
-                {
-                    for (int i = 0; i < _continuations.Count; i++)
-                    {
+                if (!_closed) {
+                    for (int i = 0; i < _continuations.Count; i++) {
                         ReadyContexts.Enqueue(this);
                     }
                 }
@@ -121,10 +112,10 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
     internal void Wait(Task task)
     {
-        if (!task.IsCompleted)
-        {
+        if (!task.IsCompleted) {
             _ = task.ContinueWith(
-                static _ =>
+                static
+                _ =>
                 {
                     lock (SchedulerGate)
                     {
@@ -136,27 +127,23 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
                 TaskScheduler.Default);
         }
 
-        while (!task.IsCompleted)
-        {
-            Action? continuation;
+        while (!task.IsCompleted) {
+            Action ? continuation;
 
             lock (SchedulerGate)
             {
-                while (!_closed && !task.IsCompleted && _continuations.Count == 0)
-                {
+                while (!_closed && !task.IsCompleted && _continuations.Count == 0) {
                     Monitor.Wait(SchedulerGate);
                 }
 
-                if (_closed)
-                {
+                if (_closed) {
                     throw new ObjectDisposedException(nameof(ScriptSynchronizationContext));
                 }
 
                 continuation = _continuations.Count != 0 ? _continuations.Dequeue() : null;
             }
 
-            if (continuation != null)
-            {
+            if (continuation != null) {
                 Native.RunScriptContinuation(() => Run(continuation));
             }
         }
@@ -174,15 +161,13 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         }
 
         // Newly posted work waits for the next engine frame; a yielding loop cannot monopolize this frame
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             ScriptSynchronizationContext context;
             Action continuation;
 
             lock (SchedulerGate)
             {
-                if (_closed || ReadyContexts.Count == 0)
-                {
+                if (_closed || ReadyContexts.Count == 0) {
                     return;
                 }
 
@@ -200,15 +185,13 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         {
             _closed = true;
 
-            foreach (ScriptSynchronizationContext context in ReadyContexts)
-            {
+            foreach (ScriptSynchronizationContext context in ReadyContexts) {
                 context._continuations.Clear();
             }
 
             ReadyContexts.Clear();
 
-            foreach (ScriptSynchronizationContext context in SynchronousContexts)
-            {
+            foreach (ScriptSynchronizationContext context in SynchronousContexts) {
                 context._continuations.Clear();
             }
 
@@ -218,8 +201,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
     private ScriptSynchronizationContext? GetSynchronousOwner()
     {
-        if (_synchronous)
-        {
+        if (_synchronous) {
             return this;
         }
 
@@ -230,8 +212,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
     {
         lock (SchedulerGate)
         {
-            if (_closed)
-            {
+            if (_closed) {
                 return;
             }
         }
@@ -239,16 +220,13 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         SynchronizationContext? previous = Current;
         SetSynchronizationContext(this);
 
-        try
-        {
+        try {
             continuation();
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Game.RecordManagedException(ex, true);
         }
-        finally
-        {
+        finally {
             SetSynchronizationContext(previous);
         }
     }

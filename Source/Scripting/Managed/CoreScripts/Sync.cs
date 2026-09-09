@@ -45,13 +45,13 @@ public static partial class Sync
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity)
     {
         // Routed through the list overload so the always-covered filtering lives in one place
-        return await Lock(new List<Entity> {firstEntity, secondEntity});
+        return await Lock(new List<Entity> { firstEntity, secondEntity });
     }
 
     // Lifecycle: strict — any destroyed/destroying entity makes the call return false; no partial set is accepted
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, Entity thirdEntity)
     {
-        return await Lock(new List<Entity> {firstEntity, secondEntity, thirdEntity});
+        return await Lock(new List<Entity> { firstEntity, secondEntity, thirdEntity });
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying member returns false and is not skipped
@@ -184,7 +184,7 @@ public static partial class Sync
     // Lifecycle: strict for the requested extra; a stale extra fails without a native lookup, while stale retained cover is pruned for live input
     public static async Task<bool> Widen(Entity extra)
     {
-        return await Widen(new List<Entity> {extra});
+        return await Widen(new List<Entity> { extra });
     }
 
     // SyncScope: widens current cover with every live extra while intentionally skipping stale requests.
@@ -241,8 +241,7 @@ public static partial class Sync
 
     // SyncScope: widens cover with cr and its current map when mapped; retries if cr migrates during acquisition.
     // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr-to-map link
-    public static Task<bool> WidenCritterWithMap(Critter cr) =>
-        WidenCritterWithMap(new List<Entity>(), cr);
+    public static Task<bool> WidenCritterWithMap(Critter cr) => WidenCritterWithMap(new List<Entity>(), cr);
 
     // SyncScope: widens cover with strictRoots + cr + its current map when mapped; every retry explicitly re-proves all roots.
     // Lifecycle: a stale explicit root/cr/current map returns false; a changed cr-to-map link is retried
@@ -291,7 +290,7 @@ public static partial class Sync
     public static async Task<bool> WidenCrittersWithMap(Critter first, Critter second)
     {
         while (true) {
-            if (!await Widen(new List<Entity> {first, second})) {
+            if (!await Widen(new List<Entity> { first, second })) {
                 return false;
             }
 
@@ -299,7 +298,7 @@ public static partial class Sync
             Map? secondMap = second.GetMap();
             ident firstMapId = firstMap != null ? firstMap.Id : new ident(0);
             ident secondMapId = secondMap != null ? secondMap.Id : new ident(0);
-            List<Entity> scope = new List<Entity> {first, second};
+            List<Entity> scope = new List<Entity> { first, second };
 
             if (firstMap != null) {
                 scope.Add(firstMap);
@@ -309,7 +308,7 @@ public static partial class Sync
             }
 
             if (!await Widen(scope)) {
-                if (!await Widen(new List<Entity> {first, second})) {
+                if (!await Widen(new List<Entity> { first, second })) {
                     return false;
                 }
                 if (first.MapId != firstMapId || second.MapId != secondMapId) {
@@ -341,7 +340,7 @@ public static partial class Sync
             }
 
             ident mapId = map.Id;
-            if (!await Widen(new List<Entity> {cr, map})) {
+            if (!await Widen(new List<Entity> { cr, map })) {
                 if (!await Widen(cr)) {
                     return false;
                 }
@@ -357,7 +356,7 @@ public static partial class Sync
 
             Location loc = map.GetLocation();
             ident locId = loc.Id;
-            if (!await Widen(new List<Entity> {cr, map, loc})) {
+            if (!await Widen(new List<Entity> { cr, map, loc })) {
                 if (!await WidenCritterWithMap(cr)) {
                     return false;
                 }
@@ -615,7 +614,7 @@ public static partial class Sync
 
             ident firstMapId = firstMap != null ? firstMap.Id : new ident(0);
             ident secondMapId = secondMap != null ? secondMap.Id : new ident(0);
-            List<Entity> scope = new List<Entity> {first, second};
+            List<Entity> scope = new List<Entity> { first, second };
 
             if (firstMap != null) {
                 scope.Add(firstMap);
@@ -712,7 +711,7 @@ public static partial class Sync
                 return false;
             }
 
-            List<Entity> scope = new List<Entity> {cr, destMap, destLoc};
+            List<Entity> scope = new List<Entity> { cr, destMap, destLoc };
             if (srcMap != null) {
                 scope.Add(srcMap);
             }
@@ -748,7 +747,8 @@ public static partial class Sync
                         continue;
                     }
 
-                    if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLoc.Id || srcMap.GetLocation().Id != srcLocId) {
+                    if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLoc.Id ||
+                        srcMap.GetLocation().Id != srcLocId) {
                         continue;
                     }
                 }
@@ -759,8 +759,8 @@ public static partial class Sync
     }
 
     // Lifecycle: strict — a mapped root, stable destroyed/destroying member, or exhausted retry budget returns false
-    public static Task<bool> WidenCritterWithGlobalMapGroup(Critter cr) =>
-        WidenCritterWithGlobalMapGroup(new List<Entity>(), cr);
+    public static Task<bool>
+    WidenCritterWithGlobalMapGroup(Critter cr) => WidenCritterWithGlobalMapGroup(new List<Entity>(), cr);
 
     // SyncScope: retry yields may drop incidental caller cover; every acquisition re-proves strictRoots + cr,
     // and success also covers every member from the stable native global-group snapshot.
@@ -837,18 +837,15 @@ public static partial class Sync
 
     // Monotonic counterpart of LockForTransferToMap for helpers that must retain caller-owned roots.
     // Lifecycle: a stale cr/member/destination chain returns false; a changed source graph is retried against the current parent/group links
-    public static Task<bool> WidenForTransferToMap(Critter cr, Map destMap) =>
-        WidenForTransferToMap(new List<Entity>(), cr, destMap);
+    public static Task<bool> WidenForTransferToMap(Critter cr, Map destMap) => WidenForTransferToMap(new List<Entity>(),
+                                                                                                     cr, destMap);
 
     // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots + cr +
     // its complete stable source graph + destMap/location.
     // Lifecycle: a stale explicit root/source member/destination chain returns false; changed source
     // or parent graphs are retried.
     // Lifecycle: a stale explicit root/source member/destination chain returns false; changed source or parent graphs are retried
-    public static async Task<bool> WidenForTransferToMap(
-        List<Entity> strictRoots,
-        Critter cr,
-        Map destMap)
+    public static async Task<bool> WidenForTransferToMap(List<Entity> strictRoots, Critter cr, Map destMap)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
         if (!roots.Contains(cr)) {
@@ -933,9 +930,8 @@ public static partial class Sync
                 await Game.YieldAsync(0);
                 continue;
             }
-            if (srcMap == null &&
-                (!IsGlobalMapGroupSnapshotCurrent(cr, srcTripId, srcRevision, srcMemberIds) ||
-                 !IsIdentMembershipCovered(srcMemberIds))) {
+            if (srcMap == null && (!IsGlobalMapGroupSnapshotCurrent(cr, srcTripId, srcRevision, srcMemberIds) ||
+                                   !IsIdentMembershipCovered(srcMemberIds))) {
                 await Game.YieldAsync(0);
                 continue;
             }
@@ -969,8 +965,7 @@ public static partial class Sync
                             }
                             return false;
                         }
-                        if (cr.MapId != srcMapId ||
-                            destMap.GetLocation().Id != destLocId ||
+                        if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId ||
                             srcMap.GetLocation().Id != srcLocId) {
                             await Game.YieldAsync(0);
                             continue;
@@ -978,8 +973,7 @@ public static partial class Sync
                         return false;
                     }
 
-                    if (cr.MapId != srcMapId ||
-                        destMap.GetLocation().Id != destLocId ||
+                    if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId ||
                         srcMap.GetLocation().Id != srcLocId) {
                         await Game.YieldAsync(0);
                         continue;
@@ -1041,7 +1035,7 @@ public static partial class Sync
             }
 
             ident mapId = map.Id;
-            if (!await Lock(new List<Entity> {player, cr, map}) || cr.MapId != mapId) {
+            if (!await Lock(new List<Entity> { player, cr, map }) || cr.MapId != mapId) {
                 continue;
             }
 
@@ -1051,7 +1045,7 @@ public static partial class Sync
             }
 
             ident locId = loc.Id;
-            if (!await Lock(new List<Entity> {player, cr, map, loc})) {
+            if (!await Lock(new List<Entity> { player, cr, map, loc })) {
                 continue;
             }
 
@@ -1067,14 +1061,14 @@ public static partial class Sync
     // Lifecycle: strict - any stale dependency returns false; parent/group changes during acquisition are retried before returning success
     public static async Task<bool> LockPlayerCritterInitialInfoGraph(Player player, Critter cr)
     {
-        return await LockCrittersInitialInfoGraphs(new List<Entity> {player}, new List<Critter> {cr});
+        return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, new List<Critter> { cr });
     }
 
     // SyncScope: replaces cover with player + every critter and the union of all stable mapped or global initial-info graphs.
     // Lifecycle: strict - every root, map/location, and global-group member is requested by the final exact acquisition; graph changes are retried
     public static async Task<bool> LockPlayerCrittersInitialInfoGraphs(Player player, List<Critter> critters)
     {
-        return await LockCrittersInitialInfoGraphs(new List<Entity> {player}, critters);
+        return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, critters);
     }
 
     // SyncScope: replaces cover with both sessions, the stable controlled-critter initial-info graph,
@@ -1088,7 +1082,7 @@ public static partial class Sync
 
         Critter? controlledCr = player.GetControlledCritter();
         Map? viewMap = player.GetViewMapTarget();
-        List<Entity> roots = new List<Entity> {notLoggedInPlayer, player};
+        List<Entity> roots = new List<Entity> { notLoggedInPlayer, player };
         if (controlledCr != null) {
             roots.Add(controlledCr);
         }
@@ -1125,11 +1119,15 @@ public static partial class Sync
             if (!await Lock(mapScope)) {
                 return false;
             }
-            if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap || cr.MapId != map.Id || map.GetLocation().Id != location.Id) {
+            if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap || cr.MapId != map.Id ||
+                map.GetLocation().Id != location.Id) {
                 return false;
             }
 
-            Game.Verify(cr.GetPlayer() == player, "Authoritative player's controlled critter has an asymmetric player link", player.Id, cr.Id);
+            Game.Verify(cr.GetPlayer() == player,
+                        "Authoritative player's controlled critter has an asymmetric player link",
+                        player.Id,
+                        cr.Id);
             return true;
         }
         if (cr.MapId != new ident(0)) {
@@ -1156,12 +1154,15 @@ public static partial class Sync
         if (!await Lock(groupScope)) {
             return false;
         }
-        if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap || !IsGlobalMapGroupSnapshotCurrent(cr, tripId, revision, memberIds) ||
-            !IsIdentMembershipCovered(memberIds)) {
+        if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap ||
+            !IsGlobalMapGroupSnapshotCurrent(cr, tripId, revision, memberIds) || !IsIdentMembershipCovered(memberIds)) {
             return false;
         }
 
-        Game.Verify(cr.GetPlayer() == player, "Authoritative player's controlled critter has an asymmetric player link", player.Id, cr.Id);
+        Game.Verify(cr.GetPlayer() == player,
+                    "Authoritative player's controlled critter has an asymmetric player link",
+                    player.Id,
+                    cr.Id);
         return true;
     }
 
@@ -1328,7 +1329,10 @@ public static partial class Sync
                             break;
                         }
                     }
-                    else if (!IsGlobalMapGroupSnapshotCurrent(critters[i], tripIds[i], revisions[i], groupMemberIds[i]) ||
+                    else if (!IsGlobalMapGroupSnapshotCurrent(critters[i],
+                                                              tripIds[i],
+                                                              revisions[i],
+                                                              groupMemberIds[i]) ||
                              !IsIdentMembershipCovered(groupMemberIds[i])) {
                         graphResolved = false;
                         break;
@@ -1385,11 +1389,12 @@ public static partial class Sync
             }
 
             ident mapId = map.Id;
-            if (!await Lock(new List<Entity> {item, holderCr, map})) {
+            if (!await Lock(new List<Entity> { item, holderCr, map })) {
                 continue;
             }
 
-            if (item.Ownership != ItemOwnership.CritterInventory || item.CritterId != holderCr.Id || holderCr.MapId != mapId) {
+            if (item.Ownership != ItemOwnership.CritterInventory || item.CritterId != holderCr.Id ||
+                holderCr.MapId != mapId) {
                 continue;
             }
 
@@ -1409,28 +1414,29 @@ public static partial class Sync
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     public static async Task<bool> WidenCritterAttachmentGraph(Critter cr)
     {
-        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> {cr});
+        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { cr });
     }
 
     // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus cr's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
     public static async Task<bool> WidenCritterAttachmentGraphWithRoots(List<Entity> strictRoots, Critter cr)
     {
-        return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> {cr});
+        return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> { cr });
     }
 
     // SyncScope: retry yields may drop incidental caller cover; success covers the union of both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     public static async Task<bool> WidenCritterAttachmentGraphs(Critter first, Critter second)
     {
-        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> {first, second});
+        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { first, second });
     }
 
     // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
-    public static async Task<bool> WidenCritterAttachmentGraphsWithRoots(List<Entity> strictRoots, Critter first, Critter second)
+    public static async Task<bool> WidenCritterAttachmentGraphsWithRoots(List<Entity> strictRoots, Critter first,
+                                                                         Critter second)
     {
-        return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> {first, second});
+        return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> { first, second });
     }
 
     // SyncScope: retry yields may drop incidental caller cover; success covers the leader plus every group member's complete stable transitive attachment component and all placements.
@@ -1442,9 +1448,10 @@ public static partial class Sync
 
     // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus the leader and every group member's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
-    public static async Task<bool> WidenForTransferToGlobalBatch(List<Entity> strictRoots, Critter leader, List<Critter> group)
+    public static async Task<bool> WidenForTransferToGlobalBatch(List<Entity> strictRoots, Critter leader,
+                                                                 List<Critter> group)
     {
-        List<Critter> attachmentRoots = new List<Critter> {leader};
+        List<Critter> attachmentRoots = new List<Critter> { leader };
 
         for (int i = 0; i < group.Count; i++) {
             attachmentRoots.Add(group[i]);
@@ -1455,7 +1462,8 @@ public static partial class Sync
 
     // SyncScope: internal union builder for stable transitive attachment components and each node's current map or complete global-map group.
     // Lifecycle: strict — all explicit roots, discovered component nodes, and placement members must remain live through the final snapshot check
-    public static async Task<bool> WidenCritterAttachmentGraphsImpl(List<Entity> strictRoots, List<Critter> attachmentRoots)
+    public static async Task<bool> WidenCritterAttachmentGraphsImpl(List<Entity> strictRoots,
+                                                                    List<Critter> attachmentRoots)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
 
@@ -1640,7 +1648,8 @@ public static partial class Sync
                 if (mapSlot >= 0) {
                     Map? currentMap = node.GetMap();
 
-                    if (currentMap == null || currentMap != placementMaps[mapSlot] || node.MapId != placementMaps[mapSlot].Id) {
+                    if (currentMap == null || currentMap != placementMaps[mapSlot] ||
+                        node.MapId != placementMaps[mapSlot].Id) {
                         retry = true;
                         break;
                     }
@@ -1651,7 +1660,8 @@ public static partial class Sync
                         break;
                     }
                 }
-                else if (!IsGlobalMapGroupSnapshotCurrent(node, tripIds[i], revisions[i], groupMemberIds[i]) || !IsIdentMembershipCovered(groupMemberIds[i])) {
+                else if (!IsGlobalMapGroupSnapshotCurrent(node, tripIds[i], revisions[i], groupMemberIds[i]) ||
+                         !IsIdentMembershipCovered(groupMemberIds[i])) {
                     retry = true;
                     break;
                 }
@@ -1701,7 +1711,8 @@ public static partial class Sync
 
     // SyncScope: compares a covered global-map critter with a previously captured native membership snapshot.
     // Lifecycle: inspection-only — it reads cr's group state and acquires nothing of its own
-    public static bool IsGlobalMapGroupSnapshotCurrent([RequiresCover] Critter cr, uint tripId, ulong revision, List<ident> memberIds)
+    public static bool IsGlobalMapGroupSnapshotCurrent([RequiresCover] Critter cr, uint tripId, ulong revision,
+                                                       List<ident> memberIds)
     {
         if (cr.MapId != new ident(0) || cr.GlobalMapTripId != tripId) {
             return false;
@@ -1802,8 +1813,11 @@ public static partial class Sync
                 }
             }
 
-            bool targetChanged = !IsGlobalMapGroupSnapshotCurrent(globalCr, targetTripId, targetRevision, targetMemberIds);
-            bool sourceChanged = sourceMap != null ? cr.MapId != sourceMapId : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
+            bool targetChanged =
+                !IsGlobalMapGroupSnapshotCurrent(globalCr, targetTripId, targetRevision, targetMemberIds);
+            bool sourceChanged =
+                sourceMap != null ? cr.MapId != sourceMapId
+                                  : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
 
             if (!allMembersResolved) {
                 if (targetChanged || sourceChanged) {
@@ -1836,8 +1850,11 @@ public static partial class Sync
                 if (!await Widen(roots)) {
                     return false;
                 }
-                targetChanged = !IsGlobalMapGroupSnapshotCurrent(globalCr, targetTripId, targetRevision, targetMemberIds);
-                sourceChanged = sourceMap != null ? cr.MapId != sourceMapId : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
+                targetChanged =
+                    !IsGlobalMapGroupSnapshotCurrent(globalCr, targetTripId, targetRevision, targetMemberIds);
+                sourceChanged = sourceMap != null
+                                  ? cr.MapId != sourceMapId
+                                  : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
                 if (targetChanged || sourceChanged) {
                     await Game.YieldAsync(0);
                     continue;
@@ -1846,12 +1863,15 @@ public static partial class Sync
             }
 
             targetChanged = !IsGlobalMapGroupSnapshotCurrent(globalCr, targetTripId, targetRevision, targetMemberIds);
-            sourceChanged = sourceMap != null ? cr.MapId != sourceMapId : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
+            sourceChanged = sourceMap != null
+                              ? cr.MapId != sourceMapId
+                              : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
             if (targetChanged || sourceChanged) {
                 await Game.YieldAsync(0);
                 continue;
             }
-            if (!IsIdentMembershipCovered(targetMemberIds) || (sourceMap == null && !IsIdentMembershipCovered(sourceMemberIds))) {
+            if (!IsIdentMembershipCovered(targetMemberIds) ||
+                (sourceMap == null && !IsIdentMembershipCovered(sourceMemberIds))) {
                 return false;
             }
 
@@ -1876,7 +1896,7 @@ public static partial class Sync
     // Lifecycle: strict — a stale dependency or exhausted map/location/spectator membership retry budget returns false
     public static async Task<bool> WidenMapForDestroy(Map map)
     {
-        List<Entity> roots = new List<Entity> {map};
+        List<Entity> roots = new List<Entity> { map };
 
         for (int attempt = 0; attempt < MapDestroyGraphCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
@@ -1885,7 +1905,7 @@ public static partial class Sync
 
             Location location = map.GetLocation();
             ident locationId = location.Id;
-            List<Entity> treeScope = new List<Entity> {map, location};
+            List<Entity> treeScope = new List<Entity> { map, location };
 
             if (!await Widen(treeScope)) {
                 if (!await Widen(roots)) {
@@ -1916,7 +1936,8 @@ public static partial class Sync
                 if (!await Widen(treeScope)) {
                     return false;
                 }
-                if (map.GetLocation().Id != locationId || !HasSamePlayerMembership(spectators, map.GetSpectatorPlayers())) {
+                if (map.GetLocation().Id != locationId ||
+                    !HasSamePlayerMembership(spectators, map.GetSpectatorPlayers())) {
                     await Game.YieldAsync(0);
                     continue;
                 }
@@ -1949,7 +1970,7 @@ public static partial class Sync
     // Lifecycle: strict — a stale dependency or exhausted map/spectator membership retry budget returns false
     public static async Task<bool> WidenLocationForDestroy(Location location)
     {
-        List<Entity> roots = new List<Entity> {location};
+        List<Entity> roots = new List<Entity> { location };
 
         for (int attempt = 0; attempt < MapDestroyGraphCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
@@ -1995,7 +2016,8 @@ public static partial class Sync
 
     // SyncScope: verifies that a covered location still owns the same maps and that every map has the same independent spectator membership.
     // Lifecycle: inspection-only — callers hold the location and the spectator snapshot while checking it
-    public static bool IsLocationDestroySnapshotCurrent(Location location, List<Map> maps, List<List<Player>> spectatorSnapshots)
+    public static bool IsLocationDestroySnapshotCurrent(Location location, List<Map> maps,
+                                                        List<List<Player>> spectatorSnapshots)
     {
         List<Map> currentMaps = location.GetMaps();
 
@@ -2006,7 +2028,8 @@ public static partial class Sync
         for (int mapIndex = 0; mapIndex < currentMaps.Count; mapIndex++) {
             int snapshotIndex = maps.IndexOf(currentMaps[mapIndex]);
 
-            if (snapshotIndex < 0 || !HasSamePlayerMembership(spectatorSnapshots[snapshotIndex], currentMaps[mapIndex].GetSpectatorPlayers())) {
+            if (snapshotIndex < 0 || !HasSamePlayerMembership(spectatorSnapshots[snapshotIndex],
+                                                              currentMaps[mapIndex].GetSpectatorPlayers())) {
                 return false;
             }
         }
@@ -2057,7 +2080,7 @@ public static partial class Sync
     // Lifecycle: strict — a stale dependency or exhausted map/location/observer membership retry budget returns false
     public static async Task<bool> WidenMapForCritterAdd(Map map)
     {
-        List<Entity> roots = new List<Entity> {map};
+        List<Entity> roots = new List<Entity> { map };
 
         for (int attempt = 0; attempt < MapDestroyGraphCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
@@ -2066,7 +2089,7 @@ public static partial class Sync
 
             Location location = map.GetLocation();
             ident locationId = location.Id;
-            List<Entity> treeScope = new List<Entity> {map, location};
+            List<Entity> treeScope = new List<Entity> { map, location };
 
             if (!await Widen(treeScope)) {
                 if (!await Widen(roots)) {
@@ -2094,13 +2117,15 @@ public static partial class Sync
                 if (!await Widen(treeScope)) {
                     return false;
                 }
-                if (map.GetLocation().Id != locationId || !HasSamePlayerMembership(observers, CollectMapObserverPlayers(map))) {
+                if (map.GetLocation().Id != locationId ||
+                    !HasSamePlayerMembership(observers, CollectMapObserverPlayers(map))) {
                     continue;
                 }
                 return false;
             }
 
-            if (map.GetLocation().Id == locationId && HasSamePlayerMembership(observers, CollectMapObserverPlayers(map))) {
+            if (map.GetLocation().Id == locationId &&
+                HasSamePlayerMembership(observers, CollectMapObserverPlayers(map))) {
                 return true;
             }
         }
@@ -2129,14 +2154,14 @@ public static partial class Sync
     // Lifecycle: strict — a stale root or owned item with a stale/unresolvable direct holder returns false; a parentless root succeeds and direct reparent races are retried
     public static async Task<bool> WidenItemForDestroy(Item item)
     {
-        return await WidenItemsForDestroy(new List<Entity>(), new List<Item> {item});
+        return await WidenItemsForDestroy(new List<Entity>(), new List<Item> { item });
     }
 
     // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus item and its stable immediate holder.
     // Lifecycle: strict — every explicit root, item, and current direct holder must remain live through the final relationship read
     public static async Task<bool> WidenItemForDestroy(List<Entity> strictRoots, Item item)
     {
-        return await WidenItemsForDestroy(strictRoots, new List<Item> {item});
+        return await WidenItemsForDestroy(strictRoots, new List<Item> { item });
     }
 
     // SyncScope: retry yields may drop incidental caller cover; success covers every root item + the union of stable immediate holders, with each nested subtree covered by ancestry.
@@ -2226,7 +2251,7 @@ public static partial class Sync
     // Lifecycle: strict — a stale critter/item graph or exhausted retry budget returns false; an empty matching set succeeds with cr explicitly covered
     public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, hstring protoId)
     {
-        return await WidenCritterItemsForDestroy(new List<Entity>(), cr, new List<hstring> {protoId});
+        return await WidenCritterItemsForDestroy(new List<Entity>(), cr, new List<hstring> { protoId });
     }
 
     // SyncScope: multi-proto convenience overload; leaves cr and every current matching stable inventory-item destroy graph covered.
@@ -2240,12 +2265,13 @@ public static partial class Sync
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, hstring protoId)
     {
-        return await WidenCritterItemsForDestroy(strictRoots, cr, new List<hstring> {protoId});
+        return await WidenCritterItemsForDestroy(strictRoots, cr, new List<hstring> { protoId });
     }
 
     // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current inventory-item destroy graph matching any requested proto.
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
-    public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, List<hstring> protoIds)
+    public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr,
+                                                               List<hstring> protoIds)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
 

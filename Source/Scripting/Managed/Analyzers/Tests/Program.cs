@@ -165,7 +165,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "annotation on a non-entity is reported", @"
+        Check(failures,
+              "annotation on a non-entity is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -173,9 +175,12 @@ namespace LastFrontier
     {
         public static void Reads([RequiresCover] int hp) { }
     }
-}", "FOSYNC001");
+}",
+              "FOSYNC001");
 
-        Check(failures, "ProvidesCover on a non-entity return is reported", @"
+        Check(failures,
+              "ProvidesCover on a non-entity return is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -184,9 +189,12 @@ namespace LastFrontier
         [return: ProvidesCover]
         public static int Make() { return 0; }
     }
-}", "FOSYNC001");
+}",
+              "FOSYNC001");
 
-        Check(failures, "undischarged call is reported", @"
+        Check(failures,
+              "undischarged call is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -196,7 +204,8 @@ namespace LastFrontier
 
         public static void Caller(Critter cr) { Reads(cr); }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         Check(failures, "acquiring cover discharges the obligation", @"
 namespace LastFrontier
@@ -260,7 +269,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "an unprovided local is still reported", @"
+        Check(failures,
+              "an unprovided local is still reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -276,9 +287,12 @@ namespace LastFrontier
             Reads(made);
         }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
-        Check(failures, "only the demanding argument is reported", @"
+        Check(failures,
+              "only the demanding argument is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -288,9 +302,12 @@ namespace LastFrontier
 
         public static void Caller(Critter a, Critter b) { Reads(a, b); }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
-        Check(failures, "each demanding argument is reported separately", @"
+        Check(failures,
+              "each demanding argument is reported separately",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -300,9 +317,13 @@ namespace LastFrontier
 
         public static void Caller(Critter a, Critter b) { Reads(a, b); }
     }
-}", "FOSYNC002", "FOSYNC002");
+}",
+              "FOSYNC002",
+              "FOSYNC002");
 
-        Check(failures, "a look-alike project type does not discharge", @"
+        Check(failures,
+              "a look-alike project type does not discharge",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -316,7 +337,8 @@ namespace LastFrontier
             Reads(cr);
         }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         Check(failures, "an unannotated callee is not policed", @"
 namespace LastFrontier
@@ -330,10 +352,9 @@ namespace LastFrontier
     }
 }");
 
-
-
-
-        Check(failures, "a non-entry caller with the same shape is still reported", @"
+        Check(failures,
+              "a non-entry caller with the same shape is still reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -343,10 +364,8 @@ namespace LastFrontier
 
         public static void PlainHelper(Critter cr) { Reads(cr); }
     }
-}", "FOSYNC002");
-
-
-
+}",
+              "FOSYNC002");
 
         Check(failures, "a ProvidesCover parameter discharges that argument", @"
 namespace LastFrontier
@@ -386,7 +405,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "a ProvidesCover call on a different value does not discharge", @"
+        Check(failures,
+              "a ProvidesCover call on a different value does not discharge",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -402,9 +423,12 @@ namespace LastFrontier
             Reads(a);
         }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
-        Check(failures, "an entry point must declare the cover the engine gives it", @"
+        Check(failures,
+              "an entry point must declare the cover the engine gives it",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -413,9 +437,12 @@ namespace LastFrontier
         [Event]
         public static void OnSomething(Critter cr) { }
     }
-}", "FOSYNC003");
+}",
+              "FOSYNC003");
 
-        Check(failures, "probing whether cover is held is reported", @"
+        Check(failures,
+              "probing whether cover is held is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -426,9 +453,12 @@ namespace LastFrontier
             if (Sync.IsCovered(cr)) { }
         }
     }
-}", "FOSYNC004");
+}",
+              "FOSYNC004");
 
-        Check(failures, "the engine probe is reported the same way", @"
+        Check(failures,
+              "the engine probe is reported the same way",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -439,9 +469,12 @@ namespace LastFrontier
             if (Game.IsEntityLocked(cr)) { }
         }
     }
-}", "FOSYNC004");
+}",
+              "FOSYNC004");
 
-        Check(failures, "a raw cover primitive outside Sync is reported", @"
+        Check(failures,
+              "a raw cover primitive outside Sync is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -449,7 +482,8 @@ namespace LastFrontier
     {
         public static void Reads(Critter cr) { Game.Sync(cr); }
     }
-}", "FOSYNC005");
+}",
+              "FOSYNC005");
 
         Check(failures, "the Game singleton bucket lock is not a cover primitive", @"
 namespace LastFrontier
@@ -492,7 +526,9 @@ namespace LastFrontier
 }");
 
         // FOSYNC009 -- the value-aware half: cover that an await released and nothing took back.
-        Check(failures, "a value used after an await with no re-proof is reported", @"
+        Check(failures,
+              "a value used after an await with no re-proof is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -509,7 +545,8 @@ namespace LastFrontier
 
         static void Needs([RequiresCover] Critter cr) { }
     }
-}", "FOSYNC009");
+}",
+              "FOSYNC009");
 
         Check(failures, "re-proving the value after the await clears it", @"
 namespace LastFrontier
@@ -661,7 +698,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "an element of an undeclared collection is still reported", @"
+        Check(failures,
+              "an element of an undeclared collection is still reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -675,7 +714,8 @@ namespace LastFrontier
 
         static void Needs([RequiresCover] Critter cr) { }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         Check(failures, "static map data needs no cover", @"
 namespace LastFrontier
@@ -687,7 +727,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "the same call on a mutable item still needs cover", @"
+        Check(failures,
+              "the same call on a mutable item still needs cover",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -695,7 +737,8 @@ namespace LastFrontier
     {
         public static void Reads(Item item) { item.GetCount(); }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         Check(failures, "annotating always-covered data is legal -- it is still an entity", @"
 namespace LastFrontier
@@ -720,7 +763,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "the same parameter still demands cover for a live critter", @"
+        Check(failures,
+              "the same parameter still demands cover for a live critter",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -729,7 +774,8 @@ namespace LastFrontier
         public static void Reads(Critter cr) { Needs(cr); }
         static void Needs([RequiresCover] Critter cr) { }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         Check(failures, "acquiring cover on always-covered data is legal and silent", @"
 namespace LastFrontier
@@ -751,7 +797,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "a mutable item in the same position still does", @"
+        Check(failures,
+              "a mutable item in the same position still does",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -759,10 +807,13 @@ namespace LastFrontier
     {
         public static void Compares(Item item) { AbstractItem.Compare(item); }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         // Exempting the receiver must not exempt the call.
-        Check(failures, "an argument is still checked on a static-data receiver", @"
+        Check(failures,
+              "an argument is still checked on a static-data receiver",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -770,7 +821,8 @@ namespace LastFrontier
     {
         public static void Gives(StaticItem item, Critter cr) { item.Give(cr); }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         // Game carries the whole script surface, so the rule must be scoped to the acquisition methods.
         Check(failures, "static map data as an ordinary Game argument is not an acquisition", @"
@@ -797,7 +849,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "a singleton lock left held is reported", @"
+        Check(failures,
+              "a singleton lock left held is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -808,9 +862,12 @@ namespace LastFrontier
             Game.Lock();
         }
     }
-}", "FOSYNC006");
+}",
+              "FOSYNC006");
 
-        Check(failures, "returning before the release is reported", @"
+        Check(failures,
+              "returning before the release is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -823,9 +880,12 @@ namespace LastFrontier
             Game.Unlock();
         }
     }
-}", "FOSYNC006");
+}",
+              "FOSYNC006");
 
-        Check(failures, "awaiting while the singleton lock is held is reported", @"
+        Check(failures,
+              "awaiting while the singleton lock is held is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -839,7 +899,8 @@ namespace LastFrontier
             Game.Unlock();
         }
     }
-}", "FOSYNC007");
+}",
+              "FOSYNC007");
 
         Check(failures, "a declaring entry point is silent and discharges its callees", @"
 namespace LastFrontier
@@ -875,7 +936,9 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "an uncovered receiver is reported", @"
+        Check(failures,
+              "an uncovered receiver is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -883,7 +946,8 @@ namespace LastFrontier
     {
         public static void Caller(Critter cr) { cr.SendGroupInfo(); }
     }
-}", "FOSYNC002");
+}",
+              "FOSYNC002");
 
         Check(failures, "a covered receiver is silent", @"
 namespace LastFrontier
@@ -926,9 +990,8 @@ namespace LastFrontier
             Console.Error.WriteLine("FAIL: " + failure);
         }
 
-        Console.Out.WriteLine(failures.Count == 0
-            ? "OK: analyzer self-tests passed"
-            : $"FAILED: {failures.Count} analyzer self-test case(s)");
+        Console.Out.WriteLine(failures.Count == 0 ? "OK: analyzer self-tests passed"
+                                                  : $"FAILED: {failures.Count} analyzer self-test case(s)");
 
         return failures.Count == 0 ? 0 : 1;
     }
@@ -952,24 +1015,22 @@ namespace LastFrontier
             .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
             .ToList();
 
-        CSharpCompilation compilation = CSharpCompilation.Create(
-            "AnalyzerSelfTest",
-            new[] {CSharpSyntaxTree.ParseText(source)},
-            references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        CSharpCompilation compilation =
+            CSharpCompilation.Create("AnalyzerSelfTest",
+                                     new[] { CSharpSyntaxTree.ParseText(source) },
+                                     references,
+                                     new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         // A snippet that does not compile would make a diagnostic expectation meaningless.
-        ImmutableArray<Diagnostic> compileErrors = compilation.GetDiagnostics()
-            .Where(d => d.Severity == DiagnosticSeverity.Error)
-            .ToImmutableArray();
+        ImmutableArray<Diagnostic> compileErrors =
+            compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToImmutableArray();
 
         if (!compileErrors.IsEmpty) {
-            throw new InvalidOperationException(
-                "analyzer self-test snippet does not compile: " + compileErrors[0]);
+            throw new InvalidOperationException("analyzer self-test snippet does not compile: " + compileErrors[0]);
         }
 
-        CompilationWithAnalyzers withAnalyzers = compilation.WithAnalyzers(
-            ImmutableArray.Create<DiagnosticAnalyzer>(new SyncCoverAnalyzer()));
+        CompilationWithAnalyzers withAnalyzers =
+            compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new SyncCoverAnalyzer()));
 
         return withAnalyzers.GetAnalyzerDiagnosticsAsync().GetAwaiter().GetResult();
     }
