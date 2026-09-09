@@ -36,13 +36,30 @@
 #include "Test_BakerHelpers.h"
 
 #if FO_MANAGED_SCRIPTING
+#include "ManagedScriptBackend.h"
 #include "ManagedScriptBaker.h"
 #include "ManagedScripting.h"
+
+FO_DISABLE_WARNINGS_PUSH()
+#include <mono/metadata/object.h>
+FO_DISABLE_WARNINGS_POP()
 #endif
 
 FO_BEGIN_NAMESPACE
 
 #if FO_MANAGED_SCRIPTING
+
+class ManagedBackendTestMetadata final : public EngineMetadata, public ScriptSystem
+{
+public:
+    ManagedBackendTestMetadata() :
+        EngineMetadata {[] { }}
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        RegisterSide(EngineSideKind::ServerSide);
+    }
+};
 
 static void SetProcessEnv(string_view name, string_view value)
 {
@@ -285,6 +302,44 @@ TEST_CASE("Managed scripting rejects metadata without a script system")
     EngineMetadata metadata {[] { }};
     FileSystem resources;
     CHECK_THROWS_WITH(InitManagedScripting(&metadata, resources), Catch::Matchers::ContainsSubstring("Managed scripting requires a script system"));
+#endif
+}
+
+TEST_CASE("Managed scripting releases adopted persistent GC handles during backend shutdown")
+{
+#if FO_MANAGED_SCRIPTING
+    ManagedBackendTestMetadata metadata;
+    FileSystem resources;
+    InitManagedScripting(&metadata, resources);
+
+    nptr<ManagedScriptBackend> backend = metadata.GetBackend<ManagedScriptBackend>(ScriptSystemBackend::MANAGED_BACKEND_INDEX);
+    REQUIRE(backend);
+
+    MonoDomain* domain = static_cast<MonoDomain*>(backend->GetDomain());
+    REQUIRE(domain != nullptr);
+    MonoString* value = mono_string_new(domain, "persistent-handle-lifecycle");
+    REQUIRE(value != nullptr);
+    uint32_t gc_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(value), false);
+    REQUIRE(gc_handle != 0);
+    REQUIRE(mono_gchandle_get_target(gc_handle) == reinterpret_cast<MonoObject*>(value));
+
+    bool handle_adopted = false;
+    bool backend_shutdown = false;
+    auto cleanup = scope_exit([&]() noexcept {
+        if (!handle_adopted) {
+            mono_gchandle_free(gc_handle);
+        }
+        if (!backend_shutdown) {
+            metadata.ShutdownBackends();
+        }
+    });
+
+    backend->AdoptPersistentGcHandle(gc_handle);
+    handle_adopted = true;
+    metadata.ShutdownBackends();
+    backend_shutdown = true;
+
+    CHECK(mono_gchandle_get_target(gc_handle) == nullptr);
 #endif
 }
 

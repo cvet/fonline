@@ -1631,6 +1631,11 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
     string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, true, true);
     uint32_t getter_handle = mono_gchandle_new(getter, false);
+    FO_VERIFY_AND_THROW(getter_handle != 0, "Can't root Managed property getter");
+    auto release_getter_handle_on_error = scope_fail([getter_handle]() noexcept { mono_gchandle_free(getter_handle); });
+
+    backend->AdoptPersistentGcHandle(getter_handle);
+    release_getter_handle_on_error.release();
 
     prop->SetGetter([backend, getter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) -> PropertyRawData FO_DEFERRED {
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
@@ -1678,6 +1683,11 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
     string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, false, true);
     uint32_t setter_handle = mono_gchandle_new(setter, false);
+    FO_VERIFY_AND_THROW(setter_handle != 0, "Can't root Managed property setter");
+    auto release_setter_handle_on_error = scope_fail([setter_handle]() noexcept { mono_gchandle_free(setter_handle); });
+
+    backend->AdoptPersistentGcHandle(setter_handle);
+    release_setter_handle_on_error.release();
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
@@ -1726,6 +1736,11 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
     string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, false, true);
     uint32_t setter_handle = mono_gchandle_new(setter, false);
+    FO_VERIFY_AND_THROW(setter_handle != 0, "Can't root Managed property setter");
+    auto release_setter_handle_on_error = scope_fail([setter_handle]() noexcept { mono_gchandle_free(setter_handle); });
+
+    backend->AdoptPersistentGcHandle(setter_handle);
+    release_setter_handle_on_error.release();
 
     prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
@@ -1776,6 +1791,11 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
     string owner_type_name = ToStringAndFree(owner_type);
     auto prop = ResolveVirtualPropertyForCallback(backend, owner_type, property_name, false, false);
     uint32_t setter_handle = mono_gchandle_new(setter, false);
+    FO_VERIFY_AND_THROW(setter_handle != 0, "Can't root Managed deferred property setter");
+    auto release_setter_handle_on_error = scope_fail([setter_handle]() noexcept { mono_gchandle_free(setter_handle); });
+
+    backend->AdoptPersistentGcHandle(setter_handle);
+    release_setter_handle_on_error.release();
 
     // Reaction-only post-set callback: the managed delegate receives just the entity and runs after the value is
     // written
@@ -2260,6 +2280,8 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
     FO_VERIFY_AND_THROW(hashed_func_name, "Managed script function has an empty name");
 
     uint32_t handler_handle = mono_gchandle_new(handler, false);
+    FO_VERIFY_AND_THROW(handler_handle != 0, "Can't root Managed global script function");
+    auto release_handler_handle_on_error = scope_fail([handler_handle]() noexcept { mono_gchandle_free(handler_handle); });
 
     auto func_desc = SafeAlloc::MakeUnique<ScriptFuncDesc>();
     func_desc->Name = hashed_func_name;
@@ -2273,7 +2295,9 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
     func_desc->AttributeChecker = [attr_name_str](string_view attribute) -> bool { return attribute == attr_name_str; };
     func_desc->Call = [backend = backend.as_ptr(), handler_handle, ret, args](FuncCallData& call) { DispatchManagedCallback(backend, handler_handle, ret, args, call); };
 
-    backend->AddManagedGlobalFunc(std::move(func_desc), handler_handle);
+    backend->AdoptPersistentGcHandle(handler_handle);
+    release_handler_handle_on_error.release();
+    backend->AddManagedGlobalFunc(std::move(func_desc));
 }
 
 static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_count, MonoObject* handler)
@@ -2346,9 +2370,6 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
         throw ScriptSystemException("Managed remote call argument count mismatch", name);
     }
 
-    uint32_t handler_handle = mono_gchandle_new(handler, false);
-    backend->AddRemoteCallHandlerGcHandle(handler_handle);
-
     // The handler outlives this registration, so the declaration's structural wire limits are copied out of
     // the RemoteCallDesc rather than captured by reference
     hstring call_name = inbound_call.Name;
@@ -2361,7 +2382,12 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
         wire_arg_names.emplace_back(arg.Name);
     }
 
-    WriteLog("Registered managed inbound remote call '{}' ({} wire arg(s), {}){}", name, inbound_call.Args.size(), server_side ? "server" : "client", client_facade_call ? ", replacing script handler" : "");
+    uint32_t handler_handle = mono_gchandle_new(handler, false);
+    FO_VERIFY_AND_THROW(handler_handle != 0, "Can't root Managed remote call handler");
+    auto release_handler_handle_on_error = scope_fail([handler_handle]() noexcept { mono_gchandle_free(handler_handle); });
+
+    backend->AdoptPersistentGcHandle(handler_handle);
+    release_handler_handle_on_error.release();
 
     engine->SetRemoteCallHandler(
         name_hashed,
@@ -2446,6 +2472,8 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
             }
         },
         client_facade_call);
+
+    WriteLog("Registered managed inbound remote call '{}' ({} wire arg(s), {}){}", name, inbound_call.Args.size(), server_side ? "server" : "client", client_facade_call ? ", replacing script handler" : "");
 }
 
 static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoArray* args_array)
@@ -5528,13 +5556,13 @@ ManagedScriptBackend::~ManagedScriptBackend()
     _continuationShutdowns.clear();
     ReleaseAliveFlag();
 
-    for (uint32_t gc_handle : _globalFuncGcHandles) {
+    for (uint32_t gc_handle : _persistentGcHandles) {
         if (gc_handle != 0) {
             mono_gchandle_free(gc_handle);
         }
     }
 
-    _globalFuncGcHandles.clear();
+    _persistentGcHandles.clear();
     _globalFuncs.clear();
     _images.clear();
     ReleaseLoadScope();
@@ -5563,16 +5591,24 @@ void ManagedScriptBackend::Process()
     }
 }
 
-void ManagedScriptBackend::AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc, uint32_t gc_handle)
+void ManagedScriptBackend::AdoptPersistentGcHandle(uint32_t gc_handle)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_scriptSys) {
-        _scriptSys->AddGlobalScriptFunc(desc.get());
-    }
+    _persistentGcHandles.emplace_back(gc_handle);
+}
+
+void ManagedScriptBackend::AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(desc->Name, "Script function descriptor has no name");
 
     _globalFuncs.emplace_back(std::move(desc));
-    _globalFuncGcHandles.emplace_back(gc_handle);
+
+    if (_scriptSys) {
+        _scriptSys->AddGlobalScriptFunc(_globalFuncs.back().get());
+    }
 }
 
 void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* method_name)

@@ -56,8 +56,8 @@ public:
     void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
     void BindRequiredStuff();
     void Process() override;
-    void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc, uint32_t gc_handle);
-    void AddRemoteCallHandlerGcHandle(uint32_t gc_handle) { _globalFuncGcHandles.emplace_back(gc_handle); }
+    void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
+    void AdoptPersistentGcHandle(uint32_t gc_handle);
 
 private:
     auto CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>;
@@ -74,7 +74,7 @@ private:
     vector<nptr<void>> _continuationPumps {};
     vector<nptr<void>> _continuationShutdowns {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
-    vector<uint32_t> _globalFuncGcHandles {};
+    vector<uint32_t> _persistentGcHandles {};
     uint32_t _loadScopeGcHandle {};
     uint32_t _aliveFlagGcHandle {};
 };
