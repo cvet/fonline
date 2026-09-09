@@ -255,6 +255,48 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("Present") == "value");
     }
 
+    SECTION("RuntimeSettingWritesVariableAndCustomValues")
+    {
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+
+        settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "True");
+        CHECK(settings.WindowedMouseScroll);
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Hex.WindowedMouseScroll")));
+
+        settings.SetRuntimeSetting("WindowedMouseScroll", "False");
+        CHECK_FALSE(settings.WindowedMouseScroll);
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("WindowedMouseScroll")));
+
+        settings.SetRuntimeSetting("Project.RuntimeValue", "value");
+        CHECK(settings.GetCustomSetting("Project.RuntimeValue") == "value");
+
+        string original_game_name = settings.GameName;
+        CHECK_THROWS_AS(settings.SetRuntimeSetting("Common.GameName", "Changed"), SettingsException);
+        CHECK(settings.GameName == original_game_name);
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Common.GameName")));
+
+        string variable_collision = "WindowedMouseScroll";
+        variable_collision.push_back('\0');
+        variable_collision += "Custom";
+        REQUIRE(const_hash(variable_collision.c_str()) == const_hash("WindowedMouseScroll"));
+        settings.SetRuntimeSetting(variable_collision, "True");
+        CHECK_FALSE(settings.WindowedMouseScroll);
+        CHECK(settings.GetCustomSetting(variable_collision) == "True");
+        CHECK(settings.GetRuntimeSetting(variable_collision) == "True");
+        CHECK(settings.GetRuntimeSetting("Hex.WindowedMouseScroll") == settings.GetRuntimeSetting("WindowedMouseScroll"));
+
+        string fixed_collision = "Common.GameName";
+        fixed_collision.push_back('\0');
+        fixed_collision += "Custom";
+        settings.SetRuntimeSetting(fixed_collision, "custom");
+        CHECK(settings.GameName == original_game_name);
+        CHECK(settings.GetCustomSetting(fixed_collision) == "custom");
+        CHECK(settings.GetRuntimeSetting(fixed_collision) == "custom");
+        CHECK(settings.GetRuntimeSetting("Common.GameName") == settings.GameName);
+        CHECK(settings.GetRuntimeSetting("GameName") == settings.GameName);
+    }
+
     SECTION("BakingModeSaveReturnsAppliedSettings")
     {
         GlobalSettings settings {true};

@@ -100,6 +100,8 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 `FatalError.*` is the early, native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and then delegates only the mechanical process termination to `BasicCore::ExitApp(false)`. It owns `ReportFatalAndExit`, `ReportStrongAssertAndExit`, and `FO_BASIC_STRONG_ASSERT`; it deliberately does not construct exception objects or depend on the later `ExceptionHandling` module. `ExitApp(false)` itself remains status-only because its callers include both controlled command failures and fatal invariant failures.
 
+`ExitApp` never returns: desktop Windows/Linux use `std::quick_exit`, while web, Apple and Android use `std::exit`. The selected CRT function owns termination and its registered cleanup callbacks; neither path unwinds automatic local objects. There is no fallback work after either terminal call. `BuildTools/tests/test_process_termination.py` compiles the exact engine declaration and body with unreachable-code diagnostics enabled, then checks success/failure status, the selected CRT callbacks and destructor behavior in separate processes.
+
 `StackTrace.*` captures and formats native/script stack information, including a capped global cache for resolved native frames, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Debugging.md](Debugging.md).
 
 ### Memory, pointers, and lifetime utilities
@@ -116,6 +118,13 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 A target of at most `FUNCTION_INLINE_TARGET_SIZE` bytes that is nothrow-move-constructible lives inside the wrapper; anything larger, over-aligned, or throwing-move goes to the heap. That covers a closure capturing up to six pointers or holding one `string` by value, which is nearly every engine callback, so the common case allocates nothing and the wrapper stays one cache line wide on a 64-bit target. `is_heap_allocated()` reports which path a wrapper took and is what the module's tests assert against. A throwing move is pushed to the heap on purpose: moving the wrapper is `noexcept`, and only a pointer steal can guarantee that.
 
+The 48-byte storage union obtains fundamental alignment from an inactive
+`std::max_align_t` member. Its pointer and byte-buffer offsets remain zero;
+using natural alignment avoids MSVC's Win32 diagnostic for an explicitly
+aligned union member without changing the inline budget or heap boundary.
+
+Function references bind directly as nonempty targets. Null function pointers and null member pointers create empty wrappers; both move-only and copyable wrappers preserve that distinction.
+
 A `copyable_function` narrows to `move_only_function` by adopting or copying its target in place, never by wrapping it in a second indirection. The reverse conversion does not exist — a move-only target cannot become copyable.
 
 Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_BASIC_STRONG_ASSERT` instead of throwing `std::bad_function_call`. Check with `operator bool` where absence is legitimate. The module sits above `SmartPointers` and `MemorySystem` in the include order, so its heap tier uses the globally replaced `operator new` directly and exits through `ReportFatalAndExit` on exhaustion rather than through `SafeAlloc`.
@@ -124,7 +133,7 @@ Calling an empty wrapper is a defect, not a recoverable condition: it hits `FO_B
 
 `StringObject.*` owns `basic_string<CharT, InlineCapacity>`, the engine string that `Containers.h` aliases as `string` and `wstring`. It behaves as `std::basic_string` — same constructors, same member and free operators, same `constexpr` support for targets that stay inline, same `npos`/`max_size`/`out_of_range`/`length_error` contracts — with one difference: the small-string buffer is a template parameter instead of a fixed property of the standard library.
 
-- **`FO_STRING_INLINE_CAPACITY`** is the build option that sets it, defaulting to 31 (a 48-byte object) and reaching the code as `STRING_INLINE_CAPACITY` through `EngineConfig.gen.h`. Only 7, 15, 23, 31, 39, 47, ... are worth setting — one less than a multiple of 8. The object rounds the inline array up to the pointer size, so 19 produces the same 40-byte object as 23 and 27 the same 48-byte one as 31, holding fewer characters for the same memory. `WSTRING_INLINE_CAPACITY` derives from it so a wide string costs the same bytes rather than the same characters. Codegen depends on its input files rather than on the values it is passed, so reconfiguring with a new capacity does not by itself rewrite the header — build the `ForceCodeGeneration` target after changing it, as with every other `-enginedefine` value.
+- **`FO_STRING_INLINE_CAPACITY`** is the build option that sets it, defaulting to 31 (a 48-byte object) and reaching the code as `STRING_INLINE_CAPACITY` through `EngineConfig.gen.h`. Only 7, 15, 23, 31, 39, 47, ... are worth setting — one less than a multiple of 8. The object rounds the inline array up to the pointer size, so 19 produces the same 40-byte object as 23 and 27 the same 48-byte one as 31, holding fewer characters for the same memory. `WSTRING_INLINE_CAPACITY` derives from it so a wide string costs the same bytes rather than the same characters. Codegen tracks its argument file as an input, so reconfiguring with a new capacity regenerates the header on the next build, as with every other `-enginedefine` value.
 - The object is a union of the inline array and the heap pointer plus the `size` and `capacity` words. `capacity == InlineCapacity` is the discriminator, so heap growth never lands on that value and no flag or pointer tagging is needed; `is_inlined()` reports which tier a string is on.
 - Growth is geometric and rounds the whole buffer, terminator included, up to the allocator bucket, so a block's tail is spent on characters rather than padding.
 - Allocation goes through `SafeAllocator`, so the string carries the same terminate-on-OOM contract as every other engine container.
@@ -203,9 +212,33 @@ When vendoring or updating a library, check whether it has an allocator hook and
 
 `DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `DataReader::Read<T>()` and `DataWriter::Write<T>()` copy standard-layout values through byte copies so serialized streams do not depend on buffer alignment. The zero-copy `ReadPtr<T>(size)` overload is only for raw byte/string views (`uint8_t`, `char`, or `void`); typed values that need alignment must use `Read<T>()` or `ReadPtr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives. `iround` rejects non-finite and out-of-int64-range floating-point input before rounding so no value undefined for `std::llround` can reach it. `HashStorage::SetResolveHashFailureHandler` lets higher layers observe failed hash resolution in both throwing and flagged no-throw lookup paths without teaching essentials about a specific recovery policy.
 
+Duration formatting retains 64-bit hour and day counts and keeps the existing minute/day display boundaries. `Test_TimeRelated` covers these boundaries and the largest nanosecond duration.
+
 ### Filesystem, compression, sockets, and work threads
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
+
+TCP and UDP transfer calls retain signed 32-bit byte counts. The requested buffer size is checked before the OS call; a successful result cannot exceed that size. Checked return conversion preserves `-1` errors (including would-block), zero-length results and TCP end-of-stream. `Test_NetSockets` exercises these outcomes over real loopback sockets.
+
+Windows disk I/O resolves ordinary paths through the native full-path operation before adding the extended namespace at the Win32 directory-length boundary. Reads, writes, metadata queries, renames, removal and directory iteration share this conversion, including relative paths beneath a long current directory. Recursive removal adds the namespace even for a short root: the standard library constructs descendant paths internally, and those descendants can cross the length boundary. Ordinary drive and UNC paths retain Windows dot/space and separator normalization; already extended or device paths remain literal inputs. Resolution failures follow each API's existing error-result contract. Lexical helpers (`fs_make_path`, `fs_path_to_string`, `fs_resolve_path`, and writable-path policy) do not add the I/O prefix, and directory visitors still receive relative resource names. `Test_DiskFileSystem.cpp` exercises Unicode paths beyond 320 native characters, removal of their remaining directory tree and Windows ordinary-versus-literal trailing-name behavior.
+
+For a native Windows path-length investigation, run
+`python BuildTools/probe_windows_file_io.py --output Workspace/file-io.json`.
+The diagnostic builds small MSVC programs with static and dynamic CRTs, records
+ordinary absolute, relative and extended-path `ifstream`/directory-enumeration
+results at 259, 260, 262 and 320 UTF-16 units, and checks file contents against
+a short-path control. It retains executables, compiler logs and available
+embedded manifests beside the JSON report. `--unc-root` optionally tests an
+existing writable share; otherwise UNC I/O is explicitly untested. This probes
+the native library boundary without changing the engine's lexical path APIs or
+requiring a game build. The same run compiles the exact path-conversion and
+create/write/open/rename/remove functions extracted from `DiskFileSystem.cpp`,
+checks long Unicode file operations and recursive removal beneath a short root,
+records the unprefixed `remove_all` control separately, and distinguishes ordinary trailing
+dot/space normalization from literal extended names. Its manifest records each
+function hash and the harness aliases; full engine linkage and directory-visitor
+dispatch remain covered by the native unit suite. UNC conversion is checked
+lexically even when no writable share was supplied.
 
 When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
 
@@ -272,3 +305,5 @@ See [Testing.md](Testing.md) for the complete test-suite map and target wiring.
 3. Run the smallest matching essentials test and then the broader `RunUnitTests` target when behavior crosses utility boundaries.
 4. For diagnostics changes, also verify [Debugging.md](Debugging.md) stays accurate.
 5. For filesystem/socket/threading changes, validate at least one higher-level consumer if the low-level contract changed.
+
+`fs_iterate_dir` treats a missing directory as an empty source. Other path lookup and traversal errors propagate to the caller; it never reports an inaccessible or malformed path as a complete empty directory.

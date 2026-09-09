@@ -117,6 +117,7 @@ struct ServerQuiescenceState
 class ServerEngine final : public BaseEngine, public EntityManagerApi
 {
     friend class ServerScriptSystem;
+    friend class ServerEntity;
 
 public:
     using QuiescenceCallback = function<void(const ServerQuiescenceState&)>;
@@ -132,7 +133,7 @@ public:
     [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine> { return this; }
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
-    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
+    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress->load(); }
     [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
@@ -248,6 +249,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterSendInitialInfo, ptr<Critter> /*cr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterItemTransferIn, ptr<Critter> /*cr*/, ptr<Item> /*sourceItem*/, ptr<Item> /*resultItem*/, int32_t /*count*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, ptr<Item> /*item*/, bool /*firstTime*/);
@@ -259,7 +262,7 @@ public:
 private:
     std::atomic_bool _started {false};
     std::atomic_bool _startingError {false};
-    std::atomic_bool _shutdownInProgress {false};
+    shared_ptr<std::atomic_bool> _shutdownInProgress {SafeAlloc::MakeShared<std::atomic_bool>(false)};
 
 public:
     EntityManager EntityMngr;

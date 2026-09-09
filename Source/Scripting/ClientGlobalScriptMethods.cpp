@@ -882,6 +882,12 @@ FO_SCRIPT_API void Client_Game_SimulateDisconnect(ptr<ClientEngine> client)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateConnectingFailed(ptr<ClientEngine> client)
+{
+    client->OnConnectingFailed.Fire();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateInfoMessage(ptr<ClientEngine> client, EngineInfoMessage infoMessage, string_view extraText = "")
 {
     client->OnInfoMessage.Fire(infoMessage, string(extraText));

@@ -56,7 +56,7 @@ Item::~Item()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!_engine->IsShutdownInProgress()) {
+    if (!IsEngineShutdownInProgress()) {
         FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
     }
 }

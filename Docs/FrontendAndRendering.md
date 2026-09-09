@@ -432,6 +432,13 @@ Use it for tests, headless flows, and validation that should not require a GPU. 
 
 `Source/Frontend/Rendering-OpenGL.cpp` implements the OpenGL/WebGL path.
 
+On iOS, `ForceOpenGL` and the automatic fallback retain the OpenGLES backend.
+Apple marks its ES3 declarations deprecated, so only this translation unit sets
+`GLES_SILENCE_DEPRECATION` before the Apple headers. Other deprecation diagnostics
+remain enabled. Renderer selection is unchanged: the Metal branch does not
+construct a renderer, and the implemented Vulkan/OpenGL paths determine the
+automatic fallback; this acknowledgement does not introduce a Metal backend.
+
 Important behaviors:
 
 - creates an SDL/OpenGL or WebGL context depending on platform;

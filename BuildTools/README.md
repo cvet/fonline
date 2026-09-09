@@ -144,6 +144,27 @@ Host prerequisite checks are also available through the main tool:
 - `buildtools.py host-check macos`
 - `buildtools.py host-check windows`
 
+Apple builds use Xcode: `buildtools.py build mac client Release` builds the
+embedding project's macOS client, and `buildtools.py build ios client Release`
+selects the `SIMULATOR64` iOS toolchain. That toolchain defaults to `x86_64`;
+Mono's `iossimulator` architecture follows the normalized native target processor
+(`x64`), independently of the build host. The `OS64` device target uses
+`ios/arm64`. Simulator builds do not validate device signing or execution.
+
+For the managed backend, run `buildtools.py validate managed-mac-client`,
+`managed-ios-simulator-client`, or `managed-ios-device-client` on an Apple host.
+These explicit Release scenarios enable managed scripting and disable AngelScript
+in the engine-owned validation scaffold. The device scenario selects `OS64` and
+disables code signing; the simulator scenario retains `SIMULATOR64`/x64. They
+build the pinned Mono runtime and link the native client, but do not install or
+execute an application. The manual `validate` workflow's `managed-apple` selection
+covers macOS x64/arm64 and both iOS scenarios without embedding-project inputs.
+
+`tests/test_apple_managed_architecture.py` configures the real Init stage with
+managed scripting enabled and checks both simulator and device runtime identities
+without requiring an Apple SDK. Native linking and managed execution still need
+the corresponding Apple host build and runtime checks.
+
 Host wrapper scripts now delegate to the unified workspace preparation command:
 
 - `buildtools.py prepare-host-workspace linux ...`
@@ -162,6 +183,10 @@ python3 Engine/BuildTools/buildtools.py prepare-workspace msan-libcxx
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
+
+The `toolset` workspace always enables the baker and disables runtime applications and tests. It leaves
+`FO_BUILD_ASCOMPILER` to the embedding project's `SetOptionValues` default, so AngelScript projects can
+prepare their compiler while managed-only projects do not receive an incompatible forced override.
 
 `msan-libcxx` is Linux-only and intentionally excluded from the default `all`
 workspace feature because it downloads matching LLVM sources and builds

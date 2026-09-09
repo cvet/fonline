@@ -87,16 +87,6 @@ if(FO_BUILD_SERVER)
         EXTRA_SOURCES ${FO_RC_FILE}
         WRITE_BUILD_HASH)
 
-    AddExecutableApplication(
-        ${FO_DEV_NAME}_ServerHeadless
-        "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp"
-        OUTPUT_DIR ${FO_SERVER_OUTPUT}
-        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
-        OUTPUT_NAME ${FO_DEV_NAME}_ServerHeadless
-        TESTING_APP 0
-        LINK_LIBS ServerLib ClientLib AppHeadless
-        WRITE_BUILD_HASH)
-
     if(FO_WINDOWS)
         AddExecutableApplication(
             ${FO_DEV_NAME}_ServerService
@@ -118,6 +108,19 @@ if(FO_BUILD_SERVER)
             LINK_LIBS ServerLib ClientLib AppHeadless
             WRITE_BUILD_HASH)
     endif()
+endif()
+
+# Coverage integration processes reuse the instrumented libraries from the unit-test build
+if(FO_BUILD_SERVER OR FO_CODE_COVERAGE)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_ServerHeadless
+        "${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp"
+        OUTPUT_DIR ${FO_SERVER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_ServerHeadless
+        TESTING_APP 0
+        LINK_LIBS ServerLib ClientLib AppHeadless
+        WRITE_BUILD_HASH)
 endif()
 
 if(FO_BUILD_MAPPER)
@@ -165,7 +168,20 @@ if(FO_BUILD_ASCOMPILER)
         WRITE_BUILD_HASH)
 endif()
 
-if(FO_BUILD_BAKER)
+if(FO_MANAGED_SCRIPTING AND FO_BUILD_BAKER_LIB)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_ManagedScriptBaker
+        "${FO_ENGINE_ROOT}/Source/Applications/ManagedScriptBakerApp.cpp"
+        OUTPUT_DIR ${FO_BAKER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_ManagedScriptBaker
+        TESTING_APP 0
+        LINK_LIBS AppHeadless BakerLib
+        DEPENDS ${FO_GEN_DEPENDENCIES}
+        WRITE_BUILD_HASH)
+endif()
+
+if(FO_BUILD_BAKER OR FO_CODE_COVERAGE)
     AddExecutableApplication(${FO_DEV_NAME}_Baker "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp"
         OUTPUT_DIR ${FO_BAKER_OUTPUT}
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
@@ -174,7 +190,7 @@ if(FO_BUILD_BAKER)
         LINK_LIBS AppHeadless BakerLib
         WRITE_BUILD_HASH)
 
-    if(NOT FO_WEB)
+    if(FO_BUILD_BAKER AND NOT FO_WEB)
         AddSharedApplication(${FO_DEV_NAME}_BakerLib "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp"
             OUTPUT_DIR ${FO_BAKER_OUTPUT}
             OUTPUT_NAME ${FO_DEV_NAME}_BakerLib
@@ -281,22 +297,15 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Run code coverage and generate report")
         else()
-            if(MSVC)
-                AddCommandTarget(Run${name}
-                    COMMAND_ARGS
-                    COMMAND "${CMAKE_COMMAND}"
-                        "-DFO_RUN_COMMAND=$<TARGET_FILE:${target}>"
-                        "-DFO_RUN_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
-                        "-DFO_RUN_LOG=${CMAKE_CURRENT_BINARY_DIR}/${target}.log"
-                        -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/RunAndLog.cmake"
-                    DEPENDS ${target}
-                    COMMENT "Run ${name}")
-            else()
-                AddCommandTarget(Run${name}
-                    COMMAND_ARGS COMMAND ${target}
-                    DEPENDS ${target}
-                    COMMENT "Run ${name}")
-            endif()
+            AddCommandTarget(Run${name}
+                COMMAND_ARGS COMMAND
+                    ${CMAKE_COMMAND}
+                    "-DTEST_EXECUTABLE=$<TARGET_FILE:${target}>"
+                    "-DTEST_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
+                    "-DTEST_LOG=${CMAKE_CURRENT_BINARY_DIR}/Testing/${target}-$<CONFIG>.log"
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/RunTestExecutable.cmake"
+                DEPENDS ${target}
+                COMMENT "Run ${name}")
         endif()
     endmacro()
 
@@ -306,5 +315,18 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 
     if(FO_CODE_COVERAGE)
         SetupTestBuild(CodeCoverage)
+
+        if(NOT FO_WEB AND NOT FO_MAC AND NOT FO_IOS AND NOT FO_ANDROID AND
+            (FO_CODE_COVERAGE_BACKEND STREQUAL "llvm" OR FO_CODE_COVERAGE_BACKEND STREQUAL "gcc"))
+            foreach(coverageApp IN ITEMS ${FO_DEV_NAME}_ServerHeadless ${FO_DEV_NAME}_Baker ${FO_DEV_NAME}_ManagedScriptBaker)
+                if(TARGET ${coverageApp})
+                    target_sources(${coverageApp} PRIVATE
+                        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/CoverageQuickExit.c")
+                    TargetCompileDefinitions(${coverageApp} PRIVATE
+                        "FO_CODE_COVERAGE_LLVM=$<STREQUAL:${FO_CODE_COVERAGE_BACKEND},llvm>"
+                        "FO_CODE_COVERAGE_GCC=$<STREQUAL:${FO_CODE_COVERAGE_BACKEND},gcc>")
+                endif()
+            endforeach()
+        endif()
     endif()
 endif()

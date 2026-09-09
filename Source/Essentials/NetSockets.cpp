@@ -485,7 +485,7 @@ auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
         return 0;
     }
 
-    return ::send(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0);
+    return numeric_cast<int32_t>(::send(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0));
 }
 
 auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
@@ -496,7 +496,7 @@ auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
         return 0;
     }
 
-    return ::recv(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0);
+    return numeric_cast<int32_t>(::recv(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0));
 }
 
 void tcp_socket::close() noexcept
@@ -702,7 +702,7 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
     addr.sin_addr.s_addr = *resolved;
 
     auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
-    return ::sendto(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), sizeof(addr));
+    return numeric_cast<int32_t>(::sendto(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), sizeof(addr)));
 }
 
 auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t
@@ -724,7 +724,7 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
 #endif
     auto addr_len_ptr = make_ptr(&addr_len);
     auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get());
+    int32_t result = numeric_cast<int32_t>(::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get()));
 
     if (result <= 0) {
         return result;

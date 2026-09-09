@@ -17,6 +17,10 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 Current count: **100** `Test_*.cpp` suites.
 
+The configured executable contains the suites for its enabled scripting backends. AngelScript-only translation
+units are selected only when `FO_ANGELSCRIPT_SCRIPTING` is enabled; `Test_ManagedScriptBaker.cpp` is selected only
+when `FO_MANAGED_SCRIPTING` is enabled. Backend-neutral suites are always present.
+
 ### Essentials and low-level utilities
 
 - `Source/Tests/Test_BaseLogging.cpp`
@@ -114,6 +118,7 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`

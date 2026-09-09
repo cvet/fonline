@@ -37,9 +37,11 @@
 
 #include "catch_amalgamated.hpp"
 
+#if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptDebugger.h"
 #include "AngelScriptHelpers.h"
 #include "AngelScriptScripting.h"
+#endif
 #include "AnimationViewer.h"
 #include "Application.h"
 #include "Baker.h"

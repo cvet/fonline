@@ -37,6 +37,9 @@
 FO_BEGIN_NAMESPACE
 
 static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> bool;
+static auto ParseStrictIntText(string_view text) -> int64_t;
+static auto GetPrimitiveStorageKind(ptr<const Property> prop) -> optional<AnyData::ValueType>;
+static auto ResolvePropertyFromStorageKind(ptr<const PropertyRegistrar> registrar, string_view name, optional<AnyData::ValueType> kind, const function<optional<int64_t>(string_view)>& read_version) -> nptr<const Property>;
 
 auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
 {
@@ -97,6 +100,7 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
     FO_STRONG_ASSERT(props.get(), "Missing required properties to load into");
 
     bool is_error = false;
+    unordered_set<ptr<const Property>> seen_properties;
 
     for (auto&& [doc_key, doc_value] : doc) {
         // Skip technical fields
@@ -105,14 +109,12 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
         }
 
         try {
-            // Find property
-            auto prop = props->GetRegistrar()->FindProperty(doc_key);
+            // Find property, migrating an obsolete stored name onto its replacement
+            auto prop = ResolvePropertyFromValue(props->GetRegistrar(), doc_key, doc_value, &doc);
 
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
+                FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", doc_key);
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
-            }
-            else {
-                // WriteLog(LogType::Warning, "Skip unknown property {}", key);
             }
         }
         catch (const std::exception& ex) {
@@ -122,6 +124,108 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
     }
 
     return !is_error;
+}
+
+auto PropertiesSerializer::ResolvePropertyFromValue(ptr<const PropertyRegistrar> registrar, string_view name, const AnyData::Value& value, nptr<const AnyData::Dict> document) -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto read_version = [document](string_view version_name) -> optional<int64_t> {
+        if (!document || !document->Contains(version_name)) {
+            return std::nullopt;
+        }
+
+        const auto& version = (*document)[string {version_name}];
+        FO_VERIFY_AND_THROW(version.Type() == AnyData::ValueType::Int64, "Property migration version must be an integer", version_name);
+        return version.AsInt64();
+    };
+
+    return ResolvePropertyFromStorageKind(registrar, name, value.Type(), read_version);
+}
+
+auto PropertiesSerializer::ResolvePropertyFromText(ptr<const PropertyRegistrar> registrar, string_view name, string_view text, const function<optional<string_view>(string_view)>& read_sibling) -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<AnyData::ValueType> kind;
+
+    if (strvex(text).is_explicit_bool()) {
+        kind = AnyData::ValueType::Bool;
+    }
+    else if (strvex(text).is_number()) {
+        kind = text.find_first_of(".eE") != string_view::npos ? AnyData::ValueType::Float64 : AnyData::ValueType::Int64;
+    }
+
+    auto read_version = [&read_sibling](string_view version_name) -> optional<int64_t> {
+        auto version = read_sibling ? read_sibling(version_name) : std::nullopt;
+        if (!version.has_value()) {
+            return std::numeric_limits<int64_t>::max();
+        }
+
+        strvex text = strvex(version.value());
+        text.trim();
+        string_view value = text.strv();
+        int64_t result = 0;
+        auto parsed = std::from_chars(value.data(), value.data() + value.size(), result);
+        FO_VERIFY_AND_THROW(parsed.ec == std::errc() && parsed.ptr == value.data() + value.size(), "Property migration version must be an integer", version_name, value);
+        return result;
+    };
+
+    return ResolvePropertyFromStorageKind(registrar, name, kind, read_version);
+}
+
+static auto GetPrimitiveStorageKind(ptr<const Property> prop) -> optional<AnyData::ValueType>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const BaseTypeDesc& type = prop->GetBaseType();
+
+    if (!prop->IsPlainData() || !type.IsPrimitive) {
+        return std::nullopt;
+    }
+    if (type.IsBool) {
+        return AnyData::ValueType::Bool;
+    }
+    if (type.IsSingleFloat || type.IsDoubleFloat) {
+        return AnyData::ValueType::Float64;
+    }
+
+    return AnyData::ValueType::Int64;
+}
+
+static auto ResolvePropertyFromStorageKind(ptr<const PropertyRegistrar> registrar, string_view name, optional<AnyData::ValueType> kind, const function<optional<int64_t>(string_view)>& read_version) -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto migrated = registrar->FindPersistedProperty(name);
+    auto current = registrar->FindProperty(name);
+
+    if (migrated && migrated != current) {
+        auto hashes = registrar->GetHashResolver();
+        auto condition = registrar->GetNameResolver()->CheckMigrationRule(hashes->ToHashedString("PropertyBeforeVersion"), registrar->GetTypeName(), hashes->ToHashedString(name));
+
+        if (condition.has_value()) {
+            string_view descriptor = condition.value().as_str();
+            size_t separator = descriptor.find(' ');
+            FO_VERIFY_AND_THROW(separator != string_view::npos, "Malformed property migration version condition", descriptor);
+            string_view version_name = descriptor.substr(0, separator);
+            int64_t cutoff = ParseStrictIntText(descriptor.substr(separator + 1));
+            int64_t version = read_version(version_name).value_or(0);
+            return version < cutoff ? migrated : current;
+        }
+    }
+
+    if (kind.has_value() && current && migrated && current != migrated) {
+        optional<AnyData::ValueType> current_kind = GetPrimitiveStorageKind(current);
+        optional<AnyData::ValueType> migrated_kind = GetPrimitiveStorageKind(migrated);
+
+        // Distinct serialized kinds disambiguate a reused live name from its obsolete stored meaning
+        if (current_kind.has_value() && migrated_kind.has_value() && current_kind != migrated_kind && current_kind == kind) {
+            return current;
+        }
+    }
+
+    return migrated;
 }
 
 auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
@@ -1324,12 +1428,17 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     const auto& dict = value.AsDict();
     Properties field_props(fields_registrar);
+    unordered_set<ptr<const Property>> seen_fields;
 
     for (auto&& [field_name, field_value] : dict) {
-        auto field_prop = fields_registrar->FindProperty(field_name);
+        auto field_prop = PropertiesSerializer::ResolvePropertyFromValue(fields_registrar, field_name, field_value, &dict);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
+        }
+
+        if (!seen_fields.emplace(field_prop.as_ptr()).second) {
+            throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
         }
 
         PropertiesSerializer::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
@@ -1355,16 +1464,26 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
     }
 
     Properties field_props(fields_registrar);
-    unordered_set<string> seen_fields;
+    unordered_set<ptr<const Property>> seen_fields;
+
+    auto read_sibling = [&fields_arr](string_view name) -> optional<string_view> {
+        for (size_t i = 0; i < fields_arr.Size(); i += 2) {
+            if (fields_arr[i].AsString() == name) {
+                return fields_arr[i + 1].AsString();
+            }
+        }
+
+        return std::nullopt;
+    };
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
         string_view field_name = fields_arr[i].AsString();
-        auto field_prop = fields_registrar->FindProperty(field_name);
+        auto field_prop = PropertiesSerializer::ResolvePropertyFromText(fields_registrar, field_name, fields_arr[i + 1].AsString(), read_sibling);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
-        if (!seen_fields.emplace(field_name).second) {
+        if (!seen_fields.emplace(field_prop.as_ptr()).second) {
             throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
         }
 

@@ -8,6 +8,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import stat
 import struct
@@ -22,6 +23,7 @@ from typing import IO, Callable, Iterable, Literal, Sequence
 
 import buildtools
 import foconfig
+from managed_runtime_identity import runtime_identity
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
@@ -51,8 +53,10 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
+RUNTIME_COMPANION_DIRECTORIES = ('ManagedRuntime',)
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
+WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -488,6 +492,51 @@ def include_package_files(
 	update_package_include_single_zip(single_zip_path, package_root, target_root, compress_level)
 
 
+def package_web_resources(
+	output_path: Path,
+	file_packager_path: Path,
+	preload_files: Sequence[tuple[Path, str]],
+	max_bundle_size: int = WEB_ASSET_BUNDLE_LIMIT,
+) -> None:
+	assert 0 < max_bundle_size <= WEB_ASSET_BUNDLE_LIMIT, 'Invalid Web asset bundle limit'
+	assert preload_files, 'Web package requires preloaded files'
+	bundles: list[list[tuple[Path, str]]] = [[]]
+	bundle_size = 0
+	seen_paths: set[str] = set()
+	for source_path, virtual_path in sorted(preload_files, key=lambda entry: entry[1]):
+		assert virtual_path not in seen_paths, f'Duplicate Web asset path: {virtual_path}'
+		seen_paths.add(virtual_path)
+		file_size = source_path.stat().st_size
+		assert file_size <= max_bundle_size, f'Web asset exceeds bundle limit: {virtual_path} ({file_size} bytes)'
+		if bundles[-1] and bundle_size + file_size > max_bundle_size:
+			bundles.append([])
+			bundle_size = 0
+		bundles[-1].append((source_path, virtual_path))
+		bundle_size += file_size
+
+	with tempfile.TemporaryDirectory(prefix='web-preload-', dir=output_path) as temporary_path:
+		loader_path = Path(temporary_path) / 'Resources.js'
+		with loader_path.open('w', encoding='utf-8', newline='\n') as loader:
+			for index, files in enumerate(bundles):
+				bundle_name = f'Resources-{index}'
+				bundle_loader_path = Path(temporary_path) / (bundle_name + '.js')
+				arguments = [(output_path / (bundle_name + '.data')).as_posix(), '--preload']
+				arguments.extend(source.as_posix().replace('@', '@@') + '@' + target.replace('@', '@@') for source, target in files)
+				# Init.cmake guarantees FORCE_FILESYSTEM; --quiet acknowledges only that standalone reminder
+				arguments.extend(['--js-output=' + bundle_loader_path.as_posix(), '--lz4', '--quiet'])
+				response_path = Path(temporary_path) / (bundle_name + '.rsp.utf-8')
+				response_path.write_text(shlex.join(arguments), encoding='utf-8')
+				log('Package Web asset bundle', bundle_name, f'({len(files)} files, {sum(source.stat().st_size for source, _ in files)} bytes)')
+				result = subprocess.call(
+					[sys.executable or 'python3', str(file_packager_path), '@' + str(response_path)],
+					env={**os.environ, 'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': str(WEB_ASSET_BUNDLE_LIMIT // (1024 * 1024))},
+				)
+				assert result == 0, f'Emscripten tools/file_packager.py failed for {bundle_name}: {result}'
+				loader.write(bundle_loader_path.read_text(encoding='utf-8'))
+				loader.write('\n')
+		loader_path.replace(output_path / 'Resources.js')
+
+
 def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
 	def filter_member(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
 		return tar_info
@@ -662,10 +711,10 @@ class Packager:
 			return None
 		remainder = after_client[best_prefix_len:]
 		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
-			if remainder.startswith(opt):
+			if remainder == opt or remainder.startswith(opt + '-'):
 				remainder = remainder[len(opt):]
 				break
-		if remainder.startswith('-Debug'):
+		if remainder == '-Debug' or remainder.startswith('-Debug-'):
 			remainder = remainder[len('-Debug'):]
 		if not remainder:
 			return ''
@@ -693,6 +742,7 @@ class Packager:
 	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str, excluded_names: set[str] | None = None) -> None:
 		primary_file_name = primary_name + primary_ext
 		excluded_names = excluded_names or set()
+
 		for entry_name in sorted(os.listdir(bin_path)):
 			entry_path = os.path.join(bin_path, entry_name)
 			if not os.path.isfile(entry_path):
@@ -706,6 +756,18 @@ class Packager:
 
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
+
+		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
+			if entry_name in excluded_names:
+				continue
+
+			entry_path = os.path.join(bin_path, entry_name)
+			if not os.path.isdir(entry_path):
+				continue
+
+			output_path = os.path.join(self.target_output_path, entry_name)
+			log('Runtime companion directory included', entry_name)
+			shutil.copytree(entry_path, output_path, dirs_exist_ok=True)
 
 	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
@@ -749,17 +811,9 @@ class Packager:
 				default_runtime_variant = BinaryVariant()
 				headless_runtime_variant = BinaryVariant(role='Headless')
 
-				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
-				if not os.path.isfile(build_hash_path):
-					continue
-
-				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
-					build_hash = file.read().strip()
-				if build_hash != self.args.buildhash:
-					continue
-
 				suffix = ''
-				if '-Profiling_' in entry_name:
+				variant_entry_name = entry_name[:-(len(entry_postfix) + 1)] if entry_postfix else entry_name
+				if variant_entry_name.endswith(('-Profiling_Total', '-Profiling_OnDemand', '-Profiling_Total-Debug', '-Profiling_OnDemand-Debug')):
 					suffix = '_Profiling'
 
 				# binary_output_postfix is appended to the staged payload name so two
@@ -779,16 +833,28 @@ class Packager:
 					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
 
 				for output_name, variant_config_data, runtime_variant in variant_specs:
-					payload_key = (request_target_name, output_name)
-					if payload_key in copied_payloads:
-						continue
-
 					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
 					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
 					if not os.path.isfile(runtime_input_path):
 						continue
 
-					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+					build_hash_path = Path(entry_path) / (runtime_input_name + '.build-hash')
+					if not build_hash_path.is_file() or build_hash_path.read_text(encoding='utf-8-sig').strip() != self.args.buildhash:
+						continue
+
+					payload_target_name = request_target_name
+					identity_path = Path(entry_path) / (runtime_input_name + '.managed-runtime-id')
+					runtime_dir = Path(entry_path) / 'ManagedRuntime'
+					if identity_path.exists() or runtime_dir.exists():
+						identity = identity_path.read_text(encoding='utf-8').strip()
+						if identity != runtime_identity(runtime_dir):
+							raise ValueError('Managed runtime companions differ from the compiled client: ' + entry_path)
+						payload_target_name += '-Managed-' + identity
+					payload_key = (payload_target_name, output_name)
+					if payload_key in copied_payloads:
+						continue
+
+					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, payload_target_name)
 					os.makedirs(payload_dir, exist_ok=True)
 					output_path = os.path.join(payload_dir, output_name + runtime_ext)
 					log('Client runtime update payload', output_path)
@@ -1208,21 +1274,22 @@ class Packager:
 		file_packager_path = os.path.join(emsdk_root, 'upstream', 'emscripten', 'tools', 'file_packager.py')
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
 
-		packager_args = [
-			sys.executable if sys.executable else 'python3',
-			file_packager_path,
-			os.path.join(self.target_output_path, 'Resources.data').replace('\\', '/'),
-			'--preload',
-			os.path.join(self.target_output_path, self.client_res_dir).replace('\\', '/') + '@' + self.client_res_dir,
-			'--js-output=' + os.path.join(self.target_output_path, 'Resources.js').replace('\\', '/'),
-			'--lz4',
-		]
-		log('Call emscripten packager:')
-		for arg in packager_args:
-			log('-', arg)
+		# The wasm module carries the Mono runtime itself, but its class library is data the client reads at
+		# startup, so it is preloaded into the same virtual filesystem the resources land in. Assemblies
+		# only: the native part is already linked in, and the headers beside them are build-time artifacts
+		managed_runtime_lib_path = os.path.join(bin_path, 'ManagedRuntime', 'lib', 'netcoreapp')
+		assert os.path.isdir(managed_runtime_lib_path), f'Managed runtime assemblies not found: {managed_runtime_lib_path}'
 
-		result = subprocess.call(packager_args)
-		assert result == 0, 'Emscripten tools/file_packager.py failed'
+		preload_roots = [
+			(Path(self.target_output_path) / self.client_res_dir, self.client_res_dir),
+			(Path(managed_runtime_lib_path), 'ManagedRuntime/lib/netcoreapp'),
+		]
+		preload_files = [
+			(file_path, '/' + virtual_root + '/' + file_path.relative_to(root).as_posix())
+			for root, virtual_root in preload_roots
+			for file_path in root.rglob('*') if file_path.is_file()
+		]
+		package_web_resources(Path(self.target_output_path), Path(file_packager_path), preload_files)
 
 		shutil.rmtree(os.path.join(self.target_output_path, self.client_res_dir), True)
 
@@ -1346,6 +1413,21 @@ class Packager:
 			assets_res_dir = os.path.join(assets_dir, self.client_res_dir)
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
+
+		# The Managed runtime travels in the package like the resources do: Mono needs a real filesystem
+		# path for it, so the launcher unpacks assets to app storage and names the result to the engine.
+		# Only the managed assemblies go in - Mono itself is linked into the native library, so the
+		# runtime's own shared objects and headers would be dead weight, and the assemblies carry no
+		# architecture, which keeps one copy correct for every ABI in the package
+		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
+			assemblies_source = os.path.join(bin_path, entry_name, 'lib', 'netcoreapp')
+			if not os.path.isdir(assemblies_source):
+				continue
+
+			assets_runtime_dir = os.path.join(assets_dir, entry_name, 'lib', 'netcoreapp')
+			shutil.rmtree(os.path.join(assets_dir, entry_name), ignore_errors=True)
+			shutil.copytree(assemblies_source, assets_runtime_dir)
+			log('Managed runtime assemblies packaged', assets_runtime_dir)
 
 		# Read Android config from the baked target config so SubConfig overrides affect APK metadata
 		android_config = self.get_effective_config_section()

@@ -49,6 +49,8 @@ public:
 
     [[nodiscard]] static auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document;
     [[nodiscard]] static auto LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool;
+    [[nodiscard]] static auto ResolvePropertyFromValue(ptr<const PropertyRegistrar> registrar, string_view name, const AnyData::Value& value, nptr<const AnyData::Dict> document = nullptr) -> nptr<const Property>;
+    [[nodiscard]] static auto ResolvePropertyFromText(ptr<const PropertyRegistrar> registrar, string_view name, string_view text, const function<optional<string_view>(string_view)>& read_sibling = {}) -> nptr<const Property>;
     [[nodiscard]] static auto SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
     [[nodiscard]] static auto SavePropertyToValue(ptr<const Property> prop, const_span<uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value;
     [[nodiscard]] static auto SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> string;

@@ -77,6 +77,10 @@ The parser stores owned strings internally and returns `string_view` values from
 
 ## Runtime settings
 
+For an unpackaged executable without `ApplyConfig`, `LoadAppSettings` searches the current directory
+and its ancestors for `FO_MAIN_CONFIG`. The filesystem root is the final candidate; if no config is
+found there, startup reports `Config file not found` instead of revisiting the root indefinitely.
+
 `Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. `Settings.h` exposes:
 
 - `ResourcePackInfo` — name, input directories/files, include/exclude glob patterns, side flags, and baker list.
@@ -100,6 +104,8 @@ For `///@ Setting` declarations, `MetadataBaker` requires and writes the configu
 `ConfigBaker` keeps the `.fomain-*` data patched into packaged binaries small by writing a game-only setting only when the sub-config value differs from the root-config baseline the metadata resource already ships; a setting that is also a native engine setting is always written, because startup may consume it before metadata is available. A game-only delta is written verbatim, bypassing the empty/`false` skip that applies to the rest — an override that turns something off still has to beat a baseline that says otherwise. This keeps the internal config as bootstrap plus per-package deltas while the metadata resource owns the script-setting baseline. The internal-config patch area is fixed by the engine at 10000 bytes and is not project-configurable. The applied root config write time is a metadata-bake dependency, so changing a configured setting refreshes the metadata resource even when no script declaration changed.
 
 That baseline arrives with `BaseEngine`, so it is not yet applied while `InitApp` runs — settings read from `ApplicationInitHook` or any earlier point see only what the binary config carries. `Baking.BootstrapGameSettings` names the game settings an embedding project consumes there: `ConfigBaker` writes each of them in full, exactly as it writes a native engine setting, instead of reducing it to a sub-config delta. Every listed name must be a declared game setting or the bake fails, so a typo cannot quietly restore the delta form. Keep the list to settings that are genuinely read before the engine exists; everything else belongs in the metadata baseline, which is what keeps the patched config inside its fixed 10000-byte area.
+
+Managed runtime script reads and writes use `GlobalSettings::GetRuntimeSetting()` and `SetRuntimeSetting()`. Names declared as `VARIABLE_SETTING` are parsed into their typed engine fields, so subsequent native and script reads observe the new value. Names declared as `FIXED_SETTING` are read-only at runtime and reject writes. Unknown names remain project custom settings and are stored as strings. Both lookup paths check the complete short or group-qualified name after hash dispatch; a custom name with a colliding hash remains a custom setting on reads and writes. The managed settings bridge follows this path; it must not shadow a built-in setting in the custom map.
 
 Do not document one embedding project's `.fomain` contents as universal engine behavior. Use project docs for concrete values; use this page for the engine mechanics that consume them.
 

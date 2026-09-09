@@ -37,6 +37,13 @@
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 
+#if FO_MANAGED_SCRIPTING
+#include "ManagedRuntimeIdentity.gen.h"
+#define FO_BINARY_UPDATE_RUNTIME_SUFFIX "-Managed-" FO_MANAGED_RUNTIME_ID
+#else
+#define FO_BINARY_UPDATE_RUNTIME_SUFFIX ""
+#endif
+
 FO_BEGIN_NAMESPACE
 
 static constexpr string_view StrCheckUpdates = "Check updates";
@@ -934,63 +941,63 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #if FO_WINDOWS
 
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
-    return "Windows-win64";
+    return "Windows-win64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(_M_IX86) || defined(__i386__)
-    return "Windows-win32";
+    return "Windows-win32" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(_M_ARM64) || defined(__aarch64__)
-    return "Windows-arm64";
+    return "Windows-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "Windows-unknown";
+    return "Windows-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_LINUX
 
 #if defined(__x86_64__)
-    return "Linux-x64";
+    return "Linux-x64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__aarch64__)
-    return "Linux-arm64";
+    return "Linux-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__i386__)
-    return "Linux-x86";
+    return "Linux-x86" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__arm__)
-    return "Linux-arm";
+    return "Linux-arm" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "Linux-unknown";
+    return "Linux-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_ANDROID
 
 #if defined(__aarch64__)
-    return "Android-arm64";
+    return "Android-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__i386__)
-    return "Android-x86";
+    return "Android-x86" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__arm__)
-    return "Android-arm32";
+    return "Android-arm32" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "Android-unknown";
+    return "Android-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_MAC
 
 #if defined(__aarch64__)
-    return "macOS-arm64";
+    return "macOS-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__x86_64__)
-    return "macOS-x64";
+    return "macOS-x64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "macOS-unknown";
+    return "macOS-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_IOS
 
 #if defined(__aarch64__)
-    return "iOS-arm64";
+    return "iOS-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__x86_64__)
-    return "iOS-simulator";
+    return "iOS-simulator" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "iOS-unknown";
+    return "iOS-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_WEB
-    return "Web-wasm";
+    return "Web-wasm" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
 #error "Unknown binary update target"
 #endif

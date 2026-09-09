@@ -37,10 +37,9 @@
 
 #include "DataSerialization.h"
 
-#if FO_ANGELSCRIPT_SCRIPTING
 #include "MetadataBaker.h"
 #include "MetadataRegistration.h"
-#endif
+#include "PropertiesSerializer.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -119,6 +118,54 @@ TEST_CASE("MetadataBaker")
     CHECK(bakers.front()->GetName() == MetadataBaker::NAME);
     CHECK(bakers.front()->GetOrder() == 1);
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
+
+    SECTION("serializes metadata tags from managed scripts")
+    {
+        ConfigFile config {"ManagedMetadata.ServerFlag = true\nManagedMetadata.ClientFlag = false\n"};
+        rig.Settings.ApplyConfigFile(config, "");
+        rig.AddSourceFile("Scripts/TestManagedMetadata.cs", R"(
+namespace TestManagedMetadata
+{
+///@ Setting Server bool ManagedMetadata.ServerFlag
+///@ Setting Client bool ManagedMetadata.ClientFlag
+///@ Enum ManagedMetadataKind ServerEntry
+///@ Enum ManagedMetadataKind MapperEntry
+///@ RefType Common ManagedMetadataSnapshot
+///@ Property ManagedMetadataSnapshot Common int32 Value
+///@ FixedType Mapper ManagedMetadataMarker
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-mapper"));
+
+        const auto server_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
+        const auto client_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        const auto mapper_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-mapper"));
+
+        REQUIRE(server_tags.contains("Setting"));
+        REQUIRE(client_tags.contains("Setting"));
+
+        auto server_flag_value = rig.Settings.FindSettingValue("ManagedMetadata.ServerFlag");
+        auto client_flag_value = rig.Settings.FindSettingValue("ManagedMetadata.ClientFlag");
+        REQUIRE(server_flag_value);
+        REQUIRE(client_flag_value);
+        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool", *server_flag_value}) == 1);
+        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool", *client_flag_value}) == 1);
+        CHECK((!mapper_tags.contains("Setting") || mapper_tags.at("Setting").empty()));
+
+        REQUIRE(server_tags.contains("Enum"));
+        CHECK(std::ranges::count(server_tags.at("Enum"), vector<string> {"ManagedMetadataKind", "uint8", "ServerEntry", "0", "MapperEntry", "1"}) == 1);
+
+        REQUIRE(client_tags.contains("RefType"));
+        CHECK(std::ranges::count(client_tags.at("RefType"), vector<string> {"ManagedMetadataSnapshot", "Value", "int32", "0"}) == 1);
+
+        REQUIRE(mapper_tags.contains("FixedType"));
+        CHECK(std::ranges::count(mapper_tags.at("FixedType"), vector<string> {"ManagedMetadataMarker"}) == 1);
+    }
 
     SECTION("skips non metadata targets before parsing scripts")
     {
@@ -301,11 +348,13 @@ namespace TestMetadataVersionCollision
 
     SECTION("parses continued tags and strips trailing comments")
     {
-        rig.AddSourceFile("Scripts/TestContinuation.fos", R"(
+        rig.AddSourceFile("Scripts/TestContinuation.fos",
+            R"(
 namespace TestContinuation
 {
-///@ Enum ContinuedCoverage \
-Value = 5 // trailing comment
+///@ Enum ContinuedCoverage )"
+            "\\\n"
+            R"(Value = 5 // trailing comment
 }
 )");
 
@@ -1272,6 +1321,50 @@ namespace TestValueTypePropertyOwner
         REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("only RefType supports script metadata properties"));
     }
 #endif
+}
+
+TEST_CASE("MetadataBakerPreservesPropertyVersionQualifiers")
+{
+    BakerTests::TestRig rig;
+    rig.AddSourceFile("Scripts/VersionedMetadata.cs", R"(
+///@ Property Critter Common int32 DataVersion Mutable Persistent PublicSync
+///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync
+///@ Property Critter Common int16 Step Mutable Persistent PublicSync
+///@ MigrationRule Property Critter Step LegacyStep BeforeVersion DataVersion 3270
+)");
+    MetadataBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    for (auto target : {"server", "client", "mapper"}) {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(target == string_view {"server"} ? EngineSideKind::ServerSide : EngineSideKind::ClientSide);
+        meta.RegisterEntityType("Critter", true, false, true, true, true);
+        meta.RegisterEnumGroup("CritterProperty", "int32", {});
+        const auto& output = rig.Outputs.at(strex("TestPack.fometa-{}", target));
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        auto condition = meta.CheckMigrationRule(meta.Hashes.ToHashedString("PropertyBeforeVersion"), meta.Hashes.ToHashedString("Critter"), meta.Hashes.ToHashedString("Step"));
+        REQUIRE(condition.has_value());
+        CHECK(condition.value().as_str() == "DataVersion 3270");
+        auto registrar = meta.GetPropertyRegistrar("Critter");
+        REQUIRE(registrar);
+        Properties props(registrar);
+        AnyData::Document doc;
+        doc.Emplace("DataVersion", int64_t {3270});
+        doc.Emplace("Step", int64_t {7});
+        doc.Emplace("LegacyStep", int64_t {4});
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&props, doc, meta.Hashes, meta));
+        CHECK(props.GetValue<int16_t>(registrar->FindProperty("Step").as_ptr()) == 7);
+        CHECK(props.GetValue<int32_t>(registrar->FindProperty("LegacyStep").as_ptr()) == 4);
+    }
+}
+
+TEST_CASE("MetadataBakerRejectsInvalidPropertyVersionQualifiers")
+{
+    for (auto rule : {"Property Critter Step LegacyStep BeforeVersion DataVersion 0", "Property Critter Step LegacyStep BeforeVersion DataVersion 9223372036854775808", "Property Critter Step LegacyStep BeforeVersion Step 3270", "Property Critter Step LegacyStep BeforeVersion Missing 3270", "Proto Critter Step LegacyStep BeforeVersion DataVersion 3270", "Property Critter Step LegacyStep BeforeVersion DataVersion"}) {
+        BakerTests::TestRig rig;
+        rig.AddSourceFile("Scripts/InvalidVersionedMetadata.cs", strex("///@ Property Critter Common int32 DataVersion Mutable Persistent PublicSync\n///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync\n///@ Property Critter Common int16 Step Mutable Persistent PublicSync\n///@ MigrationRule {}\n", rule));
+        MetadataBaker baker(rig.MakeContext());
+        CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    }
 }
 
 FO_END_NAMESPACE

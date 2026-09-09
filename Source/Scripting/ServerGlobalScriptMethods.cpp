@@ -60,7 +60,7 @@ static auto DropDestroyingEntity(refcount_nptr<T> entity) -> refcount_nptr<T>
 
 // SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)
 {
     auto cr = server->CreateCritter(protoId, forPlayer);
     return cr;
@@ -68,7 +68,7 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, h
 
 // SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer)
 {
     auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer);
     return cr;
@@ -76,7 +76,7 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, p
 
 // SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer, readonly_map<CritterProperty, any_t> props)
 {
     auto proto = server->GetProtoCritter(protoId);
 
@@ -97,7 +97,7 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, h
 
 // SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
 {
     Properties props_ = proto->GetProperties()->Copy();
 
@@ -573,7 +573,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
 
 // SyncScope: creates a new location in the current context; returned location is covered by registration self-sync
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId)
 {
     auto loc = server->MapMngr.CreateLocation(protoId);
     return loc;
@@ -581,7 +581,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
 // SyncScope: creates a new location in the current context; returned location is covered by registration self-sync
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto)
 {
     auto loc = server->MapMngr.CreateLocation(proto->GetProtoId());
     return loc;
@@ -589,7 +589,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
 // SyncScope: creates a new location/maps in the current context; returned location is covered by registration self-sync
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids)
 {
     auto loc = server->MapMngr.CreateLocation(protoId, map_pids);
     return loc;
@@ -597,7 +597,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
 // SyncScope: creates a new location in the current context; returned location is covered by registration self-sync
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_map<LocationProperty, any_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_map<LocationProperty, any_t> props)
 {
     auto proto = server->GetProtoLocation(protoId);
 
@@ -618,7 +618,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
 // SyncScope: creates a new location in the current context; returned location is covered by registration self-sync
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto, readonly_map<LocationProperty, any_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto, readonly_map<LocationProperty, any_t> props)
 {
     Properties props_ = proto->GetProperties()->Copy();
 
@@ -633,7 +633,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
 // SyncScope: creates a new location/maps in the current context; returned location is covered by registration self-sync
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
 {
     auto proto = server->GetProtoLocation(protoId);
 
@@ -719,7 +719,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> ser
 
 // SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> server)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> server)
 {
     auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
     auto player = server->CreateNotLoggedInPlayer(std::move(dummy_net_conn));
@@ -728,7 +728,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_CreateNotLoggedInPlayer(ptr<ServerEngine> 
 
 // SyncScope: requires notLoggedInPlayer; login mutates that player/session record
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> notLoggedInPlayer)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, FO_REQUIRES_COVER ptr<Player> notLoggedInPlayer)
 {
     ValidateEntityAccess(notLoggedInPlayer);
 
@@ -1568,8 +1568,27 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
     });
 }
 
+// SyncScope: resolves a live entity by id and replaces current cover with it plus engine auto-widen
+// partners. Returns false without changing cover when the entity is already gone, and rechecks
+// lifecycle after acquisition so callers can safely cross an entity-destruction race
+///@ ExportMethod Async
+FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t entity_id)
+{
+    refcount_nptr<ServerEntity> entity = server->EntityMngr.GetEntity(entity_id);
+
+    if (!entity || entity->IsDestroyed() || entity->IsDestroying()) {
+        return false;
+    }
+
+    auto ctx = server->RequireCurrentSyncContext();
+    array<ptr<ServerEntity>, 1> entities {entity};
+    ctx->SyncEntities(entities);
+
+    return !entity->IsDestroyed() && !entity->IsDestroying();
+}
+
 // SyncScope: replaces current cover with entity plus engine auto-widen partners
-///@ ExportMethod Async AllowDestroyedEntityArgs
+///@ ExportMethod Async
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();

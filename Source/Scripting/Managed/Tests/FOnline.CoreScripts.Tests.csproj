@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS8981</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../CoreScripts/ScriptInvoke.cs" Link="ScriptInvoke.cs" />
+    <Compile Include="../CoreScripts/ValueTypeExtensions.cs" Link="ValueTypeExtensions.cs" />
+    <Compile Include="../CoreScripts/Verify.cs" Link="Verify.cs" />
+    <Compile Include="../CoreScripts/ScriptFuncRegistration.cs" Link="ScriptFuncRegistration.cs" />
+    <Compile Include="../CoreScripts/Initializator.cs" Link="Initializator.cs" />
+    <Compile Include="../CoreScripts/RemoteCallScriptFuncs.cs" Link="RemoteCallScriptFuncs.cs" />
+    <Compile Include="../CoreScripts/Attributes.cs" Link="Attributes.cs" />
+  </ItemGroup>
+</Project>

@@ -254,7 +254,7 @@ protected:
 private:
     auto FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>;
     auto EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCallbackData>>;
-    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback);
+    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback, string_view event_name);
     void UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept;
 
     Properties _props;

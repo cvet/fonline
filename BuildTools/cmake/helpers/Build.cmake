@@ -294,7 +294,7 @@ macro(AddEngineSource target)
 		AppendList(FO_${target}_SOURCE ${resolvedFile})
 		AppendList(FO_SOURCE_META_FILES ${resolvedFile})
 
-		StringRegexMatch("\\.h$" isHeader "${resolvedFile}")
+		StringRegexMatch("[.]h$" isHeader "${resolvedFile}")
 
 		if(${target} STREQUAL "COMMON" AND isHeader)
 			AppendList(FO_ADDED_COMMON_HEADERS ${resolvedFile})
@@ -641,6 +641,8 @@ macro(SetupApplicationTarget target)
 	if(APP_TARGET_WRITE_BUILD_HASH)
 		WriteBuildHash(${target})
 	endif()
+
+	CopyManagedRuntimeToTarget(${target})
 endmacro()
 
 macro(AddExecutableApplication target sourceFile)
@@ -734,7 +736,7 @@ endmacro()
 # binary as a POST_BUILD step. Silently does nothing if runtimePath is empty,
 # the file does not exist, or the target has not been declared — so callers
 # can wire it up unconditionally for optional dependencies (Steamworks SDK,
-# Mono runtime, plugin DLLs, ...).
+# managed runtime, plugin DLLs, ...).
 function(CopyRuntimeToTarget targetName runtimePath)
 	if(NOT runtimePath OR NOT EXISTS "${runtimePath}" OR NOT TARGET ${targetName})
 		return()
@@ -744,6 +746,25 @@ function(CopyRuntimeToTarget targetName runtimePath)
 	AddCustomCommand(TARGET ${targetName} POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${runtimePath}" "$<TARGET_FILE_DIR:${targetName}>"
 		COMMENT "Copy ${runtimeFileName} runtime for ${targetName}")
+endfunction()
+
+function(CopyManagedRuntimeToTarget targetName)
+	if(NOT FO_MANAGED_SCRIPTING OR NOT TARGET ${targetName})
+		return()
+	endif()
+	if(NOT TARGET SetupManagedRuntime OR NOT DEFINED FO_MANAGED_RUNTIME_DIR)
+		return()
+	endif()
+
+	add_dependencies(${targetName} SetupManagedRuntime ManagedRuntimeIdentity)
+	AddCustomCommand(TARGET ${targetName} POST_BUILD
+		COMMAND ${CMAKE_COMMAND}
+			-DINPUT_DIR="${FO_MANAGED_RUNTIME_DIR}"
+			-DOUTPUT_DIR="$<TARGET_FILE_DIR:${targetName}>"
+			-DIDENTITY_FILE="${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedRuntimeIdentity.txt"
+			-DTARGET_NAME="$<TARGET_FILE_BASE_NAME:${targetName}>"
+			-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/CopyManagedRuntime.cmake"
+		COMMENT "Copy Managed runtime for ${targetName}")
 endfunction()
 
 # Wire one CMake target's output binary to be copied next to another's output

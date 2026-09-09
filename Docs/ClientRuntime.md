@@ -27,7 +27,6 @@ Read this page together with:
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/Gui.fos`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`

@@ -41,7 +41,7 @@ DeclareBoolOptions(
 	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
-	FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF
+	FO_MANAGED_SCRIPTING "Support Managed scripting" OFF
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
 	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
 	FO_DISABLE_SQLITE "Force disable using of SQLite" OFF
@@ -329,7 +329,7 @@ AddCompileDefinitionsList(
 	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
-	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
+	FO_MANAGED_SCRIPTING=$<BOOL:${FO_MANAGED_SCRIPTING}>)
 
 # The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,
 # FO_MAIN_CONFIG, ...) are value/shape config consumed only after an engine header is included; codegen emits
@@ -346,6 +346,7 @@ AddIncludeDirectories(
 	"${FO_ENGINE_ROOT}/Source/Client"
 	"${FO_ENGINE_ROOT}/Source/Tools"
 	"${FO_ENGINE_ROOT}/Source/Scripting"
+	"${FO_ENGINE_ROOT}/Source/Scripting/Managed"
 	"${FO_ENGINE_ROOT}/Source/Frontend"
 	"${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
@@ -442,7 +443,8 @@ if(WIN32)
 		$<${expr_FullOptimization}:/LTCG>
 		$<IF:${expr_DebugInfo},/DEBUG:FULL,/DEBUG:NONE>)
 
-	if(FO_BUILD_CLIENT)
+	# The published Mono archives use the static CRT for every managed host
+	if(FO_BUILD_CLIENT OR FO_MANAGED_SCRIPTING)
 		AddCompileOptionsList($<${expr_DebugBuild}:/MTd> $<$<NOT:${expr_DebugBuild}>:/MT>)
 	else()
 		AddCompileOptionsList($<${expr_DebugBuild}:/MDd> $<$<NOT:${expr_DebugBuild}>:/MD>)
@@ -468,17 +470,23 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	AddNativeOptimizationFlags()
 	AddLinkOptionsList(-rdynamic)
 
-	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
+	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY) OR FO_MANAGED_SCRIPTING)
 		AddCompileOptionsList(-fPIC)
 	else()
 		AddLinkOptionsList($<$<NOT:${expr_MemorySanitizerConfigs}>:-no-pie>)
+	endif()
+
+	if(FO_MANAGED_SCRIPTING)
+		# Mono's x64 JIT needs low-address mappings. A non-PIE brk heap can occupy that
+		# entire range before the first managed call when native allocations grow large
+		AddLinkOptionsList($<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-pie>)
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# PIC objects link into both shared libraries and PIE executables. Do not append -fPIE
 		# after the global -fPIC above: Clang uses the last relocation model and would make
 		# static Baker dependencies unsuitable for LF_BakerLib.so
-		if(NOT FO_BUILD_BAKER AND NOT (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
+		if(NOT FO_BUILD_BAKER AND NOT (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY) AND NOT FO_MANAGED_SCRIPTING)
 			AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fPIE>)
 		endif()
 		AddLinkOptionsList($<$<AND:${expr_MemorySanitizerConfigs},$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>>:-pie>)
@@ -516,7 +524,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "iOS")
 		SetBuildPlatformInfo("iOS-arm64" "ios" "arm64")
 	elseif(PLATFORM STREQUAL "SIMULATOR64")
 		StatusMessage("Platform: Simulator")
-		SetBuildPlatformInfo("iOS-simulator" "iossimulator" "arm64")
+		SetBuildPlatformInfo("iOS-simulator" "iossimulator" "${FO_PROCESSOR_ARCHITECTURE}")
 	else()
 		AbortMessage("Invalid iOS target platform ${PLATFORM}")
 	endif()
@@ -627,6 +635,11 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 
 else()
 	AbortMessage("Unknown OS")
+endif()
+
+if((FO_MAC OR FO_IOS) AND CMAKE_GENERATOR STREQUAL "Xcode")
+	# Guarded modules may intentionally contribute no symbols; retain every archive member
+	string(APPEND CMAKE_STATIC_LINKER_FLAGS " -no_warning_for_no_symbols")
 endif()
 
 # Vulkan support (enabled by default; opt out with FO_DISABLE_VULKAN). No external Vulkan SDK is
