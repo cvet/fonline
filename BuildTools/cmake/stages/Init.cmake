@@ -167,10 +167,18 @@ if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	SetValue(expr_SanitizerConfigs $<CONFIG:San_Address,Debug_San_Address>)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
 	AddConfiguration(San_Address RelWithDebInfo)
-	AddConfiguration(San_Memory RelWithDebInfo)
-	AddConfiguration(San_MemoryWithOrigins RelWithDebInfo)
+
+	if(NOT FO_MANAGED_SCRIPTING)
+		AddConfiguration(San_Memory RelWithDebInfo)
+		AddConfiguration(San_MemoryWithOrigins RelWithDebInfo)
+	endif()
+
 	AddConfiguration(San_Undefined RelWithDebInfo)
-	AddConfiguration(San_Thread RelWithDebInfo)
+
+	if(NOT FO_MANAGED_SCRIPTING)
+		AddConfiguration(San_Thread RelWithDebInfo)
+	endif()
+
 	AddConfiguration(San_DataFlow RelWithDebInfo)
 	AddConfiguration(San_Address_Undefined RelWithDebInfo)
 	SetValue(expr_SanitizerConfigs
@@ -189,6 +197,12 @@ else()
 	endif()
 
 	StatusMessage("Configuration: ${CMAKE_BUILD_TYPE}")
+
+	if(FO_MANAGED_SCRIPTING AND CMAKE_BUILD_TYPE MATCHES "^San_Memory")
+		AbortMessage("${CMAKE_BUILD_TYPE} is unavailable with FO_MANAGED_SCRIPTING: embedded Mono and its generated JIT code are not MemorySanitizer-instrumented, so the runtime produces false uninitialized-memory reports")
+	elseif(FO_MANAGED_SCRIPTING AND CMAKE_BUILD_TYPE STREQUAL "San_Thread")
+		AbortMessage("San_Thread is unavailable with FO_MANAGED_SCRIPTING: embedded Mono and its generated JIT code do not expose signal-based stop-the-world synchronization to ThreadSanitizer, so the runtime produces false data-race reports")
+	endif()
 
 	ListFind(FO_CONFIGURATION_TYPES "${CMAKE_BUILD_TYPE}" configurationIndex)
 
