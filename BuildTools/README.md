@@ -197,9 +197,13 @@ sanitizer-report unwinding. The `unit-tests-san-memory` validator prepares it
 automatically before configuring `San_Memory`; use the explicit workspace command
 only when pre-warming a CI host or debugging the runtime build. Linux Mono source setup
 also initializes each POSIX signal-action object and publishes its bytes through MSan's
-weak runtime hook. This keeps the uninstrumented runtime archive compatible with an
-MSan-instrumented host; the Linux source marker invalidates already prepared runtimes
-when that patch changes.
+weak runtime hook for bounded diagnostics. This does not make the uninstrumented runtime
+or generated JIT code compatible with MSan, so managed-script builds reject `San_Memory*`.
+Managed-script builds reject `San_Thread` too: Mono's signal-based stop-the-world protocol
+does not create happens-before edges in the host TSan runtime, so valid nursery collection
+reports false races even when SGen's concurrent sweeper is disabled. The managed-disabled
+unit validators retain blocking native MSan and TSan coverage.
+The Linux source marker invalidates already prepared runtimes when that patch changes.
 
 Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
 
