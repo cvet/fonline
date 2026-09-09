@@ -574,30 +574,30 @@ void Critter::MoveAttachedCritters()
     auto map_ref_holder = map;
     auto dir = GetDir();
 
-    for (auto& [cr, prev_hex] : moved_critters) {
-        auto is_cr_valid = [cr, map] {
-            if (cr->IsDestroyed() || map->IsDestroyed()) {
-                return false;
-            }
-            if (cr->GetMapId() != map->GetId()) {
-                return false;
-            }
-            return true;
-        };
+    auto is_cr_valid = [](ptr<const Critter> checked_cr, ptr<const Map> checked_map) {
+        if (checked_cr->IsDestroyed() || checked_map->IsDestroyed()) {
+            return false;
+        }
+        if (checked_cr->GetMapId() != checked_map->GetId()) {
+            return false;
+        }
+        return true;
+    };
 
-        if (!is_cr_valid()) {
+    for (auto& [cr, prev_hex] : moved_critters) {
+        if (!is_cr_valid(cr, map)) {
             continue;
         }
 
         map->VerifyTrigger(cr, prev_hex, new_hex, dir);
 
-        if (!is_cr_valid()) {
+        if (!is_cr_valid(cr, map)) {
             continue;
         }
 
         _engine->MapMngr.ProcessVisibleCritters(cr);
 
-        if (!is_cr_valid()) {
+        if (!is_cr_valid(cr, map)) {
             continue;
         }
 
