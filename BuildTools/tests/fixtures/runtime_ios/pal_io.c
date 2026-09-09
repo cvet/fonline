@@ -28,7 +28,7 @@ static int GetAllowedVectorCount(IOVector* vectors, int32_t vectorCount)
     // For macOS preadv and pwritev can fail with EINVAL when the total length
     // of all vectors overflows a 32-bit integer.
     size_t totalLength = 0;
-    for (int i = 0; i < allowedCount; i++) 
+    for (int i = 0; i < allowedCount; i++)
     {
         assert(INT_MAX >= vectors[i].Count);
 

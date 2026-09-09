@@ -170,4 +170,3 @@ namespace ExampleGame
 
 namespace FirstEnums { public enum Shared { Value = 1 } }
 namespace SecondEnums { public enum Shared { Value = 2 } }
-

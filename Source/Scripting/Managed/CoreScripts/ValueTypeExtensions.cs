@@ -393,4 +393,3 @@ namespace FOnline
         public override string ToString() => $"{{{Collection}}}{{{Key1}}}{{{Key2}}}{{{Key3}}}";
     }
 }
-
