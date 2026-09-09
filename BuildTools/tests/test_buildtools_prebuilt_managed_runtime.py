@@ -80,6 +80,7 @@ def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
         _buildtools.MONO_BROWSER_SUBSET_MARKER_SUFFIX,
         _buildtools.MONO_ANDROID_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_APPLE_SOURCE_MARKER_SUFFIX,
+        _buildtools.MONO_LINUX_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_SUBSET_MARKER_SUFFIX,
     ):
         assert f"READY_${{FO_MONO_RUNTIME_VERSION}}_${{FO_MONO_TRIPLET}}{suffix})" in stage, suffix
@@ -87,7 +88,7 @@ def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
 
 @pytest.mark.skipif(shutil.which("cmake") is None, reason="CMake is required")
 @pytest.mark.parametrize("target,flags", [
-    ("linux", []), ("windows", []), ("browser", ["FO_WEB"]), ("android", ["FO_ANDROID"]),
+    ("linux", ["FO_LINUX"]), ("windows", []), ("browser", ["FO_WEB"]), ("android", ["FO_ANDROID"]),
     ("osx", ["FO_MAC"]), ("ios", ["FO_IOS"]), ("iossimulator", ["FO_IOS"]),
 ])
 def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, flags: list[str]) -> None:
@@ -110,6 +111,7 @@ def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, 
 
 
 @pytest.mark.parametrize("target,legacy_apple_patch", [
+    ("linux", False),
     ("android", False), ("osx", False), ("ios", False), ("iossimulator", False),
     ("osx", True), ("ios", True), ("iossimulator", True),
 ])
@@ -144,7 +146,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         corelib.write_text("patched corelib", encoding="utf-8")
 
     monkeypatch.setattr(_buildtools, "clone_git_repo", reject_clone)
-    for name in ("patch_runtime_zlib_warning_level", "patch_runtime_apple_sources", "patch_runtime_ios_sources", "patch_runtime_android_sources", "patch_runtime_android_x86_atomics"):
+    for name in ("patch_runtime_zlib_warning_level", "patch_runtime_linux_signal_actions", "patch_runtime_apple_sources", "patch_runtime_ios_sources", "patch_runtime_android_sources", "patch_runtime_android_x86_atomics"):
         monkeypatch.setattr(_buildtools, name, lambda path, name=name: calls.append(name))
     monkeypatch.setattr(_buildtools, "run_runtime_build", build)
     monkeypatch.setattr(_buildtools, "copy_interop_shim_libraries", lambda *args: calls.append("publish"))
@@ -155,7 +157,9 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     assert calls == [] and archive.read_text() == "archive"
     _buildtools.setup_mono(target, "x64", "Release", env)
     assert archive.read_text() == "patched runtime"
-    expected_patch = ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics"] if target == "android" else ["patch_runtime_apple_sources"]
+    expected_patch = (["patch_runtime_linux_signal_actions"] if target == "linux" else
+                      ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics"] if target == "android" else
+                      ["patch_runtime_apple_sources"])
     if target in ("ios", "iossimulator"):
         expected_patch.append("patch_runtime_ios_sources")
     assert calls == ["patch_runtime_zlib_warning_level", *expected_patch, "build", "publish"]
@@ -198,6 +202,38 @@ def test_mono_patch_fails_loudly_when_the_anchor_moves(tmp_path: Path) -> None:
 
     with pytest.raises(SystemExit):
         _buildtools.patch_runtime_sources(tmp_path)
+
+
+def test_mono_linux_signal_actions_are_initialized_for_msan(tmp_path: Path) -> None:
+    source = tmp_path / "src/mono/mono/mini/mini-posix.c"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "static GHashTable *mono_saved_signal_handlers = NULL;\n"
+        "struct sigaction *handler_to_save = (struct sigaction *)g_malloc (sizeof (struct sigaction));\n"
+        "\tstruct sigaction previous_sa;\n\n#ifdef MONO_ARCH_USE_SIGACTION\n"
+        "\tstruct sigaction *saved_action = get_saved_signal_handler (signo);\n\n\tif (!saved_action) {\n",
+        encoding="utf-8",
+    )
+
+    _buildtools.patch_runtime_linux_signal_actions(tmp_path)
+    patched = source.read_text(encoding="utf-8")
+
+    assert _buildtools.MONO_LINUX_SIGNAL_ACTION_PATCH_MARKER in patched
+    assert "memset (action, 0, sizeof (*action));" in patched
+    assert "__msan_unpoison (action, sizeof (*action));" in patched
+    assert patched.count("initialize_signal_action (") == 4
+
+    _buildtools.patch_runtime_linux_signal_actions(tmp_path)
+    assert source.read_text(encoding="utf-8") == patched
+
+
+def test_mono_linux_signal_patch_fails_loudly_when_an_anchor_moves(tmp_path: Path) -> None:
+    source = tmp_path / "src/mono/mono/mini/mini-posix.c"
+    source.parent.mkdir(parents=True)
+    source.write_text("static GHashTable *mono_saved_signal_handlers = NULL;\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="unique anchor not found"):
+        _buildtools.patch_runtime_linux_signal_actions(tmp_path)
 
 
 @pytest.mark.skipif(shutil.which("cmake") is None or shutil.which("ninja") is None, reason="CMake and Ninja are required")
@@ -292,6 +328,7 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
 
     monkeypatch.setattr(_buildtools, "run_marker_step", run_build_only)
     monkeypatch.setattr(_buildtools, "run_runtime_build", check_patched_before_build)
+    monkeypatch.setattr(_buildtools, "patch_runtime_linux_signal_actions", lambda path: None)
     _buildtools.setup_mono("linux", "x64", "Release", env)
     assert len(calls) == 1
 

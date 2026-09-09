@@ -2355,6 +2355,7 @@ MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
+MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
 
 
 def resolve_mono_runtime_subset(os_name: str) -> str:
@@ -2376,10 +2377,14 @@ def resolve_mono_marker_suffix(os_name: str) -> str:
 	if os_name in ('osx', 'ios', 'iossimulator'):
 		return MONO_APPLE_SOURCE_MARKER_SUFFIX
 
+	if os_name == 'linux':
+		return MONO_LINUX_SOURCE_MARKER_SUFFIX
+
 	return MONO_SUBSET_MARKER_SUFFIX
 
 
 PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
+MONO_LINUX_SIGNAL_ACTION_PATCH_MARKER = '(FOnline Patch) Keep signal actions initialized across an uninstrumented sanitizer boundary'
 
 
 def patch_runtime_sources(runtime_root: Path) -> None:
@@ -2408,6 +2413,59 @@ def patch_runtime_sources(runtime_root: Path) -> None:
 
 	path.write_text(text, encoding='utf-8')
 	log('Patched', path, '- dropped /GL and /LTCG')
+
+
+def patch_runtime_linux_signal_actions(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'mini' / 'mini-posix.c'
+	text = path.read_text(encoding='utf-8')
+
+	if MONO_LINUX_SIGNAL_ACTION_PATCH_MARKER in text:
+		log('Already patched', path)
+		return
+
+	helper_anchor = 'static GHashTable *mono_saved_signal_handlers = NULL;\n'
+	helper = f'''#if defined(__GNUC__)
+/* {MONO_LINUX_SIGNAL_ACTION_PATCH_MARKER} */
+extern void __msan_unpoison (const volatile void *address, size_t size) __attribute__((weak));
+#endif
+
+static void
+initialize_signal_action (struct sigaction *action)
+{{
+	memset (action, 0, sizeof (*action));
+#if defined(__GNUC__)
+	if (__msan_unpoison)
+		__msan_unpoison (action, sizeof (*action));
+#endif
+}}
+
+{helper_anchor}'''
+	initialization_anchors = (
+		(
+			'struct sigaction *handler_to_save = (struct sigaction *)g_malloc (sizeof (struct sigaction));\n',
+			'struct sigaction *handler_to_save = (struct sigaction *)g_malloc (sizeof (struct sigaction));\n\n'
+			'\tinitialize_signal_action (handler_to_save);\n',
+		),
+		(
+			'\tstruct sigaction previous_sa;\n\n#ifdef MONO_ARCH_USE_SIGACTION\n',
+			'\tstruct sigaction previous_sa;\n\n\tinitialize_signal_action (&sa);\n\n#ifdef MONO_ARCH_USE_SIGACTION\n',
+		),
+		(
+			'\tstruct sigaction *saved_action = get_saved_signal_handler (signo);\n\n\tif (!saved_action) {\n',
+			'\tstruct sigaction *saved_action = get_saved_signal_handler (signo);\n\n'
+			'\tinitialize_signal_action (&sa);\n\n\tif (!saved_action) {\n',
+		),
+	)
+	patches = ((helper_anchor, helper), *initialization_anchors)
+
+	for needle, replacement in patches:
+		if text.count(needle) != 1:
+			raise SystemExit(f'Cannot patch Mono POSIX signal actions, unique anchor not found in {path}: {needle.splitlines()[0]}')
+
+		text = text.replace(needle, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched Linux Mono POSIX signal actions:', path)
 
 
 def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
@@ -2808,6 +2866,9 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	def build_runtime() -> None:
 		patch_runtime_zlib_warning_level(runtime_root)
+
+		if os_name == 'linux':
+			patch_runtime_linux_signal_actions(runtime_root)
 
 		if os_name in ('osx', 'ios', 'iossimulator'):
 			patch_runtime_apple_sources(runtime_root)

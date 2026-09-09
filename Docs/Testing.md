@@ -173,7 +173,12 @@ The runtime build applies a narrow libunwind ignorelist so C++ exception and
 sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
 native stack capture and the backward-cpp signal handler are disabled under MSan and
 TSan so the sanitizer runtimes own their reports; backward-cpp/libbfd symbolization
-under TSan also produces prohibitive shadow-memory growth. `unit-tests-san-memory-with-origins`
+under TSan also produces prohibitive shadow-memory growth. The embedded Mono archive is
+built by dotnet/runtime without the host sanitizer instrumentation. Its Linux source patch
+therefore zeroes POSIX signal-action storage and explicitly publishes those bytes to MSan
+before libc inspects them. TSan builds default Mono to `no-concurrent-sweep`, because an
+uninstrumented SGen worker cannot expose its GC synchronization to the host TSan runtime.
+`unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
