@@ -39,13 +39,16 @@ def test_runtime_publish_does_not_inherit_the_outer_target_name(tmp_path, monkey
     monkeypatch.setenv("TARGET_NAME", "outer-xcode-target")
     monkeypatch.setenv("MAKEFLAGS", "--jobserver-auth=invalid")
     monkeypatch.setenv("MFLAGS", "invalid")
+    monkeypatch.setenv("INCLUDE", "outer-include")
+    monkeypatch.setenv("LiB", "outer-lib")
+    monkeypatch.setenv("libpath", "outer-libpath")
     observed = runtime / "environment.json"
     shim = runtime / "record_environment.py"
     shim.write_text(
         "import json, os\nfrom pathlib import Path\n"
         f"Path({str(observed)!r}).write_text(json.dumps({{"
         "key: value for key, value in os.environ.items() "
-        "if key.casefold() in ('targetname', 'target_name', 'makeflags', 'mflags')}))\n",
+        "if key.casefold() in ('targetname', 'target_name', 'makeflags', 'mflags', 'include', 'lib', 'libpath')}))\n",
         encoding="utf-8",
     )
     if os.name == "nt":

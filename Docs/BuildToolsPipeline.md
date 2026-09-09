@@ -163,6 +163,12 @@ Retry a failed build from this environment error with a fresh runtime object tre
 an existing CMake cache retains its previously selected SDK even after the parent
 environment is corrected. Successful runtime caches remain valid.
 
+On Windows, the nested runtime also removes the outer generator's `INCLUDE`, `LIB`, and `LIBPATH`.
+The runtime initializes its own host toolchain, while a pinned outer toolset can advertise optional
+ATL/MFC directories that are not installed. Roslyn rejects those missing search paths before the
+runtime reaches its own Visual Studio initialization. The environment regression poisons all three
+variables and verifies that unrelated host settings still reach the runtime wrapper.
+
 Managed Apple targets link Foundation, CoreFoundation, and the Objective-C runtime
 through the common managed dependency set. These dependencies belong to Mono and
 its static native shims, including headless targets that do not link SDL. Runtime
