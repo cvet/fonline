@@ -310,7 +310,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DumpAtlases(ptr<ClientEngine> client)
 {
-    client->SprMngr.GetAtlasMngr()->DumpAtlases();
+    client->SprMngr.GetAtlasMngr()->DumpAtlases(client->Settings->UserWritablePath);
 }
 
 ///@ ExportMethod
@@ -1588,7 +1588,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    string path = strex(filePath).format_path().str();
+    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
@@ -1603,9 +1603,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
 {
-    ignore_unused(client);
-
-    string path = strex(filePath).format_path().str();
+    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {

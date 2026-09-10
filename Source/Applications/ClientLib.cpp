@@ -35,8 +35,8 @@
 
 #include "Application.h"
 #include "Client.h"
-#include "ClientSessionMarker.h"
 #include "ClientRuntimeApi.h"
+#include "ClientSessionMarker.h"
 #include "MetadataRegistration.h"
 #include "Settings.h"
 #include "Updater.h"

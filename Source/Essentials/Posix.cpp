@@ -38,8 +38,8 @@
 
 #if !FO_WINDOWS && !FO_WEB
 #include <fcntl.h>
-#include <sys/file.h>
 #include <pwd.h>
+#include <sys/file.h>
 #include <unistd.h>
 #endif
 

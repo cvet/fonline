@@ -286,7 +286,8 @@ auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
     }
 
     auto exe_path = Platform::GetExePath();
-    _healthFileName = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
+    string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME)).str();
+    _healthFileName = fs_make_writable_path(Settings->UserWritablePath, health_file_name);
 
     if (WriteHealthFile("Starting...")) {
         _mainWorker.AddJob(WrapJobWithSync([this]() FO_DEFERRED { return HealthFileJob(); }));
@@ -358,7 +359,7 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
     InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, Resources);
+    InitManagedScripting(this, &Resources, fs_make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
 #endif
 
     return std::nullopt;

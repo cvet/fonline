@@ -117,6 +117,9 @@ public:
     void ApplySubConfigSection(string_view name);
     void ApplyDefaultSettings();
     void ApplyAutoSettings();
+    // The resolved writable root: the application works it out before any config is read, and every
+    // consumer reads it back from here, so it is read-only like the other engine-filled values
+    void ApplyWritableRoot(string_view root);
     void CopyFrom(const GlobalSettings& other);
     void SetSettingValue(string_view name, string_view value);
     void SetCustomSetting(string_view name, any_t value);

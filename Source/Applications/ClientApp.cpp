@@ -35,8 +35,8 @@
 
 #include "Application.h"
 #include "Client.h"
-#include "ClientSessionMarker.h"
 #include "ClientRuntimeApi.h"
+#include "ClientSessionMarker.h"
 #include "MetadataRegistration.h"
 #include "Settings.h"
 #include "Updater.h"
@@ -59,6 +59,7 @@ struct ClientAppData
     bool ResourcesSynced {};
     bool ReloadRequested {};
     string StagedRuntimePath;
+    string WritableRoot {};
     optional<Updater> ResourceUpdater {};
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
@@ -83,11 +84,8 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
 static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool;
 static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClientRuntime;
 static auto ResolveBundledRuntimePath() -> string;
-static auto IsInstalledClientLayout() -> bool;
-static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>;
 static auto GetCurrentClientRuntimeFileName() -> string;
 static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result);
-static auto ResolveClientSessionMarkerPath(CommandLineArgs args) -> string;
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
@@ -98,7 +96,6 @@ int main(int argc, char** argv) // Handled by SDL
     FO_STACK_TRACE_ENTRY();
 
     CreateGlobalData();
-    LogToFile(GetExeLogFileName(), false);
 
 #if !FO_TESTING_APP
     CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
@@ -112,9 +109,15 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The same settings the runtime will load, resolved by the same code, so both halves of the client
-    // record the session in one place without the runtime having to hand the path back
-    string session_marker = ResolveClientSessionMarkerPath(args);
+    // The same rule the runtime applies, and it needs no settings, so both halves of the client agree on
+    // one writable root without the runtime having to hand it back
+    Data->WritableRoot = ResolveWritableRoot(args);
+
+    // The host opens the file for the whole launch and the runtime appends to it, so the two halves of
+    // one run read as one log
+    LogToFile(fs_make_writable_path(Data->WritableRoot, GetExeLogFileName()), false);
+
+    string session_marker = MakeClientSessionMarkerPath(Data->WritableRoot);
     auto requested_runtime = ResolveRequestedClientRuntime(args);
     bool can_self_update = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
 
@@ -227,22 +230,17 @@ static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
         return false;
     }
 
-    if (IsInstalledClientLayout()) {
-        auto bootstrap_path = GetInstalledClientRuntimeBootstrapPath();
+    auto bootstrap_path = MakeClientRuntimeBootstrapPath(Data->WritableRoot);
 
-        if (!bootstrap_path.has_value()) {
-            WriteLog("Client runtime host: failed to resolve installed runtime bootstrap path for {}", runtime_path);
-            return false;
-        }
-
+    if (bootstrap_path.has_value()) {
         string runtime_file_name = GetCurrentClientRuntimeFileName();
 
         if (!WriteClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_path, runtime_file_name)) {
-            WriteLog("Client runtime host: failed to persist installed runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
+            WriteLog("Client runtime host: failed to persist runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
             return false;
         }
 
-        WriteLog("Client runtime host: persisted installed runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
+        WriteLog("Client runtime host: persisted runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
     }
 
     WriteLog("Client runtime host: staged self-update promoted at {}, exiting for user restart", runtime_path);
@@ -614,7 +612,7 @@ static auto ResolveBundledRuntimePath() -> string
     FO_STACK_TRACE_ENTRY();
 
     string install_runtime_path = GetClientRuntimeLivePath();
-    auto bootstrap_path = GetInstalledClientRuntimeBootstrapPath();
+    auto bootstrap_path = MakeClientRuntimeBootstrapPath(Data->WritableRoot);
 
     if (!bootstrap_path.has_value()) {
         return install_runtime_path;
@@ -624,39 +622,12 @@ static auto ResolveBundledRuntimePath() -> string
     string bootstrap_target = ResolveClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_file_name, install_runtime_path);
 
     if (bootstrap_target == install_runtime_path) {
-        WriteLog("Client runtime host: installed runtime bootstrap {} selected no alternate runtime, using base runtime {}", bootstrap_path.value(), install_runtime_path);
+        WriteLog("Client runtime host: runtime bootstrap {} selected no alternate runtime, using base runtime {}", bootstrap_path.value(), install_runtime_path);
         return install_runtime_path;
     }
 
-    WriteLog("Client runtime host: selected installed runtime {} from bootstrap {}", bootstrap_target, bootstrap_path.value());
+    WriteLog("Client runtime host: selected runtime {} from bootstrap {}", bootstrap_target, bootstrap_path.value());
     return bootstrap_target;
-}
-
-static auto GetInstalledClientRuntimeBootstrapPath() -> optional<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!IsInstalledClientLayout()) {
-        return std::nullopt;
-    }
-
-    string user_data_base = Platform::GetUserDataBase();
-
-    if (user_data_base.empty()) {
-        WriteLog(LogType::Warning, "Client runtime host: installed layout detected but no user data dir is available");
-        return std::nullopt;
-    }
-
-    string selector_file_name = strex("{}.path", GetCurrentClientRuntimeFileName()).str();
-    return fs_resolve_path(strex(user_data_base).combine_path(FO_NICE_NAME).combine_path("ClientRuntimeHost").combine_path(selector_file_name).str());
-}
-
-static auto IsInstalledClientLayout() -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    optional<string> exe_path = Platform::GetExePath();
-    return exe_path.has_value() && fs_exists(strex(exe_path.value()).extract_dir().combine_path("INSTALLED").str());
 }
 
 static auto GetCurrentClientRuntimeFileName() -> string
@@ -664,23 +635,6 @@ static auto GetCurrentClientRuntimeFileName() -> string
     FO_STACK_TRACE_ENTRY();
 
     return strex("{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
-}
-
-static auto ResolveClientSessionMarkerPath(CommandLineArgs args) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string writable_root;
-
-    // Best effort: a client that cannot even read its settings has nothing to record, and the record is
-    // diagnostics rather than something the run depends on
-    safe_call([&] {
-        auto settings = LoadAppSettings(args);
-        ResolveUserWritablePath(settings);
-        writable_root = settings.UserWritablePath;
-    });
-
-    return MakeClientSessionMarkerPath(writable_root);
 }
 
 static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
@@ -702,5 +656,4 @@ static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
     else {
         runtime_result.RequestedCompatibilityVersion.clear();
     }
-
 }

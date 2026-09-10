@@ -50,6 +50,7 @@ FIXED_SETTING(bool, Common, DebugBuild); // If true, debug build is used, otherw
 FIXED_SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
 FIXED_SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
 FIXED_SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
+FIXED_SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -359,7 +360,7 @@ FIXED_SETTING(bool, Platform, TabletBuild); // Tablet build (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(DataBaseSettings, virtual BaseSettings);
+SETTING_GROUP(DataBaseSettings, virtual CommonSettings);
 FIXED_SETTING(bool, DataBase, OpLogEnabled, true); // If true, pending database changes are mirrored to oplog for recovery; if false, any database write failure causes immediate panic
 FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending database changes oplog path; committed replay progress path is derived as this value plus -committed
 FIXED_SETTING(int32_t, DataBase, ReconnectRetryPeriod, 1000); // Database backend retry period in milliseconds while oplog mode is active
@@ -397,7 +398,6 @@ FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
 FIXED_SETTING(string, Client, DefaultSplashPack); // Default splash pack
 FIXED_SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
-VARIABLE_SETTING(string, Client, UserWritablePath); // Writable data root for an INSTALLED client (cache, logs, self-update overlay) when the install dir is read-only. Empty = portable (write next to the exe, the default). "*" = the per-OS user data dir from the environment (Windows %LOCALAPPDATA% else %APPDATA%; macOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share). Otherwise an explicit absolute path. Resolved to an absolute, created directory at startup; read-only base resources stay in the install dir with this dir layered on top. The installer sets this; see Docs/ClientUpdater.md
 VARIABLE_SETTING(string, Client, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, Client, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, Client, SoundNotify, false); // If true, sound notifications are enabled

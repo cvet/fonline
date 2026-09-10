@@ -512,7 +512,7 @@ static void ConfigureManagedRuntime();
 static void AddManagedAssemblyCacheByte(uint64_t& hash, uint8_t byte) noexcept;
 static auto MakeManagedAssemblyCacheKey(const vector<ManagedAssemblyResource>& assembly_resources) noexcept -> string;
 static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> assembly_data) -> bool;
-static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& assembly_resources) -> unordered_map<string, std::filesystem::path>;
+static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& assembly_resources, string_view cache_dir) -> unordered_map<string, std::filesystem::path>;
 static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_view target_name) -> vector<std::filesystem::path>;
 
 // Low-level Mono/string primitives
@@ -5407,7 +5407,7 @@ static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_pat
     return true;
 }
 
-static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& assembly_resources) -> unordered_map<string, std::filesystem::path>
+static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& assembly_resources, string_view cache_dir) -> unordered_map<string, std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5417,7 +5417,9 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
         return restored_paths;
     }
 
-    auto cache_root = std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / fs_make_path(MakeManagedAssemblyCacheKey(assembly_resources));
+    // The cache directory is handed in rather than assembled from the working directory: an installed
+    // client cannot write into the directory it runs from, which is where the runtime would never load
+    auto cache_root = std::filesystem::path {fs_make_path(cache_dir)} / "ManagedAssemblies" / fs_make_path(MakeManagedAssemblyCacheKey(assembly_resources));
     restored_paths.reserve(assembly_resources.size());
 
     for (const ManagedAssemblyResource& resource : assembly_resources) {
@@ -5866,7 +5868,7 @@ auto ManagedScriptBackend::GetGlobalEntity() const noexcept -> nptr<Entity>
     return GetMetadata().dyn_cast<Entity>();
 }
 
-void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_view bake_output_dir)
+void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5929,7 +5931,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     CreateAliveFlag();
 
     auto resource_assemblies = CollectAssemblyResources(resources, target_name);
-    auto restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
+    auto restored_assembly_paths = RestoreAssemblyResources(resource_assemblies, assembly_cache_dir);
 
     vector<std::filesystem::path> assembly_paths;
     vector<std::filesystem::path> entry_assembly_paths;

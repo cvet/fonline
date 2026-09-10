@@ -900,7 +900,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
         }
     }
 
-    string path = strex(filePath).format_path().str();
+    string path = fs_make_writable_path(mapper->Settings->UserWritablePath, strex(filePath).format_path());
     ImageWriter::WriteSimplePng(path, size, pixels);
 }
 

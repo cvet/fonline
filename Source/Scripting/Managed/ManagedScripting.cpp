@@ -42,12 +42,11 @@
 
 FO_BEGIN_NAMESPACE
 
-void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources, string_view bake_output_dir)
+void InitManagedScripting(ptr<EngineMetadata> meta, ptr<const FileSystem> resources, string_view assembly_cache_dir, string_view bake_output_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<EngineMetadata> metadata = meta;
-    nptr<ScriptSystem> script_sys = metadata.dyn_cast<ScriptSystem>();
+    nptr<ScriptSystem> script_sys = meta.dyn_cast<ScriptSystem>();
     FO_VERIFY_AND_THROW(script_sys, "Managed scripting requires a script system");
 
     auto managed_backend = SafeAlloc::MakeUnique<ManagedScriptBackend>();
@@ -55,7 +54,7 @@ void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources, str
     script_sys->RegisterBackend(ScriptSystemBackend::MANAGED_BACKEND_INDEX, std::move(managed_backend));
 
     backend->RegisterMetadata(meta);
-    backend->LoadAssemblies(resources, bake_output_dir);
+    backend->LoadAssemblies(*resources, assembly_cache_dir, bake_output_dir);
     backend->BindRequiredStuff();
 }
 

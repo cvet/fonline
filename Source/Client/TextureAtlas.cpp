@@ -615,7 +615,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
     return {atlas, take_not_null(atlas_allocation), pos};
 }
 
-void TextureAtlasManager::DumpAtlases() const
+void TextureAtlasManager::DumpAtlases(string_view writable_root) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -627,9 +627,10 @@ void TextureAtlasManager::DumpAtlases() const
     }
 
     time_desc_t time = nanotime::now().desc(true);
-    string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
-        time.year, time.month, time.day, time.hour, time.minute, time.second, //
-        atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
+    string dir = fs_make_writable_path(writable_root,
+        strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+            time.year, time.month, time.day, time.hour, time.minute, time.second, //
+            atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000));
 
     size_t count = 1;
 

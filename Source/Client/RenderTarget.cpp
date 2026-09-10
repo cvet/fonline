@@ -241,7 +241,7 @@ void RenderTargetManager::ClearStack()
     _rtStack.clear();
 }
 
-void RenderTargetManager::DumpTextures() const
+void RenderTargetManager::DumpTextures(string_view writable_root) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -253,9 +253,10 @@ void RenderTargetManager::DumpTextures() const
     }
 
     time_desc_t time = nanotime::now().desc(true);
-    string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
-        time.year, time.month, time.day, time.hour, time.minute, time.second, //
-        atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
+    string dir = fs_make_writable_path(writable_root,
+        strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+            time.year, time.month, time.day, time.hour, time.minute, time.second, //
+            atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000));
 
     auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
         string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);

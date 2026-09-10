@@ -230,6 +230,25 @@ TEST_CASE("ClientRuntimeApi")
         CHECK(name.find('\\') == string::npos);
     }
 
+    SECTION("ClientBinaryPathsFollowTheWritableRoot")
+    {
+        // One rule for both halves of the client: a writable root holds the modules it may replace and the
+        // selector that names them, and without one they sit beside the exe with nothing to select
+        string root = fs_resolve_path(fs_path_to_string(std::filesystem::temp_directory_path() / "lf_client_binary_root"));
+
+        CHECK(GetClientBinaryDir(root) == root);
+        CHECK(string_view(GetClientRuntimeLivePath()).starts_with(GetClientBinaryDir("")));
+        CHECK_FALSE(MakeClientRuntimeBootstrapPath("").has_value());
+
+        auto bootstrap_path = MakeClientRuntimeBootstrapPath(root);
+        string selector_name = strex("{}{}.path", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
+
+        REQUIRE(bootstrap_path.has_value());
+        CHECK(fs_is_absolute_path(bootstrap_path.value()));
+        CHECK(string_view(bootstrap_path.value()).starts_with(root));
+        CHECK(string_view(bootstrap_path.value()).ends_with(selector_name));
+    }
+
     SECTION("InstalledRuntimeBootstrapRoundTrip")
     {
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());

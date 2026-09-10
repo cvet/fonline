@@ -171,6 +171,7 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Common.CommandLineArgs");
         _appliedSettings.emplace("Common.GitBranch");
         _appliedSettings.emplace("Common.GitCommit");
+        _appliedSettings.emplace("Common.UserWritablePath");
         _appliedSettings.emplace("Network.CompatibilityVersion");
         _appliedSettings.emplace("Platform.WebBuild");
         _appliedSettings.emplace("Platform.WindowsBuild");
@@ -192,7 +193,6 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Baking.MapperResourceEntries");
         _appliedSettings.emplace("Baking.ServerResourceEntries");
         _appliedSettings.emplace("ClientNetwork.Ping");
-        _appliedSettings.emplace("Client.UserWritablePath");
         _appliedSettings.emplace("Hex.ScrollMouseUp");
         _appliedSettings.emplace("Hex.ScrollMouseDown");
         _appliedSettings.emplace("Hex.ScrollMouseLeft");
@@ -295,6 +295,14 @@ void GlobalSettings::ApplyDefaultSettings()
 #define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
 #include "Settings.inc"
     FO_DISABLE_WARNINGS_POP()
+}
+
+void GlobalSettings::ApplyWritableRoot(string_view root)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    *FixedSettingForEdit(UserWritablePath) = string(root);
+    _settingValues["Common.UserWritablePath"] = string(root);
 }
 
 void GlobalSettings::ApplyAutoSettings()

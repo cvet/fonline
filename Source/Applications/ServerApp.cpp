@@ -480,8 +480,9 @@ int main(int argc, char** argv) // Handled by SDL
                                 }
 
                                 time_desc_t time = nanotime::now().desc(true);
-                                string log_name = strex("FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", time.year, time.month, time.day, time.hour, time.minute, time.second);
-                                std::ofstream log_file {std::filesystem::path {fs_make_path(log_name)}, std::ios::binary | std::ios::trunc};
+                                string log_name = strex("{}_Log_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", FO_DEV_NAME, time.year, time.month, time.day, time.hour, time.minute, time.second).str();
+                                string log_path = fs_make_writable_path(GetApp()->Settings.UserWritablePath, log_name);
+                                std::ofstream log_file {std::filesystem::path {fs_make_path(log_path)}, std::ios::binary | std::ios::trunc};
 
                                 if (log_file && !log_lines.empty()) {
                                     log_file.write(log_lines.data(), static_cast<std::streamsize>(log_lines.size()));

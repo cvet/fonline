@@ -90,7 +90,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
             InitAngelScriptScripting(&engine, *_context->Settings, *_context->BakedFiles);
 #endif
 #if FO_MANAGED_SCRIPTING
-            InitManagedScripting(&engine, *_context->BakedFiles, _context->Settings->BakeOutput);
+            InitManagedScripting(&engine, _context->BakedFiles, _context->Settings->CacheResources, _context->Settings->BakeOutput);
 #endif
             auto data = BakeProtoFiles(&engine, &engine, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-server", data);

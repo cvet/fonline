@@ -101,7 +101,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, Resources);
+    InitManagedScripting(this, &Resources, fs_make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
 #endif
 
     WriteLog("Client compatibility version: {}", Settings->CompatibilityVersion);

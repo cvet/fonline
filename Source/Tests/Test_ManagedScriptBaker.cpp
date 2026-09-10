@@ -302,7 +302,7 @@ TEST_CASE("Managed scripting rejects metadata without a script system")
 #if FO_MANAGED_SCRIPTING
     EngineMetadata metadata {[] { }};
     FileSystem resources;
-    CHECK_THROWS_WITH(InitManagedScripting(&metadata, resources), Catch::Matchers::ContainsSubstring("Managed scripting requires a script system"));
+    CHECK_THROWS_WITH(InitManagedScripting(&metadata, &resources, "Cache"), Catch::Matchers::ContainsSubstring("Managed scripting requires a script system"));
 #endif
 }
 
@@ -311,7 +311,7 @@ TEST_CASE("Managed scripting releases adopted persistent GC handles during backe
 #if FO_MANAGED_SCRIPTING
     ManagedBackendTestMetadata metadata;
     FileSystem resources;
-    InitManagedScripting(&metadata, resources);
+    InitManagedScripting(&metadata, &resources, "Cache");
 
     nptr<ManagedScriptBackend> backend = metadata.GetBackend<ManagedScriptBackend>(ScriptSystemBackend::MANAGED_BACKEND_INDEX);
     REQUIRE(backend);

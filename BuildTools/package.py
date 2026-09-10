@@ -1767,7 +1767,9 @@ class Packager:
 			'name_base': name_base,
 			'version': version,
 			'comments': game_name + ' game client',
-			'installdir': game_name,
+			# Named after the project rather than the game: the client resolves its writable root by the
+			# project name, so a default install is that same directory instead of a neighbour of it
+			'installdir': self.args.nicename,
 			'license_file': '',
 			'upgrade_guid': upgrade_code,
 			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},

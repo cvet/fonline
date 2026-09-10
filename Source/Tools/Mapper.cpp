@@ -88,7 +88,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, Resources);
+    InitManagedScripting(this, &Resources, fs_make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
 #endif
 
     _curLang = TextPack {&Hashes};
@@ -748,7 +748,7 @@ void MapperEngine::HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         ContentWindowVisible = !ContentWindowVisible;
         break;
     case KeyCode::F11:
-        SprMngr.GetAtlasMngr()->DumpAtlases();
+        SprMngr.GetAtlasMngr()->DumpAtlases(Settings->UserWritablePath);
         break;
     case KeyCode::C0:
     case KeyCode::Numpad0:
@@ -1583,7 +1583,7 @@ void MapperEngine::DrawMainPanelImGui()
                 SprMngr.MinimizeWindow();
             }
             if (ImGui::MenuItem("Dump atlases")) {
-                SprMngr.GetAtlasMngr()->DumpAtlases();
+                SprMngr.GetAtlasMngr()->DumpAtlases(Settings->UserWritablePath);
             }
 
             ImGui::Separator();

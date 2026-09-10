@@ -1641,6 +1641,30 @@ TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
     CheckRecoveryLogsCleared(recovery_logs);
 }
 
+TEST_CASE("JsonDataBaseStorageFollowsTheWritableRoot")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs writable_root_scope {"json-writable-root"};
+    string writable_root = fs_path_to_string(*writable_root_scope.Dir());
+    hstring collection = hashes.ToHashedString("test_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
+    ident_t record_id = ident_t {2001};
+
+    // A relative storage directory is where a server writes its world, so it belongs under the root the
+    // process was told it may write to rather than wherever it happens to have been started
+    settings.ApplyWritableRoot(writable_root);
+
+    auto db = ConnectToDataBase(&settings, "JSON WorldData", collection_schemas, {});
+
+    db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+
+    CHECK(fs_exists(fs_path_to_string(*writable_root_scope.Dir() / "WorldData" / "test_collection" / "2001.json")));
+    CHECK_FALSE(fs_exists("WorldData"));
+}
+
 TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};

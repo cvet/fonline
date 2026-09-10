@@ -332,52 +332,44 @@ TEST_CASE("Settings")
         CHECK_FALSE(settings.UpdateFilesInMemory);
     }
 
-    SECTION("ResolveUserWritablePathInstalledExplicitPathCreatesTree")
+    SECTION("WritableRootFromCommandLineCreatesTheDirectory")
     {
-        GlobalSettings settings {false};
-
-        // An explicit absolute path is the installed layout: resolve it, create it, and pre-create the
-        // cache + resource-overlay subdirs under it
+        // An explicit path on the command line is the one source that outranks everything, because it is
+        // the only one available before any file has been read
         string root = MakeTempSettingsDir("settings_writable_root");
         ignore_unused(fs_remove_dir_tree(root));
 
-        settings.UserWritablePath = root;
-        ResolveUserWritablePath(settings);
+        string root_arg = root;
+        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--UserWritablePath"), root_arg.data()};
+        string resolved = ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()});
 
-        CHECK(settings.UserWritablePath == fs_resolve_path(root));
-        CHECK(fs_is_dir(settings.UserWritablePath));
-        CHECK(fs_is_dir(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources)));
-        CHECK(fs_is_dir(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources)));
+        CHECK(resolved == fs_resolve_path(root));
+        CHECK(fs_is_dir(resolved));
 
         ignore_unused(fs_remove_dir_tree(root));
     }
 
-    SECTION("ResolveUserWritablePathPortableStaysEmpty")
+    SECTION("WritableRootWithoutMarkerStaysInTheWorkingDirectory")
     {
-        GlobalSettings settings {false};
+        // No path argument and no installer marker next to the test exe: everything stays relative
+        std::array<char*, 1> argv = {const_cast<char*>("app")};
 
-        // No explicit path and no installer marker next to the test exe: stay portable (empty)
-        settings.UserWritablePath = "";
-        ResolveUserWritablePath(settings);
-
-        CHECK(settings.UserWritablePath.empty());
+        CHECK(ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()}).empty());
     }
 
-    SECTION("ResolveUserWritablePathFailsafeRevertsToPortable")
+    SECTION("WritableRootFailsafeReturnsToTheWorkingDirectory")
     {
-        GlobalSettings settings {false};
-
-        // A root whose parent is a regular file can't be created: the resolver must fail safe to portable
-        // rather than brick startup
+        // A root whose parent is a regular file can't be created: the resolver must fail safe rather than
+        // brick startup
         string temp_dir = MakeTempSettingsDir("settings_writable_blocker");
         ignore_unused(fs_remove_dir_tree(temp_dir));
         string blocker = strex(temp_dir).combine_path("blocker").str();
         REQUIRE(fs_write_file(blocker, string_view {"x"}));
 
-        settings.UserWritablePath = strex(blocker).combine_path("sub").str();
-        ResolveUserWritablePath(settings);
+        string blocked_root = strex(blocker).combine_path("sub").str();
+        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--UserWritablePath"), blocked_root.data()};
 
-        CHECK(settings.UserWritablePath.empty());
+        CHECK(ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()}).empty());
 
         ignore_unused(fs_remove_dir_tree(temp_dir));
     }

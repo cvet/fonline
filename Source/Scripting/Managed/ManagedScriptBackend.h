@@ -53,7 +53,7 @@ public:
     [[nodiscard]] auto GetAliveFlagObject() const -> void*;
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
-    void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
+    void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
     void BindRequiredStuff();
     void Process() override;
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
