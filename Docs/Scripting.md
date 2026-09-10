@@ -285,12 +285,14 @@ may release or replace its own entity cover, including before returning an incom
 without changing the caller's cover for the next network message. Return and exception paths both
 restore the calling context. Deferred continuations enter their own engine context when pumped.
 
-Every native-to-managed entry also owns a bounded Mono thread attachment. An engine worker
-that was not already running managed code attaches immediately before the callback and
-detaches before it returns to the native scheduler. This is required because Mono attaches
-external native threads in GC-unsafe mode; leaving a long-lived worker attached while it is
-parked on an engine lock can make a later stop-the-world collection wait forever. Reentrant
-calls originating in managed code keep their inherited attachment and do not detach it.
+Every native-to-managed entry also owns a bounded Mono thread attachment. A worker that was
+not already running managed code ordinarily attaches immediately before the callback and
+detaches before it returns to the native scheduler. The recurring backend frame pump instead
+caches one attachment for the lifetime of its worker thread, enters GC-unsafe mode only while
+it invokes managed code, and parks GC-safe between frames. This avoids creating a finalizable
+managed `Thread` object every frame while ensuring a worker parked on an engine lock cannot
+block a later stop-the-world collection. Reentrant calls use the cached or inherited
+attachment and leave its ownership unchanged.
 The worker that first initializes the Mono VM is the one exception: `mono_jit_init_version`
 implicitly attaches its native caller, so the initialization scope explicitly adopts and
 releases that attachment after loading the first backend.

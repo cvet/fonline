@@ -52,6 +52,7 @@ public static class Program
 
 NATIVE_PREFIX = r'''
 #include <cstdint>
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -75,9 +76,15 @@ NATIVE_PREFIX = r'''
 #include <mono/utils/mono-dl-fallback.h>
 #include <mono/utils/mono-publib.h>
 
+extern "C" void* mono_threads_enter_gc_safe_region_unbalanced(void** stack_data);
+extern "C" void mono_threads_exit_gc_safe_region_unbalanced(void* cookie, void** stack_data);
+extern "C" void mono_threads_assert_gc_safe_region();
+extern "C" void mono_threads_assert_gc_unsafe_region();
+
 #define FO_STACK_TRACE_ENTRY()
 #define FO_NO_STACK_TRACE_ENTRY()
 #define FO_VERIFY_AND_THROW(condition, ...) do { if (!(condition)) throw ScriptSystemException("Managed thread attachment failed"); } while (false)
+#define FO_STRONG_ASSERT(condition, ...) do { if (!(condition)) std::abort(); } while (false)
 using ScriptSystemException = std::runtime_error;
 template<class F> void safe_call(F&& action) noexcept { try { action(); } catch (...) { } }
 template<class T> using vector = std::vector<T>;
@@ -199,11 +206,16 @@ static void* LoadShim(const char* name, int, char**, void*)
 }
 static void* FindShim(void*, const char* name, char**, void*) { return dlsym(RTLD_DEFAULT, name); }
 static void* CloseShim(void*, void*) { return nullptr; }
+static std::atomic<int32_t> ThreadStarts {};
+static std::atomic<int32_t> ThreadStops {};
+static void ThreadStarted(MonoProfiler*, uintptr_t) { ThreadStarts++; }
+static void ThreadStopped(MonoProfiler*, uintptr_t) { ThreadStops++; }
 int main(int argc, char** argv)
 {
     if (argc != 4) return 90;
     setenv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1", 1);
-    setenv("MONO_THREADS_SUSPEND", "preemptive", 1);
+    bool frame_cache = std::strcmp(argv[3], "frame-cache") == 0;
+    setenv("MONO_THREADS_SUSPEND", frame_cache ? "hybrid" : "preemptive", 1);
     std::string runtime = argv[1];
     mono_set_dirs((runtime + "/lib").c_str(), (runtime + "/etc").c_str());
     mono_set_assemblies_path((runtime + "/lib/netcoreapp").c_str());
@@ -252,6 +264,45 @@ int main(int argc, char** argv)
     }
 
     MonoDomain* domain = mono_jit_init_version("CallbackRootProbe", "v4.0.30319");
+    if (frame_cache) {
+        MonoProfiler profiler;
+        MonoProfilerHandle profiler_handle = mono_profiler_create(&profiler);
+        mono_profiler_set_thread_started_callback(profiler_handle, ThreadStarted);
+        mono_profiler_set_thread_stopped_callback(profiler_handle, ThreadStopped);
+        int32_t status = 0;
+        std::atomic<bool> worker_parked {};
+        std::atomic<bool> release_worker {};
+        std::thread worker([&] {
+            for (int32_t iteration = 0; iteration < 10000; iteration++) {
+                ManagedThreadAttachment frame_scope {domain, ManagedThreadAttachmentMode::CacheForThread};
+                if (mono_thread_current() == nullptr) {
+                    status = 98;
+                    return;
+                }
+                mono_threads_assert_gc_unsafe_region();
+
+                ManagedThreadAttachment nested_scope {domain};
+                if (mono_thread_current() == nullptr) {
+                    status = 97;
+                    return;
+                }
+            }
+
+            mono_threads_assert_gc_safe_region();
+            worker_parked.store(true, std::memory_order_release);
+            while (!release_worker.load(std::memory_order_acquire)) std::this_thread::yield();
+        });
+        while (!worker_parked.load(std::memory_order_acquire)) std::this_thread::yield();
+        mono_gc_collect(mono_gc_max_generation());
+        release_worker.store(true, std::memory_order_release);
+        worker.join();
+        mono_profiler_set_thread_started_callback(profiler_handle, nullptr);
+        mono_profiler_set_thread_stopped_callback(profiler_handle, nullptr);
+        if (ThreadStarts != 1 || ThreadStops != 1) status = 96;
+        std::printf("FRAME_CACHE status=%d starts=%d stops=%d\n", status, ThreadStarts.load(), ThreadStops.load());
+        return status;
+    }
+
     MonoAssembly* assembly = mono_domain_assembly_open(domain, argv[2]);
     if (assembly == nullptr) return 91;
     MonoImage* image = mono_assembly_get_image(assembly);
@@ -435,6 +486,24 @@ def test_runtime_initialization_attachment_is_adopted_and_reusable(mono_callback
     (executable.parent / "runtime-init.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "RUNTIME_INIT status=0 detached=1" in result.stdout
+
+
+def test_frame_worker_reuses_one_attachment_and_detaches_on_thread_exit(mono_callback_probe):
+    executable, runtime, assembly = mono_callback_probe
+    result = subprocess.run([str(executable), str(runtime), str(assembly), "frame-cache"],
+                            capture_output=True, text=True, timeout=30,
+                            preexec_fn=managed_callbacks.disable_core_dump)
+    (executable.parent / "frame-cache.log").write_text(result.stdout + result.stderr, encoding="utf-8")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "FRAME_CACHE status=0 starts=1 stops=1" in result.stdout
+
+
+def test_frame_pump_selects_the_cached_attachment_mode():
+    source = BACKEND.read_text(encoding="utf-8")
+    process = source[source.index("void ManagedScriptBackend::Process()"):
+                     source.index("void ManagedScriptBackend::AdoptPersistentGcHandle")]
+
+    assert "ManagedThreadAttachmentMode::CacheForThread" in process
 
 
 def test_web_runtime_initialization_preserves_interpreter_thread_attachment():

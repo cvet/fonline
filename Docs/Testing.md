@@ -136,8 +136,11 @@ It compiles the canonical `DispatchManagedCallbackInContext` body and managed ca
 small argument-conversion fixtures. Real Mono collections cover eleven mixed scalar arguments,
 a mutable string with a return value, and cleanup after a boxing exception. The Mono profiler
 checks strong-handle lifetime at the boxing and copy-back boundaries: native conservative stack
-scanning can otherwise keep an unrooted object alive. This proves the native ownership contract;
-WebAssembly collection and browser behavior still require a Web runtime check.
+scanning can otherwise keep an unrooted object alive. The same probe runs 10,000 frame-pump scopes
+on one external worker under hybrid suspension, verifies one attachment for the worker lifetime,
+and forces a collection while that worker is parked GC-safe before checking its one final detach.
+This proves the native ownership and worker-lifetime contracts; WebAssembly collection and browser
+behavior still require a Web runtime check.
 
 An existing Linux Makefiles unit-test build also supplies the actual `SyncContext` and `EntityLock`
 implementations for the callback scope probe:
