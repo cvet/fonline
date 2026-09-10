@@ -63,6 +63,11 @@ FO_DISABLE_WARNINGS_PUSH()
 #include <mono/utils/mono-publib.h>
 FO_DISABLE_WARNINGS_POP()
 
+// The published embedding headers omit this exported API. The unbalanced pair permits a worker to stay
+// registered with Mono while it is parked outside managed code; see Docs/Scripting.md
+extern "C" void* mono_threads_enter_gc_safe_region_unbalanced(void** stack_data);
+extern "C" void mono_threads_exit_gc_safe_region_unbalanced(void* cookie, void** stack_data);
+
 #include "WinApiUndef.inc"
 
 #if FO_WEB
@@ -127,13 +132,97 @@ private:
     nptr<ManagedScriptBackend> _previous {};
 };
 
-// Native workers outlive managed callbacks. Preserve inherited attachments, but detach attachments created or
-// explicitly adopted for one native-to-managed call before the worker returns to the engine scheduler
+// Native workers normally detach after each managed entry. Recurring frame workers instead retain one attachment
+// and park it GC-safe between pumps; see Docs/Scripting.md
 enum class ManagedThreadAttachmentMode
 {
     PreserveExisting,
     AdoptExisting,
+    CacheForThread,
 };
+
+class ManagedThreadAttachmentCache final
+{
+public:
+    ManagedThreadAttachmentCache() = default;
+    ManagedThreadAttachmentCache(const ManagedThreadAttachmentCache&) = delete;
+    ManagedThreadAttachmentCache(ManagedThreadAttachmentCache&&) noexcept = delete;
+    auto operator=(const ManagedThreadAttachmentCache&) = delete;
+    auto operator=(ManagedThreadAttachmentCache&&) noexcept = delete;
+
+    ~ManagedThreadAttachmentCache()
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (_thread != nullptr) {
+            FO_STRONG_ASSERT(_scopeDepth == 0, "Managed thread attachment cache destroyed inside an active scope");
+
+            if (mono_thread_current() == _thread) {
+                Unpark();
+                mono_thread_detach(_thread);
+            }
+        }
+    }
+
+    [[nodiscard]] auto IsAttached() const noexcept -> bool { return _thread != nullptr; }
+
+    void Enter(MonoDomain* domain)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        if (_thread == nullptr) {
+            _thread = mono_thread_attach(domain);
+            FO_VERIFY_AND_THROW(_thread != nullptr, "Failed to attach native thread to Managed runtime domain");
+            _domain = domain;
+        }
+        else {
+            FO_VERIFY_AND_THROW(_domain == domain, "Managed worker attachment changed runtime domain");
+            FO_VERIFY_AND_THROW(mono_thread_current() == _thread, "Managed worker attachment belongs to another thread");
+        }
+
+        if (_scopeDepth == 0) {
+            Unpark();
+        }
+
+        _scopeDepth++;
+    }
+
+    void Leave() noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        FO_STRONG_ASSERT(_scopeDepth > 0, "Managed thread attachment cache scope is unbalanced");
+        _scopeDepth--;
+
+        if (_scopeDepth == 0) {
+            void* stack_data = nullptr;
+            _gcSafeCookie = mono_threads_enter_gc_safe_region_unbalanced(&stack_data);
+            _parked = true;
+        }
+    }
+
+private:
+    void Unpark() noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (_parked) {
+            void* stack_data = nullptr;
+            mono_threads_exit_gc_safe_region_unbalanced(_gcSafeCookie, &stack_data);
+            _gcSafeCookie = nullptr;
+            _parked = false;
+        }
+    }
+
+    MonoDomain* _domain {};
+    MonoThread* _thread {};
+    void* _gcSafeCookie {};
+    size_t _scopeDepth {};
+    bool _parked {};
+};
+
+// All managed backends share the Mono root domain, so this stores native-thread state without engine semantics
+static thread_local ManagedThreadAttachmentCache ManagedFrameWorkerThreadAttachment;
 
 class ManagedThreadAttachment final
 {
@@ -142,11 +231,23 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
+        if (ManagedFrameWorkerThreadAttachment.IsAttached()) {
+            ManagedFrameWorkerThreadAttachment.Enter(domain);
+            _usesWorkerCache = true;
+            return;
+        }
+
         MonoThread* current_thread = mono_thread_current();
 
         if (current_thread == nullptr) {
-            _attachedThread = mono_thread_attach(domain);
-            FO_VERIFY_AND_THROW(_attachedThread != nullptr, "Failed to attach native thread to Managed runtime domain");
+            if (mode == ManagedThreadAttachmentMode::CacheForThread) {
+                ManagedFrameWorkerThreadAttachment.Enter(domain);
+                _usesWorkerCache = true;
+            }
+            else {
+                _attachedThread = mono_thread_attach(domain);
+                FO_VERIFY_AND_THROW(_attachedThread != nullptr, "Failed to attach native thread to Managed runtime domain");
+            }
         }
         else if (mode == ManagedThreadAttachmentMode::AdoptExisting) {
             _attachedThread = current_thread;
@@ -162,13 +263,17 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        if (_attachedThread != nullptr) {
+        if (_usesWorkerCache) {
+            ManagedFrameWorkerThreadAttachment.Leave();
+        }
+        else if (_attachedThread != nullptr) {
             mono_thread_detach(_attachedThread);
         }
     }
 
 private:
     MonoThread* _attachedThread {};
+    bool _usesWorkerCache {};
 };
 
 static void ReleaseManagedGcHandle(MonoDomain* domain, uint32_t& handle) noexcept
@@ -5667,7 +5772,7 @@ void ManagedScriptBackend::Process()
 
     ActiveBackendScope active_backend {this};
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
-    ManagedThreadAttachment managed_thread {domain};
+    ManagedThreadAttachment managed_thread {domain, ManagedThreadAttachmentMode::CacheForThread};
 
     for (nptr<void> pump : _continuationPumps) {
         MonoObject* exception = nullptr;
