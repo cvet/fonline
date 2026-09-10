@@ -30,6 +30,36 @@ public static partial class Game
 
     // verify(cond, message, arg0[, arg1...]) -- the variadic context form. The AngelScript `throw` appends
     // each context value on its own "\n- <value>" line; this reproduces that layout so logs read identically.
+    //
+    // The one-to-three-argument forms below exist because `params object?[]` allocates the array and boxes
+    // every value type on EVERY call, not only on the failing one -- and Verify is an always-on production
+    // check. Overload resolution prefers an applicable non-params form, so the common shapes stop allocating
+    // without a single call site changing. Only a caller passing an `object?[]` of its own is affected: it
+    // now lands in the single-argument form and prints as one value.
+    public static void Verify<T0>([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition,
+                                  string message, T0 arg0)
+    {
+        if (!condition) {
+            throw new System.InvalidOperationException(BuildMessage(message, arg0));
+        }
+    }
+
+    public static void Verify<T0, T1>([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition,
+                                      string message, T0 arg0, T1 arg1)
+    {
+        if (!condition) {
+            throw new System.InvalidOperationException(BuildMessage(message, arg0, arg1));
+        }
+    }
+
+    public static void Verify<T0, T1, T2>([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition,
+                                          string message, T0 arg0, T1 arg1, T2 arg2)
+    {
+        if (!condition) {
+            throw new System.InvalidOperationException(BuildMessage(message, arg0, arg1, arg2));
+        }
+    }
+
     public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message,
                               params object?[] args)
     {
@@ -84,13 +114,44 @@ public static partial class Game
             return message;
         }
 
-        var builder = new System.Text.StringBuilder(message);
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(message);
 
         for (int i = 0; i < args.Length; i++) {
-            builder.Append("\n- ");
-            builder.Append(args[i]?.ToString() ?? "null");
+            AppendContext(builder, args[i]);
         }
 
         return builder.ToString();
+    }
+
+    // The generic forms format on the failing path only, so the context values are still boxed here -- but by
+    // then the invariant is already broken and the process is throwing
+    private static string BuildMessage<T0>(string message, T0 arg0)
+    {
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(message);
+        AppendContext(builder, arg0);
+        return builder.ToString();
+    }
+
+    private static string BuildMessage<T0, T1>(string message, T0 arg0, T1 arg1)
+    {
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(message);
+        AppendContext(builder, arg0);
+        AppendContext(builder, arg1);
+        return builder.ToString();
+    }
+
+    private static string BuildMessage<T0, T1, T2>(string message, T0 arg0, T1 arg1, T2 arg2)
+    {
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(message);
+        AppendContext(builder, arg0);
+        AppendContext(builder, arg1);
+        AppendContext(builder, arg2);
+        return builder.ToString();
+    }
+
+    private static void AppendContext<T>(System.Text.StringBuilder builder, T value)
+    {
+        builder.Append("\n- ");
+        builder.Append(value?.ToString() ?? "null");
     }
 }

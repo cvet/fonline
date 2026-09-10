@@ -15,7 +15,7 @@ public static partial class Game
     {
         string? name = System.Enum.GetName(value);
         Verify(name != null, "Invalid enum index", typeof(T).Name, value);
-        return fullSpecification ? typeof(T).Name + "::" + name! : name!;
+        return fullSpecification ? typeof(T).Name + "::" + name : name;
     }
 
     // Non-throwing counterpart of EnumToString, mirroring the AngelScript `Game.TryEnumToString(value, name)`
