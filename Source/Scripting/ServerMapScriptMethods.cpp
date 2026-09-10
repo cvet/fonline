@@ -39,7 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_SetupScript(ptr<Map> self, ScriptFunc<void, ptr<Map>, bool> initFunc)
 {
@@ -53,7 +52,6 @@ FO_SCRIPT_API void Server_Map_SetupScript(ptr<Map> self, ScriptFunc<void, ptr<Ma
     self->SetInitScript(initFunc.GetName().first);
 }
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_SetupScriptEx(ptr<Map> self, hstring initFunc)
 {
@@ -64,7 +62,6 @@ FO_SCRIPT_API void Server_Map_SetupScriptEx(ptr<Map> self, hstring initFunc)
     self->SetInitScript(initFunc);
 }
 
-// SyncScope: requires self; returns parent location, but does not cover it for later reads
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Location> Server_Map_GetLocation(ptr<Map> self)
 {
@@ -72,7 +69,6 @@ FO_SCRIPT_API ptr<Location> Server_Map_GetLocation(ptr<Map> self)
     return loc;
 }
 
-// SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, int32_t count)
 {
@@ -90,7 +86,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     return item;
 }
 
-// SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, int32_t count)
 {
@@ -108,7 +103,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     return item;
 }
 
-// SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, int32_t count, readonly_map<ItemProperty, int32_t> props)
 {
@@ -143,7 +137,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     return item;
 }
 
-// SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, int32_t count, readonly_map<ItemProperty, int32_t> props)
 {
@@ -172,7 +165,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     return item;
 }
 
-// SyncScope: requires self; returned item is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItem(ptr<Map> self, ident_t itemId)
 {
@@ -184,7 +176,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItem(ptr<Map> self, ide
     return item;
 }
 
-// SyncScope: requires self; returned item is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self, mpos hex, hstring pid)
 {
@@ -196,7 +187,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self
     return item;
 }
 
-// SyncScope: requires self; returned item is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self, mpos hex, ptr<ProtoItem> proto)
 {
@@ -208,7 +198,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self
     return item;
 }
 
-// SyncScope: requires self; returned item is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
 {
@@ -228,7 +217,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self
     return nullptr;
 }
 
-// SyncScope: requires self; returned item is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
 {
@@ -250,7 +238,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> s
     return nullptr;
 }
 
-// SyncScope: requires self; returned item is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
 {
@@ -272,7 +259,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> s
     return nullptr;
 }
 
-// SyncScope: requires self; returned item is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
@@ -295,7 +281,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> s
     return nullptr;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self)
 {
@@ -303,7 +288,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> s
     return vector<ptr<Item>>(items.begin(), items.end());
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, hstring pid)
 {
@@ -321,7 +305,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> s
     return result;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, ptr<ProtoItem> proto)
 {
@@ -339,7 +322,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> s
     return result;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex)
 {
@@ -351,7 +333,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<M
     return hex_items;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius)
 {
@@ -365,7 +346,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
     return self->GetItemsInRadius(hex, radius);
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
 {
@@ -390,7 +370,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
     return result;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
 {
@@ -415,7 +394,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
     return result;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
 {
@@ -434,7 +412,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> s
     return result;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
 {
@@ -458,7 +435,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<M
     return result;
 }
 
-// SyncScope: requires self; returned items are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
@@ -488,7 +464,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
 
 // Removal is one-way for the life of the map instance: clients already on the map are only ever told to drop
 // a static item, so taking an id back out of the list is rejected rather than silently ignored
-// SyncScope: requires self; mutates the map's own removal list, which the property sync fans out to clients
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ident_t staticItemId)
 {
@@ -499,7 +474,6 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ident_t staticItem
     return self->RemoveStaticItem(staticItemId);
 }
 
-// SyncScope: requires self; mutates the map's own removal list, which the property sync fans out to clients
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> staticItem)
 {
@@ -510,7 +484,6 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> st
     return self->RemoveStaticItem(staticItem->GetId());
 }
 
-// SyncScope: requires self; returned static item is map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItem(ptr<Map> self, ident_t id)
 {
@@ -518,7 +491,6 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItem(ptr<Map> self, ident_t i
     return item;
 }
 
-// SyncScope: requires self; returned static item is map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos hex, hstring pid)
 {
@@ -530,7 +502,6 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos
     return item;
 }
 
-// SyncScope: requires self; returned static item is map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos hex, ptr<ProtoItem> proto)
 {
@@ -542,7 +513,6 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos
     return item;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> self, mpos hex)
 {
@@ -554,7 +524,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> se
     return vector<ptr<StaticItem>>(hex_static_items.begin(), hex_static_items.end());
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
 {
@@ -569,7 +538,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map>
     return static_items;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
 {
@@ -584,7 +552,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map>
     return static_items;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
 {
@@ -607,7 +574,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> se
     return result;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
@@ -633,7 +599,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map>
     return result;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, hstring pid)
 {
@@ -641,7 +606,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, h
     return static_items;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, ptr<ProtoItem> proto)
 {
@@ -649,7 +613,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, p
     return static_items;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
 {
@@ -668,7 +631,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, I
     return result;
 }
 
-// SyncScope: requires self; returned static items are map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self)
 {
@@ -676,7 +638,6 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self)
     return vector<ptr<StaticItem>>(map_static_items.begin(), map_static_items.end());
 }
 
-// SyncScope: requires self; returned critter is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> self, ident_t crid)
 {
@@ -684,7 +645,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> sel
     return cr;
 }
 
-// SyncScope: requires self; returned critter is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritterOnHex(ptr<Map> self, mpos hex)
 {
@@ -701,7 +661,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritterOnHex(ptr<Map
     return cr;
 }
 
-// SyncScope: requires self; returned critter is covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
@@ -717,7 +676,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> sel
     return nullptr;
 }
 
-// SyncScope: requires self; returned critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersOnHex(ptr<Map> self, mpos hex, CritterFindType findType)
 {
@@ -736,7 +694,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersOnHex
     return critters;
 }
 
-// SyncScope: requires self; returned critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInRadius(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
 {
@@ -765,7 +722,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInRad
     return critters;
 }
 
-// SyncScope: requires self; reads the map's player-critter membership without materializing it
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Map_GetPlayerCritterCount(ptr<Map> self)
 {
@@ -773,7 +729,6 @@ FO_SCRIPT_API int32_t Server_Map_GetPlayerCritterCount(ptr<Map> self)
     return numeric_cast<int32_t>(self->GetPlayerCritters().size());
 }
 
-// SyncScope: requires self; returned critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterFindType findType)
 {
@@ -791,9 +746,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
     return critters;
 }
 
-// SyncScope: requires self; returns the map's current spectator Players. A spectator is an independent Player
-// root that neither the map nor its location cover includes, so a caller that destroys this map or its location
-// must cover every returned Player first and re-read this list to prove the membership did not change
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Player>> Server_Map_GetSpectatorPlayers(ptr<Map> self)
 {
@@ -803,7 +755,6 @@ FO_SCRIPT_API vector<ptr<Player>> Server_Map_GetSpectatorPlayers(ptr<Map> self)
     return MakeScriptHandleVector<Player>(spectators);
 }
 
-// SyncScope: requires self; returned critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, hstring pid, CritterFindType findType)
 {
@@ -821,7 +772,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
     return critters;
 }
 
-// SyncScope: requires self; returned critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, ptr<ProtoCritter> proto, CritterFindType findType)
 {
@@ -839,7 +789,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
     return critters;
 }
 
-// SyncScope: requires self; returned critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
@@ -858,7 +807,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
     return critters;
 }
 
-// SyncScope: requires self; returned path critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
 {
@@ -867,7 +815,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPat
     return MakeMutableScriptHandleVector<Critter>(trace_critters);
 }
 
-// SyncScope: requires self; returned path critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
@@ -878,7 +825,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPat
     return MakeMutableScriptHandleVector<Critter>(trace_critters);
 }
 
-// SyncScope: requires self; returned observer critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, CritterFindType findType)
 {
@@ -894,7 +840,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
     return critters;
 }
 
-// SyncScope: requires self; returned observer critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
 {
@@ -910,7 +855,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
     return critters;
 }
 
-// SyncScope: requires self; returned observer critters are covered by self while the map cover remains
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeePath(ptr<Map> self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
@@ -928,7 +872,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
     return critters;
 }
 
-// SyncScope: requires self; path trace reads static/map blockers only
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetHexInPath(ptr<Map> self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
@@ -936,7 +879,6 @@ FO_SCRIPT_API void Server_Map_GetHexInPath(ptr<Map> self, mpos fromHex, mpos& to
     toHex = trace_output.PreBlock;
 }
 
-// SyncScope: requires self; path trace reads wall blockers only
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetWallHexInPath(ptr<Map> self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
@@ -950,7 +892,6 @@ FO_SCRIPT_API void Server_Map_GetWallHexInPath(ptr<Map> self, mpos fromHex, mpos
     }
 }
 
-// SyncScope: requires self; pathing reads map blockers and optional gag callback items
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos toHex, int32_t cut, ScriptFunc<bool, ptr<Item>> gagCallabck)
 {
@@ -976,7 +917,6 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos
     return numeric_cast<int32_t>(output.Steps.size());
 }
 
-// SyncScope: requires self + cr; pathing reads map blockers and cr state
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, mpos toHex, int32_t cut, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck)
 {
@@ -1001,7 +941,6 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, m
     return numeric_cast<int32_t>(output.Steps.size());
 }
 
-// SyncScope: requires self; pathing reads map blockers and optional gag callback items
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonly_vector<mpos> targetHexes, int32_t& pathLength, mpos& targetHex, ScriptFunc<bool, ptr<Item>> gagCallback)
 {
@@ -1034,7 +973,6 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonl
     return true;
 }
 
-// SyncScope: requires self + cr; pathing reads map blockers and cr state
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, readonly_vector<mpos> targetHexes, int32_t& pathLength, mpos& targetHex, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallback)
 {
@@ -1066,7 +1004,6 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, read
     return true;
 }
 
-// SyncScope: requires self; creates and attaches a new critter on the map under self cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId, mpos hex, mdir dir)
 {
@@ -1081,7 +1018,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
     return cr;
 }
 
-// SyncScope: requires self; creates and attaches a new critter on the map under self cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter> proto, mpos hex, mdir dir)
 {
@@ -1096,7 +1032,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
     return cr;
 }
 
-// SyncScope: requires self; creates and attaches a new critter on the map under self cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId, mpos hex, mdir dir, readonly_map<CritterProperty, int32_t> props)
 {
@@ -1123,7 +1058,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
     return cr;
 }
 
-// SyncScope: requires self; creates and attaches a new critter on the map under self cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter> proto, mpos hex, mdir dir, readonly_map<CritterProperty, int32_t> props)
 {
@@ -1144,7 +1078,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
     return cr;
 }
 
-// SyncScope: requires self; creates and attaches a new critter on the map under self cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId, mpos hex, mdir dir, readonly_map<CritterProperty, any_t> props)
 {
@@ -1171,7 +1104,6 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
     return cr;
 }
 
-// SyncScope: requires self; creates and attaches a new critter on the map under self cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter> proto, mpos hex, mdir dir, readonly_map<CritterProperty, any_t> props)
 {
@@ -1192,14 +1124,12 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
     return cr;
 }
 
-// SyncScope: requires self; reads map size only
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexValid(ptr<Map> self, mpos hex)
 {
     return self->GetSize().is_valid_pos(hex);
 }
 
-// SyncScope: requires self; reads map blocking state
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexMovable(ptr<Map> self, mpos hex)
 {
@@ -1210,7 +1140,6 @@ FO_SCRIPT_API bool Server_Map_IsHexMovable(ptr<Map> self, mpos hex)
     return self->IsHexMovable(hex);
 }
 
-// SyncScope: requires self; reads map blocking state
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexesMovable(ptr<Map> self, mpos hex, int32_t radius)
 {
@@ -1224,7 +1153,6 @@ FO_SCRIPT_API bool Server_Map_IsHexesMovable(ptr<Map> self, mpos hex, int32_t ra
     return self->IsHexesMovable(hex, radius);
 }
 
-// SyncScope: requires self; reads map shoot-blocking state
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsHexShootable(ptr<Map> self, mpos hex)
 {
@@ -1235,7 +1163,6 @@ FO_SCRIPT_API bool Server_Map_IsHexShootable(ptr<Map> self, mpos hex)
     return self->IsHexShootable(hex);
 }
 
-// SyncScope: requires self; reads map outdoor/indoor area state
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_IsOutsideArea(ptr<Map> self, mpos hex)
 {
@@ -1246,7 +1173,6 @@ FO_SCRIPT_API bool Server_Map_IsOutsideArea(ptr<Map> self, mpos hex)
     return self->IsOutsideArea(hex);
 }
 
-// SyncScope: requires self; reads map placement rules and item prototype data
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(ptr<Map> self, mpos hex, hstring pid)
 {
@@ -1259,14 +1185,12 @@ FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(ptr<Map> self, mpos hex, hstring
     return self->IsValidPlaceForItem(hex, proto_ptr);
 }
 
-// SyncScope: requires self; reads map placement rules and item prototype data
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto)
 {
     return self->IsValidPlaceForItem(hex, proto);
 }
 
-// SyncScope: requires self; mutates manual blocking for one map hex
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_BlockHex(ptr<Map> self, mpos hex, bool full)
 {
@@ -1280,7 +1204,6 @@ FO_SCRIPT_API void Server_Map_BlockHex(ptr<Map> self, mpos hex, bool full)
     self->SetHexManualBlock(hex, true, full);
 }
 
-// SyncScope: requires self; mutates manual blocking for one map hex
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_UnblockHex(ptr<Map> self, mpos hex)
 {
@@ -1294,14 +1217,12 @@ FO_SCRIPT_API void Server_Map_UnblockHex(ptr<Map> self, mpos hex)
     self->SetHexManualBlock(hex, false, false);
 }
 
-// SyncScope: requires self; regenerates map content and placement caches
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_Regenerate(ptr<Map> self)
 {
     self->GetEngine()->MapMngr.RegenerateMap(self);
 }
 
-// SyncScope: requires self; uses map size for a pure coordinate step
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_MoveHexByDir(ptr<Map> self, mpos& hex, mdir dir)
 {
@@ -1313,7 +1234,6 @@ FO_SCRIPT_API bool Server_Map_MoveHexByDir(ptr<Map> self, mpos& hex, mdir dir)
     }
 }
 
-// SyncScope: requires self; uses map size for pure coordinate steps
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Map_MoveHexByDir(ptr<Map> self, mpos& hex, mdir dir, int32_t steps)
 {
@@ -1331,7 +1251,6 @@ FO_SCRIPT_API int32_t Server_Map_MoveHexByDir(ptr<Map> self, mpos& hex, mdir dir
     return result;
 }
 
-// SyncScope: requires self + cr; trigger verification may inspect/mutate critter-facing map state
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_VerifyTrigger(ptr<Map> self, FO_REQUIRES_COVER ptr<Critter> cr, mpos hex, mdir dir)
 {

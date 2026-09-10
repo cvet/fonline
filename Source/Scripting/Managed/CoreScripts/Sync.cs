@@ -187,7 +187,7 @@ public static partial class Sync
         return await Widen(new List<Entity> { extra });
     }
 
-    // SyncScope: widens current cover with every live extra while intentionally skipping stale requests.
+    // Widens current cover with every live extra while intentionally skipping stale requests.
     // Lifecycle: best-effort; unlike strict Widen, this operation does not prove requested handles live
     public static async Task WidenBestEffort(List<Entity> extras)
     {
@@ -211,7 +211,7 @@ public static partial class Sync
         }
     }
 
-    // SyncScope: single-entity best-effort widening overload.
+    // Single-entity best-effort widening overload.
     // Lifecycle: best-effort — a destroyed/destroying extra is intentionally omitted; an explicitly held live extra is a no-op
     public static async Task WidenBestEffort(Entity extra)
     {
@@ -239,11 +239,11 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: widens cover with cr and its current map when mapped; retries if cr migrates during acquisition.
+    // Widens cover with cr and its current map when mapped; retries if cr migrates during acquisition.
     // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr-to-map link
     public static Task<bool> WidenCritterWithMap(Critter cr) => WidenCritterWithMap(new List<Entity>(), cr);
 
-    // SyncScope: widens cover with strictRoots + cr + its current map when mapped; every retry explicitly re-proves all roots.
+    // Widens cover with strictRoots + cr + its current map when mapped; every retry explicitly re-proves all roots.
     // Lifecycle: a stale explicit root/cr/current map returns false; a changed cr-to-map link is retried
     public static async Task<bool> WidenCritterWithMap(List<Entity> strictRoots, Critter cr)
     {
@@ -285,7 +285,7 @@ public static partial class Sync
         }
     }
 
-    // SyncScope: widens cover with both critters and their distinct current maps; retries if either critter migrates.
+    // Widens cover with both critters and their distinct current maps; retries if either critter migrates.
     // Lifecycle: a stale critter or initially resolved map returns false; acquisition races retry against both current map links
     public static async Task<bool> WidenCrittersWithMap(Critter first, Critter second)
     {
@@ -325,7 +325,7 @@ public static partial class Sync
         }
     }
 
-    // SyncScope: widens cover with cr, its current map, and that map's current location.
+    // Widens cover with cr, its current map, and that map's current location.
     // Lifecycle: a stale cr or resolved map/location returns false; acquisition races retry against the current parent chain
     public static async Task<bool> WidenCritterWithMapAndLocation(Critter cr)
     {
@@ -762,7 +762,7 @@ public static partial class Sync
     public static Task<bool>
     WidenCritterWithGlobalMapGroup(Critter cr) => WidenCritterWithGlobalMapGroup(new List<Entity>(), cr);
 
-    // SyncScope: retry yields may drop incidental caller cover; every acquisition re-proves strictRoots + cr,
+    // Retry yields may drop incidental caller cover; every acquisition re-proves strictRoots + cr,
     // and success also covers every member from the stable native global-group snapshot.
     // Lifecycle: strict - a stale explicit root/member, mapped cr, or exhausted retry budget returns false
     public static async Task<bool> WidenCritterWithGlobalMapGroup(List<Entity> strictRoots, Critter cr)
@@ -840,7 +840,7 @@ public static partial class Sync
     public static Task<bool> WidenForTransferToMap(Critter cr, Map destMap) => WidenForTransferToMap(new List<Entity>(),
                                                                                                      cr, destMap);
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots + cr +
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr +
     // its complete stable source graph + destMap/location.
     // Lifecycle: a stale explicit root/source member/destination chain returns false; changed source
     // or parent graphs are retried.
@@ -1057,21 +1057,21 @@ public static partial class Sync
         }
     }
 
-    // SyncScope: replaces cover with player + cr and the stable initial-info dependency graph: map/location when mapped, or every current global-map group member.
+    // Replaces cover with player + cr and the stable initial-info dependency graph: map/location when mapped, or every current global-map group member.
     // Lifecycle: strict - any stale dependency returns false; parent/group changes during acquisition are retried before returning success
     public static async Task<bool> LockPlayerCritterInitialInfoGraph(Player player, Critter cr)
     {
         return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, new List<Critter> { cr });
     }
 
-    // SyncScope: replaces cover with player + every critter and the union of all stable mapped or global initial-info graphs.
+    // Replaces cover with player + every critter and the union of all stable mapped or global initial-info graphs.
     // Lifecycle: strict - every root, map/location, and global-group member is requested by the final exact acquisition; graph changes are retried
     public static async Task<bool> LockPlayerCrittersInitialInfoGraphs(Player player, List<Critter> critters)
     {
         return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, critters);
     }
 
-    // SyncScope: replaces cover with both sessions, the stable controlled-critter initial-info graph,
+    // Replaces cover with both sessions, the stable controlled-critter initial-info graph,
     // and the spectator view target. A graph race returns false to the caller's retry budget.
     // Lifecycle: strict — a stale dependency or concurrent player graph change returns false to the caller's single retry budget; a stable asymmetric player/cr link is an invariant failure
     public static async Task<bool> LockPlayerReconnectGraph(Player notLoggedInPlayer, Player player)
@@ -1166,7 +1166,7 @@ public static partial class Sync
         return true;
     }
 
-    // SyncScope: replaces cover with strictRoots plus every critter and the union of all stable mapped or global initial-info graphs.
+    // Replaces cover with strictRoots plus every critter and the union of all stable mapped or global initial-info graphs.
     // Lifecycle: strict - every explicit root, critter, map/location, and global-group member must be live in the final exact acquisition
     public static async Task<bool> LockCrittersInitialInfoGraphs(List<Entity> strictRoots, List<Critter> critters)
     {
@@ -1410,28 +1410,28 @@ public static partial class Sync
     // dismount or a group can split
     private const int GlobalMapGroupCoverAttempts = 128;
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers cr's complete stable transitive attachment component and every component node's map or global-map group.
+    // Retry yields may drop incidental caller cover; success covers cr's complete stable transitive attachment component and every component node's map or global-map group.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     public static async Task<bool> WidenCritterAttachmentGraph(Critter cr)
     {
         return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { cr });
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus cr's complete stable transitive attachment component and all placements.
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots plus cr's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
     public static async Task<bool> WidenCritterAttachmentGraphWithRoots(List<Entity> strictRoots, Critter cr)
     {
         return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> { cr });
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers the union of both complete stable transitive attachment components and all placements.
+    // Retry yields may drop incidental caller cover; success covers the union of both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     public static async Task<bool> WidenCritterAttachmentGraphs(Critter first, Critter second)
     {
         return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { first, second });
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus both complete stable transitive attachment components and all placements.
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots plus both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
     public static async Task<bool> WidenCritterAttachmentGraphsWithRoots(List<Entity> strictRoots, Critter first,
                                                                          Critter second)
@@ -1439,14 +1439,14 @@ public static partial class Sync
         return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> { first, second });
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers the leader plus every group member's complete stable transitive attachment component and all placements.
+    // Retry yields may drop incidental caller cover; success covers the leader plus every group member's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     public static async Task<bool> WidenForTransferToGlobalBatch(Critter leader, List<Critter> group)
     {
         return await WidenForTransferToGlobalBatch(new List<Entity>(), leader, group);
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus the leader and every group member's complete stable transitive attachment component and all placements.
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots plus the leader and every group member's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
     public static async Task<bool> WidenForTransferToGlobalBatch(List<Entity> strictRoots, Critter leader,
                                                                  List<Critter> group)
@@ -1460,7 +1460,7 @@ public static partial class Sync
         return await WidenCritterAttachmentGraphsImpl(strictRoots, attachmentRoots);
     }
 
-    // SyncScope: internal union builder for stable transitive attachment components and each node's current map or complete global-map group.
+    // Internal union builder for stable transitive attachment components and each node's current map or complete global-map group.
     // Lifecycle: strict — all explicit roots, discovered component nodes, and placement members must remain live through the final snapshot check
     public static async Task<bool> WidenCritterAttachmentGraphsImpl(List<Entity> strictRoots,
                                                                     List<Critter> attachmentRoots)
@@ -1677,7 +1677,7 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: checks that every id from a previously stabilized native membership snapshot resolves inside the current cover.
+    // Checks that every id from a previously stabilized native membership snapshot resolves inside the current cover.
     // Lifecycle: inspection-only — a missing handle or uncovered member returns false; the preceding strict widen proves covered-member liveness
     public static bool IsIdentMembershipCovered(List<ident> memberIds)
     {
@@ -1692,7 +1692,7 @@ public static partial class Sync
         return true;
     }
 
-    // SyncScope: compares two native membership snapshots by immutable entity id without changing the current cover.
+    // Compares two native membership snapshots by immutable entity id without changing the current cover.
     // Lifecycle: scalar-only — does not resolve or access entity handles
     public static bool HasSameIdentMembership(List<ident> first, List<ident> second)
     {
@@ -1709,7 +1709,7 @@ public static partial class Sync
         return true;
     }
 
-    // SyncScope: compares a covered global-map critter with a previously captured native membership snapshot.
+    // Compares a covered global-map critter with a previously captured native membership snapshot.
     // Lifecycle: inspection-only — it reads cr's group state and acquires nothing of its own
     public static bool IsGlobalMapGroupSnapshotCurrent([RequiresCover] Critter cr, uint tripId, ulong revision,
                                                        List<ident> memberIds)
@@ -1734,26 +1734,26 @@ public static partial class Sync
     public const int ItemDestroyGraphCoverAttempts = 128;
     public const int MapDestroyGraphCoverAttempts = 128;
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers cr plus its source map, complete stable global group, or only cr while still parentless.
+    // Retry yields may drop incidental caller cover; success covers cr plus its source map, complete stable global group, or only cr while still parentless.
     // Lifecycle: strict — a stale critter/placement dependency or exhausted global-group retry budget returns false
     public static async Task<bool> WidenCritterForDestroy(Critter cr)
     {
         return await WidenCritterAttachmentGraphWithRoots(new List<Entity>(), cr);
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots + cr and its source map, complete stable global group, or parentless own lock.
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and its source map, complete stable global group, or parentless own lock.
     // Lifecycle: strict — a stale explicit root/cr/placement dependency or exhausted global-group retry budget returns false
     public static async Task<bool> WidenCritterForDestroy(List<Entity> strictRoots, Critter cr)
     {
         return await WidenCritterAttachmentGraphWithRoots(strictRoots, cr);
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers cr + its stable source map or global group and globalCr + every stable target-group member.
+    // Retry yields may drop incidental caller cover; success covers cr + its stable source map or global group and globalCr + every stable target-group member.
     // Lifecycle: strict — a stale dependency or exhausted retry budget returns false
     public static Task<bool> WidenForTransferToGlobalGroup(Critter cr, Critter globalCr) =>
         WidenForTransferToGlobalGroup(new List<Entity>(), cr, globalCr);
 
-    // SyncScope: retry yields may drop incidental caller cover; snapshots both graphs under strictRoots + cr + globalCr and returns only after one final union acquisition still matches them.
+    // Retry yields may drop incidental caller cover; snapshots both graphs under strictRoots + cr + globalCr and returns only after one final union acquisition still matches them.
     // Lifecycle: strict — every explicit root, source dependency, target-group member, and final union member must be live
     public static async Task<bool> WidenForTransferToGlobalGroup(List<Entity> strictRoots, Critter cr, Critter globalCr)
     {
@@ -1881,7 +1881,7 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: replaces the caller cover with map's complete stable destroy graph: map + parent location + every independent spectator Player.
+    // Replaces the caller cover with map's complete stable destroy graph: map + parent location + every independent spectator Player.
     // Lifecycle: strict — a stale dependency or exhausted map/location/spectator membership retry budget returns false
     public static async Task<bool> LockMapForDestroy(Map map)
     {
@@ -1892,7 +1892,7 @@ public static partial class Sync
         return await WidenMapForDestroy(map);
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers map + current location + every independent spectator Player, while map ancestry covers its descendants.
+    // Retry yields may drop incidental caller cover; success covers map + current location + every independent spectator Player, while map ancestry covers its descendants.
     // Lifecycle: strict — a stale dependency or exhausted map/location/spectator membership retry budget returns false
     public static async Task<bool> WidenMapForDestroy(Map map)
     {
@@ -1955,7 +1955,7 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: replaces the caller cover with location's complete stable destroy graph: the location tree + every independent spectator Player on its maps.
+    // Replaces the caller cover with location's complete stable destroy graph: the location tree + every independent spectator Player on its maps.
     // Lifecycle: strict — a stale dependency or exhausted map/spectator membership retry budget returns false
     public static async Task<bool> LockLocationForDestroy(Location location)
     {
@@ -1966,7 +1966,7 @@ public static partial class Sync
         return await WidenLocationForDestroy(location);
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers location + every independent spectator Player from current child maps, while location ancestry covers descendants.
+    // Retry yields may drop incidental caller cover; success covers location + every independent spectator Player from current child maps, while location ancestry covers descendants.
     // Lifecycle: strict — a stale dependency or exhausted map/spectator membership retry budget returns false
     public static async Task<bool> WidenLocationForDestroy(Location location)
     {
@@ -2014,7 +2014,7 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: verifies that a covered location still owns the same maps and that every map has the same independent spectator membership.
+    // Verifies that a covered location still owns the same maps and that every map has the same independent spectator membership.
     // Lifecycle: inspection-only — callers hold the location and the spectator snapshot while checking it
     public static bool IsLocationDestroySnapshotCurrent(Location location, List<Map> maps,
                                                         List<List<Player>> spectatorSnapshots)
@@ -2037,7 +2037,7 @@ public static partial class Sync
         return true;
     }
 
-    // SyncScope: compares two covered map membership snapshots by immutable entity identity without changing cover.
+    // Compares two covered map membership snapshots by immutable entity identity without changing cover.
     // Lifecycle: inspection-only — the owning location remains covered while the snapshots are compared
     public static bool HasSameMapMembership(List<Map> first, List<Map> second)
     {
@@ -2054,7 +2054,7 @@ public static partial class Sync
         return true;
     }
 
-    // SyncScope: reads the map's own critter list and spectator snapshot without changing cover.
+    // Reads the map's own critter list and spectator snapshot without changing cover.
     // Lifecycle: inspection-only — the returned Players are owning handles and are re-proved by the caller's membership check
     public static List<Player> CollectMapObserverPlayers(Map map)
     {
@@ -2076,7 +2076,7 @@ public static partial class Sync
     // entity the engine requires under cover. There are two kinds of observer and neither belongs to the
     // map, so the map's own cover reaches neither: a player controlling a critter on the map, and a
     // spectator viewing the map with no critter at all
-    // SyncScope: widens cover with map + its current location + every Player observing it; every retry explicitly re-proves all roots.
+    // Widens cover with map + its current location + every Player observing it; every retry explicitly re-proves all roots.
     // Lifecycle: strict — a stale dependency or exhausted map/location/observer membership retry budget returns false
     public static async Task<bool> WidenMapForCritterAdd(Map map)
     {
@@ -2133,7 +2133,7 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: compares two owning spectator snapshots by immutable Player identity without changing cover.
+    // Compares two owning spectator snapshots by immutable Player identity without changing cover.
     // Lifecycle: inspection-only — no Player property is read, so a removed snapshot member may remain as a retained owning handle
     public static bool HasSamePlayerMembership(List<Player> first, List<Player> second)
     {
@@ -2150,28 +2150,28 @@ public static partial class Sync
         return true;
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers item + stable immediate holder, while the root lock covers its nested subtree by ancestry.
+    // Retry yields may drop incidental caller cover; success covers item + stable immediate holder, while the root lock covers its nested subtree by ancestry.
     // Lifecycle: strict — a stale root or owned item with a stale/unresolvable direct holder returns false; a parentless root succeeds and direct reparent races are retried
     public static async Task<bool> WidenItemForDestroy(Item item)
     {
         return await WidenItemsForDestroy(new List<Entity>(), new List<Item> { item });
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots plus item and its stable immediate holder.
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots plus item and its stable immediate holder.
     // Lifecycle: strict — every explicit root, item, and current direct holder must remain live through the final relationship read
     public static async Task<bool> WidenItemForDestroy(List<Entity> strictRoots, Item item)
     {
         return await WidenItemsForDestroy(strictRoots, new List<Item> { item });
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers every root item + the union of stable immediate holders, with each nested subtree covered by ancestry.
+    // Retry yields may drop incidental caller cover; success covers every root item + the union of stable immediate holders, with each nested subtree covered by ancestry.
     // Lifecycle: strict — any stale root or owned item with a stale/unresolvable direct holder returns false; parentless roots succeed, duplicates are deduplicated, and direct reparent races are retried
     public static async Task<bool> WidenItemsForDestroy(List<Item> items)
     {
         return await WidenItemsForDestroy(new List<Entity>(), items);
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; every attempt re-proves strictRoots, and success also covers every root item + stable immediate holder.
+    // Retry yields may drop incidental caller cover; every attempt re-proves strictRoots, and success also covers every root item + stable immediate holder.
     // Lifecycle: strict — every explicit root and current direct holder of an owned item must remain live through the final relationship read; parentless roots need no holder
     public static async Task<bool> WidenItemsForDestroy(List<Entity> strictRoots, List<Item> items)
     {
@@ -2247,28 +2247,28 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success covers cr plus every current matching direct inventory-item destroy graph and verifies membership stability.
+    // Retry yields may drop incidental caller cover; success covers cr plus every current matching direct inventory-item destroy graph and verifies membership stability.
     // Lifecycle: strict — a stale critter/item graph or exhausted retry budget returns false; an empty matching set succeeds with cr explicitly covered
     public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, hstring protoId)
     {
         return await WidenCritterItemsForDestroy(new List<Entity>(), cr, new List<hstring> { protoId });
     }
 
-    // SyncScope: multi-proto convenience overload; leaves cr and every current matching stable inventory-item destroy graph covered.
+    // Multi-proto convenience overload; leaves cr and every current matching stable inventory-item destroy graph covered.
     // Lifecycle: strict — identical to the strict-root multi-proto overload
     public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, List<hstring> protoIds)
     {
         return await WidenCritterItemsForDestroy(new List<Entity>(), cr, protoIds);
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current matching direct inventory-item destroy graph.
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current matching direct inventory-item destroy graph.
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, hstring protoId)
     {
         return await WidenCritterItemsForDestroy(strictRoots, cr, new List<hstring> { protoId });
     }
 
-    // SyncScope: retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current inventory-item destroy graph matching any requested proto.
+    // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current inventory-item destroy graph matching any requested proto.
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr,
                                                                List<hstring> protoIds)
@@ -2302,21 +2302,21 @@ public static partial class Sync
         return false;
     }
 
-    // SyncScope: ProtoItem convenience overload for WidenCritterItemsForDestroy; leaves cr and every matching stable item destroy graph covered.
+    // ProtoItem convenience overload for WidenCritterItemsForDestroy; leaves cr and every matching stable item destroy graph covered.
     // Lifecycle: strict — identical to the hstring overload
     public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, ProtoItem proto)
     {
         return await WidenCritterItemsForDestroy(cr, proto.ProtoId);
     }
 
-    // SyncScope: strict-root ProtoItem convenience overload; leaves every explicit root, cr and each matching stable item destroy graph covered.
+    // Strict-root ProtoItem convenience overload; leaves every explicit root, cr and each matching stable item destroy graph covered.
     // Lifecycle: strict — identical to the strict-root hstring overload
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, ProtoItem proto)
     {
         return await WidenCritterItemsForDestroy(strictRoots, cr, proto.ProtoId);
     }
 
-    // SyncScope: compares two covered item snapshots by immutable entity identity without changing cover.
+    // Compares two covered item snapshots by immutable entity identity without changing cover.
     // Lifecycle: inspection-only — callers keep the owning holder locked while relying on membership stability
     public static bool HasSameItemMembership(List<Item> first, List<Item> second)
     {

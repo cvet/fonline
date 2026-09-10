@@ -3540,13 +3540,30 @@ static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistr
     }
 }
 
-static void AppendComponentAccessors(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names)
+static auto MakeSortedComponents(const EntityTypeDesc& desc) -> vector<pair<string, ptr<const Property>>>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(desc.PropRegistrar.as_nptr(), "Entity type has no property registrar");
 
+    vector<pair<string, ptr<const Property>>> result;
+    result.reserve(desc.PropRegistrar->GetComponents().size());
+
     for (const auto& [component_name, prop] : desc.PropRegistrar->GetComponents()) {
+        result.emplace_back(component_name, prop);
+    }
+
+    // GetComponents() is an unordered_map, and the generated file is committed: without a fixed order the
+    // same input regenerates as a diff of every component class
+    std::ranges::sort(result, {}, [](const auto& entry) -> const string& { return entry.first; });
+    return result;
+}
+
+static void AppendComponentAccessors(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& [component_name, prop] : MakeSortedComponents(desc)) {
         string component_type = strex("{}{}Component", owner_type_name, component_name).str();
         string accessor_name = EscapeCsIdentifier(component_name);
         string has_accessor_name = EscapeCsIdentifier(strex("Has{}", component_name).str());
@@ -3743,9 +3760,7 @@ static void AppendComponentClasses(ostringstream& out, string_view owner_type_na
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(desc.PropRegistrar.as_nptr(), "Entity type has no property registrar");
-
-    for (const auto& [component_name, prop] : desc.PropRegistrar->GetComponents()) {
+    for (const auto& [component_name, prop] : MakeSortedComponents(desc)) {
         unordered_set<string> member_names;
         string component_type = strex("{}{}Component", owner_type_name, component_name).str();
 

@@ -169,8 +169,11 @@ discharge returns early, so this check runs before it.
 Introducing the rule surfaced a piece of the contract that was never made checkable. Some awaitable helpers
 hand the caller back the cover they found; others replace it. The distinction already existed, but only as
 prose in the `// SyncScope:` comments the cover attributes replaced — *"preserves the caller cover"* versus
-*"lock calls inside replace or widen the caller's cover"*. 3012 of those comments are still in the embedding
-project, 21 of them claiming preservation and 538 claiming replacement.
+*"lock calls inside replace or widen the caller's cover"*. The embedding project has since deleted all 3702
+of them: 31 stated a cover requirement the signature did not declare and were moved onto the declaration,
+and the rest either restated an annotation already there or described the body. 61 claimed preservation
+with nothing declared, and those are the backlog `[PreservesCover]` exists for -- a claim can only be
+turned into an annotation by proving the acquisition is top-level, which is per-site work.
 
 `[PreservesCover]` on a method states the preserving half, and awaiting such a method releases nothing. It
 says nothing about lifetime: the entity may have been destroyed while the callee ran, so a caller that keeps
@@ -286,9 +289,10 @@ severity, not all at once.
 ## Next: the engine's own exports
 
 The contracts that matter most are the native ones — a script's cover obligation almost always exists
-because some `FO_SCRIPT_API` call reads or mutates an entity. Those are recorded today in
-`Tools/SyncScopeAudit/contracts/native_exports.json` in the embedding project: **88 entries, 74 with a
-`requires_access`**, in 16 distinct shapes. The distribution decides the design:
+because some `FO_SCRIPT_API` call reads or mutates an entity. Those were recorded in the external audit's
+`contracts/native_exports.json` in the embedding project -- retired with the audit, so the counts below are
+the measurement that decided the design rather than a file to go and read: **88 entries, 74 with a
+`requires_access`**, in 16 distinct shapes.
 
 | Shape | Count |
 |-------|-------|
