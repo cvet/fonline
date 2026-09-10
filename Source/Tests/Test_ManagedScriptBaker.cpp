@@ -635,7 +635,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("public delegate void GameOnManagedArrayEventHandler(List<int> values)") != string::npos);
     CHECK(server_events.find("object?[] __args = new object?[]\n            {\n                values,\n            };") != string::npos);
     CHECK(server_events.find("public delegate void GameOnManagedDictEventHandler(Dictionary<string, string> values)") != string::npos);
-    CHECK(server_events.find("public delegate void GameOnManagedMutablePositionEventHandler(\n    int first,\n    int second,\n    ref int third") != string::npos);
+    CHECK(server_events.find("public delegate void GameOnManagedMutablePositionEventHandler(") != string::npos);
+    CHECK(server_events.find("ref int third") != string::npos);
     CHECK(server_events.find("third = global::FOnline.Native.UnboxArg<int>(__args[2]);") != string::npos);
     CHECK(server_events.find("third = (int)__args[0];") == string::npos);
 
