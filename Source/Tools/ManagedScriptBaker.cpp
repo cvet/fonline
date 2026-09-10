@@ -3389,12 +3389,15 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
         nptr<const MethodDesc> getter = accessors.Getter;
         nptr<const MethodDesc> setter = accessors.Setter;
         string property_type;
+        bool ref_type_property = false;
 
         if (getter) {
             property_type = MakeCsTypeName(getter->Ret, getter->ReturnNullable);
+            ref_type_property = IsNonNullableRefType(getter->Ret, getter->ReturnNullable);
         }
         else if (setter && !setter->Args.empty()) {
             property_type = MakeCsTypeName(setter->Args.front().Type, setter->Args.front().Nullable);
+            ref_type_property = IsNonNullableRefType(setter->Args.front().Type, setter->Args.front().Nullable);
         }
         else {
             continue;
@@ -3426,8 +3429,6 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
             }
 
             out << CS_INDENT << "}";
-
-            bool ref_type_property = getter ? IsNonNullableRefType(getter->Ret, getter->ReturnNullable) : IsNonNullableRefType(setter->Args.front().Type, setter->Args.front().Nullable);
 
             if (optional<string> property_initializer = MakePropertyInitializer(property_type, std::nullopt, ref_type_property); property_initializer.has_value()) {
                 out << " = " << *property_initializer << ";";
