@@ -131,7 +131,8 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert config["version"] == "0.3.422"
     assert config["upgrade_guid"] == "B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D"
     assert config["product_name"] == "Last Frontier"
-    assert config["installdir"] == "Last Frontier"
+    # The install directory is the writable root the client resolves by the project name
+    assert config["installdir"] == "LastFrontier"
     assert config["startmenu_shortcut"] == "LastFrontier.exe"
     assert config["desktop_shortcut"] == "LastFrontier.exe"
     assert os.path.basename(str(config["addremove_icon"])) == "app.ico"
@@ -162,7 +163,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert r'Value="[PREVIOUSINSTALLDIR]"' in wxs
     assert "NOT Installed AND NOT INSTALLDIR AND PREVIOUSINSTALLDIR" in wxs
     assert 'Directory Id="LocalAppDataFolder"' in wxs
-    assert 'Directory Id="INSTALLDIR" Name="Last Frontier"' in wxs
+    assert 'Directory Id="INSTALLDIR" Name="LastFrontier"' in wxs
     assert 'Directory Id="ProgramFiles64Folder"' not in wxs
     assert "Valve\\Steam" not in wxs
     assert "STEAMINSTALLROOT" not in wxs
@@ -225,12 +226,13 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
     assert captured["cmd"][-1] == "LastFrontier_Win7.wix.json"
     config = json.loads((output_dir / "LastFrontier_Win7.wix.json").read_text(encoding="utf-8"))
     assert config["name_base"] == "LastFrontier_Win7"
-    assert config["installdir"] == "Last Frontier"
+    # The install directory is the writable root the client resolves by the project name
+    assert config["installdir"] == "LastFrontier"
     assert config["arch"] == 32
     assert config["startmenu_shortcut"] == "LastFrontier_Win7.exe"
     wxs = (output_dir / "LastFrontier_Win7.wxs").read_text(encoding="utf-8")
     assert 'Directory Id="LocalAppDataFolder"' in wxs
-    assert 'Directory Id="INSTALLDIR" Name="Last Frontier"' in wxs
+    assert 'Directory Id="INSTALLDIR" Name="LastFrontier"' in wxs
     assert 'Directory Id="ProgramFilesFolder"' not in wxs
 
 

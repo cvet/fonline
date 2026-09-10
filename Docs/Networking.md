@@ -82,6 +82,8 @@ The per-type *content* validator (`ClientDataValidation.*`, invoked for client p
 
 Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `HashResolver`.
 
+Client hash storage is filled from local resources at startup (proto packs, script `.hstr()` literals, dialog/text bakers) and from a map's `fomap-bin-client` hash table only when that map loads (`MapView::LoadStaticData`). Critter instance properties are not in the client map-bin. A Common / PublicSync / OwnerSync `hstring` whose string exists only as a map-instance override (or only in the server map-bin) will fail to resolve if it arrives before the matching client hash is registered.
+
 When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers.
 
 ### Unresolved hash recovery

@@ -171,6 +171,7 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Common.CommandLineArgs");
         _appliedSettings.emplace("Common.GitBranch");
         _appliedSettings.emplace("Common.GitCommit");
+        _appliedSettings.emplace("Common.UserWritablePath");
         _appliedSettings.emplace("Network.CompatibilityVersion");
         _appliedSettings.emplace("Platform.WebBuild");
         _appliedSettings.emplace("Platform.WindowsBuild");
@@ -192,7 +193,6 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Baking.MapperResourceEntries");
         _appliedSettings.emplace("Baking.ServerResourceEntries");
         _appliedSettings.emplace("ClientNetwork.Ping");
-        _appliedSettings.emplace("Client.UserWritablePath");
         _appliedSettings.emplace("Hex.ScrollMouseUp");
         _appliedSettings.emplace("Hex.ScrollMouseDown");
         _appliedSettings.emplace("Hex.ScrollMouseLeft");
@@ -295,6 +295,14 @@ void GlobalSettings::ApplyDefaultSettings()
 #define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
 #include "Settings.inc"
     FO_DISABLE_WARNINGS_POP()
+}
+
+void GlobalSettings::ApplyWritableRoot(string_view root)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    *FixedSettingForEdit(UserWritablePath) = string(root);
+    _settingValues["Common.UserWritablePath"] = string(root);
 }
 
 void GlobalSettings::ApplyAutoSettings()
@@ -442,6 +450,71 @@ void GlobalSettings::SetSettingValue(string_view name, string_view value)
     FO_STACK_TRACE_ENTRY();
 
     SetValue(string(name), string(value));
+}
+
+auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+#define FIXED_SETTING(type, group, setting_name, ...) \
+    case const_hash(#setting_name): \
+    case const_hash(#group "." #setting_name): \
+        if (name == #setting_name || name == #group "." #setting_name) { \
+            return strex("{}", setting_name).str(); \
+        } \
+        break
+#define VARIABLE_SETTING(type, group, setting_name, ...) FIXED_SETTING(type, group, setting_name, __VA_ARGS__)
+#define SETTING_GROUP(setting_name, ...)
+#define SETTING_GROUP_END()
+
+    switch (const_hash(name.c_str())) {
+#include "Settings.inc"
+    default:
+        break;
+    }
+
+#undef FIXED_SETTING
+#undef VARIABLE_SETTING
+#undef SETTING_GROUP
+#undef SETTING_GROUP_END
+
+    return GetCustomSetting(name);
+}
+
+void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+#define FIXED_SETTING(type, group, setting_name, ...) \
+    case const_hash(#setting_name): \
+    case const_hash(#group "." #setting_name): \
+        if (name == #setting_name || name == #group "." #setting_name) { \
+            throw SettingsException("Fixed setting is read-only", name); \
+        } \
+        break
+#define VARIABLE_SETTING(type, group, setting_name, ...) \
+    case const_hash(#setting_name): \
+    case const_hash(#group "." #setting_name): \
+        if (name == #setting_name || name == #group "." #setting_name) { \
+            SetEntry(setting_name, value, false); \
+            return; \
+        } \
+        break
+#define SETTING_GROUP(setting_name, ...)
+#define SETTING_GROUP_END()
+
+    switch (const_hash(name.c_str())) {
+#include "Settings.inc"
+    default:
+        break;
+    }
+
+#undef FIXED_SETTING
+#undef VARIABLE_SETTING
+#undef SETTING_GROUP
+#undef SETTING_GROUP_END
+
+    _customSettings[name] = any_t(value);
 }
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)

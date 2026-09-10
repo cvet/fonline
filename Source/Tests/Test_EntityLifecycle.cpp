@@ -1917,9 +1917,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
         auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, test_connection, "MissingRecord");
 
-        CHECK_THROWS_WITH(
-            server->LoginPlayerToExistentRecord(not_logged_in_player, ident_t {999999}),
-            Catch::Matchers::ContainsSubstring("Player data not found"));
+        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, ident_t {999999}), Catch::Matchers::ContainsSubstring("Player data not found"));
 
         test_connection->Dispatch();
 

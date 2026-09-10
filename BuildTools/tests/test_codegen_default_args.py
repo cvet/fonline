@@ -55,6 +55,7 @@ def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monke
         '#define FO_BUILD_HASH "build-hash"',
         '#define FO_DEV_NAME "DEV"',
         '#define FO_NICE_NAME "Nice Name"',
+        f'#define FO_GENERATED_SOURCE_DIR "{tmp_path.as_posix()}"',
         '#define FO_COMPATIBILITY_VERSION "0123456789abcdef"',
         '#define FO_GIT_BRANCH "test-branch"',
     ]
@@ -101,15 +102,28 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
         },
     )
 
-    target, entity, name, ret, args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
+    (
+        target,
+        entity,
+        name,
+        ret,
+        args,
+        ret_nullable,
+        ret_wrapper,
+        ret_container_element_wrapper,
+        receiver_wrapper,
+        ret_provides_cover,
+    ) = _codegen.parse_export_method_signature(
         "FO_SCRIPT_API string Client_Game_FormatTags(nptr<ClientEngine> client, string_view text, nptr<CritterView> talker = nullptr)",
         {"void", "bool", "int32", "string", "Game", "Critter"},
         ["Game", "Critter"],
     )
 
     assert (target, entity, name, ret, ret_nullable) == ("Client", "Game", "FormatTags", "string", False)
+    assert not ret_wrapper
     assert ret_container_element_wrapper == ""
     assert receiver_wrapper
+    assert not ret_provides_cover
     assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
         ("string", "text", False, None),
         ("Critter", "talker", True, "null"),

@@ -34,6 +34,7 @@
 #include "Client.h"
 #include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
+#include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
@@ -99,6 +100,9 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *settings, Resources);
+#endif
+#if FO_MANAGED_SCRIPTING
+    InitManagedScripting(this, &Resources, fs_make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
 #endif
 
     WriteLog("Client compatibility version: {}", Settings->CompatibilityVersion);
@@ -255,6 +259,8 @@ void ClientEngine::Shutdown()
 
     OnFinish.Fire();
 
+    _eventUnsubscriber.Unsubscribe();
+
     UnsubscribeAllEvents();
     ClearAllTimeEvents();
 
@@ -265,6 +271,7 @@ void ClientEngine::Shutdown()
     _conn.Disconnect();
 
     SprMngr.GetRender().SetRenderTarget(nullptr);
+    SprMngr.UnsubscribeWindowEvents();
 
     _chosen.reset();
 

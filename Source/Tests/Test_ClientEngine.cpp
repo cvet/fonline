@@ -37,9 +37,11 @@
 
 #include "catch_amalgamated.hpp"
 
+#if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptDebugger.h"
 #include "AngelScriptHelpers.h"
 #include "AngelScriptScripting.h"
+#endif
 #include "AnimationViewer.h"
 #include "Application.h"
 #include "Baker.h"
@@ -2000,7 +2002,7 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
     BakerTests::OverrideSetting(settings.Packaged, true);
     BakerTests::OverrideSetting(settings.ClientResources, unique_name);
     BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {pack_name});
-    settings.UserWritablePath = writable_root;
+    settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
     vector<uint8_t> recovered_metadata = ReadMetadataBin(&resources, "Client");
@@ -2041,7 +2043,7 @@ TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
     BakerTests::OverrideSetting(settings.Packaged, true);
     BakerTests::OverrideSetting(settings.ClientResources, unique_name);
     BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {"Main", "Fallback"});
-    settings.UserWritablePath = writable_root;
+    settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
     CHECK(resources.ReadFileText("shared.txt") == "writable-overlay");

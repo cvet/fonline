@@ -94,7 +94,6 @@ $cmakeSharedThirdPartyPath = $sharedThirdPartyPath.Replace('\', '/')
 $configureArguments = @(
     '-S', $sourceRootPath,
     '-B', $nativeBuildPath,
-    '-DCMAKE_POLICY_VERSION_MINIMUM=3.15',
     '-DCMAKE_COMPILE_WARNING_AS_ERROR=ON',
     '-DBUILD_VIEWER=ON',
     '-DBUILD_EDITOR=OFF',
@@ -116,6 +115,11 @@ $configureArguments = @(
     "-DFONLINE_SHARED_THIRD_PARTY_DIR=$cmakeSharedThirdPartyPath",
     "-DEFFEKSEER_RELEASE_DIR=$cmakeOutputPath"
 )
+
+$cmakeCapabilities = Invoke-Checked -FilePath 'cmake' -Arguments @('-E', 'capabilities') | ConvertFrom-Json
+if ($cmakeCapabilities.version.major -ge 4) {
+    $configureArguments += '-DCMAKE_POLICY_VERSION_MINIMUM=3.15'
+}
 
 if ($Generator) {
     $configureArguments += @('-G', $Generator)

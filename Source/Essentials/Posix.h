@@ -53,6 +53,9 @@ namespace posix
 
     auto get_current_process_id() noexcept -> int32_t;
     auto get_executable_path() noexcept -> optional<string>;
+    // Read from the user database, not $HOME: a service has none, and answering "none" sends the caller
+    // back to a directory it may not be allowed to write
+    auto get_home_dir() noexcept -> optional<string>;
 
     // Detaches into a background process: the parent exits, the child drops the standard streams and leads a
     // new session. Returns false only when the fork itself failed, and never returns in the parent

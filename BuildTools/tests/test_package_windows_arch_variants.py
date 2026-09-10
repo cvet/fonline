@@ -136,3 +136,68 @@ def test_windows_headless_package_keeps_only_explicitly_packaged_runtime_names(
     assert not (output_path / "LF_ClientLibHeadless.dll").exists()
     assert (bin_path / "LF_ClientHeadless.dll").is_file()
     assert (bin_path / "LF_ClientLibHeadless.dll").is_file()
+
+
+def make_server_expectation_packager(tmp_path: Path, expectations: list[str]) -> _package.Packager:
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.args = SimpleNamespace(
+        output=str(tmp_path),
+        devname="LF",
+        nicename="LastFrontier",
+        target="Server",
+        config="PublicGame",
+        platform="Linux",
+        arch="x64",
+        binary_output_postfix="",
+        buildhash="deadbeef",
+        expect_client_runtime=expectations,
+    )
+    packager.output_path = str(tmp_path)
+    packager.pack_args = set()
+
+    return packager
+
+
+def test_declared_win7_client_runtime_must_reach_the_server_package(tmp_path: Path) -> None:
+    packager = make_server_expectation_packager(tmp_path, ["Windows:win32-win7:Win7", "Windows:win64:"])
+
+    # The Win7 client is a postfix variant sharing the Windows-win32 update target, and its payload
+    # is the only file a Win7 client will accept
+    staged = {("Windows-win32", "LastFrontier_Win7"), ("Windows-win64", "LastFrontier")}
+    packager.verify_expected_client_runtime_payloads(staged, [])
+
+
+def test_missing_win7_client_runtime_fails_the_server_package(tmp_path: Path) -> None:
+    packager = make_server_expectation_packager(tmp_path, ["Windows:win32-win7:Win7"])
+
+    # Exactly the shape that shipped a server distributing no Win7 payload: the plain win32 build is
+    # present, so the target directory exists, yet no file carries the Win7 client's build name
+    staged = {("Windows-win32", "LastFrontier")}
+
+    with pytest.raises(AssertionError) as failure:
+        packager.verify_expected_client_runtime_payloads(staged, ["Client-Windows-win32-Win7: built from cafe, package is deadbeef"])
+
+    message = str(failure.value)
+    assert "LastFrontier_Win7" in message
+    assert "PlatformBinaries/Windows-win32" in message
+    assert "built from cafe" in message
+
+
+def test_store_updated_platforms_are_not_demanded_of_the_server_package(tmp_path: Path) -> None:
+    # Android and iOS get native modules from their store and Web from its bundle, so no runtime payload
+    # is staged for them; demanding one would fail a package that is perfectly correct
+    packager = make_server_expectation_packager(
+        tmp_path, ["Android:arm64:", "iOS:arm64:", "Web:wasm:", "macOS:x64:"]
+    )
+
+    # macOS does self-update, so it is the one of the four that must be present
+    packager.verify_expected_client_runtime_payloads({("macOS-x64", "LastFrontier")}, [])
+
+
+def test_missing_macos_client_runtime_fails_the_server_package(tmp_path: Path) -> None:
+    packager = make_server_expectation_packager(tmp_path, ["macOS:x64:"])
+
+    with pytest.raises(AssertionError) as failure:
+        packager.verify_expected_client_runtime_payloads(set(), [])
+
+    assert "macOS-x64" in str(failure.value)

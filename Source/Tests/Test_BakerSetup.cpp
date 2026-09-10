@@ -33,7 +33,9 @@
 
 #include "catch_amalgamated.hpp"
 
+#if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptBaker.h"
+#endif
 #include "AudioBaker.h"
 #include "ConfigBaker.h"
 #include "ConfigFile.h"

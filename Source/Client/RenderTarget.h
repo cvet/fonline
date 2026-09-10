@@ -99,7 +99,9 @@ public:
     void ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size);
 
     void ClearStack();
-    void DumpTextures() const;
+    // The writable root comes from the caller: this manager holds render settings, which say nothing
+    // about where the process may write
+    void DumpTextures(string_view writable_root) const;
 
 private:
     auto CreateRenderTargetTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>;

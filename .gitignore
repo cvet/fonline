@@ -13,3 +13,5 @@ __pycache__
 .venv
 node_modules
 package-lock.json
+/Source/Scripting/Managed/**/bin/
+/Source/Scripting/Managed/**/obj/

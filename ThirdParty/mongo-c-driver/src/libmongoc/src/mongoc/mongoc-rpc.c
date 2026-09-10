@@ -20,6 +20,9 @@
 #include <mongoc/mongoc-rpc-private.h>
 #include <mongoc/mongoc-trace-private.h>
 
+// (FOnline Patch) Compile protocol consistency checks with real symbols instead of an empty archive member
+#include <mongoc/mongoc-flags.c>
+
 
 bool
 mcd_rpc_message_get_body(const mcd_rpc_message *rpc, bson_t *reply)

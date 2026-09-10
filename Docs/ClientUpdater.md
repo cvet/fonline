@@ -1,6 +1,6 @@
 # Client Runtime Split and Updater
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Engine-owned documentation. Source paths under `../` are relative to the FOnline engine root.
 
 The native client ships as two artifacts:
 
@@ -19,6 +19,18 @@ module is needed. The headless host/runtime targets use the same dependency.
 
 The updater protocol is the same machinery used to deliver gameplay resources, but versioned independently from gameplay compatibility so a host released today can ingest tomorrow's runtime module without a host-side rebuild.
 
+
+## Managed runtime companion compatibility
+
+A managed native client requests its platform/architecture target with a `-Managed-<sha256>` suffix. The digest covers the relative paths and contents of its complete `ManagedRuntime` tree; CMake generates it after runtime setup and compiles it into the updater. Each linked binary also gets a matching `.managed-runtime-id` build sidecar.
+
+Relative path components are ordered case-sensitively before paths are serialized with forward slashes, so the same tree has the same digest on Windows and POSIX build/package hosts. File names retain their case and file contents remain covered by the digest; the verification does not normalize away a companion change.
+
+Binary output postfixes are parsed on full flag boundaries: a custom postfix such as `Debug_Profiling_Total` remains a postfix and does not change the profiling variant.
+
+The server packager selects each GUI/headless variant by its own build-hash sidecar, then verifies its runtime-identity sidecar against the supplied companion tree and publishes native update payloads only under that exact target. A changed runtime tree, a different managed runtime, or a client built without managed support cannot receive that payload. The existing missing-native-update path asks the player to install the full client package; the updater does not stage a library requiring unavailable companions. A companion upgrade must also bump the central compatibility migration marker so the client enters native update mode; the target suffix does not replace that compatibility contract. With identical companions, native library and gameplay assembly updates work normally. `FOnline.ManagedHost.dll` and game assemblies travel in resource packs; they are not installation-level Mono companions.
+
+Changing installation-level Mono files therefore requires distributing a full client package. This is an explicit compatibility boundary, not an atomic multi-file runtime installation protocol. Build sidecars are packaging inputs and are not required in installed clients.
 
 ## Server-side updater backend
 
@@ -201,8 +213,9 @@ A fresh launch sidesteps both: the new process loads the promoted runtime as its
 and enters the game without staging another update.
 
 > **Installed (writable-root) clients.** After promotion, the host records the writable live DLL in a
-> small selector under `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/`. On the next
-> launch an `INSTALLED` host reads and validates that selector before `InitApp`, then loads the writable
+> small selector in the writable root itself, next to the log and the session marker
+> (`MakeClientRuntimeBootstrapPath(<root>)` → `<root>/<runtime><ext>.path`). On the next launch a host
+> with a writable root reads and validates that selector before `InitApp`, then loads the writable
 > DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
 > names a different runtime, or points to neither a live nor staged file. Portable clients never consult
 > this selector. Gameplay resources use the same overlay precedence: `GetClientResources()` mounts the
@@ -333,7 +346,7 @@ client â†’ server: GetUpdateFile  { file_index: uint32, start_offset: uint6
 server â†’ client: UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
-The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`, currently 5 MB in this project â€” see [LastFrontier.fomain](../../LastFrontier.fomain)). The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
+The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`, see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md)). The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
 
 The updater connection also participates in the shared connection-stage protocol. After `InitData`, a
 server may send `NetMessage::HashList` (message id 122) to teach clients strings that were previously
@@ -354,7 +367,7 @@ Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Serve
 
 Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
 
-To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](ConfigurationAndDataSources.md)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 
@@ -386,7 +399,7 @@ auto GetUpdateDescriptor(string_view binary_target_name) const -> const vector<u
 | `ServerNetwork.UpdateFilesInMemory` | top-level + `[SubConfig]` | `True` keeps every packaged update file in RAM (low CPU under load). `False` serves from disk on demand (low RAM, more I/O). Public `[SubConfig]`s in this project: `PublicGame = True`, `DailyTest = True`, `Staging = True`. |
 | `Network.ForceMetadataVersion` | top-level | Testing only: overrides the layout version the client reports, so a divergence can be simulated without a second bake. Empty in every shipped config. |
 | `Baking.PlatformBinaries` | top-level | Directory the server reads per-target client runtime libraries from, and the packager writes them to. Default `PlatformBinaries`, resolved relative to the server's working directory / package root. |
-| `Client.UserWritablePath` | client | Writable data root for an **installed** client whose install dir is read-only. Empty (default) = **portable** (cache/logs/updates next to the exe). `*` = the per-OS user data dir. Otherwise an explicit absolute path. See the section below. |
+| `Common.UserWritablePath` | common | **Read-only**: the writable data root for everything written at runtime — log, cache, resource overlay, self-updated binaries, and on the server the database. Resolved at startup before any config is read, so it is not authorable: `--UserWritablePath <path>` names it, otherwise an `INSTALLED` marker beside the executable selects the per-OS user data dir plus the project name, otherwise it stays empty and everything is relative to the working directory. See the section below. |
 
 There is no auto-detection of memory vs disk mode in C++. Choose explicitly per environment.
 
@@ -397,15 +410,36 @@ user unpacks anywhere. The Windows MSI defaults to `%LOCALAPPDATA%`, but an **in
 still sit in a read-only directory after an explicit `Program Files` choice (or under `/usr/...`), so
 its writes must go to a per-user writable location instead.
 
-`Client.UserWritablePath` selects the model, resolved at startup by `ResolveUserWritablePath(settings)` (`Source/Frontend/ApplicationInit.cpp`, called from `LoadAppSettings`):
+`ResolveWritableRoot(args)` (`Source/Frontend/ApplicationInit.cpp`) answers it, and it is **settings-free
+by design**: the log, the cache and the local-config cache all live under this root, so nothing read from
+disk may decide where it is. It runs before the config is even located, which is why it is also the first
+thing `main` does — the log file opens at its final location instead of being moved there later. In order:
 
-- **empty → portable** (default): writable paths stay relative to the exe / working dir (unchanged behaviour).
-- **`*` → per-OS user data dir** (`Platform::GetUserDataBase()` via env, no SDL/shell32 dependency): Windows `%LOCALAPPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or `~/.local/share`, then `/<Common.GameName>`.
-- **explicit path** → that absolute writable root.
+1. **`--UserWritablePath <path>` on the command line** (the dotted `--Common.UserWritablePath` spelling is
+   accepted too), scanned by hand rather than through the settings parser. This is how Android passes the
+   directory the platform hands it (`FOnlineActivity.getArguments`), and how a test isolates a run.
+   A config file **cannot** set it: a value that lives inside the root cannot name the root. The value `*`
+   asks for the same per-user directory the marker selects, for a launcher that wants it without knowing
+   the per-OS path.
+2. **an `INSTALLED` marker beside the executable** → the per-OS user data dir from
+   `Platform::GetUserDataBase()` (environment first, the OS itself as fallback): Windows
+   `%LOCALAPPDATA%`, macOS/iOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or
+   `~/.local/share` — plus `FO_NICE_NAME`. Android is the exception on that lookup: it keeps no usable
+   `HOME`, so its internal storage path is asked of SDL instead. The **project** name, not `Common.GameName`, because the name
+   has to be known before any config is read; the Windows MSI installs into the same directory name, so a
+   default install keeps one folder rather than two.
+3. **otherwise portable**: every writable path stays relative and therefore resolves against the **working
+   directory**. That is the anchor of the whole portable layout — the main config is found by walking up
+   from `std::filesystem::current_path()`, and `ClientResources`, `CacheResources` and `BakeOutput` are
+   relative names read from the same place — so writes cannot be anchored to the executable's directory
+   without splitting them from the reads they pair with. A player launching the exe from Explorer, Steam
+   or a shortcut gets a working directory equal to the install directory; a launcher that sets a foreign
+   one breaks resource loading first.
 
-Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>` subdirs, and is
-**fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
-bad install config never bricks startup.
+Resolution is idempotent, creates the directory (and `LoadAppSettings` then pre-creates the
+`Cache`/`<ClientResources>` subdirs once their names are known), and is **fail-safe**: if the directory
+cannot be determined or created it logs a warning and falls back to the working directory, so a bad
+install never bricks startup.
 
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
@@ -419,26 +453,30 @@ The updater's packaged-mode gates and resource-root choices use the already load
 the filesystem's physical archive-versus-directory selection.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
-(`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
-and the exe dir for a portable one, so a self-updated runtime lands at `<root>/<runtime_name><ext>` (mirroring
+(`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) comes from
+`GetClientBinaryDir(UserWritablePath)` — the one rule for where a client keeps the binaries it may replace:
+`<root>` when it has a writable root and the exe dir when it does not — so a self-updated runtime lands at `<root>/<runtime_name><ext>` (mirroring
 the install-dir layout, `<exe_dir>/<runtime_name><ext>`) alongside its `-staging` and `<...>.pdb` siblings. It
 is **not** gated off — both portable and installed clients self-update on every platform where
 `CanSelfUpdateNativeModules()` is true.
 
-Because the host resolves and loads the runtime DLL *before* settings (so it cannot compute `<root>` itself —
-`Common.GameName` is only known after `InitApp`), the runtime returns the writable live path through
-`ClientRuntimeResult::RequestedRuntimePath`. The host promotes that path, validates that it is absolute and
-has the current executable-derived runtime filename, writes it to the installed-client bootstrap selector,
-and exits; it never loads it again in the same process. On the next launch the `INSTALLED` host reads the
-selector from `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/<runtime><ext>.path` before
-settings, accepts it only when the live file or its `-staging` sibling exists, and loads that runtime directly.
-Missing, oversized, relative, newline-containing, wrong-basename, and stale selectors fall back to the frozen
-install-dir runtime. `--ClientLibPath` remains the final explicit override. Portable clients update their
-exe-dir sibling runtime and neither write nor read the installed selector.
+The runtime returns the writable live path through `ClientRuntimeResult::RequestedRuntimePath`. The host
+promotes that path, validates that it is absolute and has the current executable-derived runtime filename,
+writes it to the bootstrap selector, and exits; it never loads it again in the same process. The host
+resolves the writable root once at startup, with the same `LoadAppSettings` plus `ResolveUserWritablePath`
+the runtime uses, and derives the selector path and the session marker from it — so both halves of the
+client answer "where does this client write" identically, and an explicitly configured `UserWritablePath`
+is honoured by the host as well. On the next launch the host reads the selector from
+`<root>/<runtime><ext>.path` before `InitApp`, accepts it only when the live file or its `-staging` sibling
+exists, and loads that runtime directly. Missing, oversized, relative, newline-containing, wrong-basename,
+and stale selectors fall back to the frozen install-dir runtime. `--ClientLibPath` remains the final
+explicit override. A client with no writable root updates its exe-dir sibling runtime in place and neither
+writes nor reads a selector — there is nothing for one to point at.
 
-**Trigger:** the installer drops an `INSTALLED` file next to the exe; when `Client.UserWritablePath`
-is empty and that marker is present, the client switches to `*` automatically. The portable zip has no
-marker. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added
+**Trigger:** the installer drops an `INSTALLED` file next to the exe, and its presence alone selects the
+per-user layout. The portable zip has no marker. Android needs none either — its launcher passes the
+platform's own directory on the command line; when macOS/iOS bundle packaging lands, the marker belongs in
+`Contents/MacOS/` beside the executable, since a bundle's contents are read-only. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added
 then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay portable).
 
 ## Packaging
@@ -542,11 +580,11 @@ Local validation steps:
 8. Interrupt a client mid-download (kill the network) and reconnect â€” the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 â†’ restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `LF_Client.exe`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Common.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 
-- [BuildAndLaunch.md](../../Docs/BuildAndLaunch.md) â€” build / package commands and launch profiles.
-- [Architecture.md](../../Docs/Architecture.md) â€” engine + game build layout, target table.
+- [BuildWorkflow.md](BuildWorkflow.md) — configure, build and validation workflow.
+- [BuildToolsPipeline.md](BuildToolsPipeline.md) — packaging and generated-source stages.
+- [Architecture.md](Architecture.md) â€” engine + game build layout, target table.
 - [Debugging.md](Debugging.md) â€” debugger setup; the host vs runtime split affects which binary the debugger should attach to.
-- [SteamIntegration.md](../../Docs/SteamIntegration.md) â€” alternative distribution channel that bypasses the in-game updater.

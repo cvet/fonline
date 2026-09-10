@@ -50,6 +50,7 @@ FIXED_SETTING(bool, Common, DebugBuild); // If true, debug build is used, otherw
 FIXED_SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
 FIXED_SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
 FIXED_SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
+FIXED_SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -60,6 +61,16 @@ FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bi
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
+FIXED_SETTING(string, Script, ManagedScriptProjectName, "FOnline"); // Managed project base name
+FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
+FIXED_SETTING(string, Script, ManagedScriptMsBuild, "dotnet msbuild"); // Managed msbuild command
+FIXED_SETTING(vector<string>, Script, ManagedScriptDirs, "Engine/Source/Scripting/Managed/CoreScripts", "Scripts"); // Managed script source directories, top-level .cs files of each are compiled in place
+FIXED_SETTING(string, Script, ManagedScriptGeneratedDir); // Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)
+FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
+FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
+FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzers); // Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build
+FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -178,7 +189,7 @@ FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles, 4096); // Maximum triangle budg
 FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight, 32.0f); // Score awarded for removing a full frame area; one point offsets one submitted triangle
 SETTING_GROUP_END();
 
-///@ ExportSettings Client
+///@ ExportSettings Common
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
@@ -195,6 +206,7 @@ VARIABLE_SETTING(bool, Render, ForceMetal, false); // If true, Metal is forced
 VARIABLE_SETTING(bool, Render, ForceVulkan, false); // If true, Vulkan is forced
 VARIABLE_SETTING(bool, Render, ForceSDLGpu, false); // If true, SDL_GPU backend is forced
 VARIABLE_SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
+VARIABLE_SETTING(bool, Render, AllowSoftwareRenderer, false); // If true, a software rasterizer may stand in when no hardware device is available
 FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
@@ -351,7 +363,7 @@ FIXED_SETTING(bool, Platform, TabletBuild); // Tablet build (read only)
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(DataBaseSettings, virtual BaseSettings);
+SETTING_GROUP(DataBaseSettings, virtual CommonSettings);
 FIXED_SETTING(bool, DataBase, OpLogEnabled, true); // If true, pending database changes are mirrored to oplog for recovery; if false, any database write failure causes immediate panic
 FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending database changes oplog path; committed replay progress path is derived as this value plus -committed
 FIXED_SETTING(int32_t, DataBase, ReconnectRetryPeriod, 1000); // Database backend retry period in milliseconds while oplog mode is active
@@ -389,7 +401,6 @@ FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
 FIXED_SETTING(string, Client, DefaultSplashPack); // Default splash pack
 FIXED_SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
-VARIABLE_SETTING(string, Client, UserWritablePath); // Writable data root for an INSTALLED client (cache, logs, self-update overlay) when the install dir is read-only. Empty = portable (write next to the exe, the default). "*" = the per-OS user data dir from the environment (Windows %LOCALAPPDATA% else %APPDATA%; macOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share). Otherwise an explicit absolute path. Resolved to an absolute, created directory at startup; read-only base resources stay in the install dir with this dir layered on top. The installer sets this; see Docs/ClientUpdater.md
 VARIABLE_SETTING(string, Client, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, Client, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, Client, SoundNotify, false); // If true, sound notifications are enabled

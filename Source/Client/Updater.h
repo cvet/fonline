@@ -45,6 +45,8 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_DECLARE_EXCEPTION(ClientUpdateException);
+
 enum class UpdaterResult : uint8_t
 {
     ResourcesReady = 0, // Gameplay compat OK; resources are now in sync, caller may start the game
@@ -60,8 +62,13 @@ extern auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
 extern auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
 extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
 extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
+// Where this client keeps the binaries it may replace itself: the writable root when it has one, and
+// the executable's own directory otherwise
+extern auto GetClientBinaryDir(string_view user_writable_path) -> string;
 extern auto GetClientRuntimeLivePath() -> string;
 extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
+// Empty without a writable root: the binaries then sit next to the exe and are replaced in place
+extern auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<string>;
 extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
 extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
 extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
@@ -121,7 +128,6 @@ private:
     static auto GetDiskFileSize(string_view file_path) -> optional<uint64_t>;
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
-    static auto GetClientBinaryDir() -> string;
 
     ptr<ClientSettings> _settings;
     ClientConnection _conn;

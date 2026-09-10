@@ -65,7 +65,7 @@ Map::~Map()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!_engine->IsShutdownInProgress()) {
+    if (!IsEngineShutdownInProgress()) {
         FO_VERIFY_AND_CONTINUE(_spectatorPlayers.empty(), "Server map has spectator players during destruction", GetId(), _spectatorPlayers.size());
         FO_VERIFY_AND_CONTINUE(_critters.empty(), "Server map has critters during destruction", GetId(), _critters.size());
         FO_VERIFY_AND_CONTINUE(_crittersMap.empty(), "Server map has critter map entries during destruction", GetId(), _crittersMap.size());

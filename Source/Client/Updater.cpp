@@ -37,6 +37,13 @@
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 
+#if FO_MANAGED_SCRIPTING
+#include "ManagedRuntimeIdentity.gen.h"
+#define FO_BINARY_UPDATE_RUNTIME_SUFFIX "-Managed-" FO_MANAGED_RUNTIME_ID
+#else
+#define FO_BINARY_UPDATE_RUNTIME_SUFFIX ""
+#endif
+
 FO_BEGIN_NAMESPACE
 
 static constexpr string_view StrCheckUpdates = "Check updates";
@@ -54,15 +61,18 @@ static constexpr string_view StrMetadataMismatch = "Game data on the server does
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
+static constexpr string_view ClientRuntimeBootstrapExtension = ".path";
 static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
+static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view;
+static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept;
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings),
     _cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
-    _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : string(settings->UserWritablePath)},
+    _binaryDir {GetClientBinaryDir(settings->UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
     _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
@@ -861,21 +871,6 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
     return true;
 }
 
-auto Updater::GetClientBinaryDir() -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if constexpr (FO_WEB) {
-        // The web client runs from the virtual filesystem root and has no on-disk exe path
-        return "/";
-    }
-    else {
-        auto exe_path = Platform::GetExePath();
-        FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
-        return strex(exe_path.value()).extract_dir().str();
-    }
-}
-
 auto Updater::GetRuntimeLivePath() const -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -934,63 +929,63 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #if FO_WINDOWS
 
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
-    return "Windows-win64";
+    return "Windows-win64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(_M_IX86) || defined(__i386__)
-    return "Windows-win32";
+    return "Windows-win32" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(_M_ARM64) || defined(__aarch64__)
-    return "Windows-arm64";
+    return "Windows-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "Windows-unknown";
+    return "Windows-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_LINUX
 
 #if defined(__x86_64__)
-    return "Linux-x64";
+    return "Linux-x64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__aarch64__)
-    return "Linux-arm64";
+    return "Linux-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__i386__)
-    return "Linux-x86";
+    return "Linux-x86" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__arm__)
-    return "Linux-arm";
+    return "Linux-arm" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "Linux-unknown";
+    return "Linux-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_ANDROID
 
 #if defined(__aarch64__)
-    return "Android-arm64";
+    return "Android-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__i386__)
-    return "Android-x86";
+    return "Android-x86" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__arm__)
-    return "Android-arm32";
+    return "Android-arm32" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "Android-unknown";
+    return "Android-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_MAC
 
 #if defined(__aarch64__)
-    return "macOS-arm64";
+    return "macOS-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__x86_64__)
-    return "macOS-x64";
+    return "macOS-x64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "macOS-unknown";
+    return "macOS-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_IOS
 
 #if defined(__aarch64__)
-    return "iOS-arm64";
+    return "iOS-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #elif defined(__x86_64__)
-    return "iOS-simulator";
+    return "iOS-simulator" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
-    return "iOS-unknown";
+    return "iOS-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #endif
 
 #elif FO_WEB
-    return "Web-wasm";
+    return "Web-wasm" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
 #else
 #error "Unknown binary update target"
 #endif
@@ -1014,23 +1009,49 @@ auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
     }
 }
 
-auto GetClientRuntimeLivePath() -> string
+auto GetClientBinaryDir(string_view user_writable_path) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    string binary_dir;
+    // A writable root holds everything this client writes, the modules it replaces included; without one
+    // the client is portable and owns its own directory
+    if (!user_writable_path.empty()) {
+        return string(user_writable_path);
+    }
 
     if constexpr (FO_WEB) {
-        // No on-disk runtime companion on web; the runtime lives at the virtual filesystem root
-        binary_dir = "/";
+        // The web client runs from the virtual filesystem root and has no on-disk exe path
+        return "/";
     }
     else {
         auto exe_path = Platform::GetExePath();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
-        binary_dir = strex(exe_path.value()).extract_dir().str();
+        return strex(exe_path.value()).extract_dir().str();
+    }
+}
+
+auto GetClientRuntimeLivePath() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Always the module shipped beside the executable: an update never replaces the host, so this stays
+    // the base runtime a selector may point away from
+    string binary_dir = GetClientBinaryDir("");
+    return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+}
+
+auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Nothing to select without a writable root: the module then lives beside the exe and is replaced
+    // in place, which the host finds on its own
+    if (user_writable_path.empty()) {
+        return std::nullopt;
     }
 
-    return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+    string selector_name = strex("{}{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension(), ClientRuntimeBootstrapExtension).str();
+    return fs_resolve_path(fs_make_writable_path(user_writable_path, selector_name));
 }
 
 auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
@@ -1165,11 +1186,51 @@ auto GetCurrentClientRuntimeLibraryName() -> string
     return string(FO_DEV_NAME);
 }
 
+static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (result) {
+    case UpdaterResult::ResourcesReady:
+        return "ResourcesReady";
+    case UpdaterResult::BinariesStaged:
+        return "BinariesStaged";
+    case UpdaterResult::PlatformUnsupported:
+        return "PlatformUnsupported";
+    case UpdaterResult::ServerMissingNativeUpdate:
+        return "ServerMissingNativeUpdate";
+    case UpdaterResult::UpdaterOutdated:
+        return "UpdaterOutdated";
+    case UpdaterResult::Failed:
+        return "Failed";
+    case UpdaterResult::MetadataMismatch:
+        return "MetadataMismatch";
+    default:
+        return "Unknown";
+    }
+}
+
+// Reported, not thrown: the caller still owns the dialog and the quit that follows. Constructing the
+// exception is what carries a fixed message, context values and a stack trace into the crash reporter
+static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    safe_call([&] {
+        ClientUpdateException ex("Client update did not complete", UpdaterResultToString(result), target_name, GetUpdatePlatformName(GetCurrentUpdatePlatform()), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+        ReportExceptionAndContinue(ex);
+    });
+}
+
 void ShowUpdaterFailure(UpdaterResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
     string_view target_name = GetCurrentBinaryUpdateTargetName();
+
+    // The dialog reaches one player; this reaches us. Every terminal failure here ends the client, and
+    // without a report the only trace is a screenshot the player chooses to send
+    ReportUpdaterFailure(result, target_name);
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:

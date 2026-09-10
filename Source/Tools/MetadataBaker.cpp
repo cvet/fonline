@@ -65,7 +65,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
 
-        if (ext != "fos") {
+        if (ext != "fos" && ext != "cs") {
             continue;
         }
 
@@ -1624,9 +1624,26 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             return value;
         };
 
-        auto last_arg_begin = tag_desc.Tokens.size() - 1;
+        auto rule_tokens = span(tag_desc.Tokens);
+        auto qualifier = std::ranges::find(rule_tokens, "BeforeVersion");
+        string version_property;
+        string before_version;
 
-        while (last_arg_begin > 2 && tag_desc.Tokens[last_arg_begin - 1] == ".") {
+        if (qualifier != rule_tokens.end()) {
+            size_t qualifier_index = static_cast<size_t>(qualifier - rule_tokens.begin());
+
+            if (rule_tokens[0] != "Property" || qualifier_index < 4 || qualifier_index + 2 >= rule_tokens.size()) {
+                throw MetadataBakerException("Invalid property migration version qualifier", tag_desc.SourceFile, tag_desc.LineNumber);
+            }
+
+            version_property = merge_dotted_tokens(rule_tokens.subspan(qualifier_index + 1, rule_tokens.size() - qualifier_index - 2));
+            before_version = rule_tokens.back();
+            rule_tokens = rule_tokens.first(qualifier_index);
+        }
+
+        auto last_arg_begin = rule_tokens.size() - 1;
+
+        while (last_arg_begin > 2 && rule_tokens[last_arg_begin - 1] == ".") {
             last_arg_begin -= 2;
         }
 
@@ -1636,16 +1653,40 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
 
         string rule_name = string(tag_desc.Tokens[0]);
         string extra_info = string(tag_desc.Tokens[1]);
-        string target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
-        string replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
+        string target = merge_dotted_tokens(rule_tokens.subspan(2, last_arg_begin - 2));
+        string replacement = merge_dotted_tokens(rule_tokens.subspan(last_arg_begin));
 
         ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
+
+        if (!version_property.empty()) {
+            ctx.Meta.RegisterPropertyMigrationBeforeVersion(extra_info, target, version_property, before_version);
+        }
+
+        // A `MigrationRule Property` rewrites an obsolete stored name onto its replacement when loading stored data
+        if (rule_name == "Property") {
+            auto registrar = ctx.Meta.GetPropertyRegistrar(extra_info);
+
+            if (registrar) {
+                auto live_prop = registrar->FindProperty(target);
+
+                if (live_prop && version_property.empty()) {
+                    WriteLog(LogType::Warning, "Property migration rule shares its old name with a live property: {}.{} is registered as {} while stored values migrate to {}", extra_info, target, live_prop->GetViewTypeName(), replacement);
+                }
+            }
+        }
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(rule_name);
         tag_tokens.emplace_back(extra_info);
         tag_tokens.emplace_back(target);
         tag_tokens.emplace_back(replacement);
+
+        if (!version_property.empty()) {
+            tag_tokens.emplace_back("BeforeVersion");
+            tag_tokens.emplace_back(version_property);
+            tag_tokens.emplace_back(before_version);
+        }
+
         result_tag_migration_rule.emplace_back(std::move(tag_tokens));
     }
 

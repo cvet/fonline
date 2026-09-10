@@ -34,6 +34,13 @@ For an embedding project with dev name `LF`, the standard generated names are `L
 
 ## Running tests
 
+Client script probes can deliver lifecycle notifications through
+`Game.SimulateDisconnect()`, `Game.SimulateConnectingFailed()` and
+`Game.SimulateInfoMessage(infoMessage, extraText)`.
+These APIs invoke the native subscriber chains without changing the transport,
+so a probe can observe notification handling and still report over its existing
+connection. Use an actual connection to validate transport behavior.
+
 Preferred local baseline from a configured build:
 
 ```bash
@@ -48,6 +55,14 @@ of cooked files presented as authored inputs.
 The executable target can also be invoked directly when you need Catch2 arguments. In Last Frontier-style layouts, test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/LF_UnitTests.exe` or `Binaries/Tests-Linux-x64/LF_UnitTests`.
 
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. When the run fails, the helper also echoes the captured output before failing, so a failure is diagnosable from the build output alone — on CI the log file never leaves the runner, and the exit code by itself does not say which test or assertion broke.
+The generated `RunUnitTests` target captures the complete test process output under the configured build tree's `Testing/` directory and prints the Catch2 success summary. On a real non-zero process exit it replays the captured output before failing. This keeps expected diagnostics from negative compiler/parser tests from being reclassified as build errors by native build frontends such as MSBuild.
+
+The `validate` workflow also runs a standalone `windows-file-io` job on a
+hosted Windows runner. CMake discovers Visual Studio and builds the diagnostic
+with both static and dynamic CRTs; this job has no engine or game build dependency.
+Its `windows-file-io` artifact retains the factual JSON, compiler logs, executables
+and available embedded manifests even when a probe fails. See the
+[filesystem diagnostic contract](Essentials.md#filesystem-compression-sockets-and-work-threads).
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
@@ -57,6 +72,89 @@ Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
+
+The validation project (`Engine/BuildTools/validation-project`) defaults to `FO_ANGELSCRIPT_SCRIPTING`
+with `FO_MANAGED_SCRIPTING` off. Ordinary validators retain these defaults and avoid the heavy
+Mono source build. The explicit `managed-mac-client`, `managed-ios-simulator-client` and
+`managed-ios-device-client` scenarios instead build the same engine-owned scaffold with managed
+scripting enabled and AngelScript disabled. They run normal native client compilation and linking,
+including `SetupManagedRuntime` and the generated runtime identity. They require an Apple host,
+Xcode, a .NET 10 SDK and network access to the pinned `dotnet/runtime` source.
+
+The manual `validate` workflow accepts `job=managed-apple` to run only four managed Apple builds:
+native macOS x64 and arm64, iOS x64 simulator and unsigned iOS arm64 device. `job=all` also runs
+the ordinary matrix. Automatic push/PR validation keeps the existing ordinary matrix; managed
+Apple builds are explicit because of their additional runtime build cost. The device build disables
+code signing and proves compilation/linking, not installation, signing or on-device execution.
+These engine-only builds need no embedding-project code, resources or credentials. Embedding
+projects must still validate their own managed assemblies, packages and live runtime behavior.
+
+The unit-test executable follows the configured scripting backends. AngelScript-only test translation units are
+compiled only with `FO_ANGELSCRIPT_SCRIPTING`; `Test_ManagedScriptBaker` is compiled only with
+`FO_MANAGED_SCRIPTING`. A managed-only embedding project can therefore build and run its local `RunUnitTests`
+target without re-enabling the retired runtime backend. Ordinary unit validators retain the full
+AngelScript backend boundary.
+
+`BakerTests::TestRig` keeps sources and outputs in memory and leaves `BakeOutput` empty, so map/proto
+bakers cannot load unrelated managed assemblies or particle caches from the process working directory.
+Tests that exercise disk output, assembly packaging or dependency caches must explicitly set a private
+bake directory; this includes dry-run managed project generation. The MapBaker regression plants a
+foreign assembly under the working directory and verifies isolation plus explicit disk opt-in.
+
+`Test_ServerEntityLifetime` runs for every scripting-backend configuration. Its two `[lifetime]`
+cases start a real server using in-memory metadata/prototypes and retain native owners of
+Critter, Item, Map, Location and Player. One releases those owners on another joined thread
+after shutdown and destruction of the server; the other releases them before shutdown to
+exercise normal destructor invariants. ASan runs detect stale engine access during deferred
+release. When AngelScript is enabled, the fixture compiles its own minimal server bytecode
+against the same in-memory metadata before startup. The fixture uses no embedding-project
+assemblies, resource packs or database files.
+
+### Managed core-script regression tests
+
+With a .NET 10 SDK, run the offline console harness:
+
+```bash
+dotnet run --project Source/Scripting/Managed/Tests/FOnline.CoreScripts.Tests.csproj
+```
+
+It compiles the real managed invocation, registration and value-type helpers against a minimal generated-API
+fixture. Cases cover ref-result conversion and failure accounting, qualified modules/enums, overload selection,
+cached dispatch allocation, native fallback, isolation from foreign enum assemblies, dictionary signatures,
+async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
+also bake and run their managed gameplay tests against the actual Mono backend.
+
+The native callback GC probe uses an existing Linux Mono embedding runtime (its `include/mono-2.0`
+and `lib` directories), Clang, and the .NET 10 SDK on `PATH`:
+
+```bash
+FO_MANAGED_CALLBACK_RUNTIME=/path/to/mono/linux.x64.Release \
+  python3 -m pytest BuildTools/tests/test_managed_callback_gc_roots.py
+```
+
+It compiles the canonical `DispatchManagedCallbackInContext` body and managed callback helpers against
+small argument-conversion fixtures. Real Mono collections cover eleven mixed scalar arguments,
+a mutable string with a return value, and cleanup after a boxing exception. The Mono profiler
+checks strong-handle lifetime at the boxing and copy-back boundaries: native conservative stack
+scanning can otherwise keep an unrooted object alive. The same probe runs 10,000 frame-pump scopes
+on one external worker under hybrid suspension, verifies one attachment for the worker lifetime,
+and forces a collection while that worker is parked GC-safe before checking its one final detach.
+This proves the native ownership and worker-lifetime contracts; WebAssembly collection and browser
+behavior still require a Web runtime check.
+
+An existing Linux Makefiles unit-test build also supplies the actual `SyncContext` and `EntityLock`
+implementations for the callback scope probe:
+
+```bash
+FO_MANAGED_CALLBACK_BUILD=/path/to/native/build \
+  python3 -m pytest BuildTools/tests/test_managed_callback_context.py
+```
+
+This probe compiles the canonical callback wrapper and `ServerEngine::RunScriptContext` method
+on a small fixture host. Releasing or replacing the callback's cover, including an exceptional
+return, must preserve the caller's context and physical lock while releasing the callback's own
+lock. It records the native link inputs and verifies that they remain unchanged during linking.
+A running server with real managed remote calls remains the end-to-end acceptance check.
 
 ### Unit tests under sanitizers
 
@@ -78,7 +176,18 @@ The runtime build applies a narrow libunwind ignorelist so C++ exception and
 sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
 native stack capture and the backward-cpp signal handler are disabled under MSan and
 TSan so the sanitizer runtimes own their reports; backward-cpp/libbfd symbolization
-under TSan also produces prohibitive shadow-memory growth. `unit-tests-san-memory-with-origins`
+under TSan also produces prohibitive shadow-memory growth. The embedded Mono archive and
+its generated JIT code are not instrumented by the host sanitizer toolchain. Managed-script
+builds therefore reject `San_Memory*`: valid runtime writes otherwise retain poisoned shadow
+bytes and report as soon as Mono loads CoreLib. They also reject `San_Thread`: Mono suspends
+mutators with signals for stop-the-world collection, which does not publish a happens-before
+edge to the host TSan runtime; valid nursery allocation and collection then report as races.
+Changing the SGen clear or collector mode only moves those reports between Mono's intercepted
+`memcpy`/`memset` calls. The Linux source patch initializes and publishes POSIX signal-action
+bytes for bounded MSan diagnostics, but does not qualify the whole runtime for either sanitizer.
+Use the managed-disabled engine unit validators for native MSan/TSan coverage and ASan/UBSan
+for managed runtime execution.
+`unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
@@ -140,6 +249,11 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 - Clang: LLVM profile/coverage mapping;
 - GCC: GCC/lcov-style coverage flags.
 
+Coverage builds use AngelScript's portable generic calling convention. The native x64 GCC trampoline adjusts the
+stack inside inline assembly and cannot reliably unwind an application C++ exception once coverage instrumentation
+changes the surrounding frame; the portable path keeps the same registered-function behavior in ordinary C++ so
+expected exception tests remain catchable.
+
 `BuildTools/cmake/stages/Applications.cmake` wires coverage command targets through `BuildTools/codecoverage.py`:
 
 - `CleanCodeCoverageData`
@@ -148,6 +262,38 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 - `AnalyzeCodeCoverage`
 
 Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+Coverage-only configurations also provide the ordinary `<DevName>_ServerHeadless` and
+`<DevName>_Baker` executable targets. They link the same instrumented core libraries as
+`<DevName>_CodeCoverage`; no second configuration or production runtime rebuild is required.
+They do not enable the windowed applications or the baker plugin. Clang/GCC companion
+applications, including the managed script baker, register a `quick_exit` coverage flush on
+platforms where `ExitApp` uses it (Linux/Windows; Apple, Android, and Web retain `exit`),
+because the engine's ordinary shutdown bypasses the compiler runtime's `atexit` writer.
+
+For native LLVM coverage of script-driven integration tests, first run `RunCodeCoverage`,
+then run the embedding project's real integration tests with an absolute
+`LLVM_PROFILE_FILE=<coverage-output>/raw/integration-%m-%p.profraw`. Keep bake/setup profiles
+in a separate directory so setup execution cannot replace gameplay acceptance. Verify every
+integration process succeeds and produces its own nonempty profile; a unit-test profile
+alone does not prove that an integration process contributed. Use the original instrumented
+executables as coverage objects, even if the tests run byte-identical staged copies.
+
+Finally invoke `BuildTools/codecoverage.py report` directly with the existing
+`--workspace-root`, `--build-dir`, `--binary`, `--backend llvm`, and `--output-dir` arguments,
+adding `--object <instrumented-server>` for the integration executable. `--object` is repeatable
+for additional executables/shared libraries and supported by LLVM `report`/`full` only.
+The collector disables debuginfod lookup and rejects binary IDs missing from the supplied
+objects. LLVM merges profiles before exporting all supplied objects together; shared source lines
+remain a union, while uncovered lines in integration-only source files stay in the denominator.
+Do not invoke `GenerateCodeCoverageReport` or `AnalyzeCodeCoverage` after integration tests:
+the former depends on `RunCodeCoverage`, and both start a fresh unit collection that removes
+previous profiles. `full` likewise starts a fresh run; use `report` to preserve integration data.
+`BuildTools/tests/test_codecoverage_llvm_objects.py` exercises the collector with actual
+instrumented processes, including quick exit, shared source mapping, and failing inputs.
+
+The engine validation workflow uploads coverage through the pinned Codecov action
+release 7.0.0. Its composite action uses a Node 24 helper and preserves CLI signature
+verification, token authentication and failure propagation for upload errors.
 `BuildTools/codecoverage.py` reports first-party production engine sources under
 `Engine/Source/`; it excludes `Source/Tests/`, `ThirdParty/`,
 `GeneratedSource/`, and `Applications/` from the denominator. See
@@ -413,7 +559,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **103** `Test_*.cpp` suites.
+Current count: **108** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -492,6 +638,7 @@ Current count: **103** `Test_*.cpp` suites.
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEntityLifetime.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
@@ -516,6 +663,7 @@ Current count: **103** `Test_*.cpp` suites.
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_ImageWriter.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`

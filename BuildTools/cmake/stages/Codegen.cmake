@@ -55,8 +55,7 @@ AppendList(FO_CODEGEN_COMMAND_ARGS
 	-enginedefine "FO_RENDER_32BIT_INDEX=0")
 
 AppendList(FO_CODEGEN_META_SOURCE
-    ${FO_SOURCE_META_FILES}
-    ${FO_MONO_SOURCE})
+    ${FO_SOURCE_META_FILES})
 
 foreach(entry ${FO_CODEGEN_META_SOURCE})
     AppendList(FO_CODEGEN_COMMAND_ARGS -meta ${entry})
@@ -79,11 +78,16 @@ AppendList(FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp")
 
-FileWrite("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
+SetValue(codegenArgsPath "${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
+string(JOIN "\n" codegenArgsContent ${FO_CODEGEN_COMMAND_ARGS})
+string(APPEND codegenArgsContent "\n")
 
-foreach(entry ${FO_CODEGEN_COMMAND_ARGS})
-    FileAppend("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "${entry}\n")
-endforeach()
+if(EXISTS "${codegenArgsPath}")
+    file(READ "${codegenArgsPath}" previousCodegenArgsContent)
+endif()
+if(NOT EXISTS "${codegenArgsPath}" OR NOT codegenArgsContent STREQUAL previousCodegenArgsContent)
+    FileWrite("${codegenArgsPath}" "${codegenArgsContent}")
+endif()
 
 SetValue(FO_CODEGEN_COMMAND
     ${Python3_EXECUTABLE}
@@ -97,7 +101,7 @@ SetValue(codegenTouchCommand
 AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
-    DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE}
+    DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE} "${codegenArgsPath}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
 
@@ -111,3 +115,61 @@ AddCommandTarget(ForceCodeGeneration
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# The interop shim table is generated here rather than in ThirdParty because it needs the Python
+# interpreter this stage resolves, while the archives it reads come from the Managed runtime setup
+if(FO_MANAGED_SCRIPTING)
+    AddCommandTarget(ManagedRuntimeIdentity
+        COMMAND_ARGS
+        COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/managed_runtime_identity.py"
+            --runtime-dir "${FO_MANAGED_RUNTIME_DIR}"
+            --header "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedRuntimeIdentity.gen.h"
+            --identity-file "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedRuntimeIdentity.txt"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    AddDependencies(ManagedRuntimeIdentity SetupManagedRuntime)
+    AppendList(FO_GEN_DEPENDENCIES ManagedRuntimeIdentity)
+
+    SetValue(FO_MANAGED_PINVOKE_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/generate_pinvoke_table.py")
+
+    # The archives carry target objects, so the reader must be the target toolchain's nm. Most toolchains
+    # set CMAKE_NM; the Emscripten one does not, and only its own llvm-nm understands wasm objects
+    if(CMAKE_NM)
+        SetValue(FO_MANAGED_NM "${CMAKE_NM}")
+    elseif(FO_WEB)
+        SetValue(FO_MANAGED_NM "$ENV{EMSDK}/upstream/bin/llvm-nm")
+    else()
+        # MSVC ships no nm, so the search also covers the LLVM the Visual Studio installer places beside
+        # the toolset and a standalone LLVM install
+        find_program(FO_MANAGED_NM
+            NAMES llvm-nm nm
+            HINTS
+                "$ENV{VCINSTALLDIR}/Tools/Llvm/x64/bin"
+                "$ENV{VCINSTALLDIR}/Tools/Llvm/bin"
+                "$ENV{ProgramFiles}/LLVM/bin"
+                "$ENV{ProgramW6432}/LLVM/bin")
+    endif()
+
+    if(NOT FO_MANAGED_NM OR NOT EXISTS "${FO_MANAGED_NM}")
+        AbortMessage("Symbol reader for the Managed interop shim table not found. Install LLVM (llvm-nm) or the Visual Studio \"C++ Clang tools for Windows\" component, or set FO_MANAGED_NM")
+    endif()
+
+    AddCustomCommand(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
+        COMMAND ${Python3_EXECUTABLE}
+            "${FO_MANAGED_PINVOKE_SCRIPT}"
+            --nm "${FO_MANAGED_NM}"
+            --output "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
+            ${FO_MANAGED_PINVOKE_ARGS}
+        DEPENDS "${FO_MANAGED_PINVOKE_SCRIPT}"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Generate Managed interop shim table")
+
+    AddCommandTarget(ManagedPInvokeTable
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+    # Ordered against the runtime setup as a target, not by depending on its marker file: a second
+    # DEPENDS on that output duplicates the rule and races two dotnet/runtime builds in one tree
+    AddDependencies(ManagedPInvokeTable SetupManagedRuntime)
+    AppendList(FO_GEN_DEPENDENCIES ManagedPInvokeTable)
+endif()

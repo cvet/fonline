@@ -47,6 +47,39 @@ auto Server_Game_SystemCall(ptr<ServerEngine> server, string_view command, strin
 
 namespace
 {
+    static auto ContainsNetworkMessage(const_span<uint8_t> data, NetMessage expected_message) -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+        size_t offset = 0;
+        bool found = false;
+
+        while (offset + header_size <= data.size()) {
+            uint32_t signature = 0;
+            uint32_t message_size = 0;
+            NetMessage message {};
+
+            MemCopy(&signature, data.data() + offset, sizeof(signature));
+            MemCopy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
+            MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+
+            size_t message_size_value = numeric_cast<size_t>(message_size);
+
+            FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid network message signature in test output", signature);
+            FO_VERIFY_AND_THROW(message_size_value >= header_size && offset + message_size_value <= data.size(), "Invalid network message size in test output", message_size, offset, data.size());
+
+            if (message == expected_message) {
+                found = true;
+            }
+
+            offset += message_size_value;
+        }
+
+        FO_VERIFY_AND_THROW(offset == data.size(), "Trailing bytes after network messages in test output", offset, data.size());
+        return found;
+    }
+
     static auto MakeSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
@@ -70,6 +103,46 @@ namespace
                     R"(
 namespace ScriptMethodsTest
 {
+    dict<string, int> MakeInvokeDict()
+    {
+        return {{"answer", 42}};
+    }
+
+    dict<string, array<int>> MakeInvokeArrayDict()
+    {
+        return {{"values", {3, 7}}};
+    }
+
+    int TestInvokeCollectionResults()
+    {
+        dict<string, int> result;
+        if (!InvokeResult("ScriptMethodsTest::MakeInvokeDict", result)) return -1;
+        if (result["answer"] != 42) return -2;
+        dict<string, array<int>> arrays;
+        if (!InvokeResult("ScriptMethodsTest::MakeInvokeArrayDict", arrays)) return -3;
+        if (arrays["values"].length() != 2 || arrays["values"][1] != 7) return -4;
+        return 0;
+    }
+
+    int CritterItemTransferInCalls;
+    ident CritterItemTransferInSourceId;
+    ident CritterItemTransferInResultId;
+    int CritterItemTransferInSourceCount;
+    int CritterItemTransferInResultCount;
+    int CritterItemTransferInCount;
+
+    [[Event]]
+    void OnCritterItemTransferIn(Critter cr, Item sourceItem, Item resultItem, int count)
+    {
+        CritterItemTransferInCalls++;
+        CritterItemTransferInSourceId = sourceItem.Id;
+        CritterItemTransferInResultId = resultItem.Id;
+        CritterItemTransferInSourceCount = sourceItem.Count;
+        CritterItemTransferInResultCount = resultItem.Count;
+        CritterItemTransferInCount = count;
+        resultItem.Hidden = true;
+    }
+
     // ========== Critter Inventory Operations ==========
 
     int TestCritterAddAndCountItems()
@@ -1045,6 +1118,43 @@ namespace ScriptMethodsTest
 
         Game.DestroyCritter(cr1);
         Game.DestroyCritter(cr2);
+        return 0;
+    }
+
+    int TestGameMoveItemMergeEvent()
+    {
+        CritterItemTransferInCalls = 0;
+        CritterItemTransferInSourceId = ident();
+        CritterItemTransferInResultId = ident();
+        CritterItemTransferInSourceCount = 0;
+        CritterItemTransferInResultCount = 0;
+        CritterItemTransferInCount = 0;
+
+        Game.OnCritterItemTransferIn.Subscribe(OnCritterItemTransferIn);
+
+        Critter sourceCr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter resultCr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (sourceCr is null || resultCr is null) return -1;
+
+        Item sourceItem = sourceCr.AddItem("TestStackableItem".hstr(), 4);
+        Item resultItem = resultCr.AddItem("TestStackableItem".hstr(), 3);
+        if (sourceItem is null || resultItem is null) return -2;
+
+        ident sourceId = sourceItem.Id;
+        ident resultId = resultItem.Id;
+        Item? moved = Game.MoveItem(sourceItem, 2, resultCr);
+
+        Game.OnCritterItemTransferIn.Unsubscribe(OnCritterItemTransferIn);
+
+        if (moved is null || moved.Id != resultId) return -3;
+        if (CritterItemTransferInCalls != 1) return -4;
+        if (CritterItemTransferInSourceId != sourceId || CritterItemTransferInResultId != resultId) return -5;
+        if (CritterItemTransferInSourceCount != 4 || CritterItemTransferInResultCount != 3 || CritterItemTransferInCount != 2) return -6;
+        if (sourceItem.Count != 2 || resultItem.Count != 5) return -7;
+        if (!resultItem.Hidden) return -8;
+
+        Game.DestroyCritter(sourceCr);
+        Game.DestroyCritter(resultCr);
         return 0;
     }
 
@@ -2704,13 +2814,19 @@ namespace ScriptMethodsTest
         Critter cr3 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null || cr3 is null) return -2;
 
+        ident cr1_id = cr1.Id;
+
         if (!Game.IsEntityLocked(cr1)) return -3;
+
+        Game.SyncRelease();
+        if (!Game.TrySyncEntity(cr1_id)) return -4;
+        if (!Game.IsEntityLocked(cr1)) return -5;
 
         Game.Sync(cr1);
 
         held = Game.GetHeldSyncEntities();
-        if (!ContainsEntity(held, cr1)) return -4;
-        if (!Game.IsEntityLocked(cr1)) return -5;
+        if (!ContainsEntity(held, cr1)) return -6;
+        if (!Game.IsEntityLocked(cr1)) return -7;
 
         Game.SyncRelease();
         held = Game.GetHeldSyncEntities();
@@ -2746,6 +2862,8 @@ namespace ScriptMethodsTest
         Game.DestroyCritter(cr2);
         Game.Sync(cr3);
         Game.DestroyCritter(cr3);
+
+        if (Game.TrySyncEntity(cr1_id)) return -13;
 
         return 0;
     }
@@ -3009,6 +3127,14 @@ TEST_CASE("ServerCritterStateOperations")
 
     auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
+    SECTION("InvokeCollectionResults")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestInvokeCollectionResults"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
     SECTION("StateQueries")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterStateQueries"));
@@ -3188,6 +3314,14 @@ TEST_CASE("ServerGameItemOperations")
     SECTION("MoveItemPartial")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemPartial"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("MoveItemMergeEvent")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemMergeEvent"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3588,6 +3722,11 @@ TEST_CASE("ServerMiscScriptOperations")
         CHECK(methods_player->GetName() == "ScriptPlayerMethods");
         CHECK(methods_player->GetConnection()->IsGracefulDisconnected());
         CHECK_FALSE(static_cast<bool>(methods_player->GetControlledCritter()));
+
+        {
+            auto out_buf = methods_player->GetConnection()->WriteBuf();
+            CHECK(ContainsNetworkMessage(out_buf->GetData(), NetMessage::RemoveCritter));
+        }
 
         auto name_validation_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"));
         REQUIRE(name_validation_func);
