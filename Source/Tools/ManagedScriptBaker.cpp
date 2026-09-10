@@ -349,7 +349,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         else {
             string msbuild_command = MakeManagedMsBuildCommand(settings->ManagedScriptMsBuild);
             string output_path = MakeAbsoluteProjectOutputPath(managed_assemblies_output_dir, target);
-            string command = strex("{} -noLogo -nodeReuse:false -m -restore -target:Build -p:Configuration={} -p:Platform=AnyCPU -p:OutputPath=\"{}\" \"{}\"", msbuild_command, target, output_path, project_path.generic_string()).str();
+            string command = strex("{} -noLogo -verbosity:quiet -nodeReuse:false -m -restore -target:Build -p:Configuration={} -p:Platform=AnyCPU -p:OutputPath=\"{}\" \"{}\"", msbuild_command, target, output_path, project_path.generic_string()).str();
             RemoveManagedOutputAssemblies(managed_assemblies_output_dir, target);
             RemoveManagedBuildSidecars(managed_assemblies_output_dir, target, assembly_file_name);
             RunCommand(command, "ManagedScriptBaker compilation failed");
@@ -1229,8 +1229,6 @@ auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override, const 
 auto ManagedScriptBaker::RunCommand(string_view command, string_view fail_message) -> void
 {
     FO_STACK_TRACE_ENTRY();
-
-    WriteLog("Run ManagedScriptBaker command: {}", command);
 
     int32_t exit_code = std::system(string(command).c_str());
 
