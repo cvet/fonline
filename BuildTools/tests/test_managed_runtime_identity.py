@@ -70,7 +70,13 @@ def test_generated_identity_does_not_touch_unchanged_header(tmp_path: Path) -> N
 
 def make_packager(tmp_path: Path):
     packager = package.Packager.__new__(package.Packager)
-    packager.args = SimpleNamespace(input=[str(tmp_path)], devname="LF", nicename="Game", buildhash="build")
+    packager.args = SimpleNamespace(
+        input=[str(tmp_path)],
+        devname="LF",
+        nicename="Game",
+        buildhash="build",
+        expect_client_runtime=[],
+    )
     packager.target_output_path = str(tmp_path / "output")
     packager.platform_binaries_dir = "PlatformBinaries"
     packager.embedded_data = b""

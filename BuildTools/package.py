@@ -918,11 +918,22 @@ class Packager:
 
 		self.verify_expected_client_runtime_payloads(copied_payloads, skipped_entries)
 
+	@staticmethod
+	def staged_payload_satisfies(copied_payloads: set[tuple[str, str]], target_name: str, output_name: str) -> bool:
+		# Managed clients publish under <target>-Managed-<identity>; that directory is still this variant
+		managed_prefix = target_name + '-Managed-'
+		for staged_target, staged_name in copied_payloads:
+			if staged_name != output_name:
+				continue
+			if staged_target == target_name or staged_target.startswith(managed_prefix):
+				return True
+		return False
+
 	def verify_expected_client_runtime_payloads(self, copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> None:
 		# The server package declares which client variants it distributes. Without this check a variant
 		# that was not built, or was built from another commit, is dropped in silence and the first
 		# report comes from a player told to update the client by hand
-		for expectation in self.args.expect_client_runtime:
+		for expectation in getattr(self.args, 'expect_client_runtime', ()) or ():
 			parts = expectation.split(':')
 			assert len(parts) in (2, 3), 'Expected client runtime must be Platform:arch[:postfix], got: ' + expectation
 			platform, arch = parts[0], parts[1]
@@ -942,10 +953,15 @@ class Packager:
 			assert target_name is not None, 'Expected client runtime names an unknown platform/arch: ' + expectation
 
 			output_name = self.args.nicename + ('_' + postfix if postfix else '')
-			if (target_name, output_name) in copied_payloads:
+			if self.staged_payload_satisfies(copied_payloads, target_name, output_name):
 				continue
 
-			reasons = '; '.join(skipped_entries) if skipped_entries else 'no client binaries directory was found for it'
+			if skipped_entries:
+				reasons = '; '.join(skipped_entries)
+			elif copied_payloads:
+				reasons = 'staged ' + ', '.join(sorted(target + '/' + name for target, name in copied_payloads))
+			else:
+				reasons = 'no client binaries directory was found for it'
 			raise AssertionError(
 				'Client runtime payload missing from the server package: expected ' + output_name + ' under PlatformBinaries/' + target_name
 				+ ' (from ' + binary_entry + '). Clients of this variant would be told to update manually. Skipped entries: ' + reasons)

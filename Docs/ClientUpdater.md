@@ -28,7 +28,7 @@ Relative path components are ordered case-sensitively before paths are serialize
 
 Binary output postfixes are parsed on full flag boundaries: a custom postfix such as `Debug_Profiling_Total` remains a postfix and does not change the profiling variant.
 
-The server packager selects each GUI/headless variant by its own build-hash sidecar, then verifies its runtime-identity sidecar against the supplied companion tree and publishes native update payloads only under that exact target. A changed runtime tree, a different managed runtime, or a client built without managed support cannot receive that payload. The existing missing-native-update path asks the player to install the full client package; the updater does not stage a library requiring unavailable companions. A companion upgrade must also bump the central compatibility migration marker so the client enters native update mode; the target suffix does not replace that compatibility contract. With identical companions, native library and gameplay assembly updates work normally. `FOnline.ManagedHost.dll` and game assemblies travel in resource packs; they are not installation-level Mono companions.
+The server packager selects each GUI/headless variant by its own build-hash sidecar, then verifies its runtime-identity sidecar against the supplied companion tree and publishes native update payloads only under that exact target. A declared client variant is satisfied by either `PlatformBinaries/<platform>-<arch>/` or `PlatformBinaries/<platform>-<arch>-Managed-<identity>/` carrying the packaged build name. A changed runtime tree, a different managed runtime, or a client built without managed support cannot receive that payload. The existing missing-native-update path asks the player to install the full client package; the updater does not stage a library requiring unavailable companions. A companion upgrade must also bump the central compatibility migration marker so the client enters native update mode; the target suffix does not replace that compatibility contract. With identical companions, native library and gameplay assembly updates work normally. `FOnline.ManagedHost.dll` and game assemblies travel in resource packs; they are not installation-level Mono companions.
 
 Changing installation-level Mono files therefore requires distributing a full client package. This is an explicit compatibility boundary, not an atomic multi-file runtime installation protocol. Build sidecars are packaging inputs and are not required in installed clients.
 
@@ -65,6 +65,8 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `BuildTools/package.py`
 - `BuildTools/msicreator/createmsi.py`
 - `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_windows_arch_variants.py`
+- `BuildTools/tests/test_managed_runtime_identity.py`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
