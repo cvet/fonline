@@ -186,6 +186,8 @@ Installed clients keep the read-only base resources mounted from `ClientResource
 
 `Source/Common/CacheStorage.*` stores named binary/string cache entries behind `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()`, and `RemoveEntry()`. Bounded consumers use `GetDataBounded(name, max_size)`, which checks the file size before allocating and distinguishes `Success`, `Missing`, `TooLarge`, and `Failed`, plus `SetDataChecked(...)`, which reports whether the complete write succeeded. The underlying disk helper `fs_read_file_bounded` applies the same pre-allocation cap and answers an oversized file with an empty result instead of raising. It is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs. Client-side cache consumers resolve relative cache paths through `fs_make_writable_path(UserWritablePath, CacheResources)`, so portable clients keep cache next to the executable and installed clients write under the per-user root.
 
+Managed class-library resources deliberately cross that boundary at startup. If the mounted resources contain `ManagedRuntime/`, `ManagedScriptBackend` hashes their normalized paths and bytes, restores the complete tree through a temporary directory, validates it, and atomically publishes it at `<CacheDir>/ManagedRuntime/<content-hash>/` before Mono initialization. A matching cache is reused; a partial or damaged one is rebuilt. This is a derived cache of the current resource pack, not a second source of truth. A clean side-by-side `ManagedRuntime/` is consulted only when resources do not contain the payload, for unpackaged applications and build tools.
+
 An entry is stored as one plain file named after the entry, with path separators folded to `_`, so the cache directory stays readable and inspectable. Two entry names that differ only in those separators therefore map to the same file — acceptable because an entry is only ever a cache, where a miss is always recoverable, but it means a caller that needs distinct entries must not rely on directory structure alone to separate them. The cache is not a confidentiality boundary: anything that must not be readable at rest has to be protected by its owner before it is handed over (the embedding project's secure-storage bridge does exactly that).
 
 ## Settings store
@@ -211,6 +213,7 @@ Focused tests for this area:
 - `Source/Tests/Test_DataSource.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_FileSystem.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_Settings.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 

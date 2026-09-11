@@ -40,6 +40,7 @@
 #include "EntityProtos.h"
 #include "FileSystem.h"
 #include "ManagedPInvokeTable.h"
+#include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
 #include "RemoteCallWire.h"
@@ -503,12 +504,10 @@ static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hst
 static auto IsManagedEntryAssemblyFileName(string_view file_name, string_view target_name) -> bool;
 static auto IsManagedHostAssemblyFileName(string_view file_name) noexcept -> bool;
 static auto CollectAssemblyResources(const FileSystem& resources, string_view target_name) -> vector<ManagedAssemblyResource>;
-static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool;
-static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>;
 static void AppendExistingAssemblyPath(vector<string>& paths, const std::filesystem::path& dir);
 static auto BuildAssemblySearchPath(const std::filesystem::path& lib_dir) -> string;
 static void SetEnvironmentVariableDefault(const char* name, const char* value);
-static void ConfigureManagedRuntime();
+static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir);
 static void AddManagedAssemblyCacheByte(uint64_t& hash, uint8_t byte) noexcept;
 static auto MakeManagedAssemblyCacheKey(const vector<ManagedAssemblyResource>& assembly_resources) noexcept -> string;
 static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> assembly_data) -> bool;
@@ -5196,46 +5195,6 @@ static auto CollectAssemblyResources(const FileSystem& resources, string_view ta
     return result;
 }
 
-static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::error_code ec;
-    return std::filesystem::exists(dir / "lib", ec) || std::filesystem::exists(dir / "etc", ec) || std::filesystem::exists(dir / "bin", ec);
-}
-
-static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<std::filesystem::path> candidates;
-
-    // Platforms that ship the runtime somewhere the process cannot guess name it outright. Android is the
-    // case today: its assets live inside the package, so the launcher unpacks them and points here
-    if (const char* explicit_dir = std::getenv("FO_MANAGED_RUNTIME"); explicit_dir != nullptr && explicit_dir[0] != '\0') {
-        candidates.emplace_back(explicit_dir);
-    }
-
-    candidates.emplace_back(std::filesystem::current_path() / "ManagedRuntime");
-
-    if (auto exe_path = Platform::GetExePath()) {
-        auto exe_dir = std::filesystem::path(fs_make_path(*exe_path)).parent_path();
-        candidates.emplace_back(exe_dir / "ManagedRuntime");
-    }
-
-    for (const std::filesystem::path& candidate : candidates) {
-        std::error_code ec;
-        auto normalized = std::filesystem::weakly_canonical(candidate, ec);
-        const std::filesystem::path& runtime_dir = !ec ? normalized : candidate;
-
-        if (IsRuntimeLayoutPath(runtime_dir)) {
-            return runtime_dir;
-        }
-    }
-
-    return std::nullopt;
-}
-
 static void AppendExistingAssemblyPath(vector<string>& paths, const std::filesystem::path& dir)
 {
     FO_STACK_TRACE_ENTRY();
@@ -5283,7 +5242,7 @@ static void SetEnvironmentVariableDefault(const char* name, const char* value)
 #endif
 }
 
-static void ConfigureManagedRuntime()
+static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5306,14 +5265,8 @@ static void ConfigureManagedRuntime()
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 #endif
 
-    auto runtime_dir = FindManagedRuntimeDir();
-
-    // Continuing without it only defers the failure into Mono, which aborts on a bare `corlib' assertion
-    // once it cannot find System.Private.CoreLib; the directory is expected next to the binary or in cwd
-    FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", std::filesystem::current_path().string(), Platform::GetExePath().value_or(""));
-
-    auto lib_dir = *runtime_dir / "lib";
-    auto etc_dir = *runtime_dir / "etc";
+    auto lib_dir = runtime_dir / "lib";
+    auto etc_dir = runtime_dir / "etc";
     auto config_file = etc_dir / "mono" / "config";
     string lib_dir_str = fs_path_to_string(lib_dir);
     string etc_dir_str = fs_path_to_string(etc_dir);
@@ -5350,8 +5303,6 @@ static void ConfigureManagedRuntime()
     mono_method_builder_ilgen_init();
     mono_sgen_mono_ilgen_init();
 #endif
-
-    WriteLog("Managed runtime directory: {}", runtime_dir->string());
 }
 
 static void AddManagedAssemblyCacheByte(uint64_t& hash, uint8_t byte) noexcept
@@ -5876,6 +5827,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     FO_VERIFY_AND_THROW(_scriptSys, "Script system is not available");
 
     ManagedThreadAttachmentMode attachment_mode = ManagedThreadAttachmentMode::PreserveExisting;
+    auto resource_runtime_dir = RestoreManagedRuntimeResources(resources, assembly_cache_dir);
 
     if (!_domain) {
         MonoDomain* domain = nullptr;
@@ -5885,7 +5837,14 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             domain = mono_get_root_domain();
 
             if (domain == nullptr) {
-                ConfigureManagedRuntime();
+                auto runtime_dir = resource_runtime_dir.has_value() ? resource_runtime_dir : FindManagedRuntimeDirectory();
+
+                // Continuing without CoreLib only defers the failure into Mono, which aborts on a bare
+                // `corlib' assertion. Packaged applications restore it from resources; build tools and
+                // unpackaged applications retain the side-by-side fallback.
+                FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", std::filesystem::current_path().string(), Platform::GetExePath().value_or(""));
+
+                ConfigureManagedRuntime(*runtime_dir);
 
 #if FO_WINDOWS
                 // Catch2 owns the top-level SEH filter while a unit-test session is active
@@ -6017,11 +5976,9 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
         }
     }
 
-    if (loaded_count == 0u) {
+    if (loaded_count == 0) {
         WriteLog("No Managed assemblies found for target '{}', skip", target_name);
     }
-
-    WriteLog("Managed backend initialized, target '{}', loaded assemblies {}", target_name, loaded_count);
 }
 
 void ManagedScriptBackend::BindRequiredStuff()

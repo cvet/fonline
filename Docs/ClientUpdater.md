@@ -20,17 +20,15 @@ module is needed. The headless host/runtime targets use the same dependency.
 The updater protocol is the same machinery used to deliver gameplay resources, but versioned independently from gameplay compatibility so a host released today can ingest tomorrow's runtime module without a host-side rebuild.
 
 
-## Managed runtime companion compatibility
+## Managed runtime resource ownership
 
-A managed native client requests its platform/architecture target with a `-Managed-<sha256>` suffix. The digest covers the relative paths and contents of its complete `ManagedRuntime` tree; CMake generates it after runtime setup and compiles it into the updater. Each linked binary also gets a matching `.managed-runtime-id` build sidecar.
+Mono and the native interop shims are linked into each managed application. The managed class-library payload, including `System.Private.CoreLib.dll`, is data: the Managed baker writes it under `ManagedRuntime/` in the managed resource pack, and normal resource packaging delivers it with the game assemblies. Last Frontier assigns that baker to `Scripts`, so the payload lives in `Scripts.zip`; it is not an installation-level companion directory.
 
-Relative path components are ordered case-sensitively before paths are serialized with forward slashes, so the same tree has the same digest on Windows and POSIX build/package hosts. File names retain their case and file contents remain covered by the digest; the verification does not normalize away a companion change.
+Before Mono initialization, the managed backend restores those resource files atomically into the writable content-addressed cache at `Cache/ManagedRuntime/<content-hash>/` and configures Mono from that directory. The resource payload wins whenever it exists. A filtered `ManagedRuntime/` beside an executable is only the fallback used by unpackaged applications and build tools.
+
+Native updater targets therefore keep their ordinary platform/architecture names (`Windows-win64`, `Linux-x64`, and so on). There is no managed-runtime target suffix or identity sidecar. Managed class-library changes travel through the resource updater, while a native Mono or interop-shim change travels in the native runtime module and follows the existing native compatibility/restart protocol.
 
 Binary output postfixes are parsed on full flag boundaries: a custom postfix such as `Debug_Profiling_Total` remains a postfix and does not change the profiling variant.
-
-The server packager selects each GUI/headless variant by its own build-hash sidecar, then verifies its runtime-identity sidecar against the supplied companion tree and publishes native update payloads only under that exact target. A declared client variant is satisfied by either `PlatformBinaries/<platform>-<arch>/` or `PlatformBinaries/<platform>-<arch>-Managed-<identity>/` carrying the packaged build name. A changed runtime tree, a different managed runtime, or a client built without managed support cannot receive that payload. The existing missing-native-update path asks the player to install the full client package; the updater does not stage a library requiring unavailable companions. A companion upgrade must also bump the central compatibility migration marker so the client enters native update mode; the target suffix does not replace that compatibility contract. With identical companions, native library and gameplay assembly updates work normally. `FOnline.ManagedHost.dll` and game assemblies travel in resource packs; they are not installation-level Mono companions.
-
-Changing installation-level Mono files therefore requires distributing a full client package. This is an explicit compatibility boundary, not an atomic multi-file runtime installation protocol. Build sidecars are packaging inputs and are not required in installed clients.
 
 ## Server-side updater backend
 
@@ -63,10 +61,14 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `Source/Essentials/Platform.cpp`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/package.py`
+- `BuildTools/managed_runtime_payload.py`
 - `BuildTools/msicreator/createmsi.py`
+- `BuildTools/tests/test_managed_runtime_packaging.py`
+- `BuildTools/tests/test_managed_runtime_payload.py`
 - `BuildTools/tests/test_package_zip_determinism.py`
 - `BuildTools/tests/test_package_windows_arch_variants.py`
-- `BuildTools/tests/test_managed_runtime_identity.py`
+- `Source/Scripting/Managed/ManagedRuntime.h`
+- `Source/Scripting/Managed/ManagedRuntime.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
@@ -488,6 +490,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Client packages** include the host exe (e.g. `LF_Client.exe`) and the matching runtime library renamed to the same basename next to it (`LF_Client.dll`). The host derives the library name from its own exe basename at startup, so no config patching is required to point one at the other.
 - **Sibling client variants are not runtime companions.** Native GUI and headless hosts/runtimes share a build-output directory, so `package.py` excludes all engine-owned `Client`/`ClientLib` and `ClientHeadless`/`ClientLibHeadless` library names from the generic DLL/DSO companion pass. Only variants requested by the package are copied explicitly under their packaged basenames. This keeps stale headless build outputs out of ordinary portable/installer payloads while preserving explicit `Headless` test packages.
 - **Server packages** also stage every available client runtime library under `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
+- **Managed class libraries are ordinary resource data.** The Managed baker places the filtered payload under `ManagedRuntime/` in its resource pack; `package.py` neither copies a side-by-side `ManagedRuntime` directory nor hoists native Mono files into package roots. Web and Android receive the same resource pack as native targets.
 - **Windows Client packages with the `Wix` pack** build an additive MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or explicit command-line/UI choice still overrides that default. WiX/wixl and the generated MSI are required when the pack requests `Wix`; a missing toolset or generator failure aborts the package instead of silently publishing only Raw/Zip.
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (e.g. `LastFrontier.dll.pdb`) â€” both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging â€” symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).

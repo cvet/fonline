@@ -167,27 +167,16 @@ def test_declared_win7_client_runtime_must_reach_the_server_package(tmp_path: Pa
     packager.verify_expected_client_runtime_payloads(staged, [])
 
 
-def test_managed_identity_directory_satisfies_declared_client_runtime(tmp_path: Path) -> None:
-    packager = make_server_expectation_packager(tmp_path, ["Windows:win64:", "Windows:win32-win7:Win7"])
-
-    # Managed clients stage under <target>-Managed-<identity>; that is still the declared variant
-    staged = {
-        ("Windows-win64-Managed-abc", "LastFrontier"),
-        ("Windows-win32-Managed-def", "LastFrontier_Win7"),
-    }
-    packager.verify_expected_client_runtime_payloads(staged, [])
-
-
-def test_managed_payload_for_another_arch_does_not_satisfy_expectation(tmp_path: Path) -> None:
+def test_payload_for_another_arch_does_not_satisfy_expectation(tmp_path: Path) -> None:
     packager = make_server_expectation_packager(tmp_path, ["Windows:win64:"])
 
     with pytest.raises(AssertionError) as failure:
-        packager.verify_expected_client_runtime_payloads({("Windows-win32-Managed-abc", "LastFrontier")}, [])
+        packager.verify_expected_client_runtime_payloads({("Windows-win32", "LastFrontier")}, [])
 
     message = str(failure.value)
     assert "LastFrontier" in message
     assert "PlatformBinaries/Windows-win64" in message
-    assert "Windows-win32-Managed-abc/LastFrontier" in message
+    assert "Windows-win32/LastFrontier" in message
 
 
 def test_missing_win7_client_runtime_fails_the_server_package(tmp_path: Path) -> None:

@@ -783,6 +783,8 @@ if(FO_MANAGED_SCRIPTING)
         SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
     endif()
     SetValue(FO_MANAGED_RUNTIME_DIR ${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET})
+    SetValue(FO_MANAGED_RUNTIME_PAYLOAD_DIR ${FO_DOTNET_DIR}/output/managed-runtime/${FO_MONO_TRIPLET})
+    SetValue(FO_MANAGED_RUNTIME_PAYLOAD_STAMP ${FO_DOTNET_DIR}/output/managed-runtime/${FO_MONO_TRIPLET}.ready)
     FileMakeDirectory(${FO_DOTNET_DIR})
 
     AddIncludeDirectories(${FO_MANAGED_RUNTIME_DIR}/include/mono-2.0)
@@ -933,4 +935,25 @@ if(FO_MANAGED_SCRIPTING)
         DEPENDS ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
         WORKING_DIRECTORY ${FO_DOTNET_DIR})
     AppendList(FO_GEN_DEPENDENCIES SetupManagedRuntime)
+
+    # The published dotnet/runtime tree is a build input, not a deployable directory. Produce one
+    # architecture-neutral view containing only CLR assemblies; the Managed baker puts this view in
+    # its resource pack and native targets copy it only for unpackaged local execution.
+    AddCustomCommand(OUTPUT ${FO_MANAGED_RUNTIME_PAYLOAD_STAMP}
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/managed_runtime_payload.py"
+            --runtime-dir "${FO_MANAGED_RUNTIME_DIR}"
+            --output-dir "${FO_MANAGED_RUNTIME_PAYLOAD_DIR}"
+            --stamp "${FO_MANAGED_RUNTIME_PAYLOAD_STAMP}"
+        DEPENDS
+            ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/managed_runtime_payload.py"
+        WORKING_DIRECTORY ${FO_DOTNET_DIR}
+        COMMENT "Prepare Managed runtime resource payload"
+        VERBATIM)
+
+    AddCommandTarget(PrepareManagedRuntimePayload
+        DEPENDS ${FO_MANAGED_RUNTIME_PAYLOAD_STAMP}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR})
+    AddDependencies(PrepareManagedRuntimePayload SetupManagedRuntime)
+    AppendList(FO_GEN_DEPENDENCIES PrepareManagedRuntimePayload)
 endif()

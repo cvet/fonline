@@ -36,6 +36,7 @@
 #if FO_MANAGED_SCRIPTING
 
 #include "EngineBase.h"
+#include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
 
@@ -164,6 +165,7 @@ static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> 
 static void WriteTextFileIfChanged(const std::filesystem::path& file_path, string_view content, string_view error_message);
 static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_view target_name, string_view suffix, string_view content);
 static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>;
+static void BakeManagedRuntimePayload(const BakingContext& context);
 static auto CollectManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> vector<std::filesystem::path>;
 static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name);
 static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_output_dir, string_view target_name, string_view assembly_file_name);
@@ -372,6 +374,10 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
                 throw ManagedScriptBakerException("Managed entry assembly was not produced", assembly_file_name);
             }
         }
+    }
+
+    if (!dry_run) {
+        BakeManagedRuntimePayload(*_context);
     }
 }
 
@@ -4290,6 +4296,63 @@ static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>
     }
 
     return vector<uint8_t>(data->begin(), data->end());
+}
+
+static void BakeManagedRuntimePayload(const BakingContext& context)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto runtime_dir = FindManagedRuntimeDirectory();
+
+    if (!runtime_dir.has_value()) {
+        throw ManagedScriptBakerException("Managed runtime payload directory not found");
+    }
+
+    auto manifest_path = *runtime_dir / fs_make_path(MANAGED_RUNTIME_MANIFEST_FILE);
+    auto manifest_data = ReadFileBytes(manifest_path);
+    string manifest_text {manifest_data.begin(), manifest_data.end()};
+    vector<std::filesystem::path> payload_paths {manifest_path};
+
+    for (string_view manifest_line : strex(manifest_text).normalize_line_endings().split('\n')) {
+        string line = strex(manifest_line).trim().str();
+
+        if (line.empty()) {
+            continue;
+        }
+
+        size_t separator = line.find("  ");
+
+        if (separator != 64 || separator + 2 == line.length()) {
+            throw ManagedScriptBakerException("Invalid Managed runtime payload manifest", line);
+        }
+
+        std::filesystem::path relative_path {fs_make_path(string_view {line}.substr(separator + 2))};
+
+        if (relative_path.empty() || relative_path.is_absolute() || std::ranges::any_of(relative_path, [](const std::filesystem::path& component) { return component == ".."; })) {
+            throw ManagedScriptBakerException("Unsafe Managed runtime payload path", relative_path.string());
+        }
+
+        auto disk_path = *runtime_dir / relative_path;
+
+        if (!std::filesystem::is_regular_file(disk_path)) {
+            throw ManagedScriptBakerException("Managed runtime payload file not found", disk_path.string());
+        }
+
+        payload_paths.emplace_back(std::move(disk_path));
+    }
+
+    std::ranges::sort(payload_paths, {}, [&](const std::filesystem::path& path) { return path.lexically_relative(*runtime_dir).generic_string(); });
+
+    for (const std::filesystem::path& disk_path : payload_paths) {
+        string relative_path = strex("{}", disk_path.lexically_relative(*runtime_dir).generic_string()).str();
+        string resource_path = strex(MANAGED_RUNTIME_RESOURCE_DIR).combine_path(relative_path).str();
+        uint64_t write_time = std::max<uint64_t>(fs_last_write_time(disk_path.string()), 1);
+        bool should_bake = !context.BakeChecker || context.BakeChecker(resource_path, write_time);
+
+        if (should_bake) {
+            context.WriteData(resource_path, ReadFileBytes(disk_path));
+        }
+    }
 }
 
 static auto CollectManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> vector<std::filesystem::path>

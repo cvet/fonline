@@ -36,6 +36,7 @@
 #include "Test_BakerHelpers.h"
 
 #if FO_MANAGED_SCRIPTING
+#include "ManagedRuntime.h"
 #include "ManagedScriptBackend.h"
 #include "ManagedScriptBaker.h"
 #include "ManagedScripting.h"
@@ -301,6 +302,31 @@ static auto MakeManagedGeneratedCs(string_view body) -> string
 }
 
 #endif
+
+TEST_CASE("Managed runtime resources are restored into a content-addressed cache")
+{
+#if FO_MANAGED_SCRIPTING
+    ScopedTempDirectory temp_dir;
+    auto resource_root = temp_dir.Path() / "Resources";
+    auto cache_root = temp_dir.Path() / "Cache";
+    WriteTextFile(resource_root / "ManagedRuntime" / "lib" / "netcoreapp" / "System.Private.CoreLib.dll", "managed-corelib\n");
+    WriteTextFile(resource_root / "ManagedRuntime" / "runtime.manifest", "manifest\n");
+
+    FileSystem resources;
+    resources.AddDirSource(resource_root.string(), true);
+
+    auto restored = RestoreManagedRuntimeResources(resources, cache_root.string());
+    REQUIRE(restored.has_value());
+    CHECK(restored->parent_path() == cache_root / "ManagedRuntime");
+    auto restored_corelib = *restored / "lib" / "netcoreapp" / "System.Private.CoreLib.dll";
+    CHECK(ReadTextFile(restored_corelib) == "managed-corelib\n");
+
+    WriteTextFile(restored_corelib, "damaged\n");
+    auto restored_again = RestoreManagedRuntimeResources(resources, cache_root.string());
+    REQUIRE(restored_again == restored);
+    CHECK(ReadTextFile(restored_corelib) == "managed-corelib\n");
+#endif
+}
 
 TEST_CASE("Managed scripting rejects metadata without a script system")
 {
@@ -819,16 +845,21 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     std::filesystem::path shared_source = script_dir / "Shared.cs";
     std::filesystem::path fake_msbuild_root = temp_dir.Path() / "Baking" / "TestPack" / "Assemblies";
     std::filesystem::path fake_msbuild = WriteFakeManagedMsBuildScript(temp_dir.Path());
+    std::filesystem::path managed_runtime_dir = temp_dir.Path() / "ManagedRuntime";
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
     WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
     WriteTextFile(shared_source, "namespace Demo { public static class Shared {} }\n");
+    WriteTextFile(managed_runtime_dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll", "managed-corelib\n");
+    WriteTextFile(managed_runtime_dir / "lib" / "netcoreapp" / "coreclr.dll", "native-coreclr\n");
+    WriteTextFile(managed_runtime_dir / "runtime.manifest", "0000000000000000000000000000000000000000000000000000000000000000  lib/netcoreapp/System.Private.CoreLib.dll\n");
 
     ScopedCurrentPath current_path(temp_dir.Path());
     // The fake msbuild helper is a spawned child process; env is the legitimate channel to parameterize it
     ScopedEnvVar msbuild_root {"FO_FAKE_MSBUILD_ROOT", fake_msbuild_root.string()};
+    ScopedEnvVar managed_runtime {"FO_MANAGED_RUNTIME", managed_runtime_dir.string()};
 
     TestRig rig;
     OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
@@ -862,6 +893,9 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
     CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.pdb"));
     CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll")) == "managed-corelib\n");
+    CHECK(rig.Outputs.contains("ManagedRuntime/runtime.manifest"));
+    CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/coreclr.dll"));
 #endif
 }
 

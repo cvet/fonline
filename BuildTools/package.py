@@ -23,7 +23,6 @@ from typing import IO, Callable, Iterable, Literal, Sequence
 
 import buildtools
 import foconfig
-from managed_runtime_identity import runtime_identity
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
@@ -57,7 +56,6 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
-RUNTIME_COMPANION_DIRECTORIES = ('ManagedRuntime',)
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
@@ -763,18 +761,6 @@ class Packager:
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
 
-		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
-			if entry_name in excluded_names:
-				continue
-
-			entry_path = os.path.join(bin_path, entry_name)
-			if not os.path.isdir(entry_path):
-				continue
-
-			output_path = os.path.join(self.target_output_path, entry_name)
-			log('Runtime companion directory included', entry_name)
-			shutil.copytree(entry_path, output_path, dirs_exist_ok=True)
-
 	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
@@ -868,13 +854,6 @@ class Packager:
 						continue
 
 					payload_target_name = request_target_name
-					identity_path = Path(entry_path) / (runtime_input_name + '.managed-runtime-id')
-					runtime_dir = Path(entry_path) / 'ManagedRuntime'
-					if identity_path.exists() or runtime_dir.exists():
-						identity = identity_path.read_text(encoding='utf-8').strip()
-						if identity != runtime_identity(runtime_dir):
-							raise ValueError('Managed runtime companions differ from the compiled client: ' + entry_path)
-						payload_target_name += '-Managed-' + identity
 					payload_key = (payload_target_name, output_name)
 					if payload_key in copied_payloads:
 						continue
@@ -920,14 +899,7 @@ class Packager:
 
 	@staticmethod
 	def staged_payload_satisfies(copied_payloads: set[tuple[str, str]], target_name: str, output_name: str) -> bool:
-		# Managed clients publish under <target>-Managed-<identity>; that directory is still this variant
-		managed_prefix = target_name + '-Managed-'
-		for staged_target, staged_name in copied_payloads:
-			if staged_name != output_name:
-				continue
-			if staged_target == target_name or staged_target.startswith(managed_prefix):
-				return True
-		return False
+		return (target_name, output_name) in copied_payloads
 
 	def verify_expected_client_runtime_payloads(self, copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> None:
 		# The server package declares which client variants it distributes. Without this check a variant
@@ -1349,15 +1321,8 @@ class Packager:
 		file_packager_path = os.path.join(emsdk_root, 'upstream', 'emscripten', 'tools', 'file_packager.py')
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
 
-		# The wasm module carries the Mono runtime itself, but its class library is data the client reads at
-		# startup, so it is preloaded into the same virtual filesystem the resources land in. Assemblies
-		# only: the native part is already linked in, and the headers beside them are build-time artifacts
-		managed_runtime_lib_path = os.path.join(bin_path, 'ManagedRuntime', 'lib', 'netcoreapp')
-		assert os.path.isdir(managed_runtime_lib_path), f'Managed runtime assemblies not found: {managed_runtime_lib_path}'
-
 		preload_roots = [
 			(Path(self.target_output_path) / self.client_res_dir, self.client_res_dir),
-			(Path(managed_runtime_lib_path), 'ManagedRuntime/lib/netcoreapp'),
 		]
 		preload_files = [
 			(file_path, '/' + virtual_root + '/' + file_path.relative_to(root).as_posix())
@@ -1488,21 +1453,6 @@ class Packager:
 			assets_res_dir = os.path.join(assets_dir, self.client_res_dir)
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
-
-		# The Managed runtime travels in the package like the resources do: Mono needs a real filesystem
-		# path for it, so the launcher unpacks assets to app storage and names the result to the engine.
-		# Only the managed assemblies go in - Mono itself is linked into the native library, so the
-		# runtime's own shared objects and headers would be dead weight, and the assemblies carry no
-		# architecture, which keeps one copy correct for every ABI in the package
-		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
-			assemblies_source = os.path.join(bin_path, entry_name, 'lib', 'netcoreapp')
-			if not os.path.isdir(assemblies_source):
-				continue
-
-			assets_runtime_dir = os.path.join(assets_dir, entry_name, 'lib', 'netcoreapp')
-			shutil.rmtree(os.path.join(assets_dir, entry_name), ignore_errors=True)
-			shutil.copytree(assemblies_source, assets_runtime_dir)
-			log('Managed runtime assemblies packaged', assets_runtime_dir)
 
 		# Read Android config from the baked target config so SubConfig overrides affect APK metadata
 		android_config = self.get_effective_config_section()
