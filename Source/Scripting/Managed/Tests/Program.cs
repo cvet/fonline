@@ -80,6 +80,18 @@ internal static class Program
                  Check(Game.Invoke("DispatchProbe::WriteInt", ref result), "Invocation failed");
                  Check(result == 42, "Converted result was lost");
              }),
+            ("managed return value populates ref result",
+             () =>
+             {
+                 long result = 1;
+                 Check(Game.Invoke("DispatchProbe::ReturnInt", ref result), "Return-value invocation failed");
+                 Check(result == 42, "Managed return value was lost");
+
+                 string formatted = "";
+                 Check(Game.Invoke("DispatchProbe::FormatInt", 7, ref formatted),
+                       "Return-value invocation with an argument failed");
+                 Check(formatted == "[7]", "Managed return value with an argument was lost");
+             }),
             ("ref conversion failure is accounted",
              () =>
              {
@@ -133,6 +145,13 @@ internal static class Program
                      return;
                  }
                  throw new Exception("Unsupported generic signature was accepted");
+             }),
+            ("unmarked methods are not callable by name",
+             () =>
+             {
+                 int before = Native.FallbackCalls;
+                 Check(!Game.Invoke("DispatchProbe::Unmarked"), "Unmarked managed method was invoked");
+                 Check(Native.FallbackCalls == before + 1, "Unmarked method did not fall through to native lookup");
              }),
             ("native fallback remains available",
              () =>
@@ -233,33 +252,53 @@ public static class DispatchProbe
     public static CritterProperty EnumValue;
     public static int OverloadValue;
     public static bool AsyncFinished;
+    [CallableByName]
     public static void WriteInt(ref int value)
     {
         value = 42;
     }
+    [CallableByName]
     public static void WriteLargeInt(ref int value)
     {
         value = 300;
     }
+    [CallableByName]
+    public static int ReturnInt()
+    {
+        return 42;
+    }
+    [CallableByName]
+    public static string FormatInt(int value)
+    {
+        return "[" + value + "]";
+    }
+    [CallableByName]
     public static void TakeEnum(CritterProperty value)
     {
         EnumValue = value;
     }
+    [CallableByName]
     public static void NoArgs()
     {
     }
+    [CallableByName]
     public static void Overload(First value)
     {
         OverloadValue = 1;
     }
+    [CallableByName]
     public static void Overload(Second value)
     {
         OverloadValue = 2;
     }
+    [CallableByName]
     public static async Task AsyncCall()
     {
         await Task.Yield();
         AsyncFinished = true;
+    }
+    public static void Unmarked()
+    {
     }
 }
 }

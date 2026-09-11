@@ -41,46 +41,46 @@ public static partial class Game
     public static bool Invoke<TResult>(string funcName, ref TResult result)
     {
         object?[] args = { result };
-        return InvokeCore(funcName, args) && CopyInvokeResult(args, 0, ref result);
+        return InvokeCoreWithResult(funcName, args, 0) && CopyInvokeResult(args, 0, ref result);
     }
 
     public static bool Invoke<TResult>(string funcName, object? arg0, ref TResult result)
     {
         object?[] args = { arg0, result };
-        return InvokeCore(funcName, args) && CopyInvokeResult(args, 1, ref result);
+        return InvokeCoreWithResult(funcName, args, 1) && CopyInvokeResult(args, 1, ref result);
     }
 
     public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, ref TResult result)
     {
         object?[] args = { arg0, arg1, result };
-        return InvokeCore(funcName, args) && CopyInvokeResult(args, 2, ref result);
+        return InvokeCoreWithResult(funcName, args, 2) && CopyInvokeResult(args, 2, ref result);
     }
 
     public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, result };
-        return InvokeCore(funcName, args) && CopyInvokeResult(args, 3, ref result);
+        return InvokeCoreWithResult(funcName, args, 3) && CopyInvokeResult(args, 3, ref result);
     }
 
     public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
                                        ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, result };
-        return InvokeCore(funcName, args) && CopyInvokeResult(args, 4, ref result);
+        return InvokeCoreWithResult(funcName, args, 4) && CopyInvokeResult(args, 4, ref result);
     }
 
     public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
                                        object? arg4, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, arg4, result };
-        return InvokeCore(funcName, args) && CopyInvokeResult(args, 5, ref result);
+        return InvokeCoreWithResult(funcName, args, 5) && CopyInvokeResult(args, 5, ref result);
     }
 
     public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
                                        object? arg4, object? arg5, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, arg4, arg5, result };
-        return InvokeCore(funcName, args) && CopyInvokeResult(args, 6, ref result);
+        return InvokeCoreWithResult(funcName, args, 6) && CopyInvokeResult(args, 6, ref result);
     }
 
     public static int GetGlobalExceptionCount()
@@ -211,6 +211,39 @@ public static partial class Game
         }
     }
 
+    private static bool InvokeCoreWithResult(string funcName, object?[] args, int resultIndex)
+    {
+        try {
+            MethodInfo? method = FindInvokeMethod(funcName, args);
+            if (method != null) {
+                CoerceInvokeArgs(method, args);
+                object? result = method.Invoke(null, args);
+                ObserveInvokeTask(result);
+                return true;
+            }
+
+            object?[] inputArgs = new object?[args.Length - 1];
+            Array.Copy(args, 0, inputArgs, 0, resultIndex);
+            Array.Copy(args, resultIndex + 1, inputArgs, resultIndex, args.Length - resultIndex - 1);
+            method = FindInvokeResultMethod(funcName, inputArgs);
+            if (method == null) {
+                return Native.InvokeScriptFunc(funcName, args);
+            }
+
+            CoerceInvokeArgs(method, inputArgs);
+            args[resultIndex] = method.Invoke(null, inputArgs);
+            return true;
+        }
+        catch (TargetInvocationException ex) {
+            RecordManagedException(ex.InnerException ?? ex, true);
+            return false;
+        }
+        catch (Exception ex) {
+            RecordManagedException(ex, true);
+            return false;
+        }
+    }
+
     private static bool TryParseEnumValue<TEnum>(object value, out TEnum result)
         where TEnum : struct, Enum
     {
@@ -323,9 +356,36 @@ public static partial class Game
             return null;
         }
 
-        MethodInfo[] candidates = InvokeCandidates.GetOrAdd(funcName,
-                                                            name =>
-                                                            {
+        foreach (MethodInfo method in GetInvokeCandidates(funcName)) {
+            if (IsInvokeMethodCompatible(method, args)) {
+                return method;
+            }
+        }
+
+        return null;
+    }
+
+    private static MethodInfo? FindInvokeResultMethod(string funcName, object?[] args)
+    {
+        if (string.IsNullOrWhiteSpace(funcName)) {
+            return null;
+        }
+
+        foreach (MethodInfo method in GetInvokeCandidates(funcName)) {
+            if (method.ReturnType != typeof(void) && !typeof(Task).IsAssignableFrom(method.ReturnType) &&
+                IsInvokeMethodCompatible(method, args)) {
+                return method;
+            }
+        }
+
+        return null;
+    }
+
+    private static MethodInfo[] GetInvokeCandidates(string funcName)
+    {
+        return InvokeCandidates.GetOrAdd(funcName,
+                                         name =>
+                                         {
             ParseInvokeName(name, out string? moduleName, out string methodName);
             var methods = new List<MethodInfo>();
 
@@ -333,27 +393,21 @@ public static partial class Game
                 MethodInfo[] declared = type.GetMethods(InvokeMethodFlags);
 
                 foreach (MethodInfo method in declared) {
-                    if (!method.ContainsGenericParameters && method.Name == methodName) {
+                    if (!method.ContainsGenericParameters && method.Name == methodName &&
+                        Attribute.IsDefined(method, typeof(CallableByNameAttribute))) {
                         methods.Add(method);
                     }
                 }
                 foreach (MethodInfo method in declared) {
-                    if (!method.ContainsGenericParameters && method.Name == methodName + "_") {
+                    if (!method.ContainsGenericParameters && method.Name == methodName + "_" &&
+                        Attribute.IsDefined(method, typeof(CallableByNameAttribute))) {
                         methods.Add(method);
                     }
                 }
             }
 
             return methods.ToArray();
-                                                            });
-
-        foreach (MethodInfo method in candidates) {
-            if (IsInvokeMethodCompatible(method, args)) {
-                return method;
-            }
-        }
-
-        return null;
+                                         });
     }
 
     private static void ParseInvokeName(string funcName, out string? moduleName, out string methodName)

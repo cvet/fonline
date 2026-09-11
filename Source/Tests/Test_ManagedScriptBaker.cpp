@@ -225,6 +225,7 @@ static auto WriteFakeManagedMsBuildScript(const std::filesystem::path& dir) -> s
     const std::filesystem::path script_path = dir / "FakeManagedMsBuild.cmd";
     WriteTextFile(script_path, R"(@echo off
 if not defined FO_FAKE_MSBUILD_ROOT exit /b 1
+echo %* | findstr /C:"-verbosity:quiet" >nul || exit /b 2
 set "ROOT=%FO_FAKE_MSBUILD_ROOT%"
 mkdir "%ROOT%\ServerAssemblies" 2>nul
 mkdir "%ROOT%\ClientAssemblies" 2>nul
@@ -252,6 +253,10 @@ exit /b 0
 if [ -z "$FO_FAKE_MSBUILD_ROOT" ]; then
     exit 1
 fi
+case " $* " in
+    *" -verbosity:quiet "*) ;;
+    *) exit 2 ;;
+esac
 mkdir -p "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies" "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies" "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies"
 printf 'entry-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.dll"
 printf 'helper-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/SharedDependency.dll"

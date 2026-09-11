@@ -20,6 +20,7 @@ internal static class Native
     public static void Log(string text)
     {
     }
+    public static void RunScriptContinuation(Action continuation) => continuation();
     public static object GetProperty(string owner, string property, IntPtr entity) => throw new NotSupportedException();
     public static void SetProperty(string owner, string property, IntPtr entity,
                                    object value) => throw new NotSupportedException();

@@ -15,5 +15,6 @@
     <Compile Include="../CoreScripts/Initializator.cs" Link="Initializator.cs" />
     <Compile Include="../CoreScripts/RemoteCallScriptFuncs.cs" Link="RemoteCallScriptFuncs.cs" />
     <Compile Include="../CoreScripts/Attributes.cs" Link="Attributes.cs" />
+    <Compile Include="../CoreScripts/ScriptSynchronizationContext.cs" Link="ScriptSynchronizationContext.cs" />
   </ItemGroup>
 </Project>

@@ -18,6 +18,11 @@ public sealed class EventAttribute : Attribute
 {
 }
 
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class CallableByNameAttribute : Attribute
+{
+}
+
 // Marks a static parameterless method that registers attributed script functions into the engine's
 // cross-backend function registry (ScriptFuncRegistration.RegisterAttributedScriptFuncs with
 // project-supplied attribute types, e.g. dialog demand/result markers). Registrars run in the
