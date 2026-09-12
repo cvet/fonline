@@ -436,8 +436,20 @@ public static partial class Game
 
         if (moduleName != null) {
             string normalized = moduleName.Replace("::", ".");
-            Assembly assembly = typeof(Game).Assembly;
-            qualifiedType = assembly.GetType(normalized) ?? assembly.GetType("FOnline." + normalized);
+            Assembly gameAssembly = typeof(Game).Assembly;
+            qualifiedType = gameAssembly.GetType(normalized) ?? gameAssembly.GetType("FOnline." + normalized);
+
+            if (qualifiedType == null) {
+                // Game scripts live in the host assembly, which is not always `typeof(Game).Assembly`
+                // when CoreScripts are compiled into a separate engine module. Nested types keep the
+                // reflection `Outer+Inner` spelling that callers already pass
+                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+                    qualifiedType = assembly.GetType(normalized);
+                    if (qualifiedType != null) {
+                        break;
+                    }
+                }
+            }
 
             if (qualifiedType != null) {
                 yield return qualifiedType;

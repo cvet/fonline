@@ -109,6 +109,12 @@ internal static class Program
              }),
             ("qualified module",
              () => Check(Game.Invoke("ExampleGame.DispatchProbe::NoArgs"), "Qualified module was not found")),
+            ("nested module type",
+             () =>
+             {
+                 Check(Game.Invoke("ExampleGame.DispatchProbe+Inner::Mark"), "Nested type was not found");
+                 Check(ExampleGame.DispatchProbe.Inner.Marked, "Nested invocation did not run");
+             }),
             ("overload candidates retain argument matching",
              () =>
              {
@@ -296,6 +302,15 @@ public static class DispatchProbe
     {
         await Task.Yield();
         AsyncFinished = true;
+    }
+    public static class Inner
+    {
+        public static bool Marked;
+        [CallableByName]
+        public static void Mark()
+        {
+            Marked = true;
+        }
     }
     public static void Unmarked()
     {
