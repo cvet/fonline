@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/scripting/remote-calls.html
 
 # Удалённые вызовы
 
-<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"6de0e38c67b19c5f6db1d2db5f0707902840fcc98fd05ea9802eb6f24de3b436"} -->
+<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"0296d8b306436a22e69b8791166421dd04b7ff33a69a3f2fd0d351b31c7659ab"} -->
 
 > Документация движка. Эта страница определяет переиспользуемый контракт удалённых вызовов FOnline. Каждый подключающий проект владеет конкретными вызовами, правилами авторизации, сгенерированным каталогом вызовов и политикой совместимости.
 
@@ -230,7 +230,7 @@ name, source-file hint, In|Out, type, nullable marker, argument name, ..., Limit
 
 ## Создание проектного каталога
 
-Генератор движка читает файлы, которыми владеет parser. Он не разбирает `.fos` второй грамматикой:
+Генератор движка читает файлы, которыми владеет parser. Он не разбирает `.fos` или `.cs` второй грамматикой:
 
 ```bash
 python Engine/BuildTools/docs_metadata.py \
@@ -247,7 +247,7 @@ python Engine/BuildTools/docs_metadata.py \
 
 Каждый вызов получает стабильный ID вида `script.remote-call.<target>.<name>` и статус `project-owned`. Этот статус определяет границу владения, а не обещает, что игра сохраняет обратную совместимость вызова.
 
-Генератор строго декодирует бинарный контейнер, проверяет UTF-8 и обязательный limits trailer, отклоняет дублирующиеся входы и вызовы и требует совпадения сигнатур и структурных пределов на серверной и клиентской сторонах. JSON model и Markdown table показывают `MaxBytes` и `MaxCollectionSize` рядом с каждым вызовом. Генератор также записывает SHA-256 входных файлов. После запекания используйте те же входные пути с `--check` в CI проекта:
+Генератор строго декодирует бинарный контейнер, проверяет UTF-8 и обязательный limits trailer, отклоняет дублирующиеся входы и вызовы и требует совпадения сигнатур и структурных пределов на серверной и клиентской сторонах. JSON model и Markdown table показывают выбранный scripting backend, корректный для него синтаксис handler attribute, `MaxBytes` и `MaxCollectionSize` рядом с каждым вызовом. Managed handler показан неквалифицированной lookup signature, потому что baked metadata не сохраняет его declaring C# type и не сообщает, возвращает ли реализация `void` или `Task`; source hint остаётся указателем для проверки объявления. Генератор также записывает SHA-256 входных файлов. После запекания используйте те же входные пути с `--check` в CI проекта:
 
 ```bash
 python Engine/BuildTools/docs_metadata.py \

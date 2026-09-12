@@ -469,8 +469,8 @@
       "english_path": "Docs/en/how-to/build/generated-content.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/generated-content.md",
-      "source_sha256": "f915e3f37b23694c8b3156f3583d13d85645dadf1a49bbbb6588fe5c7e35181c",
-      "source_bytes": 11033,
+      "source_sha256": "4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6",
+      "source_bytes": 11042,
       "status": "current"
     },
     {
@@ -1574,8 +1574,8 @@
       "english_path": "Docs/en/reference/metadata/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/metadata/index.md",
-      "source_sha256": "b63fab231e78b379fa79e63105f7d3782c65c166bb7719597759d75ecffedf0f",
-      "source_bytes": 78759,
+      "source_sha256": "ee9c3b5bc06cb7835658cc96ca8740d3066e1d1078eb6e27d4dbdb9624be8613",
+      "source_bytes": 79097,
       "status": "current"
     },
     {
@@ -2016,8 +2016,8 @@
       "english_path": "Docs/en/reference/script-api/events.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/events.md",
-      "source_sha256": "ead71a8886429b3433abb273e8cb88a7e469da2145de06c0616d661705ec42c9",
-      "source_bytes": 75039,
+      "source_sha256": "ecf61768bcc63227920a1b80707f852494c66742e4d72de9a3e24ef8c942f716",
+      "source_bytes": 75038,
       "status": "current"
     },
     {
@@ -2055,8 +2055,8 @@
       "english_path": "Docs/en/reference/script-api/methods.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/methods.md",
-      "source_sha256": "72100fff49b97fdb5859ec57bfca3f517502737f760dcf16f92c2ec1f715bc40",
-      "source_bytes": 688593,
+      "source_sha256": "f3cd11b40794641f8b5b5f393fe5474d4daeb65cfeb074d04e270c762616ddbe",
+      "source_bytes": 688592,
       "status": "current"
     },
     {
@@ -2120,8 +2120,8 @@
       "english_path": "Docs/en/reference/scripting/remote-calls.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/scripting/remote-calls.md",
-      "source_sha256": "6de0e38c67b19c5f6db1d2db5f0707902840fcc98fd05ea9802eb6f24de3b436",
-      "source_bytes": 19422,
+      "source_sha256": "0296d8b306436a22e69b8791166421dd04b7ff33a69a3f2fd0d351b31c7659ab",
+      "source_bytes": 19757,
       "status": "current"
     },
     {

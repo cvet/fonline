@@ -278,7 +278,7 @@ public:
     // Runs before a stackable-item transfer into a critter inventory is committed; exposes the source item, destination stack, and transfer count
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemTransferIn, ptr<Critter> /*cr*/, ptr<Item> /*sourceItem*/, ptr<Item> /*resultItem*/, int32_t /*count*/);
-    // Runs after an item enters, leaves, or changes slot in a critter inventory; `fromSlot` reports its previous slot.
+    // Runs after an item enters, leaves, or changes slot in a critter inventory; `fromSlot` reports its previous slot
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
     // Runs once before an item's own initialization script; `firstTime` distinguishes creation from restore

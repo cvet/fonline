@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"b63fab231e78b379fa79e63105f7d3782c65c166bb7719597759d75ecffedf0f"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"ee9c3b5bc06cb7835658cc96ca8740d3066e1d1078eb6e27d4dbdb9624be8613"} -->
 
 # Сгенерированный API и метаданные
 
@@ -846,7 +846,7 @@ python Engine/BuildTools/docs_metadata.py \
   --write
 ```
 
-После baking в project CI используйте те же arguments с `--check`. Defaults outputs: `Docs/generated/project-remote-calls.json` и `Docs/generated/project-remote-calls.md`. Они содержат стабильные IDs `script.remote-call.<target>.<name>`, нормализованные signatures, surfaces caller/handler, per-call значения `MaxBytes` / `MaxCollectionSize`, input hashes и paired direction evidence. Каждая baked-запись должна содержать trailer `Limits`, включая явные нули для деклараций без структурных пределов. Намеренно публикуется только hint source file, потому что baked format не сохраняет repository-relative path и line.
+После baking в project CI используйте те же arguments с `--check`. Defaults outputs: `Docs/generated/project-remote-calls.json` и `Docs/generated/project-remote-calls.md`. Они содержат стабильные IDs `script.remote-call.<target>.<name>`, нормализованные signatures, корректный для backend синтаксис handler attribute, surfaces caller/handler, per-call значения `MaxBytes` / `MaxCollectionSize`, input hashes и paired direction evidence. Версия decoder должна совпадать с `Source/Common/MetadataRegistration.h`; при изменении metadata layout нужно одновременно обновлять и тестировать оба места. Каждая baked-запись должна содержать trailer `Limits`, включая явные нули для деклараций без структурных пределов. Намеренно публикуется только hint source file, потому что baked format не сохраняет repository-relative path и line. Для Managed C# lookup signature обработчика также остаётся неквалифицированной: metadata не хранит declaring type и реальный return `void`/`Task`.
 
 Полный контракт declaration, runtime, authority, compatibility и troubleshooting приведён в разделе [Remote calls](../../reference/scripting/remote-calls.md). Принадлежащий движку minimal project проверяет decoder по реальному baker output, не создавая зависимости репозитория от внешней игры.
 

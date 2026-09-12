@@ -13,12 +13,12 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_JSON_OUTPUT = "Docs/generated/project-remote-calls.json"
 DEFAULT_MARKDOWN_OUTPUT = "Docs/generated/project-remote-calls.md"
 SOURCE_PARSER = "Source/Tools/MetadataBaker.cpp"
 METADATA_FILE_MAGIC = 0x46444D46
-METADATA_FILE_VERSION = 3
+METADATA_FILE_VERSION = 4
 VALID_TARGETS = {"Server": "server", "Client": "client"}
 OPPOSITE_SIDE = {"server": "client", "client": "server"}
 
@@ -213,11 +213,28 @@ def _argument_signature(argument: dict[str, object]) -> str:
 
 
 def _handler_signature(record: _RemoteCallRecord) -> str:
-    namespace = Path(record.subsystem_hint).stem
     arguments = ", ".join(_argument_signature(argument) for argument in record.arguments)
     if record.target == "server":
         arguments = "Player player" + (f", {arguments}" if arguments else "")
+    if Path(record.subsystem_hint).suffix.lower() == ".cs":
+        # Metadata preserves neither the declaring C# type nor the actual void/Task return, so keep this an
+        # unqualified lookup signature instead of fabricating either from the source file name
+        return f"{record.name}({arguments})"
+    namespace = Path(record.subsystem_hint).stem
     return f"void {namespace}::{record.name}({arguments})"
+
+
+def _script_backend(subsystem_hint: str) -> str:
+    extension = Path(subsystem_hint).suffix.lower()
+    if extension == ".cs":
+        return "managed-csharp"
+    if extension == ".fos":
+        return "angelscript"
+    raise MetadataDecodeError(f"RemoteCall subsystem hint has an unsupported script extension: {subsystem_hint}")
+
+
+def _handler_attribute_syntax(attribute: str, backend: str) -> str:
+    return f"[{attribute}]" if backend == "managed-csharp" else f"[[{attribute}]]"
 
 
 def _caller_surfaces(record: _RemoteCallRecord) -> list[str]:
@@ -297,6 +314,8 @@ def generate_remote_call_model(
             )
 
         symbol_id = f"script.remote-call.{record.target}.{record.name}"
+        script_backend = _script_backend(record.subsystem_hint)
+        handler_attribute = "ServerRemoteCall" if record.target == "server" else "ClientRemoteCall"
         symbols.append(
             {
                 "id": symbol_id,
@@ -318,9 +337,9 @@ def generate_remote_call_model(
                     "max_collection_size": record.max_collection_size,
                 },
                 "subsystem_hint": record.subsystem_hint,
-                "handler_attribute": "ServerRemoteCall"
-                if record.target == "server"
-                else "ClientRemoteCall",
+                "script_backend": script_backend,
+                "handler_attribute": handler_attribute,
+                "handler_attribute_syntax": _handler_attribute_syntax(handler_attribute, script_backend),
                 "handler_signature": _handler_signature(record),
                 "caller_surfaces": _caller_surfaces(record),
                 "source": None,
@@ -411,8 +430,10 @@ def render_remote_call_markdown(model: dict[str, Any]) -> str:
         "",
         f"This page contains **{len(symbols)}** paired remote-call contracts.",
         "",
-        "`Source hint` is the file name retained by runtime metadata for namespace binding. The baked format "
-        "does not preserve a repository-relative declaration path or line number.",
+        "`Source hint` is the file name retained by runtime metadata for handler binding. The baked format "
+        "does not preserve a repository-relative declaration path or line number. For Managed C# it also "
+        "does not preserve the declaring type or the actual `void`/`Task` return, so the handler column shows "
+        "an intentionally unqualified lookup signature rather than inventing a source declaration.",
         "",
         "## Metadata inputs",
         "",
@@ -432,8 +453,8 @@ def render_remote_call_markdown(model: dict[str, Any]) -> str:
             [
                 f"## {target.title()} target",
                 "",
-                "| Declaration | Limits | Symbol ID | Caller surfaces | Handler | Source hint | Evidence |",
-                "| --- | --- | --- | --- | --- | --- | --- |",
+                "| Declaration | Limits | Symbol ID | Caller surfaces | Handler | Backend | Source hint | Evidence |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
         for symbol in target_symbols:
@@ -441,18 +462,18 @@ def render_remote_call_markdown(model: dict[str, Any]) -> str:
                 f"{item['metadata_side']}/{item['direction']}" for item in symbol["evidence"]
             )
             callers = "<br>".join(_code(caller) for caller in symbol["caller_surfaces"])
-            handler = f"{_code('[[' + symbol['handler_attribute'] + ']]')}<br>{_code(symbol['handler_signature'])}"
+            handler = f"{_code(symbol['handler_attribute_syntax'])}<br>{_code(symbol['handler_signature'])}"
             limits = symbol["limits"]
             limit_text = _code(
                 f"MaxBytes {limits['max_bytes']}; MaxCollectionSize {limits['max_collection_size']}"
             )
             lines.append(
                 f"| {_code(symbol['signature'])} | {limit_text} | "
-                f"<a id=\"{_anchor(str(symbol['id']))}\"></a>{_code(symbol['id'])} | {callers} | {handler} | {_code(symbol['source_hint'])} | "
+                f"<a id=\"{_anchor(str(symbol['id']))}\"></a>{_code(symbol['id'])} | {callers} | {handler} | {_code(symbol['script_backend'])} | {_code(symbol['source_hint'])} | "
                 f"{_text(evidence)} |"
             )
         if not target_symbols:
-            lines.append("| - | - | - | - | - | - | - |")
+            lines.append("| - | - | - | - | - | - | - | - |")
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"

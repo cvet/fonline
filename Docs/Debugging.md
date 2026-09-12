@@ -1,4 +1,4 @@
-# Native and AngelScript Debugging
+# Native, AngelScript, and Managed C# Debugging
 
 > Legacy route.
 
@@ -149,6 +149,10 @@ Continue with the [canonical English guide](en/troubleshooting/debugging.md#mult
 ### Attach troubleshooting
 
 Continue with the [canonical English guide](en/troubleshooting/debugging.md#attach-troubleshooting).
+
+## Managed C# diagnostics and debugging
+
+Continue with the [canonical English guide](en/troubleshooting/debugging.md#managed-c-diagnostics-and-debugging).
 
 ## Debugger integration in an embedding project
 

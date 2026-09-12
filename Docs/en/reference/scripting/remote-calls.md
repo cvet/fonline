@@ -228,7 +228,7 @@ The baked format retains the source file name but not a repository-relative path
 
 ## Generate a project catalog
 
-The engine-owned generator consumes the parser-owned baked files. It does not parse `.fos` with a second grammar:
+The engine-owned generator consumes the parser-owned baked files. It does not parse `.fos` or `.cs` with a second grammar:
 
 ```bash
 python Engine/BuildTools/docs_metadata.py \
@@ -245,7 +245,7 @@ By default it writes these project-owned artifacts:
 
 Each call receives a stable ID of the form `script.remote-call.<target>.<name>` and the status `project-owned`. This status is an ownership boundary, not a promise that a game maintains backward compatibility for the call.
 
-The generator strictly decodes the binary container, validates UTF-8 and the mandatory limits trailer, rejects duplicate inputs/calls, and requires matching server/client signatures and structural limits for every call. The JSON model and Markdown table expose `MaxBytes` and `MaxCollectionSize` alongside each call. The generator also records SHA-256 hashes for the inputs. Use the same input paths with `--check` in project CI after baking:
+The generator strictly decodes the binary container, validates UTF-8 and the mandatory limits trailer, rejects duplicate inputs/calls, and requires matching server/client signatures and structural limits for every call. The JSON model and Markdown table expose the selected script backend, backend-correct handler attribute syntax, `MaxBytes`, and `MaxCollectionSize` alongside each call. A Managed handler is shown as an unqualified lookup signature because baked metadata does not preserve its declaring C# type or whether the implementation returns `void` or `Task`; the source hint remains the evidence needed to inspect that declaration. The generator also records SHA-256 hashes for the inputs. Use the same input paths with `--check` in project CI after baking:
 
 ```bash
 python Engine/BuildTools/docs_metadata.py \

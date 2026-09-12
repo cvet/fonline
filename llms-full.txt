@@ -2628,7 +2628,7 @@ When Engine or the embedding project is updated, inspect changes to `Settings.in
 ===== BEGIN DOCUMENT generated-content-workflow =====
 Source: Docs/en/how-to/build/generated-content.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/generated-content.html
-Content SHA-256: f915e3f37b23694c8b3156f3583d13d85645dadf1a49bbbb6588fe5c7e35181c
+Content SHA-256: 4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6
 
 ---
 layout: default
@@ -2767,7 +2767,7 @@ python Engine/BuildTools/docs_metadata.py \
   --write
 ```
 
-Both sides must agree on every paired remote call, including its `MaxBytes` and `MaxCollectionSize` structural limits. Every record carries a mandatory `Limits` trailer, with zeroes when limits are omitted. Do not reconstruct that catalog by parsing `.fos` with a second grammar; the baked metadata is authoritative.
+Both sides must agree on every paired remote call, including its `MaxBytes` and `MaxCollectionSize` structural limits. Every record carries a mandatory `Limits` trailer, with zeroes when limits are omitted. Do not reconstruct that catalog by parsing `.fos` or `.cs` with a second grammar; the baked metadata is authoritative.
 
 Metadata changes can affect persistence, network synchronization, script bindings, content validation, and save compatibility even when native C++ compiles. Review the generated model and run a real bake plus the narrow runtime/test route.
 
@@ -23846,7 +23846,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: b63fab231e78b379fa79e63105f7d3782c65c166bb7719597759d75ecffedf0f
+Content SHA-256: ee9c3b5bc06cb7835658cc96ca8740d3066e1d1078eb6e27d4dbdb9624be8613
 
 ---
 layout: default
@@ -24706,7 +24706,7 @@ python Engine/BuildTools/docs_metadata.py \
   --write
 ```
 
-Use the same arguments with `--check` after baking in project CI. The default outputs are `Docs/generated/project-remote-calls.json` and `Docs/generated/project-remote-calls.md`. They carry stable `script.remote-call.<target>.<name>` IDs, normalized signatures, caller/handler surfaces, per-call `MaxBytes` / `MaxCollectionSize` values, input hashes, and paired direction evidence. Every baked record must contain the `Limits` trailer, including explicit zeroes for declarations without structural limits. The catalog deliberately exposes only a source file hint because the baked format does not retain a repository-relative path or line.
+Use the same arguments with `--check` after baking in project CI. The default outputs are `Docs/generated/project-remote-calls.json` and `Docs/generated/project-remote-calls.md`. They carry stable `script.remote-call.<target>.<name>` IDs, normalized signatures, backend-correct handler attribute syntax, caller/handler surfaces, per-call `MaxBytes` / `MaxCollectionSize` values, input hashes, and paired direction evidence. Every baked record must contain the `Limits` trailer, including explicit zeroes for declarations without structural limits. The decoder version is kept equal to `Source/Common/MetadataRegistration.h`; a metadata layout bump must update and test both together. The catalog deliberately exposes only a source file hint because the baked format does not retain a repository-relative path or line. For Managed C# it also keeps the handler lookup signature unqualified because metadata does not preserve the declaring type or the actual `void`/`Task` return.
 
 The complete declaration, runtime, authority, compatibility, and troubleshooting contract is [Remote Calls](../../reference/scripting/remote-calls.md). The engine-owned minimal project validates the decoder against real baker output without making this repository depend on an external game.
 
@@ -25877,7 +25877,7 @@ Source links follow the repository's `master` branch. The path and line stored i
 ===== BEGIN DOCUMENT remote-calls =====
 Source: Docs/en/reference/scripting/remote-calls.md
 Canonical URL: https://fonline.ru/Docs/en/reference/scripting/remote-calls.html
-Content SHA-256: 6de0e38c67b19c5f6db1d2db5f0707902840fcc98fd05ea9802eb6f24de3b436
+Content SHA-256: 0296d8b306436a22e69b8791166421dd04b7ff33a69a3f2fd0d351b31c7659ab
 
 ---
 layout: default
@@ -26109,7 +26109,7 @@ The baked format retains the source file name but not a repository-relative path
 
 ## Generate a project catalog
 
-The engine-owned generator consumes the parser-owned baked files. It does not parse `.fos` with a second grammar:
+The engine-owned generator consumes the parser-owned baked files. It does not parse `.fos` or `.cs` with a second grammar:
 
 ```bash
 python Engine/BuildTools/docs_metadata.py \
@@ -26126,7 +26126,7 @@ By default it writes these project-owned artifacts:
 
 Each call receives a stable ID of the form `script.remote-call.<target>.<name>` and the status `project-owned`. This status is an ownership boundary, not a promise that a game maintains backward compatibility for the call.
 
-The generator strictly decodes the binary container, validates UTF-8 and the mandatory limits trailer, rejects duplicate inputs/calls, and requires matching server/client signatures and structural limits for every call. The JSON model and Markdown table expose `MaxBytes` and `MaxCollectionSize` alongside each call. The generator also records SHA-256 hashes for the inputs. Use the same input paths with `--check` in project CI after baking:
+The generator strictly decodes the binary container, validates UTF-8 and the mandatory limits trailer, rejects duplicate inputs/calls, and requires matching server/client signatures and structural limits for every call. The JSON model and Markdown table expose the selected script backend, backend-correct handler attribute syntax, `MaxBytes`, and `MaxCollectionSize` alongside each call. A Managed handler is shown as an unqualified lookup signature because baked metadata does not preserve its declaring C# type or whether the implementation returns `void` or `Task`; the source hint remains the evidence needed to inspect that declaration. The generator also records SHA-256 hashes for the inputs. Use the same input paths with `--check` in project CI after baking:
 
 ```bash
 python Engine/BuildTools/docs_metadata.py \

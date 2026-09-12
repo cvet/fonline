@@ -6560,8 +6560,8 @@
         },
         {
           "locator": "/symbols/@id=script.event.server.Game.OnCritterItemMoved/description",
-          "source": "Runs after an item enters, leaves, or changes slot in a critter inventory; `fromSlot` reports its previous slot.",
-          "source_sha256": "5dd3e8d4378fde0ebf4c88f3867cb33a47dbe0a45b7ef5cbabc23ad8d7fa1a34",
+          "source": "Runs after an item enters, leaves, or changes slot in a critter inventory; `fromSlot` reports its previous slot",
+          "source_sha256": "c04a7433a79b8a085959436027b266b155b12e14d8c0230c9015007d2a98102a",
           "status": "current"
         },
         {
@@ -7880,8 +7880,8 @@
         },
         {
           "locator": "/symbols/@id=script.method.client.Game.SimulateInfoMessage/description",
-          "source": "Raises an engine info message with optional extra text, as the server would deliver it.",
-          "source_sha256": "2cb5adf3f5f22ca2a2db1357c856543c9b8e6c4e5d7a214e4b08aadb7130b516",
+          "source": "Raises an engine info message with optional extra text, as the server would deliver it",
+          "source_sha256": "d47de8fb4dd89c0a2c012d39546587ce2fce424a856d00b6dcb00e7abef7894c",
           "status": "current"
         },
         {

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"ead71a8886429b3433abb273e8cb88a7e469da2145de06c0616d661705ec42c9"} -->
+<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"ecf61768bcc63227920a1b80707f852494c66742e4d72de9a3e24ef8c942f716"} -->
 
 # События движка
 

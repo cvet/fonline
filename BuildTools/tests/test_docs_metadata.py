@@ -98,6 +98,8 @@ class DocumentationMetadataTests(unittest.TestCase):
             self.assertEqual(server_call["id"], "script.remote-call.server.CoverageCall")
             self.assertEqual(server_call["arguments"][1], {"name": "note", "type": "string?", "nullable": True})
             self.assertEqual(server_call["handler_attribute"], "ServerRemoteCall")
+            self.assertEqual(server_call["handler_attribute_syntax"], "[[ServerRemoteCall]]")
+            self.assertEqual(server_call["script_backend"], "angelscript")
             self.assertEqual(server_call["limits"], {"max_bytes": 4096, "max_collection_size": 32})
             self.assertEqual(
                 server_call["handler_signature"],
@@ -113,6 +115,30 @@ class DocumentationMetadataTests(unittest.TestCase):
             self.assertIn("client/out, server/in", markdown)
             self.assertIn("MetadataBaker output", markdown)
             self.assertIn("MaxBytes 4096; MaxCollectionSize 32", markdown)
+
+    def test_managed_handler_display_does_not_fabricate_declaring_type_or_return(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            server_path = _write_metadata(
+                root,
+                "Server",
+                [["ManagedCoverage", "Coverage.Part.cs", "In", "int32", "", "amount", "Limits", "0", "0"]],
+            )
+            client_path = _write_metadata(
+                root,
+                "Client",
+                [["ManagedCoverage", "Coverage.Part.cs", "Out", "int32", "", "amount", "Limits", "0", "0"]],
+            )
+
+            model = docs_metadata.generate_remote_call_model(root, [server_path, client_path])
+            symbol = model["symbols"][0]
+            self.assertEqual(symbol["script_backend"], "managed-csharp")
+            self.assertEqual(symbol["handler_attribute_syntax"], "[ServerRemoteCall]")
+            self.assertEqual(symbol["handler_signature"], "ManagedCoverage(Player player, int32 amount)")
+
+            markdown = docs_metadata.render_remote_call_markdown(model)
+            self.assertIn("[ServerRemoteCall]", markdown)
+            self.assertNotIn("Coverage.Part::ManagedCoverage", markdown)
 
     def test_mismatched_or_unpaired_metadata_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

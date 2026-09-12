@@ -952,7 +952,7 @@ FO_SCRIPT_API void Client_Game_SimulateConnectingFailed(ptr<ClientEngine> client
     client->OnConnectingFailed.Fire();
 }
 
-// Raises an engine info message with optional extra text, as the server would deliver it.
+// Raises an engine info message with optional extra text, as the server would deliver it
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateInfoMessage(ptr<ClientEngine> client, EngineInfoMessage infoMessage, string_view extraText = "")
 {

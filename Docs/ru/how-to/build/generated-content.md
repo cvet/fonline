@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 
 # Работа с генерируемым содержимым
 
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"f915e3f37b23694c8b3156f3583d13d85645dadf1a49bbbb6588fe5c7e35181c"} -->
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6"} -->
 
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
@@ -161,7 +161,7 @@ python Engine/BuildTools/docs_metadata.py \
 Обе стороны должны совпадать для каждого paired remote call, включая
 структурные пределы `MaxBytes` и `MaxCollectionSize`. Каждая запись содержит
 обязательный trailer `Limits` с нулями, если пределы не объявлены. Не
-восстанавливайте каталог повторным разбором `.fos` с другой grammar: baked
+восстанавливайте каталог повторным разбором `.fos` или `.cs` с другой grammar: baked
 metadata является authoritative.
 
 Metadata changes могут влиять на persistence, network synchronization, script
