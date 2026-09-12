@@ -18,8 +18,8 @@ import tarfile
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import IO, Callable, Iterable, Literal, Sequence
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
 
 import buildtools
 import foconfig
@@ -62,6 +62,9 @@ MANAGED_CORELIB_RELATIVE_PATH = os.path.join('lib', 'netcoreapp', 'System.Privat
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
+PACKAGE_MODE_MANIFEST = '.lf-package-modes.json'
+PACKAGE_MODE_MANIFEST_VERSION = 1
+PACKAGE_FILE_MODES = frozenset({0o644, 0o755})
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -321,8 +324,15 @@ def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
-def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipInfo, file_path: str) -> bool:
+def zip_entry_matches_file(
+	archive: zipfile.ZipFile,
+	archive_info: zipfile.ZipInfo,
+	file_path: str,
+	expected_mode: int | None = None,
+) -> bool:
 	if archive_info.file_size != os.path.getsize(file_path):
+		return False
+	if expected_mode is not None and (archive_info.external_attr >> 16) & 0o777 != expected_mode:
 		return False
 
 	with archive.open(archive_info) as archive_file, open(file_path, 'rb') as source_file:
@@ -355,7 +365,14 @@ def validate_resource_zip(archive_source: str | Path | IO[bytes], expected_entri
 		raise AssertionError(f'Resource pack validation failed for {archive_name}: {error}') from error
 
 
-def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
+def make_zip(
+	name: str | Path,
+	path: str | Path,
+	compress_level: int,
+	mode: Literal['w', 'a'] = 'w',
+	mode_overrides: Mapping[str, int] | None = None,
+) -> None:
+	mode_overrides = mode_overrides or {}
 	with zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
 		existing_entries = {entry.filename: entry for entry in archive.infolist()}
 
@@ -363,12 +380,22 @@ def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Lite
 			for file_name in files:
 				file_path = os.path.join(root, file_name)
 				archive_name = os.path.relpath(file_path, path).replace(os.sep, '/')
+				logical_mode = mode_overrides.get(archive_name)
 				existing_entry = existing_entries.get(archive_name)
 				if existing_entry is not None:
-					assert zip_entry_matches_file(archive, existing_entry, file_path), 'Conflicting zip entry while merging package parts: ' + archive_name
+					assert zip_entry_matches_file(archive, existing_entry, file_path, logical_mode), 'Conflicting zip entry while merging package parts: ' + archive_name
 					continue
 
-				archive.write(file_path, archive_name)
+				if logical_mode is None:
+					archive.write(file_path, archive_name)
+				else:
+					assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+					info = zipfile.ZipInfo.from_file(file_path, archive_name)
+					info.create_system = 3
+					info.compress_type = zipfile.ZIP_DEFLATED
+					info.external_attr = logical_mode << 16
+					with open(file_path, 'rb') as source, archive.open(info, 'w') as destination:
+						shutil.copyfileobj(source, destination)
 				existing_entries[archive_name] = archive.getinfo(archive_name)
 
 
@@ -380,6 +407,69 @@ def resolve_safe_relative_path(root: Path, relative_path: str, description: str)
 	resolved_path = (resolved_root / path).resolve()
 	assert resolved_path == resolved_root or resolved_root in resolved_path.parents, f'{description} escapes its root: {relative_path}'
 	return resolved_path
+
+
+def validate_package_mode_path(relative_path: str) -> None:
+	assert relative_path and '\\' not in relative_path, f'Package mode path must use POSIX separators: {relative_path!r}'
+	posix_path = PurePosixPath(relative_path)
+	windows_path = PureWindowsPath(relative_path)
+	assert not posix_path.is_absolute() and not windows_path.drive, f'Package mode path must be relative: {relative_path}'
+	assert relative_path == posix_path.as_posix(), f'Package mode path is not normalized: {relative_path}'
+	assert all(part not in ('', '.', '..') for part in posix_path.parts), f'Package mode path must not escape its root: {relative_path}'
+
+
+def read_package_mode_manifest(package_root: Path) -> dict[str, int]:
+	manifest_path = package_root / PACKAGE_MODE_MANIFEST
+	if not manifest_path.is_file():
+		return {}
+
+	try:
+		manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+	except (OSError, json.JSONDecodeError) as error:
+		raise AssertionError(f'Invalid package mode manifest {manifest_path}: {error}') from error
+
+	assert isinstance(manifest, dict), f'Package mode manifest must be an object: {manifest_path}'
+	assert manifest.get('version') == PACKAGE_MODE_MANIFEST_VERSION, f'Unsupported package mode manifest version: {manifest.get("version")!r}'
+	assert set(manifest) == {'version', 'files'}, f'Package mode manifest has unknown fields: {manifest_path}'
+	files = manifest.get('files')
+	assert isinstance(files, dict), f'Package mode manifest files must be an object: {manifest_path}'
+
+	modes: dict[str, int] = {}
+	for relative_path, encoded_mode in files.items():
+		assert isinstance(relative_path, str), f'Package mode path must be a string: {relative_path!r}'
+		validate_package_mode_path(relative_path)
+		assert isinstance(encoded_mode, str) and re.fullmatch(r'[0-7]{3}', encoded_mode), f'Invalid package mode for {relative_path}: {encoded_mode!r}'
+		logical_mode = int(encoded_mode, 8)
+		assert logical_mode in PACKAGE_FILE_MODES, f'Unsupported package mode for {relative_path}: {encoded_mode}'
+		file_path = resolve_safe_relative_path(package_root, relative_path, 'Package mode path')
+		assert file_path.is_file(), f'Package mode path is not a file: {relative_path}'
+		modes[relative_path] = logical_mode
+	return modes
+
+
+def write_package_mode_manifest(package_root: Path, modes: Mapping[str, int]) -> None:
+	manifest_path = package_root / PACKAGE_MODE_MANIFEST
+	if not modes:
+		manifest_path.unlink(missing_ok=True)
+		return
+
+	for relative_path, logical_mode in modes.items():
+		validate_package_mode_path(relative_path)
+		assert logical_mode in PACKAGE_FILE_MODES, f'Unsupported package mode for {relative_path}: {logical_mode!r}'
+		assert resolve_safe_relative_path(package_root, relative_path, 'Package mode path').is_file(), f'Package mode path is not a file: {relative_path}'
+
+	payload = {
+		'version': PACKAGE_MODE_MANIFEST_VERSION,
+		'files': {relative_path: format(logical_mode, '03o') for relative_path, logical_mode in sorted(modes.items())},
+	}
+	with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=package_root, prefix=PACKAGE_MODE_MANIFEST + '.', suffix='.tmp', delete=False) as output:
+		temporary_path = Path(output.name)
+		json.dump(payload, output, indent=2)
+		output.write('\n')
+	try:
+		os.replace(temporary_path, manifest_path)
+	finally:
+		temporary_path.unlink(missing_ok=True)
 
 
 def iter_package_include_files(target_root: Path) -> list[Path]:
@@ -544,8 +634,23 @@ def package_web_resources(
 		loader_path.replace(output_path / 'Resources.js')
 
 
-def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
+def make_tar(
+	name: str | Path,
+	path: str | Path,
+	mode: Literal['w', 'w:gz'],
+	mode_overrides: Mapping[str, int] | None = None,
+) -> None:
+	mode_overrides = mode_overrides or {}
+	archive_root = os.path.basename(os.fspath(path)).replace(os.sep, '/')
+
 	def filter_member(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
+		relative_name = tar_info.name.replace('\\', '/')
+		if relative_name.startswith(archive_root + '/'):
+			relative_name = relative_name[len(archive_root) + 1:]
+		logical_mode = mode_overrides.get(relative_name)
+		if logical_mode is not None:
+			assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+			tar_info.mode = logical_mode
 		return tar_info
 
 	with tarfile.open(name, mode) as archive:
@@ -590,6 +695,7 @@ class Packager:
 	embedded_data: bytes = field(init=False, default=b'')
 	config_data: bytes = field(init=False, default=b'')
 	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
+	logical_file_modes: dict[str, int] = field(init=False, default_factory=dict)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
@@ -1028,6 +1134,32 @@ class Packager:
 		if self.target_output_path:
 			shutil.rmtree(self.target_output_path, True)
 
+	def record_logical_file_mode(self, file_path: str | Path, logical_mode: int) -> None:
+		assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+		relative_path = Path(file_path).resolve().relative_to(Path(self.target_output_path).resolve()).as_posix()
+		validate_package_mode_path(relative_path)
+		if not hasattr(self, 'logical_file_modes'):
+			self.logical_file_modes = {}
+		self.logical_file_modes[relative_path] = logical_mode
+
+	def persist_logical_file_modes(self) -> None:
+		package_root = Path(self.output_path)
+		target_root = Path(self.target_output_path)
+		target_prefix = target_root.resolve().relative_to(package_root.resolve()).as_posix().rstrip('/') + '/'
+		all_modes = {
+			path: mode
+			for path, mode in read_package_mode_manifest(package_root).items()
+			if not path.startswith(target_prefix)
+		}
+
+		logical_file_modes = getattr(self, 'logical_file_modes', {})
+		if self.has_pack('Raw'):
+			all_modes.update({target_prefix + path: mode for path, mode in logical_file_modes.items()})
+		if self.has_pack('Root'):
+			all_modes.update(logical_file_modes)
+
+		write_package_mode_manifest(package_root, all_modes)
+
 	def get_input(self, subdir: str, input_type: str) -> str:
 		for input_dir in self.args.input:
 			abs_dir = os.path.join(os.path.abspath(input_dir), subdir)
@@ -1399,6 +1531,7 @@ class Packager:
 
 				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
 
+				self.record_logical_file_mode(output_file_path, 0o755)
 				st = os.stat(output_file_path)
 				os.chmod(output_file_path, st.st_mode | stat.S_IEXEC)
 
@@ -1732,24 +1865,25 @@ class Packager:
 		log('Code signing: done')
 
 	def finalize_output(self) -> None:
+		logical_file_modes = getattr(self, 'logical_file_modes', {})
 		self.sign_windows_binaries()
 
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
-			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level)
+			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level, mode_overrides=logical_file_modes)
 
 		if self.has_pack('SingleZip'):
 			log('Add to single zip archive')
 			single_zip_path = os.path.join(self.output_path, os.path.basename(self.output_path) + '.zip')
-			make_zip(single_zip_path, self.target_output_path, self.zip_compress_level, 'a')
+			make_zip(single_zip_path, self.target_output_path, self.zip_compress_level, 'a', logical_file_modes)
 
 		if self.has_pack('Tar'):
 			log('Create tar archive')
-			make_tar(self.target_output_path + '.tar', self.target_output_path, 'w')
+			make_tar(self.target_output_path + '.tar', self.target_output_path, 'w', logical_file_modes)
 
 		if self.has_pack('TarGz'):
 			log('Create tar.gz archive')
-			make_tar(self.target_output_path + '.tar.gz', self.target_output_path, 'w:gz')
+			make_tar(self.target_output_path + '.tar.gz', self.target_output_path, 'w:gz', logical_file_modes)
 
 		if self.has_pack('Root'):
 			shutil.copytree(self.target_output_path, self.output_path, dirs_exist_ok=True)
@@ -1759,6 +1893,8 @@ class Packager:
 
 		if not self.has_pack('Raw'):
 			shutil.rmtree(self.target_output_path, True)
+
+		self.persist_logical_file_modes()
 
 	def resolve_game_version(self) -> str:
 		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
@@ -1773,15 +1909,29 @@ class Packager:
 				raw = version_file.read().strip()
 		return raw
 
-	def ensure_msi_toolset(self) -> None:
+	def ensure_msi_toolset(self) -> str:
 		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
 		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
 		# (candle/light) on Windows, GNOME wixl elsewhere — matching msicreator/createmsi.py. On
 		# Debian/Ubuntu wixl ships in its own "wixl" apt package (the "msitools" package carries only
 		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl)
 		if os.name == 'nt':
+			candidate_roots: list[Path] = []
+			configured_root = os.environ.get('FO_WIX_ROOT', '')
+			if configured_root:
+				candidate_roots.append(Path(configured_root))
+			for input_path in self.args.input:
+				candidate = Path(input_path).resolve().parent / 'wix3'
+				if candidate not in candidate_roots:
+					candidate_roots.append(candidate)
+
+			for candidate_root in candidate_roots:
+				if all((candidate_root / (tool + '.exe')).is_file() for tool in ('candle', 'light')):
+					return str(candidate_root)
+
 			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
-			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
+			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found); run buildtools.py prepare-workspace wix'
+			return ''
 		else:
 			wixl = shutil.which('wixl')
 			assert wixl is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
@@ -1790,6 +1940,7 @@ class Packager:
 			assert version_match is not None, 'Unable to determine wixl version from: ' + version_output
 			version = tuple(int(part or '0') for part in version_match.groups())
 			assert version >= (0, 102, 0), 'Wix pack directory UI requires wixl 0.102 or newer (found %s)' % version_output
+			return ''
 
 	def make_wix_installer(self) -> None:
 		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
@@ -1800,7 +1951,7 @@ class Packager:
 		# game-specific values come from the project config, so the engine packager stays game-agnostic
 		assert self.args.platform == 'Windows' and self.args.target == 'Client', 'Wix pack is only valid for the Windows Client target'
 
-		self.ensure_msi_toolset()
+		wix_root = self.ensure_msi_toolset()
 
 		scheme = self.fomain.mainSection().getStr('Auth.UriScheme', '').strip()
 		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
@@ -1893,7 +2044,11 @@ class Packager:
 			log('Wix: building MSI installer', config_path)
 			# createmsi.py requires a bare json filename (no path segment) and resolves it plus the staged
 			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir
-			subprocess.run([sys.executable, createmsi, os.path.basename(config_path)], cwd=work_dir, check=True)
+			command = [sys.executable, createmsi]
+			if wix_root:
+				command.extend(['--wix-dir', wix_root])
+			command.append(os.path.basename(config_path))
+			subprocess.run(command, cwd=work_dir, check=True)
 			log('Wix: MSI built (registers %s:// URI scheme, Start Menu + Desktop shortcuts, installs writable-data marker)' % scheme)
 		finally:
 			if os.path.exists(marker_path):

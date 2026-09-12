@@ -124,6 +124,7 @@ At the moment the shared flow covers:
 - `android-ndk`
 - `dotnet`
 - `xwin`
+- `wix`
 - `msan-libcxx`
 
 Linux system package installation is explicit and separate from workspace preparation:
@@ -136,7 +137,7 @@ Linux system package installation is explicit and separate from workspace prepar
 - `msi-packages`
 - `all-packages`
 
-Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
+Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `php-cli` and `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
 
 Host prerequisite checks are also available through the main tool:
 
@@ -179,6 +180,7 @@ Examples:
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset
 python3 Engine/BuildTools/buildtools.py prepare-workspace emscripten
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
+python3 Engine/BuildTools/buildtools.py prepare-workspace wix
 python3 Engine/BuildTools/buildtools.py prepare-workspace msan-libcxx
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
@@ -187,6 +189,13 @@ python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-package
 The `toolset` workspace always enables the baker and disables runtime applications and tests. It leaves
 `FO_BUILD_ASCOMPILER` to the embedding project's `SetOptionValues` default, so AngelScript projects can
 prepare their compiler while managed-only projects do not receive an incompatible forced override.
+
+`wix` is Windows-only and prepares the portable WiX v3 release pinned by
+`Engine/ThirdParty/wix` under `Workspace/wix3`. Downloads use
+`FO_DOWNLOAD_MIRROR` like other workspace archives, and the SHA-256 is checked
+before extraction. `package.py` discovers this directory from its output input,
+so no global installation or persistent `PATH` mutation is required. POSIX
+package hosts continue to use the provisioned `wixl` command.
 
 `msan-libcxx` is Linux-only and intentionally excluded from the default `all`
 workspace feature because it downloads matching LLVM sources and builds

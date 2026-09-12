@@ -41,6 +41,7 @@ def _make_packager(
         target=target,
         arch=arch,
         binary_output_postfix=binary_output_postfix,
+        input=[str(tmp_path / "output")],
     )
     return packager
 
@@ -74,6 +75,20 @@ def test_ensure_msi_toolset_requires_wixl_on_posix(tmp_path: Path, monkeypatch: 
         packager.ensure_msi_toolset()
 
 
+def test_ensure_msi_toolset_finds_workspace_local_wix_on_windows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    if os.name != "nt":
+        pytest.skip("workspace-local WiX binaries are Windows executables")
+    wix_root = tmp_path / "wix3"
+    wix_root.mkdir()
+    (wix_root / "candle.exe").write_bytes(b"candle")
+    (wix_root / "light.exe").write_bytes(b"light")
+    packager = _make_packager(tmp_path, ["Common.GameVersion = 1.0.0"])
+    monkeypatch.delenv("FO_WIX_ROOT", raising=False)
+    monkeypatch.setattr(_package.shutil, "which", lambda name: None)
+
+    assert packager.ensure_msi_toolset() == str(wix_root)
+
+
 def _staged_client(output_dir: Path) -> Path:
     staged = output_dir / "LF-Client"
     (staged / "Resources").mkdir(parents=True)
@@ -96,14 +111,16 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     ]
     packager = _make_packager(tmp_path, fomain_lines)
     packager.target_output_path = str(staged)
-    monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: None)
+    workspace_wix = tmp_path / "wix3"
+    monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: str(workspace_wix))
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
 
     captured: dict[str, object] = {}
 
-    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False) -> SimpleNamespace:
+    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False, env: dict[str, str] | None = None) -> SimpleNamespace:
         captured["cmd"] = cmd
         captured["cwd"] = cwd
+        captured["env"] = env
         # The writable-data marker must exist inside the staged payload at MSI build time
         assert (Path(cwd) / "LF-Client" / "INSTALLED").is_file()
         # Drive only createmsi's WiX XML generation without requiring wixl or light
@@ -121,6 +138,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
 
     # createmsi resolves a bare JSON filename against work_dir
     assert captured["cmd"][-1] == "LastFrontier.wix.json"
+    assert captured["cmd"][-3:-1] == ["--wix-dir", str(workspace_wix)]
     assert "/" not in str(captured["cmd"][-1]) and "\\" not in str(captured["cmd"][-1])
     assert captured["cwd"] == str(output_dir)
 
@@ -170,6 +188,12 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert 'Indirect="yes"' not in wxs
     assert 'Remote="yes"' not in wxs
     assert 'Directory Id="LF_Client_Resources"' in wxs
+    assert 'InstallScope="perUser"' in wxs
+    assert 'Name="ApplicationFiles0" Type="integer" Value="1" KeyPath="yes"' in wxs
+    assert 'Name="ApplicationFiles1" Type="integer" Value="1" KeyPath="yes"' in wxs
+    assert 'RemoveFolder Id="Remove_INSTALLDIR" Directory="INSTALLDIR" On="uninstall"' in wxs
+    assert 'RemoveFolder Id="Remove_LF_Client_Resources" Directory="LF_Client_Resources" On="uninstall"' in wxs
+    assert 'System="no"' in wxs
     assert "WixUI_FeatureTree" not in wxs
 
 
@@ -186,6 +210,28 @@ def test_make_wix_installer_rejects_missing_upgrade_code(tmp_path: Path, monkeyp
 
     with pytest.raises(AssertionError, match="MsiUpgradeCode"):
         packager.make_wix_installer()
+
+
+def test_workspace_wix_builds_a_real_msi_when_requested(tmp_path: Path) -> None:
+    wix_root = os.environ.get("FO_WIX_ROOT", "")
+    if os.name != "nt" or not (Path(wix_root) / "candle.exe").is_file():
+        pytest.skip("set FO_WIX_ROOT to a prepared WiX v3 directory for the integration check")
+
+    output_dir = tmp_path / "output"
+    staged = _staged_client(output_dir)
+    packager = _make_packager(tmp_path, [
+        "Common.GameName = Last Frontier",
+        "Common.GameVersion = 0.3.422",
+        "Auth.UriScheme = lastfrontier",
+        "Packaging.MsiUpgradeCode = B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D",
+    ])
+    packager.target_output_path = str(staged)
+
+    packager.make_wix_installer()
+
+    installers = list(output_dir.glob("LastFrontier-0.3.422-64.msi"))
+    assert len(installers) == 1 and installers[0].stat().st_size > 0
+    assert not (staged / "INSTALLED").exists()
 
 
 def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -207,9 +253,10 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
 
     captured: dict[str, object] = {}
 
-    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False) -> SimpleNamespace:
+    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False, env: dict[str, str] | None = None) -> SimpleNamespace:
         captured["cmd"] = cmd
         captured["cwd"] = cwd
+        captured["env"] = env
         assert (staged / "INSTALLED").is_file()
         previous = os.getcwd()
         os.chdir(cwd)

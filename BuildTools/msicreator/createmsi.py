@@ -128,6 +128,7 @@ class PackageGenerator:
             'Languages': '1033',
             'Compressed': 'yes',
             'SummaryCodepage': '1252',
+            'InstallScope': 'perUser',
         })
 
         if self.major_upgrade is not None:
@@ -189,7 +190,7 @@ class PackageGenerator:
                                                  })
             ET.SubElement(comp, 'RegistryValue', {'Root': 'HKCU',
                                                   'Key': 'Software\\Microsoft\\' + self.name,
-                                                  'Name': 'Installed',
+                                                  'Name': 'StartMenuInstalled',
                                                   'Type': 'integer',
                                                   'Value': '1',
                                                   'KeyPath': 'yes',
@@ -211,7 +212,7 @@ class PackageGenerator:
                                                  })
             ET.SubElement(comp, 'RegistryValue', {'Root': 'HKCU',
                                                   'Key': 'Software\\Microsoft\\' + self.name,
-                                                  'Name': 'Installed',
+                                                  'Name': 'DesktopInstalled',
                                                   'Type': 'integer',
                                                   'Value': '1',
                                                   'KeyPath': 'yes',
@@ -494,7 +495,7 @@ class PackageGenerator:
                     'Id': 'Environment',
                     'Name': 'PATH',
                     'Part': 'last',
-                    'System': 'yes',
+                    'System': 'no',
                     'Action': 'set',
                     'Value': '[INSTALLDIR]',
                 })
@@ -506,6 +507,20 @@ class PackageGenerator:
                     'Name': f,
                     'Source': os.path.join(current_dir, f),
                 })
+            directory_id = 'INSTALLDIR' if current_dir == staging_dir else self.path_to_id(current_dir)
+            ET.SubElement(comp_xml_node, 'RemoveFolder', {
+                'Id': 'Remove_' + directory_id,
+                'Directory': directory_id,
+                'On': 'uninstall',
+            })
+            ET.SubElement(comp_xml_node, 'RegistryValue', {
+                'Root': 'HKCU',
+                'Key': 'Software\\' + self.name + '\\Components',
+                'Name': component_id,
+                'Type': 'integer',
+                'Value': '1',
+                'KeyPath': 'yes',
+            })
 
         for dirname in cur_node.dirs:
             dir_id = self.path_to_id(os.path.join(current_dir, dirname))
@@ -538,14 +553,18 @@ class PackageGenerator:
 
 
 def run(args: list[str]) -> None:
+    wixdir = ''
+    if len(args) == 3 and args[0] == '--wix-dir':
+        wixdir = args[1]
+        args = args[2:]
     if len(args) != 1:
-        sys.exit('createmsi.py <msi definition json>')
+        sys.exit('createmsi.py [--wix-dir <directory>] <msi definition json>')
     jsonfile = args[0]
     if '/' in jsonfile or '\\' in jsonfile:
         sys.exit('Input file %s must not contain a path segment.' % jsonfile)
     p = PackageGenerator(jsonfile)
     p.generate_files()
-    p.build_package()
+    p.build_package(wixdir)
 
 
 def main() -> None:

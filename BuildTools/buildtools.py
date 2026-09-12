@@ -260,7 +260,7 @@ def _fos_collapse_nullable_angle(match: 're.Match[str]', suffix: str) -> str:
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'12',
+		'13',
 		[
 			'clang-20',
 			'clang-format-20',
@@ -272,6 +272,7 @@ LINUX_PACKAGE_GROUPS = {
 			'cmake',
 			'python3',
 			'python3-pytest',
+			'php-cli',
 			'wget',
 			'unzip',
 			'binutils-dev',
@@ -547,6 +548,7 @@ def resolve_env() -> EnvMap:
 		'FO_DOTNET_RUNTIME': read_first_line(third_party / 'dotnet-runtime'),
 		'FO_IOS_SDK': read_first_line(third_party / 'iOS-sdk'),
 		'FO_XWIN_VERSION': read_first_line(third_party / 'xwin'),
+		'FO_WIX_VERSION': read_first_line(third_party / 'wix'),
 	}
 
 	xwin_root = workspace / 'xwin'
@@ -606,6 +608,7 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_IOS_SDK',
 		'FO_XWIN_VERSION',
 		'FO_XWIN_ROOT',
+		'FO_WIX_VERSION',
 	]:
 		log('-', f'{key}={env.get(key, "")}')
 
@@ -1244,6 +1247,25 @@ def build_xwin_workspace_version(env: Mapping[str, str]) -> str:
 	return f'{build_xwin_version(env)}-{"-".join(XWIN_SPLAT_ARCHES)}'
 
 
+def build_wix_version(env: Mapping[str, str]) -> str:
+	version = env.get('FO_WIX_VERSION', '')
+	if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+		raise SystemExit('FO_WIX_VERSION is not configured (Engine/ThirdParty/wix missing or invalid)')
+	return version
+
+
+def build_wix_workspace_version(env: Mapping[str, str]) -> str:
+	return build_wix_version(env)
+
+
+def build_wix_download_spec(env: Mapping[str, str]) -> tuple[str, str]:
+	version = build_wix_version(env)
+	major, minor, patch = version.split('.')
+	tag = f'wix{major}{minor}{patch}rtm'
+	archive_name = f'wix{major}{minor}-binaries.zip'
+	return archive_name, f'https://github.com/wixtoolset/wix3/releases/download/{tag}/{archive_name}'
+
+
 def discover_clang_version(executable: str = 'clang++-20') -> str:
 	clang = shutil.which(executable) or f'/usr/bin/{executable}'
 	try:
@@ -1621,6 +1643,30 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(cached_path)
 
 
+def prepare_wix_workspace(env: Mapping[str, str]) -> None:
+	if os.name != 'nt':
+		raise SystemExit('The workspace-local WiX v3 toolset is only used on Windows hosts; POSIX packaging uses wixl')
+
+	workspace = Path(env['FO_WORKSPACE'])
+	wix_root = workspace / 'wix3'
+	archive_name, url = build_wix_download_spec(env)
+	archive_path = workspace / archive_name
+
+	remove_path_if_exists(archive_path)
+	remove_path_if_exists(wix_root)
+	ensure_dir(workspace)
+	download_file(url, archive_path, 'WiX Toolset v3')
+
+	log('Unpack WiX Toolset v3:', archive_path)
+	extract_zip_with_permissions(archive_path, wix_root)
+	remove_path_if_exists(archive_path)
+
+	missing = [name for name in ('candle.exe', 'light.exe', 'WixUIExtension.dll') if not (wix_root / name).is_file()]
+	if missing:
+		remove_path_if_exists(wix_root)
+		raise SystemExit('Unexpected WiX Toolset archive layout; missing: ' + ', '.join(missing))
+
+
 def prepare_msan_libcxx_workspace(env: Mapping[str, str]) -> None:
 	if os.name == 'nt':
 		raise SystemExit('MSan libc++ can only be prepared on Linux/Clang hosts')
@@ -1694,6 +1740,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-ndk': lambda: build_android_ndk_workspace_version(env),
 		'dotnet': lambda: build_dotnet_version(env),
 		'xwin': lambda: build_xwin_workspace_version(env),
+		'wix': lambda: build_wix_workspace_version(env),
 		'msan-libcxx': lambda: build_msan_libcxx_version(env),
 	}
 	part_actions = {
@@ -1703,6 +1750,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-ndk': prepare_android_ndk_workspace,
 		'dotnet': prepare_dotnet_workspace,
 		'xwin': prepare_xwin_workspace,
+		'wix': prepare_wix_workspace,
 		'msan-libcxx': prepare_msan_libcxx_workspace,
 	}
 
@@ -1745,7 +1793,8 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 	'windows': {
 		'toolset': ['toolset'],
 		'web': ['emscripten'],
-		'all': ['toolset', 'emscripten'],
+		'wix': ['wix'],
+		'all': ['toolset', 'emscripten', 'wix'],
 	},
 	'macos': {},
 }
@@ -3258,7 +3307,7 @@ def create_parser() -> argparse.ArgumentParser:
 	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'wix', 'msan-libcxx'])
 	prepare_parser.add_argument('--check', action='store_true')
 
 	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
@@ -3297,6 +3346,7 @@ def create_parser() -> argparse.ArgumentParser:
 			'toolset',
 			'dotnet',
 			'windows-cross',
+			'wix',
 			'msan-libcxx',
 			'all',
 		],
