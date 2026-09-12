@@ -35,6 +35,8 @@
 
 #include "MemorySystem.h"
 
+#include <thread>
+
 #if FO_HAVE_RPMALLOC && !FO_TRACY && defined(RPMALLOC_ENABLE_TESTS)
 #include "rpmalloc.h"
 #endif
@@ -114,54 +116,89 @@ TEST_CASE("MemorySystem")
 #if FO_HAVE_RPMALLOC && !FO_TRACY && defined(RPMALLOC_ENABLE_TESTS)
     SECTION("RpmallocPropagatesLaterPageCommitFailure")
     {
-        array<void*, 256> blocks {};
         size_t block_count = 0;
+        int32_t remaining_failures = 1;
+        bool pristine_heap_initialized = false;
+        bool first_allocation_succeeded = false;
 
-        blocks[block_count++] = rpmalloc(128 * 1024);
-        REQUIRE(blocks.front() != nullptr);
-
-        rpmalloc_test_set_span_commit_failures(1);
-        while (block_count < blocks.size()) {
-            void* block = rpmalloc(128 * 1024);
-            if (block == nullptr) {
-                break;
+        std::thread worker {[&] {
+            pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+            if (!pristine_heap_initialized) {
+                return;
             }
-            blocks[block_count++] = block;
-        }
 
-        int32_t remaining_failures = rpmalloc_test_get_span_commit_failures();
-        rpmalloc_test_set_span_commit_failures(0);
+            {
+                array<void*, 256> blocks {};
+                blocks[block_count++] = rpmalloc(128 * 1024);
+                first_allocation_succeeded = blocks.front() != nullptr;
 
+                if (first_allocation_succeeded) {
+                    rpmalloc_test_set_span_commit_failures(1);
+                    while (block_count < blocks.size()) {
+                        void* block = rpmalloc(128 * 1024);
+                        if (block == nullptr) {
+                            break;
+                        }
+                        blocks[block_count++] = block;
+                    }
+                    remaining_failures = rpmalloc_test_get_span_commit_failures();
+                    rpmalloc_test_set_span_commit_failures(0);
+                }
+
+                for (size_t i = 0; i < block_count; i++) {
+                    rpfree(blocks[i]);
+                }
+            }
+
+            rpmalloc_thread_finalize();
+        }};
+        worker.join();
+
+        REQUIRE(pristine_heap_initialized);
+        REQUIRE(first_allocation_succeeded);
         CHECK(remaining_failures == 0);
-        CHECK(block_count < blocks.size());
-
-        for (size_t i = 0; i < block_count; i++) {
-            rpfree(blocks[i]);
-        }
+        CHECK(block_count < 256);
     }
 
     SECTION("SafeAllocRetriesAPropagatedCommitFailure")
     {
         InitBackupMemoryChunks();
         bool allocation_reported = false;
+        bool pristine_heap_initialized = false;
+        bool retry_succeeded = false;
+        int32_t remaining_failures = 1;
         SetBadAllocCallback([&]() { allocation_reported = true; });
 
-        array<unique_arr_ptr<uint8_t>, 256> blocks {};
-        size_t block_count = 0;
-        blocks[block_count++] = SafeAlloc::MakeUniqueArr<uint8_t>(96 * 1024);
+        std::thread worker {[&] {
+            pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+            if (!pristine_heap_initialized) {
+                return;
+            }
 
-        rpmalloc_test_set_span_commit_failures(1);
-        while (!allocation_reported && block_count < blocks.size()) {
-            blocks[block_count++] = SafeAlloc::MakeUniqueArr<uint8_t>(96 * 1024);
-        }
+            {
+                array<unique_arr_ptr<uint8_t>, 256> blocks {};
+                size_t block_count = 0;
+                blocks[block_count++] = SafeAlloc::MakeUniqueArr<uint8_t>(96 * 1024);
 
-        int32_t remaining_failures = rpmalloc_test_get_span_commit_failures();
-        rpmalloc_test_set_span_commit_failures(0);
+                rpmalloc_test_set_span_commit_failures(1);
+                while (!allocation_reported && block_count < blocks.size()) {
+                    blocks[block_count++] = SafeAlloc::MakeUniqueArr<uint8_t>(96 * 1024);
+                }
+
+                remaining_failures = rpmalloc_test_get_span_commit_failures();
+                rpmalloc_test_set_span_commit_failures(0);
+                retry_succeeded = blocks[block_count - 1] != nullptr;
+            }
+
+            rpmalloc_thread_finalize();
+        }};
+        worker.join();
         SetBadAllocCallback({});
 
+        REQUIRE(pristine_heap_initialized);
         CHECK(remaining_failures == 0);
         CHECK(allocation_reported);
-        CHECK(blocks[block_count - 1]);
+        CHECK(retry_succeeded);
 
         size_t backup_chunks = 0;
         while (FreeBackupMemoryChunk()) {

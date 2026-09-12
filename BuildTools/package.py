@@ -69,6 +69,7 @@ PACKAGE_FILE_MODES = frozenset({0o644, 0o755})
 RESOURCE_ARCHIVE_CACHE_FORMAT = 1
 RESOURCE_ARCHIVE_CACHE_HELPER_ENV = 'FO_RESOURCE_ARCHIVE_CACHE_HELPER'
 RESOURCE_ARCHIVE_CACHE_MISS = 2
+RESOURCE_ARCHIVE_CACHE_UNAVAILABLE = 3
 RESOURCE_ARCHIVE_HASH_CHUNK_BYTES = 1024 * 1024
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
@@ -1247,14 +1248,22 @@ class Packager:
 		return digest.hexdigest()
 
 	def run_resource_archive_cache_helper(self, action: str, key: str, archive_path: str) -> int | None:
+		if getattr(self, 'resource_archive_cache_unavailable', False):
+			return None
+
 		helper = os.environ.get(RESOURCE_ARCHIVE_CACHE_HELPER_ENV)
 
 		if not helper:
 			return None
 
 		assert os.path.isfile(helper), RESOURCE_ARCHIVE_CACHE_HELPER_ENV + ' is not a file: ' + helper
-		return subprocess.run(
+		status = subprocess.run(
 			[sys.executable, helper, action, '--key', key, '--archive', archive_path], check=False).returncode
+
+		if status == RESOURCE_ARCHIVE_CACHE_UNAVAILABLE:
+			self.resource_archive_cache_unavailable = True
+
+		return status
 
 	def restore_resource_archive(self, archive_path: str, key: str, entry_names: Sequence[str]) -> bool:
 		local_archives = getattr(self, 'resource_archive_paths', {})
@@ -1270,7 +1279,7 @@ class Packager:
 
 		status = self.run_resource_archive_cache_helper('restore', key, archive_path)
 
-		if status is None or status == RESOURCE_ARCHIVE_CACHE_MISS:
+		if status is None or status in (RESOURCE_ARCHIVE_CACHE_MISS, RESOURCE_ARCHIVE_CACHE_UNAVAILABLE):
 			return False
 
 		assert status == 0, 'Resource archive cache restore failed with exit code ' + str(status)

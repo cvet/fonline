@@ -302,7 +302,12 @@ def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pyte
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Linux")
     captured: list[list[str]] = []
-    monkeypatch.setattr(createmsi.subprocess, "check_output", lambda cmd: captured.append(cmd))
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        captured.append(cmd)
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
 
     generator = createmsi.PackageGenerator(config_path.name)
     generator.generate_files()

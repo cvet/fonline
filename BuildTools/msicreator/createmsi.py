@@ -542,14 +542,15 @@ class PackageGenerator:
             sys.exit(1)
         """
         if platform.system() == "Windows":
-            subprocess.check_output([os.path.join(wixdir, 'candle')] + self.args1 + [self.main_xml])
-            subprocess.check_output([os.path.join(wixdir, 'light'),
-                                   '-ext', 'WixUIExtension',
-                                   '-cultures:en-us',
-                                   '-dWixUILicenseRtf=' + self.license_file] + \
-                                   self.args2 + ['-out', self.final_output, self.main_o])
+            subprocess.run([os.path.join(wixdir, 'candle')] + self.args1 + [self.main_xml], check=True)
+            subprocess.run([os.path.join(wixdir, 'light'),
+                            '-ext', 'WixUIExtension',
+                            '-cultures:en-us',
+                            '-dWixUILicenseRtf=' + self.license_file] + \
+                           self.args2 + ['-out', self.final_output, self.main_o], check=True)
         else:
-            subprocess.check_output([os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml])
+            subprocess.run(
+                [os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml], check=True)
 
 
 def run(args: list[str]) -> None:

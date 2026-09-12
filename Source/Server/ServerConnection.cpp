@@ -283,7 +283,7 @@ auto ServerConnection::NeedPing(nanotime time) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _activity.HandshakeComplete && (!_activity.NextPingTime || time >= _activity.NextPingTime);
+    return _netConnection->NeedsPingWatchdog() && _activity.HandshakeComplete && (!_activity.NextPingTime || time >= _activity.NextPingTime);
 }
 
 auto ServerConnection::HasPendingPing() const noexcept -> bool

@@ -61,6 +61,7 @@ public:
 
     [[nodiscard]] virtual auto GetHost() const noexcept -> string_view { return _host; }
     [[nodiscard]] virtual auto GetPort() const noexcept -> uint16_t { return _port; }
+    [[nodiscard]] virtual auto NeedsPingWatchdog() const noexcept -> bool { return true; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
     void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect);

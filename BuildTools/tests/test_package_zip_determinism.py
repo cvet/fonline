@@ -189,6 +189,42 @@ def test_resource_archive_cache_helper_receives_the_generic_protocol(
         "restore", "--key", "a" * 64, "--archive", str(tmp_path / "pack.zip")]
 
 
+def test_unavailable_resource_archive_cache_is_not_probed_again(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    helper = tmp_path / "helper.py"
+    helper.write_text("raise SystemExit(3)\n", encoding="utf-8")
+    monkeypatch.setenv(_package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, str(helper))
+    packager = _package.Packager.__new__(_package.Packager)
+
+    first_status = packager.run_resource_archive_cache_helper(
+        "restore", "a" * 64, str(tmp_path / "first.zip"))
+    second_status = packager.run_resource_archive_cache_helper(
+        "restore", "b" * 64, str(tmp_path / "second.zip"))
+
+    assert first_status == _package.RESOURCE_ARCHIVE_CACHE_UNAVAILABLE
+    assert second_status is None
+
+
+def test_unavailable_resource_archive_cache_falls_back_to_compression(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base_path = tmp_path / "Pack"
+    base_path.mkdir()
+    source = base_path / "payload.txt"
+    source.write_bytes(b"payload")
+    output = tmp_path / "created.zip"
+    helper = tmp_path / "helper.py"
+    helper.write_text("raise SystemExit(3)\n", encoding="utf-8")
+    monkeypatch.setenv(_package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, str(helper))
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.zip_compress_level = 6
+    packager.resource_archive_paths = {}
+
+    packager.write_files_zip(str(output), str(base_path), [str(source)])
+
+    with zipfile.ZipFile(output) as archive:
+        assert archive.read("payload.txt") == b"payload"
+
+
 def test_repeated_resource_archive_in_one_package_is_copied_locally(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     base_path = tmp_path / "Pack"
