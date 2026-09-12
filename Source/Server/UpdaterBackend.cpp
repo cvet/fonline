@@ -55,8 +55,9 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     vector<UpdateFileData> update_files;
     vector<UpdateFileInfo> common_update_files;
     vector<uint8_t> common_update_files_desc;
-    map<string, vector<UpdateFileInfo>> binary_target_update_files;
-    map<string, vector<uint8_t>> binary_target_update_files_desc;
+    map<string, vector<UpdateFileInfo>> platform_target_update_files;
+    map<string, vector<uint8_t>> platform_target_update_files_desc;
+    set<string> client_resource_pack_names;
 
     auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
@@ -106,6 +107,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     for (const auto& resource_entry : settings.ClientResourceEntries) {
         if (resource_entry != "Embedded") {
             string pack_name = strex("{}.zip", resource_entry).str();
+            client_resource_pack_names.emplace(pack_name);
             string pack_disk_path = fs_path_to_string(client_resources_dir / fs_make_path(pack_name));
             auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
             common_update_files.emplace_back(std::move(info));
@@ -132,8 +134,9 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
                 FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs_path_to_string(binary_entry.path()));
                 string disk_path = fs_path_to_string(binary_entry.path());
                 string client_file_name = fs_path_to_string(binary_entry.path().filename());
-                auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries);
-                binary_target_update_files[string(binary_target_name)].emplace_back(std::move(info));
+                auto target = client_resource_pack_names.contains(client_file_name) ? UpdateFileTarget::ClientResources : UpdateFileTarget::ClientBinaries;
+                auto info = add_sync_file(disk_path, client_file_name, target);
+                platform_target_update_files[string(binary_target_name)].emplace_back(std::move(info));
             }
         }
     }
@@ -152,7 +155,11 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         };
 
         for (const auto& info : common_update_files) {
-            write_file_info(info);
+            bool overridden = platform_files != nullptr && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; });
+
+            if (!overridden) {
+                write_file_info(info);
+            }
         }
 
         if (platform_files) {
@@ -166,8 +173,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     build_update_desc(common_update_files_desc, nullptr);
 
-    for (auto& [binary_target_name, files] : binary_target_update_files) {
-        auto& desc = binary_target_update_files_desc[binary_target_name];
+    for (auto& [binary_target_name, files] : platform_target_update_files) {
+        auto& desc = platform_target_update_files_desc[binary_target_name];
         build_update_desc(desc, &files);
     }
 
@@ -176,8 +183,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     _updateFiles.swap(update_files);
     _commonUpdateFiles.swap(common_update_files);
     _commonUpdateFilesDesc.swap(common_update_files_desc);
-    _binaryTargetUpdateFiles.swap(binary_target_update_files);
-    _binaryTargetUpdateFilesDesc.swap(binary_target_update_files_desc);
+    _platformTargetUpdateFiles.swap(platform_target_update_files);
+    _platformTargetUpdateFilesDesc.swap(platform_target_update_files_desc);
 }
 
 void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version)
@@ -203,8 +210,8 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto desc_it = _binaryTargetUpdateFilesDesc.find(string(binary_target_name));
-    return desc_it != _binaryTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
+    auto desc_it = _platformTargetUpdateFilesDesc.find(string(binary_target_name));
+    return desc_it != _platformTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
 void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size)

@@ -539,6 +539,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TwoDimensionalGrid.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_UpdaterBackend.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")

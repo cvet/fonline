@@ -294,7 +294,7 @@ Start here when source grouping, library dependencies, or runtime layer boundari
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Managed script generation and compilation through the `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`, wired to the `CompileManagedScripts` target) when Managed scripting is enabled, with `SetupManagedRuntime` preparing Mono, Mono corelib, and the managed .NET class libraries under the CMake build tree before managed-linked applications are built. `PrepareManagedRuntimePayload` filters that publish tree down to managed PE assemblies from `lib/netcoreapp`, requires `System.Private.CoreLib.dll`, and writes a SHA-256 manifest. The Managed baker places this clean payload under `ManagedRuntime/` in its resource pack; native Mono/JIT files, headers, import libraries, symbols, and other build products never enter the resource output. Setup also builds and publishes the interop shims (`libs.native`) and `libminipal`, which CoreLib reaches the OS through on every non-Windows platform — `Interop.Sys` is `libSystem.Native`, and the first managed call already needs it. The shims are linked statically and resolved at run time from a generated entry-point table (`BuildTools/generate_pinvoke_table.py`) served through a Mono dl fallback, because Windows and WebAssembly cannot load them as shared libraries. For the browser the subset additionally carries `mono.wasmruntime`, whose JavaScript glue is published beside the runtime and passed to the Emscripten link as `--pre-js` / `--js-library` / `--extern-post-js`.
+- Managed script generation and compilation through the `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`, wired to the `CompileManagedScripts` target) when Managed scripting is enabled, with `SetupManagedRuntime` preparing Mono, Mono corelib, and the managed .NET class libraries under the CMake build tree before managed-linked applications are built. `PrepareManagedRuntimePayload` filters that publish tree down to managed PE assemblies from `lib/netcoreapp`, requires `System.Private.CoreLib.dll`, and writes a SHA-256 manifest. The Managed baker places this clean payload under `ManagedRuntime/` in its resource pack; native Mono/JIT files, headers, import libraries, symbols, and other build products never enter the resource output. The payload is target-platform-specific because CoreLib compiles different OS interop implementations. A client package therefore replaces the baker target's copy with `Binaries/Client-<platform>-<arch>/ManagedRuntime`, and a server package emits the same rebuilt pack under each distributed client's `PlatformBinaries/<target>/` directory. Setup also builds and publishes the interop shims (`libs.native`) and `libminipal`, which CoreLib reaches the OS through on every non-Windows platform — `Interop.Sys` is `libSystem.Native`, and the first managed call already needs it. The shims are linked statically and resolved at run time from a generated entry-point table (`BuildTools/generate_pinvoke_table.py`) served through a Mono dl fallback, because Windows and WebAssembly cannot load them as shared libraries. For the browser the subset additionally carries `mono.wasmruntime`, whose JavaScript glue is published beside the runtime and passed to the Emscripten link as `--pre-js` / `--js-library` / `--extern-post-js`.
   The runtime is built with the **host's** toolchain, so `SetupManagedRuntime` follows the host and not the target: CMake invokes `buildtools.py setup-mono` with its configured Python interpreter; that helper invokes the runtime's `build.cmd` on Windows and `build.sh` elsewhere. One target is out of reach that way — `dotnet/runtime` has no Windows cross-target, so a non-Windows host cannot produce `windows.<arch>.<config>` at all. For that case the runtime is built once on Windows and handed over: point **`FO_MANAGED_RUNTIME_PREBUILT`** at a directory holding published `output/mono/<triplet>` trees (or at a single triplet's tree) and `setup-mono` adopts it in place of the source build, writing the same ready marker. Without it, a Windows target on a non-Windows host is refused at configure time with the reason rather than failing later inside `dotnet/runtime`.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
@@ -360,18 +360,23 @@ headless runtime remains available as a build artifact without leaking into a
 normal Raw/Zip payload or the MSI derived from it; a package carrying the
 `Headless` token still receives the renamed headless host/runtime pair.
 
-Managed class libraries are not binary companions. The Managed baker has already
-written the filtered payload into the managed resource pack, so `package.py` does
-not copy a side-by-side `ManagedRuntime` directory and does not hoist Mono DLLs
-into a package root. Native, Web, and Android packages all deliver the same
-resource-pack paths; the backend restores them into the writable runtime cache.
+Managed class libraries are not binary companions. The Managed baker writes a
+filtered payload into the managed resource pack, but CoreLib is platform-specific.
+For a Client part, `package.py` rebuilds that pack with the target binary
+directory's clean `ManagedRuntime` payload. For a Server part, it stages one such
+pack at `PlatformBinaries/<target>/<pack>.zip` for every distributed client
+target. It never copies a side-by-side `ManagedRuntime` directory or hoists Mono
+DLLs into a package root. Native, Web, and Android packages retain the same
+resource paths while carrying target-appropriate contents; the backend restores
+them into the writable runtime cache.
 
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the
 same path are a packaging error; the packager never emits ambiguous duplicate
 ZIP names. Applications sharing a package root must therefore agree on every
-common file they emit. Managed class libraries do not collide there because they
-live once in the shared resource pack. `buildtools.py build <platform> full
+common file they emit. Each Client package part owns its target-specific managed
+resource pack; server-side updater copies live below distinct target directories.
+`buildtools.py build <platform> full
 <config>` builds the client, server and tools in one CMake tree with one
 `SetupManagedRuntime` output. Both `full` and `toolset` leave
 `FO_BUILD_ASCOMPILER` to the embedding project's default so a managed-only

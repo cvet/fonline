@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the architecture-neutral managed class-library payload shipped in resource packs."""
+"""Build the target-platform managed class-library payload shipped in resource packs."""
 from __future__ import annotations
 
 import argparse

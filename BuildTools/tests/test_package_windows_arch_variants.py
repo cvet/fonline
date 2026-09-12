@@ -164,14 +164,14 @@ def test_declared_win7_client_runtime_must_reach_the_server_package(tmp_path: Pa
     # The Win7 client is a postfix variant sharing the Windows-win32 update target, and its payload
     # is the only file a Win7 client will accept
     staged = {("Windows-win32", "LastFrontier_Win7"), ("Windows-win64", "LastFrontier")}
-    packager.verify_expected_client_runtime_payloads(staged, [])
+    packager.verify_expected_client_runtime_payloads(staged, set(), None, [])
 
 
 def test_payload_for_another_arch_does_not_satisfy_expectation(tmp_path: Path) -> None:
     packager = make_server_expectation_packager(tmp_path, ["Windows:win64:"])
 
     with pytest.raises(AssertionError) as failure:
-        packager.verify_expected_client_runtime_payloads({("Windows-win32", "LastFrontier")}, [])
+        packager.verify_expected_client_runtime_payloads({("Windows-win32", "LastFrontier")}, set(), None, [])
 
     message = str(failure.value)
     assert "LastFrontier" in message
@@ -187,7 +187,8 @@ def test_missing_win7_client_runtime_fails_the_server_package(tmp_path: Path) ->
     staged = {("Windows-win32", "LastFrontier")}
 
     with pytest.raises(AssertionError) as failure:
-        packager.verify_expected_client_runtime_payloads(staged, ["Client-Windows-win32-Win7: built from cafe, package is deadbeef"])
+        packager.verify_expected_client_runtime_payloads(
+            staged, set(), None, ["Client-Windows-win32-Win7: built from cafe, package is deadbeef"])
 
     message = str(failure.value)
     assert "LastFrontier_Win7" in message
@@ -195,21 +196,38 @@ def test_missing_win7_client_runtime_fails_the_server_package(tmp_path: Path) ->
     assert "built from cafe" in message
 
 
-def test_store_updated_platforms_are_not_demanded_of_the_server_package(tmp_path: Path) -> None:
-    # Android and iOS get native modules from their store and Web from its bundle, so no runtime payload
-    # is staged for them; demanding one would fail a package that is perfectly correct
+def test_all_platforms_require_managed_resources_but_only_native_self_updaters_require_modules(tmp_path: Path) -> None:
+    # Android/iOS/Web do not fetch native modules, but they still need a target-specific Scripts pack.
     packager = make_server_expectation_packager(
         tmp_path, ["Android:arm64:", "iOS:arm64:", "Web:wasm:", "macOS:x64:"]
     )
 
-    # macOS does self-update, so it is the one of the four that must be present
-    packager.verify_expected_client_runtime_payloads({("macOS-x64", "LastFrontier")}, [])
+    managed_resources = {
+        ("Android-arm64", "Scripts"),
+        ("iOS-arm64", "Scripts"),
+        ("Web-wasm", "Scripts"),
+        ("macOS-x64", "Scripts"),
+    }
+    packager.verify_expected_client_runtime_payloads(
+        {("macOS-x64", "LastFrontier")}, managed_resources, "Scripts", [])
 
 
 def test_missing_macos_client_runtime_fails_the_server_package(tmp_path: Path) -> None:
     packager = make_server_expectation_packager(tmp_path, ["macOS:x64:"])
 
     with pytest.raises(AssertionError) as failure:
-        packager.verify_expected_client_runtime_payloads(set(), [])
+        packager.verify_expected_client_runtime_payloads(set(), set(), None, [])
 
     assert "macOS-x64" in str(failure.value)
+
+
+def test_missing_web_managed_resource_payload_fails_the_server_package(tmp_path: Path) -> None:
+    packager = make_server_expectation_packager(tmp_path, ["Web:wasm:"])
+
+    with pytest.raises(AssertionError) as failure:
+        packager.verify_expected_client_runtime_payloads(set(), set(), "Scripts", [])
+
+    message = str(failure.value)
+    assert "Scripts.zip" in message
+    assert "PlatformBinaries/Web-wasm" in message
+    assert "another platform" in message

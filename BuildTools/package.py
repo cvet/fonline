@@ -28,8 +28,8 @@ import foconfig
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 # Mirrors CanSelfUpdateNativeModules() in Source/Client/Updater.cpp: only these clients fetch native
-# modules from the server. Android and iOS update through their store, Web through its bundle, so no
-# runtime payload is staged for them and none may be demanded of a server package
+# modules from the server. Every platform still receives its target-specific managed class libraries
+# as an ordinary resource pack; this list controls only native client modules.
 SELF_UPDATING_CLIENT_PLATFORMS = ('Windows', 'Linux', 'macOS')
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
@@ -56,6 +56,9 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
+MANAGED_RUNTIME_DIRECTORY = 'ManagedRuntime'
+MANAGED_RUNTIME_MANIFEST = 'runtime.manifest'
+MANAGED_CORELIB_RELATIVE_PATH = os.path.join('lib', 'netcoreapp', 'System.Private.CoreLib.dll')
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
@@ -769,13 +772,16 @@ class Packager:
 		return output_file_path
 
 	def package_all_client_runtime_update_payloads(self) -> None:
-		copied_payloads: set[tuple[str, str]] = set()
+		copied_native_payloads: set[tuple[str, str]] = set()
+		copied_resource_payloads: set[tuple[str, str]] = set()
+		resource_payload_identities: dict[tuple[str, str], bytes] = {}
 		# A variant that never reaches PlatformBinaries leaves its players with 'update the client
 		# manually' and nothing to act on, so every skip states its reason and the declared variants
 		# are verified before the package is called done
 		skipped_entries: list[str] = []
 		client_embedded_data = self.make_embedded_data_for_target('Client')
 		_, client_config_data = self.read_config_data('Client')
+		managed_runtime_pack = self.find_client_managed_runtime_pack()
 
 		for input_dir in self.args.input:
 			binaries_root = os.path.join(os.path.abspath(input_dir), 'Binaries')
@@ -795,29 +801,52 @@ class Packager:
 				if entry_postfix is None:
 					continue
 
-				parts = request_target_name.split('-', 1)
-				if len(parts) != 2:
-					continue
-
-				platform = parts[0]
-				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
-				if not runtime_ext:
-					continue
-
 				default_runtime_variant = BinaryVariant()
 				headless_runtime_variant = BinaryVariant(role='Headless')
 
-				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
+				build_hash_path = os.path.join(entry_path, self.args.devname + '_Client.build-hash')
+				if not os.path.isfile(build_hash_path):
+					build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
 				if not os.path.isfile(build_hash_path):
 					skipped_entries.append(entry_name + ': no build hash file at ' + build_hash_path)
-					log('Client runtime update payload skipped', entry_name, 'no build hash file')
+					log('Client platform update payload skipped', entry_name, 'no build hash file')
 					continue
 
 				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
 					build_hash = file.read().strip()
 				if build_hash != self.args.buildhash:
 					skipped_entries.append(entry_name + ': built from ' + build_hash + ', package is ' + self.args.buildhash)
-					log('Client runtime update payload skipped', entry_name, 'build hash', build_hash, '!= package build hash', self.args.buildhash)
+					log('Client platform update payload skipped', entry_name, 'build hash', build_hash, '!= package build hash', self.args.buildhash)
+					continue
+
+				if managed_runtime_pack is not None:
+					payload_key = (request_target_name, managed_runtime_pack)
+					runtime_dir = os.path.join(entry_path, MANAGED_RUNTIME_DIRECTORY)
+					runtime_identity = self.read_managed_runtime_identity(runtime_dir)
+					previous_identity = resource_payload_identities.get(payload_key)
+					assert previous_identity is None or previous_identity == runtime_identity, (
+						'Client binary entries sharing update target ' + request_target_name
+						+ ' carry different managed runtime payloads')
+
+					if previous_identity is None:
+						payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+						os.makedirs(payload_dir, exist_ok=True)
+						output_path = os.path.join(payload_dir, managed_runtime_pack + '.zip')
+						log('Client managed resource payload', output_path)
+						self.write_client_resource_pack_with_runtime(output_path, managed_runtime_pack, runtime_dir)
+						resource_payload_identities[payload_key] = runtime_identity
+						copied_resource_payloads.add(payload_key)
+
+				parts = request_target_name.split('-', 1)
+				if len(parts) != 2:
+					continue
+
+				platform = parts[0]
+				if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
+					continue
+
+				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
+				if not runtime_ext:
 					continue
 
 				suffix = ''
@@ -855,7 +884,7 @@ class Packager:
 
 					payload_target_name = request_target_name
 					payload_key = (payload_target_name, output_name)
-					if payload_key in copied_payloads:
+					if payload_key in copied_native_payloads:
 						continue
 
 					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, payload_target_name)
@@ -893,15 +922,22 @@ class Packager:
 							log('Client host PDB included', host_pdb_out)
 							shutil.copy(host_pdb_input, host_pdb_out)
 
-					copied_payloads.add(payload_key)
+					copied_native_payloads.add(payload_key)
 
-		self.verify_expected_client_runtime_payloads(copied_payloads, skipped_entries)
+		self.verify_expected_client_runtime_payloads(
+			copied_native_payloads, copied_resource_payloads, managed_runtime_pack, skipped_entries)
 
 	@staticmethod
 	def staged_payload_satisfies(copied_payloads: set[tuple[str, str]], target_name: str, output_name: str) -> bool:
 		return (target_name, output_name) in copied_payloads
 
-	def verify_expected_client_runtime_payloads(self, copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> None:
+	def verify_expected_client_runtime_payloads(
+		self,
+		copied_native_payloads: set[tuple[str, str]],
+		copied_resource_payloads: set[tuple[str, str]],
+		managed_runtime_pack: str | None,
+		skipped_entries: list[str],
+	) -> None:
 		# The server package declares which client variants it distributes. Without this check a variant
 		# that was not built, or was built from another commit, is dropped in silence and the first
 		# report comes from a player told to update the client by hand
@@ -910,9 +946,6 @@ class Packager:
 			assert len(parts) in (2, 3), 'Expected client runtime must be Platform:arch[:postfix], got: ' + expectation
 			platform, arch = parts[0], parts[1]
 			postfix = parts[2] if len(parts) == 3 else ''
-
-			if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
-				continue
 
 			if platform == 'Android':
 				entry_arch = resolve_android_abi(arch)
@@ -924,19 +957,33 @@ class Packager:
 			target_name = self.build_runtime_update_target_name(binary_entry)
 			assert target_name is not None, 'Expected client runtime names an unknown platform/arch: ' + expectation
 
-			output_name = self.args.nicename + ('_' + postfix if postfix else '')
-			if self.staged_payload_satisfies(copied_payloads, target_name, output_name):
+			if managed_runtime_pack is not None and (target_name, managed_runtime_pack) not in copied_resource_payloads:
+				reasons = self.describe_missing_client_payloads(copied_resource_payloads, skipped_entries)
+				raise AssertionError(
+					'Client managed resource payload missing from the server package: expected '
+					+ managed_runtime_pack + '.zip under PlatformBinaries/' + target_name
+					+ ' (from ' + binary_entry + '). This client would receive managed class libraries for another platform. Skipped entries: '
+					+ reasons)
+
+			if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
 				continue
 
-			if skipped_entries:
-				reasons = '; '.join(skipped_entries)
-			elif copied_payloads:
-				reasons = 'staged ' + ', '.join(sorted(target + '/' + name for target, name in copied_payloads))
-			else:
-				reasons = 'no client binaries directory was found for it'
+			output_name = self.args.nicename + ('_' + postfix if postfix else '')
+			if self.staged_payload_satisfies(copied_native_payloads, target_name, output_name):
+				continue
+
+			reasons = self.describe_missing_client_payloads(copied_native_payloads, skipped_entries)
 			raise AssertionError(
 				'Client runtime payload missing from the server package: expected ' + output_name + ' under PlatformBinaries/' + target_name
 				+ ' (from ' + binary_entry + '). Clients of this variant would be told to update manually. Skipped entries: ' + reasons)
+
+	@staticmethod
+	def describe_missing_client_payloads(copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> str:
+		if skipped_entries:
+			return '; '.join(skipped_entries)
+		if copied_payloads:
+			return 'staged ' + ', '.join(sorted(target + '/' + name for target, name in copied_payloads))
+		return 'no client binaries directory was found for it'
 
 	def merge_additional_config_data(self, *entries: str | None) -> str | None:
 		lines = [entry for entry in entries if entry]
@@ -1043,12 +1090,92 @@ class Packager:
 
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
 		zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+		self.write_zip_entries(archive_path, zip_entries)
+
+	def write_zip_entries(self, archive_path: str, zip_entries: Sequence[tuple[str, str]]) -> None:
+		zip_entries = sorted(zip_entries)
+		entry_names = [arcname for arcname, _ in zip_entries]
+		assert len(entry_names) == len(set(entry_names)), 'Duplicate resource zip entry in ' + archive_path
 
 		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
 			for arcname, file_path in zip_entries:
 				self.write_stable_zip_entry(archive, file_path, arcname)
 
-		validate_resource_zip(archive_path, [arcname for arcname, _ in zip_entries])
+		validate_resource_zip(archive_path, entry_names)
+
+	def find_client_managed_runtime_pack(self) -> str | None:
+		assert self.baking_path, 'Baking path is not initialized'
+		managed_packs = [
+			pack_name
+			for pack_name in self.get_target_resource_packs('Client')
+			if os.path.isdir(os.path.join(self.baking_path, pack_name, MANAGED_RUNTIME_DIRECTORY))
+		]
+		assert len(managed_packs) <= 1, 'Managed runtime payload must belong to exactly one client resource pack'
+		if not managed_packs:
+			return None
+
+		self.read_managed_runtime_identity(os.path.join(self.baking_path, managed_packs[0], MANAGED_RUNTIME_DIRECTORY))
+		return managed_packs[0]
+
+	@staticmethod
+	def read_managed_runtime_identity(runtime_dir: str) -> bytes:
+		manifest_path = os.path.join(runtime_dir, MANAGED_RUNTIME_MANIFEST)
+		corelib_path = os.path.join(runtime_dir, MANAGED_CORELIB_RELATIVE_PATH)
+		assert os.path.isfile(manifest_path), 'Managed runtime manifest not found: ' + manifest_path
+		assert os.path.isfile(corelib_path), 'Managed System.Private.CoreLib.dll not found: ' + corelib_path
+		with open(manifest_path, 'rb') as manifest_file:
+			identity = manifest_file.read()
+		assert identity, 'Managed runtime manifest is empty: ' + manifest_path
+		return identity
+
+	def write_client_resource_pack_with_runtime(self, archive_path: str, pack_name: str, runtime_dir: str) -> None:
+		assert self.baking_path, 'Baking path is not initialized'
+		self.read_managed_runtime_identity(runtime_dir)
+
+		pack_base = os.path.join(self.baking_path, pack_name)
+		baked_runtime_base = os.path.realpath(os.path.join(pack_base, MANAGED_RUNTIME_DIRECTORY))
+		zip_entries = [
+			(os.path.relpath(file_path, pack_base).replace(os.sep, '/'), file_path)
+			for file_path in self.collect_resource_files(pack_name, 'Client')
+			if os.path.commonpath((baked_runtime_base, os.path.realpath(file_path))) != baked_runtime_base
+		]
+
+		runtime_files = sorted(
+			file_path
+			for file_path in glob.glob(os.path.join(runtime_dir, '**'), recursive=True)
+			if os.path.isfile(file_path)
+		)
+		assert runtime_files, 'Managed runtime payload is empty: ' + runtime_dir
+		zip_entries.extend(
+			(
+				MANAGED_RUNTIME_DIRECTORY + '/' + os.path.relpath(file_path, runtime_dir).replace(os.sep, '/'),
+				file_path,
+			)
+			for file_path in runtime_files
+		)
+		self.write_zip_entries(archive_path, zip_entries)
+
+	def package_client_managed_runtime_resources(self) -> None:
+		managed_runtime_pack = self.find_client_managed_runtime_pack()
+		if managed_runtime_pack is None:
+			return
+
+		packaged_identity: bytes | None = None
+		packaged_runtime_dir: str | None = None
+		for arch in self.iter_arches():
+			binary_entry = self.build_binary_entry(arch, BinaryVariant())
+			bin_path = self.get_input(os.path.join('Binaries', binary_entry), self.args.devname + '_Client')
+			runtime_dir = os.path.join(bin_path, MANAGED_RUNTIME_DIRECTORY)
+			runtime_identity = self.read_managed_runtime_identity(runtime_dir)
+			assert packaged_identity is None or packaged_identity == runtime_identity, (
+				'Client package architectures carry different managed runtime payloads')
+			packaged_identity = runtime_identity
+			packaged_runtime_dir = runtime_dir
+
+		assert packaged_runtime_dir is not None, 'Client package has no managed runtime source architecture'
+		archive_path = os.path.join(self.target_output_path, self.client_res_dir, managed_runtime_pack + '.zip')
+		log('Replace baked managed runtime with client platform payload', archive_path)
+		self.write_client_resource_pack_with_runtime(archive_path, managed_runtime_pack, packaged_runtime_dir)
 
 	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
 		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
@@ -1778,6 +1905,8 @@ class Packager:
 		try:
 			if not self.has_pack('NoRes'):
 				self.prepare_resources()
+				if self.args.target == 'Client':
+					self.package_client_managed_runtime_resources()
 
 			self.select_platform_packager()()
 
