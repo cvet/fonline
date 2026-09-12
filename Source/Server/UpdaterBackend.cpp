@@ -155,7 +155,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         };
 
         for (const auto& info : common_update_files) {
-            bool overridden = platform_files != nullptr && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; });
+            bool overridden = platform_files && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; });
 
             if (!overridden) {
                 write_file_info(info);
