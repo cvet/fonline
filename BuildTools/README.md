@@ -12,6 +12,9 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
+The ordinary `unit-tests` validation target selects the native host toolchain: MSVC on Windows,
+Xcode on macOS, and Clang on Linux. Sanitizer validators remain explicitly platform-specific.
+
 BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can be run directly:
 
 ```bash

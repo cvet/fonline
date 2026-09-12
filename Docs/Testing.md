@@ -71,6 +71,9 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
+The ordinary `unit-tests` validator selects the native host toolchain: MSVC on Windows, Xcode on
+macOS, and Clang on Linux. Sanitizer validators remain explicitly platform-specific.
+
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
 The validation project (`Engine/BuildTools/validation-project`) defaults to `FO_ANGELSCRIPT_SCRIPTING`
