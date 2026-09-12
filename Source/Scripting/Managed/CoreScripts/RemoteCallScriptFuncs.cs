@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 
-// Registers managed [ServerRemoteCall] / [ClientRemoteCall] / [AdminRemoteCall] methods as inbound
+// Registers managed [ServerRemoteCall] / [ClientRemoteCall] methods as inbound
 // remote-call handlers, mirroring how AngelScript wires inbound remote calls (RegisterAngelScriptRemoteCalls).
 // Runs once during Initializator.InitializeEarly; the engine keeps only the handlers whose name is inbound on this side
 // (subsystem "cs" in the remote-call metadata), so reflecting a method that is outbound on this side (the
@@ -20,18 +20,17 @@ internal static class RemoteCallScriptFuncs
         foreach (Type type in assembly.GetTypes()) {
             foreach (MethodInfo method in type.GetMethods(BindingFlags.Static | BindingFlags.Public |
                                                           BindingFlags.NonPublic | BindingFlags.DeclaredOnly)) {
-                if (IsRemoteCall(method)) {
+                if (IsInboundRemoteCall(method)) {
                     RegisterRemoteCall(method);
                 }
             }
         }
     }
 
-    private static bool IsRemoteCall(MethodInfo method)
+    private static bool IsInboundRemoteCall(MethodInfo method)
     {
         return Attribute.GetCustomAttribute(method, typeof(ServerRemoteCallAttribute)) != null ||
-               Attribute.GetCustomAttribute(method, typeof(ClientRemoteCallAttribute)) != null ||
-               Attribute.GetCustomAttribute(method, typeof(AdminRemoteCallAttribute)) != null;
+               Attribute.GetCustomAttribute(method, typeof(ClientRemoteCallAttribute)) != null;
     }
 
     private static void RegisterRemoteCall(MethodInfo method)

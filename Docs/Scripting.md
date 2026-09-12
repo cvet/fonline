@@ -220,7 +220,10 @@ with the live type, so `GetTypeName()` answers `Critter` for both, and only the 
 
 - server-side command processing validates client-originated remote calls before invoking server script handlers;
 - client-side runtime receives server-originated remote calls and dispatches client script handlers;
-- admin remote calls use the `CallAdminFunc()` path and require the `AdminRemoteCall` attribute.
+- admin remote calls are not network calls: they use the `CallAdminFunc()` path and require the
+  `AdminRemoteCall` attribute. On the managed backend, `Game.CallAdminFunc()` resolves only that administrative
+  allowlist; `Game.Invoke()` and `Game.InvokeAsync()` resolve the separate `CallableByName` allowlist used by
+  internal name dispatch.
 
 For an untrusted client-to-server call, author `MaxBytes` as the largest legitimate serialized payload and `MaxCollectionSize` as the largest legitimate declared collection. The server resolves the call descriptor before body allocation, and native validation plus AngelScript decoding enforce the same collection limit before reserve/construction, including nested dictionary arrays. The server-wide `ServerNetwork.MaxRemoteCallPayloadSize` remains a second hostile-input ceiling. See [Networking.md](Networking.md#inbound-hardening-untrusted-client--server).
 
