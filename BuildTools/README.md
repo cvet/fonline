@@ -322,6 +322,13 @@ APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace ou
 
 Every client/server resource pack is reopened after it is built — the zips written to disk and the in-memory pack embedded into the executable alike. Packaging verifies the exact entry list and streams every entry through the CRC-checking zip reader, so a damaged resource archive stops the package before it reaches either the downloadable client or the server updater source.
 
+An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing
+`restore|store|release --key <sha256> --archive <path>`. Before deflate, `package.py` hashes the stable entry
+names and contents plus compression level. Exit code 0 from `restore` supplies a ready archive, while 2 is a
+miss; after a miss the validated archive is passed to `store`, and an interrupted write calls `release`.
+Regardless of origin, the normal entry-list and CRC validation remains mandatory. Identical archives needed
+twice by one package process are copied from its first validated result without another helper call.
+
 ## Packaging: post-build binary patching
 
 `package.py` injects a few values into the already-linked binaries instead of recompiling per package. Each

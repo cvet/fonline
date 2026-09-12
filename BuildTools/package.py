@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import io
 import json
 import os
@@ -65,6 +66,10 @@ WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
 PACKAGE_MODE_MANIFEST = '.lf-package-modes.json'
 PACKAGE_MODE_MANIFEST_VERSION = 1
 PACKAGE_FILE_MODES = frozenset({0o644, 0o755})
+RESOURCE_ARCHIVE_CACHE_FORMAT = 1
+RESOURCE_ARCHIVE_CACHE_HELPER_ENV = 'FO_RESOURCE_ARCHIVE_CACHE_HELPER'
+RESOURCE_ARCHIVE_CACHE_MISS = 2
+RESOURCE_ARCHIVE_HASH_CHUNK_BYTES = 1024 * 1024
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -696,6 +701,7 @@ class Packager:
 	config_data: bytes = field(init=False, default=b'')
 	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
 	logical_file_modes: dict[str, int] = field(init=False, default_factory=dict)
+	resource_archive_paths: dict[str, str] = field(init=False, default_factory=dict)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
@@ -1225,16 +1231,88 @@ class Packager:
 		zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
 		self.write_zip_entries(archive_path, zip_entries)
 
+	def resource_archive_cache_key(self, zip_entries: Sequence[tuple[str, str]]) -> str:
+		digest = hashlib.sha256()
+		digest.update(struct.pack('<II', RESOURCE_ARCHIVE_CACHE_FORMAT, self.zip_compress_level))
+
+		for arcname, file_path in zip_entries:
+			name = arcname.encode('utf-8')
+			digest.update(struct.pack('<QQ', len(name), os.path.getsize(file_path)))
+			digest.update(name)
+
+			with open(file_path, 'rb') as source:
+				for chunk in iter(lambda: source.read(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES), b''):
+					digest.update(chunk)
+
+		return digest.hexdigest()
+
+	def run_resource_archive_cache_helper(self, action: str, key: str, archive_path: str) -> int | None:
+		helper = os.environ.get(RESOURCE_ARCHIVE_CACHE_HELPER_ENV)
+
+		if not helper:
+			return None
+
+		assert os.path.isfile(helper), RESOURCE_ARCHIVE_CACHE_HELPER_ENV + ' is not a file: ' + helper
+		return subprocess.run(
+			[sys.executable, helper, action, '--key', key, '--archive', archive_path], check=False).returncode
+
+	def restore_resource_archive(self, archive_path: str, key: str, entry_names: Sequence[str]) -> bool:
+		local_archives = getattr(self, 'resource_archive_paths', {})
+		local_path = local_archives.get(key)
+
+		if local_path is not None and os.path.isfile(local_path):
+			if os.path.realpath(local_path) != os.path.realpath(archive_path):
+				shutil.copy2(local_path, archive_path)
+
+			validate_resource_zip(archive_path, entry_names)
+			log('Resource archive local hit', key)
+			return True
+
+		status = self.run_resource_archive_cache_helper('restore', key, archive_path)
+
+		if status is None or status == RESOURCE_ARCHIVE_CACHE_MISS:
+			return False
+
+		assert status == 0, 'Resource archive cache restore failed with exit code ' + str(status)
+		validate_resource_zip(archive_path, entry_names)
+		log('Resource archive cache hit', key)
+		return True
+
+	def remember_resource_archive(self, archive_path: str, key: str) -> None:
+		if not hasattr(self, 'resource_archive_paths'):
+			self.resource_archive_paths = {}
+
+		archive_identity = os.path.realpath(archive_path)
+		self.resource_archive_paths = {
+			cached_key: cached_path
+			for cached_key, cached_path in self.resource_archive_paths.items()
+			if os.path.realpath(cached_path) != archive_identity
+		}
+		self.resource_archive_paths[key] = archive_path
+
 	def write_zip_entries(self, archive_path: str, zip_entries: Sequence[tuple[str, str]]) -> None:
 		zip_entries = sorted(zip_entries)
 		entry_names = [arcname for arcname, _ in zip_entries]
 		assert len(entry_names) == len(set(entry_names)), 'Duplicate resource zip entry in ' + archive_path
+		cache_key = self.resource_archive_cache_key(zip_entries)
 
-		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for arcname, file_path in zip_entries:
-				self.write_stable_zip_entry(archive, file_path, arcname)
+		if self.restore_resource_archive(archive_path, cache_key, entry_names):
+			self.remember_resource_archive(archive_path, cache_key)
+			return
 
-		validate_resource_zip(archive_path, entry_names)
+		try:
+			with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
+				for arcname, file_path in zip_entries:
+					self.write_stable_zip_entry(archive, file_path, arcname)
+
+			validate_resource_zip(archive_path, entry_names)
+		except Exception:
+			self.run_resource_archive_cache_helper('release', cache_key, archive_path)
+			raise
+
+		status = self.run_resource_archive_cache_helper('store', cache_key, archive_path)
+		assert status in (None, 0), 'Resource archive cache store failed with exit code ' + str(status)
+		self.remember_resource_archive(archive_path, cache_key)
 
 	def find_client_managed_runtime_pack(self) -> str | None:
 		assert self.baking_path, 'Baking path is not initialized'

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import sys
 import warnings
@@ -95,6 +96,138 @@ def test_resource_pack_write_validates_finished_archive(tmp_path: Path, monkeypa
     _write_resource_zip(archive_path, base_path, [source_path])
 
     assert validated == [(archive_path, ["payload.txt"])]
+
+
+def test_resource_archive_cache_key_uses_names_content_and_compression(tmp_path: Path) -> None:
+    source = tmp_path / "payload.txt"
+    source.write_bytes(b"payload")
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.zip_compress_level = 6
+
+    baseline = packager.resource_archive_cache_key([("payload.txt", str(source))])
+    os.utime(source, (1_900_000_000, 1_900_000_000))
+    assert packager.resource_archive_cache_key([("payload.txt", str(source))]) == baseline
+    assert packager.resource_archive_cache_key([("renamed.txt", str(source))]) != baseline
+
+    packager.zip_compress_level = 7
+    assert packager.resource_archive_cache_key([("payload.txt", str(source))]) != baseline
+
+    packager.zip_compress_level = 6
+    source.write_bytes(b"changed")
+    assert packager.resource_archive_cache_key([("payload.txt", str(source))]) != baseline
+
+
+def test_resource_archive_cache_hit_skips_compression(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base_path = tmp_path / "Pack"
+    base_path.mkdir()
+    source = base_path / "payload.txt"
+    source.write_bytes(b"payload")
+    output = tmp_path / "cached.zip"
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.zip_compress_level = 6
+    packager.resource_archive_paths = {}
+
+    def helper(action: str, _key: str, archive_path: str) -> int:
+        assert action == "restore"
+        with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("payload.txt", b"payload")
+        return 0
+
+    monkeypatch.setattr(packager, "run_resource_archive_cache_helper", helper)
+    monkeypatch.setattr(
+        packager, "write_stable_zip_entry",
+        lambda *_: pytest.fail("a cache hit must not compress the resource files"))
+
+    packager.write_files_zip(str(output), str(base_path), [str(source)])
+
+    with zipfile.ZipFile(output) as archive:
+        assert archive.read("payload.txt") == b"payload"
+
+
+def test_resource_archive_cache_miss_is_stored_after_validation(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base_path = tmp_path / "Pack"
+    base_path.mkdir()
+    source = base_path / "payload.txt"
+    source.write_bytes(b"payload")
+    output = tmp_path / "created.zip"
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.zip_compress_level = 6
+    packager.resource_archive_paths = {}
+    actions: list[str] = []
+
+    def helper(action: str, _key: str, archive_path: str) -> int:
+        actions.append(action)
+        assert Path(archive_path) == output
+        return _package.RESOURCE_ARCHIVE_CACHE_MISS if action == "restore" else 0
+
+    monkeypatch.setattr(packager, "run_resource_archive_cache_helper", helper)
+    packager.write_files_zip(str(output), str(base_path), [str(source)])
+
+    assert actions == ["restore", "store"]
+    with zipfile.ZipFile(output) as archive:
+        assert archive.read("payload.txt") == b"payload"
+
+
+def test_resource_archive_cache_helper_receives_the_generic_protocol(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    helper = tmp_path / "helper.py"
+    report = tmp_path / "argv.json"
+    helper.write_text(
+        "import json, os, sys\n"
+        "open(os.environ['HELPER_REPORT'], 'w', encoding='utf-8').write(json.dumps(sys.argv[1:]))\n"
+        "raise SystemExit(2)\n",
+        encoding="utf-8")
+    monkeypatch.setenv(_package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, str(helper))
+    monkeypatch.setenv("HELPER_REPORT", str(report))
+    packager = _package.Packager.__new__(_package.Packager)
+
+    status = packager.run_resource_archive_cache_helper("restore", "a" * 64, str(tmp_path / "pack.zip"))
+
+    assert status == _package.RESOURCE_ARCHIVE_CACHE_MISS
+    assert json.loads(report.read_text(encoding="utf-8")) == [
+        "restore", "--key", "a" * 64, "--archive", str(tmp_path / "pack.zip")]
+
+
+def test_repeated_resource_archive_in_one_package_is_copied_locally(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base_path = tmp_path / "Pack"
+    base_path.mkdir()
+    source = base_path / "payload.txt"
+    source.write_bytes(b"payload")
+    first = tmp_path / "first.zip"
+    second = tmp_path / "second.zip"
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.zip_compress_level = 6
+    packager.resource_archive_paths = {}
+
+    packager.write_files_zip(str(first), str(base_path), [str(source)])
+    monkeypatch.setattr(
+        packager, "write_stable_zip_entry",
+        lambda *_: pytest.fail("an identical archive in one package must be copied locally"))
+    packager.write_files_zip(str(second), str(base_path), [str(source)])
+
+    assert second.read_bytes() == first.read_bytes()
+
+
+def test_overwritten_resource_archive_does_not_leave_a_stale_local_key(tmp_path: Path) -> None:
+    base_path = tmp_path / "Pack"
+    base_path.mkdir()
+    source = base_path / "payload.txt"
+    source.write_bytes(b"first")
+    output = tmp_path / "resources.zip"
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.zip_compress_level = 6
+    packager.resource_archive_paths = {}
+    first_key = packager.resource_archive_cache_key([("payload.txt", str(source))])
+
+    packager.write_files_zip(str(output), str(base_path), [str(source)])
+    source.write_bytes(b"second")
+    second_key = packager.resource_archive_cache_key([("payload.txt", str(source))])
+    packager.write_files_zip(str(output), str(base_path), [str(source)])
+
+    assert first_key not in packager.resource_archive_paths
+    assert packager.resource_archive_paths == {second_key: str(output)}
 
 
 def test_embedded_pack_is_validated_before_it_is_embedded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
