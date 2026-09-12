@@ -6,7 +6,7 @@ document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
 
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"54a0aefe3392a528bd5cb75301d26068f123f695b76d495d56a8c67ae560dc42"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"2aa23468e72fcd5a678706f9f5d1b424528adc988c3edd591800a38367628a38"} -->
 
 # Клиентская среда выполнения
 
@@ -26,7 +26,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - [Video.md](../../../Video.md) - экспериментальные ресурсы Ogg/Theora, fullscreen и embedded playback, память и визуальная проверка.
 - [Сеть и авторитетность](../authority-and-networking/) - command buffers, transports и синхронизация свойств.
 - [Frontend и рендеринг](../rendering/) - platform windows, input, audio и renderer backends.
-- [сборка, упаковка и отладка в браузере](../../how-to/platforms/web-debugging.md), [сборка, упаковка и отладка на Android](../../how-to/platforms/android-debugging.md) и [нативная отладка и отладка AngelScript](../../troubleshooting/debugging.md) для platform-specific validation flows.
+- [сборка, упаковка и отладка в браузере](../../how-to/platforms/web-debugging.md), [сборка, упаковка и отладка на Android](../../how-to/platforms/android-debugging.md) и [нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md) для platform-specific validation flows.
 
 ## Проверенные пути исходного кода
 
@@ -41,7 +41,8 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/Gui.fos`
+- `Source/Scripting/ClientGlobalScriptMethods.cpp`
+- `Source/Scripting/Managed/ManagedScriptBackend.cpp`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`

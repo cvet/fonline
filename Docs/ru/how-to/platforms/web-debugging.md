@@ -6,7 +6,7 @@ document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"a91fa74b7652c145e9f73c1b836bbd219019bb76cbb488fea2d874321ef46081"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"fb869e9d8c65d0fe4f67b270a729008493ca8ace00392bfa04c67cc907d427f8"} -->
 
 # Сборка, упаковка и отладка FOnline в браузере
 
@@ -121,11 +121,14 @@ Workspace/web-debug/<ProjectDevName>-Client-<Config>-Web/
 - `index.html` из Engine shell;
 - `<ProjectDevName>_Client.js` и `<ProjectDevName>_Client.wasm`;
 - `Resources.data` и `Resources.js`, созданные закреплённым Emscripten `file_packager.py` с `--preload` и `--lz4`;
+- target-specific Managed assemblies и class-library resources `ManagedRuntime/` внутри preloaded resource pack при включённом `FO_MANAGED_SCRIPTING`;
 - необязательный `web-loading-image.<ext>` из `Web.LoadingImage`;
 - `web-server.py`, когда выбран pack token `WebServer`;
 - также архив, если project package declaration выбирает `Zip`.
 
 Web packaging поддерживает только target `Client`, только architecture `wasm` и требует ресурсы; `NoRes` отклоняется. Packager копирует JavaScript/WebAssembly, патчит embedded resources, effective config и packaged build name в wasm, помещает настроенный каталог client resources в preload и удаляет этот распакованный каталог после создания `Resources.data`.
+
+Managed Web использует интерпретатор Mono и Engine glue JavaScript для scheduling/entropy. Проверяйте в браузере Web-target assembly и подготовленный runtime, startup, callbacks/await и teardown; host `dotnet build` не квалифицирует Wasm payload. См. [Скрипты Managed C#](../scripting/managed-csharp.md).
 
 `Web.LoadingImage` разрешается относительно главного `.fomain`, и packaging завершается ошибкой, если настроенный файл отсутствует. По умолчанию `Web.BackgroundColor` равен `rgb(0, 0, 0)`. Считайте output directory сгенерированным и неизменяемым: изменяйте owning template/config и пересобирайте, а не правьте release files вручную.
 

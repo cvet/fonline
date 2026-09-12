@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/
 
 # Процесс сборки
 
-<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"06a30974defcfe17ff89383a18d73ddf40d47d4cfe752887b89a18fea5352ce2"} -->
+<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"b4a1f3ef2d8d4497f88bc407166c6c7b53cf25d53318e8c9599a99540d7bba21"} -->
 
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
@@ -245,6 +245,7 @@ signing, install, deployment или rollback lane игры.
   [Стилю AngelScript и рефакторингу](../scripting/style-and-refactoring.md), запускайте wrapper движка
   или проекта, компилируйте все затронутые стороны без warnings и выполняйте
   самый узкий behavior/contract test.
+- **Managed C# source/refactor:** следуйте [Managed C# scripting](../scripting/managed-csharp.md), запускайте настроенный formatter и Roslyn analyzer, собирайте `CompileManagedScripts`, затем выполняйте bake и самый узкий затронутый callback/async/synchronization/packaging test.
 - **Nullability/script boundary:** [Scripting](../../explanation/scripting-runtime/),
   [Script Methods Map](../../reference/script-api/method-ownership.md) и
   [Nullability](../../contributing/coding-contracts/nullability.md).

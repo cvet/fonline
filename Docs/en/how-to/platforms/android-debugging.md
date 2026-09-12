@@ -137,7 +137,10 @@ Inspect the generated artifact before installation:
 - application id, version code/name, min/target SDK, ABI, activity, permissions, and signature;
 - exactly one intended `libmain.so` per declared ABI;
 - `assets/Resources/Metadata.zip` and expected resource packs;
+- for Managed builds, the target assemblies plus `ManagedRuntime/runtime.manifest` and the target-specific class-library payload inside the expected resource pack;
 - absence of keystore passwords, private credentials, local paths, stale configs, and unlicensed SDK payloads.
+
+Managed Android requires the Android-target runtime archive and class libraries; never reuse the host or another ABI's prepared payload. Qualify assembly load, callbacks/awaits, shutdown, and a representative project flow on the device. See [Managed C# Scripting](../scripting/managed-csharp.md); successful native or Gradle compilation alone does not prove Managed runtime startup.
 
 Use Android SDK tools such as `apkanalyzer`, `aapt2`, and `apksigner` from the prepared SDK when these checks are part of a release lane.
 

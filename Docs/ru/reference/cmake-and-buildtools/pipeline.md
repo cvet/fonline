@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 
 # Конвейер BuildTools
 
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"3b79b4e72227c4798de907e4658e8d7dda89c7193bf6a5656ed5ade8acc8de95"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"5ea00d80346ffe74c20f421b7c5224fb041f93e1011b79f35659722b064aab23"} -->
 
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
@@ -66,7 +66,7 @@ revision-pinned implementation interfaces: автоматизация обяза
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
 - `BuildTools/EffekseerEditor/build.ps1`
-- `BuildTools/compile-mono-scripts.py`
+- `BuildTools/managed_runtime_payload.py`
 - `BuildTools/codecoverage.py`
 - `BuildTools/android_device.py`
 - `BuildTools/web/simple-web-server.py`
@@ -187,7 +187,7 @@ platform flags и включённые build modes.
 
 В зависимости от options здесь подключаются client, client runtime library,
 headless variants client, server variants, Mapper, viewers анимаций и частиц,
-baker, AngelScript compiler и testing app. Универсального приложения Editor и
+baker, AngelScript compiler, Managed script baker и testing app. Универсального приложения Editor и
 соответствующей validation target нет.
 
 Effekseer Editor намеренно отсутствует в этой стадии и application target
@@ -211,10 +211,11 @@ code. Так ожидаемая диагностика negative tests сохра
 
 - AngelScript compilation через project AS compiler target при включённом
   AngelScript scripting.
-- Mono script compilation через `BuildTools/compile-mono-scripts.py` при
-  включённом Mono scripting. CMake явно передаёт `FO_OUTPUT_PATH` как
-  обязательный scripts/project directory и добавляет каждую запись
-  `FO_MONO_ASSEMBLIES`.
+- Компиляция Managed C# через standalone project `ManagedScriptBaker` при
+  включённом `FO_MANAGED_SCRIPTING`. `CompileManagedScripts` выполняется после
+  `ForceCodeGeneration`, использует настроенные managed source dirs/references/analyzers
+  и создаёт target assemblies каждого pack вместе с `.gen.cs`, `.gen.csproj` и
+  `.gen.sln`. Setup runtime и подготовка payload являются отдельными targets.
 - Resource baking через project baker target.
 - Поддержка build-hash/write-hash для baked resources.
 - Обычные и принудительные bake targets.
@@ -382,8 +383,9 @@ configure-time authority остаётся у `BuildTools/Init.cmake`.
   [generated/native-extension/index.md](../../../generated/native-extension/index.md)
   и `BuildTools/docs_native_extension.py`.
 - Новое script compile или resource bake behavior:
-  `ScriptsAndBaking.cmake`, [Baking Pipeline](../../explanation/content-pipeline/baking.md) и
-  [Scripting](../../explanation/scripting-runtime/).
+  `ScriptsAndBaking.cmake`, [Baking Pipeline](../../explanation/content-pipeline/baking.md),
+  [Scripting](../../explanation/scripting-runtime/) и backend-specific руководство AngelScript либо
+  [Managed C#](../../how-to/scripting/managed-csharp.md).
 - Новый executable/tool entry point: `Applications.cmake` и
   [Applications](../applications.md).
 - Рецепты сборки auxiliary tool: `BuildTools/buildtools.py build-auxiliary`,

@@ -221,58 +221,6 @@
       "commands": []
     },
     {
-      "id": "helper-cli.compile-mono-scripts",
-      "name": "Mono script compilation",
-      "source": "BuildTools/compile-mono-scripts.py",
-      "factory": "create_parser",
-      "program": "compile-mono-scripts.py",
-      "owner": "scripting",
-      "audiences": [
-        "engine-contributor",
-        "embedding-project-build-system"
-      ],
-      "invocation_owner": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
-      "description": "Compile configured Mono assemblies for engine application roles.",
-      "parser_description": "FOnline scripts generation",
-      "usage": "usage: compile-mono-scripts.py [-h] -scripts SCRIPTS [-assembly ASSEMBLY]",
-      "help_output": "usage: compile-mono-scripts.py [-h] -scripts SCRIPTS [-assembly ASSEMBLY]\n\nFOnline scripts generation\n\noptions:\n  -h, --help          show this help message and exit\n  -scripts SCRIPTS    path to scripts directory\n  -assembly ASSEMBLY  assembly name\n",
-      "global_arguments": [
-        {
-          "id": "helper-cli.compile-mono-scripts.argument.scripts",
-          "destination": "scripts",
-          "kind": "option",
-          "action": "store",
-          "option_strings": [
-            "-scripts"
-          ],
-          "metavar": null,
-          "required": true,
-          "nargs": 1,
-          "choices": null,
-          "default": null,
-          "type": null,
-          "description": "path to scripts directory"
-        },
-        {
-          "id": "helper-cli.compile-mono-scripts.argument.assembly",
-          "destination": "assembly",
-          "kind": "option",
-          "action": "append",
-          "option_strings": [
-            "-assembly"
-          ],
-          "metavar": null,
-          "required": false,
-          "nargs": 1,
-          "choices": null,
-          "default": [],
-          "type": null,
-          "description": "assembly name"
-        }
-      ],
-      "commands": []
-    },
-    {
       "id": "helper-cli.codecoverage",
       "name": "Code coverage",
       "source": "BuildTools/codecoverage.py",
@@ -295,8 +243,8 @@
           "name": "clean",
           "summary": "Remove previously collected coverage data and reports",
           "description": "Remove previously collected coverage data and reports",
-          "usage": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
-          "help_output": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nRemove previously collected coverage data and reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...",
+          "help_output": "usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...\n\nRemove previously collected coverage data and reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.clean.argument.workspace_root",
@@ -383,6 +331,22 @@
               "description": "coverage data and report output directory"
             },
             {
+              "id": "helper-cli.codecoverage.command.clean.argument.objects",
+              "destination": "objects",
+              "kind": "option",
+              "action": "append",
+              "option_strings": [
+                "--object"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": [],
+              "type": "Path",
+              "description": "additional instrumented executable or shared library for LLVM reporting; repeatable"
+            },
+            {
               "id": "helper-cli.codecoverage.command.clean.argument.binary_args",
               "destination": "binary_args",
               "kind": "positional",
@@ -403,8 +367,8 @@
           "name": "run",
           "summary": "Run the instrumented test binary and collect coverage data",
           "description": "Run the instrumented test binary and collect coverage data",
-          "usage": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
-          "help_output": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nRun the instrumented test binary and collect coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...",
+          "help_output": "usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...\n\nRun the instrumented test binary and collect coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.run.argument.workspace_root",
@@ -491,6 +455,22 @@
               "description": "coverage data and report output directory"
             },
             {
+              "id": "helper-cli.codecoverage.command.run.argument.objects",
+              "destination": "objects",
+              "kind": "option",
+              "action": "append",
+              "option_strings": [
+                "--object"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": [],
+              "type": "Path",
+              "description": "additional instrumented executable or shared library for LLVM reporting; repeatable"
+            },
+            {
               "id": "helper-cli.codecoverage.command.run.argument.binary_args",
               "destination": "binary_args",
               "kind": "positional",
@@ -511,8 +491,8 @@
           "name": "report",
           "summary": "Generate text and HTML reports from collected coverage data",
           "description": "Generate text and HTML reports from collected coverage data",
-          "usage": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
-          "help_output": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nGenerate text and HTML reports from collected coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...",
+          "help_output": "usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...\n\nGenerate text and HTML reports from collected coverage data\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.report.argument.workspace_root",
@@ -599,6 +579,22 @@
               "description": "coverage data and report output directory"
             },
             {
+              "id": "helper-cli.codecoverage.command.report.argument.objects",
+              "destination": "objects",
+              "kind": "option",
+              "action": "append",
+              "option_strings": [
+                "--object"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": [],
+              "type": "Path",
+              "description": "additional instrumented executable or shared library for LLVM reporting; repeatable"
+            },
+            {
               "id": "helper-cli.codecoverage.command.report.argument.binary_args",
               "destination": "binary_args",
               "kind": "positional",
@@ -619,8 +615,8 @@
           "name": "full",
           "summary": "Clean, run the instrumented binary, and generate reports",
           "description": "Clean, run the instrumented binary, and generate reports",
-          "usage": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...",
-          "help_output": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...\n\nClean, run the instrumented binary, and generate reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n",
+          "usage": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...",
+          "help_output": "usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...\n\nClean, run the instrumented binary, and generate reports\n\npositional arguments:\n  binary_args           arguments passed to the test binary\n\noptions:\n  -h, --help            show this help message and exit\n  --workspace-root WORKSPACE_ROOT\n                        embedding-project source directory\n  --build-dir BUILD_DIR\n                        configured CMake build directory\n  --binary BINARY       instrumented test executable\n  --backend {gcc,llvm,msvc}\n                        coverage compiler/toolchain backend\n  --output-dir OUTPUT_DIR\n                        coverage data and report output directory\n  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable\n",
           "arguments": [
             {
               "id": "helper-cli.codecoverage.command.full.argument.workspace_root",
@@ -705,6 +701,22 @@
               "default": null,
               "type": "Path",
               "description": "coverage data and report output directory"
+            },
+            {
+              "id": "helper-cli.codecoverage.command.full.argument.objects",
+              "destination": "objects",
+              "kind": "option",
+              "action": "append",
+              "option_strings": [
+                "--object"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 1,
+              "choices": null,
+              "default": [],
+              "type": "Path",
+              "description": "additional instrumented executable or shared library for LLVM reporting; repeatable"
             },
             {
               "id": "helper-cli.codecoverage.command.full.argument.binary_args",
@@ -1557,10 +1569,10 @@
     }
   ],
   "summary": {
-    "helper_count": 9,
+    "helper_count": 8,
     "command_count": 16,
-    "global_argument_count": 25,
-    "command_argument_count": 48
+    "global_argument_count": 23,
+    "command_argument_count": 52
   },
-  "contract_digest": "33d714862bafae33a078ff305ea13ea6b5dfca2a9a9cc223d04ce5c2d561a764"
+  "contract_digest": "24bb99f8c2700c1768aa5226b9d63877772c2843c5a87b2ad29aae899d0d585d"
 }

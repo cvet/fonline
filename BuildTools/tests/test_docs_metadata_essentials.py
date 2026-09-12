@@ -164,7 +164,6 @@ class MetadataAndEssentialsDocumentationTests(unittest.TestCase):
         for generator in (
             "docs_audio.py",
             "docs_video.py",
-            "docs_gui_runtime.py",
             "docs_ai_control_protocol.py",
             "docs_public_api.py",
             "docs_support_matrix.py",

@@ -27,7 +27,7 @@ Continue with [declaration grammar](en/reference/scripting/remote-calls.md#decla
 
 ## File and namespace contract
 
-Continue with [file and namespace contract](en/reference/scripting/remote-calls.md#file-and-namespace-contract).
+Continue with [AngelScript file and namespace contract](en/reference/scripting/remote-calls.md#angelscript-file-and-namespace-contract).
 
 ## Arguments and serialization
 

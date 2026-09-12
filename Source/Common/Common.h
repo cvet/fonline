@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2509 InventorySha256=71d15b8518f2939c45fa902a7de9f4e0c9f86f69a7491a98fe74461b60aaa0ba
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2523 InventorySha256=f4c63e9c4e35f497c25c2ee77c6579e0d36b24a83d0ed8018af0fa068aab66ad
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 47
+///@ MigrationRule Version 0 0 52
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
@@ -569,6 +569,7 @@ struct BaseTypeDesc
     bool IsSingleton {};
     bool IsFixedType {};
     bool IsEntityProto {};
+    bool IsAbstractEntity {};
     nptr<const BaseTypeDesc> EnumUnderlyingType {};
     nptr<const StructLayoutDesc> StructLayout {};
     nptr<const RefTypeDesc> RefType {};
@@ -596,12 +597,20 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
+// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them, codegen
+// does
+#define FO_REQUIRES_COVER
+#define FO_PROVIDES_COVER
+
 struct ArgDesc
 {
     string Name {};
     ComplexTypeDesc Type {};
     bool Nullable {};
     string DefaultValue {};
+
+    // The caller must already hold synchronization cover for this argument
+    bool RequiresCover {};
 };
 
 struct FieldDesc
@@ -627,10 +636,17 @@ struct MethodDesc
     bool PassOwnership {};
     bool ReturnNullable {};
     bool Async {};
+
+    // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
+    // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
+    bool ReturnProvidesCover {};
 };
 
 struct StructLayoutDesc
 {
+    unique_del_ptr<void> (*CreateNative)() {};
+    void (*CopyNative)(ptr<void>, ptr<const void>) {};
+    size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };

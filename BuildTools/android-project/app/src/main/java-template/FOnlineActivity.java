@@ -43,6 +43,10 @@ public class FOnlineActivity extends SDLActivity {
 
         args.add("--ApplySubConfig");
         args.add("$CONFIG$");
+        // Android is handed its writable directory by the platform rather than choosing one from an
+        // INSTALLED marker, so it arrives through the option every other platform uses
+        args.add("--UserWritablePath");
+        args.add(runtimeRoot.getAbsolutePath());
         args.add("--Baking.ClientResources");
         args.add(resourcesDir.getAbsolutePath());
         args.add("--Baking.CacheResources");
@@ -62,7 +66,6 @@ public class FOnlineActivity extends SDLActivity {
 
     private void prepareRuntimeResources() {
         final File runtimeRoot = getRuntimeRoot();
-
         final File resourcesDir = new File(runtimeRoot, "Resources");
         final File revisionFile = new File(runtimeRoot, ".asset_revision");
         final String assetRevision = getAssetRevision();
@@ -72,6 +75,7 @@ public class FOnlineActivity extends SDLActivity {
             copyAssetTree("Resources", resourcesDir);
             writeSmallTextFile(revisionFile, assetRevision);
         }
+
     }
 
     private File getRuntimeRoot() {

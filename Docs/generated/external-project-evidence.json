@@ -39,7 +39,7 @@
     "documentation": "Information architecture, entry points, maintenance policy, and publication.",
     "build-release": "CMake, BuildTools, packaging, updater distribution, and release workflows.",
     "runtime": "Applications, client/server runtime, entities, persistence, and lifecycle.",
-    "scripting": "AngelScript runtime, generated bindings, metadata, and script contracts.",
+    "scripting": "AngelScript and Managed C# runtimes, generated bindings, metadata, analyzers, and script contracts.",
     "content-data": "Configuration, baking, resources, maps, movement, and authored data.",
     "frontend": "Rendering, client presentation, and frontend behavior.",
     "networking": "Transport, protocol, connection, and synchronization behavior.",
@@ -89,7 +89,7 @@
       ]
     },
     "scripting": {
-      "scope": "AngelScript runtime, metadata, generated bindings, callbacks, properties, events, and script contracts.",
+      "scope": "AngelScript and Managed C# runtimes, metadata, generated bindings, analyzers, callbacks, properties, events, and script contracts.",
       "required_evidence": [
         "source metadata or binding model",
         "generated API/reference freshness",

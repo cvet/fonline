@@ -465,6 +465,7 @@ namespace BakerTests
         return &instance;
     }
 
+#if FO_ANGELSCRIPT_SCRIPTING
     inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const ScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
@@ -488,6 +489,7 @@ namespace BakerTests
         auto script_settings = MakeScriptCompilerSettings();
         return CompileInlineScripts(meta, script_settings, pack_name, script_files, std::move(message_callback));
     }
+#endif
 
     class TestRig final
     {
@@ -496,6 +498,9 @@ namespace BakerTests
             Settings(true)
         {
             Settings.ApplyDefaultSettings();
+
+            // In-memory fixtures must not load assemblies or caches from the working directory
+            OverrideSetting(Settings.BakeOutput, string {});
             OverrideSetting(Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
             // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
             // as the compile-time ones; the gate-test re-overrides this on its own rig

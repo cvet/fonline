@@ -170,6 +170,7 @@
         "support-matrix",
         "engine-upgrade-guide",
         "scripting-runtime",
+        "managed-csharp-scripting",
         "angelscript-style",
         "script-lifecycle-concurrency",
         "testing",
@@ -315,6 +316,7 @@
         "title_ru": "Разработка игровой логики",
         "document_ids": [
           "scripting-runtime",
+          "managed-csharp-scripting",
           "angelscript-style",
           "script-lifecycle-concurrency",
           "remote-calls",
@@ -372,8 +374,7 @@
           "networking",
           "persistence",
           "frontend-rendering",
-          "gui-runtime-guide",
-          "generated-gui-runtime-index"
+          "gui-runtime-guide"
         ]
       },
       {
@@ -498,7 +499,6 @@
         "font-format": "Docs/generated/font-format.json",
         "audio": "Docs/generated/audio.json",
         "video": "Docs/generated/video.json",
-        "gui-runtime": "Docs/generated/gui-runtime.json",
         "ai-control-protocol": "Docs/generated/ai-control-protocol.json"
       },
       "source_references": {
@@ -518,7 +518,6 @@
         "font-format": "Docs/en/reference/font-format/index.md",
         "audio": "Docs/en/reference/audio/index.md",
         "video": "Docs/en/reference/video/index.md",
-        "gui-runtime": "Docs/en/reference/gui-runtime/index.md",
         "ai-control-protocol": "Docs/en/reference/ai-control-protocol/index.md"
       }
     },
@@ -894,36 +893,6 @@
         "Docs/generated/video/validation.md"
       ]
     },
-    "gui_runtime_reference": {
-      "source_manifest": "BuildTools/GuiRuntimeInterface.json",
-      "model": "Docs/generated/gui-runtime.json",
-      "generator": "BuildTools/docs_gui_runtime.py",
-      "schema_version": 1,
-      "directory": "Docs/en/reference/gui-runtime",
-      "paths": [
-        "Docs/en/reference/gui-runtime/index.md",
-        "Docs/en/reference/gui-runtime/types.md",
-        "Docs/en/reference/gui-runtime/screen-api.md",
-        "Docs/en/reference/gui-runtime/lifecycle.md",
-        "Docs/en/reference/gui-runtime/layout-rendering.md",
-        "Docs/en/reference/gui-runtime/input.md",
-        "Docs/en/reference/gui-runtime/integration-validation.md",
-        "Docs/ru/reference/gui-runtime/index.md",
-        "Docs/ru/reference/gui-runtime/types.md",
-        "Docs/ru/reference/gui-runtime/screen-api.md",
-        "Docs/ru/reference/gui-runtime/lifecycle.md",
-        "Docs/ru/reference/gui-runtime/layout-rendering.md",
-        "Docs/ru/reference/gui-runtime/input.md",
-        "Docs/ru/reference/gui-runtime/integration-validation.md",
-        "Docs/generated/gui-runtime/index.md",
-        "Docs/generated/gui-runtime/types.md",
-        "Docs/generated/gui-runtime/screen-api.md",
-        "Docs/generated/gui-runtime/lifecycle.md",
-        "Docs/generated/gui-runtime/layout-rendering.md",
-        "Docs/generated/gui-runtime/input.md",
-        "Docs/generated/gui-runtime/integration-validation.md"
-      ]
-    },
     "ai_control_protocol_reference": {
       "source_manifest": "BuildTools/AiControlProtocol.json",
       "model": "Docs/generated/ai-control-protocol.json",
@@ -1049,7 +1018,6 @@
         "cmake": "Docs/generated/cmake.json",
         "effect-format": "Docs/generated/effect-format.json",
         "font-format": "Docs/generated/font-format.json",
-        "gui-runtime": "Docs/generated/gui-runtime.json",
         "helper-cli": "Docs/generated/helper-cli.json",
         "image-format": "Docs/generated/image-format.json",
         "map-format": "Docs/generated/map-format.json",
@@ -1135,7 +1103,6 @@
         "font-format": "BuildTools/docs_contract_diff.py",
         "audio": "BuildTools/docs_contract_diff.py",
         "video": "BuildTools/docs_contract_diff.py",
-        "gui-runtime": "BuildTools/docs_contract_diff.py",
         "ai-control-protocol": "BuildTools/docs_contract_diff.py"
       },
       "source_models": {
@@ -1155,7 +1122,6 @@
         "font-format": "Docs/generated/font-format.json",
         "audio": "Docs/generated/audio.json",
         "video": "Docs/generated/video.json",
-        "gui-runtime": "Docs/generated/gui-runtime.json",
         "ai-control-protocol": "Docs/generated/ai-control-protocol.json"
       },
       "dispositions": "Docs/contract-change-dispositions.json",
@@ -1178,7 +1144,7 @@
     "documentation": "Information architecture, entry points, maintenance policy, and publication.",
     "build-release": "CMake, BuildTools, packaging, updater distribution, and release workflows.",
     "runtime": "Applications, client/server runtime, entities, persistence, and lifecycle.",
-    "scripting": "AngelScript runtime, generated bindings, metadata, and script contracts.",
+    "scripting": "AngelScript and Managed C# runtimes, generated bindings, metadata, analyzers, and script contracts.",
     "content-data": "Configuration, baking, resources, maps, movement, and authored data.",
     "frontend": "Rendering, client presentation, and frontend behavior.",
     "networking": "Transport, protocol, connection, and synchronization behavior.",
@@ -1204,7 +1170,7 @@
       "co_review_when": ["script bindings or callbacks change", "network or persistence contracts change", "platform host behavior changes"]
     },
     "scripting": {
-      "scope": "AngelScript runtime, metadata, generated bindings, callbacks, properties, events, and script contracts.",
+      "scope": "AngelScript and Managed C# runtimes, metadata, generated bindings, analyzers, callbacks, properties, events, and script contracts.",
       "required_evidence": ["source metadata or binding model", "generated API/reference freshness", "focused compile or runtime test"],
       "co_review_when": ["runtime lifecycle changes", "network authority or synchronization changes", "content metadata or migration changes"]
     },
@@ -1283,7 +1249,7 @@
       "audiences": ["game-developer", "native-extension-developer", "tool-developer", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/reference/public-contract/index.md",
-      "sources": ["BuildTools/docs_public_api.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_api_diff.py", "Docs/en/contributing/decisions/0002-public-api-stability-contract.md", "Docs/en/contributing/contract-change-management.md", "Docs/en/how-to/migration/engine-upgrade.md", "Docs/en/reference/platforms/support-matrix.md", "Docs/generated/api.json", "Docs/en/reference/script-api/index.md", "Docs/generated/cmake.json", "Docs/en/reference/cmake/index.md", "Docs/generated/cli.json", "Docs/en/reference/buildtools/index.md", "Docs/generated/package.json", "Docs/generated/package/index.md", "Docs/generated/helper-cli.json", "Docs/en/reference/helper-cli/index.md", "Docs/generated/native-extension.json", "Docs/en/reference/native-extension/index.md", "Docs/generated/prototype-format.json", "Docs/en/reference/prototype-format/index.md", "Docs/generated/map-format.json", "Docs/en/reference/map-format/index.md", "Docs/generated/model-format.json", "Docs/en/reference/model-format/index.md", "Docs/generated/text-format.json", "Docs/en/reference/text-format/index.md", "Docs/generated/effect-format.json", "Docs/en/reference/effect-format/index.md", "Docs/generated/image-format.json", "Docs/en/reference/image-format/index.md", "Docs/generated/particle-format.json", "Docs/en/reference/particle-format/index.md", "Docs/generated/font-format.json", "Docs/en/reference/font-format/index.md", "Docs/generated/audio.json", "Docs/en/reference/audio/index.md", "Docs/generated/video.json", "Docs/en/reference/video/index.md", "Docs/generated/gui-runtime.json", "Docs/en/reference/gui-runtime/index.md", "Docs/generated/ai-control-protocol.json", "Docs/en/reference/ai-control-protocol/index.md"]
+      "sources": ["BuildTools/docs_public_api.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_api_diff.py", "Docs/en/contributing/decisions/0002-public-api-stability-contract.md", "Docs/en/contributing/contract-change-management.md", "Docs/en/how-to/migration/engine-upgrade.md", "Docs/en/reference/platforms/support-matrix.md", "Docs/generated/api.json", "Docs/en/reference/script-api/index.md", "Docs/generated/cmake.json", "Docs/en/reference/cmake/index.md", "Docs/generated/cli.json", "Docs/en/reference/buildtools/index.md", "Docs/generated/package.json", "Docs/generated/package/index.md", "Docs/generated/helper-cli.json", "Docs/en/reference/helper-cli/index.md", "Docs/generated/native-extension.json", "Docs/en/reference/native-extension/index.md", "Docs/generated/prototype-format.json", "Docs/en/reference/prototype-format/index.md", "Docs/generated/map-format.json", "Docs/en/reference/map-format/index.md", "Docs/generated/model-format.json", "Docs/en/reference/model-format/index.md", "Docs/generated/text-format.json", "Docs/en/reference/text-format/index.md", "Docs/generated/effect-format.json", "Docs/en/reference/effect-format/index.md", "Docs/generated/image-format.json", "Docs/en/reference/image-format/index.md", "Docs/generated/particle-format.json", "Docs/en/reference/particle-format/index.md", "Docs/generated/font-format.json", "Docs/en/reference/font-format/index.md", "Docs/generated/audio.json", "Docs/en/reference/audio/index.md", "Docs/generated/video.json", "Docs/en/reference/video/index.md", "Docs/generated/ai-control-protocol.json", "Docs/en/reference/ai-control-protocol/index.md"]
     },
     "PUBLIC_API.md": {
       "id": "legacy-public-api-route",
@@ -1595,7 +1561,7 @@
       "audiences": ["tool-developer", "engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
-      "sources": ["BuildTools/Init.cmake", "BuildTools/buildtools.py", "BuildTools/prepare-workspace.sh", "BuildTools/HelperCliInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/cmake", "BuildTools/codegen.py", "BuildTools/compile-mono-scripts.py", "BuildTools/codecoverage.py", "BuildTools/android_device.py", "BuildTools/web/simple-web-server.py", "BuildTools/msicreator/createmsi.py", "BuildTools/check_windows7_imports.py", "BuildTools/docs_cmake.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_package.py", "BuildTools/tests/validate_project_interface.cmake", "BuildTools/tests/validate_package_interface.cmake", "Docs/en/reference/cmake/index.md", "Docs/en/reference/helper-cli/index.md", "Docs/generated/package/index.md"]
+      "sources": ["BuildTools/Init.cmake", "BuildTools/buildtools.py", "BuildTools/prepare-workspace.sh", "BuildTools/HelperCliInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/cmake", "BuildTools/codegen.py", "BuildTools/managed_runtime_payload.py", "BuildTools/codecoverage.py", "BuildTools/android_device.py", "BuildTools/web/simple-web-server.py", "BuildTools/msicreator/createmsi.py", "BuildTools/check_windows7_imports.py", "BuildTools/docs_cmake.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_package.py", "BuildTools/tests/validate_project_interface.cmake", "BuildTools/tests/validate_package_interface.cmake", "Docs/en/reference/cmake/index.md", "Docs/en/reference/helper-cli/index.md", "Docs/generated/package/index.md"]
     },
     "Docs/BuildToolsPipeline.md": {
       "id": "legacy-buildtools-pipeline-route",
@@ -1619,7 +1585,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/explanation/content-pipeline/baking.md",
-      "sources": ["Source/Common/Settings.h", "Source/Common/Settings.cpp", "Source/Tools", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "BuildTools/cmake/helpers/WriteBuildHash.cmake", "BuildTools/compile-mono-scripts.py", "Source/Tests/Test_BakerSetup.cpp"]
+      "sources": ["Source/Common/Settings.h", "Source/Common/Settings.cpp", "Source/Tools", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "BuildTools/cmake/helpers/WriteBuildHash.cmake", "BuildTools/managed_runtime_payload.py", "Source/Tests/Test_BakerSetup.cpp"]
     },
     "Docs/en/reference/settings/configuration-and-data-sources.md": {
       "id": "configuration-data-sources",
@@ -1867,7 +1833,7 @@
       "audiences": ["game-developer", "engine-contributor", "native-extension-developer"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "scripting", "state": "current", "disposition": "retain", "target": "Docs/en/explanation/scripting-runtime/index.md",
-      "sources": ["Source/Scripting", "ThirdParty/AngelScript", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "BuildTools/compile-mono-scripts.py"]
+      "sources": ["Source/Scripting", "Source/Tools/ManagedScriptBaker.cpp", "ThirdParty/AngelScript", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "BuildTools/managed_runtime_payload.py"]
     },
     "Docs/Scripting.md": {
       "id": "legacy-scripting-route",
@@ -1877,13 +1843,29 @@
       "owner": "scripting", "state": "redirect", "disposition": "replace", "target": "Docs/en/explanation/scripting-runtime/index.md", "redirect_to": "scripting-runtime",
       "sources": ["Docs/en/explanation/scripting-runtime/index.md", "Docs/ru/explanation/scripting-runtime/index.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
+    "Docs/SyncCoverAnalysis.md": {
+      "id": "managed-sync-cover-analysis",
+      "title": "Managed Sync-Cover Analysis",
+      "audiences": ["engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "explanation", "visibility": "internal", "human": false, "translation": "not-required"},
+      "owner": "scripting", "state": "current", "disposition": "retain", "target": "Docs/SyncCoverAnalysis.md",
+      "sources": ["Source/Scripting/Managed/Analyzers/SyncCoverAnalyzer.cs", "Source/Scripting/Managed/CoreScripts/Attributes.cs", "Source/Scripting/Managed/CoreScripts/Sync.cs", "Source/Server/EntitySync.cpp"]
+    },
+    "Docs/en/how-to/scripting/managed-csharp.md": {
+      "id": "managed-csharp-scripting",
+      "title": "Managed C# Scripting",
+      "audiences": ["game-developer", "engine-contributor", "native-extension-developer", "ai-agent", "release-operator"],
+      "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "scripting", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/scripting/managed-csharp.md",
+      "sources": ["Source/Scripting/Managed", "Source/Tools/ManagedScriptBaker.cpp", "Source/Applications/ManagedScriptBakerApp.cpp", "Source/Common/Settings.inc", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "BuildTools/cmake/stages/Packages.cmake", "BuildTools/managed_runtime_payload.py", "BuildTools/tests/test_managed_async_callbacks.py", "BuildTools/tests/test_managed_callback_context.py", "BuildTools/tests/test_managed_runtime_packaging.py", "Source/Tests/Test_ManagedScriptBaker.cpp", "BuildTools/tests/test_docs_managed_csharp.py"]
+    },
     "Docs/en/how-to/scripting/style-and-refactoring.md": {
       "id": "angelscript-style",
       "title": "AngelScript Style and Refactoring",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "scripting", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/scripting/style-and-refactoring.md",
-      "sources": ["BuildTools/buildtools.py", ".github/workflows/validate.yml", "Source/Common/Settings.inc", "Source/Common/ScriptSystem.cpp", "Source/Scripting/AngelScript/CoreScripts/.clang-format", "Source/Scripting/AngelScript/CoreScripts", "Source/Scripting/AngelScript/AngelScriptBackend.cpp", "Source/Scripting/AngelScript/AngelScriptAttributes.cpp", "Source/Scripting/AngelScript/AngelScriptAttributes.h", "Source/Tests/Test_AngelScriptAttributes.cpp", "Source/Tests/Test_AngelScriptBaker.cpp", "BuildTools/tests/test_docs_angelscript_style.py"]
+      "sources": ["BuildTools/buildtools.py", ".github/workflows/validate.yml", "Source/Common/Settings.inc", "Source/Common/ScriptSystem.cpp", "Examples/MinimalProject/Scripts/Starter.fos", "Examples/MinimalMultiplayer/Scripts/Tutorial.fos", "Source/Scripting/AngelScript/AngelScriptBackend.cpp", "Source/Scripting/AngelScript/AngelScriptAttributes.cpp", "Source/Scripting/AngelScript/AngelScriptAttributes.h", "Source/Tests/Test_AngelScriptAttributes.cpp", "Source/Tests/Test_AngelScriptBaker.cpp", "BuildTools/tests/test_docs_angelscript_style.py"]
     },
     "Docs/AngelScriptStyle.md": {
       "id": "legacy-angelscript-style-route",
@@ -1899,7 +1881,7 @@
       "audiences": ["game-developer", "engine-contributor", "native-extension-developer", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "scripting", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
-      "sources": ["Source/Common/ScriptSystem.cpp", "Source/Common/Entity.cpp", "Source/Client/Client.cpp", "Source/Server/Server.cpp", "Source/Server/WorkerPool.cpp", "Source/Server/EntitySync.cpp", "Source/Scripting/AngelScript", "Source/Scripting/ServerGlobalScriptMethods.cpp", "Source/Tests/Test_AngelScriptAttributes.cpp", "Source/Tests/Test_AngelScriptBaker.cpp", "Source/Tests/Test_EntitySync.cpp", "BuildTools/tests/test_docs_script_lifecycle.py"]
+      "sources": ["Source/Common/ScriptSystem.cpp", "Source/Common/Entity.cpp", "Source/Client/Client.cpp", "Source/Server/Server.cpp", "Source/Server/WorkerPool.cpp", "Source/Server/EntitySync.cpp", "Source/Scripting/AngelScript", "Source/Scripting/Managed", "Source/Scripting/ServerGlobalScriptMethods.cpp", "Source/Tests/Test_AngelScriptAttributes.cpp", "Source/Tests/Test_AngelScriptBaker.cpp", "Source/Tests/Test_ManagedScriptBaker.cpp", "Source/Tests/Test_EntitySync.cpp", "BuildTools/tests/test_docs_script_lifecycle.py"]
     },
     "Docs/ScriptLifecycleAndConcurrency.md": {
       "id": "legacy-script-lifecycle-concurrency-route",
@@ -1931,7 +1913,7 @@
       "audiences": ["game-developer", "engine-contributor", "native-extension-developer", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "scripting", "state": "current", "disposition": "retain", "target": "Docs/en/reference/metadata/index.md",
-      "sources": ["BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/package.py", "BuildTools/docs_api.py", "BuildTools/docs_api_diff.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_cli.py", "BuildTools/docs_cmake.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_model_format.py", "BuildTools/docs_text_format.py", "BuildTools/docs_effect_format.py", "BuildTools/docs_image_format.py", "BuildTools/docs_particle_format.py", "BuildTools/docs_font_format.py", "BuildTools/docs_audio.py", "BuildTools/docs_video.py", "BuildTools/docs_gui_runtime.py", "BuildTools/docs_ai_control_protocol.py", "BuildTools/docs_package.py", "BuildTools/docs_examples.py", "BuildTools/docs_metadata.py", "BuildTools/docs_public_api.py", "BuildTools/docs_snippets.py", "BuildTools/docs_support_matrix.py", "BuildTools/docs_localization.py", "BuildTools/docs_external_evidence.py", "BuildTools/docs_diagrams.py", "BuildTools/docs_screenshots.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/ModelFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/EffectFormatInterface.json", "BuildTools/ImageFormatInterface.json", "BuildTools/ParticleFormatInterface.json", "BuildTools/FontFormatInterface.json", "BuildTools/AudioInterface.json", "BuildTools/VideoInterface.json", "BuildTools/GuiRuntimeInterface.json", "BuildTools/AiControlProtocol.json", "BuildTools/PackageInterface.json", "BuildTools/SupportMatrix.json", "BuildTools/ExternalProjectEvidence.json", "BuildTools/DocumentationDiagrams.json", "BuildTools/DocumentationScreenshots.json", "BuildTools/cmake/ProjectInterface.json", "Docs/generated", "Docs/contract-change-dispositions.json", "Source/Common/MetadataRegistration.cpp", "Source/Common/Properties.cpp", "Source/Tools/MetadataBaker.cpp", "Source/Scripting"]
+      "sources": ["BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/package.py", "BuildTools/docs_api.py", "BuildTools/docs_api_diff.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_cli.py", "BuildTools/docs_cmake.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_model_format.py", "BuildTools/docs_text_format.py", "BuildTools/docs_effect_format.py", "BuildTools/docs_image_format.py", "BuildTools/docs_particle_format.py", "BuildTools/docs_font_format.py", "BuildTools/docs_audio.py", "BuildTools/docs_video.py", "BuildTools/docs_ai_control_protocol.py", "BuildTools/docs_package.py", "BuildTools/docs_examples.py", "BuildTools/docs_metadata.py", "BuildTools/docs_public_api.py", "BuildTools/docs_snippets.py", "BuildTools/docs_support_matrix.py", "BuildTools/docs_localization.py", "BuildTools/docs_external_evidence.py", "BuildTools/docs_diagrams.py", "BuildTools/docs_screenshots.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/ModelFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/EffectFormatInterface.json", "BuildTools/ImageFormatInterface.json", "BuildTools/ParticleFormatInterface.json", "BuildTools/FontFormatInterface.json", "BuildTools/AudioInterface.json", "BuildTools/VideoInterface.json", "BuildTools/AiControlProtocol.json", "BuildTools/PackageInterface.json", "BuildTools/SupportMatrix.json", "BuildTools/ExternalProjectEvidence.json", "BuildTools/DocumentationDiagrams.json", "BuildTools/DocumentationScreenshots.json", "BuildTools/cmake/ProjectInterface.json", "Docs/generated", "Docs/contract-change-dispositions.json", "Source/Common/MetadataRegistration.cpp", "Source/Common/Properties.cpp", "Source/Tools/MetadataBaker.cpp", "Source/Scripting"]
     },
     "Docs/GeneratedApiAndMetadata.md": {
       "id": "legacy-generated-api-metadata-route",
@@ -1963,7 +1945,7 @@
       "audiences": ["engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/contract-change-management.md",
-      "sources": ["BuildTools/docs_api.py", "BuildTools/docs_api_diff.py", "BuildTools/docs_cmake.py", "BuildTools/docs_cli.py", "BuildTools/docs_package.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_model_format.py", "BuildTools/docs_text_format.py", "BuildTools/docs_effect_format.py", "BuildTools/docs_image_format.py", "BuildTools/docs_particle_format.py", "BuildTools/docs_font_format.py", "BuildTools/docs_audio.py", "BuildTools/docs_video.py", "BuildTools/docs_gui_runtime.py", "BuildTools/docs_ai_control_protocol.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_validate.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/ModelFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/EffectFormatInterface.json", "BuildTools/ImageFormatInterface.json", "BuildTools/ParticleFormatInterface.json", "BuildTools/FontFormatInterface.json", "BuildTools/AudioInterface.json", "BuildTools/VideoInterface.json", "BuildTools/GuiRuntimeInterface.json", "BuildTools/AiControlProtocol.json", "BuildTools/PackageInterface.json", "BuildTools/tests/test_docs_api_diff.py", "BuildTools/tests/test_docs_contract_diff.py", "BuildTools/tests/test_docs_ai_control_protocol.py", "Docs/generated/api.json", "Docs/generated/cmake.json", "Docs/generated/cli.json", "Docs/generated/package.json", "Docs/generated/helper-cli.json", "Docs/generated/native-extension.json", "Docs/generated/prototype-format.json", "Docs/generated/map-format.json", "Docs/generated/model-format.json", "Docs/generated/text-format.json", "Docs/generated/effect-format.json", "Docs/generated/image-format.json", "Docs/generated/particle-format.json", "Docs/generated/font-format.json", "Docs/generated/audio.json", "Docs/generated/video.json", "Docs/generated/gui-runtime.json", "Docs/generated/ai-control-protocol.json", "Docs/contract-change-dispositions.json", "Docs/en/contributing/decisions/0002-public-api-stability-contract.md", ".github/workflows/validate.yml"]
+      "sources": ["BuildTools/docs_api.py", "BuildTools/docs_api_diff.py", "BuildTools/docs_cmake.py", "BuildTools/docs_cli.py", "BuildTools/docs_package.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_model_format.py", "BuildTools/docs_text_format.py", "BuildTools/docs_effect_format.py", "BuildTools/docs_image_format.py", "BuildTools/docs_particle_format.py", "BuildTools/docs_font_format.py", "BuildTools/docs_audio.py", "BuildTools/docs_video.py", "BuildTools/docs_ai_control_protocol.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_validate.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/ModelFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/EffectFormatInterface.json", "BuildTools/ImageFormatInterface.json", "BuildTools/ParticleFormatInterface.json", "BuildTools/FontFormatInterface.json", "BuildTools/AudioInterface.json", "BuildTools/VideoInterface.json", "BuildTools/AiControlProtocol.json", "BuildTools/PackageInterface.json", "BuildTools/tests/test_docs_api_diff.py", "BuildTools/tests/test_docs_contract_diff.py", "BuildTools/tests/test_docs_ai_control_protocol.py", "Docs/generated/api.json", "Docs/generated/cmake.json", "Docs/generated/cli.json", "Docs/generated/package.json", "Docs/generated/helper-cli.json", "Docs/generated/native-extension.json", "Docs/generated/prototype-format.json", "Docs/generated/map-format.json", "Docs/generated/model-format.json", "Docs/generated/text-format.json", "Docs/generated/effect-format.json", "Docs/generated/image-format.json", "Docs/generated/particle-format.json", "Docs/generated/font-format.json", "Docs/generated/audio.json", "Docs/generated/video.json", "Docs/generated/ai-control-protocol.json", "Docs/contract-change-dispositions.json", "Docs/en/contributing/decisions/0002-public-api-stability-contract.md", ".github/workflows/validate.yml"]
     },
     "Docs/ApiChangeManagement.md": {
       "id": "legacy-api-change-management-route",
@@ -2147,7 +2129,7 @@
       "audiences": ["game-developer", "tool-developer", "engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/reference/helper-cli/commands.md",
-      "sources": ["BuildTools/HelperCliInterface.json", "BuildTools/docs_helper_cli.py", "Docs/generated/helper-cli.json", "BuildTools/codegen.py", "BuildTools/compile-mono-scripts.py", "BuildTools/codecoverage.py", "BuildTools/android_device.py", "BuildTools/web/simple-web-server.py", "BuildTools/msicreator/createmsi.py"]
+      "sources": ["BuildTools/HelperCliInterface.json", "BuildTools/docs_helper_cli.py", "Docs/generated/helper-cli.json", "BuildTools/codegen.py", "BuildTools/managed_runtime_payload.py", "BuildTools/codecoverage.py", "BuildTools/android_device.py", "BuildTools/web/simple-web-server.py", "BuildTools/msicreator/createmsi.py"]
     },
     "Docs/generated/cmake/index.md": {
       "id": "legacy-generated-cmake-index-route",
@@ -3451,7 +3433,7 @@
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/runtime/gui.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "BuildTools/docs_gui_runtime.py", "Source/Scripting/AngelScript/CoreScripts/Gui.fos", "Source/Scripting/AngelScript/CoreScripts/Input.fos", "Source/Client/Client.cpp", "Docs/en/tutorials/first-project.md", "Docs/en/reference/gui-runtime/index.md"]
+      "sources": ["Source/Frontend", "Source/Client", "Source/Scripting/AngelScript", "Source/Scripting/Managed", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Docs/en/explanation/rendering/index.md", "Docs/en/explanation/scripting-runtime/index.md"]
     },
     "Docs/GuiRuntime.md": {
       "id": "legacy-gui-runtime-guide-route",
@@ -3465,113 +3447,169 @@
       "id": "generated-gui-runtime-index",
       "title": "Generated GUI Runtime Reference",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
-      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
-      "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/gui-runtime/index.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "BuildTools/docs_gui_runtime.py", "Docs/generated/gui-runtime.json"]
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/ru/reference/gui-runtime/index.md": {
+      "id": "ru-generated-gui-runtime-index-route",
+      "title": "Russian Generated GUI Runtime Reference Route",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/generated/gui-runtime/index.md": {
       "id": "legacy-generated-gui-runtime-index-route",
       "title": "Legacy Generated GUI Runtime Reference Route",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
-      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/gui-runtime/index.md", "redirect_to": "generated-gui-runtime-index",
-      "sources": ["Docs/en/reference/gui-runtime/index.md", "Docs/ru/reference/gui-runtime/index.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/en/reference/gui-runtime/types.md": {
       "id": "generated-gui-runtime-types",
       "title": "GUI Runtime Types",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
-      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
-      "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/gui-runtime/types.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "Source/Scripting/AngelScript/CoreScripts/Gui.fos", "Docs/generated/gui-runtime.json"]
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/ru/reference/gui-runtime/types.md": {
+      "id": "ru-generated-gui-runtime-types-route",
+      "title": "Russian GUI Runtime Types Route",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/generated/gui-runtime/types.md": {
       "id": "legacy-generated-gui-runtime-types-route",
       "title": "Legacy GUI Runtime Types Route",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
-      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/gui-runtime/types.md", "redirect_to": "generated-gui-runtime-types",
-      "sources": ["Docs/en/reference/gui-runtime/types.md", "Docs/ru/reference/gui-runtime/types.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/en/reference/gui-runtime/screen-api.md": {
       "id": "generated-gui-runtime-screen-api",
       "title": "GUI Screen API",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
-      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
-      "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/gui-runtime/screen-api.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "Source/Scripting/AngelScript/CoreScripts/Gui.fos", "Docs/generated/gui-runtime.json"]
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/ru/reference/gui-runtime/screen-api.md": {
+      "id": "ru-generated-gui-runtime-screen-api-route",
+      "title": "Russian GUI Screen API Route",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/generated/gui-runtime/screen-api.md": {
       "id": "legacy-generated-gui-runtime-screen-api-route",
       "title": "Legacy GUI Screen API Route",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
-      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/gui-runtime/screen-api.md", "redirect_to": "generated-gui-runtime-screen-api",
-      "sources": ["Docs/en/reference/gui-runtime/screen-api.md", "Docs/ru/reference/gui-runtime/screen-api.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/en/reference/gui-runtime/lifecycle.md": {
       "id": "generated-gui-runtime-lifecycle",
       "title": "GUI Screen Lifecycle",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
-      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
-      "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/gui-runtime/lifecycle.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "Source/Scripting/AngelScript/CoreScripts/Gui.fos", "Docs/generated/gui-runtime.json"]
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/ru/reference/gui-runtime/lifecycle.md": {
+      "id": "ru-generated-gui-runtime-lifecycle-route",
+      "title": "Russian GUI Screen Lifecycle Route",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/generated/gui-runtime/lifecycle.md": {
       "id": "legacy-generated-gui-runtime-lifecycle-route",
       "title": "Legacy GUI Screen Lifecycle Route",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
-      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/gui-runtime/lifecycle.md", "redirect_to": "generated-gui-runtime-lifecycle",
-      "sources": ["Docs/en/reference/gui-runtime/lifecycle.md", "Docs/ru/reference/gui-runtime/lifecycle.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/en/reference/gui-runtime/layout-rendering.md": {
       "id": "generated-gui-runtime-layout-rendering",
       "title": "GUI Layout and Rendering",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
-      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
-      "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/gui-runtime/layout-rendering.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "Source/Scripting/AngelScript/CoreScripts/Gui.fos", "Source/Client/Client.cpp", "Docs/generated/gui-runtime.json"]
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/ru/reference/gui-runtime/layout-rendering.md": {
+      "id": "ru-generated-gui-runtime-layout-rendering-route",
+      "title": "Russian GUI Layout and Rendering Route",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/generated/gui-runtime/layout-rendering.md": {
       "id": "legacy-generated-gui-runtime-layout-rendering-route",
       "title": "Legacy GUI Layout and Rendering Route",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
-      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/gui-runtime/layout-rendering.md", "redirect_to": "generated-gui-runtime-layout-rendering",
-      "sources": ["Docs/en/reference/gui-runtime/layout-rendering.md", "Docs/ru/reference/gui-runtime/layout-rendering.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/en/reference/gui-runtime/input.md": {
       "id": "generated-gui-runtime-input",
       "title": "GUI Input Contract",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
-      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
-      "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/gui-runtime/input.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "Source/Scripting/AngelScript/CoreScripts/Gui.fos", "Source/Scripting/AngelScript/CoreScripts/Input.fos", "Docs/generated/gui-runtime.json"]
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/ru/reference/gui-runtime/input.md": {
+      "id": "ru-generated-gui-runtime-input-route",
+      "title": "Russian GUI Input Contract Route",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/generated/gui-runtime/input.md": {
       "id": "legacy-generated-gui-runtime-input-route",
       "title": "Legacy GUI Input Contract Route",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
-      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/gui-runtime/input.md", "redirect_to": "generated-gui-runtime-input",
-      "sources": ["Docs/en/reference/gui-runtime/input.md", "Docs/ru/reference/gui-runtime/input.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+      "owner": "frontend", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/en/reference/gui-runtime/integration-validation.md": {
       "id": "generated-gui-runtime-integration-validation",
       "title": "GUI Integration and Validation",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
-      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
-      "owner": "quality", "state": "current", "disposition": "retain", "target": "Docs/en/reference/gui-runtime/integration-validation.md",
-      "sources": ["BuildTools/GuiRuntimeInterface.json", "BuildTools/tests/test_docs_gui_runtime.py", "Source/Scripting/AngelScript/CoreScripts/Gui.fos", "Source/Scripting/AngelScript/CoreScripts/Input.fos", "Source/Client/Client.cpp", "Source/Tests/README.md", "Docs/en/tutorials/first-project.md", "Docs/generated/gui-runtime.json"]
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "quality", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/ru/reference/gui-runtime/integration-validation.md": {
+      "id": "ru-generated-gui-runtime-integration-validation-route",
+      "title": "Russian GUI Integration and Validation Route",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "quality", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/generated/gui-runtime/integration-validation.md": {
       "id": "legacy-generated-gui-runtime-integration-validation-route",
       "title": "Legacy GUI Integration and Validation Route",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
-      "owner": "quality", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/gui-runtime/integration-validation.md", "redirect_to": "generated-gui-runtime-integration-validation",
-      "sources": ["Docs/en/reference/gui-runtime/integration-validation.md", "Docs/ru/reference/gui-runtime/integration-validation.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+      "owner": "quality", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/runtime/gui.md", "redirect_to": "gui-runtime-guide",
+      "sources": ["Docs/en/how-to/runtime/gui.md", "Docs/ru/how-to/runtime/gui.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
     "Docs/en/how-to/ai-control-protocol.md": {
       "id": "ai-control-protocol-guide",
@@ -4023,11 +4061,11 @@
     },
     "Docs/en/troubleshooting/debugging.md": {
       "id": "debugging",
-      "title": "Native and AngelScript Debugging",
+      "title": "Native, AngelScript, and Managed C# Debugging",
       "audiences": ["game-developer", "engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "quality", "state": "current", "disposition": "retain", "target": "Docs/en/troubleshooting/debugging.md",
-      "sources": ["BuildTools/cmake/stages/Init.cmake", "BuildTools/cmake/stages/EngineSources.cmake", "BuildTools/cmake/stages/ThirdParty.cmake", "BuildTools/cmake/helpers/Build.cmake", "BuildTools/cmake/helpers/State.cmake", "BuildTools/natvis/essentials.natvis", "BuildTools/natvis/unordered_dense.natvis", "BuildTools/natvis/fonline.natjmc", "Source/Essentials/BasicCore.cpp", "Source/Essentials/StackTrace.h", "Source/Essentials/StackTrace.cpp", "Source/Essentials/ExceptionHandling.h", "Source/Essentials/ExceptionHandling.cpp", "Source/Essentials/BaseLogging.cpp", "Source/Essentials/Logging.cpp", "Source/Common/DiagnosticSelfTest.cpp", "Source/Common/Settings.inc", "Source/Frontend/ApplicationInit.cpp", "Source/Scripting/AngelScript/AngelScriptBackend.cpp", "Source/Scripting/AngelScript/AngelScriptContext.cpp", "Source/Scripting/AngelScript/AngelScriptDebugger.h", "Source/Scripting/AngelScript/AngelScriptDebugger.cpp", "Source/Tests/Test_StackTrace.cpp", "Source/Tests/Test_ExceptionHandling.cpp", "Source/Tests/Test_ClientRuntimeApi.cpp", "BuildTools/angelscript-debugger/package.json", "BuildTools/angelscript-debugger/src", "BuildTools/ExternalProjectEvidence.json", "BuildTools/tests/test_docs_debugging.py", ".github/workflows/validate.yml"]
+      "sources": ["BuildTools/cmake/stages/Init.cmake", "BuildTools/cmake/stages/EngineSources.cmake", "BuildTools/cmake/stages/ThirdParty.cmake", "BuildTools/cmake/helpers/Build.cmake", "BuildTools/cmake/helpers/State.cmake", "BuildTools/natvis/essentials.natvis", "BuildTools/natvis/unordered_dense.natvis", "BuildTools/natvis/fonline.natjmc", "Source/Essentials/BasicCore.cpp", "Source/Essentials/StackTrace.h", "Source/Essentials/StackTrace.cpp", "Source/Essentials/ExceptionHandling.h", "Source/Essentials/ExceptionHandling.cpp", "Source/Essentials/BaseLogging.cpp", "Source/Essentials/Logging.cpp", "Source/Common/DiagnosticSelfTest.cpp", "Source/Common/Settings.inc", "Source/Frontend/ApplicationInit.cpp", "Source/Scripting/AngelScript/AngelScriptBackend.cpp", "Source/Scripting/AngelScript/AngelScriptContext.cpp", "Source/Scripting/AngelScript/AngelScriptDebugger.h", "Source/Scripting/AngelScript/AngelScriptDebugger.cpp", "Source/Scripting/Managed/ManagedScriptBackend.cpp", "Source/Scripting/Managed/ManagedRuntime.cpp", "Source/Scripting/Managed/Analyzers/SyncCoverAnalyzer.cs", "Source/Tools/ManagedScriptBaker.cpp", "Source/Tests/Test_ManagedScriptBaker.cpp", "Source/Tests/Test_StackTrace.cpp", "Source/Tests/Test_ExceptionHandling.cpp", "Source/Tests/Test_ClientRuntimeApi.cpp", "BuildTools/angelscript-debugger/package.json", "BuildTools/angelscript-debugger/src", "BuildTools/ExternalProjectEvidence.json", "BuildTools/tests/test_docs_debugging.py", ".github/workflows/validate.yml"]
     },
     "Docs/Debugging.md": {
       "id": "legacy-debugging-route",

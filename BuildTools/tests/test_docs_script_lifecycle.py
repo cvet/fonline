@@ -99,7 +99,7 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         baker = self._read("Source/Tools/Baker.cpp")
 
         self.assertIn("Init function not found or has a mismatched signature", script_system)
-        self.assertIn("Script function signature does not match property binding", baker)
+        self.assertIn("Verification failed for func", baker)
         location_init = entity_manager[entity_manager.index("void EntityManager::CallInit(ptr<Location>") :]
         self.assertLess(location_init.index("loc->SetInitCalled();"), location_init.index("_engine->OnLocationInit.Fire"))
         self.assertLess(location_init.index("_engine->OnLocationInit.Fire"), location_init.index("CallInitScript"))

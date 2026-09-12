@@ -6,7 +6,7 @@ document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
 
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"081501b476a5348b040d987609259be5787ebf94051f4761739ddf057f48b645"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"8a519724edb8d787421626374f54ac8d105b13327bab2847be98bc69676690e5"} -->
 
 # Frontend и рендеринг
 
@@ -1069,4 +1069,4 @@ Null/headless, OpenGL/WebGL, Direct3D, Vulkan, SDL_GPU. У direct Metal нет
 - render-target stack push/pop и restoration previous target сохранены;
 - orientation учитывает `IsRenderTargetFlipped()`: OpenGL flipped, Direct3D/Vulkan/SDL_GPU not flipped;
 - effect changes описывают parsing config, shader files и script-value buffers; Vulkan resources соблюдают set-0-UBO/set-1-sampler;
-- Web changes связаны со [сборкой, упаковкой и отладкой в браузере](../../how-to/platforms/web-debugging.md), Android — со [сборкой, упаковкой и отладкой на Android](../../how-to/platforms/android-debugging.md), native attach/debug — с [нативной отладкой и отладкой AngelScript](../../troubleshooting/debugging.md).
+- Web changes связаны со [сборкой, упаковкой и отладкой в браузере](../../how-to/platforms/web-debugging.md), Android — со [сборкой, упаковкой и отладкой на Android](../../how-to/platforms/android-debugging.md), native/script attach/debug — с [нативной, AngelScript и Managed отладкой](../../troubleshooting/debugging.md).

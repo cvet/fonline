@@ -267,6 +267,41 @@ TEST_CASE("MapBaker")
         CHECK(checks[1].first == "SkippedMap.fomap-bin-client");
     }
 
+#if FO_MANAGED_SCRIPTING
+    SECTION("InMemoryFixturesIgnoreForeignManagedAssembliesUntilExplicitlyEnabled")
+    {
+        std::filesystem::path previous_dir = std::filesystem::current_path();
+        std::filesystem::path temp_dir = std::filesystem::temp_directory_path() / fs_make_path(strex("FOnlineMapBakerIsolation_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+        REQUIRE(std::filesystem::create_directory(temp_dir));
+        auto restore = scope_exit([&]() noexcept {
+            std::error_code error;
+            std::filesystem::current_path(previous_dir, error);
+            std::filesystem::remove_all(temp_dir, error);
+        });
+
+        std::filesystem::path foreign_assembly = temp_dir / "Baking" / "ForeignPack" / "Assemblies" / "ServerAssemblies" / "Foreign.Server.dll";
+        std::filesystem::create_directories(foreign_assembly.parent_path());
+        REQUIRE(fs_write_file(fs_path_to_string(foreign_assembly), string_view {"unrelated managed output"}));
+        std::filesystem::current_path(temp_dir);
+
+        TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
+        AddMapBakerMetadataAndProto(local_rig, "IsolatedMap");
+        local_rig.AddSourceFile("IsolatedMap.fomap", "[ProtoMap]\n$Name = IsolatedMap\n");
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        CHECK(local_rig.Outputs.contains("IsolatedMap.fomap-bin-server"));
+        CHECK(local_rig.Outputs.contains("IsolatedMap.fomap-bin-client"));
+
+        // The poisoned entry is observable when a disk-backed fixture deliberately opts in
+        OverrideSetting(local_rig.Settings.BakeOutput, string {"Baking"});
+        CHECK_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed load-context host assembly not found"));
+        optional<string> foreign_data = fs_read_file(fs_path_to_string(foreign_assembly));
+        REQUIRE(foreign_data.has_value());
+        CHECK(*foreign_data == "unrelated managed output");
+    }
+#endif
+
     SECTION("RechecksSkippedServerSideWhenClientSideNeedsBake")
     {
         TestRig local_rig;

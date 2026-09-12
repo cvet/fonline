@@ -188,6 +188,15 @@
       "description": "Number of bone influences compiled into each 3D model vertex."
     },
     {
+      "name": "FO_STRING_INLINE_CAPACITY",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "31",
+      "category": "capacity",
+      "description": "Characters kept inside an engine string before it allocates; the value must be one less than a multiple of eight."
+    },
+    {
       "name": "FO_MSAN_LIBCXX_ROOT",
       "cache_type": "STRING",
       "value_kind": "path",
@@ -248,7 +257,7 @@
       "required": false,
       "default": "OFF",
       "category": "scripting",
-      "description": "Compile the Native scripting backend."
+      "description": "Reserve the Native scripting source-root option; the current tree has no implemented Native backend."
     },
     {
       "name": "FO_ANGELSCRIPT_SCRIPTING",
@@ -260,13 +269,13 @@
       "description": "Compile the AngelScript scripting backend."
     },
     {
-      "name": "FO_MONO_SCRIPTING",
+      "name": "FO_MANAGED_SCRIPTING",
       "cache_type": "BOOL",
       "value_kind": "boolean",
       "required": false,
       "default": "OFF",
       "category": "scripting",
-      "description": "Compile the Mono scripting backend."
+      "description": "Compile the Managed C# scripting backend and embedded Mono runtime."
     },
     {
       "name": "FO_DISABLE_RPMALLOC",

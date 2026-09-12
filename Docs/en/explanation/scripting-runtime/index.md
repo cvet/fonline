@@ -16,6 +16,7 @@ The scripting layer is the contract between the C++ engine runtime and game-auth
 
 Read this page together with:
 
+- [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) for the complete managed authoring, generated-project, async, synchronization, runtime, packaging, platform, diagnostics, and migration contract.
 - [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md) for module construction, source layout, formatter behavior, generated-file discipline, refactoring batches, and validation gates.
 - [GeneratedApiAndMetadata.md](../../reference/metadata/index.md) for generated metadata, `///@` annotations, and codegen output.
 - [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md) for module initialization, callback ownership, `[[Async]]`, `Yield`, server synchronization covers, mutable-state ownership, and teardown rules.
@@ -41,16 +42,21 @@ Read this page together with:
 - `Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
 - `Source/Scripting/AngelScript/AngelScriptReflection.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/*.fos`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
-- `Source/Scripting/Mono/*.cs`
+- `Source/Scripting/Managed/CoreScripts/*.cs`
+- `Source/Scripting/Managed/ManagedScripting.*`
+- `Source/Scripting/Managed/ManagedScriptBackend.*`
+- `Source/Scripting/Managed/ManagedRuntime.*`
+- `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
+- `Source/Tools/ManagedScriptBaker.*`
 - `Source/Scripting/Native/.keepalive`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
@@ -66,9 +72,9 @@ Read this page together with:
 The scripting subsystem has four layers:
 
 1. **Common runtime facade** — `Source/Common/ScriptSystem.h` / `.cpp` define the backend-agnostic `ScriptSystem`, `ScriptFuncDesc`, `ScriptFunc`, `FuncCallData`, `DataAccessor`, native call adapters, init functions, loop callbacks, and type maps.
-2. **Backend implementation** — `Source/Scripting/AngelScript/` provides the current production backend. Mono and native scripting have placeholder/source roots, but AngelScript owns the implemented script compiler/runtime path in this tree.
+2. **Backend implementations** — `Source/Scripting/AngelScript/` provides the AngelScript compiler/runtime and `Source/Scripting/Managed/` provides the Managed C# compiler/runtime bridge hosted on embedded Mono. Both are implemented and tested backends. `Source/Scripting/Native/` is only a reserved source root and must not be presented as operational.
 3. **Script-visible native methods** — `Source/Scripting/*ScriptMethods.cpp` files contain `///@ ExportMethod` functions grouped by runtime side and receiver type. Codegen reads these annotations and emits method descriptors/wrappers.
-4. **Core script library and game scripts** — `Source/Scripting/AngelScript/CoreScripts/*.fos` provides engine-owned reusable script-side helpers. Embedding projects add their own `.fos` files and metadata through project configuration and resource/script baking.
+4. **Core library and game scripts** — `Source/Scripting/Managed/CoreScripts/*.cs` provides the reusable managed bridge library. High-level gameplay, GUI, and other project libraries belong to the embedding project for both languages; AngelScript no longer has an Engine-owned `CoreScripts` library. Projects select `.cs` and/or `.fos` sources through configuration and script/resource baking.
 
 The engine owns the reusable bridge. The embedding project owns game scripts and chooses which features are enabled through project configuration, build presets, and `.fomain` inputs.
 
@@ -218,23 +224,27 @@ in [Text and Localization](../../how-to/content/text-and-localization.md).
 
 Client render helpers such as `Game.DrawSprite`, `Game.DrawSpritePattern`, and `Game.DrawSpriteRegion` are valid only during render-facing script callbacks (`RenderIface` / GUI draw callbacks). `Game.DrawSpriteRegion(sprId, uv0, uv1, pos, size, color)` draws a normalized `[0, 1]` sub-rectangle of the sprite's original logical image into a destination rectangle; polygon-cropped atlas frames are remapped through their source offset and transparent cropped margins remain transparent in the destination. `Game.DrawSpritePattern` follows the same logical-image contract for every complete or partial tile. Region drawing is intended for reusable GUI composition such as script-side 9-slice panels, and returns `false` when the sprite cannot provide atlas-region drawing.
 
-## Core scripts
+## Backend parity and ownership
 
-The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript/CoreScripts/` and includes reusable modules such as:
+The backend-neutral metadata and native export surface is shared, but language syntax and runtime mechanics are not interchangeable:
 
-- `Core.fos`
-- `Math.fos`
-- `Time.fos`
-- `Color.fos` (`namespace Color`, `Color::Text`, `Color::Neutral`)
-- `Input.fos`
-- `Gui.fos`
-- `Sprite.fos`
-- `LineTracer.fos`
-- `Serializer.fos`
-- `FixedDropMenu.fos`
-- `Tween.fos`
+| Contract | AngelScript | Managed C# |
+|---|---|---|
+| Enablement | `FO_ANGELSCRIPT_SCRIPTING` | `FO_MANAGED_SCRIPTING` |
+| Project source | project-owned `.fos` modules | project-owned `.cs` modules |
+| Compile artifact | baked AngelScript bytecode | target assemblies plus generated `.gen.cs`, `.gen.csproj`, and `.gen.sln` |
+| Initialization | `[[ModuleInit]] void` | `[ModuleInit]` static `void` or `Task` |
+| Suspension | transitive `[[Async]]` and `Game.Yield` | `Task`, `await`, and `Game.YieldAsync` on the backend synchronization context |
+| Synchronization proof | runtime cover operations and AngelScript attribute validation | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks, and Roslyn `FOSYNC` diagnostics |
+| Runtime ownership | AngelScript engine, modules, contexts, and GC | one process-wide Mono runtime plus backend-scoped load contexts, scheduler queues, handles, and managed GC roots |
 
-Treat these files as engine library code. Game-specific script modules should live in the embedding project instead of expanding the engine core script library with project policy.
+Managed C# is not a renamed version of the removed experimental `Source/Scripting/Mono/` path. It is a complete backend with its own baker, generated bindings, load-context host, analyzers, runtime payload, and platform wiring. See [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) for its full contract. Native scripting remains a placeholder.
+
+## Core script ownership
+
+The Engine-owned script-side library now lives under `Source/Scripting/Managed/CoreScripts/` and contains the managed native bridge, attributes, initialization, invocation, remote-call, synchronization, async, verification, item-holder, enum, and value-type helpers required by the backend. It is infrastructure, not game policy.
+
+The former Engine-owned AngelScript high-level library was removed. An embedding project that uses AngelScript owns its `.fos` helpers, GUI implementation, module order, and gameplay modules. Do not copy project GUI or gameplay contracts back into reusable Engine documentation.
 
 ## Build and baking flow
 
@@ -243,16 +253,16 @@ Treat these files as engine library code. Game-specific script modules should li
 - `FO_ANGELSCRIPT_SCRIPTING` enables the `CompileAngelScript` command target.
 - The target runs the project AS compiler app (`${FO_DEV_NAME}_ASCompiler`) with the main config arguments.
 - `CompileAngelScript` depends on `ForceCodeGeneration`, so script-visible generated metadata is current before compilation.
-- `FO_MONO_SCRIPTING` wires `CompileMonoScripts` through `BuildTools/compile-mono-scripts.py`, passes `FO_OUTPUT_PATH` as its required scripts/project directory, and supplies `FO_MONO_ASSEMBLIES`; `FO_MONO_SOURCE` remains the CMake dependency/metadata source list.
+- `FO_MANAGED_SCRIPTING` creates the standalone `${FO_DEV_NAME}_ManagedScriptBaker`, `CompileManagedScripts`, `SetupManagedRuntime`, and `PrepareManagedRuntimePayload` integration. `CompileManagedScripts` depends on `ForceCodeGeneration` and compiles every configured resource-pack/target assembly from `ManagedScriptSourceDirs`, `ManagedScriptExtraSources`, references, and analyzers.
 - `BakeResources` and `ForceBakeResources` also depend on code generation and run the project baker app.
 
 Script compilation and resource baking are adjacent but not identical. Script compilation produces bytecode/runtime inputs; baking packages resources and metadata for runtime consumption. See [Baking Pipeline](../content-pipeline/baking.md) for resource baking.
 
-## Mono and native scripting roots
+## Managed and native scripting roots
 
-`Source/Scripting/Mono/` contains C# support files such as `AssemblyInfo.cs`, `BasicTypes.cs`, `Entity.cs`, `Initializator.cs`, `MapSprite.cs`, and `Link.xml`. BuildTools can wire Mono compilation when `FO_MONO_SCRIPTING` is enabled.
+`Source/Scripting/Managed/` is the implemented C# backend; its complete operational contract is in [Managed C# Scripting](../../how-to/scripting/managed-csharp.md). The obsolete `Source/Scripting/Mono/`, `FO_MONO_SCRIPTING`, `CompileMonoScripts`, and `BuildTools/compile-mono-scripts.py` interfaces no longer exist.
 
-`Source/Scripting/Native/` currently contains `.keepalive`, marking the source-root location for native scripting integration. Do not document Native or Mono as equivalent to the AngelScript runtime unless the implementation and tests are expanded.
+`Source/Scripting/Native/` currently contains only `.keepalive`, marking the reserved source-root location for future native scripting integration. Do not document it as implemented until runtime, build, tests, and an authoring contract exist.
 
 ## Tests to inspect
 
@@ -262,6 +272,9 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_AngelScriptBaker.cpp` — AngelScript bytecode/resource baking path.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — bytecode compilation/loading behavior.
 - `Source/Tests/Test_AngelScriptCall.cpp` — native/script call ABI and object-return lifetime.
+- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API, project/assembly construction, attributes, values, properties, remotes, and diagnostics.
+- `Source/Scripting/Managed/Tests/` — managed core-library bootstrap and generated-API fixtures.
+- `Source/Scripting/Managed/Analyzers/Tests/` — synchronization-cover analyzer diagnostics.
 - `Source/Tests/Test_ClientDataValidation.cpp` and `Test_NetBuffer.cpp` — inbound remote-call payload validation and framing.
 - `Source/Tests/Test_CommonScriptMethods.cpp` — common exported methods.
 - `Source/Tests/Test_EntityLifecycle.cpp` and `Test_EntitySync.cpp` — lifecycle and server synchronization boundaries.
@@ -276,6 +289,7 @@ Use these tests as executable documentation when changing script registration, g
 
 - Backend-neutral call ABI: `Source/Common/ScriptSystem.*`.
 - AngelScript compiler/runtime lifecycle: `Source/Scripting/AngelScript/AngelScriptScripting.*` and `AngelScriptBackend.*`.
+- Managed compiler/runtime/lifecycle: `Source/Tools/ManagedScriptBaker.*`, `Source/Scripting/Managed/`, and [Managed C# Scripting](../../how-to/scripting/managed-csharp.md).
 - Script module construction, source conventions, formatting, generated-file ownership, and refactoring gates: [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md).
 - Attribute syntax and nullable preprocessing: `Source/Scripting/AngelScript/AngelScriptAttributes.*` and [Nullability.md](../../../Nullability.md).
 - Script entity/property registration: `Source/Scripting/AngelScript/AngelScriptEntity.*` plus [Entity Model](../entity-and-property-model/).
@@ -288,8 +302,8 @@ Use these tests as executable documentation when changing script registration, g
 ## Validation checklist
 
 1. If signatures or annotations changed, regenerate code and inspect generated metadata/wrapper diffs.
-2. Compile AngelScript through the embedding project's `CompileAngelScript` target or equivalent AS compiler app.
-3. Run the smallest affected script tests, starting with `Test_AngelScriptAttributes`, `Test_CommonScriptMethods`, `Test_ServerScriptMethods`, `Test_ScriptBuiltins`, and `Test_ScriptEntityOps` as applicable.
+2. Compile every enabled backend: `CompileAngelScript` for AngelScript and `CompileManagedScripts` for Managed C#.
+3. Run the smallest affected script tests. For AngelScript start with `Test_AngelScriptAttributes`, `Test_AngelScriptBaker`, and `Test_AngelScriptCall`; for Managed C# start with `Test_ManagedScriptBaker`, managed core/analyzer tests, and affected `BuildTools/tests/test_managed_*.py`. Run shared method/entity tests for backend-neutral changes.
 4. For nullable changes, run the nullability analyzers described in [Nullability.md](../../../Nullability.md).
 5. For server/client/mapper method changes, validate the owning runtime path; do not rely only on compilation.
 6. Update [Script Methods Map](../../reference/script-api/method-ownership.md) when exported method files are added, removed, or materially regrouped.

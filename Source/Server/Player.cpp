@@ -60,7 +60,7 @@ Player::~Player()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!_engine->IsShutdownInProgress()) {
+    if (!IsEngineShutdownInProgress()) {
         FO_VERIFY_AND_CONTINUE(!_controlledCr.load(std::memory_order_relaxed), "Player still controls a critter during destruction", GetId());
         FO_VERIFY_AND_CONTINUE(!_viewMap, "Player still has view map context during destruction", GetId());
         FO_VERIFY_AND_CONTINUE(!_viewMapTarget, "Player still has view map target during destruction", GetId());

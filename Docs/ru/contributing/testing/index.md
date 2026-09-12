@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"b8a5a8eac73a777f3b31f8ffc9006b7360e46fcd19388fbb0cf9c5e2e5af51e8"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0c119bea4138b849cfca1b7d88a597c9bc90fda0f9088938f6537d0ae8e51008"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -211,10 +211,9 @@ location/entity management.
 
 ### Scripting и script-visible API
 
-AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и
-native script methods покрывают `Test_AngelScript*`, `Test_ScriptBuiltins`,
-`Test_ScriptEntityOps`, `Test_CommonScriptMethods` и
-`Test_ServerScriptMethods`.
+AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_ScriptBuiltins`, `Test_ScriptEntityOps`, `Test_CommonScriptMethods` и `Test_ServerScriptMethods`.
+
+Для Managed C# используются отдельные слои evidence: `Test_ManagedScriptBaker.cpp` проверяет native generation baker-а; `BuildTools/tests/test_managed_*.py` — runtime setup, payloads, platforms, callbacks, GC roots и packaging; `Source/Scripting/Managed/Analyzers/Tests` — Roslyn analyzer синхронизации; `Source/Scripting/Managed/Tests` — CoreScripts и bootstrap generated API. После них выполните `CompileManagedScripts` и реальный resource bake Managed, чтобы доказать настроенные проектом sources, target assemblies и payload `ManagedRuntime/`. Эти слои дополняют, а не заменяют backend-neutral tests сущностей и script methods.
 
 ### Bakers и инструменты
 
@@ -253,7 +252,7 @@ source discovery/output mapping и запрет runtime `.spk`/`.efk` как в�
 | Configuration/data | Cache, config, data source, filesystem, settings. |
 | Common runtime | Metadata, entities/prototypes, geometry, maps, movement, pathfinding. |
 | Networking/integration | Buffers, connections, UDP ordering, server/client runtime, updater, database. |
-| Scripting | AngelScript extensions, exports, methods, entities и value semantics. |
+| Scripting | Backend AngelScript и Managed C#, bakers, generated API, callbacks/async, entities, exports, script methods, synchronization и value semantics. |
 | Bakers/tools | Baking, metadata/resource packs, Mapper/editors и asset processors. |
 | Frontend/rendering | Application init, visible/headless behavior и renderer-facing contracts. |
 
@@ -276,9 +275,11 @@ source discovery/output mapping и запрет runtime `.spk`/`.efk` как в�
   [Frontend и рендеринг](../../explanation/rendering/),
   [Server Runtime](../../explanation/runtime/server.md) и integration/smoke tests.
 - Scripting: [runtime](../../explanation/scripting-runtime/),
+  [Managed C#](../../how-to/scripting/managed-csharp.md),
   [lifecycle/concurrency](../../how-to/scripting/lifecycle-and-concurrency.md),
+  [стиль AngelScript](../../how-to/scripting/style-and-refactoring.md),
   [method ownership](../../reference/script-api/method-ownership.md),
-  [nullability](../coding-contracts/nullability.md) и соответствующие suites.
+  [nullability](../coding-contracts/nullability.md) и соответствующие suites. Изменения AngelScript направляйте в его attribute/baker suites; Managed generation, analyzers, async callbacks, runtime payload и packaging — в соответствующие native, Python и C# suites; общий server cover/lock contract — в `Test_EntitySync` и затронутые entity/script-method tests.
 
 ## Добавление и удаление тестов
 
@@ -301,4 +302,4 @@ source discovery/output mapping и запрет runtime `.spk`/`.efk` как в�
 ## См. также
 
 - [Profiling](../../how-to/quality/profiling.md) — Tracy build modes и captures.
-- [Нативная отладка и отладка AngelScript](../../troubleshooting/debugging.md) для native и AngelScript diagnosis.
+- [Нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md) для диагностики конкретного backend.

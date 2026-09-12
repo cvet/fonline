@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"67f80b75ccbd6de7afbebd38e5978b08dffefb7f5132ef5822bf5cb9354a41d4"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"812c1ca9a7eff5db2e4a26c2b4c285fa2de62d6ad8530dde400e160313c2147b"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -124,13 +124,10 @@ client, script, rendering, raw-copy, dependency и test evidence и строит
 [справочник video](../Docs/ru/reference/video/index.md). Руководство по интеграции
 находится в [Video Resources and Playback](../Docs/ru/how-to/content/video.md).
 
-Переиспользуемые типы AngelScript GUI, документированные members/callbacks,
-screen API, annotations, lifecycle, layout, drawing, input и embedding hooks
-версионируются в `GuiRuntimeInterface.json`; `docs_gui_runtime.py` выводит живой
-контракт CoreScripts и строит
-[справочник GUI runtime](../Docs/ru/reference/gui-runtime/index.md). Руководство по
-интеграции находится в [GUI Runtime](../Docs/ru/how-to/runtime/gui.md). Декларативные GUI
-formats и generators остаются за пределами этого контракта Engine.
+Прежний generated-справочник GUI runtime выведен из эксплуатации вместе с
+принадлежавшей Engine GUI library AngelScript. Текущий маршрут владения и
+проверки находится в [границе интеграции GUI](../Docs/ru/how-to/runtime/gui.md);
+high-level GUI libraries и declarative formats принадлежат подключающим проектам.
 
 Владение публичными примерами, порядок, точные Engine pins, compatibility lanes,
 governance files, исключения source staging и release gates версионируются в
@@ -195,7 +192,6 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs_particle_format.py` проверяет `ParticleFormatInterface.json` по raw-copy settings, SPARK XML/registry/descriptors, Engine renderer, ParticleEditor, client runtime, script/model integrations и tests, затем записывает/проверяет `Docs/generated/particle-format.json` вместе со страницами XML, object, renderer, tooling, runtime, integration и validation.
 - `docs_audio.py` проверяет `AudioInterface.json` по raw-copy settings, resource indexing, декодированию WAV/ACM/Ogg, script playback, frontend conversion/mixing, headless behavior и native-test inventory, затем записывает/проверяет `Docs/generated/audio.json` вместе со страницами format, delivery, decoding, playback и validation.
 - `docs_video.py` проверяет `VideoInterface.json` по raw-copy settings, декодированию Ogg/Theora, fullscreen queue/input/music/drawing, embedded script playback, renderer behavior, dependencies и native-test inventory, затем записывает/проверяет `Docs/generated/video.json` вместе со страницами format, delivery, decoding, fullscreen, embedded и validation.
-- `docs_gui_runtime.py` проверяет `GuiRuntimeInterface.json` по `Gui.fos`, `Input.fos`, native client dispatch, tutorial boundaries и test inventory, затем записывает/проверяет `Docs/generated/gui-runtime.json` вместе со страницами type, screen API, lifecycle, layout/rendering, input и integration/validation.
 - `docs_ai_control_protocol.py` проверяет `AiControlProtocol.json` по reference client и запускаемому sample, затем записывает/проверяет `Docs/generated/ai-control-protocol.json` вместе со страницами wire, method, command/event, security и integration/validation.
 - `docs_package.py` проверяет документационную модель package и исполняемый parser `package.py`, затем записывает/проверяет `Docs/generated/package.json` вместе со страницами package reference.
 - `docs_examples.py` проверяет `Examples/PublicRepositories.json` и governance overlay, записывает/проверяет `Docs/generated/public-examples.json` и его registry page, материализует source-ready example в новом чистом candidate directory и проверяет metadata внешнего repository, точные gitlink pins, обязательные файлы и байты provenance file.
@@ -245,7 +241,6 @@ python BuildTools/docs_particle_format.py --check
 python BuildTools/docs_font_format.py --check
 python BuildTools/docs_audio.py --check
 python BuildTools/docs_video.py --check
-python BuildTools/docs_gui_runtime.py --check
 python BuildTools/docs_ai_control_protocol.py --check
 python BuildTools/docs_package.py --check
 python BuildTools/docs_examples.py --check

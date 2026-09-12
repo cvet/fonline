@@ -23,7 +23,6 @@ import docs_effect_format
 import docs_examples
 import docs_external_evidence
 import docs_font_format
-import docs_gui_runtime
 import docs_helper_cli
 import docs_image_format
 import docs_inventory
@@ -1334,76 +1333,6 @@ def _validate_generated_artifacts(
             if marker not in workflow_text:
                 errors.append(f"documentation video workflow is missing: {marker}")
 
-    gui_runtime_reference = generated_artifacts.get("gui_runtime_reference")
-    if not isinstance(gui_runtime_reference, dict):
-        errors.append(
-            "documentation manifest must declare "
-            "generated_artifacts.gui_runtime_reference"
-        )
-        return
-
-    expected_gui_runtime_reference = {
-        "source_manifest": docs_gui_runtime.DEFAULT_MANIFEST,
-        "model": docs_gui_runtime.DEFAULT_MODEL,
-        "generator": "BuildTools/docs_gui_runtime.py",
-        "schema_version": docs_gui_runtime.SCHEMA_VERSION,
-        "directory": docs_gui_runtime.DEFAULT_OUTPUT_DIR,
-        "paths": list(docs_gui_runtime.OUTPUT_PATHS),
-    }
-    for field, expected in expected_gui_runtime_reference.items():
-        if gui_runtime_reference.get(field) != expected:
-            errors.append(
-                f"documentation GUI runtime reference {field} must be {expected}"
-            )
-
-    try:
-        rendered_gui_runtime_model = docs_gui_runtime.render_gui_runtime_model(root)
-        gui_runtime_model = json.loads(rendered_gui_runtime_model)
-        rendered_gui_runtime_pages = docs_gui_runtime.render_reference_pages(root)
-    except (OSError, ImportError, json.JSONDecodeError, ValueError) as exception:
-        errors.append(
-            f"unable to render generated GUI runtime documentation: {exception}"
-        )
-    else:
-        gui_runtime_model_path = root / docs_gui_runtime.DEFAULT_MODEL
-        if not gui_runtime_model_path.is_file():
-            errors.append(
-                "generated documentation GUI runtime model is missing: "
-                + docs_gui_runtime.DEFAULT_MODEL
-            )
-        elif (
-            gui_runtime_model_path.read_text(encoding="utf-8")
-            != rendered_gui_runtime_model
-        ):
-            errors.append(
-                "generated documentation GUI runtime model is stale; "
-                "run python BuildTools/docs_gui_runtime.py --write"
-            )
-        for page_path, rendered_page in rendered_gui_runtime_pages.items():
-            output_path = root / page_path
-            if not output_path.is_file():
-                errors.append(
-                    "generated documentation GUI runtime page is missing: "
-                    + page_path
-                )
-            elif output_path.read_text(encoding="utf-8") != rendered_page:
-                errors.append(
-                    f"generated documentation GUI runtime page is stale: "
-                    f"{page_path}; run python "
-                    "BuildTools/docs_gui_runtime.py --write"
-                )
-
-    if workflow_path.is_file():
-        workflow_text = workflow_path.read_text(encoding="utf-8")
-        for marker in (
-            "BuildTools/tests/test_docs_gui_runtime.py",
-            "BuildTools/docs_gui_runtime.py --check",
-        ):
-            if marker not in workflow_text:
-                errors.append(
-                    f"documentation GUI runtime workflow is missing: {marker}"
-                )
-
     ai_control_protocol_reference = generated_artifacts.get(
         "ai_control_protocol_reference"
     )
@@ -2248,7 +2177,6 @@ def _validate_generated_artifacts(
             "font-format": "BuildTools/docs_contract_diff.py",
             "audio": "BuildTools/docs_contract_diff.py",
             "video": "BuildTools/docs_contract_diff.py",
-            "gui-runtime": "BuildTools/docs_contract_diff.py",
             "ai-control-protocol": "BuildTools/docs_contract_diff.py",
         },
         "source_models": {
@@ -2268,7 +2196,6 @@ def _validate_generated_artifacts(
             "font-format": docs_font_format.DEFAULT_MODEL,
             "audio": docs_audio.DEFAULT_MODEL,
             "video": docs_video.DEFAULT_MODEL,
-            "gui-runtime": docs_gui_runtime.DEFAULT_MODEL,
             "ai-control-protocol": docs_ai_control_protocol.DEFAULT_MODEL,
         },
         "dispositions": docs_contract_diff.DEFAULT_DISPOSITIONS,

@@ -1,14 +1,14 @@
 ---
 layout: default
-title: Native and AngelScript Debugging
+title: Native, AngelScript, and Managed C# Debugging
 locale: en
 document_id: debugging
 permalink: /Docs/en/troubleshooting/debugging.html
 ---
 
-# Native and AngelScript Debugging
+# Native, AngelScript, and Managed C# Debugging
 
-This is the Engine-owned route for diagnosing native failures, mixed native/script stack traces, fatal-process diagnostics, Visual Studio data inspection, and live AngelScript execution. It follows the current build configurations, platform helpers, exception and stack-trace implementation, AngelScript endpoint, bundled VS Code adapter source, Engine tests, and checked embedding-project evidence.
+This is the Engine-owned route for diagnosing native failures, mixed native/script stack traces, fatal-process diagnostics, Visual Studio data inspection, live AngelScript execution, and Managed C# compile/load/callback failures. It follows the current build configurations, platform helpers, exception and stack-trace implementation, AngelScript endpoint, managed baker/runtime sources, bundled VS Code adapter source, Engine tests, and checked embedding-project evidence.
 
 An embedding project owns concrete target names, executable paths, working directories, bake prerequisites, sub-configs, credentials, crash-storage policy, editor installation, and the scenario that reproduces its game bug.
 
@@ -20,6 +20,10 @@ An embedding project owns concrete target names, executable paths, working direc
   current Engine contract requires `Script.DebuggerEnabled`, exposes a TCP
   endpoint on a process-selected port in `43000..44999`, and uses UDP port
   `43001` for discovery; the project owns editor wiring and remote-access policy.
+- For Managed C#, start with Roslyn/MSBuild diagnostics, the generated `.gen.sln`,
+  managed baker/runtime logs, and a focused managed test. The AngelScript `fos`
+  adapter does not debug C#; attach a compatible native/managed debugger only
+  after matching the generated sources, assemblies, runtime payload, and symbols.
 - Choose a focused Engine or project test when the failure is deterministic and
   the changed contract can be observed without an interactive attach.
 
@@ -46,6 +50,7 @@ The Engine owns:
 - build-configuration semantics, compiler/linker symbol flags, sanitizer variants, and generated application targets;
 - `IsRunInDebugger`, `BreakIntoDebugger`, native stack capture/resolution, exception callbacks, crash handlers, and the diagnostic self-test;
 - mixed AngelScript/native stack layers and the current runtime debugger endpoint;
+- Managed C# baker/runtime diagnostics, generated project ownership, and the boundary between Engine logging and external managed-debugger tooling;
 - MSVC Natvis/NatJMC files attached to generated solutions;
 - the `BuildTools/angelscript-debugger` adapter source and its declared VS Code configuration schema;
 - focused native tests for stack-trace and exception behavior.
@@ -70,6 +75,8 @@ The current contract was re-derived from:
 - `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*`, and `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` and `Source/Frontend/ApplicationInit.cpp`;
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptHelpers.cpp`, and `AngelScriptDebugger.*`;
+- `Source/Scripting/Managed/ManagedScriptBackend.*`, `ManagedRuntime.*`, `ManagedScripting.*`, `ManagedHost/ManagedLoadContextHost.cs`, `CoreScripts/ScriptSynchronizationContext.cs`, and `Analyzers/SyncCoverAnalyzer.cs`;
+- `Source/Tools/ManagedScriptBaker.*`, `Source/Applications/ManagedScriptBakerApp.cpp`, and `Source/Tests/Test_ManagedScriptBaker.cpp`;
 - `Source/Common/Settings.inc`;
 - `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp`, and `Test_ScriptBuiltins.cpp`;
 - `BuildTools/angelscript-debugger/package.json` and its TypeScript sources;
@@ -83,6 +90,7 @@ The current contract was re-derived from:
 | Linux native | Debug information outside `MinSizeRel`, `-rdynamic`, GDB/LLDB-compatible binaries, `/proc/self/status` debugger detection, signal/terminate diagnostics | Core-dump enablement, collection, symbol storage, container permissions, and retention are host/project policy. |
 | macOS native | Debug information outside `MinSizeRel`, `-rdynamic`, `sysctl(P_TRACED)` detection, debug trap, backward-cpp signal diagnostics | No checked Engine LLDB launch profile, crash-report archive, or release qualification is supplied. |
 | AngelScript runtime | Loopback-by-default TCP endpoint, UDP discovery, line breakpoints, pause/continue/step, script stack, read-only local values, stop/abort/error events | No authentication, encryption, published VSIX, pinned adapter dependency lock, live endpoint CI, global-value inspection, expression evaluation, or state mutation contract. |
+| Managed C# runtime | Roslyn/MSBuild compile diagnostics, generated source/project/solution, managed baker and runtime logs, native host frames, load-context and scheduler tests, and standard debugger-compatible assemblies | Engine ships no C# editor adapter, launch profile, symbol server, hot reload, or live managed-debugger acceptance gate. The `fos` adapter is AngelScript-only. |
 | Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer and ThreadSanitizer disable native stack capture. |
 
 `Source/Tests` validates stack and exception primitives. It does not currently exercise a real TCP/UDP AngelScript attach session. Project static checks and launch profiles prove integration shape, not the live protocol end to end.
@@ -94,6 +102,8 @@ The current contract was re-derived from:
 | Native assertion, C++ exception, signal, SEH failure, or lifecycle invariant | Matching native symbols, original log, then the smallest native target under a debugger | Focused `Source/Tests/Test_*.cpp` case when the boundary is reusable. |
 | Script compile, binding, remote-call, or nullability failure | [Scripting Runtime](../explanation/scripting-runtime/) and [Testing](../contributing/testing/) before live attach | Minimal compile/bake fixture or owning test; use attach only for execution-state questions. |
 | AngelScript breakpoint, stepping, script stack, or local value | Development config with `Script.DebuggerEnabled = True`, then a `fos` attach profile | Verified breakpoint/stop at the intended process and source revision. |
+| Managed C# compiler/analyzer failure | First diagnostic in `CompileManagedScripts`, generated `.gen.csproj`/`.gen.sln`, and the configured source/reference/analyzer set | Reproduce with the same `ManagedScriptTargetFramework`, SDK, assemblies, and generated API. |
+| Managed C# load, callback, async, or lifetime failure | Managed baker/runtime log plus a focused `Test_ManagedScriptBaker` or `test_managed_*.py` case | Match content-hashed assemblies, runtime payload, backend load scope, target role, and continuation context before interactive attach. |
 | Mixed script/native exception | Engine log's unified trace first, native debugger second | Preserve throw origin and catch site; isolate the reusable boundary in a native test. |
 | Memory corruption, race, uninitialized read, or undefined behavior | The narrow supported sanitizer configuration before manual watch-window inspection | Reproducer under the owning sanitizer lane; debugger evidence supplements it. |
 | Client host/runtime load failure | [Client Runtime Split and Updater](../explanation/runtime/client-updater.md) | Host/runtime ABI and selector tests before gameplay diagnosis. |
@@ -373,6 +383,19 @@ Use unique script filenames across debugger-relevant source roots. Because the E
 8. Treat unavailable globals, mutation, memory, hover/evaluate, and advanced DAP controls as current transport limits.
 9. If stepping changes behavior, reproduce again with the debugger disabled because line cues and bytecode optimization differ.
 
+## Managed C# diagnostics and debugging
+
+Treat Managed C# failures as four separate layers. Preserve the first failure from the owning layer instead of debugging the final wrapper exception:
+
+1. **Generation** — inspect the generated `.gen.cs`, `.gen.csproj`, and `.gen.sln` beside the configured scripts. A missing or stale native export is a code-generation problem, not a Mono problem.
+2. **Compilation and analysis** — run `CompileManagedScripts` and read the first Roslyn/MSBuild diagnostic. Confirm `ManagedScriptTargetFramework`, `ManagedScriptSourceDirs`, extra sources/references, analyzers, configured assemblies, and the selected .NET SDK. Synchronization diagnostics use the `FOSYNC` ids documented in [Managed C# Scripting](../how-to/scripting/managed-csharp.md).
+3. **Bake and delivery** — verify that each resource pack contains the expected target assembly and ManagedRuntime payload, and that packaging selected the target-specific runtime. Missing assemblies may be tolerated by deliberately minimal Engine fixtures; an embedding project's enabled backend must treat them as a packaging/configuration defect.
+4. **Runtime execution** — use the managed backend log to distinguish assembly/load-context failures, P/Invoke registration, callback signature/invocation, scheduler-context violations, synchronization-cover failures, and GC-root/lifetime defects. Match the content hash and process role before attaching a debugger.
+
+`Script.DebuggerEnabled` and the `fos` adapter affect only AngelScript. They do not expose C# breakpoints, locals, evaluation, or managed stacks. For live C# stepping, the embedding project must supply and qualify a debugger compatible with the embedded Mono runtime, the exact generated assemblies/symbols, and its target platform. A successful IDE attach is project evidence; it is not an Engine-supported delivery claim until Engine owns a repeatable live acceptance gate.
+
+For deterministic regressions, prefer `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests, and the focused `BuildTools/tests/test_managed_*.py` suite. Use [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for the complete validation matrix and platform/sanitizer limits.
+
 ## Debugger integration in an embedding project
 
 The project should expose independent routes for:
@@ -380,6 +403,7 @@ The project should expose independent routes for:
 - native launch under a debugger with the exact generated executable and symbols;
 - native attach when process startup cannot be debugger-owned, with the cached-detection limitation documented;
 - AngelScript attach to an already running development process;
+- Managed C# compile/analyzer inspection through the generated solution and an optional project-qualified live managed attach;
 - a compound native launch plus `fos` attach when both views are needed;
 - Web/Android launch only for platform-specific symptoms;
 - isolated unit-test launch and destructive crash-diagnostic subprocesses.
@@ -407,6 +431,14 @@ A maintained AngelScript profile additionally records:
 - adapter version, dependency/artifact provenance, and installation route;
 - supported attach controls and a live breakpoint/stack/local-value acceptance check.
 
+A maintained Managed C# profile separately records:
+
+- the generated `.gen.sln`, target assembly, symbols, target framework, SDK, and analyzer set;
+- the content-hashed assembly/runtime payload loaded by the selected client, server, mapper, or baker;
+- whether the debugger supports the embedded Mono/runtime and target platform;
+- the distinction between compile/analyzer evidence, runtime logs, native-host frames, and a live managed attach;
+- an acceptance scenario for async continuations, callbacks, remotes, or lifetime behavior affected by the change.
+
 Static validation should reject missing task/compound references, stale setting names, a non-loopback default, and profiles that offer `fos` attach without enabling the endpoint.
 
 ## Engine test validation
@@ -420,7 +452,7 @@ For a reusable native regression:
 5. run the appropriate sanitizer lane for memory/concurrency/undefined-behavior defects;
 6. repeat the original application scenario after the test is green.
 
-Game scripts, content, bake commands, process names, and gameplay fixtures remain project-owned. A project test can demonstrate compatibility but cannot be the sole normative proof for Engine behavior.
+Game scripts, content, bake commands, process names, and gameplay fixtures remain project-owned. A project test can demonstrate compatibility but cannot be the sole normative proof for Engine behavior. For Managed C#, pair it with the relevant baker, analyzer, runtime, packaging, or load-context Engine test.
 
 ## Client host and runtime validation
 
@@ -469,6 +501,7 @@ Re-audit this page in the same change when modifying:
 - `IsRunInDebugger`, `BreakIntoDebugger`, stack capture/resolution/cache, exception callbacks, crash handlers, logging flush, alternate signal stacks, or `FO_SELFTEST_CRASH` modes;
 - Engine or third-party Natvis/NatJMC files and their CMake attachment;
 - `Script.DebuggerEnabled`, `Script.DebuggerBindHost`, AngelScript line cues/optimization, context setup, endpoint ports/protocol/commands/events, breakpoint keys, stack/locals, or security boundary;
+- Managed baker diagnostics, generated project layout, analyzer ids, assembly/load-context logging, callback scheduler checks, runtime payload identity, or managed-debugger support claims;
 - adapter schema, discovery/transport, DAP capability mapping, dependency/toolchain delivery, tests, or publication;
 - project launch/evidence files cited by `ExternalProjectEvidence.json`.
 
@@ -481,7 +514,8 @@ Update the canonical English and Russian pages together, refresh the normalized 
 3. Run the relevant sanitizer and `Test_ClientRuntimeApi.cpp` lanes when those boundaries changed.
 4. Confirm PDB/DWARF artifacts and MSVC visualizers from a freshly generated project.
 5. Prove one native launch under a debugger and one out-of-debugger crash-log route on every platform whose behavior changed.
-6. Prove one live AngelScript attach: endpoint log, deliberate process selection, breakpoint, pause/step, script stack, and read-only locals.
+6. For AngelScript, prove one live attach: endpoint log, deliberate process selection, breakpoint, pause/step, script stack, and read-only locals.
+7. For Managed C#, preserve generated-project and `CompileManagedScripts` evidence, verify the packaged assembly/runtime identity, run the focused managed tests, and label any live IDE attach as project-qualified evidence.
 7. Verify advanced adapter controls remain described according to the live Engine transport, not the mock runtime.
 8. Confirm debugger bind is loopback, no credentials are present, and dump/log evidence follows project privacy policy.
 9. Re-run exact checked project evidence and keep project-specific names out of the Engine procedure.
@@ -490,7 +524,8 @@ Update the canonical English and Russian pages together, refresh the normalized 
 
 - [Testing](../contributing/testing/) for unit, sanitizer, coverage, and integration boundaries.
 - [Profiling](../how-to/quality/profiling.md) for Tracy capture after the correctness boundary is understood.
-- [Scripting Runtime](../explanation/scripting-runtime/) for AngelScript ownership and execution.
+- [Scripting Runtime](../explanation/scripting-runtime/) for backend ownership and execution.
+- [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for the complete C# backend contract.
 - [Exception Safety](../contributing/coding-contracts/exception-safety.md) for invariant and termination policy.
 - [Client Runtime Split and Updater](../explanation/runtime/client-updater.md) for host/runtime diagnostics.
 - [Web Build, Packaging, and Browser Debugging](../how-to/platforms/web-debugging.md) and [Android Build, Packaging, and Device Debugging](../how-to/platforms/android-debugging.md) for platform-specific routes.

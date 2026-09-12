@@ -27,6 +27,10 @@ The complete source-backed filename list and count are generated in [source-inve
 
 After adding, removing, or renaming a `Test_*.cpp` file, regenerate the inventory from the engine root:
 
+The configured executable contains the suites for its enabled scripting backend. AngelScript-only translation
+units are selected only when `FO_ANGELSCRIPT_SCRIPTING` is enabled; `Test_ManagedScriptBaker.cpp` is selected only
+when `FO_MANAGED_SCRIPTING` is enabled. Backend-neutral suites are always present.
+
 ```bash
 python BuildTools/docs_inventory.py --write
 python BuildTools/docs_inventory.py --check
@@ -110,9 +114,11 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEntityLifetime.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_UpdaterBackend.cpp`
 
 ### Scripting and script-visible APIs
 
@@ -136,6 +142,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`

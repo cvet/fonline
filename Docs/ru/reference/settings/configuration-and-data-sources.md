@@ -6,7 +6,7 @@ document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
 
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"9b0ad62af49c90d55e6de8b9e5e0e2a0c250483a61df6bcc9f4316fc7a074ff8"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"7d73e13e64d5b281f8ae7443be22d14928e40f9228d5bc42d173191fe60e4e47"} -->
 
 # Конфигурация и источники данных
 
@@ -122,7 +122,7 @@ sub-config, не сокращая его до delta. Каждое имя обя�
 `GlobalSettings::Save()` по-прежнему выводит только settings из
 `_appliedSettings`, который заполняется keys применённых configs и baking-mode
 allow-list **auto-settings**. Runtime-only settings (platform/build flags, размер
-монитора, command-line/git/compatibility values и `Client.UserWritablePath`)
+монитора, command-line/git/compatibility values и разрешённый `Common.UserWritablePath`)
 должны оставаться в этом allow-list. Settings, используемые только
 `BuildTools/package.py`, проверяются как обычные settings. Поиск setting
 принимает dotted (`Group.Name`) и bare (`Name`) формы, поэтому каждое bare-имя
@@ -134,7 +134,9 @@ allow-list **auto-settings**. Runtime-only settings (platform/build flags, ра�
 
 `Baking.BakeLanguages` является упорядоченным контрактом контента, а не неупорядоченным locale allowlist: text baking использует первое значение как базу нормализации. `Client.Language` выбирает начальный client text pack. Точное поведение `.fotxt`, `$Text`, fallback и runtime lookup описано в разделе [Текст и локализация](../../how-to/content/text-and-localization.md).
 
-Для installed layout при запуске клиента есть дополнительный шаг: `ResolveUserWritablePath(settings)` в `Source/Frontend/ApplicationInit.cpp` разрешает `Client.UserWritablePath` до чтения local-config cache. Параметры writable path (`Client.UserWritablePath`, `Baking.CacheResources`) находятся в config и sub-config, которые применяются раньше, поэтому расположение cache известно без обращения к command line. Затем command line применяется к live settings ровно **один раз**, после config, sub-config и local config, и получает окончательный приоритет. Один проход также не дает `+`-append overrides (`-Setting +value`) накопиться дважды. Этот проход журналирует каждое переопределение как `Set <name> to <value>`. В этом log path значения settings, чьи имена содержат masking token, выводятся как `Set <name> to ***`. Tokens задаются setting `Common.SecretSettingTokens` - регистронезависимым списком подстрок с default `secret token password apikey`, который читает `GlobalSettings::IsSecretSettingName()`. Command-line overrides журналируются только в финальном проходе, после `ApplyDefaultSettings()` и config file, поэтому список уже заполнен, а встраивающий проект может расширить его именами, которые generic tokens не покрывают. Это не общая защита credentials: raw process arguments и значение setting остаются доступными, а другие logs, settings UI, crash output, baked configs и project code имеют собственные пути утечки. Не передавайте credentials через command line; используйте provisioning для целевого окружения и следуйте разделу [Безопасность и секреты](../../how-to/release/security-and-secrets.md). Пустой `Client.UserWritablePath` означает portable layout, если рядом с executable нет маркера `INSTALLED`; `*` разрешается через `Platform::GetUserDataBase()` и `Common.GameName`; явный path используется напрямую. Если target directory или обязательные cache/resource subdirectories создать нельзя, resolver записывает warning и возвращается к portable layout.
+До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--UserWritablePath <path>` (принимается и dotted-форма `--Common.UserWritablePath`), marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `Platform::GetUserDataBase()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
+
+Обычный command line по-прежнему применяется к live settings ровно **один раз**, после config, sub-config и local config, поэтому имеет окончательный приоритет, а `+`-append overrides (`-Setting +value`) не накапливаются дважды. Этот проход журналирует каждое переопределение как `Set <name> to <value>`. Settings, чьи имена содержат token из `Common.SecretSettingTokens` (регистронезависимые подстроки, default `secret token password apikey`), журналируются как `Set <name> to ***`. Это не общая защита credentials: raw process arguments и значения settings остаются доступными, а другие logs, settings UI, crash output, baked configs и project code имеют собственные пути утечки. Не передавайте credentials через command line; используйте provisioning для целевого окружения и следуйте разделу [Безопасность и секреты](../../how-to/release/security-and-secrets.md).
 
 ## Resource packs и источники данных
 

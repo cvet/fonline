@@ -49,7 +49,7 @@
       "buildtools-readme"
     ]
   },
-  "document_count": 386,
+  "document_count": 394,
   "documents": [
     {
       "id": "adr-documentation-version-locale-routing",
@@ -499,8 +499,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "3e42910bef2747392f66fbd763871e1c69efb853d76932721c34c38cf31e6367",
-      "byte_size": 58089
+      "content_sha256": "19419a4578b857783c88d611f882886206fb874bce127ae585056ab35329a098",
+      "byte_size": 58676
     },
     {
       "id": "android-debugging",
@@ -545,8 +545,8 @@
         "BuildTools/tests/test_package_security.py",
         "BuildTools/tests/test_docs_android_debugging.py"
       ],
-      "content_sha256": "a69b76f9905b4d5e5b9182e6adcaa1d4915ccb4fc92a600aa280814721c29020",
-      "byte_size": 30984
+      "content_sha256": "5e585846b0a0eb85be8bc7e3254ce48bfc30278db7c72cca8e79e801f0ff29c4",
+      "byte_size": 31532
     },
     {
       "id": "angelscript-style",
@@ -576,8 +576,8 @@
         ".github/workflows/validate.yml",
         "Source/Common/Settings.inc",
         "Source/Common/ScriptSystem.cpp",
-        "Source/Scripting/AngelScript/CoreScripts/.clang-format",
-        "Source/Scripting/AngelScript/CoreScripts",
+        "Examples/MinimalProject/Scripts/Starter.fos",
+        "Examples/MinimalMultiplayer/Scripts/Tutorial.fos",
         "Source/Scripting/AngelScript/AngelScriptBackend.cpp",
         "Source/Scripting/AngelScript/AngelScriptAttributes.cpp",
         "Source/Scripting/AngelScript/AngelScriptAttributes.h",
@@ -585,8 +585,8 @@
         "Source/Tests/Test_AngelScriptBaker.cpp",
         "BuildTools/tests/test_docs_angelscript_style.py"
       ],
-      "content_sha256": "1da17388dd4451ddab1c7c423acbf60f804e93325d80c89154d96fc5f01312ec",
-      "byte_size": 24022
+      "content_sha256": "6a874ba5b84269757a273178381088d73c4d5b26c3f5697acd58419a1944411d",
+      "byte_size": 24316
     },
     {
       "id": "api-change-management",
@@ -629,7 +629,6 @@
         "BuildTools/docs_font_format.py",
         "BuildTools/docs_audio.py",
         "BuildTools/docs_video.py",
-        "BuildTools/docs_gui_runtime.py",
         "BuildTools/docs_ai_control_protocol.py",
         "BuildTools/docs_contract_diff.py",
         "BuildTools/docs_validate.py",
@@ -645,7 +644,6 @@
         "BuildTools/FontFormatInterface.json",
         "BuildTools/AudioInterface.json",
         "BuildTools/VideoInterface.json",
-        "BuildTools/GuiRuntimeInterface.json",
         "BuildTools/AiControlProtocol.json",
         "BuildTools/PackageInterface.json",
         "BuildTools/tests/test_docs_api_diff.py",
@@ -667,14 +665,13 @@
         "Docs/generated/font-format.json",
         "Docs/generated/audio.json",
         "Docs/generated/video.json",
-        "Docs/generated/gui-runtime.json",
         "Docs/generated/ai-control-protocol.json",
         "Docs/contract-change-dispositions.json",
         "Docs/en/contributing/decisions/0002-public-api-stability-contract.md",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "11c39819bab854b6cb7a2bcecb9799d80b7397ebfa03a5eac00b515db488c480",
-      "byte_size": 24212
+      "content_sha256": "a17acfa6e661ce1503ce9ab7c07054728bb4862cc567c08beeab84f081453d8a",
+      "byte_size": 23586
     },
     {
       "id": "applications-entry-points",
@@ -704,8 +701,8 @@
         "Source/Server",
         "Source/Tools"
       ],
-      "content_sha256": "d09f450e25e6551cad72f2c374de387b4619d00d538e786c023743307803e59d",
-      "byte_size": 6405
+      "content_sha256": "4c94d7f50df1bbd67bee33dc0baac378598eb461680d78be58c9f761dfe970d4",
+      "byte_size": 6926
     },
     {
       "id": "audio-guide",
@@ -820,11 +817,11 @@
         "Source/Tools",
         "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
         "BuildTools/cmake/helpers/WriteBuildHash.cmake",
-        "BuildTools/compile-mono-scripts.py",
+        "BuildTools/managed_runtime_payload.py",
         "Source/Tests/Test_BakerSetup.cpp"
       ],
-      "content_sha256": "d58c529ce1368d1051edb641bb86bf75053eb5112ed77e20352f56c595da2d43",
-      "byte_size": 79678
+      "content_sha256": "c35f86b59d7c89889e7792991b0976ee0fbbb5b0a120b106986db781216a3e34",
+      "byte_size": 80395
     },
     {
       "id": "build-workflow",
@@ -863,8 +860,8 @@
         "Docs/en/reference/buildtools/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "06a30974defcfe17ff89383a18d73ddf40d47d4cfe752887b89a18fea5352ce2",
-      "byte_size": 12892
+      "content_sha256": "b4a1f3ef2d8d4497f88bc407166c6c7b53cf25d53318e8c9599a99540d7bba21",
+      "byte_size": 13168
     },
     {
       "id": "buildtools-pipeline",
@@ -899,7 +896,7 @@
         "BuildTools/package.py",
         "BuildTools/cmake",
         "BuildTools/codegen.py",
-        "BuildTools/compile-mono-scripts.py",
+        "BuildTools/managed_runtime_payload.py",
         "BuildTools/codecoverage.py",
         "BuildTools/android_device.py",
         "BuildTools/web/simple-web-server.py",
@@ -914,8 +911,8 @@
         "Docs/en/reference/helper-cli/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "3b79b4e72227c4798de907e4658e8d7dda89c7193bf6a5656ed5ade8acc8de95",
-      "byte_size": 21002
+      "content_sha256": "5ea00d80346ffe74c20f421b7c5224fb041f93e1011b79f35659722b064aab23",
+      "byte_size": 21352
     },
     {
       "id": "buildtools-readme",
@@ -984,8 +981,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "67f80b75ccbd6de7afbebd38e5978b08dffefb7f5132ef5822bf5cb9354a41d4",
-      "byte_size": 44173
+      "content_sha256": "812c1ca9a7eff5db2e4a26c2b4c285fa2de62d6ad8530dde400e160313c2147b",
+      "byte_size": 46049
     },
     {
       "id": "client-runtime",
@@ -1014,8 +1011,8 @@
         "Source/Client",
         "Source/Frontend"
       ],
-      "content_sha256": "54a0aefe3392a528bd5cb75301d26068f123f695b76d495d56a8c67ae560dc42",
-      "byte_size": 45660
+      "content_sha256": "2aa23468e72fcd5a678706f9f5d1b424528adc988c3edd591800a38367628a38",
+      "byte_size": 45725
     },
     {
       "id": "client-updater",
@@ -1073,8 +1070,8 @@
         "ThirdParty/rpmalloc/rpmalloc/rpmalloc.c",
         "BuildTools/ExternalProjectEvidence.json"
       ],
-      "content_sha256": "5dcb4608d949a04b87ec58da304474a8bbf48e1bed3983bde59103ff66fdb10a",
-      "byte_size": 64038
+      "content_sha256": "f478920db0485f4d0337495e99fe96f6d4205697f884bcf007a58a64e3f5a11d",
+      "byte_size": 65379
     },
     {
       "id": "configuration-data-sources",
@@ -1106,8 +1103,8 @@
         "Source/Frontend/ApplicationInit.cpp",
         "Source/Tests/Test_Settings.cpp"
       ],
-      "content_sha256": "9b0ad62af49c90d55e6de8b9e5e0e2a0c250483a61df6bcc9f4316fc7a074ff8",
-      "byte_size": 24591
+      "content_sha256": "7d73e13e64d5b281f8ae7443be22d14928e40f9228d5bc42d173191fe60e4e47",
+      "byte_size": 24434
     },
     {
       "id": "content-showcase-readme",
@@ -1160,7 +1157,7 @@
     {
       "id": "debugging",
       "path": "Docs/en/troubleshooting/debugging.md",
-      "title": "Native and AngelScript Debugging",
+      "title": "Native, AngelScript, and Managed C# Debugging",
       "locale": "en",
       "audiences": [
         "game-developer",
@@ -1204,6 +1201,11 @@
         "Source/Scripting/AngelScript/AngelScriptContext.cpp",
         "Source/Scripting/AngelScript/AngelScriptDebugger.h",
         "Source/Scripting/AngelScript/AngelScriptDebugger.cpp",
+        "Source/Scripting/Managed/ManagedScriptBackend.cpp",
+        "Source/Scripting/Managed/ManagedRuntime.cpp",
+        "Source/Scripting/Managed/Analyzers/SyncCoverAnalyzer.cs",
+        "Source/Tools/ManagedScriptBaker.cpp",
+        "Source/Tests/Test_ManagedScriptBaker.cpp",
         "Source/Tests/Test_StackTrace.cpp",
         "Source/Tests/Test_ExceptionHandling.cpp",
         "Source/Tests/Test_ClientRuntimeApi.cpp",
@@ -1213,8 +1215,8 @@
         "BuildTools/tests/test_docs_debugging.py",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "fabe945cfe3b98fa2a9f6a6d42c4e8be250c09015481c1916d82b2ad2b299e99",
-      "byte_size": 42444
+      "content_sha256": "c1b10dcf969eafe04ea0e2198bcef6e3fcdf933d80d8cbf82ec4a5a08097e1c1",
+      "byte_size": 47862
     },
     {
       "id": "documentation-home",
@@ -1250,8 +1252,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "fc22a1f7d15f57e32c438fb7e36cb65d284f401c469c4ae422f8a29d23df937d",
-      "byte_size": 9559
+      "content_sha256": "7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673",
+      "byte_size": 9654
     },
     {
       "id": "documentation-maintenance",
@@ -1358,8 +1360,8 @@
         "Docs/_meta/DocumentationVerificationReport.md",
         "AGENTS.md"
       ],
-      "content_sha256": "46b5925efb42b329b3d8d78989a5d7de5b60529273394d4466b0d7584466c2c7",
-      "byte_size": 53316
+      "content_sha256": "8d0ef746c26ce20fe9fcc09c4a267c4d4ec8624131f7b64396eb2f64ef497c4e",
+      "byte_size": 53127
     },
     {
       "id": "documentation-site-publication",
@@ -1589,8 +1591,8 @@
         "Source/Applications",
         "Source/Tools"
       ],
-      "content_sha256": "4dd2a2ba33ecd8927bb9c511b2bbbff89d1ef107e23a21f5f4ee326a8878e1ac",
-      "byte_size": 7790
+      "content_sha256": "0acb2ae65debb2493c031a7054a88ab552d1cae52581979b098ea8fa81034b23",
+      "byte_size": 7910
     },
     {
       "id": "engine-architecture",
@@ -1623,8 +1625,8 @@
         "Docs/generated/diagrams.json",
         "Docs/assets/diagrams/engine-game-boundary.svg"
       ],
-      "content_sha256": "daaf491a9bbb5a3ede51109a72fb2ba0519bb8117b6a35280a9fa24233610bd0",
-      "byte_size": 11516
+      "content_sha256": "9d5ce442feb8d6309265dc18acc95f8fdf52b77fbb4ad2ae3227ed5437a52f2d",
+      "byte_size": 11683
     },
     {
       "id": "engine-upgrade-guide",
@@ -1661,8 +1663,8 @@
         "Docs/en/reference/platforms/support-matrix.md",
         "Docs/en/contributing/documentation/index.md"
       ],
-      "content_sha256": "6aefd69e78ecc226ea0812b258082ddbe40429be43c8098fcdabe3d5308c4af1",
-      "byte_size": 9797
+      "content_sha256": "c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4",
+      "byte_size": 9879
     },
     {
       "id": "entity-model",
@@ -1906,8 +1908,8 @@
         "Source/Common/Settings.inc",
         "BuildTools/cmake/stages/Init.cmake"
       ],
-      "content_sha256": "46b532a0da05213b72d6571fc7081c2abbb7d92df2ff8f584f2114e682829967",
-      "byte_size": 103145
+      "content_sha256": "8a519724edb8d787421626374f54ac8d105b13327bab2847be98bc69676690e5",
+      "byte_size": 103740
     },
     {
       "id": "gameplay-testing",
@@ -2180,8 +2182,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "b72436df46e77d350c683a05b5e6b1c7a19f54ba2e4c950566e3712043545173",
-      "byte_size": 74455
+      "content_sha256": "ead71a8886429b3433abb273e8cb88a7e469da2145de06c0616d661705ec42c9",
+      "byte_size": 75039
     },
     {
       "id": "generated-api-index",
@@ -2211,8 +2213,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "1e421ec13f737cfc12d0ccb27137280518e97c629a6a26a5eab6fd84c75222cd",
-      "byte_size": 3505
+      "content_sha256": "a76ab33c4503a64923b2bb526da898f11c85e6e1ecd3f02ba0c059af45c3485c",
+      "byte_size": 3409
     },
     {
       "id": "generated-api-metadata",
@@ -2259,7 +2261,6 @@
         "BuildTools/docs_font_format.py",
         "BuildTools/docs_audio.py",
         "BuildTools/docs_video.py",
-        "BuildTools/docs_gui_runtime.py",
         "BuildTools/docs_ai_control_protocol.py",
         "BuildTools/docs_package.py",
         "BuildTools/docs_examples.py",
@@ -2287,7 +2288,6 @@
         "BuildTools/FontFormatInterface.json",
         "BuildTools/AudioInterface.json",
         "BuildTools/VideoInterface.json",
-        "BuildTools/GuiRuntimeInterface.json",
         "BuildTools/AiControlProtocol.json",
         "BuildTools/PackageInterface.json",
         "BuildTools/SupportMatrix.json",
@@ -2302,8 +2302,8 @@
         "Source/Tools/MetadataBaker.cpp",
         "Source/Scripting"
       ],
-      "content_sha256": "f313dd930058b6133b03abf824274274cd0e51426e9e44a35185b5469d3e7778",
-      "byte_size": 80134
+      "content_sha256": "b63fab231e78b379fa79e63105f7d3782c65c166bb7719597759d75ecffedf0f",
+      "byte_size": 78759
     },
     {
       "id": "generated-api-methods",
@@ -2332,8 +2332,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "54bcd355212fe56b1d6a049b9f998b486ac8f5953a14362887da717d4df0a057",
-      "byte_size": 688027
+      "content_sha256": "72100fff49b97fdb5859ec57bfca3f517502737f760dcf16f92c2ec1f715bc40",
+      "byte_size": 688593
     },
     {
       "id": "generated-api-migrations",
@@ -2363,8 +2363,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "829aba87095a3776f4246a53d5fb450a035f4409be7a3f5ce11d38dfae1bc602",
-      "byte_size": 17851
+      "content_sha256": "4ee12953e9aae52f7f47b4abeea3f53db86c0fc04054a7c70653c595a49137d1",
+      "byte_size": 17824
     },
     {
       "id": "generated-api-properties",
@@ -2393,8 +2393,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "0322e3b6bc5b2774d411bf23cafdcbd5a34eec65d581bb9782e2550abfd1d605",
-      "byte_size": 92627
+      "content_sha256": "e5bf873d8ffc6e5137d25f9c4dbe00ce60f29f3f2b6ae7de6b719d67559aed56",
+      "byte_size": 92493
     },
     {
       "id": "generated-api-settings",
@@ -2424,8 +2424,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "7e4073343d3c2c377469423a110f8e503be4743eb9f8622c76aa5bd61134c18c",
-      "byte_size": 171245
+      "content_sha256": "29cb1c5f6e871168b9ba696e7a88dfd08a3194529867da1a12fc870c244f6dd7",
+      "byte_size": 178626
     },
     {
       "id": "generated-api-types",
@@ -2454,8 +2454,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "476cbc48766706463fc90c60381ccde6b749bc96dd0fcd3241785776e0cdecef",
-      "byte_size": 584287
+      "content_sha256": "f2bf7dbd65d756efd25624b07902b8977a945efc8d3ca6912aeaaf760e1d893c",
+      "byte_size": 584028
     },
     {
       "id": "generated-audio-decoding",
@@ -2789,7 +2789,7 @@
         "BuildTools/docs_cmake.py",
         "BuildTools/tests/validate_project_interface.cmake"
       ],
-      "content_sha256": "1899bd5eb432438ecfb443d8fb90cb18134a4da79e01a06d6bc4c0b72ccb021f",
+      "content_sha256": "ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206",
       "byte_size": 2375
     },
     {
@@ -2822,8 +2822,8 @@
         "Docs/generated/cmake.json",
         "BuildTools/docs_cmake.py"
       ],
-      "content_sha256": "9c36af08e8235244f5d0960b0fd49874d866d38d758751b66cd7214bf39a66c9",
-      "byte_size": 13468
+      "content_sha256": "dff586b228d27379f377790c900389a895bb9992743795475b5df72b70c2ce32",
+      "byte_size": 13949
     },
     {
       "id": "generated-cmake-stages",
@@ -2899,8 +2899,8 @@
         "Docs/en/explanation/content-pipeline/baking.md",
         "Docs/GeneratedApiAndMetadata.md"
       ],
-      "content_sha256": "3872de79a993c84ad59498e2a8c6b3c1965c8ed1c7f41a6a21611df673118170",
-      "byte_size": 10221
+      "content_sha256": "f915e3f37b23694c8b3156f3583d13d85645dadf1a49bbbb6588fe5c7e35181c",
+      "byte_size": 11033
     },
     {
       "id": "generated-effect-format-baking",
@@ -3418,26 +3418,27 @@
         "engine-contributor",
         "ai-agent"
       ],
-      "diataxis": "reference",
+      "diataxis": "none",
       "visibility": "public",
-      "human": true,
-      "translation": "required",
+      "human": false,
+      "translation": "not-required",
       "owner": "frontend",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/gui-runtime/index.md",
-      "stability": "current-revision",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/en/reference/gui-runtime/",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/gui-runtime/index.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/index.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/index.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "BuildTools/docs_gui_runtime.py",
-        "Docs/generated/gui-runtime.json"
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "06add128779c10be55ea4a6a4a18b58c28f3b8ac0c5823a7ab25ee9531cb41bf",
-      "byte_size": 3248
+      "content_sha256": "0c9eb6c9489a7fff4c6cb140097584d699a627af46bfe814af7c80c7c16a15c4",
+      "byte_size": 539,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-input",
@@ -3449,27 +3450,27 @@
         "engine-contributor",
         "ai-agent"
       ],
-      "diataxis": "reference",
+      "diataxis": "none",
       "visibility": "public",
-      "human": true,
-      "translation": "required",
+      "human": false,
+      "translation": "not-required",
       "owner": "frontend",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/gui-runtime/input.md",
-      "stability": "current-revision",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/en/reference/gui-runtime/input.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/gui-runtime/input.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/input.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/input.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
-        "Source/Scripting/AngelScript/CoreScripts/Input.fos",
-        "Docs/generated/gui-runtime.json"
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "a7584bc0c7cba9341341c2376de867e0fe3820e486ddef219b31081ab6bae79c",
-      "byte_size": 4989
+      "content_sha256": "74db4cda7b36730a4fce8e7cb424ed8b8db57dcbeff1028f209eae10ab3ff432",
+      "byte_size": 513,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-integration-validation",
@@ -3481,31 +3482,27 @@
         "engine-contributor",
         "ai-agent"
       ],
-      "diataxis": "reference",
+      "diataxis": "none",
       "visibility": "public",
-      "human": true,
-      "translation": "required",
+      "human": false,
+      "translation": "not-required",
       "owner": "quality",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/gui-runtime/integration-validation.md",
-      "stability": "current-revision",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/en/reference/gui-runtime/integration-validation.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/gui-runtime/integration-validation.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/integration-validation.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/integration-validation.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "BuildTools/tests/test_docs_gui_runtime.py",
-        "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
-        "Source/Scripting/AngelScript/CoreScripts/Input.fos",
-        "Source/Client/Client.cpp",
-        "Source/Tests/README.md",
-        "Docs/en/tutorials/first-project.md",
-        "Docs/generated/gui-runtime.json"
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "d111a7e90407373b60344b2c69374ea26ee857cde8b9224b6dcd5e04623406b8",
-      "byte_size": 7517
+      "content_sha256": "b74b3db05164c6d100abb49451c9d7e4a8d2e3967dcc65880b0ba3af1735a57b",
+      "byte_size": 571,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-layout-rendering",
@@ -3517,27 +3514,27 @@
         "engine-contributor",
         "ai-agent"
       ],
-      "diataxis": "reference",
+      "diataxis": "none",
       "visibility": "public",
-      "human": true,
-      "translation": "required",
+      "human": false,
+      "translation": "not-required",
       "owner": "frontend",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/gui-runtime/layout-rendering.md",
-      "stability": "current-revision",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/en/reference/gui-runtime/layout-rendering.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/gui-runtime/layout-rendering.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/layout-rendering.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/layout-rendering.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
-        "Source/Client/Client.cpp",
-        "Docs/generated/gui-runtime.json"
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "711d90f396f59630f3375817ce20799cb879d32e078b5dc7bf120f9002963a8d",
-      "byte_size": 4179
+      "content_sha256": "0188f916d57798c49421dcc0a68ed0f94411518b170fa9917e77b8ba750a972b",
+      "byte_size": 547,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-lifecycle",
@@ -3549,26 +3546,27 @@
         "engine-contributor",
         "ai-agent"
       ],
-      "diataxis": "reference",
+      "diataxis": "none",
       "visibility": "public",
-      "human": true,
-      "translation": "required",
+      "human": false,
+      "translation": "not-required",
       "owner": "frontend",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/gui-runtime/lifecycle.md",
-      "stability": "current-revision",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/en/reference/gui-runtime/lifecycle.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/gui-runtime/lifecycle.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/lifecycle.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/lifecycle.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
-        "Docs/generated/gui-runtime.json"
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "25ffe9d4ca4c3ab37f543da94675292244d56e8a251277e397393da1d3d531f3",
-      "byte_size": 4011
+      "content_sha256": "36f2c07b963af3946e6fbbefab702d26e5dd1ab5a72f9b6b6a3b846e0eb490ca",
+      "byte_size": 525,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-screen-api",
@@ -3580,26 +3578,27 @@
         "engine-contributor",
         "ai-agent"
       ],
-      "diataxis": "reference",
+      "diataxis": "none",
       "visibility": "public",
-      "human": true,
-      "translation": "required",
+      "human": false,
+      "translation": "not-required",
       "owner": "frontend",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/gui-runtime/screen-api.md",
-      "stability": "current-revision",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/en/reference/gui-runtime/screen-api.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/gui-runtime/screen-api.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/screen-api.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/screen-api.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
-        "Docs/generated/gui-runtime.json"
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "0ae1662073c793c717af1eef5e25e11c19f9b94f4912049c765430b453b11e67",
-      "byte_size": 17497
+      "content_sha256": "0d5296b510528f76f848eaaf01c9a13205aae494272c6655498bcb2a16f1dba6",
+      "byte_size": 515,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-types",
@@ -3611,26 +3610,27 @@
         "engine-contributor",
         "ai-agent"
       ],
-      "diataxis": "reference",
+      "diataxis": "none",
       "visibility": "public",
-      "human": true,
-      "translation": "required",
+      "human": false,
+      "translation": "not-required",
       "owner": "frontend",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/gui-runtime/types.md",
-      "stability": "current-revision",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/en/reference/gui-runtime/types.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/gui-runtime/types.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/types.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/gui-runtime/types.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
-        "Docs/generated/gui-runtime.json"
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "a4a718698ac0d82e1129d66f8d3c310e4e8c3642fcfa5fd9e094df22db722fef",
-      "byte_size": 16982
+      "content_sha256": "10a4e90565e6cc25da3eeda661276b29c3d66c3d0df39199325f106b3c0015fc",
+      "byte_size": 511,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-helper-cli-commands",
@@ -3662,14 +3662,14 @@
         "BuildTools/docs_helper_cli.py",
         "Docs/generated/helper-cli.json",
         "BuildTools/codegen.py",
-        "BuildTools/compile-mono-scripts.py",
+        "BuildTools/managed_runtime_payload.py",
         "BuildTools/codecoverage.py",
         "BuildTools/android_device.py",
         "BuildTools/web/simple-web-server.py",
         "BuildTools/msicreator/createmsi.py"
       ],
-      "content_sha256": "0f9291908cbbb22181e63daeddb0b30762449130b096bcf8578ccdda542807d5",
-      "byte_size": 45769
+      "content_sha256": "202589eff1cb599f85f10924527e21f49bf0c2a8237c84e8fe7660fa609de36a",
+      "byte_size": 46141
     },
     {
       "id": "generated-helper-cli-index",
@@ -3702,8 +3702,8 @@
         "BuildTools/tests/test_docs_helper_cli.py",
         "Docs/generated/helper-cli.json"
       ],
-      "content_sha256": "6852b27db49b945332a07e596b27ea8ce5008da50774fb5bfb6f7d6bbb200f70",
-      "byte_size": 5314
+      "content_sha256": "cb212d690b9801bf3235c982c361f84571ebcc171191c2fb5fef1f1549d0c81a",
+      "byte_size": 4913
     },
     {
       "id": "generated-image-format-baking",
@@ -3970,7 +3970,7 @@
         "Source/Server/MapManager.cpp",
         "Docs/generated/map-format.json"
       ],
-      "content_sha256": "0f8bc7e92eca412554edd9ffe6de07b234b9461ca89087b29bd1aa8dfece192c",
+      "content_sha256": "ce6d54e931bbe86ac94e97d459c75e636eebd3028f4332e9217641153bb4cc2e",
       "byte_size": 2955
     },
     {
@@ -4002,7 +4002,7 @@
         "BuildTools/docs_map_format.py",
         "Docs/generated/map-format.json"
       ],
-      "content_sha256": "407f276376b2c634ef0ad3361178b82f861257e9d49d5057af9292936965088f",
+      "content_sha256": "09b60acc9fc3ff91761af524079f535144c04bb544edfbc7dbb8898b3e9998c9",
       "byte_size": 2371
     },
     {
@@ -4512,8 +4512,8 @@
         "Docs/generated/package.json",
         "BuildTools/docs_package.py"
       ],
-      "content_sha256": "372817db884139c4a6f2fb055f2141a74281d91b731fb90cb51eb283fca9eb8d",
-      "byte_size": 4947
+      "content_sha256": "c53b0624724fb0f5fd0ec36193516a9912b1656b9c066f138e670eab78cf9af8",
+      "byte_size": 5498
     },
     {
       "id": "generated-package-declaration",
@@ -4581,7 +4581,7 @@
         "BuildTools/tests/validate_package_interface.cmake",
         "Docs/generated/package.json"
       ],
-      "content_sha256": "75afc94394f3e53e17cc2b76b7bdd1f3a9b576510eebd006c40ea6e30464286d",
+      "content_sha256": "98d0df9937b8e85092267a52784477f03e4b72493bbaba3d6ffbac3b611d6078",
       "byte_size": 3324
     },
     {
@@ -4647,8 +4647,8 @@
         "Docs/generated/package.json",
         "BuildTools/docs_package.py"
       ],
-      "content_sha256": "4083db1f6a534b87d3a93186526435378e28e646fab25e6dda0c6a995a71924b",
-      "byte_size": 4669
+      "content_sha256": "2259f56560c71831cd27254572cccc9315bdcdc940d231520d640c8e37ea2667",
+      "byte_size": 5055
     },
     {
       "id": "generated-particle-format-index",
@@ -4959,7 +4959,7 @@
         "BuildTools/docs_prototype_format.py",
         "Docs/generated/prototype-format.json"
       ],
-      "content_sha256": "1fc5ee9cccf4a90b87a5e593de932697d04afff6dfc9056fa3e9aa27c0380bb4",
+      "content_sha256": "c91ade1e1e3451e80316c994423cf5713aa61c97ab7820e1a9f72edf57226550",
       "byte_size": 2360
     },
     {
@@ -5608,8 +5608,8 @@
         "Docs/en/tutorials/first-content.md",
         "Docs/en/tutorials/first-test.md"
       ],
-      "content_sha256": "074630c256bd759959cbbb132cd6d1a63af0b7c04ba35b975497a8b29c6478c3",
-      "byte_size": 4092
+      "content_sha256": "2773347b8ab1cf3e2888aeafb00141e47b3d3749437622ab26cfa3f347d5f6d6",
+      "byte_size": 4614
     },
     {
       "id": "gui-runtime-guide",
@@ -5635,16 +5635,16 @@
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/runtime/gui.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/runtime/gui.md",
       "source_paths": [
-        "BuildTools/GuiRuntimeInterface.json",
-        "BuildTools/docs_gui_runtime.py",
-        "Source/Scripting/AngelScript/CoreScripts/Gui.fos",
-        "Source/Scripting/AngelScript/CoreScripts/Input.fos",
-        "Source/Client/Client.cpp",
-        "Docs/en/tutorials/first-project.md",
-        "Docs/en/reference/gui-runtime/index.md"
+        "Source/Frontend",
+        "Source/Client",
+        "Source/Scripting/AngelScript",
+        "Source/Scripting/Managed",
+        "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "Docs/en/explanation/rendering/index.md",
+        "Docs/en/explanation/scripting-runtime/index.md"
       ],
-      "content_sha256": "253f434180315b1fc1221e466e0b7c1d089c52abfa3f5b5c68b60d052b879c88",
-      "byte_size": 17850
+      "content_sha256": "3653ca03d660b95b397878634d01c7e483835c84113363b06266eb7554794996",
+      "byte_size": 3302
     },
     {
       "id": "image-format-guide",
@@ -6690,8 +6690,8 @@
         "Docs/ru/explanation/entity-and-property-model/index.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "462cf54b93180de240bb4606078d1929afe75f2d3d4b8ba937c11488b7ecfaff",
-      "byte_size": 2091,
+      "content_sha256": "45b837cdacebfacb60ab322698deb0494ff0a816e3f116cfd52752d5d853e416",
+      "byte_size": 5145,
       "redirect_to": "entity-model"
     },
     {
@@ -7152,8 +7152,8 @@
         "Docs/ru/reference/script-api/events.md",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "1e4b9410afb2afc5982373d546627463335a75feb66b88219df424ac153e1397",
-      "byte_size": 31716,
+      "content_sha256": "2396d23290ce857c67f9764b274b4aa12fc05fd5bb5079b1391e2ace6199dfe7",
+      "byte_size": 31978,
       "redirect_to": "generated-api-events"
     },
     {
@@ -7250,8 +7250,8 @@
         "Docs/ru/reference/script-api/methods.md",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "3249bab6984d1317437f1fa928fc36a11ecc865e6899db29bb91ad37c0ecca1a",
-      "byte_size": 251867,
+      "content_sha256": "039ea12dd8857dcf68caa9fe7efb418385c535d2b55800f5098195a470fcaa38",
+      "byte_size": 252372,
       "redirect_to": "generated-api-methods"
     },
     {
@@ -7348,8 +7348,8 @@
         "Docs/ru/reference/script-api/settings.md",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "579e9b91fd3ead29e90331e1ee1e419a6b91a2b41e07b669fc6fc4ef5a6b8b0e",
-      "byte_size": 74071,
+      "content_sha256": "a4d3378d3dddd4422da41096a3ec107687a9a2dc509e0833210a7d130fac3b7a",
+      "byte_size": 76888,
       "redirect_to": "generated-api-settings"
     },
     {
@@ -7746,8 +7746,8 @@
         "Docs/ru/reference/cmake/options.md",
         "BuildTools/docs_cmake.py"
       ],
-      "content_sha256": "5d0d097d514008c15ba3e8b1f82af23ad7d18bf8b950fbf8257a65066196def1",
-      "byte_size": 8917,
+      "content_sha256": "7632b00414736e28bcdadf72178725143ec34cf156c2f85b242b6e2d965515ca",
+      "byte_size": 9151,
       "redirect_to": "generated-cmake-options"
     },
     {
@@ -8328,20 +8328,20 @@
       "owner": "frontend",
       "state": "redirect",
       "disposition": "replace",
-      "target": "Docs/en/reference/gui-runtime/index.md",
+      "target": "Docs/en/how-to/runtime/gui.md",
       "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime/",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/generated/gui-runtime/index.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/index.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/index.md",
       "source_paths": [
-        "Docs/en/reference/gui-runtime/index.md",
-        "Docs/ru/reference/gui-runtime/index.md",
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "6f609a2ca163181c3dd4e35080827688b5add9a0d65b46abcd1be91d3cc75036",
-      "byte_size": 422,
-      "redirect_to": "generated-gui-runtime-index"
+      "content_sha256": "12f5b0a56dd7d50eca8418bf2d760dcc52e911410ef521c62e1b645356f27c5b",
+      "byte_size": 243,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-input-route",
@@ -8360,20 +8360,20 @@
       "owner": "frontend",
       "state": "redirect",
       "disposition": "replace",
-      "target": "Docs/en/reference/gui-runtime/input.md",
+      "target": "Docs/en/how-to/runtime/gui.md",
       "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime/input.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/generated/gui-runtime/input.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/input.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/input.md",
       "source_paths": [
-        "Docs/en/reference/gui-runtime/input.md",
-        "Docs/ru/reference/gui-runtime/input.md",
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "abc64025c982761048ecac42dc4a52fd58e831cadb184c16d8d0a57662ecc566",
-      "byte_size": 1946,
-      "redirect_to": "generated-gui-runtime-input"
+      "content_sha256": "4f00397b24b489cec191a88c24919df503ce323344664cdcacb3ddc8877a3ca4",
+      "byte_size": 230,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-integration-validation-route",
@@ -8392,20 +8392,20 @@
       "owner": "quality",
       "state": "redirect",
       "disposition": "replace",
-      "target": "Docs/en/reference/gui-runtime/integration-validation.md",
+      "target": "Docs/en/how-to/runtime/gui.md",
       "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime/integration-validation.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/generated/gui-runtime/integration-validation.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/integration-validation.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/integration-validation.md",
       "source_paths": [
-        "Docs/en/reference/gui-runtime/integration-validation.md",
-        "Docs/ru/reference/gui-runtime/integration-validation.md",
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "f8ef26fa6150a9d9c574a0f2c9f4ff66d73d348d44f60cf4803b50bf9683d3fe",
-      "byte_size": 3422,
-      "redirect_to": "generated-gui-runtime-integration-validation"
+      "content_sha256": "8d36931aa6cf7183f90bd1992bb6ece8868e4e11c81e8fb394c7ec562474e4e6",
+      "byte_size": 242,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-layout-rendering-route",
@@ -8424,20 +8424,20 @@
       "owner": "frontend",
       "state": "redirect",
       "disposition": "replace",
-      "target": "Docs/en/reference/gui-runtime/layout-rendering.md",
+      "target": "Docs/en/how-to/runtime/gui.md",
       "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime/layout-rendering.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/generated/gui-runtime/layout-rendering.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/layout-rendering.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/layout-rendering.md",
       "source_paths": [
-        "Docs/en/reference/gui-runtime/layout-rendering.md",
-        "Docs/ru/reference/gui-runtime/layout-rendering.md",
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "a955345a6b920b37ef8bfa92b4f842a90a7b99311b3385f12726b0e7dfc4d60f",
-      "byte_size": 1849,
-      "redirect_to": "generated-gui-runtime-layout-rendering"
+      "content_sha256": "a90a83e3f939c422fff0d3db1bd4f9db7c1afeb9fc9bb9dc89646ae1508bde97",
+      "byte_size": 236,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-lifecycle-route",
@@ -8456,20 +8456,20 @@
       "owner": "frontend",
       "state": "redirect",
       "disposition": "replace",
-      "target": "Docs/en/reference/gui-runtime/lifecycle.md",
+      "target": "Docs/en/how-to/runtime/gui.md",
       "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime/lifecycle.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/generated/gui-runtime/lifecycle.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/lifecycle.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/lifecycle.md",
       "source_paths": [
-        "Docs/en/reference/gui-runtime/lifecycle.md",
-        "Docs/ru/reference/gui-runtime/lifecycle.md",
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "c4051178bca63d6b0a7d07ef394a26d0027267ba65ab1d35037bfce98a581222",
-      "byte_size": 1654,
-      "redirect_to": "generated-gui-runtime-lifecycle"
+      "content_sha256": "52cfac4ae2e25a5882cc3510bc45ef290500002f6a0ee79071b297163fdc1e22",
+      "byte_size": 232,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-screen-api-route",
@@ -8488,20 +8488,20 @@
       "owner": "frontend",
       "state": "redirect",
       "disposition": "replace",
-      "target": "Docs/en/reference/gui-runtime/screen-api.md",
+      "target": "Docs/en/how-to/runtime/gui.md",
       "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime/screen-api.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/generated/gui-runtime/screen-api.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/screen-api.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/screen-api.md",
       "source_paths": [
-        "Docs/en/reference/gui-runtime/screen-api.md",
-        "Docs/ru/reference/gui-runtime/screen-api.md",
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "d59e879468dab901c22e83bce051943ddb21e020418e1052f074a6dfc1f30f27",
-      "byte_size": 10967,
-      "redirect_to": "generated-gui-runtime-screen-api"
+      "content_sha256": "5244ff903d5af7d53c12481fe75786e32077cbfb14e0f5b86a8e0d385a8bda47",
+      "byte_size": 226,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-types-route",
@@ -8520,20 +8520,20 @@
       "owner": "frontend",
       "state": "redirect",
       "disposition": "replace",
-      "target": "Docs/en/reference/gui-runtime/types.md",
+      "target": "Docs/en/how-to/runtime/gui.md",
       "stability": "redirect",
       "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime/types.html",
       "source_url": "https://github.com/cvet/fonline/blob/master/Docs/generated/gui-runtime/types.md",
       "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/types.md",
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/generated/gui-runtime/types.md",
       "source_paths": [
-        "Docs/en/reference/gui-runtime/types.md",
-        "Docs/ru/reference/gui-runtime/types.md",
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "58b53e7d15b731529e996bdebd153ae74dd68d986acab0125d68fe6eaad4df05",
-      "byte_size": 5936,
-      "redirect_to": "generated-gui-runtime-types"
+      "content_sha256": "e9539856b0f05044bc6a5ddc2c97a46d5cd8804911b959cff061a00fb3560c96",
+      "byte_size": 229,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-helper-cli-commands-route",
@@ -8565,8 +8565,8 @@
         "Docs/ru/reference/helper-cli/commands.md",
         "BuildTools/docs_helper_cli.py"
       ],
-      "content_sha256": "7efbec5f238cd540e78c996d8c3e4b8e2548825cdaecbd0ef63cd91ebcd0b1c2",
-      "byte_size": 30285,
+      "content_sha256": "a25a8e953fac6f751fda8fecf46add9b75e0ea3537cd6d6b1c5341480a782a48",
+      "byte_size": 30315,
       "redirect_to": "generated-helper-cli-commands"
     },
     {
@@ -8599,8 +8599,8 @@
         "Docs/ru/reference/helper-cli/index.md",
         "BuildTools/docs_helper_cli.py"
       ],
-      "content_sha256": "79ddb9c3ef35174ab7f957ea866fcea4069013627134ff334826e2a4e210146f",
-      "byte_size": 2247,
+      "content_sha256": "25511084d548b3a212ba8a1241fbbb9b167b1b38cbcaa34a46f4bc4aad20c6c6",
+      "byte_size": 2040,
       "redirect_to": "generated-helper-cli-index"
     },
     {
@@ -9389,8 +9389,8 @@
         "BuildTools/docs_package.py",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "541355b1545ede14ecc9bf83f47bb6153136449f4c10fa4233ca1e43dd740f9e",
-      "byte_size": 2779,
+      "content_sha256": "72956ed03401e660fe5aca6a13df877b888d114d03bd87c4caa046a406b093c4",
+      "byte_size": 3015,
       "redirect_to": "generated-package-cli"
     },
     {
@@ -11204,13 +11204,11 @@
         "Docs/en/reference/audio/index.md",
         "Docs/generated/video.json",
         "Docs/en/reference/video/index.md",
-        "Docs/generated/gui-runtime.json",
-        "Docs/en/reference/gui-runtime/index.md",
         "Docs/generated/ai-control-protocol.json",
         "Docs/en/reference/ai-control-protocol/index.md"
       ],
-      "content_sha256": "11dda0c80de0abe307f18152b2b26ec266ab84c48e3b2ee1863d9a0c0462fa21",
-      "byte_size": 7511
+      "content_sha256": "46a5160f036d3b9cd24b35176ee36b2db7d0bd42c4016985b7a3d469ede5cab4",
+      "byte_size": 7369
     },
     {
       "id": "legacy-public-api-route",
@@ -11340,8 +11338,8 @@
         "Docs/ru/reference/scripting/remote-calls.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "f5169aa7e49e73a2aee7d8a97e7b9e5ceffa31842b2c5017892cb85247cd9910",
-      "byte_size": 1958,
+      "content_sha256": "f87bdce7247596e9534c773e9b0b41dca35ca7c93d1c2185dd09307f8d7d4076",
+      "byte_size": 1982,
       "redirect_to": "remote-calls"
     },
     {
@@ -11437,8 +11435,8 @@
         "Docs/ru/explanation/scripting-runtime/index.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "c9bb88cdaf8e422def3dc3686bc45fb8cec3836c988bbc484b99b873f7422455",
-      "byte_size": 2390,
+      "content_sha256": "2febcfe939ea42839183bd85b1a6f9f0ee0855a216d2330ef63002e5776e6a1b",
+      "byte_size": 2417,
       "redirect_to": "scripting-runtime"
     },
     {
@@ -11987,6 +11985,48 @@
       "byte_size": 5054
     },
     {
+      "id": "managed-csharp-scripting",
+      "path": "Docs/en/how-to/scripting/managed-csharp.md",
+      "title": "Managed C# Scripting",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "native-extension-developer",
+        "ai-agent",
+        "release-operator"
+      ],
+      "diataxis": "how-to",
+      "visibility": "public",
+      "human": true,
+      "translation": "required",
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/scripting/managed-csharp.md",
+      "stability": "current-revision",
+      "canonical_url": "https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/how-to/scripting/managed-csharp.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/scripting/managed-csharp.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/scripting/managed-csharp.md",
+      "source_paths": [
+        "Source/Scripting/Managed",
+        "Source/Tools/ManagedScriptBaker.cpp",
+        "Source/Applications/ManagedScriptBakerApp.cpp",
+        "Source/Common/Settings.inc",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/cmake/stages/Packages.cmake",
+        "BuildTools/managed_runtime_payload.py",
+        "BuildTools/tests/test_managed_async_callbacks.py",
+        "BuildTools/tests/test_managed_callback_context.py",
+        "BuildTools/tests/test_managed_runtime_packaging.py",
+        "Source/Tests/Test_ManagedScriptBaker.cpp",
+        "BuildTools/tests/test_docs_managed_csharp.py"
+      ],
+      "content_sha256": "7157e2a2dab4e1247bd5819958c7b8d05345bb18ecec851676f55c7958171f3a",
+      "byte_size": 25152
+    },
+    {
       "id": "map-format-guide",
       "path": "Docs/en/how-to/content/map-format.md",
       "title": "FOnline Map Format",
@@ -12365,8 +12405,8 @@
         "Source/Tests/Test_CommonHelpers.cpp",
         "Source/Tests/Test_WorkThread.cpp"
       ],
-      "content_sha256": "3171979cd9c286d579d113174bcea6a8886ac63c49a5290576d281ab304e67f7",
-      "byte_size": 34546
+      "content_sha256": "00bbd5fcad52632cefad3449e633a2177087573aee589bef6ec10adc6d5cbdc9",
+      "byte_size": 34576
     },
     {
       "id": "native-extension-sample-readme",
@@ -12478,8 +12518,8 @@
         "Source/Server",
         "Source/Common"
       ],
-      "content_sha256": "4a520e213a18a7abb50e2c0ad51f57e48096c65e6b45322179e17689d48cd1ec",
-      "byte_size": 25410
+      "content_sha256": "03cd28d36406ec6cf613938f944b1f5462f055b8e0357d8219a31fdee16f4679",
+      "byte_size": 26280
     },
     {
       "id": "nullability",
@@ -12509,8 +12549,8 @@
         "ThirdParty/AngelScript",
         "Source/Tests"
       ],
-      "content_sha256": "70499fe4522bb639b64cd3d85c842755156da647b3dbd6e1720cf6f101d375b1",
-      "byte_size": 52045
+      "content_sha256": "d470241cfd4460deb302e55cccce9bcaa56e384f3b4059e0f2600638e8bb2874",
+      "byte_size": 53983
     },
     {
       "id": "packaging-and-release",
@@ -12561,8 +12601,8 @@
         "Docs/en/how-to/platforms/android-debugging.md",
         "Docs/en/explanation/runtime/client-updater.md"
       ],
-      "content_sha256": "f7c4845cefc99f11770eb9daba86533d11c9a8083a16786f140e438181c4608c",
-      "byte_size": 27645
+      "content_sha256": "bfbaf16ce0e207d496cbf7a552cb84d32bd1a23ad4233a2418ec620ec2ac719a",
+      "byte_size": 28500
     },
     {
       "id": "particle-authoring-tools",
@@ -12729,8 +12769,8 @@
         "Examples/MinimalMultiplayer/README.md",
         "Examples/MinimalMultiplayer/run_tutorial_smoke.py"
       ],
-      "content_sha256": "2cd4d95b9ba0ddae511a79356f337eaedae9f34e727b7d3213dd54f9c2920739",
-      "byte_size": 20939
+      "content_sha256": "019e69120c4c67d07330f5a058926ea6b0f1e6e1928bbb1b1d2bc993f986ebcb",
+      "byte_size": 20956
     },
     {
       "id": "project-configuration",
@@ -12766,8 +12806,8 @@
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "Docs/en/reference/settings/configuration-and-data-sources.md"
       ],
-      "content_sha256": "8ab91530230aa86d3ba715748ca6db90fec2840628e6cd62f00c13825629b88c",
-      "byte_size": 10010
+      "content_sha256": "149a85e960e00eee377451040a8d1eeaf3e0243351ad589f4bd82d805f04c311",
+      "byte_size": 11149
     },
     {
       "id": "project-local-dependencies",
@@ -12943,8 +12983,8 @@
         "Docs/en/explanation/persistence/index.md",
         "Docs/en/how-to/release/security-and-secrets.md"
       ],
-      "content_sha256": "181fa2dd286535bba9400214f037cf5163cfe4faa9f56f53fb358cf466e206c4",
-      "byte_size": 11286
+      "content_sha256": "7bd7eb5601ca1b568ac494031f5299be55b2c9c066bb4922fb913fb827b79a07",
+      "byte_size": 11389
     },
     {
       "id": "remote-calls",
@@ -12983,8 +13023,8 @@
         "BuildTools/tests/test_docs_metadata.py",
         "Examples/MinimalProject"
       ],
-      "content_sha256": "c58b6532f716191c76ce4402f97b96c33787ac24efbd3d0b36f3b9b6a47fea27",
-      "byte_size": 14881
+      "content_sha256": "6de0e38c67b19c5f6db1d2db5f0707902840fcc98fd05ea9802eb6f24de3b436",
+      "byte_size": 19422
     },
     {
       "id": "repository-home",
@@ -13037,8 +13077,232 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "044cdb1c36e2090cd24300e92927cb11a1cb1462e51ead9520af17df1d6a7535",
-      "byte_size": 17840
+      "content_sha256": "f63eff04305974ea21a14693ddadad7104661b92d679ed3debad338eee92633b",
+      "byte_size": 18065
+    },
+    {
+      "id": "ru-generated-gui-runtime-index-route",
+      "path": "Docs/ru/reference/gui-runtime/index.md",
+      "title": "Russian Generated GUI Runtime Reference Route",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "diataxis": "none",
+      "visibility": "public",
+      "human": false,
+      "translation": "not-required",
+      "owner": "frontend",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
+      "canonical_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/ru/reference/gui-runtime/index.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/index.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/index.md",
+      "source_paths": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ],
+      "content_sha256": "91dcdf0fa97070fcb6b00aebb4913179401aee1602bc23a0477b95729a7f765f",
+      "byte_size": 854,
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-input-route",
+      "path": "Docs/ru/reference/gui-runtime/input.md",
+      "title": "Russian GUI Input Contract Route",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "diataxis": "none",
+      "visibility": "public",
+      "human": false,
+      "translation": "not-required",
+      "owner": "frontend",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
+      "canonical_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/input.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/ru/reference/gui-runtime/input.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/input.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/input.md",
+      "source_paths": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ],
+      "content_sha256": "8656f8813cf571a5a092f0a9726c2fe1fa1ea59845d45f5b46d4d4babdff85c5",
+      "byte_size": 790,
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-integration-validation-route",
+      "path": "Docs/ru/reference/gui-runtime/integration-validation.md",
+      "title": "Russian GUI Integration and Validation Route",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "diataxis": "none",
+      "visibility": "public",
+      "human": false,
+      "translation": "not-required",
+      "owner": "quality",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
+      "canonical_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/integration-validation.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/ru/reference/gui-runtime/integration-validation.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/integration-validation.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/integration-validation.md",
+      "source_paths": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ],
+      "content_sha256": "8dfa79257413d6003887443aa94a228b8175e637072b19bace46aba4845a1faa",
+      "byte_size": 850,
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-layout-rendering-route",
+      "path": "Docs/ru/reference/gui-runtime/layout-rendering.md",
+      "title": "Russian GUI Layout and Rendering Route",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "diataxis": "none",
+      "visibility": "public",
+      "human": false,
+      "translation": "not-required",
+      "owner": "frontend",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
+      "canonical_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/layout-rendering.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/ru/reference/gui-runtime/layout-rendering.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/layout-rendering.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/layout-rendering.md",
+      "source_paths": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ],
+      "content_sha256": "9f163f0434a6b965ec6bd4b925ebf9a2f40517918ef9dfd38588f052322d7434",
+      "byte_size": 842,
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-lifecycle-route",
+      "path": "Docs/ru/reference/gui-runtime/lifecycle.md",
+      "title": "Russian GUI Screen Lifecycle Route",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "diataxis": "none",
+      "visibility": "public",
+      "human": false,
+      "translation": "not-required",
+      "owner": "frontend",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
+      "canonical_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/lifecycle.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/ru/reference/gui-runtime/lifecycle.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/lifecycle.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/lifecycle.md",
+      "source_paths": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ],
+      "content_sha256": "e41d5178bffe159d3c8d8b2a186af61067e9b21248b8c565c7dfc7582f4c6c5f",
+      "byte_size": 828,
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-screen-api-route",
+      "path": "Docs/ru/reference/gui-runtime/screen-api.md",
+      "title": "Russian GUI Screen API Route",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "diataxis": "none",
+      "visibility": "public",
+      "human": false,
+      "translation": "not-required",
+      "owner": "frontend",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
+      "canonical_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/screen-api.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/ru/reference/gui-runtime/screen-api.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/screen-api.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/screen-api.md",
+      "source_paths": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ],
+      "content_sha256": "66f00c183185b2d09503d0f1a0d03bc01cfbba3cc33bc1f13ca6201ec8740d3b",
+      "byte_size": 782,
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-types-route",
+      "path": "Docs/ru/reference/gui-runtime/types.md",
+      "title": "Russian GUI Runtime Types Route",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "diataxis": "none",
+      "visibility": "public",
+      "human": false,
+      "translation": "not-required",
+      "owner": "frontend",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/how-to/runtime/gui.md",
+      "stability": "redirect",
+      "canonical_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/types.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/ru/reference/gui-runtime/types.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/types.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/ru/reference/gui-runtime/types.md",
+      "source_paths": [
+        "Docs/en/how-to/runtime/gui.md",
+        "Docs/ru/how-to/runtime/gui.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ],
+      "content_sha256": "cccd85055fc018e4cdd40ddb29decf3c6df1d3cf500e8d95876670e19983bf14",
+      "byte_size": 768,
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "script-lifecycle-concurrency",
@@ -13072,14 +13336,16 @@
         "Source/Server/WorkerPool.cpp",
         "Source/Server/EntitySync.cpp",
         "Source/Scripting/AngelScript",
+        "Source/Scripting/Managed",
         "Source/Scripting/ServerGlobalScriptMethods.cpp",
         "Source/Tests/Test_AngelScriptAttributes.cpp",
         "Source/Tests/Test_AngelScriptBaker.cpp",
+        "Source/Tests/Test_ManagedScriptBaker.cpp",
         "Source/Tests/Test_EntitySync.cpp",
         "BuildTools/tests/test_docs_script_lifecycle.py"
       ],
-      "content_sha256": "af884e30fafef1ce54242efa9756e2447b7f00ec42ea4301ec39188a75f3320a",
-      "byte_size": 27462
+      "content_sha256": "24bc78eda628fea978bc4fbea3ab9d9698fa6c1555e7dab0739954306497fdc4",
+      "byte_size": 31495
     },
     {
       "id": "script-methods-map",
@@ -13141,12 +13407,13 @@
       "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/explanation/scripting-runtime/index.md",
       "source_paths": [
         "Source/Scripting",
+        "Source/Tools/ManagedScriptBaker.cpp",
         "ThirdParty/AngelScript",
         "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
-        "BuildTools/compile-mono-scripts.py"
+        "BuildTools/managed_runtime_payload.py"
       ],
-      "content_sha256": "3a85b54cc74f281136b582feeccfafce495b376fb33dd78c98c849e46bd97c2b",
-      "byte_size": 27872
+      "content_sha256": "45fa635d322ab030c073512f705be1fe65bf61cde841f77f36f2226855db2177",
+      "byte_size": 31710
     },
     {
       "id": "security-and-secrets",
@@ -13307,8 +13574,8 @@
         "BuildTools",
         "Resources"
       ],
-      "content_sha256": "3b2568b1d00bb6d0617a27e5f48164e5090b181dc39a56c489a9850079775882",
-      "byte_size": 6665
+      "content_sha256": "14373783b7a28e08b6a26435253637d76db0456286670159a416f25993f759f8",
+      "byte_size": 7155
     },
     {
       "id": "sprite-root-motion",
@@ -13424,8 +13691,8 @@
         "Docs/generated/source-inventory.json",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "b8a5a8eac73a777f3b31f8ffc9006b7360e46fcd19388fbb0cf9c5e2e5af51e8",
-      "byte_size": 25476
+      "content_sha256": "0c119bea4138b849cfca1b7d88a597c9bc90fda0f9088938f6537d0ae8e51008",
+      "byte_size": 26617
     },
     {
       "id": "text-and-localization-guide",
@@ -13589,8 +13856,8 @@
         "Source/Tests",
         "Docs/Testing.md"
       ],
-      "content_sha256": "089fdb7dd8f54a9c28f8b66b8666382ccc4e392aab72c892273e447cfa28b468",
-      "byte_size": 9951
+      "content_sha256": "448977a83f89afef36c586ecafd5e39e413bc82667a6ae6a0b0a7cf0f672604c",
+      "byte_size": 10393
     },
     {
       "id": "video-guide",
@@ -13732,8 +13999,8 @@
         "BuildTools/tests/test_package_security.py",
         "BuildTools/tests/test_docs_web_debugging.py"
       ],
-      "content_sha256": "a91fa74b7652c145e9f73c1b836bbd219019bb76cbb488fea2d874321ef46081",
-      "byte_size": 31256
+      "content_sha256": "fb869e9d8c65d0fe4f67b270a729008493ca8ace00392bfa04c67cc907d427f8",
+      "byte_size": 31725
     }
   ],
   "artifacts": [
@@ -13741,15 +14008,15 @@
       "id": "llms-index",
       "path": "llms.txt",
       "canonical_url": "https://fonline.ru/llms.txt",
-      "content_sha256": "471a86233febdf79dd931d16ef077d854839266852682f500a2a0ee533c4407f",
-      "byte_size": 64321
+      "content_sha256": "19808e594bd384a8fa1c0529e9c13f8fe1585829369ee9b36645b6fc8fb9311c",
+      "byte_size": 62463
     },
     {
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "4e13eecbd0889b9111e688e4176990147d7a76c7e5b7595021f3a0a90a90c365",
-      "byte_size": 1983416
+      "content_sha256": "9a7c9e713fd3b4905ff6e37794a12ff26babec7b8e8fdcd6c9a6b61dea9ce775",
+      "byte_size": 2020439
     },
     {
       "id": "ai_control_protocol_reference",
@@ -13762,15 +14029,15 @@
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "80f1aa0f3681a6d4786d2b34dde1406550a4bb76945aa521637761b74f73f3c2",
-      "byte_size": 108256
+      "content_sha256": "b44e01266393c076a23ba86e4d07de1563b6dd0d2de94d9c2d256f8638c869cf",
+      "byte_size": 113207
     },
     {
       "id": "api_model",
       "path": "Docs/generated/api.json",
       "canonical_url": "https://fonline.ru/Docs/generated/api.json",
-      "content_sha256": "0de68e71c3e191b07d777842056273587786a2e1af831c8954374dfa10e94d28",
-      "byte_size": 3060226
+      "content_sha256": "554d716e6fa50179f9245f8e0952467d88a20d367f03d34c4fd29780dcebc354",
+      "byte_size": 3077870
     },
     {
       "id": "audio_reference",
@@ -13790,15 +14057,15 @@
       "id": "cmake_reference",
       "path": "Docs/generated/cmake.json",
       "canonical_url": "https://fonline.ru/Docs/generated/cmake.json",
-      "content_sha256": "da27f785dd14965c4968e720c7ecc92e6d288472355990cc938999c6bd1478c1",
-      "byte_size": 20970
+      "content_sha256": "24864dd0a5b111393982e78ba878147a8099c52b0434addf2561017d7f1dfadc",
+      "byte_size": 21457
     },
     {
       "id": "description_translation_status",
       "path": "Docs/generated/description-translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/description-translation-status.json",
-      "content_sha256": "853e74e1652a76e4cdf1e4b26070ea10818693d32f24f87ff1d25870cb84fcf4",
-      "byte_size": 1728884
+      "content_sha256": "64bd995e4f692f8aed6172982258de8f334b27cb5fd71f832e3c0735eba1e6a0",
+      "byte_size": 1661485
     },
     {
       "id": "documentation_diagrams",
@@ -13811,8 +14078,8 @@
       "id": "site-document-routes",
       "path": "Docs/generated/document-routes.json",
       "canonical_url": "https://fonline.ru/Docs/generated/document-routes.json",
-      "content_sha256": "c35fbd135d230a0b45d6ccc904d2c5faddc76f5ed5e8fbdc94952605f59a0f28",
-      "byte_size": 511355
+      "content_sha256": "cf6516d09bd049a125a374d64a0708ad7dd2766d9b843655934203c37494b1e4",
+      "byte_size": 518369
     },
     {
       "id": "effect_format_reference",
@@ -13829,18 +14096,11 @@
       "byte_size": 45518
     },
     {
-      "id": "gui_runtime_reference",
-      "path": "Docs/generated/gui-runtime.json",
-      "canonical_url": "https://fonline.ru/Docs/generated/gui-runtime.json",
-      "content_sha256": "db2fd845de34c012675f368534b2779cf24cbca60b87c3b3c6bdd31860a4f8b8",
-      "byte_size": 72159
-    },
-    {
       "id": "helper_cli_reference",
       "path": "Docs/generated/helper-cli.json",
       "canonical_url": "https://fonline.ru/Docs/generated/helper-cli.json",
-      "content_sha256": "339924e494a185e4279f5426659ede079f090a6dd9ebdfd489cd2d176601edbb",
-      "byte_size": 65096
+      "content_sha256": "e490bc8614f1a09d8ee422cf1c477ee572701da7cdf21cfafdab9d7423ad1d67",
+      "byte_size": 66106
     },
     {
       "id": "image_format_reference",
@@ -13853,8 +14113,8 @@
       "id": "map_format_reference",
       "path": "Docs/generated/map-format.json",
       "canonical_url": "https://fonline.ru/Docs/generated/map-format.json",
-      "content_sha256": "6cb4c6e67e1b3eecb02bf0f854706d052b3a68cbbc91b04766f4b7e3ea07c146",
-      "byte_size": 99222
+      "content_sha256": "d9f169e454f6be721e52b177a89f5e1a7052ed8991dfcfadb40b60f5e92689aa",
+      "byte_size": 99113
     },
     {
       "id": "model_format_reference",
@@ -13874,8 +14134,8 @@
       "id": "package_reference",
       "path": "Docs/generated/package.json",
       "canonical_url": "https://fonline.ru/Docs/generated/package.json",
-      "content_sha256": "d3f3fdafd113df88903e7a25a66f05ae68ea640b83734a0b70acf87c73359342",
-      "byte_size": 23995
+      "content_sha256": "c5bf648015b54b9a50580e4a34632e7e1cc57cc5d71755a5bfa2df163c4d8576",
+      "byte_size": 25143
     },
     {
       "id": "particle_format_reference",
@@ -13888,8 +14148,8 @@
       "id": "prototype_format_reference",
       "path": "Docs/generated/prototype-format.json",
       "canonical_url": "https://fonline.ru/Docs/generated/prototype-format.json",
-      "content_sha256": "d45bf4a8d0d656df76a07ec8616ef36319484da03c166da299b45857938c1782",
-      "byte_size": 100091
+      "content_sha256": "2f7087856be06d063410da2bc45e3f67cdedcbe45813069c88cae05bf5b5e53d",
+      "byte_size": 99948
     },
     {
       "id": "public_examples_reference",
@@ -13902,22 +14162,22 @@
       "id": "documentation_screenshots",
       "path": "Docs/generated/screenshots.json",
       "canonical_url": "https://fonline.ru/Docs/generated/screenshots.json",
-      "content_sha256": "edee3b73c6c39e990249154212e1d8623cca83e2367db8fe6b62f9e730b3e3d5",
+      "content_sha256": "ef9766a92af631c7af9ae8a4271fc0a37b14b761dcc6b63b2baa6b57c256b1b2",
       "byte_size": 8225
     },
     {
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "42740dda66f6a4544f6d5fed20c2a02407a185d847bd7821a33f71bea35ccadd",
-      "byte_size": 269044
+      "content_sha256": "7375b80753d43ba285fb6698f2559ce6a1edbd1ad3b90386627a408c671608f5",
+      "byte_size": 265686
     },
     {
       "id": "source_inventory",
       "path": "Docs/generated/source-inventory.json",
       "canonical_url": "https://fonline.ru/Docs/generated/source-inventory.json",
-      "content_sha256": "8c77c7685f8dafdafe16f93d54a9547bf8f1934e7f32ae3f501dfd5253f8ce88",
-      "byte_size": 7350
+      "content_sha256": "21d8e831622ebb0294ab0374d615d1f29200e43c3b9a0aec242e228699a95f81",
+      "byte_size": 7498
     },
     {
       "id": "support_matrix",
@@ -13937,8 +14197,8 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "ccf708521636fe6b0314c169290eb7275adcd25155ec4dd612677032ce28ce31",
-      "byte_size": 107947
+      "content_sha256": "b01ea29f35e8a2e3f53d18290582a09138b4b22f6c2087ef39c36ece428f2722",
+      "byte_size": 104631
     },
     {
       "id": "video_reference",
@@ -13951,22 +14211,22 @@
       "id": "site-docs-site",
       "path": "_data/docs-site.json",
       "canonical_url": "https://fonline.ru/_data/docs-site.json",
-      "content_sha256": "454658b41ab9c6f3e95b0e37ffe1d2cc5c9b9fdffb61939ba76363b0a7562a94",
-      "byte_size": 211882
+      "content_sha256": "7d6c3f7a72aa57902dd71b97b03dba7b8f0ba4601e233458963753bcfb3b340f",
+      "byte_size": 208542
     },
     {
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "8f55e901a55f698aeaddc7d0f044f891c41d8163de0dcbbbe201132f66e650e6",
-      "byte_size": 1216097
+      "content_sha256": "2f81cfaddff172714be691caa75f4b93a8b570cd29927fa9878f36fa6af46261",
+      "byte_size": 1204865
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "85c1a6516f1ef3c937d391f6636d419a98be0197fc6e88f165647df144a82291",
-      "byte_size": 1717667
+      "content_sha256": "4f0c1eee5f4f9075ff4acca1ab15e5f6760191510dbfdb89cd0ad2a61d6d600c",
+      "byte_size": 1700912
     }
   ]
 }

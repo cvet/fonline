@@ -10,7 +10,7 @@ permalink: /Docs/en/contributing/coding-contracts/nullability.html
 
 > Engine-owned documentation. This page defines the reusable compiler, runtime, and native-boundary contract. Project-side analyzers may enforce stricter authoring policy, but they are not part of the engine contract.
 
-Convention and runtime enforcement for nullable values across AngelScript and the native engine boundary. For the broader scripting runtime, see [Scripting](../../explanation/scripting-runtime/); for exported native method ownership, see [Script Methods Map](../../reference/script-api/method-ownership.md).
+Convention and runtime enforcement for nullable values across AngelScript, Managed C#, and the native engine boundary. For the broader scripting runtime, see [Scripting](../../explanation/scripting-runtime/); for exported native method ownership, see [Script Methods Map](../../reference/script-api/method-ownership.md).
 
 ## Core principle
 
@@ -20,7 +20,15 @@ Convention and runtime enforcement for nullable values across AngelScript and th
 
 This applies symmetrically on both sides of the script-engine boundary.
 
-## Script side: `T?` suffix
+## Managed C# side
+
+Generated Managed sources enable nullable reference types and map the same metadata nullable bit to C# `?` on entity, string, and ref-type references. Value types never carry that bit. A native `ptr<T>` becomes a non-null C# reference contract; `nptr<T>`, a nullable property flag, or a nullable event/remote-call tag becomes `T?`. Generated methods, properties, events, delegates, and remote-call caller methods preserve the spelling so Roslyn can diagnose an unchecked dereference or an incompatible assignment at compile time.
+
+C# annotations are not a runtime ownership guarantee. A managed entity wrapper remains borrowed, may refer to an entity destroyed after an `await`, and must be re-resolved/revalidated together with server cover. Narrow an expected absence with an ordinary `is null` / `is not null` branch. For an invariant, use `Game.VerifyNotNull(value, message)` or `Game.Verify(...)` and keep the narrowed non-null value; do not suppress a warning with `!` unless an external API has made the proof invisible to the compiler.
+
+Metadata declarations remain authoritative across backends. A nullable `///@ Event` or `///@ RemoteCall` argument generates a nullable C# parameter, and the attributed `[Event]`, `[ServerRemoteCall]`, or `[ClientRemoteCall]` handler must preserve the same semantic contract. Managed build validation consists of the generated project compile with nullable diagnostics enabled, configured Roslyn analyzers, and a runtime callback/serialization test where null is legitimate. See [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) for generation, async lifetime, analyzers, and packaging.
+
+## AngelScript side: `T?` suffix
 
 AngelScript modules use a Kotlin/C#-style `?` suffix on the type to mark nullability. Default is **non-nullable**.
 
@@ -362,15 +370,17 @@ The flag is parsed in [../Source/Common/Properties.cpp](../../../../Source/Commo
 
 For a **`Mutable`** nullable handle property the **setter** parameter is registered nullable too (`@?+`), matching the getter — see the `set_handle_str` branch in [AngelScriptEntity.cpp](../../../../Source/Scripting/AngelScript/AngelScriptEntity.cpp). This is load-bearing, not cosmetic: AngelScript derives a virtual property's static type from the **setter parameter** whenever a setter exists (only getter-only / read-only properties fall back to the getter's return type — see `FindPropertyAccessor` in `as_compiler.cpp`). A non-nullable setter parameter alongside an `@?` getter would make `T? local = obj.MutableNullableProp` read as a *non-nullable* handle and wrongly trip the redundant-`?` warning (#3) — while `T local = obj.MutableNullableProp` (no `?`) still errors via the getter's nullable return — leaving the read with no warning-free spelling. Keeping the setter parameter nullable resolves both spellings consistently.
 
-### The `verify` macro
+### Invariant helpers
 
-`verify(cond, message, ...)` is a variadic preprocessor macro defined in [Core.fos](../../../../Source/Scripting/AngelScript/CoreScripts/Core.fos) (visible in every `.fos` module, like all `Core.fos` `#define`s):
+The Engine no longer ships the former AngelScript `Core.fos` library. An embedding project that keeps the traditional `verify(cond, message, ...)` variadic macro owns its definition, visibility, and tests:
 
 ```text
 #define verify(cond, ...) if (!(cond)) throw(__VA_ARGS__)
 ```
 
-It states an **invariant**: a condition that holds whenever our own code - server logic *and* our client - behaves correctly. A failure means a bug, so it throws. Crucially these checks run in **every** configuration; there is no `NDEBUG`-style strip, so they are always the runtime guard, never a debug-only check. (The name is `verify`, not `assert`, precisely to signal that — C's `assert` connotes a debug-only check that is compiled out in release, which would be dangerous here.)
+When a project provides it, it states an **invariant**: a condition that holds whenever its own server and client logic behaves correctly. A failure means a bug, so it throws, and the project must keep it enabled in every configuration rather than treating it as a debug-only assertion.
+
+Managed C# has the Engine-owned equivalents `Game.Verify`, `Game.VerifyNotNull`, and `Game.Unreachable` in `Source/Scripting/Managed/CoreScripts/Verify.cs`; their nullable-flow annotations and throwing behavior are documented in [Managed C# Scripting](../../how-to/scripting/managed-csharp.md).
 
 #### Verify vs. graceful recovery
 
@@ -442,7 +452,8 @@ Project-side rewriters must not own contract inference: they should preserve aut
 
 ## See also
 
-- [Scripting](../../explanation/scripting-runtime/) — overall engine scripting runtime, AngelScript backend, and method-export organization.
+- [Scripting](../../explanation/scripting-runtime/) — overall engine scripting runtime, AngelScript and Managed backends, and method-export organization.
+- [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) — generated nullable surface, async lifetime, analyzers, and build/bake validation.
 - [Remote Calls](../../reference/scripting/remote-calls.md) - remote-call signatures, handlers, serialization, and project catalog generation.
 - [Script Methods Map](../../reference/script-api/method-ownership.md) — current `///@ ExportMethod` file map and ownership boundaries.
 - [GeneratedApiAndMetadata.md](../../reference/metadata/index.md) — generated metadata/API flow that must stay aligned with script-visible contracts.

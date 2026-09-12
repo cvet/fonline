@@ -28,15 +28,15 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 43,
+    "option_count": 44,
     "required_option_count": 9,
-    "optional_option_count": 34,
+    "optional_option_count": 35,
     "options_by_cache_type": {
       "BOOL": 22,
-      "STRING": 21
+      "STRING": 22
     },
     "options_by_category": {
-      "capacity": 1,
+      "capacity": 2,
       "dependency": 5,
       "diagnostics": 1,
       "feature": 3,
@@ -242,6 +242,16 @@
       "id": "cmake.option.FO_MODEL_BONES_PER_VERTEX"
     },
     {
+      "name": "FO_STRING_INLINE_CAPACITY",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "31",
+      "category": "capacity",
+      "description": "Characters kept inside an engine string before it allocates; the value must be one less than a multiple of eight.",
+      "id": "cmake.option.FO_STRING_INLINE_CAPACITY"
+    },
+    {
       "name": "FO_MSAN_LIBCXX_ROOT",
       "cache_type": "STRING",
       "value_kind": "path",
@@ -308,7 +318,7 @@
       "required": false,
       "default": "OFF",
       "category": "scripting",
-      "description": "Compile the Native scripting backend.",
+      "description": "Reserve the Native scripting source-root option; the current tree has no implemented Native backend.",
       "id": "cmake.option.FO_NATIVE_SCRIPTING"
     },
     {
@@ -322,14 +332,14 @@
       "id": "cmake.option.FO_ANGELSCRIPT_SCRIPTING"
     },
     {
-      "name": "FO_MONO_SCRIPTING",
+      "name": "FO_MANAGED_SCRIPTING",
       "cache_type": "BOOL",
       "value_kind": "boolean",
       "required": false,
       "default": "OFF",
       "category": "scripting",
-      "description": "Compile the Mono scripting backend.",
-      "id": "cmake.option.FO_MONO_SCRIPTING"
+      "description": "Compile the Managed C# scripting backend and embedded Mono runtime.",
+      "id": "cmake.option.FO_MANAGED_SCRIPTING"
     },
     {
       "name": "FO_DISABLE_RPMALLOC",

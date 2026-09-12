@@ -6,15 +6,15 @@ document_id: api-change-management
 permalink: /Docs/ru/contributing/contract-change-management.html
 ---
 
-<!-- docs-translation: {"document_id":"api-change-management","locale":"ru","source_path":"Docs/en/contributing/contract-change-management.md","source_sha256":"11c39819bab854b6cb7a2bcecb9799d80b7397ebfa03a5eac00b515db488c480"} -->
+<!-- docs-translation: {"document_id":"api-change-management","locale":"ru","source_path":"Docs/en/contributing/contract-change-management.md","source_sha256":"a17acfa6e661ce1503ce9ab7c07054728bb4862cc567c08beeab84f081453d8a"} -->
 
 # Управление изменениями генерируемых контрактов
 
-> Руководство для сопровождающих движок. Используйте эту страницу, чтобы сравнивать между ревизиями генерируемые контракты native API, CMake, основного и вспомогательного BuildTools CLI, package, native extensions, форматов prototype, map, model, text, effect, image, particle и font, audio, video, GUI runtime и протокола AiControl и принимать решения по изменениям, чувствительным к совместимости, до слияния.
+> Руководство для сопровождающих движок. Используйте эту страницу, чтобы сравнивать между ревизиями генерируемые контракты native API, CMake, основного и вспомогательного BuildTools CLI, package, native extensions, форматов prototype, map, model, text, effect, image, particle и font, audio, video и протокола AiControl и принимать решения по изменениям, чувствительным к совместимости, до слияния.
 
 ## Назначение
 
-FOnline публикует восемнадцать детерминированных машиночитаемых моделей в `Docs/generated/`. `BuildTools/docs_contract_diff.py` сравнивает все восемнадцать с теми же моделями на базовой ревизии и создаёт один JSON-отчёт для автоматизации и один Markdown-отчёт для review.
+FOnline публикует семнадцать детерминированных машиночитаемых моделей в `Docs/generated/`. `BuildTools/docs_contract_diff.py` сравнивает все семнадцать с теми же моделями на базовой ревизии и создаёт один JSON-отчёт для автоматизации и один Markdown-отчёт для review.
 
 Gate отвечает на четыре отдельных вопроса:
 
@@ -23,7 +23,7 @@ Gate отвечает на четыре отдельных вопроса:
 3. Обещала ли baseline-ревизия совместимость для этой записи или домена?
 4. Если требуется review, где записаны решение владельца, миграция, release note и обработка совместимости?
 
-Comparator сообщает о внутреннем churn, но не повышает internal surface до публичного API. Стабильность остаётся принадлежащей исходникам: native symbols используют `///@ ApiContract`; модели CMake, main CLI, package, helper CLI, native extension, prototype format, map format, model format, text format, effect format, image format, particle format, font format, audio, video, GUI runtime и AiControl protocol используют объявленную стабильность домена или записи.
+Comparator сообщает о внутреннем churn, но не повышает internal surface до публичного API. Стабильность остаётся принадлежащей исходникам: native symbols используют `///@ ApiContract`; модели CMake, main CLI, package, helper CLI, native extension, prototype format, map format, model format, text format, effect format, image format, particle format, font format, audio, video и AiControl protocol используют объявленную стабильность домена или записи.
 
 Classification и stability являются разными стадиями. Сначала классифицируйте
 наблюдаемое изменение shape/prose/policy как additive, documentation, policy или
@@ -62,7 +62,6 @@ breaking; затем используйте baseline stability, чтобы ре�
 | Font format | [generated/font-format.json](../../generated/font-format.json) | IDs descriptor format/field, binding, layout, rendering и validation `font-format.*` | Контракт FOFNT/BMFont и client text pipeline имеет статус `experimental`; cache internals остаются `internal`, а project slot assignment, glyph coverage, typography и visual acceptance остаются вне модели |
 | Audio | [generated/audio.json](../../generated/audio.json) | IDs format, delivery, decoding, playback и validation `audio.*` | Доставка WAV/ACM/Ogg и client playback имеют статус `experimental`; записи documentation/test gap остаются `internal`, а project catalogs, spatial/music policy, mastering, licensing и audible acceptance остаются вне модели |
 | Video | [generated/video.json](../../generated/video.json) | IDs format, delivery, decoding, fullscreen, embedded и validation `video.*` | Ogg/Theora и client presentation имеют статус `experimental`; missing fixture и loop risk остаются явными, а project cinematics, subtitles, policy, assets, provenance, budgets и visible acceptance остаются вне модели |
-| GUI runtime | [generated/gui-runtime.json](../../generated/gui-runtime.json) | IDs type, screen API, annotation, lifecycle, layout, input, integration и validation `gui-runtime.*` | Повторно используемый контракт CoreScripts GUI имеет статус `experimental`; declarative formats, generators, screens, styles, assets, accessibility policy и visible acceptance остаются проектными |
 | AiControl protocol | [generated/ai-control-protocol.json](../../generated/ai-control-protocol.json) | IDs transport, method, command/event, security, integration и validation `ai-control-protocol.*` | Повторно используемые wire и control protocol имеют статус `experimental`; game-specific schemas, actions, administrator tools и MCP namespaces остаются проектными |
 
 Изменения источника модели, repository/scope или контракта уровня модели считаются консервативными domain breaks и всегда требуют disposition. Так comparator или граница владения не могут молча переопределить охват gate.
@@ -99,8 +98,6 @@ breaking; затем используйте baseline stability, чтобы ре�
 - `BuildTools/docs_audio.py`
 - `BuildTools/VideoInterface.json`
 - `BuildTools/docs_video.py`
-- `BuildTools/GuiRuntimeInterface.json`
-- `BuildTools/docs_gui_runtime.py`
 - `BuildTools/AiControlProtocol.json`
 - `BuildTools/docs_ai_control_protocol.py`
 - `BuildTools/docs_package.py`
@@ -120,7 +117,6 @@ breaking; затем используйте baseline stability, чтобы ре�
 - `BuildTools/tests/test_docs_font_format.py`
 - `BuildTools/tests/test_docs_audio.py`
 - `BuildTools/tests/test_docs_video.py`
-- `BuildTools/tests/test_docs_gui_runtime.py`
 - `BuildTools/tests/test_docs_ai_control_protocol.py`
 - `Docs/generated/api.json`
 - `Docs/generated/cmake.json`
@@ -137,7 +133,6 @@ breaking; затем используйте baseline stability, чтобы ре�
 - `Docs/generated/font-format.json`
 - `Docs/generated/audio.json`
 - `Docs/generated/video.json`
-- `Docs/generated/gui-runtime.json`
 - `Docs/generated/ai-control-protocol.json`
 - `Docs/generated/package.json`
 - `Docs/contract-change-dispositions.json`
@@ -169,7 +164,7 @@ Native comparator сохраняет специфичное для символ�
 - изменение сигнатуры перегрузки выглядит как один удалённый ID и один добавленный ID под одним `family_id`;
 - перемещение source path и line не может стать ложным breaking change.
 
-Comparators CMake, main CLI, package, helper CLI, native extension, prototype format, map format, model format, text format, effect format, image format, particle format, font format, audio, video, GUI runtime и AiControl protocol разворачивают принадлежащие модели коллекции записей по стабильному ID. Source provenance, включая производные enum source paths/line numbers, generated summaries, derived usage strings и model digests, не создают повторных изменений. Вложенные изменения description/help остаются documentation changes; defaults, choices, cardinality, required flags, ownership/invocation metadata, platform/target matrices, signatures, stage order, hook fallbacks/call sites, role routing, применимость grammar и resources prototype/map/model/text/effect/image/particle/font/audio/video, compile limits, language normalization, runtime lookup, поведение shader/image/particle/font/audio/video/GUI/AiControl runtime и payload semantics являются структурными данными контракта.
+Comparators CMake, main CLI, package, helper CLI, native extension, prototype format, map format, model format, text format, effect format, image format, particle format, font format, audio, video и AiControl protocol разворачивают принадлежащие модели коллекции записей по стабильному ID. Source provenance, включая производные enum source paths/line numbers, generated summaries, derived usage strings и model digests, не создают повторных изменений. Вложенные изменения description/help остаются documentation changes; defaults, choices, cardinality, required flags, ownership/invocation metadata, platform/target matrices, signatures, stage order, hook fallbacks/call sites, role routing, применимость grammar и resources prototype/map/model/text/effect/image/particle/font/audio/video, compile limits, language normalization, runtime lookup, поведение shader/image/particle/font/audio/video/AiControl runtime и payload semantics являются структурными данными контракта.
 
 Каждый домен записывает два хеша:
 
@@ -217,7 +212,6 @@ python BuildTools/docs_particle_format.py --write
 python BuildTools/docs_font_format.py --write
 python BuildTools/docs_audio.py --write
 python BuildTools/docs_video.py --write
-python BuildTools/docs_gui_runtime.py --write
 python BuildTools/docs_ai_control_protocol.py --write
 python BuildTools/docs_package.py --write
 ```
@@ -235,7 +229,7 @@ python BuildTools/docs_contract_diff.py \
   --enforce
 ```
 
-Для явно сохранённого локального baseline со всеми восемнадцатью файлами моделей:
+Для явно сохранённого локального baseline со всеми семнадцатью файлами моделей:
 
 ```bash
 python BuildTools/docs_contract_diff.py \
@@ -247,13 +241,13 @@ python BuildTools/docs_contract_diff.py \
 
 `--check` вычисляет и проверяет результат, не записывая файлы отчёта. При устранении ошибки предпочтителен `--write`, поскольку Markdown-отчёт включает готовые для заполнения шаблоны реестра.
 
-`BuildTools/docs_api_diff.py` остаётся доступным для исследования нативных символов и regression tests. CI использует aggregate command, поэтому зелёный отчёт только API не может скрыть drift CMake, CLI, package, helper CLI, native extension, prototype format, map format, model format, text format, effect format, image format, particle format, font format, audio, video, GUI runtime или AiControl protocol.
+`BuildTools/docs_api_diff.py` остаётся доступным для исследования нативных символов и regression tests. CI использует aggregate command, поэтому зелёный отчёт только API не может скрыть drift CMake, CLI, package, helper CLI, native extension, prototype format, map format, model format, text format, effect format, image format, particle format, font format, audio, video или AiControl protocol.
 
 ## Поведение bootstrap
 
 `--allow-missing-baseline` предназначен только для первой ревизии, которая добавляет каноническую модель в существующую ветку. При Git baseline только отсутствующие домены получают видимый статус `bootstrap`; существующие домены всё равно сравниваются и проверяются. Неизвестная или незагруженная Git revision остаётся ошибкой.
 
-Directory baseline обязан содержать все восемнадцать моделей. Это предотвращает случайные частичные локальные сравнения, выглядящие полными.
+Directory baseline обязан содержать все семнадцать моделей. Это предотвращает случайные частичные локальные сравнения, выглядящие полными.
 
 После добавления всех моделей отсутствие baseline files не является нормой. Не добавляйте bootstrap mode в локальные команды или CI только для обхода упавшего сравнения.
 
@@ -297,7 +291,7 @@ Validator доказывает форму реестра и точную при�
 
 После проверки актуальности моделей и справочников CI выполняет `docs_contract_diff.py --write --enforce`. Отсутствующее обязательное disposition завершает задание ошибкой. Шаг upload с `if: always()` сохраняет оба отчёта для диагностики.
 
-Pull request с несколькими commits сравнивается с commit базовой ветки, а не с предыдущим commit feature branch. Push с несколькими commits использует полный отправленный диапазон. Standalone validator отклоняет удаление общего реестра, контракта манифеста с восемнадцатью моделями, checkout полной истории, аргумента base ref, aggregate test или enforcement switch.
+Pull request с несколькими commits сравнивается с commit базовой ветки, а не с предыдущим commit feature branch. Push с несколькими commits использует полный отправленный диапазон. Standalone validator отклоняет удаление общего реестра, контракта манифеста с семнадцатью моделями, checkout полной истории, аргумента base ref, aggregate test или enforcement switch.
 
 ## Что требует проверки человеком
 
@@ -322,7 +316,7 @@ Aggregate report не может обнаружить:
 - был ли успешно выполнен migration guide или package path;
 - поддержку между линиями выпусков, которые ещё не объявлены и не отмечены tags.
 
-По-прежнему обязательны тесты runtime, structural CMake, native extension, prototype/map/model/text/effect/image/particle/font/audio/video/GUI/AiControl protocol, package, starter и embedding project. Зелёный отчёт восемнадцати доменов доказывает только принятую смену ревизии для моделируемых declarative surfaces.
+По-прежнему обязательны тесты runtime, structural CMake, native extension, prototype/map/model/text/effect/image/particle/font/audio/video/AiControl protocol, package, starter и embedding project. Зелёный отчёт семнадцати доменов доказывает только принятую смену ревизии для моделируемых declarative surfaces.
 
 ## Устранение неполадок
 
@@ -336,7 +330,7 @@ Aggregate report не может обнаружить:
 
 ## Контрольный список проверки
 
-1. Пересоберите и проверьте все восемнадцать канонических моделей и сгенерированный Markdown.
+1. Пересоберите и проверьте все семнадцать канонических моделей и сгенерированный Markdown.
 2. Выполните `test_docs_api_diff.py` и `test_docs_contract_diff.py`.
 3. Сравните с целевой базой при помощи `--write --enforce`.
 4. Проверьте каждое обязательное disposition и замените каждый сгенерированный placeholder.

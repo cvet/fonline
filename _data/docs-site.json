@@ -30,7 +30,7 @@
       "status": "complete"
     }
   ],
-  "locale_pair_count": 197,
+  "locale_pair_count": 191,
   "locale_pairs": [
     {
       "document_id": "adr-documentation-version-locale-routing",
@@ -334,12 +334,12 @@
     {
       "document_id": "debugging",
       "en": {
-        "title": "Native and AngelScript Debugging",
+        "title": "Native, AngelScript, and Managed C# Debugging",
         "path": "Docs/en/troubleshooting/debugging.md",
         "url": "/Docs/en/troubleshooting/debugging.html"
       },
       "ru": {
-        "title": "\u041d\u0430\u0442\u0438\u0432\u043d\u0430\u044f \u043e\u0442\u043b\u0430\u0434\u043a\u0430 \u0438 \u043e\u0442\u043b\u0430\u0434\u043a\u0430 AngelScript",
+        "title": "\u041d\u0430\u0442\u0438\u0432\u043d\u0430\u044f \u043e\u0442\u043b\u0430\u0434\u043a\u0430, AngelScript \u0438 Managed C",
         "path": "Docs/ru/troubleshooting/debugging.md",
         "url": "/Docs/ru/troubleshooting/debugging.html"
       }
@@ -1112,97 +1112,6 @@
       }
     },
     {
-      "document_id": "generated-gui-runtime-index",
-      "en": {
-        "title": "Generated GUI Runtime Reference",
-        "path": "Docs/en/reference/gui-runtime/index.md",
-        "url": "/Docs/en/reference/gui-runtime/"
-      },
-      "ru": {
-        "title": "\u0421\u0433\u0435\u043d\u0435\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0439 \u0441\u043f\u0440\u0430\u0432\u043e\u0447\u043d\u0438\u043a GUI Runtime",
-        "path": "Docs/ru/reference/gui-runtime/index.md",
-        "url": "/Docs/ru/reference/gui-runtime/"
-      }
-    },
-    {
-      "document_id": "generated-gui-runtime-input",
-      "en": {
-        "title": "GUI Input Contract",
-        "path": "Docs/en/reference/gui-runtime/input.md",
-        "url": "/Docs/en/reference/gui-runtime/input.html"
-      },
-      "ru": {
-        "title": "\u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442 \u0432\u0432\u043e\u0434\u0430 GUI",
-        "path": "Docs/ru/reference/gui-runtime/input.md",
-        "url": "/Docs/ru/reference/gui-runtime/input.html"
-      }
-    },
-    {
-      "document_id": "generated-gui-runtime-integration-validation",
-      "en": {
-        "title": "GUI Integration and Validation",
-        "path": "Docs/en/reference/gui-runtime/integration-validation.md",
-        "url": "/Docs/en/reference/gui-runtime/integration-validation.html"
-      },
-      "ru": {
-        "title": "\u0418\u043d\u0442\u0435\u0433\u0440\u0430\u0446\u0438\u044f \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 GUI",
-        "path": "Docs/ru/reference/gui-runtime/integration-validation.md",
-        "url": "/Docs/ru/reference/gui-runtime/integration-validation.html"
-      }
-    },
-    {
-      "document_id": "generated-gui-runtime-layout-rendering",
-      "en": {
-        "title": "GUI Layout and Rendering",
-        "path": "Docs/en/reference/gui-runtime/layout-rendering.md",
-        "url": "/Docs/en/reference/gui-runtime/layout-rendering.html"
-      },
-      "ru": {
-        "title": "\u041a\u043e\u043c\u043f\u043e\u043d\u043e\u0432\u043a\u0430 \u0438 \u043e\u0442\u0440\u0438\u0441\u043e\u0432\u043a\u0430 GUI",
-        "path": "Docs/ru/reference/gui-runtime/layout-rendering.md",
-        "url": "/Docs/ru/reference/gui-runtime/layout-rendering.html"
-      }
-    },
-    {
-      "document_id": "generated-gui-runtime-lifecycle",
-      "en": {
-        "title": "GUI Screen Lifecycle",
-        "path": "Docs/en/reference/gui-runtime/lifecycle.md",
-        "url": "/Docs/en/reference/gui-runtime/lifecycle.html"
-      },
-      "ru": {
-        "title": "\u0416\u0438\u0437\u043d\u0435\u043d\u043d\u044b\u0439 \u0446\u0438\u043a\u043b \u044d\u043a\u0440\u0430\u043d\u043e\u0432 GUI",
-        "path": "Docs/ru/reference/gui-runtime/lifecycle.md",
-        "url": "/Docs/ru/reference/gui-runtime/lifecycle.html"
-      }
-    },
-    {
-      "document_id": "generated-gui-runtime-screen-api",
-      "en": {
-        "title": "GUI Screen API",
-        "path": "Docs/en/reference/gui-runtime/screen-api.md",
-        "url": "/Docs/en/reference/gui-runtime/screen-api.html"
-      },
-      "ru": {
-        "title": "API \u044d\u043a\u0440\u0430\u043d\u043e\u0432 GUI",
-        "path": "Docs/ru/reference/gui-runtime/screen-api.md",
-        "url": "/Docs/ru/reference/gui-runtime/screen-api.html"
-      }
-    },
-    {
-      "document_id": "generated-gui-runtime-types",
-      "en": {
-        "title": "GUI Runtime Types",
-        "path": "Docs/en/reference/gui-runtime/types.md",
-        "url": "/Docs/en/reference/gui-runtime/types.html"
-      },
-      "ru": {
-        "title": "\u0422\u0438\u043f\u044b GUI Runtime",
-        "path": "Docs/ru/reference/gui-runtime/types.md",
-        "url": "/Docs/ru/reference/gui-runtime/types.html"
-      }
-    },
-    {
       "document_id": "generated-helper-cli-commands",
       "en": {
         "title": "Helper Commands",
@@ -1964,7 +1873,7 @@
         "url": "/Docs/en/how-to/runtime/gui.html"
       },
       "ru": {
-        "title": "\u0421\u0440\u0435\u0434\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u044f GUI",
+        "title": "\u0413\u0440\u0430\u043d\u0438\u0446\u0430 \u0438\u043d\u0442\u0435\u0433\u0440\u0430\u0446\u0438\u0438 GUI",
         "path": "Docs/ru/how-to/runtime/gui.md",
         "url": "/Docs/ru/how-to/runtime/gui.html"
       }
@@ -2019,6 +1928,19 @@
         "title": "\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u043f\u0435\u0440\u0435\u043c\u0435\u043d\u043d\u044b\u0435",
         "path": "Docs/ru/contributing/coding-contracts/local-variables.md",
         "url": "/Docs/ru/contributing/coding-contracts/local-variables.html"
+      }
+    },
+    {
+      "document_id": "managed-csharp-scripting",
+      "en": {
+        "title": "Managed C# Scripting",
+        "path": "Docs/en/how-to/scripting/managed-csharp.md",
+        "url": "/Docs/en/how-to/scripting/managed-csharp.html"
+      },
+      "ru": {
+        "title": "\u0421\u043a\u0440\u0438\u043f\u0442\u044b Managed C",
+        "path": "Docs/ru/how-to/scripting/managed-csharp.md",
+        "url": "/Docs/ru/how-to/scripting/managed-csharp.html"
       }
     },
     {
@@ -3234,6 +3156,25 @@
           }
         },
         {
+          "id": "managed-csharp-scripting",
+          "title": "Managed C# Scripting",
+          "path": "Docs/en/how-to/scripting/managed-csharp.md",
+          "url": "/Docs/en/how-to/scripting/managed-csharp.html",
+          "diataxis": "how-to",
+          "locales": {
+            "en": {
+              "title": "Managed C# Scripting",
+              "path": "Docs/en/how-to/scripting/managed-csharp.md",
+              "url": "/Docs/en/how-to/scripting/managed-csharp.html"
+            },
+            "ru": {
+              "title": "\u0421\u043a\u0440\u0438\u043f\u0442\u044b Managed C",
+              "path": "Docs/ru/how-to/scripting/managed-csharp.md",
+              "url": "/Docs/ru/how-to/scripting/managed-csharp.html"
+            }
+          }
+        },
+        {
           "id": "angelscript-style",
           "title": "AngelScript Style and Refactoring",
           "path": "Docs/en/how-to/scripting/style-and-refactoring.md",
@@ -4083,28 +4024,9 @@
               "url": "/Docs/en/how-to/runtime/gui.html"
             },
             "ru": {
-              "title": "\u0421\u0440\u0435\u0434\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u044f GUI",
+              "title": "\u0413\u0440\u0430\u043d\u0438\u0446\u0430 \u0438\u043d\u0442\u0435\u0433\u0440\u0430\u0446\u0438\u0438 GUI",
               "path": "Docs/ru/how-to/runtime/gui.md",
               "url": "/Docs/ru/how-to/runtime/gui.html"
-            }
-          }
-        },
-        {
-          "id": "generated-gui-runtime-index",
-          "title": "Generated GUI Runtime Reference",
-          "path": "Docs/en/reference/gui-runtime/index.md",
-          "url": "/Docs/en/reference/gui-runtime/",
-          "diataxis": "reference",
-          "locales": {
-            "en": {
-              "title": "Generated GUI Runtime Reference",
-              "path": "Docs/en/reference/gui-runtime/index.md",
-              "url": "/Docs/en/reference/gui-runtime/"
-            },
-            "ru": {
-              "title": "\u0421\u0433\u0435\u043d\u0435\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0439 \u0441\u043f\u0440\u0430\u0432\u043e\u0447\u043d\u0438\u043a GUI Runtime",
-              "path": "Docs/ru/reference/gui-runtime/index.md",
-              "url": "/Docs/ru/reference/gui-runtime/"
             }
           }
         }
@@ -4396,18 +4318,18 @@
         },
         {
           "id": "debugging",
-          "title": "Native and AngelScript Debugging",
+          "title": "Native, AngelScript, and Managed C# Debugging",
           "path": "Docs/en/troubleshooting/debugging.md",
           "url": "/Docs/en/troubleshooting/debugging.html",
           "diataxis": "how-to",
           "locales": {
             "en": {
-              "title": "Native and AngelScript Debugging",
+              "title": "Native, AngelScript, and Managed C# Debugging",
               "path": "Docs/en/troubleshooting/debugging.md",
               "url": "/Docs/en/troubleshooting/debugging.html"
             },
             "ru": {
-              "title": "\u041d\u0430\u0442\u0438\u0432\u043d\u0430\u044f \u043e\u0442\u043b\u0430\u0434\u043a\u0430 \u0438 \u043e\u0442\u043b\u0430\u0434\u043a\u0430 AngelScript",
+              "title": "\u041d\u0430\u0442\u0438\u0432\u043d\u0430\u044f \u043e\u0442\u043b\u0430\u0434\u043a\u0430, AngelScript \u0438 Managed C",
               "path": "Docs/ru/troubleshooting/debugging.md",
               "url": "/Docs/ru/troubleshooting/debugging.html"
             }

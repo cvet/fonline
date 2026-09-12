@@ -6,7 +6,7 @@ document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
 
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3171979cd9c286d579d113174bcea6a8886ac63c49a5290576d281ab304e67f7"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"00bbd5fcad52632cefad3449e633a2177087573aee589bef6ec10adc6d5cbdc9"} -->
 
 # Базовый слой Essentials
 
@@ -164,7 +164,7 @@ Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Еди
 
 `FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `BasicCore::ExitApp(false)` только механическое завершение. Ему принадлежат `ReportFatalAndExit`, `ReportStrongAssertAndExit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `ExitApp(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
 
-`StackTrace.*` собирает и форматирует native/script stacks, а `ExceptionHandling.*` владеет более поздними helpers отчётов об exception objects. Debugger-сценарии описаны в разделе [Native- и AngelScript-отладка](../../troubleshooting/debugging.md).
+`StackTrace.*` собирает и форматирует native/script stacks, а `ExceptionHandling.*` владеет более поздними helpers отчётов об exception objects. Debugger-сценарии описаны в разделе [Native-, AngelScript- и Managed-отладка](../../troubleshooting/debugging.md).
 
 <a id="memory-pointers-and-lifetime-utilities"></a>
 ### Память, указатели и время жизни
@@ -366,7 +366,7 @@ standard stream копируется через `make_stream_string`,
 
 - Ограничения компилятора/ОС, namespace, базовые aliases и низкоуровневые макросы: `Source/Essentials/BasicCore.*`.
 - Регистрация global create/delete callbacks: `Source/Essentials/GlobalData.*`.
-- Stack traces, журналирование и отчёты об исключениях: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*` и [Native- и AngelScript-отладка](../../troubleshooting/debugging.md).
+- Stack traces, журналирование и отчёты об исключениях: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*` и [Native-, AngelScript- и Managed-отладка](../../troubleshooting/debugging.md).
 - Общие средства памяти и указателей: `Source/Essentials/MemorySystem.*`, `SmartPointers.*` и [Умные указатели](../../contributing/coding-contracts/smart-pointers.md).
 - Владение callable и inline targets: `Source/Essentials/FunctionObjects.*`.
 - Строки движка и build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; хранение deque: `DequeObject.*`; aliases и stream interop: `Containers.h`.
@@ -380,6 +380,6 @@ standard stream копируется через `make_stream_string`,
 1. Убедитесь, что изменение не вводит зависимость Essentials от вышележащего слоя движка.
 2. При добавлении или удалении файлов Essentials обновите `BuildTools/cmake/stages/EngineSources.cmake`.
 3. Запустите минимальный подходящий Essentials test, затем более широкий target `RunUnitTests`, если изменение пересекает границы утилит.
-4. Для диагностики также проверьте актуальность раздела [Native- и AngelScript-отладка](../../troubleshooting/debugging.md).
+4. Для диагностики также проверьте актуальность раздела [Native-, AngelScript- и Managed-отладка](../../troubleshooting/debugging.md).
 5. Для файловой системы, сокетов или threading проверьте хотя бы одного вышележащего consumer, если низкоуровневый контракт изменился.
 6. При внедрении `small_vector` подтвердите capacity и object-count измерениями, проверьте move/address lifetime и exact-type boundaries, затем повторно запустите gates exception safety и pointer ownership.

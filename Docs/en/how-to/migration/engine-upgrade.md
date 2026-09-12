@@ -171,7 +171,7 @@ Run the narrowest checks first, then the full declared project matrix:
 
 - Engine unit tests for changed native domains;
 - configure and compile with each supported host compiler;
-- `CompileAngelScript`;
+- `CompileAngelScript` and/or `CompileManagedScripts` for every scripting backend enabled by the project;
 - `ForceBakeResources` when the data graph changed;
 - focused content/gameplay tests;
 - starter/tutorial smoke when integration mechanics changed;

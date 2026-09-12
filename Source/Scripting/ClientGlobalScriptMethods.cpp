@@ -335,7 +335,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DumpAtlases(ptr<ClientEngine> client)
 {
-    client->SprMngr.GetAtlasMngr()->DumpAtlases();
+    client->SprMngr.GetAtlasMngr()->DumpAtlases(client->Settings->UserWritablePath);
 }
 
 // Changes the logical screen size and, for a non-virtual window, the native client window size to the supplied dimensions
@@ -945,7 +945,14 @@ FO_SCRIPT_API void Client_Game_SimulateDisconnect(ptr<ClientEngine> client)
     client->OnDisconnected.Fire();
 }
 
-// Raises an engine info message with optional extra text, as the server would deliver it
+// Raises the client connecting-failed event as the transport would deliver it
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateConnectingFailed(ptr<ClientEngine> client)
+{
+    client->OnConnectingFailed.Fire();
+}
+
+// Raises an engine info message with optional extra text, as the server would deliver it.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateInfoMessage(ptr<ClientEngine> client, EngineInfoMessage infoMessage, string_view extraText = "")
 {
@@ -1685,7 +1692,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    string path = strex(filePath).format_path().str();
+    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
@@ -1701,9 +1708,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
 {
-    ignore_unused(client);
-
-    string path = strex(filePath).format_path().str();
+    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {

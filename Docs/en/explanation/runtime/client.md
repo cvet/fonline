@@ -24,7 +24,7 @@ Read this page together with:
 - [Video.md](../../../Video.md) for experimental Ogg/Theora resources, fullscreen and embedded playback, memory, and visible validation.
 - [Networking](../authority-and-networking/) for command buffers, transports, and property sync.
 - [Frontend and Rendering](../rendering/) for platform windows, input, audio, and renderer backends.
-- [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md), [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md), and [Native and AngelScript Debugging](../../troubleshooting/debugging.md) for platform-specific validation flows.
+- [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md), [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md), and [Native, AngelScript, and Managed C# Debugging](../../troubleshooting/debugging.md) for platform-specific validation flows.
 
 ## Source paths inspected
 
@@ -39,7 +39,8 @@ Read this page together with:
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/Gui.fos`
+- `Source/Scripting/ClientGlobalScriptMethods.cpp`
+- `Source/Scripting/Managed/ManagedScriptBackend.cpp`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`

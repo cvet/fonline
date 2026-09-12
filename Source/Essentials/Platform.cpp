@@ -84,6 +84,8 @@ auto Platform::GetUserDataBase() noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();
 
+    // The environment answers first, because a user who redirected it meant to. Only when it is silent
+    // is the OS asked: nothing here drops the caller back to the install directory it cannot write
 #if FO_WINDOWS
     if (const char* local = std::getenv("LOCALAPPDATA"); local != nullptr && local[0] != 0) {
         return local;
@@ -91,12 +93,22 @@ auto Platform::GetUserDataBase() noexcept -> string
     if (const char* roaming = std::getenv("APPDATA"); roaming != nullptr && roaming[0] != 0) {
         return roaming;
     }
+    if (auto shell_path = winapi::get_local_app_data_path(); shell_path.has_value()) {
+        return shell_path.value();
+    }
+
     return "";
+
 #elif FO_MAC || FO_IOS
     if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != 0) {
         return strex(home).combine_path("Library/Application Support").str();
     }
+    if (auto home_dir = posix::get_home_dir(); home_dir.has_value()) {
+        return strex(home_dir.value()).combine_path("Library/Application Support").str();
+    }
+
     return "";
+
 #else
     if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != 0) {
         return xdg;
@@ -104,6 +116,10 @@ auto Platform::GetUserDataBase() noexcept -> string
     if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != 0) {
         return strex(home).combine_path(".local/share").str();
     }
+    if (auto home_dir = posix::get_home_dir(); home_dir.has_value()) {
+        return strex(home_dir.value()).combine_path(".local/share").str();
+    }
+
     return "";
 #endif
 }

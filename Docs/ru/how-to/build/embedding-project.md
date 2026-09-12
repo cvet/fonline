@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/embedding-project.html
 
 # Встраивание FOnline в игровой проект
 
-<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"4dd2a2ba33ecd8927bb9c511b2bbbff89d1ef107e23a21f5f4ee326a8878e1ac"} -->
+<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"0acb2ae65debb2493c031a7054a88ab552d1cae52581979b098ea8fa81034b23"} -->
 
 FOnline рассчитан на подключение как source submodule. Репозиторий движка
 поставляет переиспользуемую технологию, а репозиторий игры создает конкретный
@@ -47,7 +47,7 @@ GameProject/
 ├── CMakeLists.txt          # project entry point that includes engine build logic
 ├── CMakePresets.json       # project presets and platform variants
 ├── GameName.fomain         # master project configuration
-├── Scripts/                # game AngelScript modules
+├── Scripts/                # game AngelScript (.fos) or Managed C# (.cs) modules
 ├── SourceExt/              # optional project-native C++ extensions
 ├── Critters/ Items/ Maps/  # game content and prototypes
 ├── ProjectDialogs/ Texts/  # optional project-defined dialogs and localization
@@ -81,7 +81,7 @@ extensions и bakers либо через отдельно версионируе
 В игровом проекте должны находиться:
 
 - правила игры, content, maps, prototypes, dialogs, localization и GUI definitions;
-- game-specific AngelScript modules;
+- game-specific modules AngelScript или Managed C# с ровно теми baker/runtime backend, которые проект включает и упаковывает;
 - project-level native extension implementations и dependencies;
   [Native Extensions](../../../NativeExtensions.md) определяет composition, hooks
   и bindings, а [Project Dependencies](../../../ProjectDependencies.md) владеет

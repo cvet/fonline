@@ -52,7 +52,7 @@ guessing cross-revision compatibility.
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
 - `BuildTools/EffekseerEditor/build.ps1`
-- `BuildTools/compile-mono-scripts.py`
+- `BuildTools/managed_runtime_payload.py`
 - `BuildTools/codecoverage.py`
 - `BuildTools/android_device.py`
 - `BuildTools/web/simple-web-server.py`
@@ -127,7 +127,7 @@ Start here when source grouping, library dependencies, or runtime layer boundari
 
 Creates executable and shared-library applications from `Source/Applications/*.cpp`. It uses helpers such as `AddExecutableApplication` and `AddSharedApplication` and project variables such as `FO_DEV_NAME`, output paths, platform flags, and enabled build modes.
 
-Examples of entry points wired here include client, client runtime library, client headless variants, server variants, mapper, animation and particle viewers, baker, AngelScript compiler, and testing app depending on options. There is no generic Editor application or validation target.
+Examples of entry points wired here include client, client runtime library, client headless variants, server variants, mapper, animation and particle viewers, baker, AngelScript compiler, Managed script baker, and testing app depending on options. There is no generic Editor application or validation target.
 
 Effekseer Editor is intentionally absent from this stage and from the
 application target graph. Its standalone `BuildTools/EffekseerEditor/build.ps1`
@@ -143,13 +143,13 @@ See [Applications](../applications.md).
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Mono script compilation through `BuildTools/compile-mono-scripts.py` when Mono scripting is enabled. CMake passes `FO_OUTPUT_PATH` explicitly as the required scripts/project directory and appends each `FO_MONO_ASSEMBLIES` entry.
+- Managed C# compilation through the standalone project `ManagedScriptBaker` when `FO_MANAGED_SCRIPTING` is enabled. `CompileManagedScripts` follows `ForceCodeGeneration`, uses the configured managed source directories/references/analyzers, and emits per-pack target assemblies plus `.gen.cs`, `.gen.csproj`, and `.gen.sln` files. Runtime setup and payload preparation are separate targets.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
 - The public `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])` helper for project-owned bake variants. Call it after `SetupScriptsAndBaking()` so the project baker exists; every added target reuses the standard codegen dependency, output working directory, config application, and resource build-hash update.
 
-Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and [Scripting](../../explanation/scripting-runtime/).
+Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md), [Scripting](../../explanation/scripting-runtime/), and [Managed C# Scripting](../../how-to/scripting/managed-csharp.md).
 
 ### `Packages.cmake`
 
@@ -231,7 +231,7 @@ The generated [stage and hook reference](../cmake/stages.md) is the documented i
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](../metadata/index.md).
 - New helper command or argument: the executable `create_parser()`, `BuildTools/HelperCliInterface.json`, [helper CLI reference](../helper-cli/index.md), and `BuildTools/docs_helper_cli.py`.
 - New project-native source role, hook, or binding rule: `BuildTools/NativeExtensionInterface.json`, [NativeExtensions.md](../../../NativeExtensions.md), [generated/native-extension/index.md](../../../generated/native-extension/index.md), and `BuildTools/docs_native_extension.py`.
-- New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [Baking Pipeline](../../explanation/content-pipeline/baking.md), and [Scripting](../../explanation/scripting-runtime/).
+- New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [Baking Pipeline](../../explanation/content-pipeline/baking.md), [Scripting](../../explanation/scripting-runtime/), and the backend-specific AngelScript or [Managed C#](../../how-to/scripting/managed-csharp.md) guide.
 - New executable/tool entry point: `Applications.cmake` and [Applications](../applications.md).
 - Auxiliary-tool build recipes: `BuildTools/buildtools.py build-auxiliary`,
   `BuildTools/EffekseerEditor/build.ps1`, and [Tools.md](../../../Tools.md).

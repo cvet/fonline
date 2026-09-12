@@ -14,6 +14,10 @@
       "contract": "normative",
       "harness": "bash-parse"
     },
+    "csharp": {
+      "contract": "normative",
+      "harness": "c-family-parse"
+    },
     "cmake": {
       "contract": "normative",
       "harness": "cmake-parse"

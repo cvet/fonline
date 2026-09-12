@@ -17,9 +17,6 @@ Continue with the [canonical reference](../../en/reference/helper-cli/index.md).
 <a id="entry-helper-cli-codegen-60abdf415d"></a>
 - [`entry-helper-cli-codegen-60abdf415d`](../../en/reference/helper-cli/index.md#entry-helper-cli-codegen-60abdf415d)
 
-<a id="entry-helper-cli-compile-mono-scripts-ad6011a439"></a>
-- [`entry-helper-cli-compile-mono-scripts-ad6011a439`](../../en/reference/helper-cli/index.md#entry-helper-cli-compile-mono-scripts-ad6011a439)
-
 <a id="entry-helper-cli-codecoverage-b014400e5e"></a>
 - [`entry-helper-cli-codecoverage-b014400e5e`](../../en/reference/helper-cli/index.md#entry-helper-cli-codecoverage-b014400e5e)
 

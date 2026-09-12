@@ -44,10 +44,10 @@
     "legacy_route_strategy": "durable-markdown-pointer",
     "migration_status": "planned"
   },
-  "route_count": 386,
-  "redirect_count": 188,
-  "translation_target_count": 197,
-  "translation_complete_count": 197,
+  "route_count": 394,
+  "redirect_count": 202,
+  "translation_target_count": 191,
+  "translation_complete_count": 191,
   "routes": [
     {
       "id": "adr-documentation-version-locale-routing",
@@ -829,7 +829,7 @@
     {
       "id": "debugging",
       "canonical_document_id": "debugging",
-      "title": "Native and AngelScript Debugging",
+      "title": "Native, AngelScript, and Managed C# Debugging",
       "state": "current",
       "human": true,
       "translation": "required",
@@ -2808,234 +2808,136 @@
     },
     {
       "id": "generated-gui-runtime-index",
-      "canonical_document_id": "generated-gui-runtime-index",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Generated GUI Runtime Reference",
-      "state": "current",
-      "human": true,
-      "translation": "required",
-      "disposition": "retain",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
       "source_path": "Docs/en/reference/gui-runtime/index.md",
       "current_path": "/Docs/en/reference/gui-runtime/",
       "current_url": "https://fonline.ru/Docs/en/reference/gui-runtime/",
-      "planned_source_path": "Docs/en/reference/gui-runtime/index.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/",
-      "migration_status": "current",
-      "redirect_required": false,
-      "locale_routes": [
-        {
-          "locale": "en",
-          "source_path": "Docs/en/reference/gui-runtime/index.md",
-          "path": "/Docs/en/reference/gui-runtime/",
-          "url": "https://fonline.ru/Docs/en/reference/gui-runtime/",
-          "availability": "available"
-        },
-        {
-          "locale": "ru",
-          "source_path": "Docs/ru/reference/gui-runtime/index.md",
-          "path": "/Docs/ru/reference/gui-runtime/",
-          "url": "https://fonline.ru/Docs/ru/reference/gui-runtime/",
-          "availability": "available"
-        }
-      ]
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-input",
-      "canonical_document_id": "generated-gui-runtime-input",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "GUI Input Contract",
-      "state": "current",
-      "human": true,
-      "translation": "required",
-      "disposition": "retain",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
       "source_path": "Docs/en/reference/gui-runtime/input.md",
       "current_path": "/Docs/en/reference/gui-runtime/input.html",
       "current_url": "https://fonline.ru/Docs/en/reference/gui-runtime/input.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/input.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/input.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/input.html",
-      "migration_status": "current",
-      "redirect_required": false,
-      "locale_routes": [
-        {
-          "locale": "en",
-          "source_path": "Docs/en/reference/gui-runtime/input.md",
-          "path": "/Docs/en/reference/gui-runtime/input.html",
-          "url": "https://fonline.ru/Docs/en/reference/gui-runtime/input.html",
-          "availability": "available"
-        },
-        {
-          "locale": "ru",
-          "source_path": "Docs/ru/reference/gui-runtime/input.md",
-          "path": "/Docs/ru/reference/gui-runtime/input.html",
-          "url": "https://fonline.ru/Docs/ru/reference/gui-runtime/input.html",
-          "availability": "available"
-        }
-      ]
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-integration-validation",
-      "canonical_document_id": "generated-gui-runtime-integration-validation",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "GUI Integration and Validation",
-      "state": "current",
-      "human": true,
-      "translation": "required",
-      "disposition": "retain",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
       "source_path": "Docs/en/reference/gui-runtime/integration-validation.md",
       "current_path": "/Docs/en/reference/gui-runtime/integration-validation.html",
       "current_url": "https://fonline.ru/Docs/en/reference/gui-runtime/integration-validation.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/integration-validation.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/integration-validation.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/integration-validation.html",
-      "migration_status": "current",
-      "redirect_required": false,
-      "locale_routes": [
-        {
-          "locale": "en",
-          "source_path": "Docs/en/reference/gui-runtime/integration-validation.md",
-          "path": "/Docs/en/reference/gui-runtime/integration-validation.html",
-          "url": "https://fonline.ru/Docs/en/reference/gui-runtime/integration-validation.html",
-          "availability": "available"
-        },
-        {
-          "locale": "ru",
-          "source_path": "Docs/ru/reference/gui-runtime/integration-validation.md",
-          "path": "/Docs/ru/reference/gui-runtime/integration-validation.html",
-          "url": "https://fonline.ru/Docs/ru/reference/gui-runtime/integration-validation.html",
-          "availability": "available"
-        }
-      ]
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-layout-rendering",
-      "canonical_document_id": "generated-gui-runtime-layout-rendering",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "GUI Layout and Rendering",
-      "state": "current",
-      "human": true,
-      "translation": "required",
-      "disposition": "retain",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
       "source_path": "Docs/en/reference/gui-runtime/layout-rendering.md",
       "current_path": "/Docs/en/reference/gui-runtime/layout-rendering.html",
       "current_url": "https://fonline.ru/Docs/en/reference/gui-runtime/layout-rendering.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/layout-rendering.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/layout-rendering.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/layout-rendering.html",
-      "migration_status": "current",
-      "redirect_required": false,
-      "locale_routes": [
-        {
-          "locale": "en",
-          "source_path": "Docs/en/reference/gui-runtime/layout-rendering.md",
-          "path": "/Docs/en/reference/gui-runtime/layout-rendering.html",
-          "url": "https://fonline.ru/Docs/en/reference/gui-runtime/layout-rendering.html",
-          "availability": "available"
-        },
-        {
-          "locale": "ru",
-          "source_path": "Docs/ru/reference/gui-runtime/layout-rendering.md",
-          "path": "/Docs/ru/reference/gui-runtime/layout-rendering.html",
-          "url": "https://fonline.ru/Docs/ru/reference/gui-runtime/layout-rendering.html",
-          "availability": "available"
-        }
-      ]
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-lifecycle",
-      "canonical_document_id": "generated-gui-runtime-lifecycle",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "GUI Screen Lifecycle",
-      "state": "current",
-      "human": true,
-      "translation": "required",
-      "disposition": "retain",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
       "source_path": "Docs/en/reference/gui-runtime/lifecycle.md",
       "current_path": "/Docs/en/reference/gui-runtime/lifecycle.html",
       "current_url": "https://fonline.ru/Docs/en/reference/gui-runtime/lifecycle.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/lifecycle.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/lifecycle.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/lifecycle.html",
-      "migration_status": "current",
-      "redirect_required": false,
-      "locale_routes": [
-        {
-          "locale": "en",
-          "source_path": "Docs/en/reference/gui-runtime/lifecycle.md",
-          "path": "/Docs/en/reference/gui-runtime/lifecycle.html",
-          "url": "https://fonline.ru/Docs/en/reference/gui-runtime/lifecycle.html",
-          "availability": "available"
-        },
-        {
-          "locale": "ru",
-          "source_path": "Docs/ru/reference/gui-runtime/lifecycle.md",
-          "path": "/Docs/ru/reference/gui-runtime/lifecycle.html",
-          "url": "https://fonline.ru/Docs/ru/reference/gui-runtime/lifecycle.html",
-          "availability": "available"
-        }
-      ]
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-screen-api",
-      "canonical_document_id": "generated-gui-runtime-screen-api",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "GUI Screen API",
-      "state": "current",
-      "human": true,
-      "translation": "required",
-      "disposition": "retain",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
       "source_path": "Docs/en/reference/gui-runtime/screen-api.md",
       "current_path": "/Docs/en/reference/gui-runtime/screen-api.html",
       "current_url": "https://fonline.ru/Docs/en/reference/gui-runtime/screen-api.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/screen-api.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/screen-api.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/screen-api.html",
-      "migration_status": "current",
-      "redirect_required": false,
-      "locale_routes": [
-        {
-          "locale": "en",
-          "source_path": "Docs/en/reference/gui-runtime/screen-api.md",
-          "path": "/Docs/en/reference/gui-runtime/screen-api.html",
-          "url": "https://fonline.ru/Docs/en/reference/gui-runtime/screen-api.html",
-          "availability": "available"
-        },
-        {
-          "locale": "ru",
-          "source_path": "Docs/ru/reference/gui-runtime/screen-api.md",
-          "path": "/Docs/ru/reference/gui-runtime/screen-api.html",
-          "url": "https://fonline.ru/Docs/ru/reference/gui-runtime/screen-api.html",
-          "availability": "available"
-        }
-      ]
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-gui-runtime-types",
-      "canonical_document_id": "generated-gui-runtime-types",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "GUI Runtime Types",
-      "state": "current",
-      "human": true,
-      "translation": "required",
-      "disposition": "retain",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
       "source_path": "Docs/en/reference/gui-runtime/types.md",
       "current_path": "/Docs/en/reference/gui-runtime/types.html",
       "current_url": "https://fonline.ru/Docs/en/reference/gui-runtime/types.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/types.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/types.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/types.html",
-      "migration_status": "current",
-      "redirect_required": false,
-      "locale_routes": [
-        {
-          "locale": "en",
-          "source_path": "Docs/en/reference/gui-runtime/types.md",
-          "path": "/Docs/en/reference/gui-runtime/types.html",
-          "url": "https://fonline.ru/Docs/en/reference/gui-runtime/types.html",
-          "availability": "available"
-        },
-        {
-          "locale": "ru",
-          "source_path": "Docs/ru/reference/gui-runtime/types.md",
-          "path": "/Docs/ru/reference/gui-runtime/types.html",
-          "url": "https://fonline.ru/Docs/ru/reference/gui-runtime/types.html",
-          "availability": "available"
-        }
-      ]
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "generated-helper-cli-commands",
@@ -6539,7 +6441,7 @@
     },
     {
       "id": "legacy-generated-gui-runtime-index-route",
-      "canonical_document_id": "generated-gui-runtime-index",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Legacy Generated GUI Runtime Reference Route",
       "state": "redirect",
       "human": false,
@@ -6548,17 +6450,17 @@
       "source_path": "Docs/generated/gui-runtime/index.md",
       "current_path": "/Docs/generated/gui-runtime/",
       "current_url": "https://fonline.ru/Docs/generated/gui-runtime/",
-      "planned_source_path": "Docs/en/reference/gui-runtime/index.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
       "migration_status": "planned",
       "redirect_required": true,
       "locale_routes": [],
-      "redirect_to": "generated-gui-runtime-index"
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-input-route",
-      "canonical_document_id": "generated-gui-runtime-input",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Legacy GUI Input Contract Route",
       "state": "redirect",
       "human": false,
@@ -6567,17 +6469,17 @@
       "source_path": "Docs/generated/gui-runtime/input.md",
       "current_path": "/Docs/generated/gui-runtime/input.html",
       "current_url": "https://fonline.ru/Docs/generated/gui-runtime/input.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/input.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/input.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/input.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
       "migration_status": "planned",
       "redirect_required": true,
       "locale_routes": [],
-      "redirect_to": "generated-gui-runtime-input"
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-integration-validation-route",
-      "canonical_document_id": "generated-gui-runtime-integration-validation",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Legacy GUI Integration and Validation Route",
       "state": "redirect",
       "human": false,
@@ -6586,17 +6488,17 @@
       "source_path": "Docs/generated/gui-runtime/integration-validation.md",
       "current_path": "/Docs/generated/gui-runtime/integration-validation.html",
       "current_url": "https://fonline.ru/Docs/generated/gui-runtime/integration-validation.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/integration-validation.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/integration-validation.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/integration-validation.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
       "migration_status": "planned",
       "redirect_required": true,
       "locale_routes": [],
-      "redirect_to": "generated-gui-runtime-integration-validation"
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-layout-rendering-route",
-      "canonical_document_id": "generated-gui-runtime-layout-rendering",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Legacy GUI Layout and Rendering Route",
       "state": "redirect",
       "human": false,
@@ -6605,17 +6507,17 @@
       "source_path": "Docs/generated/gui-runtime/layout-rendering.md",
       "current_path": "/Docs/generated/gui-runtime/layout-rendering.html",
       "current_url": "https://fonline.ru/Docs/generated/gui-runtime/layout-rendering.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/layout-rendering.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/layout-rendering.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/layout-rendering.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
       "migration_status": "planned",
       "redirect_required": true,
       "locale_routes": [],
-      "redirect_to": "generated-gui-runtime-layout-rendering"
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-lifecycle-route",
-      "canonical_document_id": "generated-gui-runtime-lifecycle",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Legacy GUI Screen Lifecycle Route",
       "state": "redirect",
       "human": false,
@@ -6624,17 +6526,17 @@
       "source_path": "Docs/generated/gui-runtime/lifecycle.md",
       "current_path": "/Docs/generated/gui-runtime/lifecycle.html",
       "current_url": "https://fonline.ru/Docs/generated/gui-runtime/lifecycle.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/lifecycle.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/lifecycle.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/lifecycle.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
       "migration_status": "planned",
       "redirect_required": true,
       "locale_routes": [],
-      "redirect_to": "generated-gui-runtime-lifecycle"
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-screen-api-route",
-      "canonical_document_id": "generated-gui-runtime-screen-api",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Legacy GUI Screen API Route",
       "state": "redirect",
       "human": false,
@@ -6643,17 +6545,17 @@
       "source_path": "Docs/generated/gui-runtime/screen-api.md",
       "current_path": "/Docs/generated/gui-runtime/screen-api.html",
       "current_url": "https://fonline.ru/Docs/generated/gui-runtime/screen-api.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/screen-api.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/screen-api.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/screen-api.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
       "migration_status": "planned",
       "redirect_required": true,
       "locale_routes": [],
-      "redirect_to": "generated-gui-runtime-screen-api"
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-gui-runtime-types-route",
-      "canonical_document_id": "generated-gui-runtime-types",
+      "canonical_document_id": "gui-runtime-guide",
       "title": "Legacy GUI Runtime Types Route",
       "state": "redirect",
       "human": false,
@@ -6662,13 +6564,13 @@
       "source_path": "Docs/generated/gui-runtime/types.md",
       "current_path": "/Docs/generated/gui-runtime/types.html",
       "current_url": "https://fonline.ru/Docs/generated/gui-runtime/types.html",
-      "planned_source_path": "Docs/en/reference/gui-runtime/types.md",
-      "planned_path": "/Docs/en/reference/gui-runtime/types.html",
-      "planned_url": "https://fonline.ru/Docs/en/reference/gui-runtime/types.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
       "migration_status": "planned",
       "redirect_required": true,
       "locale_routes": [],
-      "redirect_to": "generated-gui-runtime-types"
+      "redirect_to": "gui-runtime-guide"
     },
     {
       "id": "legacy-generated-helper-cli-commands-route",
@@ -8689,6 +8591,39 @@
       ]
     },
     {
+      "id": "managed-csharp-scripting",
+      "canonical_document_id": "managed-csharp-scripting",
+      "title": "Managed C# Scripting",
+      "state": "current",
+      "human": true,
+      "translation": "required",
+      "disposition": "retain",
+      "source_path": "Docs/en/how-to/scripting/managed-csharp.md",
+      "current_path": "/Docs/en/how-to/scripting/managed-csharp.html",
+      "current_url": "https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html",
+      "planned_source_path": "Docs/en/how-to/scripting/managed-csharp.md",
+      "planned_path": "/Docs/en/how-to/scripting/managed-csharp.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html",
+      "migration_status": "current",
+      "redirect_required": false,
+      "locale_routes": [
+        {
+          "locale": "en",
+          "source_path": "Docs/en/how-to/scripting/managed-csharp.md",
+          "path": "/Docs/en/how-to/scripting/managed-csharp.html",
+          "url": "https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html",
+          "availability": "available"
+        },
+        {
+          "locale": "ru",
+          "source_path": "Docs/ru/how-to/scripting/managed-csharp.md",
+          "path": "/Docs/ru/how-to/scripting/managed-csharp.html",
+          "url": "https://fonline.ru/Docs/ru/how-to/scripting/managed-csharp.html",
+          "availability": "available"
+        }
+      ]
+    },
+    {
       "id": "map-format-guide",
       "canonical_document_id": "map-format-guide",
       "title": "FOnline Map Format",
@@ -9514,6 +9449,139 @@
       ]
     },
     {
+      "id": "ru-generated-gui-runtime-index-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "title": "Russian Generated GUI Runtime Reference Route",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ru/reference/gui-runtime/index.md",
+      "current_path": "/Docs/ru/reference/gui-runtime/",
+      "current_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-input-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "title": "Russian GUI Input Contract Route",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ru/reference/gui-runtime/input.md",
+      "current_path": "/Docs/ru/reference/gui-runtime/input.html",
+      "current_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/input.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-integration-validation-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "title": "Russian GUI Integration and Validation Route",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ru/reference/gui-runtime/integration-validation.md",
+      "current_path": "/Docs/ru/reference/gui-runtime/integration-validation.html",
+      "current_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/integration-validation.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-layout-rendering-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "title": "Russian GUI Layout and Rendering Route",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ru/reference/gui-runtime/layout-rendering.md",
+      "current_path": "/Docs/ru/reference/gui-runtime/layout-rendering.html",
+      "current_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/layout-rendering.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-lifecycle-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "title": "Russian GUI Screen Lifecycle Route",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ru/reference/gui-runtime/lifecycle.md",
+      "current_path": "/Docs/ru/reference/gui-runtime/lifecycle.html",
+      "current_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/lifecycle.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-screen-api-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "title": "Russian GUI Screen API Route",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ru/reference/gui-runtime/screen-api.md",
+      "current_path": "/Docs/ru/reference/gui-runtime/screen-api.html",
+      "current_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/screen-api.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
+      "id": "ru-generated-gui-runtime-types-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "title": "Russian GUI Runtime Types Route",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ru/reference/gui-runtime/types.md",
+      "current_path": "/Docs/ru/reference/gui-runtime/types.html",
+      "current_url": "https://fonline.ru/Docs/ru/reference/gui-runtime/types.html",
+      "planned_source_path": "Docs/en/how-to/runtime/gui.md",
+      "planned_path": "/Docs/en/how-to/runtime/gui.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/runtime/gui.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "gui-runtime-guide"
+    },
+    {
       "id": "script-lifecycle-concurrency",
       "canonical_document_id": "script-lifecycle-concurrency",
       "title": "Script Lifecycle and Concurrency",
@@ -10142,6 +10210,62 @@
     }
   ],
   "legacy_redirects": [
+    {
+      "document_id": "generated-gui-runtime-index",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/en/reference/gui-runtime/",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "generated-gui-runtime-input",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/en/reference/gui-runtime/input.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "generated-gui-runtime-integration-validation",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/en/reference/gui-runtime/integration-validation.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "generated-gui-runtime-layout-rendering",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/en/reference/gui-runtime/layout-rendering.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "generated-gui-runtime-lifecycle",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/en/reference/gui-runtime/lifecycle.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "generated-gui-runtime-screen-api",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/en/reference/gui-runtime/screen-api.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "generated-gui-runtime-types",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/en/reference/gui-runtime/types.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
     {
       "document_id": "legacy-adr-documentation-version-locale-routing-route",
       "canonical_document_id": "adr-documentation-version-locale-routing",
@@ -10784,57 +10908,57 @@
     },
     {
       "document_id": "legacy-generated-gui-runtime-index-route",
-      "canonical_document_id": "generated-gui-runtime-index",
+      "canonical_document_id": "gui-runtime-guide",
       "from": "/Docs/generated/gui-runtime/",
-      "to": "/Docs/en/reference/gui-runtime/",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },
     {
       "document_id": "legacy-generated-gui-runtime-input-route",
-      "canonical_document_id": "generated-gui-runtime-input",
+      "canonical_document_id": "gui-runtime-guide",
       "from": "/Docs/generated/gui-runtime/input.html",
-      "to": "/Docs/en/reference/gui-runtime/input.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },
     {
       "document_id": "legacy-generated-gui-runtime-integration-validation-route",
-      "canonical_document_id": "generated-gui-runtime-integration-validation",
+      "canonical_document_id": "gui-runtime-guide",
       "from": "/Docs/generated/gui-runtime/integration-validation.html",
-      "to": "/Docs/en/reference/gui-runtime/integration-validation.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },
     {
       "document_id": "legacy-generated-gui-runtime-layout-rendering-route",
-      "canonical_document_id": "generated-gui-runtime-layout-rendering",
+      "canonical_document_id": "gui-runtime-guide",
       "from": "/Docs/generated/gui-runtime/layout-rendering.html",
-      "to": "/Docs/en/reference/gui-runtime/layout-rendering.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },
     {
       "document_id": "legacy-generated-gui-runtime-lifecycle-route",
-      "canonical_document_id": "generated-gui-runtime-lifecycle",
+      "canonical_document_id": "gui-runtime-guide",
       "from": "/Docs/generated/gui-runtime/lifecycle.html",
-      "to": "/Docs/en/reference/gui-runtime/lifecycle.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },
     {
       "document_id": "legacy-generated-gui-runtime-screen-api-route",
-      "canonical_document_id": "generated-gui-runtime-screen-api",
+      "canonical_document_id": "gui-runtime-guide",
       "from": "/Docs/generated/gui-runtime/screen-api.html",
-      "to": "/Docs/en/reference/gui-runtime/screen-api.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },
     {
       "document_id": "legacy-generated-gui-runtime-types-route",
-      "canonical_document_id": "generated-gui-runtime-types",
+      "canonical_document_id": "gui-runtime-guide",
       "from": "/Docs/generated/gui-runtime/types.html",
-      "to": "/Docs/en/reference/gui-runtime/types.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },
@@ -11643,6 +11767,62 @@
       "canonical_document_id": "web-debugging",
       "from": "/Docs/WebDebugging.html",
       "to": "/Docs/en/how-to/platforms/web-debugging.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "ru-generated-gui-runtime-index-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/ru/reference/gui-runtime/",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "ru-generated-gui-runtime-input-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/ru/reference/gui-runtime/input.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "ru-generated-gui-runtime-integration-validation-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/ru/reference/gui-runtime/integration-validation.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "ru-generated-gui-runtime-layout-rendering-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/ru/reference/gui-runtime/layout-rendering.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "ru-generated-gui-runtime-lifecycle-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/ru/reference/gui-runtime/lifecycle.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "ru-generated-gui-runtime-screen-api-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/ru/reference/gui-runtime/screen-api.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "ru-generated-gui-runtime-types-route",
+      "canonical_document_id": "gui-runtime-guide",
+      "from": "/Docs/ru/reference/gui-runtime/types.html",
+      "to": "/Docs/en/how-to/runtime/gui.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     }

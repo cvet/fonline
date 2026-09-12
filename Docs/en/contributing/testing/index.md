@@ -253,10 +253,13 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
 - `Source/Tests/Test_ServerScriptMethods.cpp`
+
+The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn synchronization analyzer; and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
 
 ### Bakers and tools
 
@@ -341,7 +344,7 @@ unchanged tree incremental-clean.
 | Configuration and data sources | Cache storage, config parsing, data sources, filesystems, and `Test_Settings.cpp`. |
 | Common runtime model | Metadata, entities/prototypes, geometry, map loading, movement, line tracing, and path finding. |
 | Networking and server/client integration | Network buffers, connection flows, ordered UDP, server engine/map operations, client runtime ABI, updater, and database behavior. |
-| Scripting and script-visible APIs | AngelScript core, compiler/runtime extensions, entity ops, exports, script methods, and value semantics. |
+| Scripting and script-visible APIs | AngelScript and Managed C# backends, bakers, generated APIs, callbacks/async behavior, entity ops, exports, script methods, synchronization, and value semantics. |
 | Bakers and tools | Baker, metadata/resource packers, mapper/editor tools, asset processors, and tool-side regressions. |
 | Frontend and rendering | Application init, frontend/rendering smoke cases, headless behavior, and renderer-facing contracts. |
 
@@ -353,7 +356,7 @@ unchanged tree incremental-clean.
 - Bakers/resources: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and the matching baker tests.
 - Runtime entity/map/persistence/networking: [Entity Model](../../explanation/entity-and-property-model/), [Maps and Movement](../../explanation/maps-and-movement.md), [Persistence](../../explanation/persistence/), [Networking](../../explanation/authority-and-networking/), and the focused runtime tests.
 - Client/frontend/server: [Client Runtime](../../explanation/runtime/client.md), [Frontend and Rendering](../../explanation/rendering/), [Server Runtime](../../explanation/runtime/server.md), and the matching integration/smoke tests.
-- Scripting: [Scripting](../../explanation/scripting-runtime/), [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), [Script Methods Map](../../reference/script-api/method-ownership.md), [Nullability](../coding-contracts/nullability.md), and the script/baker/method tests. Route callback attributes to `Test_AngelScriptAttributes`, mutable-global policy to `Test_AngelScriptBaker`, and server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
+- Scripting: [Scripting](../../explanation/scripting-runtime/), [Managed C# Scripting](../../how-to/scripting/managed-csharp.md), [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md), [Script Methods Map](../../reference/script-api/method-ownership.md), [Nullability](../coding-contracts/nullability.md), and the script/baker/method tests. Route AngelScript attributes and mutable globals to its dedicated suites; route Managed generation, analyzers, async callbacks, runtime payloads, and packaging to the matching native, Python, and C# suites; route shared server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
 
 ## Adding or removing tests
 
@@ -375,4 +378,4 @@ unchanged tree incremental-clean.
 
 - [Profiling](../../how-to/quality/profiling.md) for Tracy build modes, workload isolation, and
   performance captures.
-- [Native and AngelScript Debugging](../../troubleshooting/debugging.md) for native and AngelScript diagnosis.
+- [Native, AngelScript, and Managed C# Debugging](../../troubleshooting/debugging.md) for backend-specific diagnosis.

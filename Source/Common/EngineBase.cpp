@@ -221,7 +221,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     }
     if (has_abstract) {
         _entityRelatives.emplace(strex("Abstract{}", name), &entry.first->second);
-        RegisterBaseType(strex("Abstract{}", name));
+        auto abstract_type = RegisterBaseType(strex("Abstract{}", name));
+        abstract_type->IsAbstractEntity = true;
     }
 
     if (!exported) {
@@ -389,6 +390,7 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
     }
 
     FO_VERIFY_AND_THROW(total_size != 0, "Registered type has zero size");
+    FO_VERIFY_AND_THROW(layout_desc.NativeSize == 0 || layout_desc.NativeSize == total_size, "Native value size does not match its registered layout", name, layout_desc.NativeSize, total_size);
 
     layout_desc.Fields = std::move(fields);
     layout_desc.Size = total_size;
@@ -437,7 +439,8 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
         tokens.emplace_back(field_tokens[0]); // Name
         tokens.insert(tokens.end(), field_tokens.begin() + 2, field_tokens.end());
 
-        fields_registrar->RegisterProperty(tokens);
+        auto field = fields_registrar->RegisterProperty(tokens);
+        FO_VERIFY_AND_THROW(!field->IsVirtual(), "RefType fields must have stored values", name, field->GetName());
     }
 
     ref_type.FieldsRegistrar = fields_registrar;
@@ -633,6 +636,35 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
     }
 
     rules.emplace(htarget, hreplacement);
+}
+
+void EngineMetadata::RegisterPropertyMigrationBeforeVersion(string_view entity_type, string_view target, string_view version_property, string_view before_version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int64_t cutoff = 0;
+    auto parsed = std::from_chars(before_version.data(), before_version.data() + before_version.size(), cutoff);
+    FO_VERIFY_AND_THROW(parsed.ec == std::errc() && parsed.ptr == before_version.data() + before_version.size() && cutoff > 0, "Invalid property migration version cutoff", before_version);
+    auto registrar = GetPropertyRegistrar(entity_type);
+
+    if (!registrar) {
+        for (const auto& [name, fields_registrar] : _dynamicRefTypeRegistrars) {
+            if (fields_registrar->GetTypeName().as_str() == entity_type) {
+                registrar = fields_registrar.as_ptr();
+                break;
+            }
+        }
+    }
+
+    FO_VERIFY_AND_THROW(registrar, "Unknown versioned property migration entity", entity_type);
+    auto prop = registrar->FindProperty(target);
+    auto version_prop = registrar->FindProperty(version_property);
+    FO_VERIFY_AND_THROW(prop && version_prop, "Versioned property migration requires current target and version properties", entity_type, target, version_property);
+    const BaseTypeDesc& version_type = version_prop->GetBaseType();
+    FO_VERIFY_AND_THROW(version_prop->IsPlainData() && version_type.IsInt, "Property migration version must be an integer property", version_property);
+    FO_VERIFY_AND_THROW(version_property != target, "Property migration cannot depend on its own version", target);
+    FO_VERIFY_AND_THROW(CheckMigrationRule(Hashes.ToHashedString("Property"), Hashes.ToHashedString(entity_type), Hashes.ToHashedString(target)).has_value(), "Version condition requires a property migration rule", entity_type, target);
+    RegisterMigrationRule("PropertyBeforeVersion", entity_type, target, strex("{} {}", version_property, before_version));
 }
 
 auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
@@ -1218,16 +1250,20 @@ void BaseEngine::FrameAdvance()
 
     GameTime.FrameAdvance(IsRunInDebugger() || Settings->DisableNetworking);
 
-    LockForPropertyAccess();
-    auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
+    {
+        LockForPropertyAccess();
+        auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
 
-    SetFrameTime(GameTime.GetFrameTime());
-    SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
-    SetFramesPerSecond(GameTime.GetFramesPerSecond());
+        SetFrameTime(GameTime.GetFrameTime());
+        SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
+        SetFramesPerSecond(GameTime.GetFramesPerSecond());
 
-    if (GameTime.IsTimeSynchronized()) {
-        SetSynchronizedTime(GameTime.GetSynchronizedTime());
+        if (GameTime.IsTimeSynchronized()) {
+            SetSynchronizedTime(GameTime.GetSynchronizedTime());
+        }
     }
+
+    ProcessBackends();
 }
 
 auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
@@ -1285,11 +1321,20 @@ void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uin
     HandleOutboundRemoteCall(name, caller, data);
 }
 
-void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler)
+auto BaseEngine::HasRemoteCallHandler(hstring name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_inboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already registered", name);
+    return _inboundRemoteCallHandlers.contains(name);
+}
+
+void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!replace) {
+        FO_VERIFY_AND_THROW(!_inboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already registered", name);
+    }
 
     _inboundRemoteCallHandlers[name] = std::move(handler);
 }

@@ -40,7 +40,7 @@ Read this page together with:
 - [Font Formats And Text Layout](../../how-to/content/font-format.md) for bitmap-font texture loading, atlas placement, bind-time raster scaling, text layout, and rendering flags.
 - [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) for configure/build composition.
 - [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md) and [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md) for platform package/debug flows.
-- [Native and AngelScript Debugging](../../troubleshooting/debugging.md) for native debugging and stack traces.
+- [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md) for native debugging and stack traces.
 
 ## Source paths inspected
 
@@ -951,4 +951,4 @@ When changing frontend or rendering behavior, verify:
 - Effect changes document config parsing, shader files, and script-value buffer implications. On Vulkan, confirm shader resources follow the set-0-UBO / set-1-sampler descriptor-set contract.
 - Web changes cross-link to [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md); Android
   changes cross-link to [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md);
-  native attach/debug changes cross-link to [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
+  native attach/debug changes cross-link to [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).

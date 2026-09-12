@@ -260,6 +260,59 @@
       ]
     },
     {
+      "id": "scripting-managed-csharp-runtime",
+      "category": "scripting",
+      "question": "How does an embedding project enable, author, compile, bake, package, debug, and validate Managed C# scripts, including async continuations and server entity cover, without confusing source capability with project qualification?",
+      "primary_document_id": "managed-csharp-scripting",
+      "supporting_document_ids": ["scripting-runtime", "script-lifecycle-concurrency", "testing", "packaging-and-release"],
+      "retrieval_checks": [
+        {
+          "query": "Managed C# scripting FO_MANAGED_SCRIPTING CompileManagedScripts ManagedRuntime",
+          "expected_document_ids": ["managed-csharp-scripting"],
+          "max_rank": 2
+        },
+        {
+          "query": "C# Task YieldAsync RequiresCover ProvidesCover PreservesCover FOSYNC009",
+          "expected_document_ids": ["managed-csharp-scripting", "script-lifecycle-concurrency"],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "managed-selection-and-bake",
+          "description": "Connect backend selection, settings, source pack, compile target, and real bake.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "build-and-bake-workflow",
+          "required_terms": ["FO_MANAGED_SCRIPTING", "CompileManagedScripts", "ForceCodeGeneration", "Managed"]
+        },
+        {
+          "id": "managed-async-contract",
+          "description": "Use observable Task results and the backend continuation context instead of async void or detached Engine calls.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "async-and-continuation-scheduling",
+          "required_terms": ["Game.YieldAsync", "ScriptSynchronizationContext", "async void", "ConfigureAwait(false)"]
+        },
+        {
+          "id": "managed-cover-analysis",
+          "description": "State the Managed server-cover proof and reacquisition boundary across await.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "server-entity-synchronization",
+          "required_terms": ["[RequiresCover]", "[ProvidesCover]", "[PreservesCover]", "FOSYNC009"]
+        },
+        {
+          "id": "managed-delivery-and-evidence",
+          "description": "Keep target assemblies, runtime payload, packaged startup, and project platform acceptance as separate evidence.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "packaging-and-updating",
+          "required_terms": ["ManagedRuntime/", "content-hash", "target-specific", "project"]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not call the obsolete Source/Scripting/Mono prototype the Managed backend, treat generated C# as authored source, or infer packaged/runtime/platform readiness from a successful dotnet build alone.",
+        "Do not claim async void, ThreadPool Engine calls, unrevalidated entity use after await, or missing target-specific runtime payloads are supported."
+      ]
+    },
+    {
       "id": "scripting-style-refactoring",
       "category": "scripting",
       "question": "How should an Engine or game contributor format and organize AngelScript by namespace/file, source/runtime order, side macros, mutable-state and attributed-call ownership; classify a refactor; and keep module catalogs, generated formats, persistence migrations, and gameplay acceptance in project policy? Explicitly state that dispatcher-owned attributed functions enter through their dispatcher route.",
@@ -666,12 +719,12 @@
     {
       "id": "debugging-native-script-route",
       "category": "debugging",
-      "question": "How should a contributor choose between native debugging, the AngelScript debugger, and focused Engine tests, and which distinct TCP endpoint range and UDP discovery port does script attach use?",
+      "question": "How should a contributor choose among native debugging, the AngelScript debugger, Managed C# diagnostics, and focused Engine tests; which distinct TCP endpoint range and UDP discovery port does AngelScript attach use; and why is that adapter not a C# debugger?",
       "primary_document_id": "debugging",
-      "supporting_document_ids": ["testing"],
+      "supporting_document_ids": ["testing", "managed-csharp-scripting"],
       "retrieval_checks": [
         {
-          "query": "native AngelScript debugger attach focused tests",
+          "query": "native AngelScript Managed C# debugger attach focused tests",
           "expected_document_ids": ["debugging"],
           "max_rank": 3
         },
@@ -687,7 +740,7 @@
           "description": "Select the debugger or test route from the failing ownership layer.",
           "document_id": "debugging",
           "anchor": "fast-route-selection",
-          "required_terms": ["native", "AngelScript", "test"]
+          "required_terms": ["native", "AngelScript", "Managed C#", "test"]
         },
         {
           "id": "script-debugger-contract",
@@ -695,11 +748,19 @@
           "document_id": "debugging",
           "anchor": "angelscript-debugger",
           "required_terms": ["Script.DebuggerEnabled", "43000..44999", "UDP", "43001"]
+        },
+        {
+          "id": "managed-debugging-boundary",
+          "description": "Route Managed failures through generation, compiler, bake, runtime, and project-qualified debugger evidence without reusing the AngelScript adapter.",
+          "document_id": "debugging",
+          "anchor": "managed-c-diagnostics-and-debugging",
+          "required_terms": ["Roslyn/MSBuild", "ManagedScriptBaker", "runtime logs", "fos", "C#"]
         }
       ],
       "forbidden_assumptions": [
         "Do not prescribe a private project's launch profile as an Engine default.",
-        "Do not call 43001 the default TCP endpoint; TCP uses a process-selected port in 43000..44999 and UDP discovery uses 43001."
+        "Do not call 43001 the default TCP endpoint; TCP uses a process-selected port in 43000..44999 and UDP discovery uses 43001.",
+        "Do not claim that the fos adapter debugs Managed C# or that a generated project alone proves live debugger attachment."
       ]
     },
     {

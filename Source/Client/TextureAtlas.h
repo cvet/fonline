@@ -176,7 +176,9 @@ public:
     ~TextureAtlasManager() = default;
 
     auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, unique_del_ptr<TextureAtlasLayout::Allocation>, ipos32>;
-    void DumpAtlases() const;
+    // The writable root comes from the caller: this manager holds render settings, which say nothing
+    // about where the process may write
+    void DumpAtlases(string_view writable_root) const;
 
 private:
     auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> ptr<TextureAtlas>;

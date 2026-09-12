@@ -183,6 +183,7 @@ When package declarations or payload behavior change, update `BuildTools/Package
 - **Android:** follow [Android Build, Packaging, and Device Debugging](../platforms/android-debugging.md).
 - **Mapper/tooling:** follow [Tools](../../../Tools.md) and [Mapper Tools](../tools/mapper.md).
 - **AngelScript source/refactor:** follow [AngelScript Style and Refactoring](../scripting/style-and-refactoring.md), run the Engine or project formatter wrapper, compile every affected side warning-free, and execute the narrowest behavior or contract test.
+- **Managed C# source/refactor:** follow [Managed C# Scripting](../scripting/managed-csharp.md), run the configured formatter and Roslyn analyzer, build `CompileManagedScripts`, then bake and execute the narrowest affected callback, async, synchronization, or packaging test.
 - **Nullability/script boundary:** follow [Scripting](../../explanation/scripting-runtime/), [Script Methods Map](../../reference/script-api/method-ownership.md), and [Nullability](../../contributing/coding-contracts/nullability.md).
 - **Configuration/resources:** follow [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md) and [Baking Pipeline](../../explanation/content-pipeline/baking.md).
 - **Essentials/low-level utilities:** follow [Essentials](../../reference/native/essentials.md) and run the matching essentials tests from [Testing](../../contributing/testing/).

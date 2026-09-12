@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-payloads","locale":"ru","source_path":"Docs/en/reference/packages/payloads.md","source_sha256":"4083db1f6a534b87d3a93186526435378e28e646fab25e6dda0c6a995a71924b"} -->
+<!-- docs-translation: {"document_id":"generated-package-payloads","locale":"ru","source_path":"Docs/en/reference/packages/payloads.md","source_sha256":"2259f56560c71831cd27254572cccc9315bdcdc940d231520d640c8e37ea2667"} -->
 
 # Содержимое пакетов и артефакты
 
@@ -19,10 +19,10 @@ generated: true
 
 | Стабильный ID | Платформа | Статус | Содержимое |
 | --- | --- | --- | --- |
-| <a id="entry-package-payload-windows-6b9618ed08"></a><code>package.payload.Windows</code> | <code>Windows</code> | <code>implemented</code> | Изменённый исполняемый файл PE или DLL, сопутствующие runtime-файлы, PDB при наличии и каталоги ZIP с ресурсами, если не выбран NoRes. Ключи win32-win7 и win64-win7 читают каноническую запись бинарного файла win32/win64, выбранную тем же POSTFIX отдельной записи. |
-| <a id="entry-package-payload-linux-92e6941cc5"></a><code>package.payload.Linux</code> | <code>Linux</code> | <code>implemented</code> | Изменённый исполняемый файл или динамическая библиотека runtime, сопутствующие файлы и каталоги ZIP с ресурсами, если не выбран NoRes. |
-| <a id="entry-package-payload-android-094c0cd541"></a><code>package.payload.Android</code> | <code>Android</code> | <code>implemented</code> | Сгенерированный проект Gradle с libmain.so для каждого ABI и запечёнными ресурсами в assets приложения; Apk при необходимости выпускает соседний APK. |
-| <a id="entry-package-payload-web-04b1334012"></a><code>package.payload.Web</code> | <code>Web</code> | <code>implemented</code> | JavaScript, изменённый Wasm, оболочка HTML, файлы предварительной загрузки Resources.data/Resources.js и необязательный помощник локального сервера. |
+| <a id="entry-package-payload-windows-6b9618ed08"></a><code>package.payload.Windows</code> | <code>Windows</code> | <code>implemented</code> | Изменённый исполняемый файл PE или DLL, сопутствующие runtime-файлы, PDB при наличии и каталоги ZIP с ресурсами, если не выбран NoRes. Managed-сборки несут целевые управляемые сборки и подготовленную среду выполнения внутри выбранного пакета ресурсов. Ключи win32-win7 и win64-win7 читают каноническую запись бинарного файла win32/win64, выбранную тем же POSTFIX отдельной записи. |
+| <a id="entry-package-payload-linux-92e6941cc5"></a><code>package.payload.Linux</code> | <code>Linux</code> | <code>implemented</code> | Изменённый исполняемый файл или динамическая библиотека runtime, сопутствующие файлы и каталоги ZIP с ресурсами, если не выбран NoRes. Managed-сборки несут целевые управляемые сборки и подготовленную среду выполнения внутри выбранного пакета ресурсов. |
+| <a id="entry-package-payload-android-094c0cd541"></a><code>package.payload.Android</code> | <code>Android</code> | <code>implemented</code> | Сгенерированный проект Gradle с libmain.so для каждого ABI и запечёнными ресурсами в assets приложения; управляемые сборки и подготовленная среда выполнения остаются в assets пакета ресурсов. Apk при необходимости выпускает соседний APK. |
+| <a id="entry-package-payload-web-04b1334012"></a><code>package.payload.Web</code> | <code>Web</code> | <code>implemented</code> | JavaScript, изменённый Wasm, оболочка HTML, файлы предварительной загрузки Resources.data/Resources.js, целевые управляемые сборки и ресурсы runtime, когда они включены, а также необязательный помощник локального сервера. |
 | <a id="entry-package-payload-macos-acb0bdca5d"></a><code>package.payload.macOS</code> | <code>macOS</code> | <code>unsupported</code> | В текущем состоянии репозитория содержимое не выпускается. |
 | <a id="entry-package-payload-ios-c0357994eb"></a><code>package.payload.iOS</code> | <code>iOS</code> | <code>unsupported</code> | В текущем состоянии репозитория содержимое не выпускается. |
 

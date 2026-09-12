@@ -8,11 +8,11 @@ permalink: /Docs/en/contributing/contract-change-management.html
 
 # Generated Contract Change Management
 
-> Engine-owned maintainer guide. Use this page to compare the generated native API, CMake, main/helper BuildTools CLI, package, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, GUI runtime, and AiControl protocol contracts across revisions and to dispose compatibility-sensitive changes before merge.
+> Engine-owned maintainer guide. Use this page to compare the generated native API, CMake, main/helper BuildTools CLI, package, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, and AiControl protocol contracts across revisions and to dispose compatibility-sensitive changes before merge.
 
 ## Purpose
 
-FOnline publishes eighteen deterministic machine-readable models under `Docs/generated/`. `BuildTools/docs_contract_diff.py` compares all eighteen with the same models at a base revision and produces one JSON report for automation plus one Markdown report for review.
+FOnline publishes seventeen deterministic machine-readable models under `Docs/generated/`. `BuildTools/docs_contract_diff.py` compares all seventeen with the same models at a base revision and produces one JSON report for automation plus one Markdown report for review.
 
 The gate answers four separate questions:
 
@@ -21,7 +21,7 @@ The gate answers four separate questions:
 3. Did the baseline revision promise compatibility for that entry or domain?
 4. If review is required, where are the owner decision, migration, release-note, and compatibility dispositions?
 
-The comparator reports internal churn but does not promote an internal surface to public API. Stability remains source-owned: native symbols use `///@ ApiContract`; CMake, main CLI, package, helper CLI, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, GUI runtime, and AiControl protocol models use their declared domain or entry stability.
+The comparator reports internal churn but does not promote an internal surface to public API. Stability remains source-owned: native symbols use `///@ ApiContract`; CMake, main CLI, package, helper CLI, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, and AiControl protocol models use their declared domain or entry stability.
 
 Classification and stability are separate stages. First classify the observed
 shape/prose/policy change as additive, documentation, policy, or breaking;
@@ -59,7 +59,6 @@ finds changes; it does not make the owner's migration or release decision.
 | Font format | [generated/font-format.json](../../generated/font-format.json) | Descriptor format/field, binding, layout, rendering, and validation `font-format.*` IDs | The FOFNT/BMFont and client text pipeline contract is `experimental`; cache internals remain `internal`, while project slot assignment, glyph coverage, typography, and visual acceptance remain outside the model |
 | Audio | [generated/audio.json](../../generated/audio.json) | Format, delivery, decoding, playback, and validation `audio.*` IDs | WAV/ACM/Ogg delivery and client playback are `experimental`; documentation/test-gap records remain `internal`, while project catalogs, spatial/music policy, mastering, licensing, and audible acceptance remain outside the model |
 | Video | [generated/video.json](../../generated/video.json) | Format, delivery, decoding, fullscreen, embedded, and validation `video.*` IDs | Ogg/Theora and client presentation are `experimental`; missing-fixture and loop-risk records stay explicit, while project cinematics, subtitles, policy, assets, provenance, budgets, and visible acceptance remain outside the model |
-| GUI runtime | [generated/gui-runtime.json](../../generated/gui-runtime.json) | Type, screen API, annotation, lifecycle, layout, input, integration, and validation `gui-runtime.*` IDs | The reusable CoreScripts GUI contract is `experimental`; declarative formats, generators, screens, styles, assets, accessibility policy, and visible acceptance remain project-owned |
 | AiControl protocol | [generated/ai-control-protocol.json](../../generated/ai-control-protocol.json) | Transport, method, command/event, security, integration, and validation `ai-control-protocol.*` IDs | The reusable wire and control protocol is `experimental`; game-specific schemas, actions, administrator tools, and MCP namespaces remain project-owned |
 
 Model source, repository/scope, or model-level contract changes are conservative domain breaks and always require disposition. This prevents a comparator or ownership boundary change from silently redefining what the gate covers.
@@ -96,8 +95,6 @@ Project-authored remote calls remain a separate baked project catalog. Remaining
 - `BuildTools/docs_audio.py`
 - `BuildTools/VideoInterface.json`
 - `BuildTools/docs_video.py`
-- `BuildTools/GuiRuntimeInterface.json`
-- `BuildTools/docs_gui_runtime.py`
 - `BuildTools/AiControlProtocol.json`
 - `BuildTools/docs_ai_control_protocol.py`
 - `BuildTools/docs_package.py`
@@ -117,7 +114,6 @@ Project-authored remote calls remain a separate baked project catalog. Remaining
 - `BuildTools/tests/test_docs_font_format.py`
 - `BuildTools/tests/test_docs_audio.py`
 - `BuildTools/tests/test_docs_video.py`
-- `BuildTools/tests/test_docs_gui_runtime.py`
 - `BuildTools/tests/test_docs_ai_control_protocol.py`
 - `Docs/generated/api.json`
 - `Docs/generated/cmake.json`
@@ -134,7 +130,6 @@ Project-authored remote calls remain a separate baked project catalog. Remaining
 - `Docs/generated/font-format.json`
 - `Docs/generated/audio.json`
 - `Docs/generated/video.json`
-- `Docs/generated/gui-runtime.json`
 - `Docs/generated/ai-control-protocol.json`
 - `Docs/generated/package.json`
 - `Docs/contract-change-dispositions.json`
@@ -166,7 +161,7 @@ The native comparator retains its symbol-specific behavior:
 - an overload signature change appears as one removed ID and one added ID under the same `family_id`;
 - source path and line movement cannot become a false breaking change.
 
-The CMake, main CLI, package, helper CLI, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, GUI runtime, and AiControl protocol comparators flatten their model-owned entry collections by stable ID. Source provenance, including derived enum source paths/line numbers, generated summaries, derived usage strings, and model digests do not create duplicate changes. Nested description/help edits remain documentation changes; defaults, choices, cardinality, required flags, ownership/invocation metadata, platform/target matrices, signatures, stage order, hook fallbacks/call sites, role routing, prototype/map/model/text/effect/image/particle/font/audio/video grammar and resource applicability, compile limits, language normalization, runtime lookup, shader/image/particle/font/audio/video/GUI/AiControl runtime behavior, and payload semantics are structural contract data.
+The CMake, main CLI, package, helper CLI, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, and AiControl protocol comparators flatten their model-owned entry collections by stable ID. Source provenance, including derived enum source paths/line numbers, generated summaries, derived usage strings, and model digests do not create duplicate changes. Nested description/help edits remain documentation changes; defaults, choices, cardinality, required flags, ownership/invocation metadata, platform/target matrices, signatures, stage order, hook fallbacks/call sites, role routing, prototype/map/model/text/effect/image/particle/font/audio/video grammar and resource applicability, compile limits, language normalization, runtime lookup, shader/image/particle/font/audio/video/AiControl runtime behavior, and payload semantics are structural contract data.
 
 Each domain records two hashes:
 
@@ -214,7 +209,6 @@ python BuildTools/docs_particle_format.py --write
 python BuildTools/docs_font_format.py --write
 python BuildTools/docs_audio.py --write
 python BuildTools/docs_video.py --write
-python BuildTools/docs_gui_runtime.py --write
 python BuildTools/docs_ai_control_protocol.py --write
 python BuildTools/docs_package.py --write
 ```
@@ -232,7 +226,7 @@ python BuildTools/docs_contract_diff.py \
   --enforce
 ```
 
-For an explicitly saved local baseline containing all eighteen model files:
+For an explicitly saved local baseline containing all seventeen model files:
 
 ```bash
 python BuildTools/docs_contract_diff.py \
@@ -244,13 +238,13 @@ python BuildTools/docs_contract_diff.py \
 
 `--check` computes and enforces without writing report files. Prefer `--write` while resolving a failure because the Markdown report includes ready-to-fill ledger templates.
 
-`BuildTools/docs_api_diff.py` remains available for native-symbol investigation and regression tests. CI enforcement uses the aggregate command so a green API-only report cannot hide CMake, CLI, package, helper-CLI, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, GUI runtime, or AiControl protocol drift.
+`BuildTools/docs_api_diff.py` remains available for native-symbol investigation and regression tests. CI enforcement uses the aggregate command so a green API-only report cannot hide CMake, CLI, package, helper-CLI, native-extension, prototype-format, map-format, model-format, text-format, effect-format, image-format, particle-format, font-format, audio, video, or AiControl protocol drift.
 
 ## Bootstrap behavior
 
 `--allow-missing-baseline` is reserved for the first revision that introduces a canonical model to an existing branch. With a Git baseline, only missing domains enter visible `bootstrap` status; present domains are still compared and enforced. An unknown or unfetched Git revision remains an error.
 
-Directory baselines must contain all eighteen models. This avoids accidental partial local comparisons that look complete.
+Directory baselines must contain all seventeen models. This avoids accidental partial local comparisons that look complete.
 
 After all models have landed, missing baseline files are not normal. Do not add bootstrap mode to local commands or CI changes merely to bypass a failing comparison.
 
@@ -294,7 +288,7 @@ The `Validate documentation` job checks out full history and selects:
 
 After model/reference freshness checks, CI runs `docs_contract_diff.py --write --enforce`. A missing required disposition fails the job. The `if: always()` upload step preserves both reports for diagnosis.
 
-A multi-commit pull request is compared with its base branch commit, not the previous feature-branch commit. A multi-commit push uses the complete pushed range. The standalone validator rejects removal of the shared ledger, eighteen-model manifest contract, full-history checkout, base-ref argument, aggregate test, or enforcement switch.
+A multi-commit pull request is compared with its base branch commit, not the previous feature-branch commit. A multi-commit push uses the complete pushed range. The standalone validator rejects removal of the shared ledger, seventeen-model manifest contract, full-history checkout, base-ref argument, aggregate test, or enforcement switch.
 
 ## What requires human review
 
@@ -319,7 +313,7 @@ The aggregate report cannot detect:
 - whether a migration guide or package path was exercised successfully;
 - support across release lines that have not been declared and tagged.
 
-Runtime, structural CMake, native-extension, prototype/map/model/text/effect/image/particle/font/audio/video/GUI/AiControl protocol, package, starter, and embedding-project tests remain required. A green eighteen-domain report proves only that the modeled declarative surfaces have an accepted revision transition.
+Runtime, structural CMake, native-extension, prototype/map/model/text/effect/image/particle/font/audio/video/AiControl protocol, package, starter, and embedding-project tests remain required. A green seventeen-domain report proves only that the modeled declarative surfaces have an accepted revision transition.
 
 ## Troubleshooting
 
@@ -333,7 +327,7 @@ Runtime, structural CMake, native-extension, prototype/map/model/text/effect/ima
 
 ## Validation checklist
 
-1. Regenerate and check all eighteen canonical models plus generated Markdown.
+1. Regenerate and check all seventeen canonical models plus generated Markdown.
 2. Run `test_docs_api_diff.py` and `test_docs_contract_diff.py`.
 3. Compare against the intended base with `--write --enforce`.
 4. Review every required disposition and replace every generated placeholder.

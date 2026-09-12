@@ -56,9 +56,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-client-updaterinfopos-2eaf87eabe"></a>
 - [`symbol-setting-client-client-updaterinfopos-2eaf87eabe`](../../en/reference/script-api/settings.md#symbol-setting-client-client-updaterinfopos-2eaf87eabe)
 
-<a id="symbol-setting-client-client-userwritablepath-d15e3f44a5"></a>
-- [`symbol-setting-client-client-userwritablepath-d15e3f44a5`](../../en/reference/script-api/settings.md#symbol-setting-client-client-userwritablepath-d15e3f44a5)
-
 <a id="symbol-setting-client-client-winnotify-fa68e5db67"></a>
 - [`symbol-setting-client-client-winnotify-fa68e5db67`](../../en/reference/script-api/settings.md#symbol-setting-client-client-winnotify-fa68e5db67)
 
@@ -231,163 +228,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-client-mapper-startmap-158d21b83f"></a>
 - [`symbol-setting-client-mapper-startmap-158d21b83f`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-startmap-158d21b83f)
-
-<a id="group-setting-client-render-eda325ae62"></a>
-- [`group-setting-client-render-eda325ae62`](../../en/reference/script-api/settings.md#group-setting-client-render-eda325ae62)
-
-## <code>Render</code> (client)
-
-Continue with the [canonical reference](../../en/reference/script-api/settings.md).
-
-<a id="symbol-setting-client-render-alwaysontop-4d934233f5"></a>
-- [`symbol-setting-client-render-alwaysontop-4d934233f5`](../../en/reference/script-api/settings.md#symbol-setting-client-render-alwaysontop-4d934233f5)
-
-<a id="symbol-setting-client-render-animation3dfps-d078e14a30"></a>
-- [`symbol-setting-client-render-animation3dfps-d078e14a30`](../../en/reference/script-api/settings.md#symbol-setting-client-render-animation3dfps-d078e14a30)
-
-<a id="symbol-setting-client-render-animation3dsmoothtime-381c515477"></a>
-- [`symbol-setting-client-render-animation3dsmoothtime-381c515477`](../../en/reference/script-api/settings.md#symbol-setting-client-render-animation3dsmoothtime-381c515477)
-
-<a id="symbol-setting-client-render-atlaslinearfiltration-d445c757a0"></a>
-- [`symbol-setting-client-render-atlaslinearfiltration-d445c757a0`](../../en/reference/script-api/settings.md#symbol-setting-client-render-atlaslinearfiltration-d445c757a0)
-
-<a id="symbol-setting-client-render-brightness-0d8595748c"></a>
-- [`symbol-setting-client-render-brightness-0d8595748c`](../../en/reference/script-api/settings.md#symbol-setting-client-render-brightness-0d8595748c)
-
-<a id="symbol-setting-client-render-critterbodyturnfactor-3295d45b67"></a>
-- [`symbol-setting-client-render-critterbodyturnfactor-3295d45b67`](../../en/reference/script-api/settings.md#symbol-setting-client-render-critterbodyturnfactor-3295d45b67)
-
-<a id="symbol-setting-client-render-critterheadturnfactor-97dc5d9c1f"></a>
-- [`symbol-setting-client-render-critterheadturnfactor-97dc5d9c1f`](../../en/reference/script-api/settings.md#symbol-setting-client-render-critterheadturnfactor-97dc5d9c1f)
-
-<a id="symbol-setting-client-render-critterstubspritename-47eac7470a"></a>
-- [`symbol-setting-client-render-critterstubspritename-47eac7470a`](../../en/reference/script-api/settings.md#symbol-setting-client-render-critterstubspritename-47eac7470a)
-
-<a id="symbol-setting-client-render-critterturnangle-c8c471b9f7"></a>
-- [`symbol-setting-client-render-critterturnangle-c8c471b9f7`](../../en/reference/script-api/settings.md#symbol-setting-client-render-critterturnangle-c8c471b9f7)
-
-<a id="symbol-setting-client-render-defaultparticledrawheight-e114692be9"></a>
-- [`symbol-setting-client-render-defaultparticledrawheight-e114692be9`](../../en/reference/script-api/settings.md#symbol-setting-client-render-defaultparticledrawheight-e114692be9)
-
-<a id="symbol-setting-client-render-defaultparticledrawwidth-1dcc88e39e"></a>
-- [`symbol-setting-client-render-defaultparticledrawwidth-1dcc88e39e`](../../en/reference/script-api/settings.md#symbol-setting-client-render-defaultparticledrawwidth-1dcc88e39e)
-
-<a id="symbol-setting-client-render-direct3dpixelshaderprofile-f787f952a2"></a>
-- [`symbol-setting-client-render-direct3dpixelshaderprofile-f787f952a2`](../../en/reference/script-api/settings.md#symbol-setting-client-render-direct3dpixelshaderprofile-f787f952a2)
-
-<a id="symbol-setting-client-render-direct3dvertexshaderprofile-87363ebee6"></a>
-- [`symbol-setting-client-render-direct3dvertexshaderprofile-87363ebee6`](../../en/reference/script-api/settings.md#symbol-setting-client-render-direct3dvertexshaderprofile-87363ebee6)
-
-<a id="symbol-setting-client-render-drawwireframe-ef9054ac4e"></a>
-- [`symbol-setting-client-render-drawwireframe-ef9054ac4e`](../../en/reference/script-api/settings.md#symbol-setting-client-render-drawwireframe-ef9054ac4e)
-
-<a id="symbol-setting-client-render-eggellipseheightext-1e3eaa613b"></a>
-- [`symbol-setting-client-render-eggellipseheightext-1e3eaa613b`](../../en/reference/script-api/settings.md#symbol-setting-client-render-eggellipseheightext-1e3eaa613b)
-
-<a id="symbol-setting-client-render-eggellipsewidthext-1422804cb6"></a>
-- [`symbol-setting-client-render-eggellipsewidthext-1422804cb6`](../../en/reference/script-api/settings.md#symbol-setting-client-render-eggellipsewidthext-1422804cb6)
-
-<a id="symbol-setting-client-render-eggtransparencytransitionfactor-a1a6580567"></a>
-- [`symbol-setting-client-render-eggtransparencytransitionfactor-a1a6580567`](../../en/reference/script-api/settings.md#symbol-setting-client-render-eggtransparencytransitionfactor-a1a6580567)
-
-<a id="symbol-setting-client-render-fixedfps-612b3d618b"></a>
-- [`symbol-setting-client-render-fixedfps-612b3d618b`](../../en/reference/script-api/settings.md#symbol-setting-client-render-fixedfps-612b3d618b)
-
-<a id="symbol-setting-client-render-forcedirect3d-0d42fb2695"></a>
-- [`symbol-setting-client-render-forcedirect3d-0d42fb2695`](../../en/reference/script-api/settings.md#symbol-setting-client-render-forcedirect3d-0d42fb2695)
-
-<a id="symbol-setting-client-render-forceglslesprofile-402a76d29d"></a>
-- [`symbol-setting-client-render-forceglslesprofile-402a76d29d`](../../en/reference/script-api/settings.md#symbol-setting-client-render-forceglslesprofile-402a76d29d)
-
-<a id="symbol-setting-client-render-forcemetal-b83b39b4c2"></a>
-- [`symbol-setting-client-render-forcemetal-b83b39b4c2`](../../en/reference/script-api/settings.md#symbol-setting-client-render-forcemetal-b83b39b4c2)
-
-<a id="symbol-setting-client-render-forceopengl-51316a0d23"></a>
-- [`symbol-setting-client-render-forceopengl-51316a0d23`](../../en/reference/script-api/settings.md#symbol-setting-client-render-forceopengl-51316a0d23)
-
-<a id="symbol-setting-client-render-forcesdlgpu-fcbc1ac189"></a>
-- [`symbol-setting-client-render-forcesdlgpu-fcbc1ac189`](../../en/reference/script-api/settings.md#symbol-setting-client-render-forcesdlgpu-fcbc1ac189)
-
-<a id="symbol-setting-client-render-forcevulkan-47876028a4"></a>
-- [`symbol-setting-client-render-forcevulkan-47876028a4`](../../en/reference/script-api/settings.md#symbol-setting-client-render-forcevulkan-47876028a4)
-
-<a id="symbol-setting-client-render-fullscreen-022aaf5c78"></a>
-- [`symbol-setting-client-render-fullscreen-022aaf5c78`](../../en/reference/script-api/settings.md#symbol-setting-client-render-fullscreen-022aaf5c78)
-
-<a id="symbol-setting-client-render-headbone-e59f86c6c6"></a>
-- [`symbol-setting-client-render-headbone-e59f86c6c6`](../../en/reference/script-api/settings.md#symbol-setting-client-render-headbone-e59f86c6c6)
-
-<a id="symbol-setting-client-render-headlesswindow-d609bb464f"></a>
-- [`symbol-setting-client-render-headlesswindow-d609bb464f`](../../en/reference/script-api/settings.md#symbol-setting-client-render-headlesswindow-d609bb464f)
-
-<a id="symbol-setting-client-render-imguicolorstyle-99456ecde6"></a>
-- [`symbol-setting-client-render-imguicolorstyle-99456ecde6`](../../en/reference/script-api/settings.md#symbol-setting-client-render-imguicolorstyle-99456ecde6)
-
-<a id="symbol-setting-client-render-imguidefaulteffect-d5877a7e6a"></a>
-- [`symbol-setting-client-render-imguidefaulteffect-d5877a7e6a`](../../en/reference/script-api/settings.md#symbol-setting-client-render-imguidefaulteffect-d5877a7e6a)
-
-<a id="symbol-setting-client-render-imguifonttexturesize-978bb3e575"></a>
-- [`symbol-setting-client-render-imguifonttexturesize-978bb3e575`](../../en/reference/script-api/settings.md#symbol-setting-client-render-imguifonttexturesize-978bb3e575)
-
-<a id="symbol-setting-client-render-itemstubspritename-fbc2120b92"></a>
-- [`symbol-setting-client-render-itemstubspritename-fbc2120b92`](../../en/reference/script-api/settings.md#symbol-setting-client-render-itemstubspritename-fbc2120b92)
-
-<a id="symbol-setting-client-render-legbones-788b477b92"></a>
-- [`symbol-setting-client-render-legbones-788b477b92`](../../en/reference/script-api/settings.md#symbol-setting-client-render-legbones-788b477b92)
-
-<a id="symbol-setting-client-render-mapmaxelevation-2d902ddfaa"></a>
-- [`symbol-setting-client-render-mapmaxelevation-2d902ddfaa`](../../en/reference/script-api/settings.md#symbol-setting-client-render-mapmaxelevation-2d902ddfaa)
-
-<a id="symbol-setting-client-render-modeldirectdraw-58e98f5c7c"></a>
-- [`symbol-setting-client-render-modeldirectdraw-58e98f5c7c`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modeldirectdraw-58e98f5c7c)
-
-<a id="symbol-setting-client-render-modellayerproperties-1a99358916"></a>
-- [`symbol-setting-client-render-modellayerproperties-1a99358916`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modellayerproperties-1a99358916)
-
-<a id="symbol-setting-client-render-modelprojfactor-d5679aeaad"></a>
-- [`symbol-setting-client-render-modelprojfactor-d5679aeaad`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modelprojfactor-d5679aeaad)
-
-<a id="symbol-setting-client-render-modelspritemaxtextureheight-c404bcbd24"></a>
-- [`symbol-setting-client-render-modelspritemaxtextureheight-c404bcbd24`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modelspritemaxtextureheight-c404bcbd24)
-
-<a id="symbol-setting-client-render-modelspritemaxtexturewidth-1478bdaac4"></a>
-- [`symbol-setting-client-render-modelspritemaxtexturewidth-1478bdaac4`](../../en/reference/script-api/settings.md#symbol-setting-client-render-modelspritemaxtexturewidth-1478bdaac4)
-
-<a id="symbol-setting-client-render-nullrenderer-6e8501ff33"></a>
-- [`symbol-setting-client-render-nullrenderer-6e8501ff33`](../../en/reference/script-api/settings.md#symbol-setting-client-render-nullrenderer-6e8501ff33)
-
-<a id="symbol-setting-client-render-recreateclientonerror-2f012c181c"></a>
-- [`symbol-setting-client-render-recreateclientonerror-2f012c181c`](../../en/reference/script-api/settings.md#symbol-setting-client-render-recreateclientonerror-2f012c181c)
-
-<a id="symbol-setting-client-render-renderdebug-43c3c265f0"></a>
-- [`symbol-setting-client-render-renderdebug-43c3c265f0`](../../en/reference/script-api/settings.md#symbol-setting-client-render-renderdebug-43c3c265f0)
-
-<a id="symbol-setting-client-render-runanimbasespeed-af7570e477"></a>
-- [`symbol-setting-client-render-runanimbasespeed-af7570e477`](../../en/reference/script-api/settings.md#symbol-setting-client-render-runanimbasespeed-af7570e477)
-
-<a id="symbol-setting-client-render-runanimstartspeed-b2a9fb954a"></a>
-- [`symbol-setting-client-render-runanimstartspeed-b2a9fb954a`](../../en/reference/script-api/settings.md#symbol-setting-client-render-runanimstartspeed-b2a9fb954a)
-
-<a id="symbol-setting-client-render-sdlgpudriver-c2043d5a76"></a>
-- [`symbol-setting-client-render-sdlgpudriver-c2043d5a76`](../../en/reference/script-api/settings.md#symbol-setting-client-render-sdlgpudriver-c2043d5a76)
-
-<a id="symbol-setting-client-render-sleep-1e8ca49996"></a>
-- [`symbol-setting-client-render-sleep-1e8ca49996`](../../en/reference/script-api/settings.md#symbol-setting-client-render-sleep-1e8ca49996)
-
-<a id="symbol-setting-client-render-spritehitvalue-6d20bf0ee1"></a>
-- [`symbol-setting-client-render-spritehitvalue-6d20bf0ee1`](../../en/reference/script-api/settings.md#symbol-setting-client-render-spritehitvalue-6d20bf0ee1)
-
-<a id="symbol-setting-client-render-vsync-5bf952bda3"></a>
-- [`symbol-setting-client-render-vsync-5bf952bda3`](../../en/reference/script-api/settings.md#symbol-setting-client-render-vsync-5bf952bda3)
-
-<a id="symbol-setting-client-render-walkanimbasespeed-5eb5a4fe58"></a>
-- [`symbol-setting-client-render-walkanimbasespeed-5eb5a4fe58`](../../en/reference/script-api/settings.md#symbol-setting-client-render-walkanimbasespeed-5eb5a4fe58)
-
-<a id="symbol-setting-client-render-windowcentered-8e772247f2"></a>
-- [`symbol-setting-client-render-windowcentered-8e772247f2`](../../en/reference/script-api/settings.md#symbol-setting-client-render-windowcentered-8e772247f2)
-
-<a id="symbol-setting-client-render-windowresizable-5817d05101"></a>
-- [`symbol-setting-client-render-windowresizable-5817d05101`](../../en/reference/script-api/settings.md#symbol-setting-client-render-windowresizable-5817d05101)
 
 <a id="group-setting-client-view-5352da0be1"></a>
 - [`group-setting-client-view-5352da0be1`](../../en/reference/script-api/settings.md#group-setting-client-view-5352da0be1)
@@ -585,6 +425,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-common-unpackagedsubconfig-d52ec53955"></a>
 - [`symbol-setting-common-common-unpackagedsubconfig-d52ec53955`](../../en/reference/script-api/settings.md#symbol-setting-common-common-unpackagedsubconfig-d52ec53955)
 
+<a id="symbol-setting-common-common-userwritablepath-cca1a3f0a8"></a>
+- [`symbol-setting-common-common-userwritablepath-cca1a3f0a8`](../../en/reference/script-api/settings.md#symbol-setting-common-common-userwritablepath-cca1a3f0a8)
+
 <a id="group-setting-common-geometry-d5696be362"></a>
 - [`group-setting-common-geometry-d5696be362`](../../en/reference/script-api/settings.md#group-setting-common-geometry-d5696be362)
 
@@ -735,6 +578,166 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-platform-windowsbuild-4fc9622d68"></a>
 - [`symbol-setting-common-platform-windowsbuild-4fc9622d68`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-windowsbuild-4fc9622d68)
 
+<a id="group-setting-common-render-c4641bbc76"></a>
+- [`group-setting-common-render-c4641bbc76`](../../en/reference/script-api/settings.md#group-setting-common-render-c4641bbc76)
+
+## <code>Render</code> (common)
+
+Continue with the [canonical reference](../../en/reference/script-api/settings.md).
+
+<a id="symbol-setting-common-render-allowsoftwarerenderer-e6fdd3c2f0"></a>
+- [`symbol-setting-common-render-allowsoftwarerenderer-e6fdd3c2f0`](../../en/reference/script-api/settings.md#symbol-setting-common-render-allowsoftwarerenderer-e6fdd3c2f0)
+
+<a id="symbol-setting-common-render-alwaysontop-14b5e89d1c"></a>
+- [`symbol-setting-common-render-alwaysontop-14b5e89d1c`](../../en/reference/script-api/settings.md#symbol-setting-common-render-alwaysontop-14b5e89d1c)
+
+<a id="symbol-setting-common-render-animation3dfps-79ee835cc5"></a>
+- [`symbol-setting-common-render-animation3dfps-79ee835cc5`](../../en/reference/script-api/settings.md#symbol-setting-common-render-animation3dfps-79ee835cc5)
+
+<a id="symbol-setting-common-render-animation3dsmoothtime-5a730f5bf8"></a>
+- [`symbol-setting-common-render-animation3dsmoothtime-5a730f5bf8`](../../en/reference/script-api/settings.md#symbol-setting-common-render-animation3dsmoothtime-5a730f5bf8)
+
+<a id="symbol-setting-common-render-atlaslinearfiltration-751fdb0b07"></a>
+- [`symbol-setting-common-render-atlaslinearfiltration-751fdb0b07`](../../en/reference/script-api/settings.md#symbol-setting-common-render-atlaslinearfiltration-751fdb0b07)
+
+<a id="symbol-setting-common-render-brightness-1724ccc535"></a>
+- [`symbol-setting-common-render-brightness-1724ccc535`](../../en/reference/script-api/settings.md#symbol-setting-common-render-brightness-1724ccc535)
+
+<a id="symbol-setting-common-render-critterbodyturnfactor-ca5593e999"></a>
+- [`symbol-setting-common-render-critterbodyturnfactor-ca5593e999`](../../en/reference/script-api/settings.md#symbol-setting-common-render-critterbodyturnfactor-ca5593e999)
+
+<a id="symbol-setting-common-render-critterheadturnfactor-c127ff0e70"></a>
+- [`symbol-setting-common-render-critterheadturnfactor-c127ff0e70`](../../en/reference/script-api/settings.md#symbol-setting-common-render-critterheadturnfactor-c127ff0e70)
+
+<a id="symbol-setting-common-render-critterstubspritename-66bd177b18"></a>
+- [`symbol-setting-common-render-critterstubspritename-66bd177b18`](../../en/reference/script-api/settings.md#symbol-setting-common-render-critterstubspritename-66bd177b18)
+
+<a id="symbol-setting-common-render-critterturnangle-bcba24dd98"></a>
+- [`symbol-setting-common-render-critterturnangle-bcba24dd98`](../../en/reference/script-api/settings.md#symbol-setting-common-render-critterturnangle-bcba24dd98)
+
+<a id="symbol-setting-common-render-defaultparticledrawheight-5f83064591"></a>
+- [`symbol-setting-common-render-defaultparticledrawheight-5f83064591`](../../en/reference/script-api/settings.md#symbol-setting-common-render-defaultparticledrawheight-5f83064591)
+
+<a id="symbol-setting-common-render-defaultparticledrawwidth-813ec60d03"></a>
+- [`symbol-setting-common-render-defaultparticledrawwidth-813ec60d03`](../../en/reference/script-api/settings.md#symbol-setting-common-render-defaultparticledrawwidth-813ec60d03)
+
+<a id="symbol-setting-common-render-direct3dpixelshaderprofile-cecfcf832c"></a>
+- [`symbol-setting-common-render-direct3dpixelshaderprofile-cecfcf832c`](../../en/reference/script-api/settings.md#symbol-setting-common-render-direct3dpixelshaderprofile-cecfcf832c)
+
+<a id="symbol-setting-common-render-direct3dvertexshaderprofile-331f2b29bb"></a>
+- [`symbol-setting-common-render-direct3dvertexshaderprofile-331f2b29bb`](../../en/reference/script-api/settings.md#symbol-setting-common-render-direct3dvertexshaderprofile-331f2b29bb)
+
+<a id="symbol-setting-common-render-drawwireframe-80fbe6122f"></a>
+- [`symbol-setting-common-render-drawwireframe-80fbe6122f`](../../en/reference/script-api/settings.md#symbol-setting-common-render-drawwireframe-80fbe6122f)
+
+<a id="symbol-setting-common-render-eggellipseheightext-363a21b2e5"></a>
+- [`symbol-setting-common-render-eggellipseheightext-363a21b2e5`](../../en/reference/script-api/settings.md#symbol-setting-common-render-eggellipseheightext-363a21b2e5)
+
+<a id="symbol-setting-common-render-eggellipsewidthext-bbe665b53e"></a>
+- [`symbol-setting-common-render-eggellipsewidthext-bbe665b53e`](../../en/reference/script-api/settings.md#symbol-setting-common-render-eggellipsewidthext-bbe665b53e)
+
+<a id="symbol-setting-common-render-eggtransparencytransitionfactor-2c0d9115ce"></a>
+- [`symbol-setting-common-render-eggtransparencytransitionfactor-2c0d9115ce`](../../en/reference/script-api/settings.md#symbol-setting-common-render-eggtransparencytransitionfactor-2c0d9115ce)
+
+<a id="symbol-setting-common-render-fixedfps-49ab8a5d74"></a>
+- [`symbol-setting-common-render-fixedfps-49ab8a5d74`](../../en/reference/script-api/settings.md#symbol-setting-common-render-fixedfps-49ab8a5d74)
+
+<a id="symbol-setting-common-render-forcedirect3d-6b475c3774"></a>
+- [`symbol-setting-common-render-forcedirect3d-6b475c3774`](../../en/reference/script-api/settings.md#symbol-setting-common-render-forcedirect3d-6b475c3774)
+
+<a id="symbol-setting-common-render-forceglslesprofile-2c01569896"></a>
+- [`symbol-setting-common-render-forceglslesprofile-2c01569896`](../../en/reference/script-api/settings.md#symbol-setting-common-render-forceglslesprofile-2c01569896)
+
+<a id="symbol-setting-common-render-forcemetal-7ac2bcdba4"></a>
+- [`symbol-setting-common-render-forcemetal-7ac2bcdba4`](../../en/reference/script-api/settings.md#symbol-setting-common-render-forcemetal-7ac2bcdba4)
+
+<a id="symbol-setting-common-render-forceopengl-132b63313a"></a>
+- [`symbol-setting-common-render-forceopengl-132b63313a`](../../en/reference/script-api/settings.md#symbol-setting-common-render-forceopengl-132b63313a)
+
+<a id="symbol-setting-common-render-forcesdlgpu-59ed8ab5c4"></a>
+- [`symbol-setting-common-render-forcesdlgpu-59ed8ab5c4`](../../en/reference/script-api/settings.md#symbol-setting-common-render-forcesdlgpu-59ed8ab5c4)
+
+<a id="symbol-setting-common-render-forcevulkan-bb593954f6"></a>
+- [`symbol-setting-common-render-forcevulkan-bb593954f6`](../../en/reference/script-api/settings.md#symbol-setting-common-render-forcevulkan-bb593954f6)
+
+<a id="symbol-setting-common-render-fullscreen-f9c6aa5f94"></a>
+- [`symbol-setting-common-render-fullscreen-f9c6aa5f94`](../../en/reference/script-api/settings.md#symbol-setting-common-render-fullscreen-f9c6aa5f94)
+
+<a id="symbol-setting-common-render-headbone-5c3c648802"></a>
+- [`symbol-setting-common-render-headbone-5c3c648802`](../../en/reference/script-api/settings.md#symbol-setting-common-render-headbone-5c3c648802)
+
+<a id="symbol-setting-common-render-headlesswindow-a1219e5035"></a>
+- [`symbol-setting-common-render-headlesswindow-a1219e5035`](../../en/reference/script-api/settings.md#symbol-setting-common-render-headlesswindow-a1219e5035)
+
+<a id="symbol-setting-common-render-imguicolorstyle-030647af7e"></a>
+- [`symbol-setting-common-render-imguicolorstyle-030647af7e`](../../en/reference/script-api/settings.md#symbol-setting-common-render-imguicolorstyle-030647af7e)
+
+<a id="symbol-setting-common-render-imguidefaulteffect-e012c973c5"></a>
+- [`symbol-setting-common-render-imguidefaulteffect-e012c973c5`](../../en/reference/script-api/settings.md#symbol-setting-common-render-imguidefaulteffect-e012c973c5)
+
+<a id="symbol-setting-common-render-imguifonttexturesize-41520ab7f2"></a>
+- [`symbol-setting-common-render-imguifonttexturesize-41520ab7f2`](../../en/reference/script-api/settings.md#symbol-setting-common-render-imguifonttexturesize-41520ab7f2)
+
+<a id="symbol-setting-common-render-itemstubspritename-1aa731d7fe"></a>
+- [`symbol-setting-common-render-itemstubspritename-1aa731d7fe`](../../en/reference/script-api/settings.md#symbol-setting-common-render-itemstubspritename-1aa731d7fe)
+
+<a id="symbol-setting-common-render-legbones-b2f719175f"></a>
+- [`symbol-setting-common-render-legbones-b2f719175f`](../../en/reference/script-api/settings.md#symbol-setting-common-render-legbones-b2f719175f)
+
+<a id="symbol-setting-common-render-mapmaxelevation-0032b0ef25"></a>
+- [`symbol-setting-common-render-mapmaxelevation-0032b0ef25`](../../en/reference/script-api/settings.md#symbol-setting-common-render-mapmaxelevation-0032b0ef25)
+
+<a id="symbol-setting-common-render-modeldirectdraw-3699b14208"></a>
+- [`symbol-setting-common-render-modeldirectdraw-3699b14208`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modeldirectdraw-3699b14208)
+
+<a id="symbol-setting-common-render-modellayerproperties-c35dab9210"></a>
+- [`symbol-setting-common-render-modellayerproperties-c35dab9210`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modellayerproperties-c35dab9210)
+
+<a id="symbol-setting-common-render-modelprojfactor-09f40882dc"></a>
+- [`symbol-setting-common-render-modelprojfactor-09f40882dc`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modelprojfactor-09f40882dc)
+
+<a id="symbol-setting-common-render-modelspritemaxtextureheight-3afa314ff1"></a>
+- [`symbol-setting-common-render-modelspritemaxtextureheight-3afa314ff1`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modelspritemaxtextureheight-3afa314ff1)
+
+<a id="symbol-setting-common-render-modelspritemaxtexturewidth-2433ab8d18"></a>
+- [`symbol-setting-common-render-modelspritemaxtexturewidth-2433ab8d18`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modelspritemaxtexturewidth-2433ab8d18)
+
+<a id="symbol-setting-common-render-nullrenderer-aed71ab0c9"></a>
+- [`symbol-setting-common-render-nullrenderer-aed71ab0c9`](../../en/reference/script-api/settings.md#symbol-setting-common-render-nullrenderer-aed71ab0c9)
+
+<a id="symbol-setting-common-render-recreateclientonerror-2b0f01ba11"></a>
+- [`symbol-setting-common-render-recreateclientonerror-2b0f01ba11`](../../en/reference/script-api/settings.md#symbol-setting-common-render-recreateclientonerror-2b0f01ba11)
+
+<a id="symbol-setting-common-render-renderdebug-4ee4a556e1"></a>
+- [`symbol-setting-common-render-renderdebug-4ee4a556e1`](../../en/reference/script-api/settings.md#symbol-setting-common-render-renderdebug-4ee4a556e1)
+
+<a id="symbol-setting-common-render-runanimbasespeed-e1cc63af95"></a>
+- [`symbol-setting-common-render-runanimbasespeed-e1cc63af95`](../../en/reference/script-api/settings.md#symbol-setting-common-render-runanimbasespeed-e1cc63af95)
+
+<a id="symbol-setting-common-render-runanimstartspeed-407761e95f"></a>
+- [`symbol-setting-common-render-runanimstartspeed-407761e95f`](../../en/reference/script-api/settings.md#symbol-setting-common-render-runanimstartspeed-407761e95f)
+
+<a id="symbol-setting-common-render-sdlgpudriver-743c9ec753"></a>
+- [`symbol-setting-common-render-sdlgpudriver-743c9ec753`](../../en/reference/script-api/settings.md#symbol-setting-common-render-sdlgpudriver-743c9ec753)
+
+<a id="symbol-setting-common-render-sleep-0ef49e0470"></a>
+- [`symbol-setting-common-render-sleep-0ef49e0470`](../../en/reference/script-api/settings.md#symbol-setting-common-render-sleep-0ef49e0470)
+
+<a id="symbol-setting-common-render-spritehitvalue-558a00a12d"></a>
+- [`symbol-setting-common-render-spritehitvalue-558a00a12d`](../../en/reference/script-api/settings.md#symbol-setting-common-render-spritehitvalue-558a00a12d)
+
+<a id="symbol-setting-common-render-vsync-68110dd115"></a>
+- [`symbol-setting-common-render-vsync-68110dd115`](../../en/reference/script-api/settings.md#symbol-setting-common-render-vsync-68110dd115)
+
+<a id="symbol-setting-common-render-walkanimbasespeed-ca18e967c6"></a>
+- [`symbol-setting-common-render-walkanimbasespeed-ca18e967c6`](../../en/reference/script-api/settings.md#symbol-setting-common-render-walkanimbasespeed-ca18e967c6)
+
+<a id="symbol-setting-common-render-windowcentered-e7a745302a"></a>
+- [`symbol-setting-common-render-windowcentered-e7a745302a`](../../en/reference/script-api/settings.md#symbol-setting-common-render-windowcentered-e7a745302a)
+
+<a id="symbol-setting-common-render-windowresizable-00e3ea991d"></a>
+- [`symbol-setting-common-render-windowresizable-00e3ea991d`](../../en/reference/script-api/settings.md#symbol-setting-common-render-windowresizable-00e3ea991d)
+
 <a id="group-setting-common-script-bd0522902a"></a>
 - [`group-setting-common-script-bd0522902a`](../../en/reference/script-api/settings.md#group-setting-common-script-bd0522902a)
 
@@ -753,6 +756,36 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-script-extradirectcallblockingattributes-9e96cec5eb"></a>
 - [`symbol-setting-common-script-extradirectcallblockingattributes-9e96cec5eb`](../../en/reference/script-api/settings.md#symbol-setting-common-script-extradirectcallblockingattributes-9e96cec5eb)
+
+<a id="symbol-setting-common-script-managedscriptanalyzers-a9e3766db3"></a>
+- [`symbol-setting-common-script-managedscriptanalyzers-a9e3766db3`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptanalyzers-a9e3766db3)
+
+<a id="symbol-setting-common-script-managedscriptassemblies-615affd4da"></a>
+- [`symbol-setting-common-script-managedscriptassemblies-615affd4da`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptassemblies-615affd4da)
+
+<a id="symbol-setting-common-script-managedscriptbakerdryrun-1c738cb52e"></a>
+- [`symbol-setting-common-script-managedscriptbakerdryrun-1c738cb52e`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptbakerdryrun-1c738cb52e)
+
+<a id="symbol-setting-common-script-managedscriptdirs-de5a5fb0ee"></a>
+- [`symbol-setting-common-script-managedscriptdirs-de5a5fb0ee`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptdirs-de5a5fb0ee)
+
+<a id="symbol-setting-common-script-managedscriptextrareferences-91760e6308"></a>
+- [`symbol-setting-common-script-managedscriptextrareferences-91760e6308`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptextrareferences-91760e6308)
+
+<a id="symbol-setting-common-script-managedscriptextrasources-ea6131fe62"></a>
+- [`symbol-setting-common-script-managedscriptextrasources-ea6131fe62`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptextrasources-ea6131fe62)
+
+<a id="symbol-setting-common-script-managedscriptgenerateddir-7a89a388d6"></a>
+- [`symbol-setting-common-script-managedscriptgenerateddir-7a89a388d6`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptgenerateddir-7a89a388d6)
+
+<a id="symbol-setting-common-script-managedscriptmsbuild-7652549d81"></a>
+- [`symbol-setting-common-script-managedscriptmsbuild-7652549d81`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptmsbuild-7652549d81)
+
+<a id="symbol-setting-common-script-managedscriptprojectname-b18164691a"></a>
+- [`symbol-setting-common-script-managedscriptprojectname-b18164691a`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptprojectname-b18164691a)
+
+<a id="symbol-setting-common-script-managedscripttargetframework-d2d974e9f8"></a>
+- [`symbol-setting-common-script-managedscripttargetframework-d2d974e9f8`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscripttargetframework-d2d974e9f8)
 
 <a id="symbol-setting-common-script-mutableglobalsallowednamespaces-fdc2dbca3d"></a>
 - [`symbol-setting-common-script-mutableglobalsallowednamespaces-fdc2dbca3d`](../../en/reference/script-api/settings.md#symbol-setting-common-script-mutableglobalsallowednamespaces-fdc2dbca3d)

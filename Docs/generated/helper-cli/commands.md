@@ -51,27 +51,6 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 
 Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
-<a id="entry-helper-cli-compile-mono-scripts-ad6011a439"></a>
-- [`entry-helper-cli-compile-mono-scripts-ad6011a439`](../../en/reference/helper-cli/commands.md#entry-helper-cli-compile-mono-scripts-ad6011a439)
-
-## Mono script compilation
-
-Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
-
-### Top-level arguments
-
-Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
-
-<a id="entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7"></a>
-- [`entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7`](../../en/reference/helper-cli/commands.md#entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7)
-
-<a id="entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1"></a>
-- [`entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1`](../../en/reference/helper-cli/commands.md#entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1)
-
-### Exact top-level `--help` output
-
-Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
-
 <a id="entry-helper-cli-codecoverage-b014400e5e"></a>
 - [`entry-helper-cli-codecoverage-b014400e5e`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-b014400e5e)
 
@@ -109,6 +88,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 <a id="entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10"></a>
 - [`entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10)
 
+<a id="entry-helper-cli-codecoverage-command-clean-argument-objects-394f819f2f"></a>
+- [`entry-helper-cli-codecoverage-command-clean-argument-objects-394f819f2f`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-objects-394f819f2f)
+
 <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed"></a>
 - [`entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed)
 
@@ -133,6 +115,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 
 <a id="entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a"></a>
 - [`entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a)
+
+<a id="entry-helper-cli-codecoverage-command-run-argument-objects-9659c0efc0"></a>
+- [`entry-helper-cli-codecoverage-command-run-argument-objects-9659c0efc0`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-objects-9659c0efc0)
 
 <a id="entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437"></a>
 - [`entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437)
@@ -159,6 +144,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 <a id="entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452"></a>
 - [`entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452)
 
+<a id="entry-helper-cli-codecoverage-command-report-argument-objects-96a47bda0f"></a>
+- [`entry-helper-cli-codecoverage-command-report-argument-objects-96a47bda0f`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-objects-96a47bda0f)
+
 <a id="entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0"></a>
 - [`entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0)
 
@@ -183,6 +171,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 
 <a id="entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9"></a>
 - [`entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9)
+
+<a id="entry-helper-cli-codecoverage-command-full-argument-objects-8a1e4c2132"></a>
+- [`entry-helper-cli-codecoverage-command-full-argument-objects-8a1e4c2132`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-objects-8a1e4c2132)
 
 <a id="entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a"></a>
 - [`entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a)

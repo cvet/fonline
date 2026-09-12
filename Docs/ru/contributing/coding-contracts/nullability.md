@@ -8,14 +8,14 @@ permalink: /Docs/ru/contributing/coding-contracts/nullability.html
 
 # Nullable-типы
 
-<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"70499fe4522bb639b64cd3d85c842755156da647b3dbd6e1720cf6f101d375b1"} -->
+<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"d470241cfd4460deb302e55cccce9bcaa56e384f3b4059e0f2600638e8bb2874"} -->
 
 > Документация принадлежит движку. Эта страница задает переиспользуемый
 > контракт компилятора, runtime и native-границы. Анализаторы проекта могут
 > вводить более строгую политику авторинга, но не являются частью контракта
 > движка.
 
-Здесь описана nullability для AngelScript и native-кода. Общая архитектура
+Здесь описана nullability для AngelScript, Managed C# и native-кода. Общая архитектура
 скриптов находится в разделе [Скриптовый runtime](../../explanation/scripting-runtime/),
 а владение экспортированными native-методами — в
 [карте методов](../../reference/script-api/method-ownership.md).
@@ -30,7 +30,15 @@ permalink: /Docs/ru/contributing/coding-contracts/nullability.html
 
 Правило симметрично по обе стороны границы script-engine.
 
-## Скриптовая сторона: суффикс `T?`
+## Сторона Managed C#
+
+Generated Managed sources включают nullable reference types и переносят тот же metadata nullable bit в C# `?` у ссылок entity, string и ref type. Value types этот bit не получают. Native `ptr<T>` становится non-null C# reference contract; `nptr<T>`, nullable property flag или nullable event/remote-call tag становится `T?`. Generated methods, properties, events, delegates и remote-call caller methods сохраняют это написание, чтобы Roslyn находил unchecked dereference и несовместимые assignments во время compile.
+
+C# annotations не гарантируют runtime ownership. Managed entity wrapper остаётся borrowed, после `await` может указывать на уничтоженную entity и требует нового resolve/validation вместе с server cover. Ожидаемое отсутствие сужайте обычной веткой `is null` / `is not null`. Для invariant используйте `Game.VerifyNotNull(value, message)` или `Game.Verify(...)` и сохраняйте narrowed non-null value; не подавляйте warning оператором `!`, если доказательство можно выразить явно.
+
+Metadata declarations остаются авторитетными для всех backend. Nullable argument `///@ Event` или `///@ RemoteCall` порождает nullable C# parameter, а attributed handler `[Event]`, `[ServerRemoteCall]` или `[ClientRemoteCall]` должен сохранять тот же semantic contract. Managed validation включает compile generated project с nullable diagnostics, настроенные Roslyn analyzers и runtime callback/serialization test для допустимого null. Generation, async lifetime, analyzers и packaging описаны в [Managed C# scripting](../../how-to/scripting/managed-csharp.md).
+
+## Сторона AngelScript: суффикс `T?`
 
 AngelScript использует суффикс `?` в стиле Kotlin/C#. По умолчанию handle
 **non-nullable**.
@@ -471,18 +479,17 @@ FixedType/Proto entity property. `ItemBag?` в теге не заменяет fl
 setter-а, если setter существует. Non-null setter рядом с nullable getter
 делал бы оба spelling-а чтения ошибочными.
 
-### Макрос `verify`
+### Helpers инвариантов
 
-`verify(cond, message, ...)` определен в
-[Core.fos](../../../../Source/Scripting/AngelScript/CoreScripts/Core.fos) и
-видим во всех `.fos`:
+Engine больше не поставляет прежнюю library AngelScript `Core.fos`. Подключающий проект, сохраняющий традиционный variadic-макрос `verify(cond, message, ...)`, сам владеет его определением, видимостью и тестами:
 
 ```text
 #define verify(cond, ...) if (!(cond)) throw(__VA_ARGS__)
 ```
 
-Он выражает всегда выполняемый инвариант нашей серверной и клиентской логики.
-В release он не удаляется. Название отличает его от debug-only `assert`.
+Когда проект предоставляет его, он выражает инвариант собственной server/client logic. Сбой означает bug, поэтому macro бросает исключение, а проект обязан оставлять эту проверку во всех конфигурациях, а не считать её debug-only assertion.
+
+Managed C# имеет принадлежащие Engine эквиваленты `Game.Verify`, `Game.VerifyNotNull` и `Game.Unreachable` в `Source/Scripting/Managed/CoreScripts/Verify.cs`; их nullable-flow annotations и throwing behavior описаны в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md).
 
 #### `verify` и штатное восстановление
 

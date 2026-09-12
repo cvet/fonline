@@ -431,7 +431,7 @@ documented version or protocol claim.
 ## See also
 
 - [Testing](../../contributing/testing/) for test-boundary selection, sanitizers, and coverage.
-- [Native and AngelScript Debugging](../../troubleshooting/debugging.md) for native and AngelScript debugger workflows.
+- [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md) for native and script diagnostics/debugger workflows.
 - [Build Workflow](../build/) for embedding-project build ownership.
 - [Frontend and Rendering](../../explanation/rendering/) for renderer/runtime
   boundaries.

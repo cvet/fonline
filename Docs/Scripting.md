@@ -51,15 +51,15 @@ Continue with [native exports](en/explanation/scripting-runtime/index.md#native-
 
 ## Core scripts
 
-Continue with [core scripts](en/explanation/scripting-runtime/index.md#core-scripts).
+Continue with [core script ownership](en/explanation/scripting-runtime/index.md#core-script-ownership).
 
 ## Build and baking flow
 
 Continue with [build and baking](en/explanation/scripting-runtime/index.md#build-and-baking-flow).
 
-## Mono and native scripting roots
+## Managed and native scripting roots
 
-Continue with [Mono and native roots](en/explanation/scripting-runtime/index.md#mono-and-native-scripting-roots).
+Continue with [Managed and native roots](en/explanation/scripting-runtime/index.md#managed-and-native-scripting-roots).
 
 ## Tests to inspect
 

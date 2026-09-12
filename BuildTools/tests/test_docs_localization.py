@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 197)
-        self.assertEqual(first["summary"]["current_translation_count"], 197)
+        self.assertEqual(first["summary"]["required_document_count"], 191)
+        self.assertEqual(first["summary"]["current_translation_count"], 191)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -170,13 +170,6 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "generated-ai-control-protocol-methods",
                 "generated-ai-control-protocol-security",
                 "generated-ai-control-protocol-wire",
-                "generated-gui-runtime-index",
-                "generated-gui-runtime-input",
-                "generated-gui-runtime-integration-validation",
-                "generated-gui-runtime-layout-rendering",
-                "generated-gui-runtime-lifecycle",
-                "generated-gui-runtime-screen-api",
-                "generated-gui-runtime-types",
                 "generated-effect-format-baking",
                 "generated-effect-format-index",
                 "generated-effect-format-render-state",
@@ -255,6 +248,7 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "legacy-tutorial-entry",
                 "legacy-public-api-entry",
                 "local-variables",
+                "managed-csharp-scripting",
                 "mapper-interactive-manual",
                 "mapper-tools",
                 "maps-movement-geometry",

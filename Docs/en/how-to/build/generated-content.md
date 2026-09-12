@@ -83,6 +83,14 @@ BuildTools invokes the generated ASCompiler with:
 
 This validates the master project contract instead of a convenient development overlay. A project may add focused script/test targets, but should keep the master compile route green.
 
+For Managed C# projects:
+
+```bash
+cmake --build <build-dir> --config RelWithDebInfo --target CompileManagedScripts
+```
+
+This runs the standalone `ManagedScriptBaker` after `ForceCodeGeneration`, emits target API files plus `.gen.csproj`/`.gen.sln`, and compiles the configured assemblies without performing a full resource bake. The real delivery gate remains `BakeResources` or `ForceBakeResources`: the `Managed` baker writes target-specific assemblies and the prepared `ManagedRuntime/` payload into the selected pack. Fix generated C# at its C++ metadata, configuration, CoreScripts, analyzer, or baker owner and regenerate; do not hand-edit `.gen.cs`. See [Managed C# Scripting](../scripting/managed-csharp.md).
+
 ## Bake resources
 
 Run the normal incremental route first:
@@ -199,7 +207,7 @@ Generated artifacts should be deterministic for the same inputs. Run the generat
 | Failure | Recovery |
 |---|---|
 | Generated source does not compile | Fix the source tag/template or project registration, reconfigure, then rebuild |
-| Script compiler and runtime disagree | Ensure both use the same config, Engine revision, and fresh generated metadata |
+| Script compiler and runtime disagree | Ensure every enabled backend uses the same config, Engine revision, and fresh generated metadata; for Managed also inspect the target assembly and `ManagedRuntime/` payload |
 | Formatter changes `T?`, a cast/template form, or a named argument | Use the Engine-aware wrapper from [AngelScript Style and Refactoring](../scripting/style-and-refactoring.md), not raw clang-format |
 | Metadata sides disagree | Fix paired declarations and rebake both sides |
 | Incremental resources stay stale | Run `ForceBakeResources`; inspect pack selection and baker dependency tracking |

@@ -33,6 +33,7 @@ VALID_ID_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 EXPECTED_LANGUAGES = {
     "angelscript": ("normative", "c-family-parse"),
     "bash": ("normative", "bash-parse"),
+    "csharp": ("normative", "c-family-parse"),
     "cmake": ("normative", "cmake-parse"),
     "cpp": ("normative", "c-family-parse"),
     "glsl": ("normative", "c-family-parse"),

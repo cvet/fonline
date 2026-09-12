@@ -229,7 +229,7 @@
       "description": "Server baking validates ScriptFuncType metadata for every authored callback property and rejects missing functions or mismatched signatures before runtime.",
       "source": {
         "path": "Source/Tools/Baker.cpp",
-        "anchors": ["\"ItemInit\"", "\"CritterInit\"", "\"MapInit\"", "\"LocationInit\"", "Script function signature does not match property binding"]
+        "anchors": ["\"ItemInit\"", "\"CritterInit\"", "\"MapInit\"", "\"LocationInit\"", "Verification failed for func"]
       }
     },
     {

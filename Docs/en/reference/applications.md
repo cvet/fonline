@@ -30,6 +30,7 @@ final target names.
 - `Source/Applications/ClientApp.cpp`
 - `Source/Applications/ClientLib.cpp`
 - `Source/Applications/MapperApp.cpp`
+- `Source/Applications/ManagedScriptBakerApp.cpp`
 - `Source/Applications/ParticleViewerApp.cpp`
 - `Source/Applications/ServerApp.cpp`
 - `Source/Applications/ServerDaemonApp.cpp`
@@ -58,6 +59,7 @@ final target names.
 - `Source/Applications/BakerLib.cpp` - baking library entry point when baking
   is composed as a library.
 - `Source/Applications/ASCompilerApp.cpp` - AngelScript compiler entry point.
+- `Source/Applications/ManagedScriptBakerApp.cpp` - standalone Managed C# API generation and compilation entry point used by `CompileManagedScripts`.
 - `Source/Applications/TestingApp.cpp` - test runner application entry point.
 
 ## CMake wiring
@@ -78,6 +80,7 @@ Observed wiring patterns include:
   do not run Mapper or the networked client loop.
 - Test applications are marked as testing apps so they can be treated
   differently from product runtime apps.
+- The AngelScript compiler and Managed script baker are separate script build applications. Their generated project targets exist only when the corresponding backend is enabled.
 
 Read the CMake stage before documenting a target as available. Availability can
 depend on platform and project options.
@@ -116,8 +119,7 @@ client index.
   [Server Runtime](../explanation/runtime/server.md).
 - Resource generation: `BakerApp.cpp`, `BakerLib.cpp`,
   [Baking Pipeline](../explanation/content-pipeline/baking.md).
-- Script compilation: `ASCompilerApp.cpp`, [Scripting](../../Scripting.md), and
-  [Generated API and Metadata](metadata/index.md).
+- Script compilation: `ASCompilerApp.cpp` for AngelScript and `ManagedScriptBakerApp.cpp` for Managed C#; see [Scripting](../explanation/scripting-runtime/), [Managed C# Scripting](../how-to/scripting/managed-csharp.md), and [Generated API and Metadata](metadata/index.md).
 - Mapper automation: `MapperApp.cpp`, [Mapper Tools](../how-to/tools/mapper.md).
 - Animation inspection: `AnimationViewerApp.cpp`,
   `Source/Tools/AnimationViewer.*`, [Viewer Tools](../how-to/tools/animation-particle-viewers.md).

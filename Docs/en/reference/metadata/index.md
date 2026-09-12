@@ -59,9 +59,6 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `BuildTools/VideoInterface.json`
 - `BuildTools/docs_video.py`
 - `BuildTools/tests/test_docs_video.py`
-- `BuildTools/GuiRuntimeInterface.json`
-- `BuildTools/docs_gui_runtime.py`
-- `BuildTools/tests/test_docs_gui_runtime.py`
 - `BuildTools/AiControlProtocol.json`
 - `BuildTools/docs_ai_control_protocol.py`
 - `BuildTools/tests/test_docs_ai_control_protocol.py`
@@ -154,9 +151,6 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/generated/video.json`
 - `Docs/en/reference/video/*.md`
 - `Docs/generated/video/*.md` (legacy routes)
-- `Docs/generated/gui-runtime.json`
-- `Docs/en/reference/gui-runtime/*.md`
-- `Docs/generated/gui-runtime/*.md` (legacy routes)
 - `Docs/generated/ai-control-protocol.json`
 - `Docs/en/reference/ai-control-protocol/*.md`
 - `Examples/PublicRepositories.json`
@@ -641,34 +635,6 @@ python BuildTools/docs_video.py --check
 guide for delivery, runtime use, diagnostics, project policy, and visible
 acceptance.
 
-## Generated GUI-runtime reference
-
-[GUI runtime reference](../../reference/gui-runtime/index.md) is the exact
-projection of the reusable AngelScript GUI object model and screen API in
-`Source/Scripting/AngelScript/CoreScripts/Gui.fos` and its input integration.
-`BuildTools/GuiRuntimeInterface.json` owns stable type, callback, lifecycle,
-layout, rendering, input, integration, and validation records.
-`BuildTools/docs_gui_runtime.py` validates declarations and behavioral anchors
-against live scripts and native integration points, then emits
-[generated/gui-runtime.json](../../../generated/gui-runtime.json), seven canonical
-English pages, and durable legacy routes.
-
-The model is `experimental` and revision-pinned. It explicitly declares zero
-Engine-owned declarative GUI formats: `.fogui`, generators, screen catalogs,
-styles, fonts, images, gameplay presentation, and accessibility acceptance
-remain embedding-project responsibilities.
-
-Regenerate and verify from the engine root:
-
-```bash
-python BuildTools/tests/test_docs_gui_runtime.py
-python BuildTools/docs_gui_runtime.py --write
-python BuildTools/docs_gui_runtime.py --check
-```
-
-[GUI Runtime](../../how-to/runtime/gui.md) remains the human guide for lifecycle,
-project hooks, authoring boundaries, diagnostics, and end-to-end validation.
-
 ## Generated package interface
 
 [the generated package reference](../packages/index.md) is the human entry point for package declarations and payloads. `BuildTools/PackageInterface.json` models the current `DefinePackage`/`package.py` capabilities for documentation and validation; it is not read by the packager. `BuildTools/docs_package.py` also calls the executable `package.py::create_parser()` and emits [generated/package.json](../../../generated/package.json) plus declaration, matrix, payload/artifact, and CLI pages.
@@ -878,7 +844,7 @@ The aggregate diff writes `Workspace/contract-diff.json` and `.md`; CI uploads t
 
 ## Project remote-call supplement
 
-Remote calls are declared in project `.fos` files and parsed by `Source/Tools/MetadataBaker.cpp`, so they must not be added to `api.json` by a parallel source parser. After a project bake, `BuildTools/docs_metadata.py` strictly decodes the authoritative `Metadata.fometa-server` and `Metadata.fometa-client` outputs, verifies that both sides agree on signatures and structural limits, and emits a project-owned JSON/Markdown catalog.
+Remote calls are declared in project script sources (`.fos` for AngelScript or `.cs` for Managed C#) and parsed by `Source/Tools/MetadataBaker.cpp`, so they must not be added to `api.json` by a parallel source parser. After a project bake, `BuildTools/docs_metadata.py` strictly decodes the authoritative `Metadata.fometa-server` and `Metadata.fometa-client` outputs, verifies that both sides agree on signatures and structural limits, and emits a project-owned JSON/Markdown catalog. Backend-specific binding and current type coverage are documented in [Remote Calls](../scripting/remote-calls.md).
 
 From an embedding project root:
 
@@ -1018,7 +984,7 @@ Migration rules are generic `(kind, extra-info, target → replacement)` remaps 
 - property getter/setter/post-set callbacks
 - base type, struct layout, and serialization-related descriptors
 
-Fixed value-type layouts are shared by native C++, AngelScript registration, and metadata field traversal. `hstring` therefore has an explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` on every supported target. On 32-bit targets the pointer-backed handle carries trailing padding to preserve that width and keep composite offsets (for example `TextPackKey`) platform-independent. The padding is not wire data: RPC/property serializers still convert the handle through `as_hash()` and resolve the received hash through the target engine's hash resolver.
+Fixed value-type layouts are shared by native C++, AngelScript registration, Managed generated value mapping, and metadata field traversal. `hstring` therefore has an explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` on every supported target. On 32-bit targets the pointer-backed native handle carries trailing padding to preserve that width and keep composite offsets (for example `TextPackKey`) platform-independent. The padding is not wire data: serializers transmit the hash value and resolve it through the target engine's hash resolver.
 
 When property metadata changes, inspect both the property runtime and the generator inputs/templates. Script-visible nullability or API changes should also update [Scripting](../../explanation/scripting-runtime/), [Script Methods Map](../../reference/script-api/method-ownership.md), and [Nullability.md](../../contributing/coding-contracts/nullability.md) as applicable.
 
@@ -1069,14 +1035,13 @@ Relevant tests include:
 - `BuildTools/tests/test_docs_native_extension.py`
 - `BuildTools/tests/test_docs_audio.py`
 - `BuildTools/tests/test_docs_video.py`
-- `BuildTools/tests/test_docs_gui_runtime.py`
 - `BuildTools/tests/test_docs_ai_control_protocol.py`
 - `BuildTools/tests/test_docs_public_api.py`
 - `BuildTools/tests/test_docs_metadata.py`
 - `Source/Tests/Test_Properties.cpp`
 - Baker/codegen-adjacent tests such as `Test_BakerSetup.cpp` and the specific baker tests when metadata affects baked resources.
 
-If a generated script API change is involved, inspect AngelScript-related tests as well.
+If a generated script API change is involved, inspect both AngelScript and Managed baker/runtime tests for every enabled backend.
 
 ## Change routing
 
@@ -1094,7 +1059,7 @@ If a generated script API change is involved, inspect AngelScript-related tests 
 - Font descriptors, slot binding, text layout, and rendering: `BuildTools/FontFormatInterface.json`, `BuildTools/docs_font_format.py`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
 - Audio delivery, decoding, playback, and mixing: `BuildTools/AudioInterface.json`, `BuildTools/docs_audio.py`, and [Audio Resources And Playback](../../how-to/content/audio.md).
 - Ogg/Theora delivery and playback: `BuildTools/VideoInterface.json`, `BuildTools/docs_video.py`, and [Video Resources And Playback](../../how-to/content/video.md).
-- Reusable AngelScript GUI types, lifecycle, layout, and input: `BuildTools/GuiRuntimeInterface.json`, `BuildTools/docs_gui_runtime.py`, and [GUI Runtime](../../how-to/runtime/gui.md).
+- Native GUI render/input exports and the project-ownership boundary: generated script API, [Frontend and Rendering](../../explanation/rendering/), and [GUI Integration Boundary](../../how-to/runtime/gui.md).
 - Project-neutral AI-control envelope and reference client: `BuildTools/AiControlProtocol.json`, `BuildTools/docs_ai_control_protocol.py`, and [AiControl Protocol](../../how-to/ai-control-protocol.md).
 - Aggregate human contract routing: `BuildTools/docs_public_api.py` and [Public Contract Index](../../reference/public-contract/index.md).
 - External-project discovery evidence and visual documentation assets: `BuildTools/docs_external_evidence.py`, `BuildTools/docs_diagrams.py`, and `BuildTools/docs_screenshots.py`.

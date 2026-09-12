@@ -86,12 +86,13 @@ balance, quests, dialog content, visual policy, and localization policy.
   [Client Runtime Split and Updater](explanation/runtime/client-updater.md) cover
   the process and presentation layers.
 - [Scripting Runtime](explanation/scripting-runtime/index.md),
+  [Managed C# Scripting](how-to/scripting/managed-csharp.md),
   [Script Lifecycle and Concurrency](how-to/scripting/lifecycle-and-concurrency.md),
   [AngelScript Style and Refactoring](how-to/scripting/style-and-refactoring.md),
   and [Remote Calls](reference/scripting/remote-calls.md) define the reusable
   scripting contract.
-- [GUI Runtime](how-to/runtime/gui.md) covers screen registration, lifecycle,
-  layout, drawing, input, and embedding hooks.
+- [Frontend and Rendering](explanation/rendering/index.md) covers Engine-native
+  rendering and input primitives; high-level GUI libraries are project-owned.
 
 ## Use tools and validate changes
 

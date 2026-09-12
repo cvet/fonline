@@ -31,10 +31,12 @@ The Engine emits binaries, not service accounts, supervisors, containers, traffi
 An immutable release unit contains the accepted server binary, baked resources/config, client packs, native updater payloads, and manifest. Keep writable state outside it when atomic replacement or rollback retention requires that split.
 
 The optional health file uses an executable-derived name and remains in the
-working directory. The log initially opens there too, but only the log moves
-below the resolved `Client.UserWritablePath` after settings load when that value
-is non-empty. Set the working directory and any writable-path override
-explicitly; launch environments need not choose the same locations.
+working directory. The read-only `Common.UserWritablePath` is resolved before
+the log or config is opened, from `--UserWritablePath` or the executable's
+`INSTALLED` marker; when non-empty it roots the log, cache, resource overlay,
+self-updated binaries, and server database. Set the working directory and any
+writable-path override explicitly; launch environments need not choose the same
+locations.
 
 ## Choose the server process
 

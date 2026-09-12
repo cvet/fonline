@@ -6,7 +6,7 @@ document_id: applications-entry-points
 permalink: /Docs/ru/reference/applications.html
 ---
 
-<!-- docs-translation: {"document_id":"applications-entry-points","locale":"ru","source_path":"Docs/en/reference/applications.md","source_sha256":"d09f450e25e6551cad72f2c374de387b4619d00d538e786c023743307803e59d"} -->
+<!-- docs-translation: {"document_id":"applications-entry-points","locale":"ru","source_path":"Docs/en/reference/applications.md","source_sha256":"4c94d7f50df1bbd67bee33dc0baac378598eb461680d78be58c9f761dfe970d4"} -->
 
 # Приложения и точки входа
 
@@ -27,6 +27,7 @@ permalink: /Docs/ru/reference/applications.html
 - `Source/Applications/ClientApp.cpp`
 - `Source/Applications/ClientLib.cpp`
 - `Source/Applications/MapperApp.cpp`
+- `Source/Applications/ManagedScriptBakerApp.cpp`
 - `Source/Applications/ParticleViewerApp.cpp`
 - `Source/Applications/ServerApp.cpp`
 - `Source/Applications/ServerDaemonApp.cpp`
@@ -50,6 +51,7 @@ permalink: /Docs/ru/reference/applications.html
 - `Source/Applications/BakerApp.cpp` - точка входа baking build/resources.
 - `Source/Applications/BakerLib.cpp` - точка входа baking library при композиции baking как library.
 - `Source/Applications/ASCompilerApp.cpp` - точка входа AngelScript compiler.
+- `Source/Applications/ManagedScriptBakerApp.cpp` - standalone entrypoint генерации Managed C# API и compilation, используемый `CompileManagedScripts`.
 - `Source/Applications/TestingApp.cpp` - точка входа приложения test runner.
 
 ## Wiring CMake
@@ -63,6 +65,7 @@ permalink: /Docs/ru/reference/applications.html
 - Варианты server выбираются server/platform/service options.
 - Mapper, AnimationViewer и ParticleViewer создаются вместе при включённом `FO_BUILD_MAPPER`. Viewers переиспользуют client и baker services, но не запускают Mapper или networked client loop.
 - Test applications помечаются как testing apps для отдельной обработки от product runtime apps.
+- AngelScript compiler и Managed script baker являются отдельными script build applications. Их generated project targets существуют только при включённом соответствующем backend.
 
 Перед объявлением target доступным прочитайте CMake stage. Доступность может зависеть от platform и project options.
 
@@ -83,7 +86,7 @@ Standalone animation и particle viewers также создают `ClientEngine
 - Client startup или host/runtime behavior: `ClientApp.cpp`, `ClientLib.cpp`, [Client Updater](../explanation/runtime/client-updater.md).
 - Жизненный цикл сервера: `ServerApp.cpp` и серверные варианты, [Серверная среда выполнения](../explanation/runtime/server.md).
 - Resource generation: `BakerApp.cpp`, `BakerLib.cpp`, [Baking Pipeline](../explanation/content-pipeline/baking.md).
-- Script compilation: `ASCompilerApp.cpp`, [Scripting](../../Scripting.md) и [Generated API and Metadata](metadata/index.md).
+- Script compilation: `ASCompilerApp.cpp` для AngelScript и `ManagedScriptBakerApp.cpp` для Managed C#; см. [Scripting](../explanation/scripting-runtime/), [Managed C# scripting](../how-to/scripting/managed-csharp.md) и [Generated API and Metadata](metadata/index.md).
 - Автоматизация Mapper: `MapperApp.cpp`, [инструменты Mapper](../how-to/tools/mapper.md).
 - Animation inspection: `AnimationViewerApp.cpp`, `Source/Tools/AnimationViewer.*`, [просмотр анимации и частиц](../how-to/tools/animation-particle-viewers.md).
 - Particle inspection: `ParticleViewerApp.cpp`, `Source/Tools/ParticleViewer.*`, [просмотр анимации и частиц](../how-to/tools/animation-particle-viewers.md) и [Particle Format](../how-to/content/particle-format.md).

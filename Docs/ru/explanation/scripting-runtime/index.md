@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 # Скриптовый runtime
 
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"8dfbc8deba74e8d5e5fc0173dbea9b30d53f2399e5cbe81cb2fa0822ad4fb26d"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"45fa635d322ab030c073512f705be1fe65bf61cde841f77f36f2226855db2177"} -->
 
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
@@ -18,6 +18,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 Читайте эту страницу вместе со следующими материалами:
 
+- [Скрипты Managed C#](../../how-to/scripting/managed-csharp.md) — полный контракт managed-authoring, generated project, async, синхронизации, runtime, packaging, платформ, диагностики и миграции.
 - [Стиль AngelScript и рефакторинг](../../how-to/scripting/style-and-refactoring.md) — построение модуля, layout исходного кода, поведение formatter, дисциплина сгенерированных файлов, пакеты рефакторинга и validation gates.
 - [GeneratedApiAndMetadata.md](../../reference/metadata/index.md) — сгенерированные метаданные, аннотации `///@` и результат codegen.
 - [Жизненный цикл и конкурентность скриптов](../../how-to/scripting/lifecycle-and-concurrency.md) — инициализация модулей, владение callback, `[[Async]]`, `Yield`, серверные synchronization cover, владение изменяемым состоянием и правила завершения.
@@ -43,16 +44,21 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 - `Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
 - `Source/Scripting/AngelScript/AngelScriptReflection.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/*.fos`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
-- `Source/Scripting/Mono/*.cs`
+- `Source/Scripting/Managed/CoreScripts/*.cs`
+- `Source/Scripting/Managed/ManagedScripting.*`
+- `Source/Scripting/Managed/ManagedScriptBackend.*`
+- `Source/Scripting/Managed/ManagedRuntime.*`
+- `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
+- `Source/Tools/ManagedScriptBaker.*`
 - `Source/Scripting/Native/.keepalive`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
@@ -68,9 +74,9 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 Скриптовая подсистема состоит из четырёх слоёв:
 
 1. **Общий runtime facade** — `Source/Common/ScriptSystem.h` и `.cpp` определяют независимые от backend `ScriptSystem`, `ScriptFuncDesc`, `ScriptFunc`, `FuncCallData`, `DataAccessor`, адаптеры нативных вызовов, init functions, loop callbacks и карты типов.
-2. **Реализация backend** — `Source/Scripting/AngelScript/` предоставляет текущий production-backend. Mono и native scripting имеют placeholder/source roots, но реализованный путь компилятора и runtime скриптов в этом дереве принадлежит AngelScript.
+2. **Реализации backend** — `Source/Scripting/AngelScript/` предоставляет compiler/runtime AngelScript, а `Source/Scripting/Managed/` — bridge Managed C# на встроенном Mono. Оба backend реализованы и тестируются. `Source/Scripting/Native/` является только зарезервированным source root и не должен описываться как рабочий.
 3. **Видимые скриптам нативные методы** — файлы `Source/Scripting/*ScriptMethods.cpp` содержат функции `///@ ExportMethod`, сгруппированные по стороне runtime и типу receiver. Codegen читает эти аннотации и создаёт descriptors и wrappers методов.
-4. **Библиотека core scripts и игровые скрипты** — `Source/Scripting/AngelScript/CoreScripts/*.fos` предоставляет переиспользуемые скриптовые helpers движка. Подключающие проекты добавляют свои `.fos` и метаданные через конфигурацию проекта и запекание ресурсов и скриптов.
+4. **Core library и игровые скрипты** — `Source/Scripting/Managed/CoreScripts/*.cs` предоставляет переиспользуемую managed bridge library. Высокоуровневые gameplay-, GUI- и другие проектные библиотеки принадлежат подключающему проекту для обоих языков; Engine больше не содержит AngelScript `CoreScripts`. Проекты выбирают `.cs` и/или `.fos` через конфигурацию и baking скриптов/ресурсов.
 
 Движок владеет переиспользуемым bridge. Подключающий проект владеет игровыми скриптами и выбирает включённые возможности через конфигурацию проекта, build presets и входы `.fomain`.
 
@@ -201,23 +207,27 @@ Lookup текста следует той же модели владения. К
 
 Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawSpriteRegion` допустимы только в render-facing callbacks (`RenderIface` и GUI draw callbacks). `Game.DrawSpriteRegion(sprId, uv0, uv1, pos, size, color)` рисует нормализованный подпрямоугольник `[0, 1]` исходного логического изображения sprite в destination rectangle; polygon-cropped atlas frames преобразуются через исходный offset, а прозрачные обрезанные поля остаются прозрачными в результате. `Game.DrawSpritePattern` использует тот же контракт логического изображения для каждой полной или частичной tile. Region drawing предназначен для переиспользуемой GUI composition, например script-side 9-slice panels, и возвращает `false`, когда sprite не поддерживает atlas-region drawing.
 
-## Core scripts
+## Паритет backend и владение
 
-Библиотека AngelScript core движка находится в `Source/Scripting/AngelScript/CoreScripts/` и включает переиспользуемые модули:
+Независимые от backend метаданные и поверхность нативных export общие, но синтаксис языков и механика runtime не взаимозаменяемы:
 
-- `Core.fos`
-- `Math.fos`
-- `Time.fos`
-- `Color.fos` (`namespace Color`, `Color::Text`, `Color::Neutral`)
-- `Input.fos`
-- `Gui.fos`
-- `Sprite.fos`
-- `LineTracer.fos`
-- `Serializer.fos`
-- `FixedDropMenu.fos`
-- `Tween.fos`
+| Контракт | AngelScript | Managed C# |
+|---|---|---|
+| Включение | `FO_ANGELSCRIPT_SCRIPTING` | `FO_MANAGED_SCRIPTING` |
+| Исходники проекта | проектные модули `.fos` | проектные модули `.cs` |
+| Результат компиляции | запечённый bytecode AngelScript | target assemblies и generated `.gen.cs`, `.gen.csproj`, `.gen.sln` |
+| Инициализация | `[[ModuleInit]] void` | static `void` или `Task` с `[ModuleInit]` |
+| Приостановка | транзитивный `[[Async]]` и `Game.Yield` | `Task`, `await` и `Game.YieldAsync` в synchronization context backend |
+| Доказательство синхронизации | runtime cover operations и validation атрибутов AngelScript | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks и Roslyn-диагностики `FOSYNC` |
+| Владение runtime | движок AngelScript, модули, contexts и GC | один Mono runtime процесса плюс load contexts backend, scheduler queues, handles и managed GC roots |
 
-Считайте эти файлы библиотечным кодом движка. Игровые script modules должны находиться в подключающем проекте, а не расширять core scripts политикой конкретного проекта.
+Managed C# — не переименование удалённого экспериментального пути `Source/Scripting/Mono/`. Это полноценный backend со своим baker, generated bindings, load-context host, analyzers, runtime payload и платформенной интеграцией. Полный контракт приведён в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md). Native scripting остаётся placeholder.
+
+## Владение core scripts
+
+Принадлежащая Engine script-side library теперь находится в `Source/Scripting/Managed/CoreScripts/` и содержит managed native bridge, attributes, initialization, invocation, remote-call, synchronization, async, verification, item-holder, enum и value-type helpers, необходимые backend. Это инфраструктура, а не игровая политика.
+
+Прежняя высокоуровневая AngelScript library движка удалена. Подключающий проект с AngelScript сам владеет `.fos` helpers, реализацией GUI, порядком модулей и gameplay-модулями. Не переносите проектные GUI/gameplay-контракты обратно в переиспользуемую документацию Engine.
 
 ## Поток сборки и запекания
 
@@ -226,16 +236,16 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 - `FO_ANGELSCRIPT_SCRIPTING` включает command target `CompileAngelScript`.
 - Target запускает AS compiler app проекта (`${FO_DEV_NAME}_ASCompiler`) с аргументами основной конфигурации.
 - `CompileAngelScript` зависит от `ForceCodeGeneration`, поэтому видимые скриптам сгенерированные метаданные актуальны до компиляции.
-- `FO_MONO_SCRIPTING` подключает `CompileMonoScripts` через `BuildTools/compile-mono-scripts.py`, передаёт `FO_OUTPUT_PATH` как обязательный каталог scripts/project и задаёт `FO_MONO_ASSEMBLIES`; `FO_MONO_SOURCE` остаётся списком dependency и metadata CMake.
+- `FO_MANAGED_SCRIPTING` создаёт standalone `${FO_DEV_NAME}_ManagedScriptBaker`, интеграции `CompileManagedScripts`, `SetupManagedRuntime` и `PrepareManagedRuntimePayload`. `CompileManagedScripts` зависит от `ForceCodeGeneration` и компилирует assemblies каждого настроенного resource pack/target из `ManagedScriptSourceDirs`, `ManagedScriptExtraSources`, references и analyzers.
 - `BakeResources` и `ForceBakeResources` также зависят от code generation и запускают baker app проекта.
 
 Компиляция скриптов и запекание ресурсов находятся рядом, но не тождественны. Компиляция создаёт bytecode и runtime inputs; baking упаковывает ресурсы и метаданные для runtime. Запекание ресурсов описано в [Baking Pipeline](../content-pipeline/baking.md).
 
-## Корни Mono и native scripting
+## Корни Managed и native scripting
 
-`Source/Scripting/Mono/` содержит файлы поддержки C#, включая `AssemblyInfo.cs`, `BasicTypes.cs`, `Entity.cs`, `Initializator.cs`, `MapSprite.cs` и `Link.xml`. BuildTools может подключить компиляцию Mono при включённом `FO_MONO_SCRIPTING`.
+`Source/Scripting/Managed/` — реализованный backend C#; его полный operational contract описан в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md). Устаревшие интерфейсы `Source/Scripting/Mono/`, `FO_MONO_SCRIPTING`, `CompileMonoScripts` и `BuildTools/compile-mono-scripts.py` больше не существуют.
 
-`Source/Scripting/Native/` сейчас содержит `.keepalive`, обозначающий расположение source root для интеграции native scripting. Не документируйте Native или Mono как эквивалент AngelScript runtime, пока не расширены реализация и тесты.
+`Source/Scripting/Native/` сейчас содержит только `.keepalive`, обозначающий зарезервированный source root будущей интеграции native scripting. Не документируйте его как реализованный, пока не появятся runtime, build, tests и authoring contract.
 
 ## Тесты для изучения
 
@@ -245,6 +255,9 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 - `Source/Tests/Test_AngelScriptBaker.cpp` — путь запекания bytecode и ресурсов AngelScript.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — компиляция и загрузка bytecode.
 - `Source/Tests/Test_AngelScriptCall.cpp` — ABI вызовов native/script и lifetime возвращаемых объектов.
+- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API, построение project/assembly, attributes, values, properties, remotes и diagnostics.
+- `Source/Scripting/Managed/Tests/` — bootstrap managed core library и fixtures generated API.
+- `Source/Scripting/Managed/Analyzers/Tests/` — diagnostics analyzer synchronization cover.
 - `Source/Tests/Test_ClientDataValidation.cpp` и `Test_NetBuffer.cpp` — проверка входящего payload remote calls и framing.
 - `Source/Tests/Test_CommonScriptMethods.cpp` — общие экспортируемые методы.
 - `Source/Tests/Test_EntityLifecycle.cpp` и `Test_EntitySync.cpp` — границы жизненного цикла и серверной синхронизации.
@@ -259,6 +272,7 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 
 - Независимый от backend call ABI: `Source/Common/ScriptSystem.*`.
 - Lifecycle compiler/runtime AngelScript: `Source/Scripting/AngelScript/AngelScriptScripting.*` и `AngelScriptBackend.*`.
+- Compiler/runtime/lifecycle Managed: `Source/Tools/ManagedScriptBaker.*`, `Source/Scripting/Managed/` и [Скрипты Managed C#](../../how-to/scripting/managed-csharp.md).
 - Построение script module, соглашения исходного кода, formatting, владение сгенерированными файлами и gates рефакторинга: [Стиль AngelScript и рефакторинг](../../how-to/scripting/style-and-refactoring.md).
 - Синтаксис атрибутов и nullable preprocessing: `Source/Scripting/AngelScript/AngelScriptAttributes.*` и [Nullability.md](../../../Nullability.md).
 - Регистрация сущностей и свойств: `Source/Scripting/AngelScript/AngelScriptEntity.*` и [модель сущностей](../entity-and-property-model/).
@@ -271,8 +285,8 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 ## Контрольный список проверки
 
 1. Если изменились сигнатуры или аннотации, перегенерируйте код и проверьте diff сгенерированных метаданных и wrappers.
-2. Скомпилируйте AngelScript через target `CompileAngelScript` подключающего проекта или эквивалентный AS compiler app.
-3. Запустите самые узкие затронутые script tests, начиная по необходимости с `Test_AngelScriptAttributes`, `Test_CommonScriptMethods`, `Test_ServerScriptMethods`, `Test_ScriptBuiltins` и `Test_ScriptEntityOps`.
+2. Скомпилируйте каждый включённый backend: `CompileAngelScript` для AngelScript и `CompileManagedScripts` для Managed C#.
+3. Запустите самые узкие затронутые script tests. Для AngelScript начинайте с `Test_AngelScriptAttributes`, `Test_AngelScriptBaker` и `Test_AngelScriptCall`; для Managed C# — с `Test_ManagedScriptBaker`, managed core/analyzer tests и затронутых `BuildTools/tests/test_managed_*.py`. Для независимых от backend изменений запускайте общие method/entity tests.
 4. Для nullable-изменений выполните analyzers, описанные в [Nullability.md](../../../Nullability.md).
 5. Для изменений server/client/mapper methods проверьте runtime-путь стороны-владельца; одной компиляции недостаточно.
 6. Обновляйте [карту методов скриптового API](../../reference/script-api/method-ownership.md) при добавлении, удалении или содержательной перегруппировке файлов экспортируемых методов.

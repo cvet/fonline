@@ -84,6 +84,13 @@ Baking.ServerResources = ServerResources
 Baking.ClientResources = Resources
 Baking.PlatformBinaries = PlatformBinaries
 Baking.CacheResources = Cache
+
+Script.ManagedScriptAssemblies = MyGame
+Script.ManagedScriptProjectName = MyGame
+Script.ManagedScriptTargetFramework = net10.0
+Script.ManagedScriptMsBuild = dotnet msbuild
+Script.ManagedScriptDirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
+Script.ManagedScriptAnalyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
 ```
 
 Unknown names become project custom settings and are available through `GetCustomSetting` / `FindCustomSetting`. That is intentional for game-owned configuration, but a typo in a built-in setting can therefore look valid. Add a focused project test for every content ID, port/profile, prototype name, path, or custom setting that affects startup or gameplay.
@@ -114,7 +121,15 @@ InputDirs = Scripts
 IncludePatterns = **/*.fos
 Bakers = AngelScript
 ServerOnly = True
+
+[ResourcePack]
+Name = ManagedScripts
+InputDirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
+IncludePatterns = *
+Bakers = Managed
 ```
+
+Choose the backend deliberately. An AngelScript pack bakes `.fos` modules through `AngelScriptBaker`; a Managed pack compiles the configured top-level `.cs` sources and generated API into target-specific assemblies. The Managed pack must include the Engine CoreScripts and project sources selected by `Script.ManagedScriptDirs`; keep its assembly, analyzer, extra-source/reference, and generated-directory settings aligned with the same build. See [Managed C# Scripting](../scripting/managed-csharp.md) for the complete backend contract.
 
 The accepted fields are:
 
@@ -156,7 +171,7 @@ Audio.DisableAudio = True
 
 `Parent` names must refer to earlier sub-config sections. Multiple parents are applied left to right; later parents override earlier parents per key, then the child section wins. A launch may pass multiple `-ApplySubConfig` options, which are applied in command-line order.
 
-Use `-ApplySubConfig NONE` for generation/baking commands that must consume only the master config. BuildTools does this for `CompileAngelScript`, `BakeResources`, and `ForceBakeResources`.
+Use `-ApplySubConfig NONE` for generation/baking commands that must consume only the master config. BuildTools does this for `CompileAngelScript`, `CompileManagedScripts`, `BakeResources`, and `ForceBakeResources`.
 
 Keep sub-configs narrow:
 
@@ -169,7 +184,7 @@ Keep sub-configs narrow:
 ## Validate a configuration change
 
 1. Reconfigure the embedding project if CMake options or the main config path changed.
-2. Run `CompileAngelScript` when script inputs or metadata changed.
+2. Run `CompileAngelScript` and/or `CompileManagedScripts` for every enabled backend whose script inputs, generated API, analyzers, or metadata changed.
 3. Run `BakeResources`; use `ForceBakeResources` after pack membership, baker selection, include/exclude patterns, language sets, or migration rules change.
 4. Launch the smallest sub-config that consumes the changed setting.
 5. Inspect startup logs for `Apply config`, `Apply sub config`, unknown/missing files, skipped languages, missing bakers, and side resource entries.

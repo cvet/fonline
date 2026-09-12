@@ -6,7 +6,7 @@ document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"f313dd930058b6133b03abf824274274cd0e51426e9e44a35185b5469d3e7778"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"b63fab231e78b379fa79e63105f7d3782c65c166bb7719597759d75ecffedf0f"} -->
 
 # Сгенерированный API и метаданные
 
@@ -61,9 +61,6 @@ Generated files являются build artifacts. Документируйте �
 - `BuildTools/VideoInterface.json`
 - `BuildTools/docs_video.py`
 - `BuildTools/tests/test_docs_video.py`
-- `BuildTools/GuiRuntimeInterface.json`
-- `BuildTools/docs_gui_runtime.py`
-- `BuildTools/tests/test_docs_gui_runtime.py`
 - `BuildTools/AiControlProtocol.json`
 - `BuildTools/docs_ai_control_protocol.py`
 - `BuildTools/tests/test_docs_ai_control_protocol.py`
@@ -156,9 +153,6 @@ Generated files являются build artifacts. Документируйте �
 - `Docs/generated/video.json`
 - `Docs/en/reference/video/*.md`
 - `Docs/generated/video/*.md` (legacy routes)
-- `Docs/generated/gui-runtime.json`
-- `Docs/en/reference/gui-runtime/*.md`
-- `Docs/generated/gui-runtime/*.md` (legacy routes)
 - `Docs/generated/ai-control-protocol.json`
 - `Docs/en/reference/ai-control-protocol/*.md`
 - `Examples/PublicRepositories.json`
@@ -635,34 +629,6 @@ python BuildTools/docs_video.py --check
 [Видеоресурсы и воспроизведение](../../how-to/content/video.md) остаётся human
 guide по delivery, runtime use, diagnostics, project policy и visible acceptance.
 
-## Сгенерированный справочник GUI runtime
-
-[Справочник GUI runtime](../../reference/gui-runtime/index.md) точно отражает
-переиспользуемую object model AngelScript GUI, screen API из
-`Source/Scripting/AngelScript/CoreScripts/Gui.fos` и integration ввода.
-`BuildTools/GuiRuntimeInterface.json` владеет стабильными records types, callbacks,
-lifecycle, layout, rendering, input, integration и validation.
-`BuildTools/docs_gui_runtime.py` проверяет declarations и behavioral anchors
-по live scripts и native integration points, затем создаёт
-[generated/gui-runtime.json](../../../generated/gui-runtime.json), семь канонических
-English pages и durable legacy routes.
-
-Модель имеет уровень `experimental` и является revision-pinned. Она явно
-объявляет ноль принадлежащих движку declarative GUI formats: `.fogui`, generators,
-screen catalogs, styles, fonts, images, gameplay presentation и accessibility
-acceptance остаются обязанностями встраиваемого проекта.
-
-Регенерация и проверка из корня движка:
-
-```bash
-python BuildTools/tests/test_docs_gui_runtime.py
-python BuildTools/docs_gui_runtime.py --write
-python BuildTools/docs_gui_runtime.py --check
-```
-
-[GUI runtime](../../how-to/runtime/gui.md) остаётся human guide по lifecycle,
-project hooks, границам authoring, diagnostics и end-to-end validation.
-
 ## Сгенерированный интерфейс пакетов
 
 [сгенерированный справочник пакетов](../packages/index.md) является human entry point для package declarations и payloads. `BuildTools/PackageInterface.json` моделирует текущие возможности `DefinePackage`/`package.py` для документации и проверки; packager этот manifest не читает. `BuildTools/docs_package.py` также вызывает executable `package.py::create_parser()` и создаёт [generated/package.json](../../../generated/package.json) вместе со страницами declaration, matrix, payload/artifact и CLI.
@@ -868,7 +834,7 @@ Aggregate diff записывает `Workspace/contract-diff.json` и `.md`; CI 
 
 ## Проектное дополнение remote calls
 
-Remote calls объявляются в project files `.fos` и разбираются `Source/Tools/MetadataBaker.cpp`, поэтому параллельный source parser не должен добавлять их в `api.json`. После project bake инструмент `BuildTools/docs_metadata.py` строго декодирует authoritative outputs `Metadata.fometa-server` и `Metadata.fometa-client`, проверяет совпадение сигнатур и структурных пределов на обеих сторонах и создаёт project-owned каталог JSON/Markdown.
+Remote calls объявляются в project script sources (`.fos` для AngelScript или `.cs` для Managed C#) и разбираются `Source/Tools/MetadataBaker.cpp`, поэтому параллельный source parser не должен добавлять их в `api.json`. После project bake инструмент `BuildTools/docs_metadata.py` строго декодирует authoritative outputs `Metadata.fometa-server` и `Metadata.fometa-client`, проверяет совпадение сигнатур и structural limits на обеих сторонах и создаёт project-owned каталог JSON/Markdown. Backend-specific binding и текущее покрытие типов описаны в [Remote Calls](../scripting/remote-calls.md).
 
 Из корня встраиваемого проекта:
 
@@ -1008,7 +974,7 @@ Migration rules являются generic remaps `(kind, extra-info, target → r
 - callbacks getter/setter/post-set properties
 - base type, struct layout и descriptors сериализации
 
-Layouts fixed value types разделяются native C++, регистрацией AngelScript и traversal fields metadata. Поэтому `hstring` имеет explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` на каждом поддерживаемом target. На 32-bit targets pointer-backed handle содержит trailing padding, чтобы сохранить ширину и platform-independent offsets composite types, например `TextPackKey`. Padding не является wire data: serializers RPC/properties по-прежнему преобразуют handle через `as_hash()` и разрешают полученный hash через hash resolver target engine.
+Layouts fixed value types разделяются native C++, регистрацией AngelScript, Managed generated value mapping и traversal fields metadata. Поэтому `hstring` имеет explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` на каждом поддерживаемом target. На 32-bit targets pointer-backed native handle содержит trailing padding, чтобы сохранить ширину и platform-independent offsets composite types, например `TextPackKey`. Padding не является wire data: serializers передают hash value и разрешают его через hash resolver target engine.
 
 При изменении property metadata проверяйте одновременно runtime properties и inputs/templates generator. Изменения видимых скриптам nullability или API должны также обновлять [Scripting](../../explanation/scripting-runtime/), [карту script methods](../../reference/script-api/method-ownership.md) и [Nullability](../../contributing/coding-contracts/nullability.md), где это применимо.
 
@@ -1059,14 +1025,13 @@ python BuildTools/docs_public_api.py --check
 - `BuildTools/tests/test_docs_native_extension.py`
 - `BuildTools/tests/test_docs_audio.py`
 - `BuildTools/tests/test_docs_video.py`
-- `BuildTools/tests/test_docs_gui_runtime.py`
 - `BuildTools/tests/test_docs_ai_control_protocol.py`
 - `BuildTools/tests/test_docs_public_api.py`
 - `BuildTools/tests/test_docs_metadata.py`
 - `Source/Tests/Test_Properties.cpp`
 - Смежные с baker/codegen tests, включая `Test_BakerSetup.cpp`, и конкретные baker tests, когда metadata влияет на baked resources.
 
-Если затронут generated script API, также проверяйте tests AngelScript.
+Если затронут generated script API, проверяйте AngelScript и Managed baker/runtime tests для каждого включённого backend.
 
 ## Маршрутизация изменений
 
@@ -1084,7 +1049,7 @@ python BuildTools/docs_public_api.py --check
 - Font descriptors, slot binding, text layout и rendering: `BuildTools/FontFormatInterface.json`, `BuildTools/docs_font_format.py` и [форматы шрифтов](../../how-to/content/font-format.md).
 - Delivery, decoding, playback и mixing аудио: `BuildTools/AudioInterface.json`, `BuildTools/docs_audio.py` и [аудиоресурсы](../../how-to/content/audio.md).
 - Delivery и playback Ogg/Theora: `BuildTools/VideoInterface.json`, `BuildTools/docs_video.py` и [видеоресурсы](../../how-to/content/video.md).
-- Переиспользуемые types AngelScript GUI, lifecycle, layout и input: `BuildTools/GuiRuntimeInterface.json`, `BuildTools/docs_gui_runtime.py` и [GUI runtime](../../how-to/runtime/gui.md).
+- Native GUI render/input exports и граница проектного владения: generated script API, [Frontend и рендеринг](../../explanation/rendering/) и [граница интеграции GUI](../../how-to/runtime/gui.md).
 - Project-neutral envelope AI control и reference client: `BuildTools/AiControlProtocol.json`, `BuildTools/docs_ai_control_protocol.py` и [протокол AiControl](../../how-to/ai-control-protocol.md).
 - Aggregate human routing контрактов: `BuildTools/docs_public_api.py` и [индекс публичных контрактов](../../reference/public-contract/index.md).
 - Discovery evidence внешних проектов и visual assets документации: `BuildTools/docs_external_evidence.py`, `BuildTools/docs_diagrams.py` и `BuildTools/docs_screenshots.py`.

@@ -6,7 +6,7 @@ document_id: getting-started
 permalink: /Docs/ru/tutorials/getting-started.html
 ---
 
-<!-- docs-translation: {"document_id":"getting-started","locale":"ru","source_path":"Docs/en/tutorials/getting-started.md","source_sha256":"074630c256bd759959cbbb132cd6d1a63af0b7c04ba35b975497a8b29c6478c3"} -->
+<!-- docs-translation: {"document_id":"getting-started","locale":"ru","source_path":"Docs/en/tutorials/getting-started.md","source_sha256":"2773347b8ab1cf3e2888aeafb00141e47b3d3749437622ab26cfa3f347d5f6d6"} -->
 
 # Начало работы с движком FOnline
 
@@ -50,9 +50,13 @@ permalink: /Docs/ru/tutorials/getting-started.html
 
 Начните с [Процесса сборки](../how-to/build/). Предпочитайте пресеты и задачи подключающего проекта. Предположения, сделанные только по движку, легко оказываются неверными, потому что реальные имена целей и пакетов, а также сгенерированные API-файлы задаются проектом.
 
+### Я хочу работать с gameplay scripts
+
+Начните со [Scripting](../explanation/scripting-runtime/) для общего lifecycle и backend matrix. Для `.fos` modules используйте [Стиль AngelScript и рефакторинг](../how-to/scripting/style-and-refactoring.md), а для `.cs` assemblies, async/cover analysis, build, bake, runtime и packaging — [Managed C# scripting](../how-to/scripting/managed-csharp.md). Native scripting пока является зарезервированным placeholder, а не реализованным gameplay backend.
+
 ### Я хочу отлаживать нативный код
 
-Используйте [нативную отладку и отладку AngelScript](../troubleshooting/debugging.md). Там описаны символы, смешанные стеки, crash diagnostics, поведение нативного отладчика, live attach скриптов и границы проверки.
+Используйте [нативную, AngelScript и Managed отладку](../troubleshooting/debugging.md). Там описаны symbols, mixed stacks, crash diagnostics, native debugger behavior, live attach AngelScript, Managed diagnostics и validation boundaries.
 
 ### Я хочу работать с Web или Android
 
@@ -67,7 +71,7 @@ permalink: /Docs/ru/tutorials/getting-started.html
 
 ### Я хочу изменить nullability в скриптовом или нативном API
 
-Используйте [Nullability.md](../../Nullability.md). Сохраняйте согласованность аннотаций C++, типов, видимых AngelScript, проверок среды выполнения и анализаторов.
+Используйте [Nullability.md](../../Nullability.md). Сохраняйте согласованность C++ annotations, generated AngelScript/Managed types, runtime checks и analyzers.
 
 ## Правило документирования
 

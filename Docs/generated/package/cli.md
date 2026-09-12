@@ -27,6 +27,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-package-cli-argument-arch-77a6c93f85"></a>
 - [`entry-package-cli-argument-arch-77a6c93f85`](../../en/reference/packages/cli.md#entry-package-cli-argument-arch-77a6c93f85)
 
+<a id="entry-package-cli-argument-expect-client-runtime-98533a6d8d"></a>
+- [`entry-package-cli-argument-expect-client-runtime-98533a6d8d`](../../en/reference/packages/cli.md#entry-package-cli-argument-expect-client-runtime-98533a6d8d)
+
 <a id="entry-package-cli-argument-pack-97cdb74296"></a>
 - [`entry-package-cli-argument-pack-97cdb74296`](../../en/reference/packages/cli.md#entry-package-cli-argument-pack-97cdb74296)
 

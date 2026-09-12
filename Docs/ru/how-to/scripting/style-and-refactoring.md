@@ -6,15 +6,15 @@ document_id: angelscript-style
 permalink: /Docs/ru/how-to/scripting/style-and-refactoring.html
 ---
 
-<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"1da17388dd4451ddab1c7c423acbf60f804e93325d80c89154d96fc5f01312ec"} -->
+<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"6a874ba5b84269757a273178381088d73c4d5b26c3f5697acd58419a1944411d"} -->
 
 # Стиль AngelScript и рефакторинг
 
-> Документация движка. Это руководство определяет переиспользуемый контракт исходного кода, форматирования, модулей и рефакторинга, поддержанный текущими компилятором, форматтером, CoreScripts и тестами FOnline. Проект игры владеет своей предметной лексикой, каталогом модулей, генерируемыми форматами проекта, игровой архитектурой и политикой миграций.
+> Документация движка. Это руководство определяет переиспользуемый контракт исходного кода, форматирования, модулей и рефакторинга AngelScript, поддержанный текущими compiler, formatter wrapper, публичными examples и тестами FOnline. Проект игры владеет своей предметной лексикой, каталогом модулей, конкретным formatter layout, генерируемыми форматами проекта, игровой архитектурой и политикой миграций.
 
 ## Статус контракта
 
-Это руководство для `current-revision`, а не обещание, что каждый исторический проект FOnline уже следует этим правилам. Нормативные утверждения выведены из текущего кода и тестов движка. `Source/Scripting/AngelScript/CoreScripts` содержит сопровождаемые примеры, а Last Frontier и FOnline TLA служат только сравнительными свидетельствами.
+Это руководство для `current-revision`, а не обещание, что каждый исторический проект FOnline уже следует этим правилам. Нормативные утверждения выведены из текущего кода и тестов движка. Публичные `Examples/*/Scripts/*.fos` содержат сопровождаемые минимальные примеры, а Last Frontier и FOnline TLA служат только сравнительными свидетельствами. Прежняя Engine library `AngelScript/CoreScripts` после миграции Managed C# принадлежит проекту и больше не является текущим source anchor.
 
 За подробными владельцами см. [объяснение scripting runtime](../../explanation/scripting-runtime/), [руководство по жизненному циклу и параллелизму](lifecycle-and-concurrency.md), [контракт nullability](../../contributing/coding-contracts/nullability.md) и [workflow сгенерированного содержимого](../build/generated-content.md). Эта страница отвечает за путь от изменения авторского `.fos` до проверяемого результата с сохранённым поведением.
 
@@ -76,7 +76,7 @@ FOnline выполняет preprocessing и компилирует отдель�
 
 ### Владение namespace и файлом
 
-Сопровождаемые CoreScripts используют одно top-level namespace, совпадающее с основой каждого `.fos`:
+Сопровождаемые публичные example scripts используют одно top-level namespace, совпадающее с основой каждого `.fos`:
 
 ```angelscript
 // Time.fos
@@ -112,7 +112,7 @@ Cross-namespace вызовы должны называть владельца. �
 
 ### Поддерживаемая команда и версия
 
-`Source/Scripting/AngelScript/CoreScripts/.clang-format` является определением layout для движка. Текущий контракт использует clang-format 20, четыре пробела, запрещает tabs, задаёт лимит 160 столбцов, переносит function braces на следующую строку, оставляет control braces на той же строке, добавляет braces телам control flow, не отступает тело внешнего namespace, не сортирует includes и не переформатирует comments.
+После переноса high-level CoreScripts движок не владеет одним универсальным `.clang-format` layout проектного AngelScript. Проект обязан закрепить свой layout и версию clang-format. Переиспользуемый wrapper `BuildTools/buildtools.py format-source` требует clang-format 20, сохраняет BOM и line-ending convention файла и исправляет специфичные для FOnline пробелы nullable suffix, cast, array и named arguments, не меняя literals и comments.
 
 Из репозитория движка выполните:
 
@@ -152,7 +152,7 @@ Wrapper читает и записывает UTF-8, удаляет UTF-8 BOM, с
 
 Держите связанные объявления вместе и следуйте порядку окружающего модуля. Публичное владение важнее косметического единообразия: не переставляйте initialization, registration, callbacks или declaration metadata без проверки того, наблюдает ли consumer исходный порядок.
 
-Не задавайте в документации движка универсальный порядок gameplay helpers. CoreScripts являются переиспользуемой основой, а игра может иначе группировать domain declarations и закреплять структуру проектными checks.
+Не задавайте в документации движка универсальный порядок gameplay helpers. Публичные examples являются минимальными compiler/integration fixtures, а игра владеет high-level libraries и может иначе группировать domain declarations и закреплять структуру проектными checks.
 
 ### Имена и комментарии
 
@@ -288,7 +288,7 @@ Function attributes и объявления `///@` решают разные ч�
 | Persisted, reflected, remote или content identifier | Contract disposition или migration и runtime tests producer/consumer |
 | Широкий рефакторинг | Повторять применимые gates для каждого малого пакета; завершить aggregate validation проекта |
 
-CI движка запускает `buildtools.py format-source` и `git diff --exit-code`. `BuildTools/tests/test_docs_angelscript_style.py` закрепляет маршрут документации, compiler ordering и side macros, настройки mutable globals и attributes, правила namespace/guard/encoding CoreScripts, formatter repairs, external evidence, localization и включение в workflow.
+CI движка запускает `buildtools.py format-source` и `git diff --exit-code`. `BuildTools/tests/test_docs_angelscript_style.py` закрепляет маршрут документации, compiler ordering и side macros, настройки mutable globals и attributes, правила namespace/guard/encoding публичных examples, formatter repairs, external evidence, localization и включение в workflow.
 
 ## Диагностика отказов
 
@@ -327,7 +327,7 @@ CI движка запускает `buildtools.py format-source` и `git diff --
 - direct-call blockers, marker propagation, callback validation или special attributes в `AngelScriptAttributes.*`;
 - `Script.MutableGlobalsAllowedNamespaces`, `Script.AttributedFunctionDirectCallAllowedNamespaces` или `Script.ExtraDirectCallBlockingAttributes`;
 - `.fos` patterns, discovery/version checks clang-format, repair logic, encoding, line-ending или EOF behavior в `BuildTools/buildtools.py`;
-- контракта CoreScripts `.clang-format` или сопровождаемого layout CoreScripts;
+- переиспользуемого formatter wrapper, проектного `.clang-format` или сопровождаемого layout публичных examples;
 - владения generated declarations или связанных с этим руководством контрактов lifecycle/nullability;
 - external project evidence, используемых для отделения переиспользуемых правил от политики проекта.
 
@@ -339,8 +339,7 @@ CI движка запускает `buildtools.py format-source` и `git diff --
 - `.github/workflows/validate.yml`
 - `Source/Common/Settings.inc`
 - `Source/Common/ScriptSystem.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/.clang-format`
-- `Source/Scripting/AngelScript/CoreScripts/*.fos`
+- `Examples/*/Scripts/*.fos`
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.h`

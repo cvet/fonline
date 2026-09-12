@@ -6,7 +6,7 @@ document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
 
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"3b2568b1d00bb6d0617a27e5f48164e5090b181dc39a56c489a9850079775882"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"14373783b7a28e08b6a26435253637d76db0456286670159a416f25993f759f8"} -->
 
 # Руководство по дереву исходного кода
 
@@ -31,7 +31,7 @@ helper или target проверяйте его точное написание
 
 ## `Source/Applications/`
 
-Содержит точки входа приложений и библиотек. Примеры включают client, варианты server, Mapper, editor, baker, AngelScript compiler и обёртки testing app. Wiring build targets находится в `BuildTools/cmake/stages/Applications.cmake`.
+Содержит точки входа приложений и библиотек. Примеры включают client, варианты server, Mapper, editor, baker, AngelScript compiler, Managed script baker и обёртки testing app. Wiring build targets находится в `BuildTools/cmake/stages/Applications.cmake`.
 
 См. [Applications](../../reference/applications.md).
 
@@ -69,7 +69,7 @@ Authoritative runtime. Он включает server startup/composition, players
 
 ## `Source/Scripting/`
 
-Script integration и регистрация видимых скриптам native methods. Каталог разделён на integration folders (`AngelScript`, `Native`, `Mono`) и файлы регистрации methods, сгруппированные по runtime side и entity type: common/client/server global methods и critter/item/map/player methods.
+Script integration и регистрация видимых скриптам native methods. `AngelScript/` и `Managed/` являются реализованными backend; `Managed/` также владеет C# CoreScripts, analyzers, runtime hosting и backend tests. `Native/` в текущем дереве только зарезервированный source-root placeholder, а устаревшего прототипа `Mono/` больше нет. Файлы регистрации methods сгруппированы по runtime side и entity type: common/client/server global methods и critter/item/map/player methods. Начинайте с [Scripting](../../explanation/scripting-runtime/) и переходите к [Скриптам Managed C#](../../how-to/scripting/managed-csharp.md) или [Стилю AngelScript и рефакторингу](../../how-to/scripting/style-and-refactoring.md) для выбранного backend.
 
 При изменении nullable script/native signatures используйте [Nullability](../../../Nullability.md).
 
@@ -99,7 +99,7 @@ Particle authoring имеет отдельный `ParticleBaker`: работу �
 
 ## `Source/Tests/`
 
-Тесты являются исполняемой базой знаний для многих подсистем движка. Имена файлов сгруппированы по подсистеме (`Test_Geometry.cpp`, `Test_NetBuffer.cpp`, `Test_DataBase.cpp`, `Test_AngelScript*.cpp` и т. д.). При добавлении новых категорий расширяйте [Source/Tests README](../../../../Source/Tests/README.ru.md) и сверяйте [Testing](../../../Testing.md) с текущим runner и generated targets.
+Тесты являются исполняемой базой знаний для многих подсистем движка. Имена файлов сгруппированы по подсистеме (`Test_Geometry.cpp`, `Test_NetBuffer.cpp`, `Test_DataBase.cpp`, `Test_AngelScript*.cpp`, `Test_ManagedScriptBaker.cpp` и т. д.). При добавлении новых категорий расширяйте [Source/Tests README](../../../../Source/Tests/README.ru.md) и сверяйте [Testing](../../../Testing.md) с текущим runner и generated targets.
 
 ## Антипаттерны навигации
 

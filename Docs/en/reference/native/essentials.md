@@ -160,7 +160,7 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 `FatalError.*` is the early native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and delegates only mechanical termination to `BasicCore::ExitApp(false)`. It owns `ReportFatalAndExit`, `ReportStrongAssertAndExit`, and `FO_BASIC_STRONG_ASSERT` without constructing exception objects or depending on the later `ExceptionHandling` module. `ExitApp(false)` itself remains status-only because controlled command failures and fatal invariant failures both use it.
 
-`StackTrace.*` captures and formats native/script stacks, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
+`StackTrace.*` captures and formats native/script stacks, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
 
 ### Memory, pointers, and lifetime utilities
 
@@ -354,7 +354,7 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 
 - Compiler/OS gates, namespace, base aliases, and low-level macros: `Source/Essentials/BasicCore.*`.
 - Global create/delete callback registration: `Source/Essentials/GlobalData.*`.
-- Stack traces, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*`, and [Native and AngelScript Debugging](../../troubleshooting/debugging.md).
+- Stack traces, logging, and exception reporting: `Source/Essentials/StackTrace.*`, `BaseLogging.*`, `Logging.*`, `ExceptionHandling.*`, and [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
 - Generic memory/pointer utilities: `Source/Essentials/MemorySystem.*`, `SmartPointers.*`, and [SmartPointers.md](../../contributing/coding-contracts/smart-pointers.md).
 - Callable ownership and inline targets: `Source/Essentials/FunctionObjects.*`.
 - Engine strings and the build-wide inline-capacity contract: `Source/Essentials/StringObject.*`; deque storage: `DequeObject.*`; aliases and stream interop: `Containers.h`.
@@ -368,6 +368,6 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 1. Confirm the change does not introduce a dependency from essentials back into higher engine layers.
 2. Update `BuildTools/cmake/stages/EngineSources.cmake` when adding/removing essentials files.
 3. Run the smallest matching essentials test and then the broader `RunUnitTests` target when behavior crosses utility boundaries.
-4. For diagnostics changes, also verify [Native and AngelScript Debugging](../../troubleshooting/debugging.md) stays accurate.
+4. For diagnostics changes, also verify [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md) stays accurate.
 5. For filesystem/socket/threading changes, validate at least one higher-level consumer if the low-level contract changed.
 6. For a `small_vector` adoption, prove capacity and object-count assumptions with data, audit move/address lifetime and exact-type boundaries, and re-run exception-safety plus pointer-ownership gates.

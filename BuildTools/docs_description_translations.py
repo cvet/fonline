@@ -25,7 +25,6 @@ MODEL_PATHS = {
     "cmake": "Docs/generated/cmake.json",
     "effect-format": "Docs/generated/effect-format.json",
     "font-format": "Docs/generated/font-format.json",
-    "gui-runtime": "Docs/generated/gui-runtime.json",
     "helper-cli": "Docs/generated/helper-cli.json",
     "image-format": "Docs/generated/image-format.json",
     "map-format": "Docs/generated/map-format.json",
@@ -74,7 +73,6 @@ DOMAIN_LIST_FIELDS = {
     "cmake": {"excluded", "included", "option_override_precedence"},
     "effect-format": {"excluded", "included"},
     "font-format": {"excluded", "included"},
-    "gui-runtime": {"excluded", "included"},
     "helper-cli": {"excluded", "included"},
     "image-format": {"excluded", "included"},
     "map-format": {"excluded", "included"},
@@ -204,13 +202,6 @@ def _is_translatable(domain: str, path: tuple[str, ...], field: str, value: obje
                 "rendering_rules",
                 "validation_rules",
             }
-            and field == "name"
-        ):
-            return True
-        if (
-            domain == "gui-runtime"
-            and path
-            and path[0].endswith("_rules")
             and field == "name"
         ):
             return True

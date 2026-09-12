@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"0f9291908cbbb22181e63daeddb0b30762449130b096bcf8578ccdda542807d5"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"202589eff1cb599f85f10924527e21f49bf0c2a8237c84e8fe7660fa609de36a"} -->
 
 # Команды вспомогательных CLI
 
@@ -65,38 +65,6 @@ options:
   -verbose              verbose mode
 ```
 
-<a id="entry-helper-cli-compile-mono-scripts-ad6011a439"></a>
-## Компиляция скриптов Mono
-
-Компилирует настроенные сборки Mono для ролей приложений движка.
-
-- Стабильный ID: `helper-cli.compile-mono-scripts`
-- Программа: `compile-mono-scripts.py`
-- Владелец: `scripting`
-- Аудитория: `engine-contributor`, `embedding-project-build-system`
-- Владелец вызова: BuildTools/cmake/stages/ScriptsAndBaking.cmake
-- Исходный парсер: [BuildTools/compile-mono-scripts.py](https://github.com/cvet/fonline/blob/master/BuildTools/compile-mono-scripts.py)
-
-### Аргументы верхнего уровня
-
-| Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7"></a><code>helper-cli.compile-mono-scripts.argument.scripts</code> | <code>-scripts</code> | <code>option</code> | да | <code>1</code> | - | - | Путь к каталогу скриптов. |
-| <a id="entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1"></a><code>helper-cli.compile-mono-scripts.argument.assembly</code> | <code>-assembly</code> | <code>option</code> | нет | <code>1</code> | - | - | Имя сборки. |
-
-### Точный вывод `--help` верхнего уровня
-
-```text
-usage: compile-mono-scripts.py [-h] -scripts SCRIPTS [-assembly ASSEMBLY]
-
-FOnline scripts generation
-
-options:
-  -h, --help          show this help message and exit
-  -scripts SCRIPTS    path to scripts directory
-  -assembly ASSEMBLY  assembly name
-```
-
 <a id="entry-helper-cli-codecoverage-b014400e5e"></a>
 ## Покрытие кода
 
@@ -139,7 +107,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.clean`
 
 ```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -149,12 +117,13 @@ usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BU
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-d3b3cf975b"></a><code>helper-cli.codecoverage.command.clean.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-backend-1dd776233e"></a><code>helper-cli.codecoverage.command.clean.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10"></a><code>helper-cli.codecoverage.command.clean.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
+| <a id="entry-helper-cli-codecoverage-command-clean-argument-objects-394f819f2f"></a><code>helper-cli.codecoverage.command.clean.argument.objects</code> | <code>--object</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный инструментированный исполняемый файл или динамическая библиотека для отчёта LLVM; аргумент можно повторять. |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed"></a><code>helper-cli.codecoverage.command.clean.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Remove previously collected coverage data and reports
 
@@ -172,6 +141,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-codecoverage-command-run-6ff9c981af"></a>
@@ -182,7 +152,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.run`
 
 ```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -192,12 +162,13 @@ usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUIL
 | <a id="entry-helper-cli-codecoverage-command-run-argument-binary-3d92cbd0fb"></a><code>helper-cli.codecoverage.command.run.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-backend-da1a5d1400"></a><code>helper-cli.codecoverage.command.run.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a"></a><code>helper-cli.codecoverage.command.run.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
+| <a id="entry-helper-cli-codecoverage-command-run-argument-objects-9659c0efc0"></a><code>helper-cli.codecoverage.command.run.argument.objects</code> | <code>--object</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный инструментированный исполняемый файл или динамическая библиотека для отчёта LLVM; аргумент можно повторять. |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437"></a><code>helper-cli.codecoverage.command.run.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Run the instrumented test binary and collect coverage data
 
@@ -215,6 +186,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-codecoverage-command-report-8de4627b8f"></a>
@@ -225,7 +197,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.report`
 
 ```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -235,12 +207,13 @@ usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir B
 | <a id="entry-helper-cli-codecoverage-command-report-argument-binary-ccafd82b7a"></a><code>helper-cli.codecoverage.command.report.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-backend-927a805169"></a><code>helper-cli.codecoverage.command.report.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452"></a><code>helper-cli.codecoverage.command.report.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
+| <a id="entry-helper-cli-codecoverage-command-report-argument-objects-96a47bda0f"></a><code>helper-cli.codecoverage.command.report.argument.objects</code> | <code>--object</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный инструментированный исполняемый файл или динамическая библиотека для отчёта LLVM; аргумент можно повторять. |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0"></a><code>helper-cli.codecoverage.command.report.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Generate text and HTML reports from collected coverage data
 
@@ -258,6 +231,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-codecoverage-command-full-43f183aedc"></a>
@@ -268,7 +242,7 @@ options:
 Stable ID: `helper-cli.codecoverage.command.full`
 
 ```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
@@ -278,12 +252,13 @@ usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUI
 | <a id="entry-helper-cli-codecoverage-command-full-argument-binary-f3c0888145"></a><code>helper-cli.codecoverage.command.full.argument.binary</code> | <code>--binary</code> | <code>option</code> | да | <code>1</code> | - | - | Инструментированный исполняемый файл тестов. |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-backend-fa1db784c3"></a><code>helper-cli.codecoverage.command.full.argument.backend</code> | <code>--backend</code> | <code>option</code> | да | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | Backend компилятора/toolchain покрытия. |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9"></a><code>helper-cli.codecoverage.command.full.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходных данных покрытия и отчётов. |
+| <a id="entry-helper-cli-codecoverage-command-full-argument-objects-8a1e4c2132"></a><code>helper-cli.codecoverage.command.full.argument.objects</code> | <code>--object</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный инструментированный исполняемый файл или динамическая библиотека для отчёта LLVM; аргумент можно повторять. |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a"></a><code>helper-cli.codecoverage.command.full.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | да | <code>...</code> | - | - | Аргументы, передаваемые тестовому бинарному файлу. |
 
 #### Точный вывод `--help`
 
 ```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Clean, run the instrumented binary, and generate reports
 
@@ -301,6 +276,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a>

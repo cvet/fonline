@@ -207,12 +207,12 @@ public:
 
     explicit DbSQLite(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _storageDir {storage_dir}
+        _storageDir {fs_make_writable_path(db_settings->UserWritablePath, storage_dir)}
     {
         FO_STACK_TRACE_ENTRY();
 
         InitializeSQLiteRuntime();
-        fs_create_directories(storage_dir);
+        fs_create_directories(_storageDir);
         OpenDataBase();
         StartCommitThread();
     }

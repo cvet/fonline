@@ -1393,13 +1393,20 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
 
     size_t errors = 0;
     auto registrar = GetRegistrar();
+    unordered_set<ptr<const Property>> seen_properties;
 
     for (const auto& [key, value] : key_values) {
         if (key.empty() || key[0] == '$' || key[0] == '_') {
             continue;
         }
 
-        auto prop = registrar->FindProperty(key);
+        // Keys come from a stored document (baked proto/map sections, authored property text), so an
+        // obsolete stored name has to migrate onto its replacement here
+        auto read_sibling = [&key_values](string_view name) -> optional<string_view> {
+            auto it = key_values.find(name);
+            return it != key_values.end() ? optional<string_view> {it->second} : std::nullopt;
+        };
+        auto prop = PropertiesSerializer::ResolvePropertyFromText(registrar, key, value, read_sibling);
 
         if (!prop) {
             WriteLog("Failed to load unknown property {}", key);
@@ -1433,6 +1440,7 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
         }
 
         try {
+            FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", key);
             ApplyPropertyFromText(prop, value);
         }
         catch (const std::exception& ex) {
@@ -2496,18 +2504,24 @@ auto PropertyRegistrar::FindProperty(string_view property_name) const -> nptr<co
 {
     FO_STACK_TRACE_ENTRY();
 
-    string key = string(property_name);
-    hstring hkey = _hashResolver->ToHashedString(key);
-
-    if (auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
-        key = rule.value();
-    }
-
-    if (auto it = _registeredPropertiesLookup.find(key); it != _registeredPropertiesLookup.end()) {
+    if (auto it = _registeredPropertiesLookup.find(property_name); it != _registeredPropertiesLookup.end()) {
         return it->second;
     }
 
     return nullptr;
+}
+
+auto PropertyRegistrar::FindPersistedProperty(string_view property_name) const -> nptr<const Property>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    hstring hkey = _hashResolver->ToHashedString(property_name);
+
+    if (auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
+        return FindProperty(rule.value().as_str());
+    }
+
+    return FindProperty(property_name);
 }
 
 auto PropertyRegistrar::GetPropertyGroups() const noexcept -> map<string, vector<ptr<const Property>>>

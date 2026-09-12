@@ -28,7 +28,7 @@ backend names and project-generated executable names are not safe templates.
 
 ## `Source/Applications/`
 
-Contains app and library entry points. Examples include client, server variants, mapper, editor, baker, AngelScript compiler, and testing app wrappers. Build target wiring is in `BuildTools/cmake/stages/Applications.cmake`.
+Contains app and library entry points. Examples include client, server variants, mapper, editor, baker, AngelScript compiler, Managed script baker, and testing app wrappers. Build target wiring is in `BuildTools/cmake/stages/Applications.cmake`.
 
 See [Applications](../../reference/applications.md).
 
@@ -66,7 +66,7 @@ Server behavior is usually where persistence, validation, and authoritative enti
 
 ## `Source/Scripting/`
 
-Script integration and script-visible native method registration. It is split into integration folders (`AngelScript`, `Native`, `Mono`) and method registration files grouped by runtime side and entity type, such as common/client/server global methods and critter/item/map/player methods.
+Script integration and script-visible native method registration. `AngelScript/` and `Managed/` are implemented backends; `Managed/` also owns C# CoreScripts, analyzers, runtime hosting, and backend tests. `Native/` is only a reserved source-root placeholder in the current tree, and the obsolete `Mono/` prototype no longer exists. Registration files are grouped by runtime side and entity type, such as common/client/server global methods and critter/item/map/player methods. Start with [Scripting](../../explanation/scripting-runtime/) and use [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) or [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md) for the selected backend.
 
 Use [Nullability](../../../Nullability.md) when changing nullable script/native signatures.
 
@@ -96,7 +96,7 @@ This layer is relevant for native client startup, headless modes, testing, Web, 
 
 ## `Source/Tests/`
 
-The tests are the executable knowledge base for many engine subsystems. File names are grouped by subsystem (`Test_Geometry.cpp`, `Test_NetBuffer.cpp`, `Test_DataBase.cpp`, `Test_AngelScript*.cpp`, etc.). Expand the [Source/Tests README](../../../../Source/Tests/README.md) when adding new test categories, and reconcile [Testing](../../../Testing.md) against the current runner and generated targets.
+The tests are the executable knowledge base for many engine subsystems. File names are grouped by subsystem (`Test_Geometry.cpp`, `Test_NetBuffer.cpp`, `Test_DataBase.cpp`, `Test_AngelScript*.cpp`, `Test_ManagedScriptBaker.cpp`, etc.). Expand the [Source/Tests README](../../../../Source/Tests/README.md) when adding new test categories, and reconcile [Testing](../../../Testing.md) against the current runner and generated targets.
 
 ## Navigation anti-patterns
 

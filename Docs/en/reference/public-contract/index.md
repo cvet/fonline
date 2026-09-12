@@ -37,17 +37,16 @@ The native script API is a revision-pinned experimental inventory: the current v
 | Font format | `font-format` | `experimental` | [Guide](../font-format/index.md) | [font-format.json](../../../generated/font-format.json) |
 | Audio | `audio` | `experimental` | [Guide](../audio/index.md) | [audio.json](../../../generated/audio.json) |
 | Video | `video` | `experimental` | [Guide](../video/index.md) | [video.json](../../../generated/video.json) |
-| GUI runtime | `gui-runtime` | `experimental` | [Guide](../gui-runtime/index.md) | [gui-runtime.json](../../../generated/gui-runtime.json) |
 | AiControl protocol | `ai-control-protocol` | `experimental` | [Guide](../ai-control-protocol/index.md) | [ai-control-protocol.json](../../../generated/ai-control-protocol.json) |
 
-The current revision contains **18** modeled contract domains: `experimental` 15, `internal` 3.
+The current revision contains **17** modeled contract domains: `experimental` 14, `internal` 3.
 
 ## Native script API status
 
-- Discovered symbols: **2509**
-- Symbols with source-backed descriptions: **2509**
+- Discovered symbols: **2523**
+- Symbols with source-backed descriptions: **2523**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2509**
+- Explicitly classified symbols: **2523**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.

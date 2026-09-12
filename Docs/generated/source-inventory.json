@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_inventory.py",
   "script_api": {
-    "export_method_declarations": 961,
+    "export_method_declarations": 963,
     "method_file_count": 18,
     "method_files": [
       {
@@ -15,7 +15,7 @@
       },
       {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "export_method_declarations": 121
+        "export_method_declarations": 122
       },
       {
         "path": "Source/Scripting/ClientImGuiScriptMethods.cpp",
@@ -59,7 +59,7 @@
       },
       {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "export_method_declarations": 115
+        "export_method_declarations": 116
       },
       {
         "path": "Source/Scripting/ServerItemScriptMethods.cpp",
@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 106,
+    "test_file_count": 109,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -130,6 +130,7 @@
       "Source/Tests/Test_LineTracer.cpp",
       "Source/Tests/Test_LocationAndEntityMgmt.cpp",
       "Source/Tests/Test_Logging.cpp",
+      "Source/Tests/Test_ManagedScriptBaker.cpp",
       "Source/Tests/Test_MapBaker.cpp",
       "Source/Tests/Test_MapLoader.cpp",
       "Source/Tests/Test_Mapper.cpp",
@@ -168,6 +169,7 @@
       "Source/Tests/Test_ScriptEntityOps.cpp",
       "Source/Tests/Test_ServerAdvancedOps.cpp",
       "Source/Tests/Test_ServerEngine.cpp",
+      "Source/Tests/Test_ServerEntityLifetime.cpp",
       "Source/Tests/Test_ServerEventContracts.cpp",
       "Source/Tests/Test_ServerItems.cpp",
       "Source/Tests/Test_ServerMapOperations.cpp",
@@ -186,12 +188,13 @@
       "Source/Tests/Test_TimeRelated.cpp",
       "Source/Tests/Test_Timer.cpp",
       "Source/Tests/Test_TwoDimensionalGrid.cpp",
+      "Source/Tests/Test_UpdaterBackend.cpp",
       "Source/Tests/Test_WorkThread.cpp",
       "Source/Tests/Test_WorkerPool.cpp"
     ]
   },
   "settings": {
-    "declaration_count": 286,
+    "declaration_count": 297,
     "source": "Source/Common/Settings.inc"
   }
 }

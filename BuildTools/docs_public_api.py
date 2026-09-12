@@ -35,7 +35,6 @@ SOURCE_REFERENCES.update(
         "helper-cli": "Docs/en/reference/helper-cli/index.md",
         "audio": "Docs/en/reference/audio/index.md",
         "video": "Docs/en/reference/video/index.md",
-        "gui-runtime": "Docs/en/reference/gui-runtime/index.md",
         "text-format": "Docs/en/reference/text-format/index.md",
         "effect-format": "Docs/en/reference/effect-format/index.md",
         "image-format": "Docs/en/reference/image-format/index.md",
@@ -66,7 +65,6 @@ DOMAIN_TITLES = {
     "font-format": "Font format",
     "audio": "Audio",
     "video": "Video",
-    "gui-runtime": "GUI runtime",
     "ai-control-protocol": "AiControl protocol",
 }
 RUSSIAN_DOMAIN_TITLES = {
@@ -86,7 +84,6 @@ RUSSIAN_DOMAIN_TITLES = {
     "font-format": "Формат шрифтов",
     "audio": "Аудио",
     "video": "Видео",
-    "gui-runtime": "GUI runtime",
     "ai-control-protocol": "Протокол AiControl",
 }
 

@@ -14,8 +14,8 @@ generated: true
 CMake normally invokes this internal CLI once for each `BINARY` clause. Direct callers must provide the same build hash, config, input, and output context.
 
 ```text
-usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH -pack PACK
-                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
+usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH
+                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
 
 FOnline packager
 
@@ -30,6 +30,8 @@ options:
   -platform {Windows,Linux,Android,macOS,iOS,Web}
                         platform type
   -arch ARCH            architectures to include (divided by +)
+  -expect-client-runtime EXPECT_CLIENT_RUNTIME
+                        Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable
   -pack PACK            package type
   -config CONFIG        config name
   -input INPUT          input dir (from FO_OUTPUT_PATH)
@@ -49,6 +51,7 @@ options:
 | <a id="entry-package-cli-argument-target-3abbb688eb"></a><code>package.cli.argument.target</code> | <code>-target</code> | yes | <code>store</code> | <code>Server</code>, <code>Client</code>, <code>Mapper</code>, <code>Baker</code>, <code>AnimationViewer</code>, <code>ParticleViewer</code> | - | package target type |
 | <a id="entry-package-cli-argument-platform-24b87674f7"></a><code>package.cli.argument.platform</code> | <code>-platform</code> | yes | <code>store</code> | <code>Windows</code>, <code>Linux</code>, <code>Android</code>, <code>macOS</code>, <code>iOS</code>, <code>Web</code> | - | platform type |
 | <a id="entry-package-cli-argument-arch-77a6c93f85"></a><code>package.cli.argument.arch</code> | <code>-arch</code> | yes | <code>store</code> | - | - | architectures to include (divided by +) |
+| <a id="entry-package-cli-argument-expect-client-runtime-98533a6d8d"></a><code>package.cli.argument.expect_client_runtime</code> | <code>-expect-client-runtime</code> | no | <code>append</code> | - | - | Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable |
 | <a id="entry-package-cli-argument-pack-97cdb74296"></a><code>package.cli.argument.pack</code> | <code>-pack</code> | yes | <code>store</code> | - | - | package type |
 | <a id="entry-package-cli-argument-config-6b9914184e"></a><code>package.cli.argument.config</code> | <code>-config</code> | yes | <code>store</code> | - | - | config name |
 | <a id="entry-package-cli-argument-input-e00f0e4f00"></a><code>package.cli.argument.input</code> | <code>-input</code> | yes | <code>append</code> | - | - | input dir (from FO_OUTPUT_PATH) |

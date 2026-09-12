@@ -1,16 +1,16 @@
 ---
 layout: default
-title: Нативная отладка и отладка AngelScript
+title: Нативная отладка, AngelScript и Managed C#
 locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"fabe945cfe3b98fa2a9f6a6d42c4e8be250c09015481c1916d82b2ad2b299e99"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"c1b10dcf969eafe04ea0e2198bcef6e3fcdf933d80d8cbf82ec4a5a08097e1c1"} -->
 
-# Нативная отладка и отладка AngelScript
+# Нативная отладка, AngelScript и Managed C#
 
-Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio и живого выполнения AngelScript. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам комплектного адаптера VS Code, тестам Engine и проверенным evidence встраивающих проектов.
+Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
 
 Встраивающий проект отвечает за конкретные имена целей, пути к исполняемым файлам, рабочие каталоги, предварительный bake, sub-config, учётные данные, политику хранения crash-артефактов, установку редактора и сценарий воспроизведения игровой ошибки.
 
@@ -22,6 +22,10 @@ permalink: /Docs/ru/troubleshooting/debugging.html
   контракт Engine требует `Script.DebuggerEnabled`, предоставляет TCP endpoint
   на выбираемом для процесса порту из `43000..44999` и использует UDP-порт
   `43001` для discovery; проект владеет настройкой editor и политикой remote access.
+- Для Managed C# начинайте с diagnostics Roslyn/MSBuild, generated `.gen.sln`,
+  логов managed baker/runtime и узкого managed test. Адаптер AngelScript `fos`
+  не отлаживает C#; подключайте совместимый native/managed debugger только после
+  сверки generated sources, assemblies, runtime payload и symbols.
 - Выбирайте сфокусированный тест Engine или проекта, когда отказ детерминирован и
   изменённый контракт можно наблюдать без интерактивного attach.
 
@@ -48,6 +52,7 @@ Engine отвечает за:
 - семантику конфигураций сборки, флаги символов компилятора и linker, варианты sanitizer и генерируемые application targets;
 - `IsRunInDebugger`, `BreakIntoDebugger`, захват и разрешение нативного стека, exception callbacks, crash handlers и диагностический self-test;
 - смешанные слои стека AngelScript/native и текущий runtime endpoint отладчика;
+- diagnostics baker/runtime Managed C#, владение generated project и граница между logging Engine и внешним managed-debugger tooling;
 - файлы MSVC Natvis/NatJMC, подключённые к сгенерированным solutions;
 - исходники адаптера `BuildTools/angelscript-debugger` и объявленную им схему конфигурации VS Code;
 - сфокусированные нативные тесты поведения стеков и исключений.
@@ -72,6 +77,8 @@ Engine отвечает за:
 - `Source/Essentials/BasicCore.cpp`, `StackTrace.*`, `BaseLogging.*`, `FatalError.*`, `ExceptionHandling.*` и `Logging.cpp`;
 - `Source/Common/DiagnosticSelfTest.cpp` и `Source/Frontend/ApplicationInit.cpp`;
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`, `AngelScriptContext.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptHelpers.cpp` и `AngelScriptDebugger.*`;
+- `Source/Scripting/Managed/ManagedScriptBackend.*`, `ManagedRuntime.*`, `ManagedScripting.*`, `ManagedHost/ManagedLoadContextHost.cs`, `CoreScripts/ScriptSynchronizationContext.cs` и `Analyzers/SyncCoverAnalyzer.cs`;
+- `Source/Tools/ManagedScriptBaker.*`, `Source/Applications/ManagedScriptBakerApp.cpp` и `Source/Tests/Test_ManagedScriptBaker.cpp`;
 - `Source/Common/Settings.inc`;
 - `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp` и `Test_ScriptBuiltins.cpp`;
 - `BuildTools/angelscript-debugger/package.json` и его TypeScript-исходников;
@@ -85,6 +92,7 @@ Engine отвечает за:
 | Linux native | Debug information во всех конфигурациях кроме `MinSizeRel`, `-rdynamic`, бинарные файлы для GDB/LLDB, обнаружение отладчика через `/proc/self/status`, диагностика signals/terminate | Включение и сбор core dump, хранение символов, container permissions и retention относятся к политике host/project. |
 | macOS native | Debug information во всех конфигурациях кроме `MinSizeRel`, `-rdynamic`, обнаружение через `sysctl(P_TRACED)`, debug trap, signal-диагностика backward-cpp | Репозиторий не поставляет проверенный Engine-профиль LLDB, архив crash reports или release-квалификацию. |
 | AngelScript runtime | TCP endpoint с loopback по умолчанию, UDP discovery, line breakpoints, pause/continue/step, скриптовый стек, read-only locals, события stop/abort/error | Нет контракта authentication, encryption, опубликованного VSIX, закреплённого dependency lock, CI живого endpoint, просмотра globals, evaluation выражений или изменения состояния. |
+| Managed C# runtime | Diagnostics compile Roslyn/MSBuild, generated source/project/solution, логи managed baker/runtime, native host frames, load-context и scheduler tests, debugger-compatible assemblies | Engine не поставляет C# editor adapter, launch profile, symbol server, hot reload или gate живого managed-debugger acceptance. Адаптер `fos` предназначен только для AngelScript. |
 | Смешанный стек в логах | Скриптовые слои и нативные кадры, различение origin/catch, безопасный crash output и локальный для процесса cache разрешения | Качество нативных символов зависит от точных binary, libraries, debug data, platform unwinder и режима выполнения. MemorySanitizer и ThreadSanitizer отключают захват нативного стека. |
 
 `Source/Tests` проверяет примитивы стека и исключений. Сейчас он не выполняет реальную TCP/UDP-сессию подключения AngelScript. Статические проверки и launch-профили проекта доказывают форму интеграции, но не живой протокол end to end.
@@ -96,6 +104,8 @@ Engine отвечает за:
 | Native assertion, C++ exception, signal, SEH failure или lifecycle invariant | Соответствующие нативные символы, исходный лог, затем минимальная нативная цель под отладчиком | Сфокусированный случай `Source/Tests/Test_*.cpp`, если граница переиспользуема. |
 | Ошибка компиляции, binding, remote call или nullability в скрипте | [Scripting Runtime](../explanation/scripting-runtime/) и [Testing](../contributing/testing/) до живого подключения | Минимальная compile/bake fixture или owning test; attach нужен только для вопросов о состоянии выполнения. |
 | Breakpoint, stepping, script stack или local value AngelScript | Development-конфигурация с `Script.DebuggerEnabled = True`, затем профиль подключения `fos` | Проверенная остановка в нужном процессе и нужной ревизии исходников. |
+| Ошибка compiler/analyzer Managed C# | Первая diagnostic `CompileManagedScripts`, generated `.gen.csproj`/`.gen.sln` и настроенный набор source/reference/analyzer | Воспроизведите с теми же `ManagedScriptTargetFramework`, SDK, assemblies и generated API. |
+| Ошибка load, callback, async или lifetime Managed C# | Лог managed baker/runtime и узкий `Test_ManagedScriptBaker` либо `test_managed_*.py` | Сверьте content-hashed assemblies, runtime payload, backend load scope, target role и continuation context до interactive attach. |
 | Смешанное исключение script/native | Сначала unified trace в логе Engine, затем нативный отладчик | Сохранить origin throw и catch site; изолировать переиспользуемую границу нативным тестом. |
 | Memory corruption, race, uninitialized read или undefined behavior | Узкая поддерживаемая sanitizer-конфигурация до ручного просмотра watch window | Reproducer в owning sanitizer lane; evidence отладчика дополняет её. |
 | Ошибка загрузки client host/runtime | [Разделение client runtime и updater](../explanation/runtime/client-updater.md) | Тесты ABI и selector host/runtime до диагностики gameplay. |
@@ -375,6 +385,19 @@ Client, server и mapper используют общий UDP discovery port `430
 8. Считайте отсутствие globals, mutation, memory, hover/evaluate и advanced DAP controls текущими ограничениями transport.
 9. Если stepping меняет поведение, воспроизведите ещё раз с отключённым отладчиком, потому что line cues и bytecode optimization различаются.
 
+## Диагностика и отладка Managed C#
+
+Разделяйте ошибки Managed C# на четыре слоя. Сохраняйте первый сбой слоя-владельца вместо отладки последнего wrapper exception:
+
+1. **Generation** — проверьте generated `.gen.cs`, `.gen.csproj` и `.gen.sln` рядом с настроенными скриптами. Отсутствующий или устаревший native export является проблемой code generation, а не Mono.
+2. **Compilation и analysis** — запустите `CompileManagedScripts` и прочитайте первую diagnostic Roslyn/MSBuild. Проверьте `ManagedScriptTargetFramework`, `ManagedScriptSourceDirs`, extra sources/references, analyzers, настроенные assemblies и выбранный .NET SDK. Synchronization diagnostics используют IDs `FOSYNC`, описанные в [Скриптах Managed C#](../how-to/scripting/managed-csharp.md).
+3. **Bake и delivery** — проверьте ожидаемую target assembly и payload ManagedRuntime в каждом resource pack и выбор target-specific runtime упаковщиком. Отсутствующие assemblies допустимы в намеренно минимальных fixtures Engine; проект с включённым backend должен считать это дефектом packaging/configuration.
+4. **Runtime execution** — по логу managed backend различайте ошибки assembly/load-context, регистрацию P/Invoke, signature/invocation callback, нарушение scheduler context, synchronization cover и дефекты GC-root/lifetime. До attach сверяйте content hash и роль процесса.
+
+`Script.DebuggerEnabled` и адаптер `fos` влияют только на AngelScript. Они не предоставляют C# breakpoints, locals, evaluation или managed stacks. Для live stepping C# подключающий проект должен предоставить и квалифицировать debugger, совместимый со встроенным Mono runtime, точными generated assemblies/symbols и целевой платформой. Успешный IDE attach является project evidence, но не заявлением поддержки Engine, пока Engine не владеет повторяемым live acceptance gate.
+
+Для детерминированных регрессий предпочитайте `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests и узкий набор `BuildTools/tests/test_managed_*.py`. Полная матрица проверки и ограничения платформ/sanitizers приведены в [Скриптах Managed C#](../how-to/scripting/managed-csharp.md).
+
 ## Интеграция отладчика во встраивающем проекте
 
 Проекту следует предоставить независимые маршруты для:
@@ -382,6 +405,7 @@ Client, server и mapper используют общий UDP discovery port `430
 - нативного запуска под отладчиком с точными сгенерированными executable и symbols;
 - нативного attach, когда отладчик не может владеть запуском процесса, с документированным ограничением cached detection;
 - attach AngelScript к уже запущенному development process;
+- inspection compile/analyzer Managed C# через generated solution и необязательный project-qualified live managed attach;
 - compound native launch и `fos` attach, когда нужны оба представления;
 - Web/Android launch только для platform-specific симптомов;
 - изолированного запуска unit tests и destructive crash-diagnostic subprocesses.
@@ -409,6 +433,14 @@ Client, server и mapper используют общий UDP discovery port `430
 - версию adapter, происхождение dependencies/artifact и маршрут установки;
 - поддержанные attach controls и live acceptance с breakpoint, stack и local value.
 
+Поддерживаемый профиль Managed C# отдельно фиксирует:
+
+- generated `.gen.sln`, target assembly, symbols, target framework, SDK и набор analyzers;
+- content-hashed assembly/runtime payload, загруженный выбранным client, server, mapper или baker;
+- поддерживает ли debugger встроенный Mono/runtime и целевую платформу;
+- различие compile/analyzer evidence, runtime logs, native-host frames и live managed attach;
+- acceptance-сценарий для затронутых async continuations, callbacks, remotes или lifetime behavior.
+
 Статическая проверка должна отклонять отсутствующие ссылки task/compound, устаревшие setting names, non-loopback default и профили с `fos` attach без включения endpoint.
 
 ## Проверка тестами Engine
@@ -422,7 +454,7 @@ Client, server и mapper используют общий UDP discovery port `430
 5. запустите подходящий sanitizer lane для дефектов memory/concurrency/undefined behavior;
 6. после успешного теста повторите исходный application scenario.
 
-Game scripts, content, bake commands, process names и gameplay fixtures принадлежат проекту. Проектный тест может доказывать compatibility, но не может быть единственным нормативным доказательством поведения Engine.
+Game scripts, content, bake commands, process names и gameplay fixtures принадлежат проекту. Проектный тест может доказывать compatibility, но не может быть единственным нормативным доказательством поведения Engine. Для Managed C# сопоставляйте его с релевантным тестом baker, analyzer, runtime, packaging или load context Engine.
 
 ## Проверка host и runtime клиента
 
@@ -471,6 +503,7 @@ Package layout и rollout updater принадлежат [Packaging and Release]
 - `IsRunInDebugger`, `BreakIntoDebugger`, capture/resolution/cache стека, exception callbacks, crash handlers, logging flush, alternate signal stacks или режимов `FO_SELFTEST_CRASH`;
 - Engine или third-party Natvis/NatJMC и их подключения CMake;
 - `Script.DebuggerEnabled`, `Script.DebuggerBindHost`, line cues/optimization AngelScript, настройки context, портов/protocol/commands/events endpoint, breakpoint keys, stack/locals или security boundary;
+- diagnostics managed baker, layout generated project, analyzer ids, logging assembly/load-context, scheduler checks callbacks, identity runtime payload или заявления поддержки managed debugger;
 - схемы adapter, discovery/transport, DAP capability mapping, поставки dependency/toolchain, тестов или публикации;
 - файлов launch/evidence проекта, указанных в `ExternalProjectEvidence.json`.
 
@@ -483,7 +516,8 @@ Package layout и rollout updater принадлежат [Packaging and Release]
 3. После изменения соответствующих границ запустите sanitizer lanes и `Test_ClientRuntimeApi.cpp`.
 4. Подтвердите PDB/DWARF artifacts и MSVC visualizers в заново сгенерированном проекте.
 5. Докажите один native launch под отладчиком и один out-of-debugger crash-log route на каждой изменённой платформе.
-6. Докажите один live AngelScript attach: endpoint log, осознанный выбор процесса, breakpoint, pause/step, script stack и read-only locals.
+6. Для AngelScript докажите один live attach: endpoint log, осознанный выбор процесса, breakpoint, pause/step, script stack и read-only locals.
+7. Для Managed C# сохраните evidence generated project и `CompileManagedScripts`, проверьте identity упакованных assembly/runtime, запустите узкие managed tests и обозначьте любой live IDE attach как project-qualified evidence.
 7. Подтвердите, что advanced adapter controls описаны согласно live Engine transport, а не mock runtime.
 8. Подтвердите loopback bind отладчика, отсутствие credentials и соблюдение project privacy policy для dump/log evidence.
 9. Повторно проверьте точное закреплённое project evidence и не переносите project-specific names в процедуру Engine.
@@ -492,7 +526,8 @@ Package layout и rollout updater принадлежат [Packaging and Release]
 
 - [Testing](../contributing/testing/) для границ unit, sanitizer, coverage и integration.
 - [Profiling](../how-to/quality/profiling.md) для Tracy capture после понимания correctness boundary.
-- [Scripting Runtime](../explanation/scripting-runtime/) для ownership и execution AngelScript.
+- [Scripting Runtime](../explanation/scripting-runtime/) для ownership и execution backend.
+- [Скрипты Managed C#](../how-to/scripting/managed-csharp.md) для полного контракта C# backend.
 - [Exception Safety](../contributing/coding-contracts/exception-safety.md) для invariant и termination policy.
 - [Разделение client runtime и updater](../explanation/runtime/client-updater.md) для диагностики host/runtime.
 - [Сборка, упаковка и отладка Web](../how-to/platforms/web-debugging.md) и [сборка, упаковка и отладка Android](../how-to/platforms/android-debugging.md) для платформенных маршрутов.

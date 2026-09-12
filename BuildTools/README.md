@@ -49,13 +49,10 @@ rendering, raw-copy, dependency, and test evidence and renders the
 [video reference](../Docs/en/reference/video/index.md). Integration guidance lives in
 [Video Resources and Playback](../Docs/en/how-to/content/video.md).
 
-The reusable AngelScript GUI types, documented members/callbacks, screen API,
-annotations, lifecycle, layout, drawing, input, and embedding hooks are
-versioned in `GuiRuntimeInterface.json`; `docs_gui_runtime.py` derives the live
-CoreScripts contract and renders the
-[GUI runtime reference](../Docs/en/reference/gui-runtime/index.md). Integration guidance lives
-in [GUI Runtime](../Docs/en/how-to/runtime/gui.md). Declarative GUI formats and generators
-remain outside this Engine contract.
+The former generated GUI runtime reference was retired with the Engine-owned
+AngelScript GUI library. The current ownership and validation route lives in
+[GUI Integration Boundary](../Docs/en/how-to/runtime/gui.md); high-level GUI
+libraries and declarative formats belong to embedding projects.
 
 Public example ownership, ordering, exact Engine pins, compatibility lanes, governance files, source-staging exclusions, and release gates are versioned in `Examples/PublicRepositories.json`; `docs_examples.py` validates the shared overlay, materializes a clean review candidate only when the exact Engine checkout is clean and remote-reachable, emits the [public-example registry](../Docs/en/reference/public-examples/index.md), and verifies candidate external repositories before publication.
 
@@ -99,7 +96,6 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs_particle_format.py` validates `ParticleFormatInterface.json` against raw-copy settings, SPARK XML/registry/descriptors, the Engine renderer, ParticleEditor, client runtime, script/model integrations, and tests, then writes/checks `Docs/generated/particle-format.json` plus XML, object, renderer, tooling, runtime, integration, and validation pages.
 - `docs_audio.py` validates `AudioInterface.json` against raw-copy settings, resource indexing, WAV/ACM/Ogg decoding, script playback, frontend conversion/mixing, headless behavior, and native-test inventory, then writes/checks `Docs/generated/audio.json` plus format, delivery, decoding, playback, and validation pages.
 - `docs_video.py` validates `VideoInterface.json` against raw-copy settings, Ogg/Theora decoding, fullscreen queue/input/music/drawing, embedded script playback, renderer behavior, dependencies, and native-test inventory, then writes/checks `Docs/generated/video.json` plus format, delivery, decoding, fullscreen, embedded, and validation pages.
-- `docs_gui_runtime.py` validates `GuiRuntimeInterface.json` against `Gui.fos`, `Input.fos`, native client dispatch, tutorial boundaries, and test inventory, then writes/checks `Docs/generated/gui-runtime.json` plus type, screen API, lifecycle, layout/rendering, input, and integration/validation pages.
 - `docs_ai_control_protocol.py` validates `AiControlProtocol.json` against the reference client and runnable sample, then writes/checks `Docs/generated/ai-control-protocol.json` plus wire, method, command/event, security, and integration/validation pages.
 - `docs_package.py` validates the package documentation model and executable `package.py` parser, then writes/checks `Docs/generated/package.json` plus package reference pages.
 - `docs_examples.py` validates `Examples/PublicRepositories.json` and the governance overlay, writes/checks `Docs/generated/public-examples.json` plus its registry page, materializes a source-ready example into a new clean candidate directory, and verifies external repository metadata, exact gitlink pins, required files, and provenance file bytes.
@@ -152,7 +148,6 @@ python BuildTools/docs_particle_format.py --check
 python BuildTools/docs_font_format.py --check
 python BuildTools/docs_audio.py --check
 python BuildTools/docs_video.py --check
-python BuildTools/docs_gui_runtime.py --check
 python BuildTools/docs_ai_control_protocol.py --check
 python BuildTools/docs_package.py --check
 python BuildTools/docs_examples.py --check
@@ -294,6 +289,27 @@ Host prerequisite checks are also available through the main tool:
 - `buildtools.py host-check macos`
 - `buildtools.py host-check windows`
 
+Apple builds use Xcode: `buildtools.py build mac client Release` builds the
+embedding project's macOS client, and `buildtools.py build ios client Release`
+selects the `SIMULATOR64` iOS toolchain. That toolchain defaults to `x86_64`;
+Mono's `iossimulator` architecture follows the normalized native target processor
+(`x64`), independently of the build host. The `OS64` device target uses
+`ios/arm64`. Simulator builds do not validate device signing or execution.
+
+For the managed backend, run `buildtools.py validate managed-mac-client`,
+`managed-ios-simulator-client`, or `managed-ios-device-client` on an Apple host.
+These explicit Release scenarios enable managed scripting and disable AngelScript
+in the engine-owned validation scaffold. The device scenario selects `OS64` and
+disables code signing; the simulator scenario retains `SIMULATOR64`/x64. They
+build the pinned Mono runtime and link the native client, but do not install or
+execute an application. The manual `validate` workflow's `managed-apple` selection
+covers macOS x64/arm64 and both iOS scenarios without embedding-project inputs.
+
+`tests/test_apple_managed_architecture.py` configures the real Init stage with
+managed scripting enabled and checks both simulator and device runtime identities
+without requiring an Apple SDK. Native linking and managed execution still need
+the corresponding Apple host build and runtime checks.
+
 Host wrapper scripts now delegate to the unified workspace preparation command:
 
 - `buildtools.py prepare-host-workspace linux ...`
@@ -313,6 +329,10 @@ python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten and
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
 
+The `toolset` workspace always enables the baker and disables runtime applications and tests. It leaves
+`FO_BUILD_ASCOMPILER` to the embedding project's `SetOptionValues` default, so AngelScript projects can
+prepare their compiler while managed-only projects do not receive an incompatible forced override.
+
 `msan-libcxx` is Linux-only and intentionally excluded from the default `all`
 workspace feature because it downloads matching LLVM sources and builds
 `libc++`, `libc++abi`, and `libunwind` with MemorySanitizer instrumentation. The
@@ -320,7 +340,15 @@ runtime build also passes `BuildTools/sanitizers/msan-runtime-ignorelist.txt` so
 libunwind does not self-report on ABI register snapshots during C++ exception or
 sanitizer-report unwinding. The `unit-tests-san-memory` validator prepares it
 automatically before configuring `San_Memory`; use the explicit workspace command
-only when pre-warming a CI host or debugging the runtime build.
+only when pre-warming a CI host or debugging the runtime build. Linux Mono source setup
+also initializes each POSIX signal-action object and publishes its bytes through MSan's
+weak runtime hook for bounded diagnostics. This does not make the uninstrumented runtime
+or generated JIT code compatible with MSan, so managed-script builds reject `San_Memory*`.
+Managed-script builds reject `San_Thread` too: Mono's signal-based stop-the-world protocol
+does not create happens-before edges in the host TSan runtime, so valid nursery collection
+reports false races even when SGen's concurrent sweeper is disabled. The managed-disabled
+unit validators retain blocking native MSan and TSan coverage.
+The Linux source marker invalidates already prepared runtimes when that patch changes.
 
 Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
 

@@ -6,7 +6,7 @@ locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
 
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"d58c529ce1368d1051edb641bb86bf75053eb5112ed77e20352f56c595da2d43"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"c35f86b59d7c89889e7792991b0976ee0fbbb5b0a120b106986db781216a3e34"} -->
 
 # Конвейер запекания ресурсов
 
@@ -77,6 +77,8 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 - `Source/Common/ModelAnimationData.cpp`
 - `Source/Tools/AngelScriptBaker.h`
 - `Source/Tools/AngelScriptBaker.cpp`
+- `Source/Tools/ManagedScriptBaker.h`
+- `Source/Tools/ManagedScriptBaker.cpp`
 - `Source/Tests/Test_BakerSetup.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
@@ -96,6 +98,7 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 - `Source/Tests/Test_ModelSourceLoader.cpp`
 - `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 
 ## Что делает запекание
 
@@ -127,7 +130,7 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 - `ForceBakeResources` создаётся вызовом `AddBakingTarget(ForceBakeResources FORCE)` и запускает его с `-ForceBaking True`.
 - Обе стандартные цели передают главный конфигурационный файл проекта через `-ApplyConfig <FO_MAIN_CONFIG>` и используют subconfig `NONE` по умолчанию.
 - Каждая цель, созданная через `AddBakingTarget`, работает из `FO_OUTPUT_PATH`, зависит от `ForceCodeGeneration` и записывает `Baking/Resources.build-hash` через `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
-- `CompileAngelScript` также зависит от `ForceCodeGeneration`, поэтому метаданные и генерируемый код не могут отстать от компиляции скриптов или запуска baker-а.
+- `CompileAngelScript` и `CompileManagedScripts` зависят от `ForceCodeGeneration`, поэтому metadata и generated code не могут отстать от любого скриптового backend или запуска baker-а.
 
 После выполнения `SetupScriptsAndBaking()` встраивающий проект может добавить цель для собственного subconfig, не копируя команду запуска baker-а:
 
@@ -274,6 +277,7 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 | `Effect` | `EffectBaker` | 4 | всегда |
 | `Text` | `TextBaker` | 4 | всегда |
 | `ModelMesh` | `ModelMeshBaker` | 4 | `FO_ENABLE_3D` |
+| `Managed` | `ManagedScriptBaker` | 3 | `FO_MANAGED_SCRIPTING` |
 | `AngelScript` | `AngelScriptBaker` | 4 | `FO_ANGELSCRIPT_SCRIPTING` |
 | `Particle` | `ParticleBaker` | 5 | всегда; backend зависит от build options |
 | `ProtoText` | `ProtoTextBaker` | 6 | всегда |
@@ -455,7 +459,7 @@ Generated Ozz rig является единственным production clip/pose
 Тот же `ScriptsAndBaking.cmake` создаёт соседние команды:
 
 - `CompileAngelScript` запускает AS compiler проекта при `FO_ANGELSCRIPT_SCRIPTING`;
-- `CompileMonoScripts` запускает `BuildTools/compile-mono-scripts.py` с обязательным scripts/project directory `FO_OUTPUT_PATH` при `FO_MONO_SCRIPTING`.
+- `CompileManagedScripts` запускает standalone `ManagedScriptBaker` проекта после `ForceCodeGeneration` при включённом `FO_MANAGED_SCRIPTING`. Он компилирует настроенные `.cs` inputs в assemblies resource-pack/target и генерирует поверхность проекта `.gen.cs`, `.gen.csproj`, `.gen.sln`; подготовка runtime payload остаётся отдельной стадией packaging.
 
 Это отдельные targets от resource baking, но они находятся в одном preparation stage, потому что generated/baked runtime inputs образуют общий build workflow.
 
@@ -482,6 +486,7 @@ Focused coverage находится в `Source/Tests/`:
 - `Test_ModelSourceLoader.cpp`
 - `Test_OzzAnimation.cpp`
 - `Test_AngelScriptBaker.cpp`
+- `Test_ManagedScriptBaker.cpp`
 
 Выбирайте самый узкий тест, покрывающий изменённый baker. Сгенерированные проектом имена CMake targets следует узнавать из preset/build files проекта, а не фиксировать в Engine doc.
 
@@ -498,7 +503,8 @@ Focused coverage находится в `Source/Tests/`:
 - Audio: обновить `AudioInterface.json`, [Audio](../../how-to/content/audio.md), tests, rebake и audible inspection на заявленных платформах.
 - Video: обновить `VideoInterface.json`, [Video](../../how-to/content/video.md), tests, rebake и visible inspection.
 - Effects: обновить `EffectFormatInterface.json`, [Effect Format](../../how-to/content/effect-format.md), tests, contract diff и visible backend scene.
-- Script-specific bake: обновить `AngelScriptBaker.*` и [Scripting](../scripting-runtime/).
+- Для AngelScript bake обновить `AngelScriptBaker.*`, тесты AngelScript и [Scripting](../scripting-runtime/).
+- Для Managed C# bake, generated project, assemblies или runtime payload обновить `ManagedScriptBaker.*`, [Скрипты Managed C#](../../how-to/scripting/managed-csharp.md), native/Python managed tests и затронутый package/platform route.
 
 ## Контрольный список проверки
 

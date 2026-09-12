@@ -29,7 +29,6 @@ import docs_screenshots  # noqa: E402
 import docs_effect_format  # noqa: E402
 import docs_examples  # noqa: E402
 import docs_font_format  # noqa: E402
-import docs_gui_runtime  # noqa: E402
 import docs_helper_cli  # noqa: E402
 import docs_image_format  # noqa: E402
 import docs_inventory  # noqa: E402
@@ -149,7 +148,6 @@ class DocumentationValidatorTests(unittest.TestCase):
             "    - run: python3 BuildTools/tests/test_docs_font_format.py\n"
             "    - run: python3 BuildTools/tests/test_docs_audio.py\n"
             "    - run: python3 BuildTools/tests/test_docs_video.py\n"
-            "    - run: python3 BuildTools/tests/test_docs_gui_runtime.py\n"
             "    - run: python3 BuildTools/tests/test_ai_control_protocol.py\n"
             "    - run: python3 BuildTools/tests/test_docs_ai_control_protocol.py\n"
             "    - run: python3 BuildTools/tests/test_docs_package.py\n"
@@ -185,7 +183,6 @@ class DocumentationValidatorTests(unittest.TestCase):
             "    - run: python3 BuildTools/docs_font_format.py --check\n"
             "    - run: python3 BuildTools/docs_audio.py --check\n"
             "    - run: python3 BuildTools/docs_video.py --check\n"
-            "    - run: python3 BuildTools/docs_gui_runtime.py --check\n"
             "    - run: python3 BuildTools/docs_ai_control_protocol.py --check\n"
             "    - run: python3 BuildTools/docs_package.py --check\n"
             "    - run: python3 BuildTools/docs_examples.py --check\n"
@@ -521,14 +518,6 @@ class DocumentationValidatorTests(unittest.TestCase):
                     "directory": docs_video.DEFAULT_OUTPUT_DIR,
                     "paths": list(docs_video.OUTPUT_PATHS),
                 },
-                "gui_runtime_reference": {
-                    "source_manifest": docs_gui_runtime.DEFAULT_MANIFEST,
-                    "model": docs_gui_runtime.DEFAULT_MODEL,
-                    "generator": "BuildTools/docs_gui_runtime.py",
-                    "schema_version": docs_gui_runtime.SCHEMA_VERSION,
-                    "directory": docs_gui_runtime.DEFAULT_OUTPUT_DIR,
-                    "paths": list(docs_gui_runtime.OUTPUT_PATHS),
-                },
                 "ai_control_protocol_reference": {
                     "source_manifest": docs_ai_control_protocol.DEFAULT_MANIFEST,
                     "model": docs_ai_control_protocol.DEFAULT_MODEL,
@@ -665,7 +654,6 @@ class DocumentationValidatorTests(unittest.TestCase):
                         "font-format": "BuildTools/docs_contract_diff.py",
                         "audio": "BuildTools/docs_contract_diff.py",
                         "video": "BuildTools/docs_contract_diff.py",
-                        "gui-runtime": "BuildTools/docs_contract_diff.py",
                         "ai-control-protocol": "BuildTools/docs_contract_diff.py",
                     },
                     "source_models": {
@@ -685,7 +673,6 @@ class DocumentationValidatorTests(unittest.TestCase):
                         "font-format": docs_font_format.DEFAULT_MODEL,
                         "audio": docs_audio.DEFAULT_MODEL,
                         "video": docs_video.DEFAULT_MODEL,
-                        "gui-runtime": docs_gui_runtime.DEFAULT_MODEL,
                         "ai-control-protocol": docs_ai_control_protocol.DEFAULT_MODEL,
                     },
                     "dispositions": docs_contract_diff.DEFAULT_DISPOSITIONS,
@@ -1699,76 +1686,6 @@ class DocumentationValidatorTests(unittest.TestCase):
             output_path = root / page_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8")
-        gui_runtime_manifest = json.loads(
-            (
-                BUILDTOOLS_DIR.parent / docs_gui_runtime.DEFAULT_MANIFEST
-            ).read_text(encoding="utf-8")
-        )
-        gui_runtime_manifest_path = root / docs_gui_runtime.DEFAULT_MANIFEST
-        gui_runtime_manifest_path.write_text(
-            json.dumps(gui_runtime_manifest, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        gui_runtime_sources = gui_runtime_manifest["sources"]
-        for source_key in ("gui_script", "input_script"):
-            relative_path = gui_runtime_sources[source_key]
-            source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            target_path.write_text(
-                source_path.read_text(encoding="utf-8"),
-                encoding="utf-8",
-            )
-        gui_runtime_anchors: dict[str, set[str]] = {}
-        for collection in (
-            "lifecycle_rules",
-            "layout_rules",
-            "input_rules",
-            "integration_rules",
-            "validation_rules",
-        ):
-            for entry in gui_runtime_manifest[collection]:
-                for source in entry["source"]:
-                    gui_runtime_anchors.setdefault(source["path"], set()).update(
-                        source["anchors"]
-                    )
-        for relative_path in (
-            gui_runtime_sources["client_runtime"],
-            gui_runtime_sources["tutorial"],
-            "Source/Tests/README.md",
-        ):
-            target_path = root / relative_path
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            anchor_text = "\n".join(
-                sorted(gui_runtime_anchors.get(relative_path, {"fixture"}))
-            ) + "\n"
-            if target_path.exists():
-                existing = target_path.read_text(encoding="utf-8")
-                if anchor_text not in existing:
-                    target_path.write_text(
-                        existing + "\n" + anchor_text,
-                        encoding="utf-8",
-                    )
-            else:
-                target_path.write_text(anchor_text, encoding="utf-8")
-        (root / gui_runtime_sources["native_test_directory"]).mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-        gui_runtime_model_path = root / docs_gui_runtime.DEFAULT_MODEL
-        gui_runtime_model_path.write_text(
-            docs_gui_runtime.render_gui_runtime_model(root),
-            encoding="utf-8",
-        )
-        gui_runtime_model = json.loads(
-            gui_runtime_model_path.read_text(encoding="utf-8")
-        )
-        for page_path, content in docs_gui_runtime.generate_reference_pages(
-            gui_runtime_model
-        ).items():
-            output_path = root / page_path
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(content, encoding="utf-8")
         ai_control_manifest_source = (
             BUILDTOOLS_DIR.parent / docs_ai_control_protocol.DEFAULT_MANIFEST
         )
@@ -2029,7 +1946,6 @@ class DocumentationValidatorTests(unittest.TestCase):
             docs_font_format,
             docs_audio,
             docs_video,
-            docs_gui_runtime,
             docs_ai_control_protocol,
             docs_package,
             docs_examples,

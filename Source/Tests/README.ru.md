@@ -6,7 +6,7 @@ locale: ru
 document_id: unit-tests-readme
 ---
 
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"089fdb7dd8f54a9c28f8b66b8666382ccc4e392aab72c892273e447cfa28b468"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"448977a83f89afef36c586ecafd5e39e413bc82667a6ae6a0b0a7cf0f672604c"} -->
 
 # Модульные тесты
 
@@ -111,9 +111,11 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEntityLifetime.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_UpdaterBackend.cpp`
 
 ### Скрипты и доступные из скриптов API
 
@@ -137,6 +139,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ParticleBaker.cpp`

@@ -6,7 +6,7 @@ document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
 
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"a69b76f9905b4d5e5b9182e6adcaa1d4915ccb4fc92a600aa280814721c29020"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"5e585846b0a0eb85be8bc7e3254ce48bfc30278db7c72cca8e79e801f0ff29c4"} -->
 
 # Сборка, упаковка и отладка FOnline на Android
 
@@ -139,7 +139,10 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 - application id, version code/name, min/target SDK, ABI, activity, permissions и signature;
 - ровно один ожидаемый `libmain.so` на объявленный ABI;
 - `assets/Resources/Metadata.zip` и ожидаемые resource packs;
+- для Managed build — target assemblies, `ManagedRuntime/runtime.manifest` и target-specific payload class libraries внутри ожидаемого resource pack;
 - отсутствие keystore passwords, private credentials, local paths, stale configs и нелицензированных SDK payloads.
+
+Managed Android требует Android-target runtime archive и class libraries; не используйте подготовленный payload host-а или другой ABI. На устройстве квалифицируйте загрузку assemblies, callbacks/await, shutdown и representative project flow. См. [Скрипты Managed C#](../scripting/managed-csharp.md); успешная native- или Gradle-компиляция сама по себе не доказывает запуск Managed runtime.
 
 Для release lane используйте инструменты Android SDK, например `apkanalyzer`, `aapt2` и `apksigner` из подготовленного SDK.
 

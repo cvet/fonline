@@ -386,25 +386,21 @@ owned by the backend; callers must not retain it beyond that storage's lifetime.
 | `ServerNetwork.UpdateFilesInMemory` | top-level + `[SubConfig]` | `True` keeps every packaged update file in RAM (low CPU under load). `False` serves from disk on demand (low RAM, more I/O). Engine default: `False`; each project chooses overrides for its deployment profiles. |
 | `Network.ForceMetadataVersion` | top-level | Testing only: overrides the metadata version reported by the client, allowing a mismatch to be simulated without a second bake. Keep empty in shipped configurations. |
 | `Baking.PlatformBinaries` | top-level | Directory the server reads per-target client runtime libraries from, and the packager writes them to. Default `PlatformBinaries`, resolved relative to the server's working directory / package root. |
-| `Client.UserWritablePath` | client | Writable data root for an **installed** client whose install dir is read-only. Empty (default) = **portable** (cache/logs/updates next to the exe). `*` = the per-OS user data dir. Otherwise an explicit absolute path. See the section below. |
+| `Common.UserWritablePath` | common | **Read-only** writable data root for every runtime write: logs, cache, resource overlay, self-updated binaries, and server database. It is resolved before any config is read and is not authorable: `--UserWritablePath <path>` names it; otherwise an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus the project name; with neither, it stays empty and paths remain relative to the working directory. |
 
 There is no auto-detection of memory vs disk mode in C++. Choose explicitly per environment.
 
 ## Installed vs portable writable data
 
-A **portable** build writes its cache, log, and self-update files next to the exe — fine for a zip the
-user unpacks anywhere. The Windows MSI defaults to `%LOCALAPPDATA%`, but an **installed** build may still sit
-in a read-only directory, so those writes must go to a per-user writable location instead.
+A **portable** build writes cache, logs, and self-update files relative to the working directory — suitable for a zip unpacked into a writable location. The Windows MSI defaults to `%LOCALAPPDATA%`, but an **installed** build may still sit in a read-only directory after an explicit `Program Files` choice (or under `/usr/...`), so its writes need a separate per-user root.
 
-`Client.UserWritablePath` selects the model, resolved at startup by `ResolveUserWritablePath(settings)` (`Source/Frontend/ApplicationInit.cpp`, called from `LoadAppSettings`):
+`ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` decides that root and is deliberately independent of settings: the log, cache, and local-config cache can themselves live below it, so no file read from disk may decide where it is. Resolution happens before the config is located and before the log is opened. In priority order:
 
-- **empty → portable** (default): writable paths stay relative to the exe / working dir (unchanged behaviour).
-- **`*` → per-OS user data dir** (`Platform::GetUserDataBase()` via env, no SDL/shell32 dependency): Windows `%LOCALAPPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or `~/.local/share`, then `/<Common.GameName>`.
-- **explicit path** → that absolute writable root.
+1. **`--UserWritablePath <path>` on the command line** (the dotted `--Common.UserWritablePath` spelling is accepted too). The arguments are scanned directly before the settings parser runs. This is how Android supplies platform internal storage and how a test isolates a run. A config file cannot set the path. The special value `*` asks for the same per-user directory as the marker.
+2. **An `INSTALLED` marker beside the executable** selects the per-OS base from `Platform::GetUserDataBase()` — Windows `%LOCALAPPDATA%` with `%APPDATA%` fallback, macOS/iOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or `~/.local/share` — plus `FO_NICE_NAME`. Android instead asks SDL for its internal-storage path. The compile-time project name is used because `Common.GameName` is a config value and is unknown this early.
+3. **Otherwise portable**: the root stays empty and writable paths remain relative to the working directory, the same anchor used to locate the main config and relative resource/cache directories.
 
-Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>` subdirs, and is
-**fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
-bad install config never bricks startup.
+Resolution is idempotent and creates the selected root. Once settings names are known, `LoadAppSettings` also pre-creates the cache and client-resource-overlay subdirectories. Failure to find or create the root logs a warning and falls back to the working directory, so an unusable installed layout does not brick startup. The resolved value is exposed as read-only `Common.UserWritablePath` to every application, including servers.
 
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
@@ -434,8 +430,7 @@ the install-dir layout, `<exe_dir>/<runtime_name><ext>`) alongside its `-staging
 is **not** gated off — both portable and installed clients self-update on every platform where
 `CanSelfUpdateNativeModules()` is true.
 
-Because the host resolves and loads the runtime DLL *before* settings (so it cannot compute `<root>` itself —
-`Common.GameName` is only known after `InitApp`), the runtime returns the writable live path through
+Because the host resolves and loads the runtime DLL *before* settings, the runtime returns the writable live path through
 `ClientRuntimeResult::RequestedRuntimePath`. The host promotes that path, validates that it is absolute and
 has the current executable-derived runtime filename, writes it to the installed-client bootstrap selector,
 through `GetInstalledClientRuntimeBootstrapPath()` and `WriteClientRuntimeBootstrapTarget()`, and exits; it never loads it again in the same process. On the next launch the `INSTALLED` host reads the
@@ -445,9 +440,9 @@ Missing, oversized, relative, newline-containing, wrong-basename, and stale sele
 install-dir runtime. `--ClientLibPath` remains the final explicit override. Portable clients update their
 exe-dir sibling runtime and neither write nor read the installed selector.
 
-**Trigger:** the installer drops an `INSTALLED` file next to the exe; when `Client.UserWritablePath`
-is empty and that marker is present, the client switches to `*` automatically. The portable zip has no
-marker. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added
+**Trigger:** the installer drops an `INSTALLED` file next to the exe; its presence alone selects the
+per-user layout unless the command line supplies another root. The portable zip has no marker. Android
+does not need one because its launcher passes the platform directory on the command line. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added
 then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay portable).
 
 ## Packaging
@@ -608,7 +603,7 @@ instead of looping back to the game which would only reject the connection again
 
 Local validation steps:
 
-1. Build the embedding project's generated unit-test target and run it. [Tests/Test_ClientRuntimeApi.cpp](../../../../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [Tests/Test_DiskFileSystem.cpp](../../../../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [Tests/Test_Platform.cpp](../../../../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [Tests/Test_Settings.cpp](../../../../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and `ResolveUserWritablePath` fail-safe/creation behavior.
+1. Build the embedding project's generated unit-test target and run it. [Tests/Test_ClientRuntimeApi.cpp](../../../../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [Tests/Test_DiskFileSystem.cpp](../../../../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [Tests/Test_Platform.cpp](../../../../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [Tests/Test_Settings.cpp](../../../../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and the read-only `Common.UserWritablePath`; application-config tests cover CLI/marker resolution, early log/config placement, and fail-safe directory creation.
 2. Build the generated client-host target; on native host/runtime platforms its dependency also builds the generated client-runtime target. Confirm the client output directory contains the host plus the host-derived runtime alias (`<client-host>.exe` + `<client-host>.dll` on Windows, `<client-host>` + `<client-host>.so` on Linux). Build the runtime target explicitly when validating it in isolation.
 3. Launch `<client-host>` with the bundled runtime present → normal startup (Case 2 happy path: load DLL, resource updater finishes, game starts).
 4. Launch `<client-host> --ClientLibPath <path>` with a valid alternate runtime → host routes through the loaded library.
@@ -618,12 +613,12 @@ Local validation steps:
 8. Interrupt a client mid-download (kill the network) and reconnect — the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 → restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `<client-host>`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package) and launch without a writable-path CLI override. The resolved writable root should be the per-OS user-data directory plus `FO_NICE_NAME`; cache/log/resource-overlay writes should go there, while install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 
 - [Packaging and Release](../../how-to/release/packaging.md) for release payload, signing, compatibility, rollout, and rollback gates.
 - [Build Workflow](../../how-to/build/) for reusable build and package entry points.
 - [Engine Architecture](../architecture/) for engine, application, and build ownership.
-- [Native and AngelScript Debugging](../../troubleshooting/debugging.md) for debugger setup; the host vs runtime split affects which binary the debugger should attach to.
+- [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md) for debugger setup; the host vs runtime split affects which binary the debugger should attach to.
 - The embedding project's release documentation for product-specific package profiles and alternative distribution channels.

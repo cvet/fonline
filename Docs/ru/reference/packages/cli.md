@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-cli","locale":"ru","source_path":"Docs/en/reference/packages/cli.md","source_sha256":"372817db884139c4a6f2fb055f2141a74281d91b731fb90cb51eb283fca9eb8d"} -->
+<!-- docs-translation: {"document_id":"generated-package-cli","locale":"ru","source_path":"Docs/en/reference/packages/cli.md","source_sha256":"c53b0624724fb0f5fd0ec36193516a9912b1656b9c066f138e670eab78cf9af8"} -->
 
 # Командная строка упаковщика
 
@@ -16,8 +16,8 @@ generated: true
 Обычно CMake вызывает этот внутренний CLI один раз для каждого предложения `BINARY`. Прямые вызовы должны передавать тот же хеш сборки, конфигурацию и контекст входных и выходных данных.
 
 ```text
-usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH -pack PACK
-                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
+usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH
+                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]
 
 FOnline packager
 
@@ -32,6 +32,8 @@ options:
   -platform {Windows,Linux,Android,macOS,iOS,Web}
                         platform type
   -arch ARCH            architectures to include (divided by +)
+  -expect-client-runtime EXPECT_CLIENT_RUNTIME
+                        Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable
   -pack PACK            package type
   -config CONFIG        config name
   -input INPUT          input dir (from FO_OUTPUT_PATH)
@@ -51,6 +53,7 @@ options:
 | <a id="entry-package-cli-argument-target-3abbb688eb"></a><code>package.cli.argument.target</code> | <code>-target</code> | да | <code>store</code> | <code>Server</code>, <code>Client</code>, <code>Mapper</code>, <code>Baker</code>, <code>AnimationViewer</code>, <code>ParticleViewer</code> | - | тип цели упаковки |
 | <a id="entry-package-cli-argument-platform-24b87674f7"></a><code>package.cli.argument.platform</code> | <code>-platform</code> | да | <code>store</code> | <code>Windows</code>, <code>Linux</code>, <code>Android</code>, <code>macOS</code>, <code>iOS</code>, <code>Web</code> | - | тип платформы |
 | <a id="entry-package-cli-argument-arch-77a6c93f85"></a><code>package.cli.argument.arch</code> | <code>-arch</code> | да | <code>store</code> | - | - | включаемые архитектуры (разделяются символом +) |
+| <a id="entry-package-cli-argument-expect-client-runtime-98533a6d8d"></a><code>package.cli.argument.expect_client_runtime</code> | <code>-expect-client-runtime</code> | нет | <code>append</code> | - | - | Вариант клиента, runtime payload которого этот пакет сервера должен распространять, в формате Platform:arch[:postfix]. Аргумент можно повторять. |
 | <a id="entry-package-cli-argument-pack-97cdb74296"></a><code>package.cli.argument.pack</code> | <code>-pack</code> | да | <code>store</code> | - | - | тип пакета |
 | <a id="entry-package-cli-argument-config-6b9914184e"></a><code>package.cli.argument.config</code> | <code>-config</code> | да | <code>store</code> | - | - | имя конфигурации |
 | <a id="entry-package-cli-argument-input-e00f0e4f00"></a><code>package.cli.argument.input</code> | <code>-input</code> | да | <code>append</code> | - | - | входной каталог (из FO_OUTPUT_PATH) |

@@ -8,11 +8,11 @@ permalink: /Docs/en/how-to/scripting/style-and-refactoring.html
 
 # AngelScript Style and Refactoring
 
-> Engine-owned documentation. This guide defines the reusable source, formatting, module, and refactoring contract supported by the current FOnline compiler, formatter, CoreScripts, and tests. An embedding game owns its domain vocabulary, module catalog, generated project formats, gameplay architecture, and migration policy.
+> Engine-owned documentation. This guide defines the reusable AngelScript source, formatting, module, and refactoring contract supported by the current FOnline compiler, formatter wrapper, public examples, and tests. An embedding game owns its domain vocabulary, module catalog, concrete formatter layout, generated project formats, gameplay architecture, and migration policy.
 
 ## Contract status
 
-This is a `current-revision` guide, not a promise that every historical FOnline project already follows these rules. Normative claims are derived from the current Engine source and tests. `Source/Scripting/AngelScript/CoreScripts` supplies maintained examples, while Last Frontier and FOnline TLA are comparison evidence only.
+This is a `current-revision` guide, not a promise that every historical FOnline project already follows these rules. Normative claims are derived from the current Engine source and tests. The public `Examples/*/Scripts/*.fos` modules supply maintained minimal examples, while Last Frontier and FOnline TLA are comparison evidence only. The former Engine `AngelScript/CoreScripts` library is project-owned after the Managed C# migration and is not a current source anchor.
 
 Use the [scripting runtime explanation](../../explanation/scripting-runtime/), [lifecycle and concurrency guide](lifecycle-and-concurrency.md), [nullability contract](../../contributing/coding-contracts/nullability.md), and [generated content workflow](../build/generated-content.md) for their deeper owning contracts. This page owns the route from an authored `.fos` change to a reviewable, behavior-preserving result.
 
@@ -74,7 +74,7 @@ Use value tests such as `#if SERVER`. `#ifdef SERVER` is true on every side and 
 
 ### Namespace and file ownership
 
-The maintained CoreScripts use one top-level namespace matching each `.fos` stem:
+The maintained public example scripts use one top-level namespace matching each `.fos` stem:
 
 ```angelscript
 // Time.fos
@@ -110,7 +110,7 @@ A local rename is mechanical only when none of these surfaces can observe it.
 
 ### Supported command and version
 
-`Source/Scripting/AngelScript/CoreScripts/.clang-format` is the Engine-owned layout definition. The current contract uses clang-format 20, four spaces, no tabs, a 160-column limit, next-line function braces, same-line control braces, inserted braces for control-flow bodies, no indentation for the outer namespace body, no include sorting, and no comment reflow.
+The Engine does not own one universal `.clang-format` layout for project AngelScript after the high-level CoreScripts move. A project must pin its layout and clang-format version. The reusable `BuildTools/buildtools.py format-source` wrapper requires clang-format 20, preserves the file's BOM/line-ending convention, and repairs FOnline-specific nullable suffix, cast, array, and named-argument spacing without changing literals or comments.
 
 From the Engine repository run:
 
@@ -150,7 +150,7 @@ Formatting does not prove namespace ownership, side authority, balanced behavior
 
 Keep related declarations together and follow the surrounding module's order. Put public ownership ahead of cosmetic uniformity: do not reorder initialization, registration, callbacks, or declaration metadata without checking whether the consumer observes source order.
 
-Avoid a universal gameplay-helper order in Engine documentation. CoreScripts are a reusable baseline, while a game may group domain declarations differently and pin that structure in project checks.
+Avoid a universal gameplay-helper order in Engine documentation. The public examples are minimal compiler/integration fixtures, while a game owns its high-level libraries and may group domain declarations differently and pin that structure in project checks.
 
 ### Names and comments
 
@@ -286,7 +286,7 @@ Run the narrowest Engine unit, project script test, scene, or integration route 
 | Persisted, reflected, remote, or content identifier | Contract disposition or migration plus producer/consumer runtime tests |
 | Broad refactor | Repeat the applicable gates for each small batch; finish with the project's aggregate validation |
 
-Engine CI runs `buildtools.py format-source` and `git diff --exit-code`. `BuildTools/tests/test_docs_angelscript_style.py` pins the documentation route, compiler ordering and side macros, mutable-global and attribute settings, CoreScripts namespace/guard/encoding rules, formatter repairs, external evidence, localization, and workflow inclusion.
+Engine CI runs `buildtools.py format-source` and `git diff --exit-code`. `BuildTools/tests/test_docs_angelscript_style.py` pins the documentation route, compiler ordering and side macros, mutable-global and attribute settings, public-example namespace/guard/encoding rules, formatter repairs, external evidence, localization, and workflow inclusion.
 
 ## Failure diagnosis
 
@@ -325,7 +325,7 @@ Re-audit this page in the same change when any of these owners changes:
 - direct-call blockers, marker propagation, callback validation, or special attributes in `AngelScriptAttributes.*`;
 - `Script.MutableGlobalsAllowedNamespaces`, `Script.AttributedFunctionDirectCallAllowedNamespaces`, or `Script.ExtraDirectCallBlockingAttributes`;
 - `.fos` patterns, clang-format discovery/version checks, repair logic, encoding, line-ending, or EOF behavior in `BuildTools/buildtools.py`;
-- the CoreScripts `.clang-format` contract or maintained CoreScript layout;
+- the reusable formatter wrapper, project-owned `.clang-format`, or maintained public-example layout;
 - generated declaration ownership or the lifecycle/nullability contracts linked from this guide;
 - external project evidence used to separate reusable rules from project policy.
 
@@ -337,8 +337,7 @@ Run the focused documentation test, localization check, snippet check, site gene
 - `.github/workflows/validate.yml`
 - `Source/Common/Settings.inc`
 - `Source/Common/ScriptSystem.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/.clang-format`
-- `Source/Scripting/AngelScript/CoreScripts/*.fos`
+- `Examples/*/Scripts/*.fos`
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.h`

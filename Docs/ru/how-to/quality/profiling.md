@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/quality/profiling.html
 
 # Профилирование
 
-<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"2cd4d95b9ba0ddae511a79356f337eaedae9f34e727b7d3213dd54f9c2920739"} -->
+<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"019e69120c4c67d07330f5a058926ea6b0f1e6e1928bbb1b1d2bc993f986ebcb"} -->
 
 > Документация движка о переиспользуемой интеграции Tracy, границах захвата
 > и сопоставимых измерениях производительности. Рабочие сцены, оркестрация

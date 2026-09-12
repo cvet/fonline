@@ -8,9 +8,9 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 
 # Жизненный цикл и конкурентность скриптов
 
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"af884e30fafef1ce54242efa9756e2447b7f00ec42ea4301ec39188a75f3320a"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"24bc78eda628fea978bc4fbea3ab9d9698fa6c1555e7dab0739954306497fdc4"} -->
 
-> Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency AngelScript. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
+> Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
 
@@ -56,6 +56,7 @@ dispatchers в другой форме. Указывайте только док
 Читайте руководство вместе со следующими материалами:
 
 - [Скриптовый runtime](../../explanation/scripting-runtime/) — полная скриптовая подсистема и путь нативной привязки.
+- [Скрипты Managed C#](managed-csharp.md) — managed-конфигурация, generated assemblies, attributes, async scheduling, analyzers, runtime loading, packaging и поддержка платформ.
 - [Модель сущностей](../../explanation/entity-and-property-model/) — владение сущностями, свойствами, holder и destruction.
 - [Серверный runtime](../../explanation/runtime/server.md) и [клиентский runtime](../../explanation/runtime/client.md) — side-specific loops и managers.
 - [Удалённые вызовы](../../reference/scripting/remote-calls.md) — сетевые entry points и границы авторитетности.
@@ -88,12 +89,17 @@ dispatchers в другой форме. Указывайте только док
 - `Source/Scripting/AngelScript/AngelScriptEntity.cpp`
 - `Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/Input.fos`
+- `Source/Scripting/Managed/CoreScripts/Initializator.cs`
+- `Source/Scripting/Managed/CoreScripts/ScriptSynchronizationContext.cs`
+- `Source/Scripting/Managed/CoreScripts/Sync.cs`
+- `Source/Scripting/Managed/ManagedScriptBackend.cpp`
+- `Source/Scripting/Managed/ManagedRuntime.cpp`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
@@ -106,11 +112,11 @@ dispatchers в другой форме. Указывайте только док
 
 | Фаза | Владелец | Важная граница |
 |---|---|---|
-| Компиляция и bake | AngelScript compiler и bakers | Атрибуты, использование callback, nullable handles и изменяемые globals проверяются до runtime. |
+| Компиляция и bake | Компилятор AngelScript и Managed C# baker/Roslyn | Атрибуты, использование callbacks, nullable values, generated bindings и synchronization contracts проверяются до runtime. |
 | Инициализация модуля | `ScriptSystem::InitModules()` | Init functions выполняются по возрастанию приоритета, пока присваивание globals временно разрешено. |
 | Инициализация сущности | `EntityManager::CallInit()` | Сущность отмечается инициализированной, срабатывает её событие `On*Init`, затем выполняется необязательный сохранённый callback `InitScript`. |
 | Dispatch callback | Client loop или server worker job | Events, time events, remote calls и native re-entry вызывают атрибутированные функции через принадлежащий им API. |
-| Приостановка | AngelScript context manager | `Yield` сохраняет script continuation, но текущая нативная execution scope возвращается. |
+| Приостановка | Менеджер contexts AngelScript или managed synchronization context | `Yield` или `await Game.YieldAsync(...)` сохраняет continuation, но текущий native execution scope возвращается. |
 | Возобновление | Client scheduled-callback pass или server worker pool | Continuation выполняется позже; на сервере она может работать на другом worker под новым synchronization context. |
 | Уничтожение сущности | Владелец entity/manager | Callbacks событий и storage time event очищаются; серверные dispatch jobs отменяются владеющим manager. |
 | Завершение runtime | Client/server и scripting backend | Global events/time events, сущности, script globals, contexts и backend освобождаются в порядке, заданном владельцами. |
@@ -315,6 +321,21 @@ resolve or revalidate entity -> Game.Sync(entity) -> re-read -> decide/mutate
 
 Разрешённый namespace mutable globals является escape hatch для прошедшей review подсистемы, а не архитектурой по умолчанию. Его владелец должен определить synchronization, reset behavior, изоляцию экземпляров и shutdown cleanup.
 
+## Эквиваленты Managed C#
+
+Managed C# входит в те же независимые от backend контракты `ScriptSystem`, сущностей, properties, events, remote calls и синхронизации, но выражает lifecycle средствами C# и `Task`:
+
+- `[ModuleInit(priority)]` отмечает static parameterless method с возвратом `void` или `Task`. `ScriptSystem::InitModules()` по-прежнему упорядочивает инициализаторы по возрастанию priority; возвращённый task ожидается внутри synchronization context backend до перехода к следующей инициализации.
+- Event-, timer-, remote-call-, property- и другие dispatch handlers используют managed attributes из `CoreScripts/Attributes.cs`. Метод с dispatcher-owned attribute входит через свой dispatcher, а не вызывается напрямую только потому, что C# позволяет назвать его.
+- `async void` запрещён. Awaitable handlers и named calls возвращают `Task`; используйте `Task<T>` только когда caller contract потребляет результат. Возвращаемое значение inbound remote call игнорируется wire даже для awaitable managed handler.
+- `Game.YieldAsync(milliseconds)` планирует continuation в `ScriptSynchronizationContext` backend. У каждого backend своя очередь, которую прокачивают кадры движка. Работа, перенесённая в `ThreadPool` или продолженная через `ConfigureAwait(false)`, находится вне этого context и не должна вызывать Engine API.
+- Server cover объявляется и проверяется через `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]` и `CoverReach`. Roslyn-диагностики `FOSYNC001`–`FOSYNC007` и `FOSYNC009` находят неверные targets, пропущенное распространение, entry declarations, покрытые collections и locks, пересекающие `await`.
+- Cover обычно не переживает `await`. Сохраняйте его только через явный `[PreservesCover]` contract поддерживаемой операции; иначе после resumption заново разрешите mutable state и получите полный cover.
+- Named invocation требует `[CallableByName]`. Allowlist административных и внутренних named calls — разные границы; не расширяйте одну ради другой.
+- Delegates, сохраняемые после вызова, являются GC roots managed backend. Для отписки timer нужна та же identity delegate. Native reference objects, удерживаемые managed-кодом, следуют generated-контракту владения `__AddRef` / `__Release`.
+
+Полные детали generated project, marshalling значений, runtime isolation, packaging, платформ и миграции находятся в [Скриптах Managed C#](managed-csharp.md). Этот раздел является lifecycle crosswalk, а не вторым конкурирующим руководством C#.
+
 ## Уничтожение и завершение
 
 Уничтожение сущности и shutdown runtime связаны, но различаются:
@@ -323,6 +344,7 @@ resolve or revalidate entity -> Game.Sync(entity) -> re-read -> decide/mutate
 - Server entity managers отменяют dispatcher jobs до окончательного уничтожения.
 - Client и server shutdown очищают global events/time events и уничтожают owned entities в упорядоченной последовательности runtime.
 - `AngelScriptBackend` уничтожает context manager, затем вызывает `asIScriptEngine::ShutDownAndRelease()`, пока modules, types, behaviours и backend links ещё доступны. Исправленный shutdown AngelScript вызывает exits модулей, освобождает globals, выполняет полные проходы garbage collection до опустошения или стабилизации live set, удаляет modules, повторяет collection и сообщает о неосвобождаемых survivors до сброса backend links.
+- `ManagedScriptBackend` прекращает приём работы, в порядке владельца опустошает или отклоняет ожидающие scheduler entries, освобождает managed handles и свой backend load scope, оставляя shutdown общего Mono runtime владельцу `ManagedRuntime`. Backend assemblies изолированы `ManagedLoadContextHost`; не используйте process-global static state вместо владельца экземпляра движка.
 
 Условие остановки garbage collection — **опустошение или стабилизация**, а не обязательное опустошение. Стабильный live set может содержать неосвобождаемых survivors; shutdown сообщает о них для диагностики и продолжает упорядоченный teardown.
 
@@ -352,15 +374,16 @@ Suspended continuation может пережить gameplay assumptions, при 
 
 | Изменение | Минимальная проверка |
 |---|---|
-| Callback attribute или правило прямого вызова | `Test_AngelScriptAttributes` и компиляция/bake скриптов проекта. |
-| Политика mutable global | `Test_AngelScriptBaker` и компиляция/bake скриптов проекта. |
-| `Yield` или планирование context | Тесты AngelScript context и затронутый client/server runtime test. |
+| Callback attribute или правило прямого вызова AngelScript | `Test_AngelScriptAttributes` и project `CompileAngelScript`/bake. |
+| Managed callback, named call или async signature | `Test_ManagedScriptBaker`, managed core tests и project `CompileManagedScripts`/bake. |
+| Политика mutable global/static | `Test_AngelScriptBaker` для AngelScript; managed owner/isolation tests и project compile для C#. |
+| `Yield` / `YieldAsync` или планирование context | Затронутый AngelScript context test или managed async/callback-context tests плюс затронутый client/server runtime test. |
 | Server cover, singleton lock или access validation | `Test_EntitySync`, затронутые script-method/entity tests и runtime-путь проекта. |
 | Cover входящего server remote call | Server runtime/remote-call tests и handler, читающий controlled critter вызывающего. |
 | Миграция persisted critter preload | `Test_EntityLifecycle`, migration и bake tests подключающего проекта. |
 | Authoring или runtime resolution `InitScript` | `Test_ServerMapOperations`, специализированные baker tests и bake подключающего проекта. |
 | Lifetime callback/time event сущности | Entity/time-event tests и smoke path destruction либо shutdown. |
-| Lifetime script object или shutdown GC | `Test_AngelScriptCall`, `Test_ScriptBuiltins` и engine shutdown smoke path. |
+| Lifetime script object или shutdown GC | AngelScript: `Test_AngelScriptCall` и engine shutdown smoke; Managed: callback-GC/load-context tests и managed runtime shutdown smoke. |
 | Только поведение проектного скрипта | Bake подключающего проекта и самый узкий gameplay/scene test. |
 
 Для всех изменений документации движка также выполняйте standalone gate из [регламента сопровождения документации](../../contributing/documentation/).
@@ -369,6 +392,7 @@ Suspended continuation может пережить gameplay assumptions, при 
 
 - Callback входит через принадлежащий ему API, а не вызывается напрямую.
 - Каждый async caller имеет `[[Async]]`.
+- Каждый managed async entry возвращает `Task` (никогда не `async void`), остаётся в synchronization context backend при вызове Engine API и заново устанавливает cover после `await`, если операция явно его не сохраняет.
 - Ни entity cover, ни snapshot состояния не считаются сохранившимися после `Yield`.
 - `Game.Lock` сбалансирован и освобождён до `Game.Sync`.
 - Один вызов `Game.Sync` называет полный набор сущностей следующей операции.

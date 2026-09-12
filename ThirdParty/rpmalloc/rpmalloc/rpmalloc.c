@@ -689,6 +689,24 @@ static atomic_uint global_heap_id = 1;
 #define RPMALLOC_INIT_RUNNING 1
 #define RPMALLOC_INIT_DONE 2
 static atomic_int global_rpmalloc_init_state;
+
+#if defined(RPMALLOC_ENABLE_TESTS)
+//! (FOnline Patch) Failure injection for the later-page commit path
+static atomic_int global_test_span_commit_failures;
+
+static int
+test_fail_span_commit(void) {
+	int failures = atomic_load_explicit(&global_test_span_commit_failures, memory_order_relaxed);
+	while (failures > 0) {
+		int remaining = failures - 1;
+		if (atomic_compare_exchange_weak_explicit(&global_test_span_commit_failures, &failures, remaining,
+		                                          memory_order_relaxed, memory_order_relaxed))
+			return 1;
+	}
+	return 0;
+}
+#endif
+
 //! Memory interface
 static rpmalloc_interface_t* global_memory_interface;
 //! Default memory interface
@@ -1547,6 +1565,11 @@ span_allocate_page(span_t* span) {
 	heap_t* heap = span->heap;
 	page_t* page = pointer_offset(span, span->page_size * span->page_initialized);
 
+#if defined(RPMALLOC_ENABLE_TESTS)
+	if (span->page_initialized && test_fail_span_commit())
+		return 0;
+#endif
+
 #if ENABLE_DECOMMIT
 	// Reserve-only spans commit later pages on demand; fully committed spans are already
 	// committed from the map and must not be committed per page
@@ -2195,6 +2218,9 @@ heap_get_page_generic(heap_t* heap, uint32_t size_class) {
 	span_t* span = heap_get_span(heap, page_type);
 	if (EXPECTED(span != 0)) {
 		page = span_allocate_page(span);
+		/* (FOnline Patch) Propagate an on-demand commit failure instead of dereferencing a null page */
+		if (UNEXPECTED(page == 0))
+			return 0;
 		if (heap_make_free_page_available(page->heap, size_class, page) != 0)
 			return 0;
 	}
@@ -2678,6 +2704,18 @@ rpmalloc_usable_size(void* ptr) {
 extern void
 rpmalloc_linker_reference(void) {
 }
+
+#if defined(RPMALLOC_ENABLE_TESTS)
+extern void
+rpmalloc_test_set_span_commit_failures(int failures) {
+	atomic_store_explicit(&global_test_span_commit_failures, failures, memory_order_relaxed);
+}
+
+extern int
+rpmalloc_test_get_span_commit_failures(void) {
+	return atomic_load_explicit(&global_test_span_commit_failures, memory_order_relaxed);
+}
+#endif
 
 ////////////
 ///

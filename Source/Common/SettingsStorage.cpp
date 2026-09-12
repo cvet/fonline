@@ -67,15 +67,16 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    _subKey = strex("Software\\FOnline\\{}", app_name).str();
+    _subKey = strex("Software\\{}\\{}", FO_NICE_NAME, app_name).str();
 
 #else
-    // Keep tool settings out of the resource cache: a dedicated per-application directory in the user data base.
-    // No user data base (unusual sandbox) means best-effort no persistence rather than writing next to the binary
+    // The one place that names the product without settings, because this layer has none: tool preferences
+    // follow the user rather than one game install, so they never move into a client's writable root
     string base = Platform::GetUserDataBase();
 
+    // No user data base (unusual sandbox): keep the tool running without persistence rather than write next to the binary
     if (!base.empty()) {
-        string dir = strex(base).combine_path("FOnline").combine_path(app_name).str();
+        string dir = strex(base).combine_path(FO_NICE_NAME).combine_path(app_name).str();
         _cache = SafeAlloc::MakeUnique<CacheStorage>(dir);
     }
 #endif

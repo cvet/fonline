@@ -44,9 +44,17 @@ static void ValidateModelMeshBone(const ModelMeshBoneData& bone, string_view con
 static void ValidateModelMeshGeometry(const ModelMeshGeometryData& mesh, string_view owner_bone, string_view context);
 static void WriteModelMeshBone(DataWriter& writer, const ModelMeshBoneData& bone);
 static void WriteModelMeshGeometry(DataWriter& writer, const ModelMeshGeometryData& mesh);
-static auto ReadModelMeshBone(DataReader& reader, string_view context, uint32_t depth, uint32_t& joint_count) -> unique_ptr<ModelMeshBoneData>;
+static auto ReadModelMeshBone(DataReader& reader, string_view context, uint32_t& joint_count) -> unique_ptr<ModelMeshBoneData>;
+static auto ReadModelMeshBoneNode(DataReader& reader, string_view context, uint32_t depth, uint32_t& joint_count) -> pair<unique_ptr<ModelMeshBoneData>, uint32_t>;
 static auto ReadModelMeshGeometry(DataReader& reader, string_view owner_bone, string_view context) -> ModelMeshGeometryData;
 static void VerifyModelMeshCountFitsData(const DataReader& reader, size_t count, size_t min_element_size, string_view field, string_view context, string_view owner_bone);
+
+struct ModelMeshBoneReadFrame
+{
+    ptr<ModelMeshBoneData> Bone;
+    uint32_t Depth;
+    uint32_t RemainingChildren;
+};
 
 void WriteModelMeshHeader(DataWriter& writer)
 {
@@ -133,7 +141,7 @@ auto ReadModelMeshData(DataReader& reader, string_view context) -> ModelMeshData
     try {
         ReadModelMeshHeader(source_reader, context);
         uint32_t joint_count = 0;
-        data.RootBone = ReadModelMeshBone(source_reader, context, 0, joint_count);
+        data.RootBone = ReadModelMeshBone(source_reader, context, joint_count);
         source_reader.VerifyEnd();
         ValidateModelMeshData(data, context);
     }
@@ -285,7 +293,40 @@ static void WriteModelMeshGeometry(DataWriter& writer, const ModelMeshGeometryDa
     writer.WriteObjectVector(mesh.SkinBoneOffsets);
 }
 
-static auto ReadModelMeshBone(DataReader& reader, string_view context, uint32_t depth, uint32_t& joint_count) -> unique_ptr<ModelMeshBoneData>
+static auto ReadModelMeshBone(DataReader& reader, string_view context, uint32_t& joint_count) -> unique_ptr<ModelMeshBoneData>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    pair<unique_ptr<ModelMeshBoneData>, uint32_t> root_record = ReadModelMeshBoneNode(reader, context, 0, joint_count);
+    unique_ptr<ModelMeshBoneData> root_bone = std::move(root_record.first);
+    vector<ModelMeshBoneReadFrame> frames;
+    frames.reserve(MODEL_MESH_MAX_HIERARCHY_DEPTH);
+
+    if (root_record.second != 0) {
+        frames.push_back({root_bone.get(), 0, root_record.second});
+    }
+
+    while (!frames.empty()) {
+        ModelMeshBoneReadFrame& parent_frame = frames.back();
+        pair<unique_ptr<ModelMeshBoneData>, uint32_t> child_record = ReadModelMeshBoneNode(reader, context, parent_frame.Depth + 1, joint_count);
+        ptr<ModelMeshBoneData> child_bone = child_record.first.get();
+        parent_frame.Bone->Children.emplace_back(std::move(child_record.first));
+        parent_frame.RemainingChildren--;
+
+        if (child_record.second != 0) {
+            frames.push_back({child_bone, parent_frame.Depth + 1, child_record.second});
+        }
+        else {
+            while (!frames.empty() && frames.back().RemainingChildren == 0) {
+                frames.pop_back();
+            }
+        }
+    }
+
+    return root_bone;
+}
+
+static auto ReadModelMeshBoneNode(DataReader& reader, string_view context, uint32_t depth, uint32_t& joint_count) -> pair<unique_ptr<ModelMeshBoneData>, uint32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -319,11 +360,7 @@ static auto ReadModelMeshBone(DataReader& reader, string_view context, uint32_t 
     VerifyModelMeshCountFitsData(reader, children_count, MODEL_MESH_BONE_MIN_SIZE, "child bones", context, bone->Name);
     bone->Children.reserve(children_count);
 
-    for (uint32_t i = 0; i < children_count; i++) {
-        bone->Children.emplace_back(ReadModelMeshBone(reader, context, depth + 1, joint_count));
-    }
-
-    return bone;
+    return {std::move(bone), children_count};
 }
 
 static auto ReadModelMeshGeometry(DataReader& reader, string_view owner_bone, string_view context) -> ModelMeshGeometryData

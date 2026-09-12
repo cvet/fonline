@@ -53,7 +53,7 @@ The main layers are:
 - **Client runtime** — presentation/resource/network-client side in `Source/Client/`.
 - **Server runtime** — authoritative world, managers, database backends, network-server side, and updater backend in `Source/Server/`.
 - **Frontend** — application/window/rendering abstraction in `Source/Frontend/`.
-- **Scripting** — AngelScript, Native, Mono, and script method registration in `Source/Scripting/`.
+- **Scripting** — implemented AngelScript and Managed C# backends, the reserved Native placeholder, and script method registration in `Source/Scripting/`.
 - **Tools** — baker, Mapper-centered editing, asset processors, and related developer tooling in `Source/Tools/`.
 - **BuildTools** — CMake stages, helpers, toolchains, platform project generation, package layout, and validation support in `BuildTools/`.
 
@@ -128,7 +128,7 @@ Platform workflow docs:
 
 - [Web build, packaging, and browser debugging](../../how-to/platforms/web-debugging.md)
 - [Android build, packaging, and device debugging](../../how-to/platforms/android-debugging.md)
-- [Native and AngelScript Debugging](../../troubleshooting/debugging.md)
+- [Native, AngelScript, and Managed C# Debugging](../../troubleshooting/debugging.md)
 
 ## Scripting layer
 
@@ -136,7 +136,7 @@ Platform workflow docs:
 
 - `Source/Scripting/AngelScript/`
 - `Source/Scripting/Native/`
-- `Source/Scripting/Mono/`
+- `Source/Scripting/Managed/` — implemented Managed C# backend, CoreScripts bridge, analyzers, load-context host, and tests
 - `Source/Scripting/*ScriptMethods.cpp`
 
 The engine owns the reusable script/native bridge. A game project owns concrete game script modules and gameplay logic.

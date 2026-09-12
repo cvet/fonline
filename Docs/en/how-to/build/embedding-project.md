@@ -37,7 +37,7 @@ GameProject/
 ├── CMakeLists.txt          # project entry point that includes engine build logic
 ├── CMakePresets.json       # project presets and platform variants
 ├── GameName.fomain         # master project configuration
-├── Scripts/                # game AngelScript modules
+├── Scripts/                # game AngelScript (.fos) or Managed C# (.cs) modules
 ├── SourceExt/              # optional project-native C++ extensions
 ├── Critters/ Items/ Maps/  # game content and prototypes
 ├── ProjectDialogs/ Texts/  # optional project-defined dialogs and localization
@@ -69,7 +69,7 @@ Keep these in the engine repository:
 Keep these in the embedding project:
 
 - Game rules, content, maps, prototypes, dialogs, localization, and GUI definitions.
-- Game-specific AngelScript modules.
+- Game-specific AngelScript or Managed C# modules, with exactly the baker/runtime backend(s) enabled and packaged by the project.
 - Project-level native extension implementations and dependencies; [Native Extensions](../../../NativeExtensions.md) owns composition, hooks, and bindings, while [Project Dependencies](../../../ProjectDependencies.md) owns library/SDK selection, role-scoped linking, package delivery, and updates.
 - Project-level AI observations, game actions, MCP tools, and listener shipping policy; [AiControl Protocol](../ai-control-protocol.md) owns only the reusable transport, command lifecycle, threat boundary, reference client, and protocol evidence.
 - Project presets, product identifiers, package names, signing/deployment choices, and CI policy.

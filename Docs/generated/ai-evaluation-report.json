@@ -2,27 +2,27 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_ai_eval.py",
   "source_path": "Docs/ai-evaluation.json",
-  "source_sha256": "4f158131fd64e1594c4dc335d36f3223bec51925a3af28ea8177087aec6ec1e7",
+  "source_sha256": "604302e16bf22c393b54d0f0477d83e82f3849b437479a547bbe314c5fe00032",
   "source_ref": "master",
-  "task_count": 27,
+  "task_count": 28,
   "category_counts": {
     "architecture": 5,
-    "scripting": 3,
+    "scripting": 4,
     "content": 5,
     "debugging": 4,
     "migration": 4,
     "release": 6
   },
   "retrieval": {
-    "query_count": 65,
-    "pass_count": 65,
+    "query_count": 67,
+    "pass_count": 67,
     "success_rate": 1.0,
-    "top_1_rate": 0.846154,
+    "top_1_rate": 0.850746,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.915385,
+    "mean_reciprocal_rank": 0.91791,
     "minimum_success_rate": 1.0
   },
-  "passed_task_count": 27,
+  "passed_task_count": 28,
   "error_count": 0,
   "errors": [],
   "tasks": [
@@ -63,9 +63,9 @@
           "top_document_ids": [
             "engine-architecture",
             "baking-pipeline",
-            "script-methods-map",
-            "unit-tests-readme",
-            "testing"
+            "buildtools-readme",
+            "debugging",
+            "script-methods-map"
           ]
         }
       ],
@@ -139,7 +139,7 @@
             "unit-tests-readme",
             "testing",
             "web-debugging",
-            "buildtools-readme"
+            "generated-api-metadata"
           ]
         },
         {
@@ -356,10 +356,10 @@
           "passed": true,
           "top_document_ids": [
             "project-local-dependencies",
+            "packaging-and-release",
             "buildtools-readme",
             "frontend-rendering",
-            "third-party-maintenance",
-            "packaging-and-release"
+            "third-party-maintenance"
           ]
         },
         {
@@ -462,8 +462,8 @@
           "top_document_ids": [
             "script-lifecycle-concurrency",
             "angelscript-style",
+            "managed-csharp-scripting",
             "scripting-runtime",
-            "debugging",
             "nullability"
           ]
         },
@@ -532,6 +532,110 @@
       "passed": true
     },
     {
+      "id": "scripting-managed-csharp-runtime",
+      "category": "scripting",
+      "question": "How does an embedding project enable, author, compile, bake, package, debug, and validate Managed C# scripts, including async continuations and server entity cover, without confusing source capability with project qualification?",
+      "primary_document_id": "managed-csharp-scripting",
+      "supporting_document_ids": [
+        "scripting-runtime",
+        "script-lifecycle-concurrency",
+        "testing",
+        "packaging-and-release"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "Managed C# scripting FO_MANAGED_SCRIPTING CompileManagedScripts ManagedRuntime",
+          "expected_document_ids": [
+            "managed-csharp-scripting"
+          ],
+          "max_rank": 2,
+          "rank": 1,
+          "passed": true,
+          "top_document_ids": [
+            "managed-csharp-scripting",
+            "scripting-runtime",
+            "debugging",
+            "script-lifecycle-concurrency",
+            "baking-pipeline"
+          ]
+        },
+        {
+          "query": "C# Task YieldAsync RequiresCover ProvidesCover PreservesCover FOSYNC009",
+          "expected_document_ids": [
+            "managed-csharp-scripting",
+            "script-lifecycle-concurrency"
+          ],
+          "max_rank": 3,
+          "rank": 1,
+          "passed": true,
+          "top_document_ids": [
+            "managed-csharp-scripting",
+            "script-lifecycle-concurrency",
+            "scripting-runtime"
+          ]
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "managed-selection-and-bake",
+          "description": "Connect backend selection, settings, source pack, compile target, and real bake.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "build-and-bake-workflow",
+          "required_terms": [
+            "FO_MANAGED_SCRIPTING",
+            "CompileManagedScripts",
+            "ForceCodeGeneration",
+            "Managed"
+          ],
+          "evidence_current": true
+        },
+        {
+          "id": "managed-async-contract",
+          "description": "Use observable Task results and the backend continuation context instead of async void or detached Engine calls.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "async-and-continuation-scheduling",
+          "required_terms": [
+            "Game.YieldAsync",
+            "ScriptSynchronizationContext",
+            "async void",
+            "ConfigureAwait(false)"
+          ],
+          "evidence_current": true
+        },
+        {
+          "id": "managed-cover-analysis",
+          "description": "State the Managed server-cover proof and reacquisition boundary across await.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "server-entity-synchronization",
+          "required_terms": [
+            "[RequiresCover]",
+            "[ProvidesCover]",
+            "[PreservesCover]",
+            "FOSYNC009"
+          ],
+          "evidence_current": true
+        },
+        {
+          "id": "managed-delivery-and-evidence",
+          "description": "Keep target assemblies, runtime payload, packaged startup, and project platform acceptance as separate evidence.",
+          "document_id": "managed-csharp-scripting",
+          "anchor": "packaging-and-updating",
+          "required_terms": [
+            "ManagedRuntime/",
+            "content-hash",
+            "target-specific",
+            "project"
+          ],
+          "evidence_current": true
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not call the obsolete Source/Scripting/Mono prototype the Managed backend, treat generated C# as authored source, or infer packaged/runtime/platform readiness from a successful dotnet build alone.",
+        "Do not claim async void, ThreadPool Engine calls, unrevalidated entity use after await, or missing target-specific runtime payloads are supported."
+      ],
+      "passed": true
+    },
+    {
       "id": "scripting-style-refactoring",
       "category": "scripting",
       "question": "How should an Engine or game contributor format and organize AngelScript by namespace/file, source/runtime order, side macros, mutable-state and attributed-call ownership; classify a refactor; and keep module catalogs, generated formats, persistence migrations, and gameplay acceptance in project policy? Explicitly state that dispatcher-owned attributed functions enter through their dispatcher route.",
@@ -553,10 +657,10 @@
           "passed": true,
           "top_document_ids": [
             "angelscript-style",
+            "managed-csharp-scripting",
             "buildtools-readme",
             "scripting-runtime",
-            "generated-api-metadata",
-            "nullability"
+            "generated-api-metadata"
           ]
         },
         {
@@ -569,8 +673,8 @@
           "passed": true,
           "top_document_ids": [
             "angelscript-style",
-            "generated-api-metadata",
             "scripting-runtime",
+            "generated-api-metadata",
             "frontend-rendering",
             "native-essentials"
           ]
@@ -673,7 +777,7 @@
             "script-lifecycle-concurrency",
             "client-updater",
             "entity-model",
-            "networking"
+            "managed-csharp-scripting"
           ]
         },
         {
@@ -687,9 +791,9 @@
           "top_document_ids": [
             "script-lifecycle-concurrency",
             "scripting-runtime",
+            "managed-csharp-scripting",
             "server-runtime",
-            "entity-model",
-            "angelscript-style"
+            "entity-model"
           ]
         }
       ],
@@ -1329,14 +1433,15 @@
     {
       "id": "debugging-native-script-route",
       "category": "debugging",
-      "question": "How should a contributor choose between native debugging, the AngelScript debugger, and focused Engine tests, and which distinct TCP endpoint range and UDP discovery port does script attach use?",
+      "question": "How should a contributor choose among native debugging, the AngelScript debugger, Managed C# diagnostics, and focused Engine tests; which distinct TCP endpoint range and UDP discovery port does AngelScript attach use; and why is that adapter not a C# debugger?",
       "primary_document_id": "debugging",
       "supporting_document_ids": [
-        "testing"
+        "testing",
+        "managed-csharp-scripting"
       ],
       "retrieval_checks": [
         {
-          "query": "native AngelScript debugger attach focused tests",
+          "query": "native AngelScript Managed C# debugger attach focused tests",
           "expected_document_ids": [
             "debugging"
           ],
@@ -1345,10 +1450,10 @@
           "passed": true,
           "top_document_ids": [
             "debugging",
+            "managed-csharp-scripting",
             "getting-started",
-            "testing",
             "scripting-runtime",
-            "native-essentials"
+            "testing"
           ]
         },
         {
@@ -1377,6 +1482,7 @@
           "required_terms": [
             "native",
             "AngelScript",
+            "Managed C#",
             "test"
           ],
           "evidence_current": true
@@ -1393,11 +1499,26 @@
             "43001"
           ],
           "evidence_current": true
+        },
+        {
+          "id": "managed-debugging-boundary",
+          "description": "Route Managed failures through generation, compiler, bake, runtime, and project-qualified debugger evidence without reusing the AngelScript adapter.",
+          "document_id": "debugging",
+          "anchor": "managed-c-diagnostics-and-debugging",
+          "required_terms": [
+            "Roslyn/MSBuild",
+            "ManagedScriptBaker",
+            "runtime logs",
+            "fos",
+            "C#"
+          ],
+          "evidence_current": true
         }
       ],
       "forbidden_assumptions": [
         "Do not prescribe a private project's launch profile as an Engine default.",
-        "Do not call 43001 the default TCP endpoint; TCP uses a process-selected port in 43000..44999 and UDP discovery uses 43001."
+        "Do not call 43001 the default TCP endpoint; TCP uses a process-selected port in 43000..44999 and UDP discovery uses 43001.",
+        "Do not claim that the fos adapter debugs Managed C# or that a generated project alone proves live debugger attachment."
       ],
       "passed": true
     },
@@ -2116,7 +2237,8 @@
           "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "release-operations"
+            "release-operations",
+            "packaging-and-release"
           ]
         }
       ],
@@ -2353,7 +2475,7 @@
             "generated-api-metadata",
             "packaging-and-release",
             "native-essentials",
-            "baking-pipeline"
+            "managed-csharp-scripting"
           ]
         },
         {
@@ -2587,7 +2709,7 @@
             "native-essentials",
             "generated-content-workflow",
             "buildtools-readme",
-            "documentation-maintenance"
+            "configuration-data-sources"
           ]
         },
         {

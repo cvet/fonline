@@ -6,7 +6,7 @@ document_id: repository-home
 permalink: /README.ru.html
 ---
 
-<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"044cdb1c36e2090cd24300e92927cb11a1cb1462e51ead9520af17df1d6a7535"} -->
+<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"f63eff04305974ea21a14693ddadad7104661b92d679ed3debad338eee92633b"} -->
 
 # FOnline Engine
 
@@ -64,7 +64,7 @@ RPG сообщества. Актуальный пример — [Last Frontier](
 
 ### Скрипты
 
-- Игровые скрипты AngelScript поверх независимой от backend скриптовой системы.
+- Игровые скрипты AngelScript и Managed C# поверх независимой от backend скриптовой системы; Native scripting остаётся зарезервированным placeholder.
 - Нативный API экспортируется в скрипты генератором кода из аннотаций `///@`:
   методы, свойства, события, remote call и enum автоматически остаются
   согласованными с исходниками C++.
@@ -119,10 +119,10 @@ Your game repository                      FOnline engine (this repo, embedded as
 ────────────────────                      ────────────────────────────────────────────────
 content: protos, maps,            ┌──►    Applications — client/server/tool entry points
 dialogs, texts, GUI               │       Client & Server runtimes — views vs. authority
-AngelScript game logic     embeds │       Common model — entities, properties, protos,
+AngelScript / C# game logic embeds │      Common model — entities, properties, protos,
 .fomain configuration      ───────┤                      maps, networking, config
 native extensions                 │       Frontend — windows, input, audio, renderers
-CMake presets, CI,                │       Scripting — AngelScript bridge + generated API
+CMake presets, CI,                │       Scripting — AngelScript + Managed C# bridges + generated API
 release policy                    └──►    Tools & BuildTools — bakers, mapper, editor,
                                                      CMake stages, codegen, packaging
 ```
@@ -140,7 +140,7 @@ GameProject/
 ├── CMakeLists.txt          # project entry point that includes engine build logic
 ├── CMakePresets.json       # project presets and platform variants
 ├── GameName.fomain         # master project configuration
-├── Scripts/                # game AngelScript modules
+├── Scripts/                # game AngelScript or Managed C# modules
 ├── SourceExt/              # optional project-native C++ extensions
 ├── Critters/ Items/ Maps/  # game content and prototypes
 └── Dialogs/ Texts/         # dialogs and localization
@@ -203,7 +203,7 @@ WebAssembly, но поддержка ограничена доказательс
 | Архитектура и навигация | [Архитектура](Docs/ru/explanation/architecture/) · [Дерево исходного кода](Docs/ru/contributing/source-tree/) · [Приложения](Docs/ru/reference/applications.md) · [Essentials](Docs/ru/reference/native/essentials.md) |
 | Модель среды выполнения | [Модель сущностей](Docs/ru/explanation/entity-and-property-model/) · [Карты и движение](Docs/ru/explanation/maps-and-movement.md) · [Сеть](Docs/ru/explanation/authority-and-networking/) · [Сохранение данных](Docs/ru/explanation/persistence/) |
 | Клиент и сервер | [Клиентская среда выполнения](Docs/ru/explanation/runtime/client.md) · [Серверная среда выполнения](Docs/ru/explanation/runtime/server.md) · [Frontend и рендеринг](Docs/ru/explanation/rendering/) · [Client Updater](Docs/ru/explanation/runtime/client-updater.md) |
-| Скрипты | [Scripting](Docs/ru/explanation/scripting-runtime/) · [LifecycleAndConcurrency](Docs/ru/how-to/scripting/lifecycle-and-concurrency.md) · [RemoteCalls](Docs/ru/reference/scripting/remote-calls.md) · [ScriptMethodsMap](Docs/ru/reference/script-api/method-ownership.md) · [Nullability](Docs/ru/contributing/coding-contracts/nullability.md) · [GeneratedApiAndMetadata](Docs/ru/reference/metadata/index.md) · [Управление изменениями контрактов](Docs/ru/contributing/contract-change-management.md) |
+| Скрипты | [Scripting](Docs/ru/explanation/scripting-runtime/) · [Managed C#](Docs/ru/how-to/scripting/managed-csharp.md) · [LifecycleAndConcurrency](Docs/ru/how-to/scripting/lifecycle-and-concurrency.md) · [AngelScriptStyle](Docs/ru/how-to/scripting/style-and-refactoring.md) · [RemoteCalls](Docs/ru/reference/scripting/remote-calls.md) · [ScriptMethodsMap](Docs/ru/reference/script-api/method-ownership.md) · [Nullability](Docs/ru/contributing/coding-contracts/nullability.md) · [GeneratedApiAndMetadata](Docs/ru/reference/metadata/index.md) · [Управление изменениями контрактов](Docs/ru/contributing/contract-change-management.md) |
 | Сборка и конвейер контента | [BuildWorkflow](Docs/ru/how-to/build/) · [ProjectConfiguration](Docs/ru/how-to/build/project-configuration.md) · [GeneratedContentWorkflow](Docs/ru/how-to/build/generated-content.md) · [EngineUpgradeGuide](Docs/ru/how-to/migration/engine-upgrade.md) · [SupportMatrix](Docs/ru/reference/platforms/support-matrix.md) · [BuildToolsPipeline](Docs/ru/reference/cmake-and-buildtools/pipeline.md) · [BakingPipeline](Docs/ru/explanation/content-pipeline/baking.md) · [ConfigurationAndDataSources](Docs/ru/reference/settings/configuration-and-data-sources.md) |
 | Инструменты | [Tools](Docs/ru/reference/tools/) · [Инструменты Mapper](Docs/ru/how-to/tools/mapper.md) · [Интерактивное руководство по Mapper](Docs/ru/how-to/tools/mapper-interactive.md) · [Просмотр анимации и частиц](Docs/ru/how-to/tools/animation-particle-viewers.md) |
 | Качество и соглашения | [Тестирование](Docs/ru/contributing/testing/index.md) · [Профилирование](Docs/ru/how-to/quality/profiling.md) · [ExceptionSafety](Docs/ru/contributing/coding-contracts/exception-safety.md) · [SmartPointers](Docs/ru/contributing/coding-contracts/smart-pointers.md) · [ThreadSafetyAnalysis](Docs/ru/contributing/coding-contracts/thread-safety-analysis.md) |

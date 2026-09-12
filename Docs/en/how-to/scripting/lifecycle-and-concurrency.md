@@ -8,7 +8,7 @@ permalink: /Docs/en/how-to/scripting/lifecycle-and-concurrency.html
 
 # Script Lifecycle And Concurrency
 
-> Engine-owned documentation. This guide describes reusable AngelScript lifecycle and concurrency behavior. Project modules, gameplay policies, and project-specific synchronization helpers belong to the embedding game.
+> Engine-owned documentation. This guide describes reusable lifecycle and concurrency behavior shared by AngelScript and Managed C#, then names the language-specific rules explicitly. Project modules, gameplay policies, and project-specific synchronization helpers belong to the embedding game.
 
 ## Purpose
 
@@ -52,6 +52,7 @@ different form. State only the proven dispatcher cover and the explicit
 Read it together with:
 
 - [Scripting](../../explanation/scripting-runtime/) for the complete scripting subsystem and native binding path.
+- [Managed C# Scripting](managed-csharp.md) for managed configuration, generated assemblies, attributes, async scheduling, analyzers, runtime loading, packaging, and platform support.
 - [Entity Model](../../explanation/entity-and-property-model/) for entity, property, holder, and destruction ownership.
 - [Server Runtime](../../explanation/runtime/server.md) and [Client Runtime](../../explanation/runtime/client.md) for side-specific loops and managers.
 - [Remote Calls](../../reference/scripting/remote-calls.md) for network entry points and authority boundaries.
@@ -84,12 +85,17 @@ Read it together with:
 - `Source/Scripting/AngelScript/AngelScriptEntity.cpp`
 - `Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/Input.fos`
+- `Source/Scripting/Managed/CoreScripts/Initializator.cs`
+- `Source/Scripting/Managed/CoreScripts/ScriptSynchronizationContext.cs`
+- `Source/Scripting/Managed/CoreScripts/Sync.cs`
+- `Source/Scripting/Managed/ManagedScriptBackend.cpp`
+- `Source/Scripting/Managed/ManagedRuntime.cpp`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
@@ -102,11 +108,11 @@ Script execution is a sequence of bounded entries, not one serialized game-wide 
 
 | Phase | Owner | Important boundary |
 |---|---|---|
-| Compile and bake | AngelScript compiler and bakers | Attributes, callback usage, nullable handles, and mutable globals are validated before runtime. |
+| Compile and bake | AngelScript compiler and Managed C# baker/Roslyn | Attributes, callback usage, nullable values, generated bindings, and synchronization contracts are validated before runtime. |
 | Module initialization | `ScriptSystem::InitModules()` | Init functions run in ascending priority while global assignment is temporarily enabled. |
 | Entity initialization | `EntityManager::CallInit()` | The entity is marked initialized, its `On*Init` event fires, then its optional persisted `InitScript` callback runs. |
 | Callback dispatch | Client loop or server worker job | Events, time events, remote calls, and native re-entry invoke attributed functions through their owning API. |
-| Suspension | AngelScript context manager | `Yield` preserves the script continuation, but the current native execution scope returns. |
+| Suspension | AngelScript context manager or managed synchronization context | `Yield` or `await Game.YieldAsync(...)` preserves a continuation, but the current native execution scope returns. |
 | Resumption | Client scheduled-callback pass or server worker pool | The continuation runs later; on the server it may run on another worker under a fresh synchronization context. |
 | Entity destruction | Entity/manager owner | Event callbacks and time-event storage are cleared; server dispatch jobs are cancelled by the owning manager. |
 | Runtime shutdown | Client/server and scripting backend | Global events/time events, entities, script globals, contexts, and the backend are drained in owner-defined order. |
@@ -311,6 +317,21 @@ Avoid mutable script-global dictionaries keyed by entity id for ordinary entity 
 
 An allowlisted mutable-global namespace is an escape hatch for a reviewed subsystem, not the default architecture. Its owner must define synchronization, reset behavior, multi-instance isolation, and shutdown cleanup.
 
+## Managed C# equivalents
+
+Managed C# enters the same backend-neutral `ScriptSystem`, entity, property, event, remote-call, and synchronization contracts, but expresses lifecycle in C# and `Task` terms:
+
+- `[ModuleInit(priority)]` marks a static parameterless `void` or `Task` method. `ScriptSystem::InitModules()` still orders initializers by ascending priority; a returned task is awaited inside the backend-owned synchronization context before initialization advances.
+- Event, timer, remote-call, property, and other engine-dispatched handlers use their managed attributes from `CoreScripts/Attributes.cs`. A dispatcher-owned attributed method is entered through its dispatcher, not invoked directly merely because C# can name it.
+- `async void` is rejected. Awaitable handlers and named calls return `Task`; use `Task<T>` only where the caller contract consumes a result. Inbound remote-call return values are ignored by the wire even when the managed handler is awaitable.
+- `Game.YieldAsync(milliseconds)` schedules the continuation on the backend's `ScriptSynchronizationContext`. Each backend has its own queue, pumped by engine frames. Work moved to `ThreadPool` or continued through `ConfigureAwait(false)` is outside that context and must not call Engine APIs.
+- Server cover is declared and checked with `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, and `CoverReach`. Roslyn diagnostics `FOSYNC001` through `FOSYNC007` and `FOSYNC009` catch invalid targets, missing propagation, entry declarations, covered collections, and locks crossing `await`.
+- Cover normally does not survive `await`. Preserve it only through the explicit `[PreservesCover]` contract supported by the called operation; otherwise re-resolve mutable state and reacquire the complete cover after resumption.
+- Named invocation requires `[CallableByName]`. Administrative and internal named-call allowlists are separate boundaries; do not widen one to satisfy the other.
+- Delegates retained past a call are GC roots owned by the managed backend. Timer unsubscription needs the same delegate identity. Native reference objects retained by managed code must follow the generated `__AddRef` / `__Release` ownership contract.
+
+The full generated-project, value-marshalling, runtime-isolation, packaging, platform, and migration details are in [Managed C# Scripting](managed-csharp.md). This section is intentionally the lifecycle crosswalk, not a second competing C# manual.
+
 ## Destruction and shutdown
 
 Entity destruction and runtime shutdown are related but distinct:
@@ -319,6 +340,7 @@ Entity destruction and runtime shutdown are related but distinct:
 - Server entity managers cancel dispatcher jobs before final destruction.
 - Client and server shutdown clear global events/time events and destroy owned entities in an ordered runtime sequence.
 - `AngelScriptBackend` destroys its context manager, then calls `asIScriptEngine::ShutDownAndRelease()` while modules, types, behaviours, and backend links are still available. The patched AngelScript shutdown calls module exits, releases globals, runs full garbage-collection passes until the live set is empty or stable, discards modules, repeats collection, and reports unreclaimable survivors before the backend links are reset.
+- `ManagedScriptBackend` stops accepting work, drains and rejects pending scheduler entries in owner order, releases managed handles and its backend load scope, and leaves process-wide Mono shutdown to `ManagedRuntime`. Backend-scoped assemblies are isolated by `ManagedLoadContextHost`; do not use process-global static state as a substitute for an engine-instance owner.
 
 The garbage-collection stop condition is **empty or stable**, not always empty. A stable live set can contain unreclaimable survivors, which shutdown reports for diagnosis before continuing its ordered teardown.
 
@@ -348,15 +370,16 @@ Choose the narrowest gate that proves the changed contract:
 
 | Change | Minimum validation |
 |---|---|
-| Callback attribute or direct-call rule | `Test_AngelScriptAttributes` and project script compilation/bake. |
-| Mutable global policy | `Test_AngelScriptBaker` and project script compilation/bake. |
-| `Yield` or context scheduling | AngelScript context tests plus the affected client/server runtime test. |
+| AngelScript callback attribute or direct-call rule | `Test_AngelScriptAttributes` and project `CompileAngelScript`/bake. |
+| Managed callback, named-call, or async signature | `Test_ManagedScriptBaker`, managed core tests, and project `CompileManagedScripts`/bake. |
+| Mutable global/static policy | `Test_AngelScriptBaker` for AngelScript; managed owner/isolation tests plus project compile for C#. |
+| `Yield` / `YieldAsync` or context scheduling | The affected AngelScript context test or managed async/callback-context tests plus the affected client/server runtime test. |
 | Server cover, singleton lock, or access validation | `Test_EntitySync`, affected script-method/entity tests, and a project runtime path. |
 | Inbound server remote-call cover | Server runtime/remote-call tests plus a handler that reads the caller's controlled critter. |
 | Persisted critter preload migration | `Test_EntityLifecycle` plus the embedding project's migration and bake tests. |
 | `InitScript` authoring or runtime resolution | `Test_ServerMapOperations`, focused baker tests, and an embedding-project bake. |
 | Entity callback/time-event lifetime | Entity/time-event tests and a destruction or shutdown smoke path. |
-| Script object lifetime or shutdown GC | `Test_AngelScriptCall`, `Test_ScriptBuiltins`, and an engine shutdown smoke path. |
+| Script object lifetime or shutdown GC | AngelScript: `Test_AngelScriptCall` and an engine shutdown smoke; Managed: callback-GC/load-context tests and a managed runtime shutdown smoke. |
 | Project script behavior only | Embedding-project bake plus the narrowest gameplay/scene test. |
 
 For all engine documentation changes, also run the standalone documentation gate from [Documentation maintenance](../../contributing/documentation/).
@@ -365,6 +388,7 @@ For all engine documentation changes, also run the standalone documentation gate
 
 - The callback is entered through its owning API, not called directly.
 - Every async caller carries `[[Async]]`.
+- Every managed async entry returns `Task` (never `async void`), remains on the backend synchronization context while calling Engine APIs, and re-establishes cover after `await` unless the operation explicitly preserves it.
 - No entity cover or state snapshot is assumed to survive `Yield`.
 - `Game.Lock` is balanced and released before `Game.Sync`.
 - One `Game.Sync` call names the complete entity set for the next operation.

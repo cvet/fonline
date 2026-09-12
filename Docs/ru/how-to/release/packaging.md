@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 
 # Упаковка и выпуск
 
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"f7c4845cefc99f11770eb9daba86533d11c9a8083a16786f140e438181c4608c"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"bfbaf16ce0e207d496cbf7a552cb84d32bd1a23ad4233a2418ec620ec2ac719a"} -->
 
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
@@ -276,10 +276,14 @@ MSI не доказывает, что client подписан, доверен en
 runtime libraries, filesystem paths, process account, signals, logs и service
 manager игры.
 
+### Payload Managed C#
+
+При включённом `FO_MANAGED_SCRIPTING` baker `Managed` помещает target-specific assemblies и подготовленный payload class libraries `ManagedRuntime/` в выбранный resource pack. Native client packages используют payload ровно своего application target; Web и Android несут его в assets ресурсов. Server package для client updates размещает target-specific pack в `PlatformBinaries/<target>/`, а `-expect-client-runtime Platform:arch[:postfix]` превращает отсутствие запрошенного payload в ошибку packaging. Проверяйте отдельно target assembly, `runtime.manifest`, content hash и запуск packaged artifact; см. [Скрипты Managed C#](../scripting/managed-csharp.md).
+
 ### Web client
 
 Payload Web client содержит JavaScript, patched Wasm, HTML shell, preloaded
-`Resources.data` / `Resources.js` и optional helper `WebServer`. Принадлежащий
+`Resources.data` / `Resources.js`, target-specific Managed assemblies/runtime resources при включённом backend и optional helper `WebServer`. Принадлежащий
 Engine-команда Content Showcase `python validate.py --web-runtime` может дать
 необязательное evidence для baking на native-хосте,
 точный состав raw/ZIP package, localhost HTTP delivery, подключение к native-серверу,
@@ -297,7 +301,7 @@ loading и хотя бы одну видимую representative scene.
 ### Android client
 
 Android payload является сгенерированным Gradle project с одной `libmain.so`
-на выбранную ABI и baked resources в application assets. `Apk` запускает
+на выбранную ABI и baked resources в application assets; Managed build хранит там же target assemblies и подготовленный runtime. `Apk` запускает
 Gradle assembly и копирует полученный APK рядом со staged project.
 
 Закреплённые SDK/NDK workspace, ABI mapping, device connection, resource

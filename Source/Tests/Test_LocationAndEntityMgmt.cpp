@@ -1189,6 +1189,31 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.DestroyEntity(cr);
     }
 
+    SECTION("CustomInnerEntityCreationRetainsCoveredHolderOwnLock")
+    {
+        vector<hstring> map_pids {get_func("TestMap")};
+        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        auto map = loc->GetMaps().front();
+        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
+
+        nptr<SyncContext> sync_ctx = SyncContext::GetCurrentOnThisThread();
+        REQUIRE(sync_ctx);
+        sync_ctx->SyncEntity(map);
+        REQUIRE(map->GetEntityLock()->IsLockedByCurrentThread());
+        CHECK_FALSE(cr->GetEntityLock()->IsLockedByCurrentThread());
+
+        hstring custom_entry = get_func("CoverageItems");
+        auto custom = server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {});
+
+        CHECK(cr->GetEntityLock()->IsLockedByCurrentThread());
+        CHECK(custom->GetParent() == cr);
+        CHECK(custom->GetCustomHolderEntry() == custom_entry);
+
+        sync_ctx->SyncEntity(loc);
+        server->MapMngr.DestroyLocation(loc);
+    }
+
     SECTION("DirectLoadRestoresContainerItemTree")
     {
         auto container = server->ItemMngr.CreateItem(get_func("TestItem"), 1, nullptr);

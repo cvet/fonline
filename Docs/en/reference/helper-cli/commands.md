@@ -63,38 +63,6 @@ options:
   -verbose              verbose mode
 ```
 
-<a id="entry-helper-cli-compile-mono-scripts-ad6011a439"></a>
-## Mono script compilation
-
-Compile configured Mono assemblies for engine application roles.
-
-- Stable ID: `helper-cli.compile-mono-scripts`
-- Program: `compile-mono-scripts.py`
-- Owner: `scripting`
-- Audience: `engine-contributor`, `embedding-project-build-system`
-- Invocation owner: BuildTools/cmake/stages/ScriptsAndBaking.cmake
-- Parser source: [BuildTools/compile-mono-scripts.py](https://github.com/cvet/fonline/blob/master/BuildTools/compile-mono-scripts.py)
-
-### Top-level arguments
-
-| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-compile-mono-scripts-argument-scripts-f97fbb98f7"></a><code>helper-cli.compile-mono-scripts.argument.scripts</code> | <code>-scripts</code> | <code>option</code> | yes | <code>1</code> | - | - | path to scripts directory |
-| <a id="entry-helper-cli-compile-mono-scripts-argument-assembly-c17a7110d1"></a><code>helper-cli.compile-mono-scripts.argument.assembly</code> | <code>-assembly</code> | <code>option</code> | no | <code>1</code> | - | - | assembly name |
-
-### Exact top-level `--help` output
-
-```text
-usage: compile-mono-scripts.py [-h] -scripts SCRIPTS [-assembly ASSEMBLY]
-
-FOnline scripts generation
-
-options:
-  -h, --help          show this help message and exit
-  -scripts SCRIPTS    path to scripts directory
-  -assembly ASSEMBLY  assembly name
-```
-
 <a id="entry-helper-cli-codecoverage-b014400e5e"></a>
 ## Code coverage
 
@@ -137,7 +105,7 @@ Remove previously collected coverage data and reports
 Stable ID: `helper-cli.codecoverage.command.clean`
 
 ```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
@@ -147,12 +115,13 @@ usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BU
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-d3b3cf975b"></a><code>helper-cli.codecoverage.command.clean.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-backend-1dd776233e"></a><code>helper-cli.codecoverage.command.clean.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-output-dir-89690c3f10"></a><code>helper-cli.codecoverage.command.clean.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
+| <a id="entry-helper-cli-codecoverage-command-clean-argument-objects-394f819f2f"></a><code>helper-cli.codecoverage.command.clean.argument.objects</code> | <code>--object</code> | <code>option</code> | no | <code>1</code> | - | - | additional instrumented executable or shared library for LLVM reporting; repeatable |
 | <a id="entry-helper-cli-codecoverage-command-clean-argument-binary-args-51d31087ed"></a><code>helper-cli.codecoverage.command.clean.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | yes | <code>...</code> | - | - | arguments passed to the test binary |
 
 #### Exact `--help` output
 
 ```text
-usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py clean [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Remove previously collected coverage data and reports
 
@@ -170,6 +139,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-codecoverage-command-run-6ff9c981af"></a>
@@ -180,7 +150,7 @@ Run the instrumented test binary and collect coverage data
 Stable ID: `helper-cli.codecoverage.command.run`
 
 ```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
@@ -190,12 +160,13 @@ usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUIL
 | <a id="entry-helper-cli-codecoverage-command-run-argument-binary-3d92cbd0fb"></a><code>helper-cli.codecoverage.command.run.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-backend-da1a5d1400"></a><code>helper-cli.codecoverage.command.run.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-output-dir-3fc1672e9a"></a><code>helper-cli.codecoverage.command.run.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
+| <a id="entry-helper-cli-codecoverage-command-run-argument-objects-9659c0efc0"></a><code>helper-cli.codecoverage.command.run.argument.objects</code> | <code>--object</code> | <code>option</code> | no | <code>1</code> | - | - | additional instrumented executable or shared library for LLVM reporting; repeatable |
 | <a id="entry-helper-cli-codecoverage-command-run-argument-binary-args-0e1e4b8437"></a><code>helper-cli.codecoverage.command.run.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | yes | <code>...</code> | - | - | arguments passed to the test binary |
 
 #### Exact `--help` output
 
 ```text
-usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py run [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Run the instrumented test binary and collect coverage data
 
@@ -213,6 +184,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-codecoverage-command-report-8de4627b8f"></a>
@@ -223,7 +195,7 @@ Generate text and HTML reports from collected coverage data
 Stable ID: `helper-cli.codecoverage.command.report`
 
 ```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
@@ -233,12 +205,13 @@ usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir B
 | <a id="entry-helper-cli-codecoverage-command-report-argument-binary-ccafd82b7a"></a><code>helper-cli.codecoverage.command.report.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-backend-927a805169"></a><code>helper-cli.codecoverage.command.report.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-output-dir-ef938b1452"></a><code>helper-cli.codecoverage.command.report.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
+| <a id="entry-helper-cli-codecoverage-command-report-argument-objects-96a47bda0f"></a><code>helper-cli.codecoverage.command.report.argument.objects</code> | <code>--object</code> | <code>option</code> | no | <code>1</code> | - | - | additional instrumented executable or shared library for LLVM reporting; repeatable |
 | <a id="entry-helper-cli-codecoverage-command-report-argument-binary-args-6f9a492ac0"></a><code>helper-cli.codecoverage.command.report.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | yes | <code>...</code> | - | - | arguments passed to the test binary |
 
 #### Exact `--help` output
 
 ```text
-usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py report [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Generate text and HTML reports from collected coverage data
 
@@ -256,6 +229,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-codecoverage-command-full-43f183aedc"></a>
@@ -266,7 +240,7 @@ Clean, run the instrumented binary, and generate reports
 Stable ID: `helper-cli.codecoverage.command.full`
 
 ```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
@@ -276,12 +250,13 @@ usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUI
 | <a id="entry-helper-cli-codecoverage-command-full-argument-binary-f3c0888145"></a><code>helper-cli.codecoverage.command.full.argument.binary</code> | <code>--binary</code> | <code>option</code> | yes | <code>1</code> | - | - | instrumented test executable |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-backend-fa1db784c3"></a><code>helper-cli.codecoverage.command.full.argument.backend</code> | <code>--backend</code> | <code>option</code> | yes | <code>1</code> | <code>gcc</code>, <code>llvm</code>, <code>msvc</code> | - | coverage compiler/toolchain backend |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-output-dir-7b53f8aad9"></a><code>helper-cli.codecoverage.command.full.argument.output_dir</code> | <code>--output-dir</code> | <code>option</code> | yes | <code>1</code> | - | - | coverage data and report output directory |
+| <a id="entry-helper-cli-codecoverage-command-full-argument-objects-8a1e4c2132"></a><code>helper-cli.codecoverage.command.full.argument.objects</code> | <code>--object</code> | <code>option</code> | no | <code>1</code> | - | - | additional instrumented executable or shared library for LLVM reporting; repeatable |
 | <a id="entry-helper-cli-codecoverage-command-full-argument-binary-args-586e8c3c4a"></a><code>helper-cli.codecoverage.command.full.argument.binary_args</code> | <code>binary_args</code> | <code>positional</code> | yes | <code>...</code> | - | - | arguments passed to the test binary |
 
 #### Exact `--help` output
 
 ```text
-usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR ...
+usage: codecoverage.py full [-h] --workspace-root WORKSPACE_ROOT --build-dir BUILD_DIR --binary BINARY --backend {gcc,llvm,msvc} --output-dir OUTPUT_DIR [--object OBJECTS] ...
 
 Clean, run the instrumented binary, and generate reports
 
@@ -299,6 +274,7 @@ options:
                         coverage compiler/toolchain backend
   --output-dir OUTPUT_DIR
                         coverage data and report output directory
+  --object OBJECTS      additional instrumented executable or shared library for LLVM reporting; repeatable
 ```
 
 <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a>

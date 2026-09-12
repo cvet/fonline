@@ -40,6 +40,8 @@ VALID_DOMAINS = {
     "font-format",
     "audio",
     "video",
+    # Retained for historical disposition records after the generated GUI
+    # contract domain was retired. Aggregate diff no longer evaluates it.
     "gui-runtime",
     "ai-control-protocol",
 }

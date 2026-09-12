@@ -37,7 +37,7 @@ In continuous development since 2006, the engine powers community multiplayer RP
 
 ### Scripting
 
-- AngelScript gameplay scripting over a backend-neutral script system.
+- AngelScript and Managed C# gameplay scripting over a backend-neutral script system; Native scripting remains a reserved placeholder.
 - The native API is exported to scripts by code generation from `///@` annotations — methods, properties, events, remote calls, and enums stay in sync with the C++ source automatically.
 - Nullability is enforced across the script/native boundary: script `T?` maps to native `ptr<T>`/`nptr<T>` contracts, checked by analyzers and runtime asserts.
 - Script debugging support alongside native debugging.
@@ -74,10 +74,10 @@ Your game repository                      FOnline engine (this repo, embedded as
 ────────────────────                      ────────────────────────────────────────────────
 content: protos, maps,            ┌──►    Applications — client/server/tool entry points
 dialogs, texts, GUI               │       Client & Server runtimes — views vs. authority
-AngelScript game logic     embeds │       Common model — entities, properties, protos,
+AngelScript / C# game logic embeds │      Common model — entities, properties, protos,
 .fomain configuration      ───────┤                      maps, networking, config
 native extensions                 │       Frontend — windows, input, audio, renderers
-CMake presets, CI,                │       Scripting — AngelScript bridge + generated API
+CMake presets, CI,                │       Scripting — AngelScript + Managed C# bridges + generated API
 release policy                    └──►    Tools & BuildTools — bakers, mapper, editor,
                                                      CMake stages, codegen, packaging
 ```
@@ -90,7 +90,7 @@ GameProject/
 ├── CMakeLists.txt          # project entry point that includes engine build logic
 ├── CMakePresets.json       # project presets and platform variants
 ├── GameName.fomain         # master project configuration
-├── Scripts/                # game AngelScript modules
+├── Scripts/                # game AngelScript or Managed C# modules
 ├── SourceExt/              # optional project-native C++ extensions
 ├── Critters/ Items/ Maps/  # game content and prototypes
 └── Dialogs/ Texts/         # dialogs and localization
@@ -143,7 +143,7 @@ The maintained index is [Docs/en/index.md](Docs/en/index.md); the Russian mirror
 | Architecture & navigation | [Architecture](Docs/en/explanation/architecture/) · [SourceTree](Docs/en/contributing/source-tree/) · [Applications](Docs/en/reference/applications.md) · [Essentials](Docs/en/reference/native/essentials.md) |
 | Runtime model | [Entity Model](Docs/en/explanation/entity-and-property-model/) · [Maps and Movement](Docs/en/explanation/maps-and-movement.md) · [Networking](Docs/en/explanation/authority-and-networking/) · [Persistence](Docs/en/explanation/persistence/) |
 | Client & server | [Client Runtime](Docs/en/explanation/runtime/client.md) · [Server Runtime](Docs/en/explanation/runtime/server.md) · [Frontend and Rendering](Docs/en/explanation/rendering/) · [Client Updater](Docs/en/explanation/runtime/client-updater.md) |
-| Scripting | [Scripting](Docs/en/explanation/scripting-runtime/) · [LifecycleAndConcurrency](Docs/en/how-to/scripting/lifecycle-and-concurrency.md) · [RemoteCalls](Docs/en/reference/scripting/remote-calls.md) · [ScriptMethodsMap](Docs/en/reference/script-api/method-ownership.md) · [Nullability](Docs/en/contributing/coding-contracts/nullability.md) · [GeneratedApiAndMetadata](Docs/en/reference/metadata/index.md) · [ContractChangeManagement](Docs/en/contributing/contract-change-management.md) |
+| Scripting | [Scripting](Docs/en/explanation/scripting-runtime/) · [Managed C#](Docs/en/how-to/scripting/managed-csharp.md) · [LifecycleAndConcurrency](Docs/en/how-to/scripting/lifecycle-and-concurrency.md) · [AngelScriptStyle](Docs/en/how-to/scripting/style-and-refactoring.md) · [RemoteCalls](Docs/en/reference/scripting/remote-calls.md) · [ScriptMethodsMap](Docs/en/reference/script-api/method-ownership.md) · [Nullability](Docs/en/contributing/coding-contracts/nullability.md) · [GeneratedApiAndMetadata](Docs/en/reference/metadata/index.md) · [ContractChangeManagement](Docs/en/contributing/contract-change-management.md) |
 | Build & content pipeline | [BuildWorkflow](Docs/en/how-to/build/) · [ProjectConfiguration](Docs/en/how-to/build/project-configuration.md) · [GeneratedContentWorkflow](Docs/en/how-to/build/generated-content.md) · [EngineUpgradeGuide](Docs/en/how-to/migration/engine-upgrade.md) · [SupportMatrix](Docs/en/reference/platforms/support-matrix.md) · [BuildToolsPipeline](Docs/en/reference/cmake-and-buildtools/pipeline.md) · [BakingPipeline](Docs/en/explanation/content-pipeline/baking.md) · [ConfigurationAndDataSources](Docs/en/reference/settings/configuration-and-data-sources.md) |
 | Tools | [Tools](Docs/en/reference/tools/) · [Mapper Tools](Docs/en/how-to/tools/mapper.md) · [Mapper Interactive Manual](Docs/en/how-to/tools/mapper-interactive.md) · [Animation and Particle Viewers](Docs/en/how-to/tools/animation-particle-viewers.md) |
 | Quality & conventions | [Testing](Docs/en/contributing/testing/index.md) · [Profiling](Docs/en/how-to/quality/profiling.md) · [ExceptionSafety](Docs/en/contributing/coding-contracts/exception-safety.md) · [SmartPointers](Docs/en/contributing/coding-contracts/smart-pointers.md) · [ThreadSafetyAnalysis](Docs/en/contributing/coding-contracts/thread-safety-analysis.md) |

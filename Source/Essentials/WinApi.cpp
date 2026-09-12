@@ -45,6 +45,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <psapi.h>
+#include <shlobj.h>
 #endif
 #include "WinApiUndef.inc"
 
@@ -148,6 +149,26 @@ auto winapi::get_module_file_name() noexcept -> optional<string>
     }
 
     return strex().parse_wide_char(path_data.as_ptr()).str();
+}
+
+auto winapi::get_local_app_data_path() noexcept -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    PWSTR raw_path = nullptr;
+
+    if (::SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, nullptr, &raw_path) != S_OK) {
+        ::CoTaskMemFree(raw_path);
+        return std::nullopt;
+    }
+
+    auto free_path = scope_exit([raw_path]() noexcept { ::CoTaskMemFree(raw_path); });
+
+    if (raw_path == nullptr || raw_path[0] == 0) {
+        return std::nullopt;
+    }
+
+    return strex().parse_wide_char(make_ptr(raw_path)).str();
 }
 
 auto winapi::get_process_working_set_size() noexcept -> size_t

@@ -97,10 +97,10 @@
     {"name": "AppImage", "category": "artifact", "status": "placeholder", "artifact": false, "platforms": ["Linux"], "targets": ["Client"], "description": "Reserved token; the current Linux packager emits no AppImage artifact."}
   ],
   "payloads": [
-    {"name": "Windows", "status": "implemented", "description": "Patched PE executable or DLL, companion runtime files, PDBs when present, and resource ZIP directories unless NoRes is selected. win32-win7 and win64-win7 read the canonical win32/win64 binary entry selected by the same per-binary POSTFIX."},
-    {"name": "Linux", "status": "implemented", "description": "Patched executable or shared runtime, companion files, and resource ZIP directories unless NoRes is selected."},
-    {"name": "Android", "status": "implemented", "description": "Generated Gradle project containing libmain.so per ABI and baked resources under app assets; Apk optionally emits a sibling APK."},
-    {"name": "Web", "status": "implemented", "description": "JavaScript, patched Wasm, HTML shell, Resources.data/Resources.js preload files, and optional local server helper."},
+    {"name": "Windows", "status": "implemented", "description": "Patched PE executable or DLL, companion runtime files, PDBs when present, and resource ZIP directories unless NoRes is selected. Managed builds carry target-specific managed assemblies and the prepared runtime inside the selected resource pack. win32-win7 and win64-win7 read the canonical win32/win64 binary entry selected by the same per-binary POSTFIX."},
+    {"name": "Linux", "status": "implemented", "description": "Patched executable or shared runtime, companion files, and resource ZIP directories unless NoRes is selected. Managed builds carry target-specific managed assemblies and the prepared runtime inside the selected resource pack."},
+    {"name": "Android", "status": "implemented", "description": "Generated Gradle project containing libmain.so per ABI and baked resources under app assets; managed assemblies and the prepared runtime remain in the resource-pack assets. Apk optionally emits a sibling APK."},
+    {"name": "Web", "status": "implemented", "description": "JavaScript, patched Wasm, HTML shell, Resources.data/Resources.js preload files, target-specific managed assemblies and runtime resources when enabled, and an optional local server helper."},
     {"name": "macOS", "status": "unsupported", "description": "No payload is emitted in the current repository state."},
     {"name": "iOS", "status": "unsupported", "description": "No payload is emitted in the current repository state."}
   ]

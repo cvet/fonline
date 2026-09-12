@@ -44,17 +44,6 @@
       "description": "Generate engine configuration, metadata registration, script bindings, and embedded-resource source files."
     },
     {
-      "id": "helper-cli.compile-mono-scripts",
-      "name": "Mono script compilation",
-      "source": "BuildTools/compile-mono-scripts.py",
-      "factory": "create_parser",
-      "program": "compile-mono-scripts.py",
-      "owner": "scripting",
-      "audiences": ["engine-contributor", "embedding-project-build-system"],
-      "invocation_owner": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
-      "description": "Compile configured Mono assemblies for engine application roles."
-    },
-    {
       "id": "helper-cli.codecoverage",
       "name": "Code coverage",
       "source": "BuildTools/codecoverage.py",

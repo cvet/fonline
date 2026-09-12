@@ -558,6 +558,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-setuserconfig-83f675b8f444529f-ed0732f663"></a>
 - [`symbol-script-method-client-game-setuserconfig-83f675b8f444529f-ed0732f663`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setuserconfig-83f675b8f444529f-ed0732f663)
 
+<a id="symbol-script-method-client-game-simulateconnectingfailed-6bea75eef8"></a>
+- [`symbol-script-method-client-game-simulateconnectingfailed-6bea75eef8`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulateconnectingfailed-6bea75eef8)
+
 <a id="symbol-script-method-client-game-simulatedisconnect-df272aa9fe"></a>
 - [`symbol-script-method-client-game-simulatedisconnect-df272aa9fe`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulatedisconnect-df272aa9fe)
 
@@ -2633,6 +2636,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-systemcall-bc91017a887fc615-63c57ed27e"></a>
 - [`symbol-script-method-server-game-systemcall-bc91017a887fc615-63c57ed27e`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-systemcall-bc91017a887fc615-63c57ed27e)
+
+<a id="symbol-script-method-server-game-trysyncentity-174f3fd485"></a>
+- [`symbol-script-method-server-game-trysyncentity-174f3fd485`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-trysyncentity-174f3fd485)
 
 <a id="symbol-script-method-server-game-unloadcritter-266c20764b"></a>
 - [`symbol-script-method-server-game-unloadcritter-266c20764b`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-unloadcritter-266c20764b)

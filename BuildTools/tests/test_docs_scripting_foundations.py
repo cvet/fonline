@@ -13,17 +13,15 @@ class DocumentationScriptingFoundationsTests(unittest.TestCase):
     def _read(self, relative_path: str) -> str:
         return (ENGINE_ROOT / relative_path).read_text(encoding="utf-8")
 
-    def test_scripting_guide_lists_the_complete_core_library(self) -> None:
+    def test_scripting_guide_tracks_current_backend_owned_core_library(self) -> None:
         guide = self._read("Docs/en/explanation/scripting-runtime/index.md")
-        section = guide.split("## Core scripts", 1)[1].split("\n## ", 1)[0]
-        documented = set(re.findall(r"`([A-Za-z][A-Za-z0-9]*\.fos)`", section))
-        actual = {
-            path.name
-            for path in (
-                ENGINE_ROOT / "Source/Scripting/AngelScript/CoreScripts"
-            ).glob("*.fos")
-        }
-        self.assertEqual(documented, actual)
+        managed_core = ENGINE_ROOT / "Source/Scripting/Managed/CoreScripts"
+        self.assertGreaterEqual(len(list(managed_core.glob("*.cs"))), 10)
+        self.assertFalse(
+            (ENGINE_ROOT / "Source/Scripting/AngelScript/CoreScripts").exists()
+        )
+        self.assertIn("Source/Scripting/Managed/CoreScripts/", guide)
+        self.assertIn("AngelScript high-level library was removed", guide)
         for marker in (
             "Source/Tests/Test_AngelScriptCall.cpp",
             "Source/Tests/Test_ClientDataValidation.cpp",

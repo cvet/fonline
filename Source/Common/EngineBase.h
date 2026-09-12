@@ -111,6 +111,19 @@ public:
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
     void RegisterValueType(string_view name);
+    template<typename T>
+    void RegisterValueType(string_view name)
+    {
+        RegisterValueType(name);
+        auto& layout = _structLayouts.at(string(name));
+        layout.NativeSize = sizeof(T);
+        layout.CreateNative = []() -> unique_del_ptr<void> {
+            auto value = SafeAlloc::MakeUnique<T>();
+            return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
+        };
+        layout.CopyNative = [](ptr<void> dst, ptr<const void> src) { *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>(); };
+    }
+
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     void RegisterRefType(string_view name);
     void RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout);
@@ -125,6 +138,7 @@ public:
     void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
+    void RegisterPropertyMigrationBeforeVersion(string_view entity_type, string_view target, string_view version_property, string_view before_version);
     void RegisterProtos(const FileSystem& resources);
     void RegisterAnimationInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
@@ -191,8 +205,12 @@ public:
     virtual auto RunScriptContext(const function<void()>& callback) -> timespan;
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
-    void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);
+    [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;
+    void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
+    // Dispatch an inbound remote call to its registered handler. Normally invoked by the derived engine when a call
+    // arrives over the network; also callable in-process (e.g
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;
@@ -205,7 +223,6 @@ protected:
     ~BaseEngine() override = default;
 
     virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data); // Called by derived class
 
 private:
     refcount_ptr<ScriptImGui> _imgui;

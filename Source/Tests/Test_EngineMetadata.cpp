@@ -197,6 +197,23 @@ static auto ResolveTestMigrationRule(EngineMetadata& meta, string_view target) -
 
 TEST_CASE("EngineMetadata")
 {
+    SECTION("RefTypeRejectsVirtualFieldsBeforePublishingLayout")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterRefType("StoredRecord");
+        CHECK_THROWS(meta.RegisterRefTypeLayout("StoredRecord", {{"Value", "int32", "Virtual"}}));
+        CHECK_NOTHROW(meta.RegisterRefTypeLayout("StoredRecord", {{"Value", "int32"}}));
+    }
+
+    SECTION("NativeValueSizeMismatchDoesNotPublishLayout")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterValueType<int64_t>("NativeValue");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int32"}}));
+        CHECK_NOTHROW(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int64"}}));
+    }
+
     SECTION("BuiltinProtoEntityTypesUseDedicatedProtoFlag")
     {
         EngineMetadata meta {[] { }};
@@ -217,8 +234,8 @@ TEST_CASE("EngineMetadata")
     SECTION("ValueTypeLayoutMatchesNativeTextPackKey")
     {
         EngineMetadata meta {[] { }};
-        meta.RegisterValueType("TextPackName");
-        meta.RegisterValueType("TextPackKey");
+        meta.RegisterValueType<TextPackName>("TextPackName");
+        meta.RegisterValueType<TextPackKey>("TextPackKey");
         meta.RegisterValueTypeLayout("TextPackName", {{"Name", "hstring"}});
         meta.RegisterValueTypeLayout("TextPackKey", {{"Collection", "TextPackName"}, {"Key1", "hstring"}, {"Key2", "hstring"}, {"Key3", "hstring"}});
 
@@ -230,6 +247,19 @@ TEST_CASE("EngineMetadata")
         REQUIRE(text_key_type.StructLayout);
         CHECK(text_key_type.Size == sizeof(hstring::hash_t) * 4);
         CHECK(text_key_type.Size == sizeof(TextPackKey));
+
+        REQUIRE(text_key_type.StructLayout->CreateNative);
+        REQUIRE(text_key_type.StructLayout->CopyNative);
+        auto value = text_key_type.StructLayout->CreateNative();
+        ptr<TextPackKey> key = ptr<void>(value.get()).reinterpret_as<TextPackKey>();
+        CHECK(key->Collection == TextPackName {});
+        CHECK(key->Key1 == hstring {});
+        TextPackKey source {meta.Hashes.ToHashedString("native-value-key")};
+        text_key_type.StructLayout->CopyNative(value.get(), &source);
+        CHECK(*key == source);
+        vector<unique_del_ptr<void>> values;
+        values.emplace_back(std::move(value));
+        CHECK(*key == source);
 
         const auto& fields = text_key_type.StructLayout->Fields;
         REQUIRE(fields.size() == 4);

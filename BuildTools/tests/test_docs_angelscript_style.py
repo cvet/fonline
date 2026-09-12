@@ -177,10 +177,9 @@ class AngelScriptStyleDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(contract, formatter)
 
-    def test_core_scripts_follow_namespace_guard_and_file_contracts(self) -> None:
-        core_root = ENGINE_ROOT / "Source/Scripting/AngelScript/CoreScripts"
-        scripts = sorted(core_root.glob("*.fos"))
-        self.assertGreaterEqual(len(scripts), 10)
+    def test_public_example_scripts_follow_namespace_guard_and_file_contracts(self) -> None:
+        scripts = sorted((ENGINE_ROOT / "Examples").glob("*/Scripts/*.fos"))
+        self.assertGreaterEqual(len(scripts), 5)
 
         for script in scripts:
             with self.subTest(script=script.name):
@@ -205,12 +204,7 @@ class AngelScriptStyleDocumentationTests(unittest.TestCase):
                     self.assertGreaterEqual(guard_depth, 0, f"unmatched #endif at {script}:{line_number}")
                 self.assertEqual(guard_depth, 0, f"unclosed preprocessor guard in {script}")
 
-        config = self._read("Source/Scripting/AngelScript/CoreScripts/.clang-format")
         workflow = self._read(".github/workflows/validate.yml")
-        self.assertIn("ColumnLimit:     160", config)
-        self.assertIn("InsertBraces:    true", config)
-        self.assertIn("NamespaceIndentation: Inner", config)
-        self.assertIn("SortIncludes:    Never", config)
         self.assertIn("python3 BuildTools/buildtools.py format-source", workflow)
         self.assertIn("git diff --exit-code", workflow)
 

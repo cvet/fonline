@@ -60,6 +60,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-model-bones-per-vertex-f7ff2fd097"></a>
 - [`entry-cmake-option-fo-model-bones-per-vertex-f7ff2fd097`](../../en/reference/cmake/options.md#entry-cmake-option-fo-model-bones-per-vertex-f7ff2fd097)
 
+<a id="entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7"></a>
+- [`entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7`](../../en/reference/cmake/options.md#entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7)
+
 <a id="entry-cmake-option-fo-msan-libcxx-root-645fe5d9af"></a>
 - [`entry-cmake-option-fo-msan-libcxx-root-645fe5d9af`](../../en/reference/cmake/options.md#entry-cmake-option-fo-msan-libcxx-root-645fe5d9af)
 
@@ -84,8 +87,8 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-angelscript-scripting-e9acfd5025"></a>
 - [`entry-cmake-option-fo-angelscript-scripting-e9acfd5025`](../../en/reference/cmake/options.md#entry-cmake-option-fo-angelscript-scripting-e9acfd5025)
 
-<a id="entry-cmake-option-fo-mono-scripting-0b0fb50fbc"></a>
-- [`entry-cmake-option-fo-mono-scripting-0b0fb50fbc`](../../en/reference/cmake/options.md#entry-cmake-option-fo-mono-scripting-0b0fb50fbc)
+<a id="entry-cmake-option-fo-managed-scripting-2d987bea20"></a>
+- [`entry-cmake-option-fo-managed-scripting-2d987bea20`](../../en/reference/cmake/options.md#entry-cmake-option-fo-managed-scripting-2d987bea20)
 
 <a id="entry-cmake-option-fo-disable-rpmalloc-32bd067e30"></a>
 - [`entry-cmake-option-fo-disable-rpmalloc-32bd067e30`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-rpmalloc-32bd067e30)

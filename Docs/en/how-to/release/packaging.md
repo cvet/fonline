@@ -211,15 +211,19 @@ An MSI is not proof that the client is signed, trusted by endpoint protection, u
 
 Preserve executable modes when a downstream publication system unpacks and repacks an archive. Qualify the actual Linux distribution, runtime libraries, filesystem paths, process account, signals, logs, and service manager used by the game.
 
+### Managed C# payload
+
+When `FO_MANAGED_SCRIPTING` is enabled, the `Managed` baker puts target-specific assemblies and a prepared `ManagedRuntime/` class-library payload into the selected resource pack. Native client packages consume the payload built for that exact application target; Web and Android carry it in their resource assets. A server package preparing client updates stages a target-specific pack under `PlatformBinaries/<target>/` and `-expect-client-runtime Platform:arch[:postfix]` makes a missing requested payload fail packaging. Inspect the assembly target, `runtime.manifest`, content hash, and packaged startup separately; see [Managed C# Scripting](../scripting/managed-csharp.md).
+
 ### Web client
 
-The Web client payload contains JavaScript, patched Wasm, an HTML shell, preloaded `Resources.data` / `Resources.js`, and optionally the local `WebServer` helper. The Engine-owned Content Showcase command `python validate.py --web-runtime` can provide opt-in evidence for native-host baking, exact raw/ZIP package inventory, localhost HTTP delivery, a native server connection, required lifecycle markers, a real WebGL 2 context, and compositor pixels for one deterministic fixture under pinned Chromium. It is not a required Engine workflow lane and does not prove an embedding game's public browser deployment.
+The Web client payload contains JavaScript, patched Wasm, an HTML shell, preloaded `Resources.data` / `Resources.js`, target-specific Managed assemblies/runtime resources when enabled, and optionally the local `WebServer` helper. The Engine-owned Content Showcase command `python validate.py --web-runtime` can provide opt-in evidence for native-host baking, exact raw/ZIP package inventory, localhost HTTP delivery, a native server connection, required lifecycle markers, a real WebGL 2 context, and compositor pixels for one deterministic fixture under pinned Chromium. It is not a required Engine workflow lane and does not prove an embedding game's public browser deployment.
 
 Follow [Web Build, Packaging, and Browser Debugging](../platforms/web-debugging.md) for local staging. A release lane must additionally verify HTTPS hosting, MIME types, cache policy, cross-origin isolation or other required headers, WebSocket reachability, browser compatibility, storage persistence, audio activation, loading failure UX, and at least one visible representative scene.
 
 ### Android client
 
-The Android payload is a generated Gradle project with one `libmain.so` per selected ABI and baked resources under application assets. `Apk` runs the Gradle assembly and copies the resulting APK beside the staged project.
+The Android payload is a generated Gradle project with one `libmain.so` per selected ABI and baked resources under application assets; a Managed build keeps its target assemblies and prepared runtime in those assets. `Apk` runs the Gradle assembly and copies the resulting APK beside the staged project.
 
 Follow [Android Build, Packaging, and Device Debugging](../platforms/android-debugging.md) for the pinned SDK/NDK workspace, ABI mapping, device connection, resource staging, and configuration fields. Android ARM32 and ARM64 are build-gated; Android x86 remains source-capable. A game must own emulator/device gates, GPU/input/audio/network/background behavior, signing identity, versioning, store policy, and rollout.
 

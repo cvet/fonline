@@ -578,25 +578,25 @@
     {
       "name": "Windows",
       "status": "implemented",
-      "description": "Patched PE executable or DLL, companion runtime files, PDBs when present, and resource ZIP directories unless NoRes is selected. win32-win7 and win64-win7 read the canonical win32/win64 binary entry selected by the same per-binary POSTFIX.",
+      "description": "Patched PE executable or DLL, companion runtime files, PDBs when present, and resource ZIP directories unless NoRes is selected. Managed builds carry target-specific managed assemblies and the prepared runtime inside the selected resource pack. win32-win7 and win64-win7 read the canonical win32/win64 binary entry selected by the same per-binary POSTFIX.",
       "id": "package.payload.Windows"
     },
     {
       "name": "Linux",
       "status": "implemented",
-      "description": "Patched executable or shared runtime, companion files, and resource ZIP directories unless NoRes is selected.",
+      "description": "Patched executable or shared runtime, companion files, and resource ZIP directories unless NoRes is selected. Managed builds carry target-specific managed assemblies and the prepared runtime inside the selected resource pack.",
       "id": "package.payload.Linux"
     },
     {
       "name": "Android",
       "status": "implemented",
-      "description": "Generated Gradle project containing libmain.so per ABI and baked resources under app assets; Apk optionally emits a sibling APK.",
+      "description": "Generated Gradle project containing libmain.so per ABI and baked resources under app assets; managed assemblies and the prepared runtime remain in the resource-pack assets. Apk optionally emits a sibling APK.",
       "id": "package.payload.Android"
     },
     {
       "name": "Web",
       "status": "implemented",
-      "description": "JavaScript, patched Wasm, HTML shell, Resources.data/Resources.js preload files, and optional local server helper.",
+      "description": "JavaScript, patched Wasm, HTML shell, Resources.data/Resources.js preload files, target-specific managed assemblies and runtime resources when enabled, and an optional local server helper.",
       "id": "package.payload.Web"
     },
     {
@@ -615,8 +615,8 @@
   "cli": {
     "program": "package.py",
     "description": "FOnline packager",
-    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH -pack PACK\n                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]",
-    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH -pack PACK\n                  -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,macOS,iOS,Web}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -pack PACK            package type\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -zip-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override zip compression level\n",
+    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]",
+    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,macOS,iOS,Web}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -expect-client-runtime EXPECT_CLIENT_RUNTIME\n                        Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable\n  -pack PACK            package type\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -zip-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override zip compression level\n",
     "arguments": [
       {
         "id": "package.cli.argument.maincfg",
@@ -731,6 +731,20 @@
         "description": "architectures to include (divided by +)"
       },
       {
+        "id": "package.cli.argument.expect_client_runtime",
+        "destination": "expect_client_runtime",
+        "action": "append",
+        "option_strings": [
+          "-expect-client-runtime"
+        ],
+        "required": false,
+        "nargs": 1,
+        "choices": null,
+        "default": [],
+        "type": null,
+        "description": "Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable"
+      },
+      {
         "id": "package.cli.argument.pack",
         "destination": "pack",
         "action": "store",
@@ -836,7 +850,7 @@
     "pack_count": 19,
     "implemented_pack_count": 18,
     "artifact_pack_count": 8,
-    "cli_argument_count": 13
+    "cli_argument_count": 14
   },
-  "contract_digest": "f82bcea977109ff6214369c76a0281b7c30bec1edda2e8d147b7c74f9951aad2"
+  "contract_digest": "f90e1b530632280246337a3056819b0815d380346128d2c4174584b4eada31cb"
 }

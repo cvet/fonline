@@ -48,9 +48,13 @@ scripts, and release-specific settings. The engine should stay reusable.
 
 Start with [Build Workflow](../how-to/build/). Prefer the embedding project's presets and tasks. Engine-only assumptions are easy to get wrong because actual target names, package names, and generated API files are project-dependent.
 
+### I want to work on gameplay scripts
+
+Start with [Scripting](../explanation/scripting-runtime/) for the shared lifecycle and backend matrix. Use [AngelScript Style and Refactoring](../how-to/scripting/style-and-refactoring.md) for `.fos` modules or [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for `.cs` assemblies, async/cover analysis, build, bake, runtime, and packaging. Native scripting is a reserved placeholder, not an implemented gameplay backend.
+
 ### I want to debug native code
 
-Use [Native and AngelScript Debugging](../troubleshooting/debugging.md). It covers symbols, mixed stacks, crash diagnostics, native debugger behavior, live script attach, and validation boundaries.
+Use [Native, AngelScript, and Managed Debugging](../troubleshooting/debugging.md). It covers symbols, mixed stacks, crash diagnostics, native debugger behavior, AngelScript live attach, Managed diagnostics, and validation boundaries.
 
 ### I want to work on Web or Android
 
@@ -65,7 +69,7 @@ Use [Client Runtime Split and Updater](../explanation/runtime/client-updater.md)
 
 ### I want to change script/native nullability
 
-Use [Nullability.md](../../Nullability.md). Keep C++ annotations, AngelScript-visible types, runtime checks, and analyzers aligned.
+Use [Nullability.md](../../Nullability.md). Keep C++ annotations, generated AngelScript/Managed types, runtime checks, and analyzers aligned.
 
 ## Documentation rule
 

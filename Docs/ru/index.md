@@ -6,7 +6,7 @@ document_id: documentation-home
 permalink: /Docs/ru/
 ---
 
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"fc22a1f7d15f57e32c438fb7e36cb65d284f401c469c4ae422f8a29d23df937d"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673"} -->
 
 # Документация движка FOnline
 
@@ -90,12 +90,13 @@ FOnline. Она предназначена для разработчиков и�
   [разделение клиента и обновление](explanation/runtime/client-updater.md)
   описывают процессы и слой представления.
 - [Среда выполнения скриптов](explanation/scripting-runtime/index.md),
+  [скрипты Managed C#](how-to/scripting/managed-csharp.md),
   [жизненный цикл и конкурентность скриптов](how-to/scripting/lifecycle-and-concurrency.md),
   [стиль и рефакторинг AngelScript](how-to/scripting/style-and-refactoring.md) и
   [удалённые вызовы](reference/scripting/remote-calls.md) задают переиспользуемый
   скриптовый контракт.
-- [Среда выполнения GUI](how-to/runtime/gui.md) описывает регистрацию экранов,
-  жизненный цикл, компоновку, рисование, ввод и проектные hooks.
+- [Frontend и рендеринг](explanation/rendering/index.md) описывает нативные
+  примитивы рендеринга и ввода Engine; высокоуровневые GUI-библиотеки принадлежат проекту.
 
 ## Инструменты и проверка изменений
 

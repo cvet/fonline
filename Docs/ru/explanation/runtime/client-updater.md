@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"5dcb4608d949a04b87ec58da304474a8bbf48e1bed3983bde59103ff66fdb10a"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"f478920db0485f4d0337495e99fe96f6d4205697f884bcf007a58a64e3f5a11d"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -462,29 +462,22 @@ version с версией, загруженной server. Server исполня�
 | `ServerNetwork.UpdateFilesInMemory` | top-level и `[SubConfig]` | `True` держит packaged payload в RAM, `False` читает portions с disk; default `False` |
 | `Network.ForceMetadataVersion` | top-level | только для tests: переопределяет metadata version, сообщаемую client, чтобы смоделировать mismatch без второй bake; в shipped configs должна быть empty |
 | `Baking.PlatformBinaries` | top-level | каталог чтения и package staging target-specific runtime, default `PlatformBinaries` |
-| `Client.UserWritablePath` | client | writable root installed-клиента; empty означает portable, `*` выбирает per-OS user data, иначе нужен explicit absolute path |
+| `Common.UserWritablePath` | common | **Read-only** writable root для всех runtime-записей: logs, cache, resource overlay, self-updated binaries и server database. Он разрешается до чтения config и не задаётся в нём: `--UserWritablePath <path>` указывает путь; иначе marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс имя проекта; при отсутствии обоих значение остаётся пустым и пути считаются от working directory. |
 
 Автоматического выбора memory/disk mode в C++ нет. Проект задаёт режим явно для
 каждого окружения и подтверждает его нагрузочными измерениями.
 
 ## Writable data установленного и portable-клиента
 
-Portable build хранит cache, log и self-update рядом с executable. Это подходит
-для zip, распакованного пользователем в writable directory. Windows MSI по умолчанию
-ставится в `%LOCALAPPDATA%`, но installed build всё ещё может оказаться в read-only
-каталоге после явного выбора `Program Files` или под `/usr/...`, поэтому записи
-должны уйти в per-user root.
+Portable build хранит cache, log и self-update относительно working directory. Это подходит для zip, распакованного пользователем в writable directory. Windows MSI по умолчанию ставится в `%LOCALAPPDATA%`, но installed build всё ещё может оказаться в read-only каталоге после явного выбора `Program Files` или под `/usr/...`, поэтому записи должны уйти в отдельный per-user root.
 
-`ResolveUserWritablePath(settings)` из `ApplicationInit.cpp` интерпретирует
-`Client.UserWritablePath`:
+`ResolveWritableRoot(args)` из `Source/Frontend/ApplicationInit.cpp` определяет этот root независимо от settings: log, cache и local-config cache сами могут находиться под ним, поэтому ни один прочитанный с disk файл не должен выбирать их расположение. Resolution выполняется до поиска config и открытия log. Приоритеты:
 
-- empty - portable, пути остаются рядом с executable или working directory;
-- `*` - `Platform::GetUserDataBase()` и затем `/<Common.GameName>`: `%LOCALAPPDATA%` в Windows, `~/Library/Application Support` в macOS, `$XDG_DATA_HOME` либо `~/.local/share` в Linux;
-- explicit path - заданный absolute writable root.
+1. **`--UserWritablePath <path>` в command line**; принимается и dotted-форма `--Common.UserWritablePath`. Аргументы сканируются напрямую до settings parser. Так Android передаёт platform internal storage, а test изолирует run. Config file не может задать этот path. Значение `*` запрашивает тот же per-user directory, что и marker.
+2. **Marker `INSTALLED` рядом с executable** выбирает per-OS base через `Platform::GetUserDataBase()`: Windows `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` либо `~/.local/share`; затем добавляется `FO_NICE_NAME`. На Android вместо этого используется SDL internal-storage path. Compile-time project name нужен потому, что config-значение `Common.GameName` ещё неизвестно.
+3. **Иначе portable**: root остаётся пустым, а writable paths считаются от working directory — той же базы, из которой ищутся main config и относительные resource/cache directories.
 
-Resolution идемпотентен, создаёт root, `Cache` и `<ClientResources>`. При
-невозможности определить или создать directory он пишет warning и безопасно
-возвращается к portable, чтобы плохая install-конфигурация не блокировала startup.
+Resolution идемпотентен и создаёт выбранный root. После загрузки имён settings `LoadAppSettings` также создаёт cache и client-resource-overlay subdirectories. Если root нельзя определить или создать, записывается warning и процесс безопасно возвращается к working directory. Разрешённое значение доступно всем приложениям, включая server, как read-only `Common.UserWritablePath`.
 
 Через `fs_make_writable_path(UserWritablePath, relative)` в writable root
 перемещаются cache (`CacheStorage`, login keys, secure local storage и local
@@ -514,8 +507,8 @@ Native runtime установленного клиента также обнов
 Файл `<root>/<runtime_name><ext>` имеет рядом `-staging` и PDB. Self-update не
 отключается для installed-клиента на Windows/Linux/macOS.
 
-Host выбирает runtime до settings и не знает `Common.GameName`, поэтому runtime
-возвращает writable live path в `ClientRuntimeResult::RequestedRuntimePath`.
+Host выбирает runtime до settings, поэтому runtime возвращает writable live path
+в `ClientRuntimeResult::RequestedRuntimePath`.
 Host проверяет absolute path и basename, продвигает файл, записывает selector и
 завершается через `GetInstalledClientRuntimeBootstrapPath()` и
 `WriteClientRuntimeBootstrapTarget()`. Следующий `INSTALLED` startup читает selector из
@@ -526,10 +519,11 @@ wrong-basename и stale selectors возвращают host к install-dir runti
 `--ClientLibPath` остаётся последним explicit override. Portable-клиент selector
 не читает и не пишет.
 
-Installed mode включается marker-файлом `INSTALLED` рядом с executable. Если
-`Client.UserWritablePath` empty, marker автоматически выбирает `*`. MSI packager
-добавляет marker только во временный Wix payload и удаляет перед продолжением,
-поэтому соседние Raw/Zip артефакты остаются portable.
+Installed mode включается marker-файлом `INSTALLED` рядом с executable; сам marker
+выбирает per-user layout, если command line не задал другой root. Portable zip не
+имеет marker. Android marker не нужен: launcher передаёт platform directory через
+command line. MSI packager добавляет marker только во временный Wix payload и
+удаляет перед продолжением, поэтому соседние Raw/Zip артефакты остаются portable.
 
 ## Упаковка
 
@@ -711,7 +705,7 @@ compatibility на этих платформах updater возвращает `P
 
 Локальная приёмка:
 
-1. Соберите и запустите generated unit-test target проекта. `Test_ClientRuntimeApi.cpp` проверяет ABI, exports/results, selector round-trip, validation, live selection, staging и fallback; `Test_DiskFileSystem.cpp` - parity hash и writable path; `Test_Platform.cpp` - user data base; `Test_Settings.cpp` - inheritance `UpdateFilesInMemory` и fail-safe `ResolveUserWritablePath`.
+1. Соберите и запустите generated unit-test target проекта. `Test_ClientRuntimeApi.cpp` проверяет ABI, exports/results, selector round-trip, validation, live selection, staging и fallback; `Test_DiskFileSystem.cpp` — parity hash и writable path; `Test_Platform.cpp` — user data base; `Test_Settings.cpp` — inheritance `UpdateFilesInMemory` и read-only `Common.UserWritablePath`; application-config tests покрывают CLI/marker resolution, раннее размещение log/config и fail-safe creation.
 2. Соберите generated client host. На native platform зависимость должна построить runtime alias рядом с host. Отдельно соберите runtime target для isolated validation.
 3. Запустите host с bundled runtime и подтвердите DLL happy path, resource update и вход в игру.
 4. Запустите с `--ClientLibPath <path>` и валидным alternate runtime.
@@ -721,7 +715,7 @@ compatibility на этих платформах updater возвращает `P
 8. Прервите network mid-download и подключитесь снова: `GetUpdateFile` должен продолжить с temp-file size без полной загрузки.
 9. Соедините client со старой `FO_COMPATIBILITY_VERSION` и новый server. После prompt закройте client: host должен заменить `<live>-staging`, выйти без load и загрузить promoted runtime только при следующем запуске.
 10. Убейте host во время binary download. При restart полный staging продвигается, а неполный temp продолжается обычным updater session.
-11. Для installed smoke добавьте `INSTALLED`, оставьте `Client.UserWritablePath` empty и проверьте per-OS root, cache/log/overlay, selector и повторный launch. Прогоните и обновление resource pack, и обновление native runtime: после перезапуска gameplay обязан читать обновлённый writable pack, а не замороженный аналог из install directory. Затем испортите selector и подтвердите fallback к install-dir runtime.
+11. Для installed smoke добавьте `INSTALLED`, запустите без writable-path CLI override и проверьте per-OS root плюс `FO_NICE_NAME`, cache/log/overlay, selector и повторный launch. Прогоните и обновление resource pack, и обновление native runtime: после перезапуска gameplay обязан читать обновлённый writable pack, а не замороженный аналог из install directory. Затем испортите selector и подтвердите fallback к install-dir runtime.
 
 Project release gate должен дополнительно запускать точные updater pipeline tests
 для распространяемых package profiles: missing/corrupt packs, binary corruption,

@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 
 # Конфигурация игрового проекта
 
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"8ab91530230aa86d3ba715748ca6db90fec2840628e6cd62f00c13825629b88c"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"149a85e960e00eee377451040a8d1eeaf3e0243351ad589f4bd82d805f04c311"} -->
 
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
@@ -100,6 +100,13 @@ Baking.ServerResources = ServerResources
 Baking.ClientResources = Resources
 Baking.PlatformBinaries = PlatformBinaries
 Baking.CacheResources = Cache
+
+Script.ManagedScriptAssemblies = MyGame
+Script.ManagedScriptProjectName = MyGame
+Script.ManagedScriptTargetFramework = net10.0
+Script.ManagedScriptMsBuild = dotnet msbuild
+Script.ManagedScriptDirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
+Script.ManagedScriptAnalyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
 ```
 
 Неизвестные имена становятся project custom settings и доступны через
@@ -146,7 +153,15 @@ InputDirs = Scripts
 IncludePatterns = **/*.fos
 Bakers = AngelScript
 ServerOnly = True
+
+[ResourcePack]
+Name = ManagedScripts
+InputDirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
+IncludePatterns = *
+Bakers = Managed
 ```
+
+Выбирайте backend явно. Pack AngelScript запекает модули `.fos` через `AngelScriptBaker`; pack Managed компилирует настроенные top-level исходники `.cs` и generated API в target-specific assemblies. Managed pack должен включать Engine CoreScripts и проектные исходники из `Script.ManagedScriptDirs`; согласуйте с той же сборкой настройки assemblies, analyzers, extra sources/references и generated directory. Полный контракт backend описан в [Скриптах Managed C#](../scripting/managed-csharp.md).
 
 Допустимые fields:
 
@@ -198,7 +213,7 @@ parents применяются слева направо: поздние parents
 
 Используйте `-ApplySubConfig NONE` для generation/baking commands, которые
 должны читать только master config. BuildTools делает это для
-`CompileAngelScript`, `BakeResources` и `ForceBakeResources`.
+`CompileAngelScript`, `CompileManagedScripts`, `BakeResources` и `ForceBakeResources`.
 
 Держите sub-configs узкими:
 
@@ -212,7 +227,7 @@ parents применяются слева направо: поздние parents
 
 1. Повторите configure embedding project, если изменились CMake options или
    main config path.
-2. Выполните `CompileAngelScript`, если изменились script inputs или metadata.
+2. Выполните `CompileAngelScript` и/или `CompileManagedScripts` для каждого включённого backend, чьи script inputs, generated API, analyzers или metadata изменились.
 3. Выполните `BakeResources`; используйте `ForceBakeResources` после изменения
    pack membership, baker selection, include/exclude patterns, language sets или
    migration rules.

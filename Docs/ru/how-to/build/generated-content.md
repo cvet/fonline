@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 
 # Работа с генерируемым содержимым
 
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"3872de79a993c84ad59498e2a8c6b3c1965c8ed1c7f41a6a21611df673118170"} -->
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"f915e3f37b23694c8b3156f3583d13d85645dadf1a49bbbb6588fe5c7e35181c"} -->
 
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
@@ -99,6 +99,14 @@ BuildTools вызывает generated ASCompiler с параметрами:
 Так проверяется master project contract, а не удобный development overlay.
 Проект может добавлять focused script/test targets, но master compile route
 должен оставаться зеленым.
+
+Для проектов Managed C#:
+
+```bash
+cmake --build <build-dir> --config RelWithDebInfo --target CompileManagedScripts
+```
+
+Команда запускает standalone `ManagedScriptBaker` после `ForceCodeGeneration`, создаёт target API, `.gen.csproj`/`.gen.sln` и компилирует настроенные assemblies без полного resource bake. Реальным delivery gate остаётся `BakeResources` или `ForceBakeResources`: baker `Managed` записывает target-specific assemblies и подготовленный payload `ManagedRuntime/` в выбранный pack. Исправляйте generated C# во владеющих C++ metadata, configuration, CoreScripts, analyzer или baker и регенерируйте; не редактируйте `.gen.cs` вручную. См. [Скрипты Managed C#](../scripting/managed-csharp.md).
 
 ## Baking ресурсов
 
@@ -239,7 +247,7 @@ commit запустите generator дважды или используйте �
 | Ошибка | Восстановление |
 |---|---|
 | Generated source не компилируется | Исправьте source tag/template или project registration, повторите configure и build |
-| Script compiler и runtime расходятся | Убедитесь, что они используют одинаковые config, Engine revision и свежие generated metadata |
+| Script compiler и runtime расходятся | Убедитесь, что каждый включённый backend использует одинаковые config, Engine revision и свежие generated metadata; для Managed также проверьте target assembly и payload `ManagedRuntime/` |
 | Formatter меняет `T?`, форму cast/template или named argument | Используйте Engine-aware wrapper из [Стиля AngelScript и рефакторинга](../scripting/style-and-refactoring.md), а не raw clang-format |
 | Стороны metadata расходятся | Исправьте paired declarations и выполните baking обеих сторон |
 | Incremental resources остаются устаревшими | Запустите `ForceBakeResources`; проверьте pack selection и baker dependency tracking |

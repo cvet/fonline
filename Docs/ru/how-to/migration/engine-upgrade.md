@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/migration/engine-upgrade.html
 
 # Обновление Engine во встраивающем проекте
 
-<!-- docs-translation: {"document_id":"engine-upgrade-guide","locale":"ru","source_path":"Docs/en/how-to/migration/engine-upgrade.md","source_sha256":"6aefd69e78ecc226ea0812b258082ddbe40429be43c8098fcdabe3d5308c4af1"} -->
+<!-- docs-translation: {"document_id":"engine-upgrade-guide","locale":"ru","source_path":"Docs/en/how-to/migration/engine-upgrade.md","source_sha256":"c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4"} -->
 
 Это руководство задаёт повторяемую процедуру обновления Engine в игровом
 репозитории. Она охватывает интеграцию исходников, сгенерированные контракты,
@@ -203,7 +203,7 @@ deployment, readiness, graceful stop и rollback по
 
 - Engine unit tests для изменённых native domains;
 - configure и compile каждым поддерживаемым host compiler;
-- `CompileAngelScript`;
+- `CompileAngelScript` и/или `CompileManagedScripts` для каждого включённого проектом scripting backend;
 - `ForceBakeResources` при изменении data graph;
 - focused content/gameplay tests;
 - starter/tutorial smoke при изменении integration mechanics;

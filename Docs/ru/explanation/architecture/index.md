@@ -6,7 +6,7 @@ document_id: engine-architecture
 permalink: /Docs/ru/explanation/architecture/
 ---
 
-<!-- docs-translation: {"document_id":"engine-architecture","locale":"ru","source_path":"Docs/en/explanation/architecture/index.md","source_sha256":"daaf491a9bbb5a3ede51109a72fb2ba0519bb8117b6a35280a9fa24233610bd0"} -->
+<!-- docs-translation: {"document_id":"engine-architecture","locale":"ru","source_path":"Docs/en/explanation/architecture/index.md","source_sha256":"9d5ce442feb8d6309265dc18acc95f8fdf52b77fbb4ad2ae3227ed5437a52f2d"} -->
 
 # Архитектура движка
 
@@ -56,7 +56,7 @@ FOnline состоит из переиспользуемого движка, в�
 - **Client runtime** - presentation/resource/network-client сторона в `Source/Client/`.
 - **Server runtime** - authoritative world, managers, database backends, network-server сторона и updater backend в `Source/Server/`.
 - **Frontend** - абстракция application/window/rendering в `Source/Frontend/`.
-- **Scripting** - AngelScript, Native, Mono и регистрация script methods в `Source/Scripting/`.
+- **Scripting** - реализованные backend AngelScript и Managed C#, зарезервированный placeholder Native и регистрация script methods в `Source/Scripting/`.
 - **Tools** - baker, редактирование вокруг Mapper, asset processors и связанный developer tooling в `Source/Tools/`.
 - **BuildTools** - CMake stages, helpers, toolchains, генерация platform projects, package layout и поддержка валидации в `BuildTools/`.
 
@@ -131,7 +131,7 @@ FOnline состоит из переиспользуемого движка, в�
 
 - [Сборка, упаковка и отладка в браузере](../../how-to/platforms/web-debugging.md)
 - [Сборка, упаковка и отладка на Android](../../how-to/platforms/android-debugging.md)
-- [Нативная отладка и отладка AngelScript](../../troubleshooting/debugging.md)
+- [Нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md)
 
 ## Слой scripting
 
@@ -139,7 +139,7 @@ FOnline состоит из переиспользуемого движка, в�
 
 - `Source/Scripting/AngelScript/`
 - `Source/Scripting/Native/`
-- `Source/Scripting/Mono/`
+- `Source/Scripting/Managed/` — реализованный backend Managed C#, bridge CoreScripts, analyzers, load-context host и tests
 - `Source/Scripting/*ScriptMethods.cpp`
 
 Движок владеет переиспользуемым script/native bridge. Игровой проект владеет конкретными game script modules и gameplay logic.

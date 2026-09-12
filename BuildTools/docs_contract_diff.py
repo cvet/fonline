@@ -20,7 +20,6 @@ import docs_cli
 import docs_cmake
 import docs_effect_format
 import docs_font_format
-import docs_gui_runtime
 import docs_helper_cli
 import docs_image_format
 import docs_map_format
@@ -51,7 +50,6 @@ DOMAIN_ORDER = (
     "font-format",
     "audio",
     "video",
-    "gui-runtime",
     "ai-control-protocol",
 )
 DEFAULT_CURRENT_DIR = "Docs/generated"
@@ -76,7 +74,6 @@ MODEL_FILES = {
     "font-format": Path(docs_font_format.DEFAULT_MODEL).name,
     "audio": Path(docs_audio.DEFAULT_MODEL).name,
     "video": Path(docs_video.DEFAULT_MODEL).name,
-    "gui-runtime": Path(docs_gui_runtime.DEFAULT_MODEL).name,
     "ai-control-protocol": Path(docs_ai_control_protocol.DEFAULT_MODEL).name,
 }
 EXPECTED_SCHEMAS = {
@@ -96,7 +93,6 @@ EXPECTED_SCHEMAS = {
     "font-format": docs_font_format.SCHEMA_VERSION,
     "audio": docs_audio.SCHEMA_VERSION,
     "video": docs_video.SCHEMA_VERSION,
-    "gui-runtime": docs_gui_runtime.SCHEMA_VERSION,
     "ai-control-protocol": docs_ai_control_protocol.SCHEMA_VERSION,
 }
 SOURCE_IDENTITY_FIELDS = {
@@ -129,7 +125,6 @@ SOURCE_IDENTITY_FIELDS = {
     "font-format": ("source_manifest",),
     "audio": ("source_manifest",),
     "video": ("source_manifest",),
-    "gui-runtime": ("source_manifest",),
     "ai-control-protocol": ("source_manifest",),
 }
 LEGACY_OPTIONAL_SOURCE_IDENTITY_FIELDS = {
@@ -165,7 +160,6 @@ ENTRY_ID_PATTERN = {
     "font-format": re.compile(r"^font-format\."),
     "audio": re.compile(r"^audio\."),
     "video": re.compile(r"^video\."),
-    "gui-runtime": re.compile(r"^gui-runtime\."),
     "ai-control-protocol": re.compile(r"^ai-control-protocol\."),
 }
 
@@ -400,21 +394,6 @@ def _flatten_entries(domain: str, model: dict[str, Any]) -> list[dict[str, Any]]
                 _require_array(model.get(collection), f"video.{collection}")
             ):
                 append_entry(entry, f"video.{collection}[{index}]")
-    elif domain == "gui-runtime":
-        for collection in (
-            "types",
-            "screen_api",
-            "annotations",
-            "lifecycle_rules",
-            "layout_rules",
-            "input_rules",
-            "integration_rules",
-            "validation_rules",
-        ):
-            for index, entry in enumerate(
-                _require_array(model.get(collection), f"gui-runtime.{collection}")
-            ):
-                append_entry(entry, f"gui-runtime.{collection}[{index}]")
     elif domain == "ai-control-protocol":
         for collection in (
             "wire_rules",
@@ -584,10 +563,6 @@ def _model_metadata(domain: str, model: dict[str, Any]) -> dict[str, Any]:
             "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
         }
     if domain == "video":
-        return {
-            "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
-        }
-    if domain == "gui-runtime":
         return {
             "outputs": _strip_fields(model.get("outputs"), IGNORED_FIELDS | DOC_FIELDS)
         }

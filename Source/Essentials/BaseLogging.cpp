@@ -76,6 +76,7 @@ struct BaseLoggingData
 
     std::mutex LogLocker {};
     std::ofstream LogFileHandle {};
+    std::string LogFilePath {};
     std::atomic_bool AsyncEnabled {};
     std::mutex AsyncQueueMutex {};
     std::condition_variable AsyncSignal {};
@@ -104,7 +105,10 @@ extern void LogToFile(string_view path, bool append)
         std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
         BaseLogging->LogFileHandle.open(std::string(path), open_mode);
 
-        if (!BaseLogging->LogFileHandle) {
+        if (BaseLogging->LogFileHandle) {
+            BaseLogging->LogFilePath.assign(path);
+        }
+        else {
             open_failed = true;
         }
     }
@@ -112,6 +116,17 @@ extern void LogToFile(string_view path, bool append)
     if (open_failed) {
         WriteBaseLog(std::string("Can't create log file '").append(path).append("'\n"));
     }
+}
+
+extern auto GetLogFilePath() -> std::string
+{
+    if (BaseLogging == nullptr) {
+        return {};
+    }
+
+    std::scoped_lock locker {BaseLogging->LogLocker};
+
+    return BaseLogging->LogFilePath;
 }
 
 extern void SetAsyncLogWriting(bool enabled)

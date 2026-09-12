@@ -16,7 +16,7 @@ Use remote calls for one-way script messages between an authenticated client run
 
 1. one common `///@ RemoteCall` declaration;
 2. an outbound method generated on the sending side;
-3. a side-specific `[[ServerRemoteCall]]` or `[[ClientRemoteCall]]` handler;
+3. a side-specific AngelScript `[[ServerRemoteCall]]` / `[[ClientRemoteCall]]` or Managed C# `[ServerRemoteCall]` / `[ClientRemoteCall]` handler;
 4. baked metadata that gives both runtimes the same name, argument order, types, nullability, and source-file hint.
 
 Remote calls are not engine events, ordinary function calls, or request/response functions. They return `void`; a response is another explicitly declared remote call.
@@ -33,8 +33,14 @@ Remote calls are not engine events, ordinary function calls, or request/response
 - `Source/Server/Server.cpp`
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.cpp`
+- `Source/Scripting/Managed/ManagedScriptBackend.cpp`
+- `Source/Scripting/Managed/CoreScripts/RemoteCall.cs`
+- `Source/Scripting/Managed/CoreScripts/RemoteCallScriptFuncs.cs`
+- `Source/Tools/ManagedScriptBaker.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
+- `Source/Scripting/Managed/Tests/BootstrapScenarios.cs`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
 - `BuildTools/docs_metadata.py`
@@ -56,6 +62,18 @@ For a `Server` target, the receiving handler gets the calling `Player` as its fi
 `Player.ClientCall` targets that player's client. `Critter.PlayerClientCall` routes through the player associated with the critter. The caller object is part of routing; it is not serialized as a declared argument.
 
 The mapper side does not support remote calls. `[[AdminRemoteCall]]` belongs to the separate admin-command path and is not declared as `///@ RemoteCall Admin` or emitted in project remote-call catalogs.
+
+The transport contract is shared, while authoring syntax and current type coverage differ:
+
+| Concern | AngelScript | Managed C# |
+| --- | --- | --- |
+| Inbound marker | `[[ServerRemoteCall]]` / `[[ClientRemoteCall]]` | `[ServerRemoteCall]` / `[ClientRemoteCall]` |
+| Outbound call | generated `player.ServerCall.Name(...)`, `player.ClientCall.Name(...)`, or `cr.PlayerClientCall.Name(...)` | the same generated property and typed method names |
+| Handler lookup | declaration file stem selects the matching namespace | assembly discovery selects an attributed static method by call name; no file-stem namespace rule |
+| Handler return | `void`; `[[Async]]` uses AngelScript suspension | `void`, `Task`, or `Task<T>`; task completion/fault is observed and a `Task<T>` value is ignored because the wire call has no result |
+| Current collection coverage | arrays, dictionaries, and dictionaries of arrays supported by the AngelScript serializer | scalars and arrays only; dictionaries are rejected until the Managed bridge adds them |
+
+Both backends use the same baked `RemoteCallDesc`, native hostile-input validation, byte format, per-call limits, routing, and authority boundary. Backend parity means one network contract with explicitly documented capability differences, not two incompatible protocols.
 
 ## Declaration grammar
 
@@ -84,7 +102,7 @@ Rules enforced by `MetadataBaker` include:
 
 Names are registered in inbound and outbound maps and must be unique within each direction on a runtime side. Treat the call name, target, argument order, type, and nullability as one network contract.
 
-## File and namespace contract
+## AngelScript file and namespace contract
 
 The baker stores only the declaration source file name, such as `AccountUi.fos`, as the subsystem hint. The AngelScript binder removes the extension and resolves the receiving function in the matching namespace:
 
@@ -131,9 +149,48 @@ player.ServerCall.RequestRename("Ranger");
 player.ClientCall.RenameResult(true, "");
 ```
 
+## Managed C# binding contract
+
+Place the same declaration tag in a `.cs` source included by the Managed resource pack. The Managed baker emits a typed `RemoteCaller` method for every outbound metadata record and adds the appropriate `ServerCall`, `ClientCall`, or `PlayerClientCall` property to generated entity types. Inbound methods are discovered across the project assembly; they must be static, carry the receiving-side attribute, have the exact call name and arguments, and add the engine-supplied `Player` first on the server:
+
+```csharp
+namespace Game.Scripts;
+
+using System.Threading.Tasks;
+using FOnline;
+
+///@ RemoteCall Server RequestRename(string name) MaxBytes 256
+///@ RemoteCall Client RenameResult(bool accepted, string reason) MaxBytes 512
+
+public static class AccountUi
+{
+    [ServerRemoteCall]
+    public static async Task RequestRename(Player player, string name)
+    {
+        // Authorize, validate, and reacquire cover after every await.
+        await Game.YieldAsync(1);
+    }
+
+    [ClientRemoteCall]
+    public static void RenameResult(bool accepted, string reason)
+    {
+        // Update client presentation only.
+    }
+}
+```
+
+Send through the generated typed surface:
+
+```csharp
+player.ServerCall.RequestRename("Ranger");
+player.ClientCall.RenameResult(true, "");
+```
+
+`FOnline.RemoteCall.Send(...)` remains a low-level named entry point used by the generated surface and diagnostics; project gameplay should prefer the generated method so C# compilation checks the argument list. `RemoteCall.Loopback(...)` is diagnostic/test-only and does not prove a real peer, authentication, or transport path.
+
 ## Arguments and serialization
 
-The runtime serializer handles metadata-resolved primitives, integer-backed enums, `string`, `hstring`, registered reference types, fixed-layout structs, arrays, dictionaries, and dictionaries of arrays. A type being known to metadata is not by itself a complete transport test: bake both sides and exercise the call over the intended network path.
+The shared wire format handles metadata-resolved primitives, integer-backed enums, `string`, `hstring`, registered reference types, fixed-layout structs, arrays, dictionaries, and dictionaries of arrays. The AngelScript bridge covers that complete list. The current Managed bridge accepts scalar values and arrays, and accepts only dynamic managed ref types; it rejects dictionaries, dictionary-of-array shapes, and native-only ref wrappers. A type being known to metadata is therefore not by itself a complete backend or transport test: compile/bake both sides and exercise the call through every shipped scripting backend and intended network path.
 
 Use [Nullability.md](../../../Nullability.md) for the `T?` rules. The declaration is authoritative: the receiving handler must reproduce each argument's type and nullability exactly. Do not use nullable syntax to stand in for an optional field with domain-specific meaning; define that meaning explicitly in the protocol.
 
@@ -155,7 +212,7 @@ Do not accept a player or owner identifier from the payload as a substitute for 
 
 On the server, `ServerEngine::Process_RemoteCall()` rejects a negative or current-frame-exceeding payload size and resolves the declared call before allocating or copying its body. Unknown calls therefore cannot force body allocation. The effective byte ceiling is the smaller nonzero value of the call's `MaxBytes` and the server-wide `ServerNetwork.MaxRemoteCallPayloadSize` (default 1 MiB). The per-call value defines legitimate protocol shape; the global value remains a hostile-input safety ceiling.
 
-The server then runs `ValidateInboundRemoteCallData()` before acquiring the calling `Player` cover or invoking the handler. The validator walks the metadata shape, checks enum/hash/reference data, rejects negative or over-limit collection counts, proves minimum remaining bytes before iterating a collection, and requires complete payload consumption. The AngelScript decoder independently enforces the same collection ceiling before reserve or construction, including nested dictionary arrays. These transport checks do not replace domain validation. Log failures with enough call/caller context to diagnose them without logging secrets or full untrusted payloads.
+The server then runs `ValidateInboundRemoteCallData()` before acquiring the calling `Player` cover or invoking the handler. The validator walks the metadata shape, checks enum/hash/reference data, rejects negative or over-limit collection counts, proves minimum remaining bytes before iterating a collection, and requires complete payload consumption. The AngelScript decoder independently enforces the same collection ceiling before reserve or construction, including nested dictionary arrays. The Managed decoder uses the shared `RemoteCallWire` reader, repeats the payload and array ceiling checks before building a managed `List<T>`, requires complete consumption, and invokes the attributed handler inside the backend context. These transport checks do not replace domain validation. Log failures with enough call/caller context to diagnose them without logging secrets or full untrusted payloads.
 
 ## Baked metadata
 
@@ -165,7 +222,7 @@ The server then runs `ValidateInboundRemoteCallData()` before acquiring the call
 name, source-file hint, In|Out, type, nullable marker, argument name, ..., Limits, max-bytes, max-collection-size
 ```
 
-For a `Server` target, server metadata records `In` and client metadata records `Out`. For a `Client` target, those directions are reversed. Every record has the mandatory three-token `Limits` trailer, including `Limits 0 0` when the declaration omits both options; dynamic registration rejects the older trailer-less shape. Registration turns valid records into `RemoteCallDesc` entries, and the AngelScript runtime registers outbound caller methods and binds inbound handlers from them.
+For a `Server` target, server metadata records `In` and client metadata records `Out`. For a `Client` target, those directions are reversed. Every record has the mandatory three-token `Limits` trailer, including `Limits 0 0` when the declaration omits both options; dynamic registration rejects the older trailer-less shape. Registration turns valid records into `RemoteCallDesc` entries. AngelScript registers caller methods and binds the file/namespace handlers; the Managed baker generates typed caller methods and the Managed runtime binds attributed assembly methods by name.
 
 The baked format retains the source file name but not a repository-relative path or declaration line. Documentation generated from `.fometa` must therefore expose that field as a source hint, not fabricate full provenance.
 
@@ -208,8 +265,9 @@ Renaming a call, changing its target, reordering arguments, changing an argument
 
 ## Troubleshooting
 
-- `Remote call function not found`: check file stem versus namespace, side guards, handler name, and the exact argument signature.
-- Attribute validation failure: use `[[ServerRemoteCall]]` only for server inbound calls and `[[ClientRemoteCall]]` only for client inbound calls.
+- `Remote call function not found`: in AngelScript check file stem versus namespace, side guards, handler name, and exact signature; in Managed C# check that the source entered the target assembly and that a matching attributed static method was discovered.
+- Attribute validation failure: use only the receiving-side `[[ServerRemoteCall]]` / `[[ClientRemoteCall]]` or `[ServerRemoteCall]` / `[ClientRemoteCall]` marker.
+- Managed collection/ref-type rejection: reduce the declaration to scalars, arrays, and dynamic managed ref types, or keep that call on AngelScript until the Managed bridge supports the required shape.
 - Duplicate registration: call names collide within one inbound or outbound side; rename one contract.
 - Unpaired documentation record: server/client metadata came from different or incomplete bakes, or one file is stale.
 - Missing or mismatched limits record: rebake both targets with the same Engine/project revision; every record must end with `Limits <max-bytes> <max-collection-size>` and both sides must agree.
@@ -220,14 +278,14 @@ Renaming a call, changing its target, reordering arguments, changing an argument
 
 1. Keep each declaration common to the metadata inputs for both sides.
 2. Implement the exact inbound signature under the correct side and attribute.
-3. Run the project's normal resource bake; warning-free AngelScript compilation is required.
+3. Run the project's normal resource bake; require warning-free AngelScript compilation and/or a clean Managed C# compile plus analyzer pass for every backend the project enables.
 4. Generate and review the paired JSON/Markdown catalog from that bake.
 5. Run `BuildTools/docs_metadata.py --check` with the same inputs in CI.
 6. Exercise client-to-server authorization and server-to-client presentation through a real network or project integration test.
 7. Test rejected permissions, stale identifiers, malformed domain values, global/per-call payload limits, and outer plus nested collection limits.
 8. Give every incompatible call change an explicit release/compatibility disposition.
 
-The engine-owned [minimal project](../../../../Examples/MinimalProject/README.md) proves declaration parsing, both inbound handler bindings, paired baked metadata, stable catalog IDs, and server lifecycle startup. It does not replace a game's real multiplayer transport and authorization tests.
+The engine-owned AngelScript [minimal project](../../../../Examples/MinimalProject/README.md) proves declaration parsing, both inbound handler bindings, paired baked metadata, stable catalog IDs, and server lifecycle startup. `Test_ManagedScriptBaker` plus the Managed CoreScripts tests prove generated caller shape and managed handler registration/loopback. Neither replaces a game's real multiplayer transport and authorization tests.
 
 ## See also
 
