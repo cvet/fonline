@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 
 # Упаковка и выпуск
 
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"bfbaf16ce0e207d496cbf7a552cb84d32bd1a23ad4233a2418ec620ec2ac719a"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"5df2df02955005f4e965544844fccbe243a56f562bec992e75976b52a63898a4"} -->
 
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
@@ -252,16 +252,24 @@ evidence. Для Linux support и immutable example-release evidence необх�
 
 - `Raw` сохраняет staged portable directory.
 - `Zip` создаёт portable archive из этой directory.
-- `Wix` создаёт MSI и требует путь WiX/wixl, используемый
-  `BuildTools/msicreator`.
+- `Wix` создаёт per-user MSI. На Windows подготовьте закреплённый Engine
+  portable toolset WiX v3 командой `buildtools.py prepare-workspace wix`;
+  `package.py` ищет `FO_WIX_ROOT`, соседний workspace `wix3`, затем
+  `candle`/`light` в `PATH`. На POSIX packaging host требуется `wixl` версии
+  0.102 или новее.
 - `OGL` добавляет отдельно собранный OpenGL runtime variant.
 - `Lib` выбирает library form там, где target её поддерживает.
 - `POSTFIX` не даёт независимо собранным variants, например depot-specific
   client, конфликтовать.
 
-MSI не доказывает, что client подписан, доверен endpoint protection, совместим
-при upgrade или принят distribution channel. Проверяйте эти свойства на
-финальном emitted artifact.
+Сгенерированный MSI использует `InstallScope="perUser"`. Компоненты shortcuts
+Start Menu и Desktop получают отдельные key paths в `HKCU`, регистрация PATH
+остаётся per-user (`System="no"`), а сгенерированные directory components
+удаляются при uninstall. Поэтому одно описание installer собирается закреплённым
+WiX на Windows или `wixl` на Linux без machine-wide registration. MSI не
+доказывает, что client подписан, доверен endpoint protection, совместим при
+upgrade или принят distribution channel. Проверяйте эти свойства на финальном
+emitted artifact.
 
 ### Linux client или server
 
@@ -271,10 +279,15 @@ MSI не доказывает, что client подписан, доверен en
 - `TotalProfiling` и `OnDemandProfiling` добавляют отдельно скомпилированные
   profiling variants там, где они допустимы.
 
-Сохраняйте executable modes, если downstream publication system распаковывает
-и переупаковывает archive. Квалифицируйте фактический Linux distribution,
-runtime libraries, filesystem paths, process account, signals, logs и service
-manager игры.
+Packager назначает target executables логический mode `0755` независимо от
+packaging host и записывает эти modes в metadata ZIP и TAR. Для Raw или Root
+output также создаётся package-root handoff `.lf-package-modes.json`: versioned
+map нормализованных POSIX-relative payload paths в единственные допустимые
+логические modes `0644` и `0755`. Publisher, копирующий или переупаковывающий raw
+trees, обязан проверить и применить handoff, затем исключить его из публичного
+payload; unsafe, escaping, drive-qualified paths и paths с backslash
+отклоняются. Квалифицируйте фактический Linux distribution, runtime libraries,
+filesystem paths, process account, signals, logs и service manager игры.
 
 ### Payload Managed C#
 
@@ -362,13 +375,17 @@ clients прочитайте [Client Runtime Split and Updater](../../explanatio
 
 FOnline делает ZIP entries resource pack детерминированными: сортирует
 нормализованные paths и фиксирует timestamps и permissions ZIP. Embedded
-resource ZIP data использует то же правило. После создания resource pack
-`package.py` повторно открывает его, сравнивает точный entry list с planned
-inventory и полностью читает каждый entry через CRC-checking ZIP reader;
-embedded packs проверяются из in-memory bytes до patch binary. Это gate создания
-resource packs, но не доказательство целостности outer client/server ZIP,
-installer, delivery channel или installed filesystem. Parser package declarations
-и сгенерированный contract детерминированы и проверяются в CI.
+resource ZIP data использует то же правило. Внешние ZIP и TAR packages используют
+логические file modes target, а не modes filesystem host, поэтому Windows
+packaging host также создаёт исполняемые Linux targets. Raw package parts
+объединяют mode records в один package-root handoff `.lf-package-modes.json`, не
+теряя предыдущие parts. После создания resource pack `package.py` повторно
+открывает его, сравнивает точный entry list с planned inventory и полностью
+читает каждый entry через CRC-checking ZIP reader; embedded packs проверяются из
+in-memory bytes до patch binary. Это gates создания package, а не доказательство
+того, что installer, delivery channel, publication step или installed filesystem
+сохранили результат. Parser package declarations и сгенерированный contract
+детерминированы и проверяются в CI.
 
 Это не делает каждый полный release бит-в-бит воспроизводимым. Linked binaries,
 debug symbols, top-level archives, toolchains MSI/APK, signing timestamps,

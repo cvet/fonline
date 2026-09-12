@@ -195,12 +195,12 @@ green landed job and a reviewed external repository commit/tag.
 
 - `Raw` retains the staged portable directory.
 - `Zip` emits a portable archive from that directory.
-- `Wix` emits an MSI and requires the WiX/wixl path used by `BuildTools/msicreator`.
+- `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. POSIX package hosts require `wixl` 0.102 or newer.
 - `OGL` adds the separately built OpenGL runtime variant.
 - `Lib` selects the library form where the target supports it.
 - `POSTFIX` keeps independently built variants, such as a depot-specific client, from colliding.
 
-An MSI is not proof that the client is signed, trusted by endpoint protection, upgrade-compatible, or accepted by a distribution channel. Verify those properties on the final emitted artifact.
+The generated MSI uses `InstallScope="perUser"`. Its Start Menu and Desktop shortcut components use separate `HKCU` key paths, PATH registration is per-user (`System="no"`), and generated directory components carry uninstall cleanup. These choices make the same installer description buildable with pinned WiX on Windows or `wixl` on Linux without requiring machine-wide registration. An MSI is not proof that the client is signed, trusted by endpoint protection, upgrade-compatible, or accepted by a distribution channel. Verify those properties on the final emitted artifact.
 
 ### Linux client or server
 
@@ -209,7 +209,7 @@ An MSI is not proof that the client is signed, trusted by endpoint protection, u
 - `Daemon` includes the Linux daemon server variant.
 - `TotalProfiling` and `OnDemandProfiling` add separately compiled profiling variants where valid.
 
-Preserve executable modes when a downstream publication system unpacks and repacks an archive. Qualify the actual Linux distribution, runtime libraries, filesystem paths, process account, signals, logs, and service manager used by the game.
+The packager assigns logical `0755` modes to target executables independently of the packaging host and writes those modes into ZIP and TAR metadata. Raw or Root output also produces the package-root `.lf-package-modes.json` handoff: a versioned map of normalized POSIX-relative payload paths to the only accepted logical modes, `0644` and `0755`. A publisher that copies or repacks raw trees must validate and apply that handoff, then omit it from the public payload; unsafe, escaping, drive-qualified, or backslash paths are rejected. Qualify the actual Linux distribution, runtime libraries, filesystem paths, process account, signals, logs, and service manager used by the game.
 
 ### Managed C# payload
 
@@ -262,7 +262,7 @@ Keep those product and infrastructure details in the embedding project. [Release
 
 ## Reproducibility and provenance
 
-FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. After producing a resource pack, `package.py` reopens it, compares the exact entry list with the planned inventory, and streams every entry through the CRC-checking ZIP reader; embedded packs are validated from the in-memory bytes before binary patching. This is a package-construction gate for resource packs, not proof that the outer client/server ZIP, installer, delivery channel, or installed filesystem remained intact. The package declaration parser and generated contract are deterministic and checked in CI.
+FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. Outer ZIP and TAR packages use the target's logical file modes rather than the host filesystem's modes, so a Windows packaging host still emits executable Linux targets. Raw package parts merge their mode records into one package-root `.lf-package-modes.json` handoff instead of losing earlier parts. After producing a resource pack, `package.py` reopens it, compares the exact entry list with the planned inventory, and streams every entry through the CRC-checking ZIP reader; embedded packs are validated from the in-memory bytes before binary patching. These are package-construction gates, not proof that the installer, delivery channel, publication step, or installed filesystem preserved the result. The package declaration parser and generated contract are deterministic and checked in CI.
 
 That does not make every complete release bit-for-bit reproducible. Linked binaries, debug symbols, top-level archives, MSI/APK toolchains, signing timestamps, included files, and external SDKs may carry host- or time-dependent data. State the narrower guarantee you have actually tested.
 

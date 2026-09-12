@@ -1984,8 +1984,8 @@
             "packaging-and-release",
             "generated-package-payloads",
             "generated-package-matrix",
-            "client-updater",
-            "buildtools-readme"
+            "buildtools-readme",
+            "client-updater"
           ]
         },
         {

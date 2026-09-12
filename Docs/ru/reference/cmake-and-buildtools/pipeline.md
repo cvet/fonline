@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 
 # Конвейер BuildTools
 
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"5ea00d80346ffe74c20f421b7c5224fb041f93e1011b79f35659722b064aab23"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"8d4a8205c61efe7730b35f196533ef00399f01b2b09edb9489a92bf415af4183"} -->
 
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
@@ -251,18 +251,30 @@ toolset выбирается в `buildtools.py`, а явный postfix, напр
 PE.
 
 `package.py` владеет переиспользуемой раскладкой package payload и optional
-post-processing. Для Windows Client package с pack `Wix` он после staging Raw
-вызывает `msicreator/createmsi.py`: MSI получает временный marker `INSTALLED`,
+post-processing. Он записывает логические file modes target `0644`/`0755`
+независимо от host filesystem, напрямую передаёт их writers ZIP/TAR и объединяет
+records Raw/Root разных package parts в versioned package-root publication
+handoff `.lf-package-modes.json`. Paths manifest должны быть нормализованными
+POSIX-relative payload paths; absolute, drive-qualified, escaping paths и paths
+с backslash завершают проверку ошибкой. Publisher raw trees обязан применить
+handoff и исключить его из публичного payload.
+
+Для Windows Client package с pack `Wix` `package.py` после staging Raw вызывает
+`msicreator/createmsi.py`: MSI получает временный marker `INSTALLED`,
 используемый разрешением writable path установленного client, регистрирует
 deep-link URI scheme, создаёт Start Menu и Desktop shortcuts и icon в
 Add/Remove Programs и всегда показывает редактируемый диалог выбора
 installation directory. Оба поддерживаемых build hosts используют одно и то же
 inline-описание диалога, поэтому он не пропадает, когда production собирает
-через `wixl` на Linux. MSI обязателен при запросе `Wix`; отсутствие toolset
-(`wixl` 0.102 или новее на POSIX hosts, вместе с его bundled extension `ui`;
-WiX `candle`/`light` на Windows) или ошибка generator/build завершает packaging
+через `wixl` на Linux. MSI обязателен при запросе `Wix`. POSIX hosts требуют
+`wixl` 0.102 или новее вместе с bundled extension `ui`. Windows ищет
+`FO_WIX_ROOT`, подготовленный соседний directory `wix3`, затем `candle`/`light`
+в `PATH`; `buildtools.py prepare-workspace wix` загружает закреплённый
+`ThirdParty/wix` release WiX v3 в этот workspace с обычными mirror и SHA-256
+checks. Отсутствие toolset или ошибка generator/build завершает packaging
 ошибкой. В Debian/Ubuntu `wixl` поставляется отдельным apt package `wixl`, а не
-`msitools`. Installer values читаются из
+`msitools`; `common-packages` включает `php-cli` в общий runner contract.
+Installer values читаются из
 конфига встраивающего проекта, поэтому packager остаётся game-agnostic:
 
 - product/manufacturer/comments name берётся из `Common.GameName` с fallback к
@@ -276,7 +288,10 @@ WiX `candle`/`light` на Windows) или ошибка generator/build заве�
 - icon Add/Remove Programs берётся из optional `Packaging.AppIcon`;
 - имя install directory и MSI base name берутся из package nice name.
 
-Явный `INSTALLDIR`, переданный в `msiexec`, имеет высший приоритет. Иначе первая
+Product использует `InstallScope="perUser"`. Компоненты shortcuts Start Menu и
+Desktop имеют разные key paths в `HKCU`, регистрация PATH задаёт `System="no"`,
+а сгенерированные directory components включают cleanup при uninstall. Явный
+`INSTALLDIR`, переданный в `msiexec`, имеет высший приоритет. Иначе первая
 интерактивная установка предпочитает путь, запомненный предыдущим MSI, а затем
 per-user writable fallback `%LOCALAPPDATA%\<Common.GameName>`. Выбранный путь
 сохраняется в `HKCU\Software\<nice-name>\InstallLocation`, а экран выбора

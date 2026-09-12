@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"812c1ca9a7eff5db2e4a26c2b4c285fa2de62d6ad8530dde400e160313c2147b"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"4facb84c30e213d8bd67e2cd80fa7e5559c7c71267f4834f4ff8ef7bf77fe6d5"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -378,6 +378,7 @@ platform-specific scripts.
 - `android-ndk`
 - `dotnet`
 - `xwin`
+- `wix`
 - `msan-libcxx`
 
 Установка системных пакетов Linux является явной и отделена от подготовки
@@ -394,9 +395,10 @@ workspace:
 Workspace features `linux`, `web`, `android-arm64` и `windows-cross` не
 устанавливают apt packages. На чистом host сначала передайте соответствующий
 feature `*-packages`. `all-packages` устанавливает все группы выше, включая
-`msi-packages` с toolset MSI installer `wixl`. Поскольку apt существует только
-на host-provisioning path, ни одна часть `prepare-workspace` не устанавливает
-системные пакеты, а параллельные CI jobs не конкурируют за apt lock.
+`php-cli` и `msi-packages` с toolset MSI installer `wixl`. Поскольку apt
+существует только на host-provisioning path, ни одна часть `prepare-workspace`
+не устанавливает системные пакеты, а параллельные CI jobs не конкурируют за apt
+lock.
 
 Проверки host prerequisites также доступны через основной tool:
 
@@ -419,10 +421,18 @@ Host wrapper scripts делегируют unified-команде подгото�
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset
 python3 Engine/BuildTools/buildtools.py prepare-workspace emscripten
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
+python3 Engine/BuildTools/buildtools.py prepare-workspace wix
 python3 Engine/BuildTools/buildtools.py prepare-workspace msan-libcxx
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
+
+`wix` доступен только в Windows и подготавливает portable release WiX v3,
+закреплённый `Engine/ThirdParty/wix`, в `Workspace/wix3`. Downloads используют
+`FO_DOWNLOAD_MIRROR`, как и другие workspace archives, и до распаковки проходят
+проверку SHA-256. `package.py` находит этот directory относительно input output,
+поэтому global install и постоянное изменение `PATH` не требуются. POSIX package
+hosts продолжают использовать подготовленную команду `wixl`.
 
 `msan-libcxx` доступен только в Linux и намеренно исключён из feature workspace
 `all` по умолчанию, потому что загружает соответствующие исходники LLVM и
