@@ -134,8 +134,7 @@ auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cac
         throw ScriptSystemException("Staged Managed runtime cache validation failed", staged_root.string());
     }
 
-    // Another process may have completed the same content-addressed directory while this process was
-    // staging. Its byte-for-byte match wins without touching files that Mono may already have open.
+    // Prefer another process's byte-identical completed cache without touching files Mono may hold open
     if (IsSameManagedRuntimeCache(cache_root, runtime_resources)) {
         return cache_root;
     }

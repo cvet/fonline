@@ -197,7 +197,7 @@ def test_missing_win7_client_runtime_fails_the_server_package(tmp_path: Path) ->
 
 
 def test_all_platforms_require_managed_resources_but_only_native_self_updaters_require_modules(tmp_path: Path) -> None:
-    # Android/iOS/Web do not fetch native modules, but they still need a target-specific Scripts pack.
+    # Android/iOS/Web do not fetch native modules, but they still need a target-specific Scripts pack
     packager = make_server_expectation_packager(
         tmp_path, ["Android:arm64:", "iOS:arm64:", "Web:wasm:", "macOS:x64:"]
     )

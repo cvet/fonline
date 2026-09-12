@@ -5839,9 +5839,8 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             if (domain == nullptr) {
                 auto runtime_dir = resource_runtime_dir.has_value() ? resource_runtime_dir : FindManagedRuntimeDirectory();
 
-                // Continuing without CoreLib only defers the failure into Mono, which aborts on a bare
-                // `corlib' assertion. Packaged applications restore it from resources; build tools and
-                // unpackaged applications retain the side-by-side fallback.
+                // Fail before Mono turns missing CoreLib into an opaque `corlib' assertion; unpackaged
+                // applications retain the side-by-side fallback
                 FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", std::filesystem::current_path().string(), Platform::GetExePath().value_or(""));
 
                 ConfigureManagedRuntime(*runtime_dir);

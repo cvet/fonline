@@ -29,7 +29,7 @@ TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'Par
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 # Mirrors CanSelfUpdateNativeModules() in Source/Client/Updater.cpp: only these clients fetch native
 # modules from the server. Every platform still receives its target-specific managed class libraries
-# as an ordinary resource pack; this list controls only native client modules.
+# as an ordinary resource pack; this list controls only native client modules
 SELF_UPDATING_CLIENT_PLATFORMS = ('Windows', 'Linux', 'macOS')
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
