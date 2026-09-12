@@ -24,6 +24,8 @@ Read this page together with:
 - `Source/Client/ResourceManager.cpp`
 - `Source/Client/FontManager.h`
 - `Source/Client/FontManager.cpp`
+- `Source/Client/AudioManager.h`
+- `Source/Client/AudioManager.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
@@ -297,7 +299,22 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
-- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes sound-name mappings.
+- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, and handles Fallout-style animation frame mapping.
+- `AudioManager` indexes the sound resources named by `Audio.SoundFileExtensions`, decodes Ogg Vorbis, and mixes playing sounds into the audio device stream. `PlaySound(path)` plays flat; `PlaySound(path, attenuation, pan)` places the sound. `GetSoundNames()` reports the indexed resource paths, exported as `Game.GetSoundNames()`.
+
+### Positional audio
+
+The engine mixes, it does not decide. How far a sound carries, how its volume falls with distance and how hard it leans across the stereo image are game rules, so the caller computes both numbers and the engine applies them. An embedding project owns the curve, its radii and the listener it measures from.
+
+Naming is the caller's too. `PlaySound` takes a resource path the caller has already resolved and reads it; it does not lower-case, strip an extension or expand a convention such as a run of numbered variants. The engine reports what it indexed through `GetSoundNames()` and a project maps its own names onto that list, so two games can spell the same library differently without touching the mixer.
+
+- **Attenuation** scales the mixed volume. Zero is the caller's way of saying "out of earshot": `PlaySound` returns before the file is read, so a distant event costs no decode.
+- **Pan** runs from -1 at the left ear to 1 at the right one. The audio stream is opened with the engine's own format rather than the device's, so everything above the device mixes in one known layout — S16 stereo at `Audio.MixRate` — and SDL converts on output. Panning is therefore a scan over the mixed buffer with no format dispatch and no allocation, and it works whatever the source was authored as. The law is a balance rather than constant power: the near channel passes through untouched and the far one fades, because lifting the near channel above unity would clip a loud sample, which is a worse artefact than the lost three decibels. `ApplyPan` is pinned by `Test_AudioManager.cpp`.
+
+Both are fixed when the sound starts, which is right for the one-shot effects that make up a sound library and is the documented limit for a looping one.
+
+The engine is deliberately stereo. Surround would answer "in front of or behind me" for a listener standing inside the scene; a project whose camera looks down from above and never rotates makes the player an observer instead, so a sound lower on the screen is not behind them, it is somewhere they are looking straight at.
+
 - `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
 - `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
   image/animation resources, including the optional per-frame silhouette mesh

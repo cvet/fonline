@@ -45,7 +45,6 @@ struct Application::Context
 int32_t AppRender::MAX_ATLAS_WIDTH {8192};
 int32_t AppRender::MAX_ATLAS_HEIGHT {8192};
 int32_t AppRender::MAX_BONES {32};
-const int32_t AppAudio::AUDIO_FORMAT_U8 = 0;
 const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :

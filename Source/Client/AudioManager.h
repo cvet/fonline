@@ -42,29 +42,35 @@ FO_BEGIN_NAMESPACE
 
 class IAppAudio;
 
-class SoundManager final
+class AudioManager final
 {
 public:
-    SoundManager() = delete;
-    SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio);
-    SoundManager(const SoundManager&) = delete;
-    SoundManager(SoundManager&&) noexcept = delete;
-    auto operator=(const SoundManager&) = delete;
-    auto operator=(SoundManager&&) noexcept = delete;
-    ~SoundManager();
+    AudioManager() = delete;
+    AudioManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio);
+    AudioManager(const AudioManager&) = delete;
+    AudioManager(AudioManager&&) noexcept = delete;
+    auto operator=(const AudioManager&) = delete;
+    auto operator=(AudioManager&&) noexcept = delete;
+    ~AudioManager();
 
-    auto PlaySound(const map<string, string>& sound_names, string_view name) -> bool;
+    void IndexFiles();
+    // The resource paths of every indexed sound, for a caller that resolves its own naming conventions
+    [[nodiscard]] auto GetSoundNames() const noexcept -> const_span<string> { return _soundNames; }
+    auto PlaySound(string_view name) -> bool;
+    // Attenuation scales the mixed volume, pan runs from -1 at the left ear to 1 at the right one; how far a
+    // sound carries and how hard it leans is game policy, so the caller decides both
+    auto PlaySound(string_view name, float32_t attenuation, float32_t pan) -> bool;
     auto PlayMusic(string_view fname, timespan repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
 
+    // Leans an interleaved S16 stereo buffer to one side, in place
+    static void ApplyPan(vector<uint8_t>& buf, float32_t pan);
+
 private:
     struct Sound;
 
-    auto Load(string_view fname, bool is_music, timespan repeat_time) -> bool;
-    auto LoadWav(ptr<Sound> sound, string_view fname) -> bool;
-    auto LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -> bool;
-    auto LoadOgg(ptr<Sound> sound, string_view fname) -> bool;
+    auto Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> bool;
     void ProcessSounds(uint8_t silence, span<uint8_t> output);
     auto ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool;
     auto StreamOgg(ptr<Sound> sound) -> bool;
@@ -75,9 +81,9 @@ private:
     ptr<IAppAudio> _audio;
     bool _isActive {};
     int32_t _streamingPortion {};
+    vector<string> _soundNames {};
     vector<unique_ptr<Sound>> _playingSounds;
     vector<uint8_t> _outputBuf {};
-    random_generator _randomGenerator {};
 };
 
 FO_END_NAMESPACE

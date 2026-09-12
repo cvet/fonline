@@ -31,25 +31,27 @@
 // SOFTWARE.
 //
 
-#include "SoundManager.h"
+#include "AudioManager.h"
 #include "Application.h"
 #include "FileSystem.h"
 
-#include "acmstrm.h"
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
 FO_BEGIN_NAMESPACE
 
-struct SoundManager::Sound
+struct AudioManager::Sound
 {
     vector<uint8_t> BaseBuf {};
     size_t BaseBufLen {};
     vector<uint8_t> ConvertedBuf {};
     size_t ConvertedBufCur {};
-    int32_t OriginalFormat {};
     int32_t OriginalChannels {};
     int32_t OriginalRate {};
+    // Fixed for the life of the sound: a one-shot effect ends long before the listener moves far enough
+    // for a recomputation to be audible, and the pan is baked into the converted stereo buffer anyway
+    float32_t Attenuation {1.0f};
+    float32_t Pan {};
     bool IsMusic {};
     nanotime NextPlayTime {};
     timespan RepeatTime {};
@@ -62,12 +64,7 @@ struct OggFileContext
     FileReader Reader;
 };
 
-static constexpr auto MakeUInt(uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch3) -> uint32_t
-{
-    return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
-}
-
-SoundManager::SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio) :
+AudioManager::AudioManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio) :
     _settings {settings},
     _resources {resources},
     _audio {audio}
@@ -96,7 +93,7 @@ SoundManager::SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resource
     _isActive = true;
 }
 
-SoundManager::~SoundManager()
+AudioManager::~AudioManager()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -109,7 +106,7 @@ SoundManager::~SoundManager()
     }
 }
 
-void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
+void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -123,7 +120,8 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
 
         if (ProcessSound(sound, silence, mix_buffer)) {
             int32_t volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
-            _audio->MixAudio(output, mix_buffer, numeric_cast<int32_t>(volume));
+            volume = numeric_cast<int32_t>(std::lround(numeric_cast<float32_t>(volume) * sound->Attenuation));
+            _audio->MixAudio(output, mix_buffer, volume);
             ++it;
         }
         else {
@@ -132,7 +130,7 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
     }
 }
 
-auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool
+auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -225,201 +223,21 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     return false;
 }
 
-auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) -> bool
+auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    string fixed_fname = string(fname);
-    string ext = strex(fname).get_file_extension();
-
-    // Default ext
-    if (ext.empty()) {
-        ext = "acm";
-        fixed_fname += "." + ext;
-    }
-
-    auto sound = SafeAlloc::MakeUnique<Sound>();
-
-    if (ext == "wav" && !LoadWav(sound, fixed_fname)) {
-        return false;
-    }
-    if (ext == "acm" && !LoadAcm(sound, fixed_fname, is_music)) {
-        return false;
-    }
-    if (ext == "ogg" && !LoadOgg(sound, fixed_fname)) {
-        return false;
-    }
-
-    sound->IsMusic = is_music;
-    sound->RepeatTime = repeat_time;
-
-    _audio->LockDevice();
-    _playingSounds.emplace_back(std::move(sound));
-    _audio->UnlockDevice();
-
-    return true;
-}
-
-auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
+    // Every audio resource is baked to Ogg Vorbis, so the authored extension names the source format only
     auto file = _resources->ReadFile(fname);
 
     if (!file) {
         return false;
     }
 
-    auto reader = file.GetReader();
-
-    uint32_t dw_buf = reader.GetLEUInt32();
-
-    if (dw_buf != MakeUInt('R', 'I', 'F', 'F')) {
-        WriteLog("'RIFF' not found");
-        return false;
-    }
-
-    reader.GoForward(4);
-
-    dw_buf = reader.GetLEUInt32();
-
-    if (dw_buf != MakeUInt('W', 'A', 'V', 'E')) {
-        WriteLog("'WAVE' not found");
-        return false;
-    }
-
-    dw_buf = reader.GetLEUInt32();
-
-    if (dw_buf != MakeUInt('f', 'm', 't', ' ')) {
-        WriteLog("'fmt ' not found");
-        return false;
-    }
-
-    dw_buf = reader.GetLEUInt32();
-
-    if (dw_buf == 0) {
-        WriteLog("Unknown format");
-        return false;
-    }
-
-    struct WaveFormatEx
-    {
-        uint16_t WFormatTag; // Integer identifier of the format
-        uint16_t NChannels; // Number of audio channels
-        uint32_t NSamplesPerSec; // Audio sample rate
-        uint32_t NAvgBytesPerSec; // Bytes per second (possibly approximate)
-        uint16_t NBlockAlign; // Size in bytes of a sample block (all channels)
-        uint16_t WBitsPerSample; // Size in bits of a single per-channel sample
-        uint16_t CbSize; // Bytes of extra data appended to this struct
-    } waveformatex {};
-
-    constexpr size_t wave_format_base_size = 16;
-
-    if (dw_buf < wave_format_base_size) {
-        WriteLog("Unknown format");
-        return false;
-    }
-
-    span<uint8_t> wave_format_bytes = span<uint8_t> {make_ptr(&waveformatex).reinterpret_as<uint8_t>().get(), sizeof(WaveFormatEx)}.first(wave_format_base_size);
-    reader.ReadBytes(wave_format_bytes);
-
-    if (waveformatex.WFormatTag != 1) {
-        WriteLog("Compressed files not supported");
-        return false;
-    }
-
-    reader.GoForward(numeric_cast<size_t>(dw_buf) - wave_format_base_size);
-
-    dw_buf = reader.GetLEUInt32();
-
-    if (dw_buf == MakeUInt('f', 'a', 'c', 't')) {
-        dw_buf = reader.GetLEUInt32();
-        reader.GoForward(dw_buf);
-        dw_buf = reader.GetLEUInt32();
-    }
-
-    if (dw_buf != MakeUInt('d', 'a', 't', 'a')) {
-        WriteLog("Unknown format2");
-        return false;
-    }
-
-    dw_buf = reader.GetLEUInt32();
-    sound->BaseBuf.resize(dw_buf);
-    sound->BaseBufLen = dw_buf;
-
-    // Check format
-    sound->OriginalChannels = numeric_cast<int32_t>(waveformatex.NChannels);
-    sound->OriginalRate = numeric_cast<int32_t>(waveformatex.NSamplesPerSec);
-
-    switch (waveformatex.WBitsPerSample) {
-    case 8:
-        sound->OriginalFormat = AppAudio::AUDIO_FORMAT_U8;
-        break;
-    case 16:
-        sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
-        break;
-    default:
-        WriteLog("Unknown format");
-        return false;
-    }
-
-    // Convert
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBufLen};
-    reader.ReadBytes(base_buf);
-
-    return ConvertData(sound);
-}
-
-auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto file = _resources->ReadFile(fname);
-
-    if (!file) {
-        return false;
-    }
-
-    vector<uint8_t> acm_data = file.GetData();
-
-    int32_t channels = 0;
-    int32_t freq = 0;
-    int32_t samples = 0;
-    auto acm_data_ptr = make_nptr(acm_data.data());
-    FO_VERIFY_AND_THROW(acm_data.empty() || acm_data_ptr, "Non-empty ACM data has a null pointer");
-    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
-    int32_t buf_size = samples * 2;
-
-    sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
-    sound->OriginalChannels = is_music ? 2 : 1;
-    sound->OriginalRate = 22050;
-    sound->BaseBuf.resize(buf_size);
-    sound->BaseBufLen = sound->BaseBuf.size();
-
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
-    FO_STRONG_ASSERT(!base_buf.empty(), "Sound data is empty");
-    FO_STRONG_ASSERT(base_buf.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
-    auto base_buf_bytes = make_nptr(base_buf.data());
-    auto buf = base_buf_bytes.reinterpret_as<uint16_t>();
-    int32_t dec_data = acm->readAndDecompress(buf.get(), buf_size);
-
-    if (dec_data != buf_size) {
-        WriteLog("Decode Acm error");
-        return false;
-    }
-
-    return ConvertData(sound);
-}
-
-auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto file = _resources->ReadFile(fname);
-
-    if (!file) {
-        return false;
-    }
+    auto sound_owner = SafeAlloc::MakeUnique<Sound>();
+    auto sound = sound_owner.as_ptr();
+    sound->Attenuation = attenuation;
+    sound->Pan = pan;
 
     ov_callbacks callbacks;
 
@@ -521,7 +339,6 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     auto vi = make_nptr(ov_info(ogg_stream.get(), -1));
     FO_VERIFY_AND_THROW(vi, "Vorbis info is null");
 
-    sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;
     sound->OriginalRate = numeric_cast<int32_t>(vi->rate);
     sound->BaseBuf.resize(_streamingPortion);
@@ -558,10 +375,21 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
         sound->OggStream.reset();
     }
 
-    return ConvertData(sound);
+    if (!ConvertData(sound)) {
+        return false;
+    }
+
+    sound->IsMusic = is_music;
+    sound->RepeatTime = repeat_time;
+
+    _audio->LockDevice();
+    _playingSounds.emplace_back(std::move(sound_owner));
+    _audio->UnlockDevice();
+
+    return true;
 }
 
-auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
+auto AudioManager::StreamOgg(ptr<Sound> sound) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -597,15 +425,20 @@ auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
     return ConvertData(sound);
 }
 
-auto SoundManager::ConvertData(ptr<Sound> sound) -> bool
+auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 
-    if (!_audio->ConvertAudio(sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
+    if (!_audio->ConvertAudio(AppAudio::AUDIO_FORMAT_S16, sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
         return false;
+    }
+
+    // Safe after conversion because the mixing format is the engine's own S16 stereo, whatever the device runs
+    if (sound->Pan != 0.0f) {
+        ApplyPan(sound->ConvertedBuf, sound->Pan);
     }
 
     sound->ConvertedBufCur = 0;
@@ -613,7 +446,48 @@ auto SoundManager::ConvertData(ptr<Sound> sound) -> bool
     return true;
 }
 
-auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view name) -> bool
+void AudioManager::ApplyPan(vector<uint8_t>& buf, float32_t pan)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A stream can decode to nothing, and an empty buffer has no data pointer to walk
+    if (buf.empty()) {
+        return;
+    }
+
+    // A balance rather than constant power: lifting the near channel above unity would clip a loud sample,
+    // which is a worse artefact than the three decibels this gives up at full deflection
+    float32_t left_gain = pan > 0.0f ? 1.0f - pan : 1.0f;
+    float32_t right_gain = pan < 0.0f ? 1.0f + pan : 1.0f;
+
+    size_t frame_count = buf.size() / (sizeof(int16_t) * 2);
+    auto samples = make_ptr(buf.data()).reinterpret_as<int16_t>();
+
+    for (size_t i = 0; i < frame_count; i++) {
+        *samples.offset(i * 2) = numeric_cast<int16_t>(std::lround(numeric_cast<float32_t>(*samples.offset(i * 2)) * left_gain));
+        *samples.offset(i * 2 + 1) = numeric_cast<int16_t>(std::lround(numeric_cast<float32_t>(*samples.offset(i * 2 + 1)) * right_gain));
+    }
+}
+
+void AudioManager::IndexFiles()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const string& sound_ext : _settings->SoundFileExtensions) {
+        for (const auto& file_header : _resources->FilterFiles(sound_ext)) {
+            _soundNames.emplace_back(file_header.GetPath());
+        }
+    }
+}
+
+auto AudioManager::PlaySound(string_view name) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return PlaySound(name, 1.0f, 0.0f);
+}
+
+auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t pan) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -621,32 +495,17 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view
         return true;
     }
 
-    // Make 'NAME'
-    string sound_name = strex(name).erase_file_extension().lower();
-
-    // Find base
-    auto it = sound_names.find(sound_name);
-
-    if (it != sound_names.end()) {
-        return Load(it->second, false, timespan::zero);
+    // Out of earshot: return before the read so a distant event costs neither a file read nor a decode
+    if (attenuation <= 0.0f) {
+        return true;
     }
 
-    // Check random pattern 'NAME_X'
-    int32_t count = 0;
-
-    while (sound_names.find(strex("{}_{}", sound_name, count + 1).str()) != sound_names.end()) {
-        count++;
-    }
-
-    if (count != 0u) {
-        int32_t random_index = _randomGenerator.next_between(1, count);
-        return Load(sound_names.find(strex("{}_{}", sound_name, random_index).str())->second, false, timespan::zero);
-    }
-
-    return false;
+    // The name is a resource path the caller already resolved: which file a game concept maps to, and how a
+    // set of numbered variants is picked among, is naming convention rather than mixing
+    return Load(name, false, timespan::zero, attenuation, pan);
 }
 
-auto SoundManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
+auto AudioManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -656,10 +515,10 @@ auto SoundManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 
     StopMusic();
 
-    return Load(fname, true, repeat_time);
+    return Load(fname, true, repeat_time, 1.0f, 0.0f);
 }
 
-void SoundManager::StopSounds()
+void AudioManager::StopSounds()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -672,7 +531,7 @@ void SoundManager::StopSounds()
     _audio->UnlockDevice();
 }
 
-void SoundManager::StopMusic()
+void AudioManager::StopMusic()
 {
     FO_STACK_TRACE_ENTRY();
 
