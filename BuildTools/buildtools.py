@@ -1454,7 +1454,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
 	if os.name == 'nt':
-		command = ['cmd', '/d', '/s', '/c', str(emsdk_root / 'emsdk.bat'), *args]
+		command = [sys.executable, emsdk_root / 'emsdk.py', *args]
 		run(command, cwd=emsdk_root)
 	else:
 		run([emsdk_root / 'emsdk', *args], cwd=emsdk_root)

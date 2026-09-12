@@ -176,6 +176,8 @@ Host wrapper scripts now delegate to the unified workspace preparation command:
 - `buildtools.py prepare-host-workspace macos ...`
 
 Emscripten version is pinned by `Engine/ThirdParty/emscripten` and installed into `Workspace/emsdk`.
+On Windows, BuildTools runs `emsdk.py` with its own `sys.executable`; a different legacy `python` earlier
+on `PATH` must not decide whether the pinned SDK can be prepared.
 
 Examples:
 
