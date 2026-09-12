@@ -43,25 +43,6 @@ FO_BEGIN_NAMESPACE
 
 extern void ClientInitHook(ptr<ClientEngine>);
 
-auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<string> pack_dirs {settings.Packaged ? settings.ClientResources : settings.BakeOutput};
-
-    // Downloaded packs land under the writable root, so for an installed client they are the current ones
-    // and must win over the install-dir copies
-    if (settings.Packaged && !settings.UserWritablePath.empty()) {
-        string writable_dir = fs_make_writable_path(settings.UserWritablePath, settings.ClientResources);
-
-        if (writable_dir != pack_dirs.front()) {
-            pack_dirs.emplace_back(std::move(writable_dir));
-        }
-    }
-
-    return pack_dirs;
-}
-
 auto GetClientResourceIndexPath(const ClientSettings& settings) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -82,12 +63,12 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     vector<string> indexed_packs = GetResourceIndexPackNames(settings.ClientResourceEntries);
     bool index_mounted = false;
 
-    // Embedded keeps its configured position; writable mounts still override the entire installed layer
-    if (settings.Packaged && !indexed_packs.empty() && IsResourceIndexCurrent(index_path, {pack_dirs.front()}, indexed_packs)) {
+    // Embedded keeps its configured position
+    if (settings.Packaged && !indexed_packs.empty() && IsResourceIndexCurrent(index_path, pack_dirs, indexed_packs)) {
         unique_nptr<ResourceIndexSource> index;
 
         try {
-            index = SafeAlloc::MakeUnique<ResourceIndexSource>(index_path, vector<string> {pack_dirs.front()});
+            index = SafeAlloc::MakeUnique<ResourceIndexSource>(index_path, pack_dirs);
         }
         catch (const std::exception& ex) {
             WriteLog("Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
@@ -98,7 +79,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
             size_t prefix_size = settings.ClientResourceEntries.size() - indexed_packs.size();
 
             for (size_t i = 0; i < prefix_size; ++i) {
-                resources.AddPackSource(pack_dirs.front(), settings.ClientResourceEntries[i]);
+                AddClientPackSource(resources, settings, settings.ClientResourceEntries[i]);
             }
 
             resources.AddCustomSource(index.take_not_null());
@@ -107,12 +88,8 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     }
 
     if (!index_mounted) {
-        resources.AddPacksSource(pack_dirs.front(), settings.ClientResourceEntries);
-    }
-
-    for (size_t i = 1; i < pack_dirs.size(); ++i) {
         for (const string& pack : settings.ClientResourceEntries) {
-            resources.AddPackSource(pack_dirs[i], pack, true);
+            AddClientPackSource(resources, settings, pack);
         }
     }
 

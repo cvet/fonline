@@ -78,11 +78,14 @@ namespace posix
     auto write_file_chunk(int32_t fd, ptr<const char> data, size_t size) noexcept -> int64_t;
     auto truncate_file(int32_t fd) noexcept -> bool;
     auto sync_file(int32_t fd) noexcept -> bool;
+    auto sync_directory(const string& path) noexcept -> bool;
+    auto lock_directory(const string& path) noexcept -> int32_t;
 
     // A pack file opened for shared positional reading: the offset travels with each call, so a reader never
     // depends on a shared file cursor
     auto open_shared_read_file(const string& path) noexcept -> int32_t;
-    auto open_new_write_file(const string& path) noexcept -> int32_t;
+    auto open_new_write_file(const string& path, bool append = false) noexcept -> int32_t;
+    auto resize_file(int32_t fd, uint64_t size) noexcept -> bool;
     void close_file(int32_t fd) noexcept;
     auto get_file_size(int32_t fd) noexcept -> int64_t;
     auto read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t;

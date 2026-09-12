@@ -41,13 +41,17 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourcePackException);
 
+constexpr string_view REPLACED_FILE_BACKUP_SUFFIX = "-backup";
+
 // The engine resource pack format: a header, the payload blobs and the index over them in one file, carried
 // by a `.fores` file. Full contract: Docs/ResourcePackFormat.md
 constexpr uint32_t RESOURCE_PACK_MAGIC = 0x53524F46; // "FORS"
-constexpr uint16_t RESOURCE_PACK_VERSION_MAJOR = 1;
+constexpr uint16_t RESOURCE_PACK_VERSION_MAJOR = 2;
 constexpr uint16_t RESOURCE_PACK_VERSION_MINOR = 0;
-constexpr size_t RESOURCE_PACK_HEADER_SIZE = 72;
-constexpr size_t RESOURCE_PACK_ENTRY_SIZE = 40;
+constexpr size_t RESOURCE_PACK_HEADER_SIZE = 80;
+constexpr size_t RESOURCE_PACK_ENTRY_SIZE = 48;
+constexpr size_t RESOURCE_PATCH_HEADER_SIZE = 32;
+constexpr size_t RESOURCE_PATCH_FOOTER_SIZE = 80;
 // Below this a deflate stream's own header costs more than the stream can save, so nothing smaller is tried
 constexpr size_t RESOURCE_PACK_MIN_COMPRESSED_SIZE = 64;
 
@@ -78,6 +82,7 @@ enum class ResourcePackCodec : uint32_t
 struct ResourcePackHeader
 {
     uint64_t PackHash {}; // Over [RESOURCE_PACK_HEADER_SIZE, end of file): the identity the updater compares
+    uint64_t ContentHash {};
     uint64_t IndexOffset {};
     uint64_t IndexStoredSize {};
     uint64_t IndexDecodedSize {};
@@ -104,7 +109,34 @@ struct ResourcePackEntryRef
     uint64_t StoredSize {};
     uint64_t DecodedSize {};
     uint32_t Codec {};
+    uint32_t Source {};
+    uint64_t FileContentHash {};
 };
+
+struct ResourcePatchInfo
+{
+    uint64_t BasePackHash {};
+    uint64_t ContentHash {};
+    uint64_t IndexOffset {};
+    uint64_t IndexStoredSize {};
+    uint64_t IndexDecodedSize {};
+    uint64_t CommittedSize {};
+    uint64_t IndexHash {};
+    uint32_t IndexCodec {};
+    uint32_t EntryCount {};
+};
+
+auto ResolveResourcePackPath(const vector<string>& directories, string_view name) -> string;
+auto OpenResourcePackFile(string_view path) noexcept -> disk_read_file;
+auto GetResourcePackWriteTime(string_view path) noexcept -> uint64_t;
+auto IsResourcePathCanonical(string_view path) noexcept -> bool;
+auto GetResourcePatchPath(string_view base_path) -> string;
+auto ComputeResourcePackContentHash(const_span<ResourcePackEntryRef> entries) -> uint64_t;
+auto SerializeResourcePackHeader(const ResourcePackHeader& header) -> vector<uint8_t>;
+auto ParseResourcePackHeader(const_span<uint8_t> data, ResourcePackHeader& header) noexcept -> bool;
+auto DecodeResourcePackIndex(const_span<uint8_t> stored, const ResourcePackHeader& header, uint64_t patch_data_end = 0) -> vector<ResourcePackEntryRef>;
+auto ReadResourcePatchInfo(string_view path, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>;
+auto ReadResourcePatchInfo(const disk_read_file& file, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>;
 
 // Deflates a blob and keeps the result only when it gives back the configured minimum. Both formats encode
 // through this, so an index section and a payload obey one rule
@@ -112,6 +144,7 @@ auto EncodeResourceBlob(const_span<uint8_t> data, const ResourcePackWriteSetting
 
 // Reads only the header, without touching the index or the payloads
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool;
+auto ReadResourcePackHeader(const disk_read_file& file, ResourcePackHeader& header) noexcept -> bool;
 // The one place a pack body is hashed: after a download, to prove the file carries the hash it was fetched
 // for. The header hash is trusted from then on, so a startup never pays this over gigabytes
 auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexcept -> bool;
@@ -133,24 +166,16 @@ public:
     void Finish();
 
 private:
-    struct Entry
-    {
-        string Path;
-        uint64_t DataOffset {};
-        uint64_t StoredSize {};
-        uint64_t DecodedSize {};
-        uint32_t Codec {};
-    };
-
     void WriteBody(const_span<uint8_t> data);
 
     string _path;
     ResourcePackWriteSettings _settings;
     disk_write_file _file;
-    vector<Entry> _entries {};
+    vector<ResourcePackEntryRef> _entries {};
     uint64_t _bodyHash {};
     uint64_t _bodyOffset {};
     bool _finished {};
+    bool _failed {};
 };
 
 // A mounted pack. The index is resident after one contiguous read, and every payload read is positional, so
@@ -159,7 +184,7 @@ class ResourcePackSource final : public DataSource
 {
 public:
     ResourcePackSource() = delete;
-    explicit ResourcePackSource(string_view path);
+    explicit ResourcePackSource(string_view path, string_view patch_path = {});
     ResourcePackSource(const ResourcePackSource&) = delete;
     ResourcePackSource(ResourcePackSource&&) noexcept = delete;
     auto operator=(const ResourcePackSource&) = delete;
@@ -174,29 +199,57 @@ public:
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
     [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
     [[nodiscard]] auto GetPackHash() const noexcept -> uint64_t { return _header.PackHash; }
+    [[nodiscard]] auto GetContentHash() const noexcept -> uint64_t { return _header.ContentHash; }
+    [[nodiscard]] auto GetPatchInfo() const noexcept -> const optional<ResourcePatchInfo>& { return _patchInfo; }
     [[nodiscard]] auto GetEntryRefs() const -> vector<ResourcePackEntryRef>;
 
 private:
-    struct FileEntry
-    {
-        string_view Path; // Points into _index, which outlives every entry
-        uint64_t DataOffset {};
-        uint64_t StoredSize {};
-        uint64_t DecodedSize {};
-        uint32_t Codec {};
-    };
-
     void ParseIndex();
-    auto FindEntry(string_view path) const -> nptr<const FileEntry>;
-    auto ReadEntryData(const FileEntry& entry) const -> vector<uint8_t>;
+    auto FindEntry(string_view path) const -> nptr<const ResourcePackEntryRef>;
+    auto ReadEntryData(const ResourcePackEntryRef& entry) const -> vector<uint8_t>;
 
     string _fileName;
     disk_read_file _file;
+    disk_read_file _patchFile;
+    optional<ResourcePatchInfo> _patchInfo {};
     ResourcePackHeader _header {};
-    vector<uint8_t> _index {};
-    vector<FileEntry> _entries {};
+    vector<ResourcePackEntryRef> _entries {};
     unordered_map<string_view, size_t> _entryLookup {};
     uint64_t _writeTime {};
+};
+
+class ResourcePatchWriter final
+{
+public:
+    ResourcePatchWriter(string_view base_path, string_view patch_path, vector<ResourcePackEntryRef> target_entries, uint64_t content_hash, ResourcePackWriteSettings settings = {});
+    ResourcePatchWriter(const ResourcePatchWriter&) = delete;
+    ResourcePatchWriter(ResourcePatchWriter&&) = delete;
+    auto operator=(const ResourcePatchWriter&) = delete;
+    auto operator=(ResourcePatchWriter&&) = delete;
+    ~ResourcePatchWriter() = default;
+
+    [[nodiscard]] auto GetDownloads() const noexcept -> const vector<ResourcePackEntryRef>& { return _downloads; }
+    [[nodiscard]] auto GetFinalSize() const noexcept -> uint64_t { return _info.CommittedSize; }
+    [[nodiscard]] auto GetAppendSize() const noexcept -> uint64_t { return _info.CommittedSize - (_reset ? 0 : _startOffset); }
+    void Begin();
+    void AddEncodedFile(const_span<uint8_t> data);
+    void Finish();
+
+private:
+    string _basePath;
+    string _patchPath;
+    unique_nptr<disk_directory_lock> _directoryLock {};
+    disk_write_file _file;
+    ResourcePatchInfo _info {};
+    vector<ResourcePackEntryRef> _downloads {};
+    vector<uint8_t> _index {};
+    uint64_t _startOffset {};
+    uint64_t _startIndexHash {};
+    uint64_t _originalSize {};
+    size_t _nextDownload {};
+    bool _reset {};
+    bool _failed {};
+    bool _finished {};
 };
 
 FO_END_NAMESPACE

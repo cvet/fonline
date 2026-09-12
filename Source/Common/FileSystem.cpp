@@ -32,8 +32,75 @@
 //
 
 #include "FileSystem.h"
+#include "ResourcePack.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
+
+auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> pack_dirs {settings.Packaged ? settings.ClientResources : settings.BakeOutput};
+
+    // Downloaded packs land under the writable root, so for an installed client they are the current ones
+    // and must win over the install-dir copies
+    if (settings.Packaged && !settings.UserWritablePath.empty()) {
+        string writable_dir = GetClientWritableResourceDir(settings);
+
+        if (writable_dir != pack_dirs.front()) {
+            pack_dirs.emplace_back(std::move(writable_dir));
+        }
+    }
+
+    return pack_dirs;
+}
+
+auto GetClientWritableResourceDir(const ClientSettings& settings) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (settings.UserWritablePath.empty()) {
+        return string(settings.ClientResources);
+    }
+
+    string relative = fs_is_absolute_path(settings.ClientResources) ? "Resources" : string(settings.ClientResources);
+    return fs_make_writable_path(settings.UserWritablePath, relative);
+}
+
+auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ResolveResourcePackPath(GetClientPackDirs(settings), pack_name);
+}
+
+void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, string_view pack_name, bool optional)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> dirs = GetClientPackDirs(settings);
+
+    if (settings.Packaged && pack_name != EMBEDDED_PACK_NAME) {
+        string base_path = GetClientResourcePackPath(settings, pack_name);
+
+        if (optional && !OpenResourcePackFile(base_path)) {
+            return;
+        }
+
+        string patch_path = strex(GetClientWritableResourceDir(settings)).combine_path(strex("{}.patch.fores", pack_name)).str();
+        resources.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(base_path, patch_path));
+        return;
+    }
+
+    resources.AddPackSource(dirs.front(), pack_name, optional);
+
+    if (pack_name != EMBEDDED_PACK_NAME) {
+        for (size_t i = 1; i < dirs.size(); ++i) {
+            resources.AddPackSource(dirs[i], pack_name, true);
+        }
+    }
+}
 
 FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds) :
     _isLoaded {true},

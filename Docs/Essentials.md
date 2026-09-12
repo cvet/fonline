@@ -207,7 +207,23 @@ When vendoring or updating a library, check whether it has an allocator hook and
 
 ### Filesystem, compression, sockets, and work threads
 
-`DiskFileSystem.*` is the low-level disk abstraction. Beside the whole-file helpers it carries two descriptor-holding handles for the pack formats, split because nothing reads and writes one file at the same time. `disk_read_file` has no cursor at all: `read_at` carries the offset in the call (`pread`, and `ReadFile` with an `OVERLAPPED` on Windows), so one open file serves several threads at once - though only POSIX runs them in parallel, the Windows handle being synchronous, which leaves the I/O manager serializing the requests; `FILE_FLAG_OVERLAPPED` is the upgrade if that ever measures. Each is opened by its constructor, which leaves the handle closed rather than throwing when the path will not open, so a probe for a pack that is not there is an ordinary answer. `disk_write_file` truncates its target on construction and owns one cursor and therefore one thread: `write` appends at it, `seek_to_begin` rewinds it to patch a header the writer could not fill in earlier, `preallocate` claims the space up front so a long write fails early, and `flush` is a real `fsync`/`_commit`. Neither handle may be closed, moved or destroyed while a call on it is in flight. Two directory-level helpers sit beside the whole-file ones for the updater: `fs_available_space` answers the free bytes on the volume holding a path, so a transfer that cannot finish is refused before it starts rather than half way through, `fs_is_contained_relative_path` answers whether a path that arrived from outside - a name off the update wire, say - can be joined to a directory without leaving it, refusing anything empty, rooted or holding `..` rather than resolving it, so the answer does not depend on what happens to exist on disk. A leading separator counts as rooted even though Windows reports `/etc/passwd` as relative - relative to the current drive - because it still resolves from a root, and `fs_list_dir_file_names` lists a directory's files with no filtering - `fs_iterate_dir` hides names starting with `.` or `~`, which is exactly the set a sweep over temp files is looking for. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
+`DiskFileSystem.*` owns low-level disk access. `disk_read_file` retains a descriptor and captured length;
+`read_at` performs exact positional reads within that bound. Its `(path, offset, size)` constructor restricts
+reads to a region of a backing file, used for uncompressed APK assets. Moving or closing a reader while a read
+is in flight is invalid. `disk_write_file` either creates/truncates or appends, acquires writer exclusion before
+mutation, and supports truncating an uncommitted tail. Writes own one cursor; `flush` uses `fsync`/`_commit`.
+`disk_directory_lock` serializes resource mutations without a stored lock file (POSIX directory flock,
+Windows named mutex). POSIX readers can retain old inodes across replacement; Windows sharing can reject
+replacement/deletion while readers are open. `fs_sync_parent` persists POSIX directory entries;
+`fs_rename_durable` uses that ordering on POSIX and write-through MoveFileEx on Windows.
+
+`fs_available_space` supports admission without preallocating a resumable download. `fs_is_contained_relative_path`
+rejects empty/rooted paths or `..`; `fs_list_dir_file_names` includes names hidden by the ordinary iteration
+filter, including updater temporaries. `fs_make_writable_path` layers relative paths under a user root while
+leaving absolute inputs unchanged; resource-specific installed-root selection belongs to `FileSystem.h`.
+The mounted view is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md).
+`Compressor.*` owns compression, `NetSockets.*` owns low-level sockets, and `WorkThread.*` owns background workers.
+
 
 When a `WorkThread` job throws, the thread runs its local exception handler first so it can update worker-owned policy such as clearing queued jobs; the original exception is then reported through the global non-fatal exception reporter outside the worker lock.
 

@@ -1,273 +1,211 @@
 # Resource Pack Format
 
-Two formats. `.fores` is the engine resource pack: one file holding a fixed header, the payload blobs and the
-index over them, and it replaces the ZIP artifact behind a resource pack. `.foindex` is the merged tree over
-several packs - references only, built locally, disposable.
+A logical resource pack selects one full `Pack.fores` and, optionally, one writable `Pack.patch.fores`.
+The patch carries new payloads and a complete current catalog. Each entry selects bytes from the base or
+patch; deleted paths disappear from that catalog. There are no patch chains, resource-set files or parts.
+`Resources.foindex` is a disposable merged lookup cache over the selected pairs.
 
-Two properties drive the layout:
+See [ClientUpdater.md](ClientUpdater.md) for synchronization,
+[ConfigurationAndDataSources.md](ConfigurationAndDataSources.md) for mounting, and
+[Essentials.md](Essentials.md) for filesystem primitives.
 
-- **The pack identity is one small read away.** The header carries `PackHash` at a fixed offset, so an updater
-  builds its work list from header reads alone and never hashes a body it is not about to replace.
-- **The index arrives in one contiguous read.** Mounting is a header read plus an index read; no directory walk
-  and no per-entry seeking.
+## Encoding and identities
 
-Related: `ConfigurationAndDataSources.md` for mounting, `ClientUpdater.md` for the sync, `Essentials.md` for the
-`disk_read_file` / `disk_write_file` primitives this format is built on.
+All integer fields are explicitly sized little-endian values. Formats require exactly version **2.0**;
+there are no readers for previous versions. Offsets and lengths are 64-bit. Catalog string-pool offsets,
+path lengths and entry counts are 32-bit; decoded catalogs cannot exceed `UINT32_MAX` bytes.
 
-## Conventions
+Paths are unique, sorted by UTF-8 bytes and relative. Components cannot be empty, `.` or `..`; backslashes,
+colons and NUL are rejected. Writers normalize input backslashes to `/` before validation. Payloads may
+share an extent, including when a rename reuses existing content.
 
-- All integers are little endian with explicit widths. There are no C++ structs or pointers on disk.
-- All offsets and sizes are 64-bit and are validated against the file length before use.
-- Paths are relative UTF-8 with `/` separators, normalized by the writer. A path appears at most once.
-- Field widths are the limits: at most 2^32-1 entries, a path at most 2^32-1 bytes at an offset within a
-  decoded index of at most 2^32-1 bytes, and blob offsets and sizes bounded only by the 64-bit file.
-- Hashes are FNV-1a 64, seeded `0xcbf29ce484222325` with prime `0x100000001b3` — the digest the updater already
-  computes over whole files. Nothing in this format is a security boundary; the delivery layer signs the pack
-  list, and after that the local file is trusted (see the plan's decision on the trust boundary).
+All hashes use FNV-1a 64, seed `0xcbf29ce484222325`, prime `0x100000001b3`:
 
-## File layout
+- `PackHash`: physical bytes after the full base's header, including its encoded catalog.
+- `FileContentHash`: decoded bytes of one resource.
+- `ContentHash`: `uint32 entry_count`, then, for each sorted entry,
+  `uint32 path_byte_length`, `uint64 decoded_size`, `uint64 FileContentHash`, and the UTF-8 path bytes.
+- Header, catalog and footer checksums cover the byte ranges described below.
 
-```text
-[0, 72)                       header
-[DataOffset, +DataSize)       payload blobs, in index order
-[IndexOffset, +IndexStoredSize)  index
-```
+`ContentHash` excludes codec, source and offsets. Recompression changes physical identity without changing
+logical identity. A patch binds to **physical** `BasePackHash`, because its base offsets must match that
+exact artifact. These are integrity/change-detection hashes, not authentication.
 
-`DataOffset` is 72 and the index follows the data, so the writer streams every blob out as it arrives and
-appends the index once it knows the offsets.
-
-Every extent in v1 is **committed**: there is no reserved space, no padding and no alignment requirement, and
-the file ends where the index ends. The writer may preallocate the target (`disk_write_file::preallocate`) so a
-long write fails early, but that is a transfer property and never leaves unused bytes in a finished pack. A
-reader can therefore treat the file length as the outer bound of every extent, which is what the validation
-below does. Reserved extents belong to the in-place diff work under Reserved for later.
-
-## Header
-
-72 bytes, always uncompressed.
-
-| Offset | Size | Field | Meaning |
-|--------|------|-------|---------|
-| 0 | 4 | `Magic` | `0x53524F46`, the ASCII `FORS` |
-| 4 | 2 | `VersionMajor` | 1. A different major means the fields mean something else; refuse the file |
-| 6 | 2 | `VersionMinor` | 0. A higher minor stays readable |
-| 8 | 8 | `PackHash` | FNV-1a 64 over `[72, end of file)`. The sync and divergence key |
-| 16 | 8 | `IndexOffset` | Absolute offset of the stored index |
-| 24 | 8 | `IndexStoredSize` | Index bytes on disk |
-| 32 | 8 | `IndexDecodedSize` | Index bytes after decoding |
-| 40 | 4 | `IndexCodec` | `0` stored, `1` deflate |
-| 44 | 4 | `EntryCount` | Number of catalog entries |
-| 48 | 8 | `DataOffset` | Absolute offset of the payload region |
-| 56 | 8 | `DataSize` | Payload region length |
-| 64 | 8 | `HeaderChecksum` | FNV-1a 64 over `[0, 64)` |
-
-`HeaderChecksum` covers `PackHash` as well, so a header that survived a truncated or torn write is rejected
-before any offset it carries is believed. `PackHash` deliberately excludes the header: the header is derived
-from the body layout, and excluding it lets the writer hash the body as it streams instead of buffering it.
-
-## Index
-
-The index is one buffer, stored raw or deflated as `IndexCodec` says. Decoded, it is:
+## Full base
 
 ```text
-Entry[EntryCount]     40 bytes each
-StringPool            IndexDecodedSize - EntryCount * 40 bytes, UTF-8, not null terminated
+[80-byte header][payload blobs][complete encoded catalog]
 ```
 
-| Offset | Size | Field |
-|--------|------|-------|
-| 0 | 4 | `PathOffset` into the decoded index buffer |
-| 4 | 4 | `PathLength` in bytes |
-| 8 | 8 | `DataOffset`, absolute file offset of the blob |
-| 16 | 8 | `StoredSize`, blob bytes on disk |
-| 24 | 8 | `DecodedSize`, blob bytes after decoding |
-| 32 | 4 | `Codec`, `0` stored or `1` deflate |
-| 36 | 4 | `Flags`, reserved, written as zero |
+The header is uncompressed:
 
-An entry carries no timestamp. `GetFileInfo` reports the pack file's own modification time for every entry,
-so one pack is one epoch: consumers that cache by `(size, write_time)` re-read everything in a pack the updater
-replaced and nothing in one it did not. Per-entry times would be a per-file cache key the format cannot honour
-anyway, since replacing any blob rewrites the whole pack.
+| Offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Magic `0x53524F46` (`FORS`) |
+| 4 | 2 | Major = 2 |
+| 6 | 2 | Minor = 0 |
+| 8 | 8 | `PackHash`, FNV over `[80, EOF)` |
+| 16 | 8 | `IndexOffset` |
+| 24 | 8 | `IndexStoredSize` |
+| 32 | 8 | `IndexDecodedSize` |
+| 40 | 4 | `IndexCodec` |
+| 44 | 4 | `EntryCount` |
+| 48 | 8 | `DataOffset` = 80 |
+| 56 | 8 | `DataSize` |
+| 64 | 8 | `ContentHash` |
+| 72 | 8 | Header checksum, FNV over `[0, 72)` |
 
-Entries are sorted by path, byte-wise, which makes the file canonical and enumeration an ordered walk. Lookup
-is not a search over that order: `ResourcePackSource` builds an `unordered_map` at mount whose keys are
-`string_view`s into the resident index buffer, so a path is hashed once and the sorted order costs the reader
-nothing at lookup time. The payload region follows the order the writer was given, so a canonical file - one
-whose bytes depend only on its contents - needs its paths added in sorted order; the packager does that, and
-the golden vector in `Test_ResourcePack.cpp` pins both writers to the same layout.
+`IndexOffset = DataOffset + DataSize`, and the index ends exactly at EOF. There is no padding or reserved
+space. Packaging streams encoded blobs and the physical hash, appends the catalog, then writes the header.
+Canonical packaging also adds payloads in sorted path order. No timestamps are serialized.
 
-Mounting therefore holds three things per pack, which is what a memory budget has to count: the decoded index
-buffer, one `FileEntry` per entry, and the lookup map. The paths themselves exist once, in the buffer - the
-entries and the map both point into it.
+## Catalog entries
+
+A decoded catalog is `Entry[EntryCount]`, 48 bytes each, followed by its UTF-8 string pool without terminators.
+
+| Entry offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Path offset into the decoded catalog |
+| 4 | 4 | Path byte length |
+| 8 | 8 | Encoded payload offset in the selected file |
+| 16 | 8 | Stored size |
+| 24 | 8 | Decoded size |
+| 32 | 4 | Codec: 0 = Stored, 1 = Deflate |
+| 36 | 4 | Source: 0 = Base, 1 = Patch; other values rejected |
+| 40 | 8 | `FileContentHash` |
+
+Full-base entries require Source 0. A patch catalog can use either source. Base references fit the base
+payload region; patch references start after its 32-byte header and end before the selected catalog.
+References cannot reach the current catalog/footer or an uncommitted suffix. Stored resources must declare
+equal stored/decoded sizes. Reads verify the exact decoded size and `FileContentHash`.
+
+`ResourcePackSource` owns the current entry list and path strings and builds a lookup map whose keys reference
+those strings. Decoded catalog bytes are released after parsing. File enumeration follows sorted paths.
+All entries report the effective patch's modification time when a committed patch is selected, including
+entries backed by base bytes. Without a patch they report the base time.
+
+## Append-only patch
+
+```text
+[32-byte patch header]
+[payloads 1][complete catalog 1][80-byte footer 1]
+[payloads 2][complete catalog 2][80-byte footer 2]
+...
+```
+
+The fixed header is never rewritten to publish an update:
+
+| Offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Magic `0x50524F46` (`FORP`) |
+| 4 | 2 | Major = 2 |
+| 6 | 2 | Minor = 0 |
+| 8 | 8 | `BasePackHash` |
+| 16 | 8 | Reserved = 0 |
+| 24 | 8 | Header checksum, FNV over `[0, 24)` |
+
+Every commit ends with this uncompressed footer:
+
+| Offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Magic `0x54524F46` (`FORT`) |
+| 4 | 2 | Major = 2 |
+| 6 | 2 | Minor = 0 |
+| 8 | 8 | `BasePackHash` |
+| 16 | 8 | Current `ContentHash` |
+| 24 | 8 | Catalog offset |
+| 32 | 8 | Catalog stored size |
+| 40 | 8 | Catalog decoded size |
+| 48 | 8 | Committed file size, including this footer |
+| 56 | 4 | Catalog codec |
+| 60 | 4 | Entry count |
+| 64 | 8 | FNV of the encoded catalog |
+| 72 | 8 | Footer checksum, FNV over `[0, 72)` |
+
+The catalog must immediately precede its footer. Old payloads, catalogs and footers remain unused bytes
+unless the current catalog references an old payload. Only the newest complete catalog is applied; earlier
+catalogs are never layered beneath it.
+
+`ResourcePatchWriter` plans offsets, reuses matching `(FileContentHash, DecodedSize)` from the base/current
+patch, and encodes the next full catalog before writing. It validates each received resource, appends the
+catalog, flushes, appends the footer, and flushes again. It persists the directory entry on POSIX platforms.
+The writable directory is locked during mutation, through an OS lock rather than a stored selector or
+journal. File writers also exclude other writers before truncation or append.
+
+Readers retain their catalog and captured file bounds while a writer appends. Recovery truncates only bytes
+after the previous committed end. An unfinished or stale patch is removed and recreated under the directory
+lock; it is never truncated underneath readers of a different base generation. On POSIX, readers can retain
+an unlinked inode; Windows rejects deletion/replacement while incompatible readers still hold the file.
+
+## Recovery and validation
+
+Healthy reads inspect the header, footer at EOF, and that footer's catalog. An invalid EOF triggers a
+backward scan in 64 KiB windows with footer-sized overlap. Candidate magic alone is insufficient: validate
+version, base binding, absolute committed length, footer checksum, catalog extent/checksum and computed
+logical hash. The latest valid candidate wins. No valid commit means the full base remains the local view.
+A malformed patch header is a corruption error. A valid header bound to a different base is stale and excluded.
+
+All extent checks subtract only after checking the minuend and widen table multiplication before use.
+Unknown codecs/sources, noncanonical or duplicate paths and invalid pool references are rejected. Mounting
+does not hash all payloads. Payload corruption is reported when read; received patch blobs are verified
+before publication. Full downloads also verify the physical body hash and complete catalog before promotion.
+
+An interrupted append may retransmit its uncommitted addition. Previously committed bytes remain reusable.
+There is no persistent per-resource resume journal or configured patch-size limit. Dead blobs and old
+catalogs can accumulate without triggering a full-base download. See the updater doc for full-base
+installation/repair ordering when local data is missing or unusable.
 
 ## Codecs
 
-| Id | Name | Meaning |
-|----|------|---------|
-| 0 | `Stored` | The bytes as they are |
-| 1 | `Deflate` | zlib stream, as produced by `compress2` |
+Codec 0 stores bytes unchanged. Codec 1 is a zlib Deflate stream. `Baking.CompressLevel` selects level 0–9;
+`Baking.ResourcePackMinCompressGain` selects the minimum percentage saved (default 5). Blobs smaller than
+64 bytes remain stored. Catalogs use the same encoding rule. Matching decoded content can reuse an existing
+extent even when the server encoded it differently.
 
-A blob is deflated only when it gives back at least a configured minimum (default 5 %); otherwise it is stored
-raw. The level is `Baking.CompressLevel`, passed to `compress2` as the zlib level 0-9, and the gain threshold
-is `Baking.ResourcePackMinCompressGain`; both reach the engine writer as `ResourcePackWriteSettings`, so the
-two writers take them from one place. The 64-byte floor is fixed rather than configured - below it the header
-of a deflate stream costs more than the stream can save. So already-compressed data — audio, compressed textures, well-packed images — is never re-deflated and
-costs nothing to read back. Blobs under 64 bytes are always stored. The same rule governs the index itself.
+## Merged cache: `.foindex`
 
-Codec choice is a writer input, not part of what the pack *contains*: re-encoding a blob differently changes
-`PackHash` but not the file tree the pack presents.
+The cache contains references only. It records effective pairs from the configured suffix after the last
+Embedded entry. Earlier packs and Embedded stay at their configured positions. It never mounts a patch as
+an independent overriding pack.
 
-## What a reader must validate
+Cache mounting verifies base headers and patch commit identities through the retained read handles. A
+replacement between path resolution and opening invalidates the cache rather than mixing old offsets with
+new backing bytes. Mounted readers retain their captured view across later appends and POSIX replacements.
 
-Structural validation is always on, because corruption, truncation and a wrong pairing are ordinary states.
-Content hashes are **not** re-verified at mount or at read.
+The 72-byte header contains magic `0x58494F46` (`FOIX`), version 2.0, `PackListHash` at 8, index offset/stored/
+decoded sizes at 16/24/32, codec at 40, entry count at 44, pack count at 48, and checksum over `[0,64)` at 64.
+Decoded contents are 32-byte pack records, 56-byte entry records, then the string pool.
 
-Before trusting anything: `Magic`, `HeaderChecksum`, `VersionMajor`, and that the file is at least 72 bytes.
+A pack record stores name offset/length (4 bytes each), base `PackHash` (8), committed patch catalog checksum
+(8), and patch committed size (8). The last two fields are zero without a committed patch. `PackListHash`
+folds each name's bytes followed by these three 64-bit values, in configured order.
 
-Before reading the index: `DataOffset` and `IndexOffset` lie at or after the header and their extents fit the
-file; `IndexDecodedSize >= EntryCount * 40`.
+An entry stores path offset/length, pack index and codec (four 4-byte fields), data offset, stored size,
+decoded size and content hash (four 8-byte fields), source (4), and reserved zero (4).
 
-Per entry: the path lies inside the string pool and is not empty; the extent lies inside the payload region,
-checked in an order that cannot overflow; a `Stored` entry has `StoredSize == DecodedSize`; the codec is known;
-the path has not already been seen.
+Later configured packs win duplicate paths. The disk table is path-sorted; runtime enumeration groups winners
+by descending pack precedence, then path, matching direct mounts. Entry times come from the effective pair.
+Freshness includes base identity and patch commit identity, so a full refresh cannot keep stale offsets merely
+because logical content is unchanged. Invalid cache data is discarded at the client boundary and authoritative
+pairs are mounted. Rebuild writes a temporary cache and replaces the old one.
 
-Per read: the decoded size matches what the entry declared. A mismatch is a corrupt payload, not a surprise.
+## Platforms and API
 
-Every failure throws. A file that claims the `FORS` magic and fails validation is never downgraded to an empty
-source and never falls back to another artifact of the same pack.
+Android packages `.fores` without outer ZIP compression. The activity passes
+`<installed APK>!/assets/<configured client resource directory>` as `Baking.ClientResources`, and its private files directory as
+`Client.UserWritablePath`. `OpenResourcePackFile` locates the stored ZIP entry and returns a bounded,
+64-bit positional `disk_read_file` region over the APK. Compressed or encrypted outer entries are rejected.
+No complete pack or resource tree is copied into memory or staged into app storage for mounting.
+Writable replacement bases and patches live under the private `Resources` directory.
 
-## The merged tree: `.foindex`
+Web retains the preloaded in-memory filesystem and can update pairs within that session. It does not persist
+updates across page reloads and does not build a merged cache.
 
-`.fores` answers "what is in this pack". A client needs "where is this path", once, over every pack it has.
-`.foindex` is that answer written down: one file naming every path the packs present and where its bytes live.
-It holds no payload of its own - every entry points into a `.fores`.
+The main API is in `Source/Common/ResourcePack.h`: `ResourcePackWriter`, `ResourcePatchWriter`,
+`ResourcePackSource`, `ReadResourcePackHeader`, `DecodeResourcePackIndex`, `ReadResourcePatchInfo`, and
+`VerifyResourcePackFile`. `GetClientPackDirs`, `GetClientResourcePackPath` and `AddClientPackSource` in
+`FileSystem.h` give bootstrap, updater and runtime the same base/patch selection.
 
-It is built locally and is disposable. Nothing ships it, nothing downloads it, and deleting it costs one
-rebuild. A client keeps it as `Resources.foindex` beside the packs under its writable root, and
-`GetClientResources()` mounts it only when `IsResourceIndexCurrent()` says it still describes what is on disk,
-falling back to mounting each pack otherwise. The client caches the installed pack suffix after the last
-`Embedded` entry (`GetResourceIndexPackNames`); Embedded lives in the executable and cannot be resolved as a
-`.fores`. Earlier configured packs and Embedded keep their individual mounts, and writable overlay packs
-are mounted afterward. This preserves directory precedence and files still supplied by installed packs,
-while avoiding repeated index parsing for the large installed content suffix. The generic builder can
-merge any explicitly supplied disk pack list.
-
-### Header
-
-72 bytes, always uncompressed, the same shape as a pack header so one reader habit covers both.
-
-| Offset | Size | Field | Meaning |
-|--------|------|-------|---------|
-| 0 | 4 | `Magic` | `0x58494F46`, the ASCII `FOIX` |
-| 4 | 2 | `VersionMajor` | 1 |
-| 6 | 2 | `VersionMinor` | 0 |
-| 8 | 8 | `PackListHash` | The divergence key, below |
-| 16 | 8 | `IndexOffset` | Absolute offset of the stored index |
-| 24 | 8 | `IndexStoredSize` | Index bytes on disk |
-| 32 | 8 | `IndexDecodedSize` | Index bytes after decoding |
-| 40 | 4 | `IndexCodec` | `0` stored, `1` deflate |
-| 44 | 4 | `EntryCount` | Number of merged entries |
-| 48 | 4 | `PackCount` | Number of packs the tree draws from |
-| 64 | 8 | `HeaderChecksum` | FNV-1a 64 over `[0, 64)` |
-
-### Index
-
-One buffer, stored or deflated by the same rule a pack's index follows. Decoded, it is:
-
-```text
-Pack[PackCount]       16 bytes each
-Entry[EntryCount]     40 bytes each
-StringPool            UTF-8, not null terminated
-```
-
-A pack record is `NameOffset` (4), `NameLength` (4) and `PackHash` (8). It records the pack's **name**, never a
-path, so an installed client that moved on disk still resolves; the hash is what proves the file found under
-that name is the one that was merged.
-
-An entry is `PathOffset` (4), `PathLength` (4), `PackIndex` (4), `Codec` (4), `DataOffset` (8), `StoredSize`
-(8) and `DecodedSize` (8). The offset and sizes are the blob's inside the pack the index names, copied from
-that pack's own index at build time - so a read is one hash probe here and one positional read there, with no
-per-pack index consulted at runtime.
-
-### The merge rule
-
-Packs are folded in the configured order and the last one to declare a path wins, which is exactly the
-precedence the per-pack mounts already have. Entries are sorted by path, as in a pack.
-
-Neither format stores a per-file timestamp - one would cost writer determinism for nothing - so a read reports
-the mtime of the `.fores` the bytes live in. The merged tree reports the owning pack's mtime rather than its
-own, so the answer for one file does not change with which of the two views is mounted.
-
-### Divergence and rebuild
-
-`PackListHash` folds each pack's name and hash, in order. That one field answers the whole question: an edited
-pack changes its `PackHash`, and an added, removed or reordered pack changes the sequence. Checking it costs
-one 72-byte read per pack, not a mount.
-
-The index is rebuilt whenever it does not describe what is on disk: it is missing, it fails header validation,
-its stored extent is truncated, its `PackListHash` differs from the indexed pack list, or any indexed pack
-is absent or carries a different hash. There is no partial update - the rebuild reads the packs and replaces
-the file, writing through a
-neighbouring temporary before replacing the target. An interrupted promotion may leave the index absent;
-the next sync rebuilds it. A rebuild never writes into a `.fores`.
-
-The reader rejects unknown codecs, pool offsets and lengths outside the decoded buffer, and entry extents
-outside the owning pack's payload region before using them. Table-size arithmetic is widened before
-multiplication so the same checks hold on 32-bit targets.
-
-The reader throws on malformed or stale indexes. Client mounting catches this error at the disposable-cache
-boundary, logs it and removes the index, then mounts the authoritative packs. The updater can rebuild the
-missing index during its next rebuild pass; corruption in a pack itself remains a mount failure.
-
-## Platforms
-
-Two targets do not keep their packs in an ordinary directory, and both resolve it before the reader ever sees
-them.
-
-**Android** ships the packs inside the APK, where they are assets rather than files - and a pack is read by
-positional file reads, which an asset does not answer. The activity therefore stages the whole resource tree
-into the application's files directory on launch and points `Baking.ClientResources` at it. The staging is
-keyed by the package's last-update time and repeats when the staged directory is empty or gone; it probes the
-directory rather than one artifact inside it, because naming an artifact ties the check to a pack list and a
-format, and a check that names the wrong file re-copies the tree on every start. The merged tree is written
-into that staged directory and is discarded with it.
-
-**Web** has the client resource directory preloaded into the Emscripten in-memory filesystem when the package
-is built, and that filesystem does not survive a page reload. **The merged tree is therefore not built there at
-all.** Its whole value is that one fold outlives the launch that paid for it, and on web nothing outlives the
-launch - while building it means parsing every pack's index, which is precisely the work that mounting the
-packs separately already does. Lookup does not suffer either way: `FileSystem` folds the snapshot of every
-mounted source into one cross-source index, so a path resolves in one probe with or without the tree. Only the
-build is skipped and not the mount, so a `.foindex` that ever arrives inside a package is still used.
-
-Neither platform ever receives a `.foindex` over the wire; nothing ships or transfers one.
-
-Preallocation is available (`disk_write_file::preallocate`, and see the ladder in
-[Essentials.md](Essentials.md)) but the download target is deliberately not preallocated - sizing the file up
-front would make every partial download look complete to the resume check. The transfer checks free space
-instead; see [ClientUpdater.md](ClientUpdater.md).
-
-## Reserved for later
-
-The format is shaped so these are additive, not a version break:
-
-- **Block-structured payloads.** A `Flags` bit plus a block offset table would let a reader seek into a
-  compressed blob and decode only the blocks it needs. It pays on large blobs, and the measured corpus has
-  more of those than a file count suggests: 70 % of files are under 64 KB but they hold 5 % of the bytes, so
-  95 % of what a reader decodes lives in blobs a block table could seek into.
-- **In-place diff updates.** Reserved extents, a per-blob content hash and a per-file content id would let an
-  updater replace one blob instead of the pack. v1 replaces the whole pack on a `PackHash` mismatch.
-- **Further codecs.** The codec id space is open.
-
-## Engine API
-
-`Engine/Source/Common/ResourcePack.h`:
-
-- `ReadResourcePackHeader(path, header)` — header only, no index, no payloads.
-- `VerifyResourcePackFile(path, expected_pack_hash)` — the one place a pack body is hashed: after a download,
-  to prove the file carries the hash it was fetched for. The header hash is trusted from then on.
-- `ResourcePackWriter` — streams blobs out as they arrive, appends the index, patches the header last. An
-  abandoned writer removes its own half-written file.
-- `ResourcePackSource` — a `DataSource`; the index is resident and every payload read is positional.
-
-`DataSource::MountPack` probes `.fores` before `.zip`, so a pack that exists in both formats mounts as a resource pack.
+`Test_ResourcePack.cpp` pins the shared Python/C++ golden bytes, payload validation, repeated append and
+interrupted-footer recovery. `Test_ResourceIndex.cpp` covers pair-backed cached reads and APK region bounds;
+`Test_ClientServerIntegration.cpp` exercises the real updater/backend lifecycle.

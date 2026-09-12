@@ -68,6 +68,8 @@ auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool;
 auto fs_remove_file(string_view path) noexcept -> bool;
 auto fs_remove_dir_tree(string_view dir) noexcept -> bool;
 auto fs_touch_file(string_view path) noexcept -> bool;
+auto fs_sync_parent(string_view path) noexcept -> bool;
+auto fs_rename_durable(string_view from_path, string_view to_path) noexcept -> bool;
 auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool;
 auto fs_open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
 void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visitor);
@@ -86,6 +88,7 @@ public:
     disk_read_file() noexcept = default;
     // A path that cannot be opened leaves the handle closed rather than throwing
     explicit disk_read_file(string_view path) noexcept;
+    disk_read_file(string_view path, uint64_t offset, uint64_t size) noexcept;
     disk_read_file(const disk_read_file&) = delete;
     disk_read_file(disk_read_file&& other) noexcept;
     auto operator=(const disk_read_file&) = delete;
@@ -104,16 +107,49 @@ public:
 private:
     int32_t _descriptor {-1};
     uint64_t _size {};
+    uint64_t _offset {};
 };
 
-// A disk file open for writing, truncated to empty on open. One cursor and therefore one thread: writes append
-// at it and a header patch rewinds it, so a writer is never shared
+// Writers exclude other writers before truncation or append; readers may keep a captured committed view
+class disk_directory_lock final
+{
+public:
+    explicit disk_directory_lock(string_view path) noexcept;
+    disk_directory_lock(const disk_directory_lock&) = delete;
+    disk_directory_lock(disk_directory_lock&&) = delete;
+    auto operator=(const disk_directory_lock&) = delete;
+    auto operator=(disk_directory_lock&&) = delete;
+    ~disk_directory_lock();
+
+    [[nodiscard]] explicit operator bool() const noexcept
+    {
+#if FO_WINDOWS
+        return static_cast<bool>(_handle);
+#else
+        return _descriptor >= 0;
+#endif
+    }
+
+private:
+#if FO_WINDOWS
+    nptr<void> _handle {};
+#else
+    int32_t _descriptor {-1};
+#endif
+};
+
+enum class disk_write_mode : uint8_t
+{
+    Create,
+    Append,
+};
+
 class disk_write_file final
 {
 public:
     disk_write_file() noexcept = default;
     // A path that cannot be opened leaves the handle closed
-    explicit disk_write_file(string_view path) noexcept;
+    explicit disk_write_file(string_view path, disk_write_mode mode = disk_write_mode::Create) noexcept;
     disk_write_file(const disk_write_file&) = delete;
     disk_write_file(disk_write_file&& other) noexcept;
     auto operator=(const disk_write_file&) = delete;
@@ -125,6 +161,7 @@ public:
     auto write(const_span<uint8_t> buf) noexcept -> bool;
     // Rewinds to patch a header the writer could not fill in until everything after it was known
     auto seek_to_begin() noexcept -> bool;
+    auto truncate_to(uint64_t size) noexcept -> bool;
     // Claims the space up front so a long write fails early instead of part way through
     auto preallocate(uint64_t size) noexcept -> bool;
     auto flush() noexcept -> bool;

@@ -105,6 +105,10 @@ Do not document one embedding project's `.fomain` contents as universal engine b
 
 Client startup has one extra resolution step for installed layouts: `ResolveUserWritablePath(settings)` in `Source/Frontend/ApplicationInit.cpp` resolves `Client.UserWritablePath` before the local-config cache is read. The writable-path knobs (`Client.UserWritablePath`, `Baking.CacheResources`) live in the config and sub-config, which are applied earlier, so the cache location is known without consulting the command line. The command line is then applied to the live settings exactly **once**, after the config, sub-config and local config, so it takes final precedence over all of them; a single pass also keeps `+`-append overrides (`-Setting +value`) from accumulating twice. That single pass logs each `Set <name> to <value>` override. In that log, settings whose name contains one of the masking tokens are printed as `Set <name> to ***`, so a credential such as `Auth.WebTokenVerifySecret` never appears in plaintext (server logs may be shared). The tokens are the `Common.SecretSettingTokens` setting (a case-insensitive substring list, default `secret token password apikey`), which `GlobalSettings::IsSecretSettingName()` reads. Command-line overrides are logged only on the final pass — after `ApplyDefaultSettings()` and the config file have run — so the list is already populated, and an embedding project extends it through config to cover credentials the generic tokens miss (Last Frontier sets `Common.SecretSettingTokens = secret token password apikey dsn` so `Sentry.Dsn` is masked). Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `Platform::GetUserDataBase()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
 
+After the final command-line and automatic settings pass, writable paths are resolved again. This creates
+a newly selected writable root before log, cache or resource writes without applying command-line appends
+twice. The earlier resolution still selects the configured location of the local-config cache.
+
 ## Resource packs and data sources
 
 `ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` / `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
@@ -123,10 +127,13 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 - `MountPack(dir, name, maybe_not_available)` for packed resource data.
 
 `MountPack` probes by extension in a fixed order: `.fores`, then `.zip` and `.bos` (both read as ZIP), then
-`.dat` (Fallout). `.fores` is the engine pack format - one file holding a header, the payload blobs and the
-index over them, with the pack identity readable from the first bytes. Its contract is
+`.dat` (Fallout). `.fores` is the engine pack format; a base can be paired with one `Pack.patch.fores` whose complete catalog selects base or patch bytes. Its contract is
 [ResourcePackFormat.md](ResourcePackFormat.md). A file that claims the `FORS` magic and fails validation throws; it is never
 downgraded to an empty source and never falls back to a sibling `.zip` of the same pack.
+
+Managed packaged-client resources use `AddClientPackSource` and require `.fores` bases. This route does not
+probe foreign archives or loose directories when a base is absent. Embedded keeps its executable-backed
+source; unpackaged development continues to read bake directories.
 
 Listing a source goes through `GetFileNamesGeneric`, which has two overloads over one filter. A source that
 genuinely owns its names - the zip, dat and directory ones, which copy them out of a central directory or a
@@ -182,23 +189,28 @@ container does not preserve.
 
 `Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings remain internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
 
-Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` owns that ordering for both the updater's post-sync metadata check and the gameplay `ClientEngine`; do not reconstruct the pack view independently in either path.
+Packaged clients mount one effective source per configured logical pack. `GetClientResourcePackPath` selects
+writable `Pack.fores` first, otherwise the installed base; it recovers an interrupted writable-base backup
+before selection. `AddClientPackSource` pairs the selected base with writable `Pack.patch.fores`. Its complete
+catalog determines both present and deleted paths, without falling back to an older same-pack catalog.
+Read-only installation bytes remain untouched. Relative resource roots map under `UserWritablePath`; absolute
+installed/APK roots use `<UserWritablePath>/Resources` for replacements and patches.
 
-`GetClientResources()` can replace the installed pack suffix after the last `Embedded` entry with one
-`Resources.foindex` source. `Embedded` has no disk artifact, so it and the packs before it retain their
-configured mounts. The index is stored under the writable resource root but describes that suffix in the
-installed directory only. Writable overlay packs are mounted afterward in their original order; merging
-selected installed and writable copies by pack name would change precedence and lose files supplied only
-by the older installed copy. An absolute `ClientResources` path is mounted once even when `UserWritablePath`
-is set.
+`GetClientResources()` can mount the suffix after the last Embedded entry through one `Resources.foindex`.
+The cache describes effective pairs, including writable replacements and patches. Prefix packs and Embedded
+keep their configured positions. A later logical pack wins regardless of where its selected files live.
+Cached and direct views preserve lookup, deletion, modification times and enumeration order.
 
-`IsResourceIndexCurrent()` checks pack headers, the index header and its stored extent. Missing, stale or
-truncated indexes use ordinary pack mounts. If the header is current but parsing the index body fails,
-the client logs the error, deletes the disposable index and mounts the packs; the next updater rebuild
-recreates it. The index reader itself still rejects invalid data. A failure to mount an authoritative
-pack propagates normally. See [ResourcePackFormat.md](ResourcePackFormat.md).
+Freshness checks base headers and patch commit identities. Missing/stale caches use direct mounts. A corrupt
+cache body is logged and removed at the disposable-cache boundary, then authoritative pairs are mounted.
+The next updater rebuild recreates it. A corrupt authoritative source remains an error. See
+[ResourcePackFormat.md](ResourcePackFormat.md).
 
-The bootstrap is deliberately outside all of this. `Application` builds its own two-pack `FileSystem` for the ImGui default effect - `Embedded` first, then `Core` - and never consults the merged tree, which does not exist that early. The second mount is an override point, not redundancy: a project ships its own `Core` and can replace what the bootstrap pack carries, so the two mounting the same bytes today is a property of the current content rather than a licence to drop one. The updater writes resource patches into that overlay, so the exact current files that pass validation also win runtime lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
+Application bootstrap mounts Embedded followed by Core through the same `AddClientPackSource` helper, so
+Core also sees the selected writable replacement or patch. It does not consult the merged cache. The updater's
+post-sync metadata check and gameplay both obtain their resource view from `GetClientResources()`.
+
+Native binary update paths are described in [ClientUpdater.md](ClientUpdater.md).
 
 ## Low-level disk access
 

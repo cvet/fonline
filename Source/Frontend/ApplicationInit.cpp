@@ -323,6 +323,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
     settings.ApplyCommandLine(args);
     settings.ApplyAutoSettings();
+    ResolveUserWritablePath(settings);
     return settings;
 }
 
@@ -371,7 +372,7 @@ void ResolveUserWritablePath(GlobalSettings& settings)
     // Pre-create the writable cache + resource-overlay subdirs so the cache and the self-update
     // resource writer never fail on a missing parent directory
     fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources));
-    fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
+    fs_create_directories(GetClientWritableResourceDir(settings));
 
     WriteLog("Client user-writable data path: {}", root);
 }

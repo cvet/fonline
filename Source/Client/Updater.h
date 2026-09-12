@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+#include "ResourcePack.h"
 
 #include "CacheStorage.h"
 #include "ClientConnection.h"
@@ -44,10 +45,6 @@
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
-
-// An installed file wears this while it is being replaced. Both writers of that swap - the updater and the
-// client host's staged-runtime promotion - take it from here, because a sweep looks files up by this name
-constexpr string_view REPLACED_FILE_BACKUP_SUFFIX = "-backup";
 
 enum class UpdaterResult : uint8_t
 {
@@ -103,6 +100,15 @@ private:
         uint64_t RemaningSize {};
         uint64_t Hash {};
         bool IsClientBinary {};
+        bool TryPatch {true};
+        ResourcePackHeader PackHeader {};
+    };
+
+    enum class ResourceRange
+    {
+        None,
+        Catalog,
+        Payload,
     };
 
     void AddText(string_view text);
@@ -114,6 +120,10 @@ private:
     void RecoverInterruptedReplacements() const;
     void RemoveStaleTempPacks() const;
     void RequestUpdateFile(const UpdateFile& update_file);
+    void RequestResourceRange();
+    void FinishResourceRange();
+    void AdvanceResourcePatch();
+    auto IsLocalResourceCurrent(const UpdateFile& file) const -> bool;
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
@@ -144,7 +154,15 @@ private:
     bool _hasMatchingEntries {};
     bool _restartPrompt {};
     vector<UpdateFile> _filesToUpdate {};
-    std::ofstream _tempFile {};
+    vector<UpdateFile> _resourceTargets {};
+    unique_nptr<ResourcePatchWriter> _patchWriter {};
+    ResourceRange _resourceRange {ResourceRange::None};
+    uint64_t _rangeOffset {};
+    uint64_t _rangeSize {};
+    vector<uint8_t> _rangeData {};
+    size_t _patchDownloadIndex {};
+    unique_nptr<disk_directory_lock> _resourceDirectoryLock {};
+    disk_write_file _tempFile {};
     vector<uint8_t> _updateFileBuf {};
     vector<string> _messages {};
     FileSystem _resources {};

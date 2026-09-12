@@ -323,97 +323,98 @@ Each descriptor entry is:
 | `hash` | `uint64` | FNV-1a 64-bit digest: for a resource pack (`.fores`) the `PackHash` its header carries, for anything else the whole file content |
 | `target` | `UpdateFileTarget` (`uint8`) | `ClientResources` or `ClientBinaries` |
 | `file_index` | `uint32` | server-assigned index for `GetUpdateFile` |
+| `pack_header_size` | `uint32` | 80 for a resource base, 0 for native files |
+| `pack_header` | bytes | Full version 2.0 base header, including physical and logical identity |
 
 Common (gameplay-resource) entries are emitted for every binary target. Per-target binary entries (`UpdateFileTarget::ClientBinaries`) are emitted only for the matching `binary_target` from the handshake. The client then filters binary entries by the current host-derived runtime basename, so `LF_Client.exe` downloads `LF_Client.dll` while `LF_Client_OpenGL.exe` downloads `LF_Client_OpenGL.dll` even though both report the same CPU/OS target.
 
-### Resumable file transfer
+### Resource synchronization and resumable transfer
 
-The client drives a single transfer at a time:
+The updater protocol version is 4. It requests one bounded range at a time:
 
 ```text
-client â†’ server: GetUpdateFile  { file_index: uint32, start_offset: uint64 }
-server â†’ client: UpdateFileData { update_portion: int32, raw bytes[update_portion] }
+GetUpdateFile  { file_index: uint32, start_offset: uint64, requested_size: uint64, expected_hash: uint64 }
+UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
-The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`, currently 5 MB in this project â€” see [LastFrontier.fomain](../../LastFrontier.fomain)). The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
+The backend caps each portion by `Network.UpdateFileMaxPortionSize`. The client advances within the requested
+range and requests the remainder. It rejects negative, oversized or stalled replies. The server rejects an
+unknown file index, mismatched expected artifact hash, out-of-bounds range, invalid portion setting or failed
+read. Disk mode retains opened file descriptors for the advertised artifacts; memory mode retains their bytes.
+Deployments must replace published artifacts, never modify the bytes of an opened artifact in place. An opened
+old inode remains the matching source after a POSIX rename; Windows can reject replacement until it is closed.
+Native files continue to use complete-file transfer. Resource ranges select catalogs or whole encoded resources,
+not per-resource binary deltas.
 
-The updater connection also participates in the shared connection-stage protocol. After `InitData`, a
-server may send `NetMessage::HashList` (message id 122) to teach clients strings that were previously
-reported as unresolved runtime hashes. The updater consumes that message and records the strings in its
-private hash storage before continuing resource or binary transfer; `HashList` is not an update-file
-payload and does not change the `GetUpdateFile` / `UpdateFileData` state machine.
+The server advertises complete current `.fores` bases. For every resource target the updater compares the
+selected pair's `ContentHash`, independently of its physical layout. If changed and patching is allowed, it
+fetches the server catalog, reuses local resources with matching decoded hash and size, and plans a complete
+patch catalog. Only absent encoded resources are requested. Renames/deletions can therefore commit without
+payload transfer. No server-generated patch chain, set manifest or segment files are needed.
 
-Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Server/UpdaterBackend.cpp)):
+The writable pair consists of `Pack.patch.fores` and a selected full `Pack.fores`. The latter comes from the
+writable resource directory when present, otherwise the installed directory or APK. The patch's header binds
+it to the exact selected base hash. A patch is never an independent overriding source. See
+[ResourcePackFormat.md](ResourcePackFormat.md) for byte layouts, hash encodings and recovery validation.
 
-- `file_index` out of range â†’ `LogType::Warning` + `HardDisconnect`.
-- `start_offset > file_size` â†’ `LogType::Warning` + `HardDisconnect`.
-- `update_file_max_portion_size <= 0` (misconfiguration) â†’ `LogType::Warning` + `HardDisconnect`.
-- Disk-mode read failure â†’ `LogType::Warning` + `HardDisconnect`.
-- Disk-mode size drift against the announced descriptor entry - `LogType::Warning` + `HardDisconnect`. With
-  `ServerNetwork.UpdateFilesInMemory = False` the descriptor is a start-time snapshot while the bytes are read on
-  demand, so a pack replaced under a live server would otherwise reach the client under the hash announced for the
-  previous one.
+Patch growth has no configured size limit. Obsolete payloads and previous catalogs/footers remain in the
+file, and its size never triggers a full-base download. An already current patch is retained unchanged.
+Before appending, the updater checks available disk space for the new payloads, catalog and footer.
+Missing or unusable base/pair data can still require a complete-base download for repair.
 
-Once the update list is known, temp files left by an abandoned transfer whose pack the server no longer
-lists are removed (`RemoveStaleTempPacks`), so an interrupted download does not hold its size on the volume
-for ever; a temp file for a pack still on the list is the resume point and is kept.
+Patch publication appends verified payloads and the complete catalog, flushes them, then appends and flushes
+the commit footer. New directory entries are persisted on POSIX. A failed update leaves the previous commit
+readable. Restart scans backward only when EOF lacks a valid footer, then truncates the uncommitted suffix
+before another append. It may redownload the interrupted addition; no persistent resource resume journal is
+stored. The writable directory is locked during mutations using platform locks, with no lock/selector file.
 
-A promotion that was interrupted between its two renames is repaired first (`RecoverInterruptedReplacements`).
-A successful resource sync ends by rebuilding the merged tree. `FinishResourcesUpdate` calls
-`RebuildResourceIndex`, which skips the work when `IsResourceIndexCurrent` says the tree already describes the
-installed pack suffix after `Embedded` - a sync that changed nothing rewrites nothing - and otherwise
-merges that suffix into `Resources.foindex` under the writable resource root, creating the directory if
-needed. Embedded and earlier packs keep their normal mounts, as do writable overlay packs, which still
-win over the entire installed layer. This avoids looking for a nonexistent `Embedded.fores` and preserves
-mount precedence; see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). Building it is
-best effort: the tree is an optimization over mounting each pack, so a failure is
-logged, the half-built file is removed, and the update still succeeds with the client taking the per-pack
-view. That is the one place anything writes a `.foindex`; nothing ships or downloads one. The web build skips
-the build outright - see the Platforms section of [ResourcePackFormat.md](ResourcePackFormat.md) for why a tree
-that cannot outlive its launch costs more than it saves.
+Complete bases download into `~<filename>` under the writable resource directory. Space admission counts all
+remaining bytes; the file is not preallocated because its actual length is the resume position. A completed
+file must reproduce the advertised physical hash and have a valid catalog with the target logical hash.
+`ReplaceFileSafely` moves the prior writable base to `<name>-backup`, promotes the verified file with checked
+durability ordering, then discards the backup. Only after promotion succeeds is `Pack.patch.fores` removed.
+The read-only installation remains intact; subsequent reads select the writable base. A stale leftover patch
+cannot apply to its replacement because its base binding differs.
 
-`ReplaceFileSafely` moves the installed file to `<name>-backup` before renaming the new one into place and puts
-it back when that fails - but the restore can fail for the same reason, and then the only copy of the pack is
-a backup nothing reads. A backup whose live counterpart is missing is renamed back; one whose counterpart is
-present is obsolete and removed. `ApplyStagedBinaryUpdate` in the client host writes the same suffix, taken
-from the same `REPLACED_FILE_BACKUP_SUFFIX`, so one sweep repairs an interrupted swap whichever of the two
-started it. The constant lives in `Updater.h` rather than in either writer precisely because a sweep looks
-files up by that name: two spellings mean the other writer's leftovers are invisible. The updater releases
-every mounted data source at the end of its constructor (`CleanDataSources`) precisely so a pack it is about
-to replace is not open: `open_shared_read_file` shares read and write but not delete, so a live
-`ResourcePackSource` would refuse the rename.
+Interrupted replacement recovery runs before updater reads, and shared base resolution restores a missing
+writable base from its backup before bootstrap/Core or cache selection can fall back to the installed copy.
+A backup with a present live counterpart is obsolete. The updater releases its mounted sources before mutation;
+Windows file sharing can reject a reset while another reader still holds the old pair. POSIX readers retain
+valid old file descriptors across replacement rather than following the new path.
 
-Client-side, the `Updater` writes each portion to a `~<filename>` temp file, proves the finished file once complete, then atomically renames over the live file (`ReplaceFileSafely`). A resource pack is proved by `VerifyResourcePackFile` ([../Source/Common/ResourcePack.cpp](../Source/Common/ResourcePack.cpp)): the header must carry the published `PackHash` and the body, hashed in bounded slices, must reproduce it. Anything else is hashed whole via streamed `fs_hash_file` ([../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
+Every advertised resource is checked again before `ResourcesReady`, followed by metadata compatibility.
+Packs commit independently: interruption can leave different packs at different versions, and synchronization
+must finish before gameplay. Matching only the metadata pack is insufficient. There is no global atomic
+release switch or rollback of a partially synchronized set.
 
-A resource pack never needs that pass at all: the published hash is the one in its header, so "is this pack current" is one header read (`ReadResourcePackHeader`) and no body is hashed at startup. For the remaining whole-file entries, and to avoid rehashing them on every startup, the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+A successful resource sync rebuilds the disposable `Resources.foindex` over effective pairs in the configured
+suffix after Embedded. Earlier packs and Embedded retain their positions. Cache freshness includes the selected
+base and patch commit identities; cached/direct mounts agree on lookup, deletions, timestamps and enumeration.
+A failed cache build is logged and authoritative pairs remain usable. Web skips cache creation because its
+filesystem does not survive a page reload.
 
-Every entry name is checked with `fs_is_contained_relative_path` before it becomes an update target: the
-promotion, both sweeps and the next run's comparison all look inside the directory the updater owns, so an
-entry that would land outside it is never seen again and the update is aborted instead. This is not a defence
-against a hostile server - the signature is what is trusted there - it is refusing to act on a descriptor the
-client cannot carry out.
+Native whole-file hashes use the existing `(size, mtime, hash)` cache in `CacheStorage`; full resource body
+hashing is reserved for verifying completed base downloads. Normal resource mounts validate catalogs and
+verify individual payload hashes when resources are read. All descriptor paths are checked before joining
+writable paths. The updater also consumes connection-stage `HashList` messages normally.
 
-Before a transfer starts the updater refuses one it cannot finish: `fs_available_space` on the target
-directory must hold the remaining bytes, or the pack is not attempted and the installed one is left alone.
-The space is checked rather than reserved, because the resume protocol reads how much already arrived from
-the temp file's length, and preallocating the full size would make every partial download look complete.
-
-There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
+Obsolete temporary full downloads are swept after the desired file list arrives. Format and protocol readers
+require the current versions; they contain no previous-format parsing or migration fallback.
 
 ## Server-side: `UpdaterBackend`
 
-[../Source/Server/UpdaterBackend.h](../Source/Server/UpdaterBackend.h) is owned by `ServerEngine` as a `unique_ptr`. When `_updaterBackend` is null (unpackaged dev server) the server rejects `GetUpdateFile` with `HardDisconnect` â€” there is nothing to serve.
+[../Source/Server/UpdaterBackend.h](../Source/Server/UpdaterBackend.h) is owned by `ServerEngine` as an `optional`. When `_updaterBackend` is empty (unpackaged dev server) the server rejects `GetUpdateFile` with `HardDisconnect` â€” there is nothing to serve.
 
 Public API:
 
 ```cpp
-void LoadFromClientResources(const GlobalSettings& settings);
-void ProcessUpdateFile(ServerConnection* connection, int32_t update_file_max_portion_size);
-auto GetUpdateDescriptor(string_view binary_target_name) const -> const vector<uint8_t>&;
+void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
+void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
+auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
 ```
 
 - `LoadFromClientResources` walks `Settings.ClientResources`, picks every pack listed in `Settings.ClientResourceEntries` (excluding `Embedded`), then enumerates `Settings.PlatformBinaries/<target>/` for per-target binaries (default `PlatformBinaries/`, sibling of `Resources/` in the package layout).
-- Entries are stored as `UpdateFileData { InMemory, MemoryData?, DiskPath?, Size, Hash }`. Memory mode keeps the whole pack in RAM for the lifetime of the server. Disk mode keeps only `DiskPath`, `Size`, and the streamed `Hash`; portions are read on demand by `ReadUpdateFilePortion(...)`.
+- Entries retain size, hash and the resource header. Memory mode retains all bytes; disk mode retains an opened positional reader. Both modes serve the artifact the descriptor identifies.
 - Descriptors are cached per `binary_target_name`. Common-resource entries are merged into every per-target descriptor; targets without specific binaries fall back to the common-only descriptor.
 - `VerifyClientResourcesMetadata` then mounts the client packs and compares their metadata version against the one
   the server itself loaded. The server runs on `Settings.ServerResources` and hands out `Settings.ClientResources`, so
@@ -449,19 +450,16 @@ Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>
 **fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
 bad install config never bricks startup.
 
-Android and Web reach the portable branch, and both point `Baking.ClientResources` somewhere the platform
-made writable for them rather than at the install directory: the Android activity stages the packs out of the
-APK into the application's files directory, and the web build runs entirely inside the preloaded Emscripten
-filesystem. Neither has an installer marker, so neither takes the per-user branch. What that costs the merged
-tree - rebuilt with the staged directory on Android, on every launch on Web - is in
-[ResourcePackFormat.md](ResourcePackFormat.md).
+Android supplies its app-private writable root explicitly and reads installed full bases directly from
+uncompressed APK asset regions. Web uses its preloaded writable in-memory filesystem without persistence.
+See [ResourcePackFormat.md](ResourcePackFormat.md).
 
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
-patches** — the updater writes them under `<root>/<ClientResources>`, while both the updater's post-sync
+patches** — the updater writes them under `<root>/<ClientResources>` for relative resource paths, or `<root>/Resources` for an absolute installed/APK path, while both the updater's post-sync
 metadata check and `ClientEngine` obtain their identically ordered pack view from `GetClientResources()`.
-That view layers the writable packs on top of the read-only install-dir base, so the files the updater
+That view selects one base and optional patch per logical pack, preserving configured pack order, so the files the updater
 validated are exactly the files gameplay opens — and the **self-updated native runtime** (see below).
 The updater's packaged-mode gates and resource-root choices use the already loaded read-only
 `Common.Packaged` snapshot; direct executable-marker checks are limited to the pre-settings bootstrap and

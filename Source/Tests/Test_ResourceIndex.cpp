@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "DataSource.h"
+#include "FileSystem.h"
 #include "ResourceIndex.h"
 #include "ResourcePack.h"
 
@@ -161,8 +162,156 @@ static void WriteStoredZip(string_view path, const vector<std::pair<string, stri
     REQUIRE(fs_write_file(path, const_span<uint8_t> {out.data(), out.size()}));
 }
 
+TEST_CASE("ResourcePackInApkRegion")
+{
+    string dir = MakeTempIndexDir("apk_region");
+    auto cleanup = scope_exit([&]() noexcept { (void)fs_remove_dir_tree(dir); });
+    WritePack(dir, "Art", {{"Old.txt", "same content"}, {"Deleted.txt", "gone"}});
+    WritePack(dir, "Target", {{"Renamed.txt", "same content"}, {"Added.txt", "new content"}});
+    string base_path = strex(dir).combine_path("Art.fores").str();
+    string apk_path = strex(dir).combine_path("client.apk").str();
+    auto bytes = fs_read_file(base_path);
+    REQUIRE(bytes);
+    WriteStoredZip(apk_path, {{"unrelated", string(4096, 'x')}, {"assets/Resources/Art.fores", *bytes}, {"after", "outside the pack"}});
+    REQUIRE(fs_remove_file(base_path));
+    string apk_dir = strex("{}!/assets/Resources", apk_path).str();
+    string installed = strex(apk_dir).combine_path("Art.fores").str();
+    disk_read_file region = OpenResourcePackFile(installed);
+    REQUIRE(region);
+    CHECK(region.get_size() == bytes->size());
+    array<uint8_t, 1> outside {};
+    CHECK_FALSE(region.read_at(region.get_size(), outside));
+    CHECK_FALSE(region.read_at(std::numeric_limits<uint64_t>::max(), outside));
+
+    ResourcePackSource target {strex(dir).combine_path("Target.fores").str()};
+    string patch_path = GetResourcePatchPath(base_path);
+    ResourcePatchWriter writer {installed, patch_path, target.GetEntryRefs(), target.GetContentHash()};
+    REQUIRE(writer.GetDownloads().size() == 1);
+    writer.Begin();
+    disk_read_file remote {strex(dir).combine_path("Target.fores").str()};
+
+    for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
+        vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
+        REQUIRE(remote.read_at(entry.DataOffset, payload));
+        writer.AddEncodedFile(payload);
+    }
+
+    writer.Finish();
+    vector<ResourceIndexPack> packs;
+    vector<string> paths;
+    REQUIRE(ResolveResourceIndexPacks({apk_dir, dir}, {"Art"}, packs, paths));
+    REQUIRE(paths == vector<string> {installed});
+    string index_path = strex(dir).combine_path("Resources.foindex").str();
+    BuildResourceIndex(index_path, paths, packs);
+    ResourceIndexSource index {index_path, {apk_dir, dir}};
+    CHECK(ReadThroughIndex(index, "Renamed.txt") == BytesOf("same content"));
+    CHECK(ReadThroughIndex(index, "Added.txt") == BytesOf("new content"));
+    CHECK_FALSE(index.IsFileExists("Old.txt"));
+    CHECK_FALSE(index.IsFileExists("Deleted.txt"));
+    CHECK(IsResourceIndexCurrent(index_path, {apk_dir, dir}, {"Art"}));
+}
+
 TEST_CASE("ResourceIndex")
 {
+    SECTION("PatchedPairsMatchDirectEnumerationAndInvalidateOnEveryCommit")
+    {
+        string dir = MakeTempIndexDir("index_patch_pair");
+        auto cleanup = scope_exit([&]() noexcept { (void)fs_remove_dir_tree(dir); });
+        WritePack(dir, "Base", {{"Shared.txt", "earlier"}, {"Base.txt", "base"}});
+        WritePack(dir, "Over", {{"Shared.txt", "later"}, {"Deleted.txt", "gone"}, {"Keep.txt", "keep"}});
+        string base_path = strex(dir).combine_path("Over.fores").str();
+        string patch_path = GetResourcePatchPath(base_path);
+        string target_path = strex(dir).combine_path("Target.fores").str();
+        string index_path = strex(dir).combine_path("Resources.foindex").str();
+        vector<string> names {"Base", "Over"};
+        vector<string> dirs {dir};
+
+        auto append = [&](const vector<pair<string, string>>& files) {
+            WritePack(dir, "Target", files);
+            ResourcePackSource target {target_path};
+            ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
+            disk_read_file remote {target_path};
+            writer.Begin();
+
+            for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
+                vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));
+                REQUIRE(remote.read_at(entry.DataOffset, data));
+                writer.AddEncodedFile(data);
+            }
+
+            writer.Finish();
+        };
+
+        append({{"Keep.txt", "keep"}, {"New.txt", "new"}});
+        vector<ResourceIndexPack> packs;
+        vector<string> paths;
+        REQUIRE(ResolveResourceIndexPacks(dirs, names, packs, paths));
+        BuildResourceIndex(index_path, paths, packs);
+        REQUIRE(IsResourceIndexCurrent(index_path, dirs, names));
+
+        {
+            FileSystem direct;
+            direct.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(strex(dir).combine_path("Base.fores").str()));
+            direct.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(base_path, patch_path));
+            ResourceIndexSource cached {index_path, dirs};
+            vector<string> direct_names;
+
+            for (const auto& file : direct.GetAllFiles()) {
+                direct_names.emplace_back(file.GetPath());
+            }
+
+            CHECK(cached.GetFileNames("", true, "") == direct_names);
+            CHECK(ReadThroughIndex(cached, "Shared.txt") == BytesOf("earlier"));
+            CHECK_FALSE(cached.IsFileExists("Deleted.txt"));
+            CHECK(ReadThroughIndex(cached, "New.txt") == BytesOf("new"));
+            ResourcePackSource pair {base_path, patch_path};
+            size_t size = 0;
+            uint64_t direct_time = 0;
+            uint64_t cached_time = 0;
+            REQUIRE(pair.GetFileInfo("Keep.txt", size, direct_time));
+            REQUIRE(cached.GetFileInfo("Keep.txt", size, cached_time));
+            CHECK(cached_time == direct_time);
+        }
+
+        {
+            ResourceIndexSource old_snapshot {index_path, dirs};
+            append({{"Keep.txt", "keep"}, {"Renamed.txt", "new"}});
+            CHECK(ReadThroughIndex(old_snapshot, "New.txt") == BytesOf("new"));
+            CHECK_FALSE(old_snapshot.IsFileExists("Renamed.txt"));
+        }
+
+        CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, names));
+        CHECK_THROWS(ResourceIndexSource(index_path, dirs));
+        REQUIRE(ResolveResourceIndexPacks(dirs, names, packs, paths));
+        BuildResourceIndex(index_path, paths, packs);
+        CHECK(IsResourceIndexCurrent(index_path, dirs, names));
+
+        REQUIRE(fs_remove_file(patch_path));
+        CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, names));
+    }
+
+    SECTION("RestoresWritableBaseBackupBeforeSelectingTheInstalledBase")
+    {
+        string dir = MakeTempIndexDir("resource_base_recovery");
+        auto cleanup = scope_exit([&]() noexcept { (void)fs_remove_dir_tree(dir); });
+        string writable = strex(dir).combine_path("Writable").str();
+        REQUIRE(fs_create_directories(writable));
+        WritePack(dir, "Core", {{"File.txt", "installed"}});
+        WritePack(writable, "Core", {{"File.txt", "updated"}});
+        string base = strex(writable).combine_path("Core.fores").str();
+        string backup = strex("{}{}", base, REPLACED_FILE_BACKUP_SUFFIX).str();
+        REQUIRE(fs_rename_durable(base, backup));
+        CHECK(ResolveResourcePackPath({dir, writable}, "Core") == base);
+        CHECK_FALSE(fs_exists(backup));
+        ResourcePackSource restored {base};
+        size_t size = 0;
+        uint64_t write_time = 0;
+        auto data = restored.OpenFile("File.txt", size, write_time);
+        REQUIRE(data);
+        REQUIRE(size == 7);
+        CHECK(std::memcmp(data.get(), "updated", size) == 0);
+    }
+
     SECTION("KeepsEmbeddedAndItsPredecessorsOutsideTheDiskIndex")
     {
         CHECK(GetResourceIndexPackNames({"Metadata", "Embedded", "Core", "Art"}) == vector<string> {"Core", "Art"});

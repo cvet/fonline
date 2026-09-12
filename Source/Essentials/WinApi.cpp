@@ -317,6 +317,45 @@ auto winapi::sync_file(int32_t fd) noexcept -> bool
     return ::_commit(fd) == 0;
 }
 
+auto winapi::lock_named_mutex(const string& name) noexcept -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto handle = make_nptr(::CreateMutexA(nullptr, FALSE, name.c_str()));
+
+    if (!handle) {
+        return nullptr;
+    }
+
+    uint32_t result = ::WaitForSingleObject(handle.get(), 0);
+
+    if (result != WAIT_OBJECT_0 && result != WAIT_ABANDONED) {
+        ::CloseHandle(handle.get());
+        return nullptr;
+    }
+
+    return handle;
+}
+
+void winapi::unlock_named_mutex(nptr<void> lock) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (lock) {
+        ::ReleaseMutex(lock.get());
+        ::CloseHandle(lock.get());
+    }
+}
+
+auto winapi::rename_file_durable(const string& from, const string& to) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring from_wide = strex(from).to_wide_char();
+    wstring to_wide = strex(to).to_wide_char();
+    return ::MoveFileExW(from_wide.c_str(), to_wide.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+}
+
 auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -330,17 +369,29 @@ auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
     return fd;
 }
 
-auto winapi::open_new_write_file(const string& path) noexcept -> int32_t
+auto winapi::open_new_write_file(const string& path, bool append) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     int32_t fd = -1;
 
-    if (::_sopen_s(&fd, path.c_str(), _O_BINARY | _O_WRONLY | _O_CREAT | _O_TRUNC, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
+    if (::_sopen_s(&fd, path.c_str(), _O_BINARY | _O_WRONLY | _O_CREAT, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
+        return -1;
+    }
+
+    if ((!append && ::_chsize_s(fd, 0) != 0) || ::_lseeki64(fd, 0, SEEK_END) < 0) {
+        ::_close(fd);
         return -1;
     }
 
     return fd;
+}
+
+auto winapi::resize_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return size <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) && ::_chsize_s(fd, size) == 0 && ::_lseeki64(fd, static_cast<int64_t>(size), SEEK_SET) >= 0;
 }
 
 void winapi::close_file(int32_t fd) noexcept

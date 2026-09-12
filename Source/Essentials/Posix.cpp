@@ -521,6 +521,42 @@ auto posix::sync_file(int32_t fd) noexcept -> bool
     return ::fsync(fd) == 0;
 }
 
+auto posix::lock_directory(const string& path) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY);
+
+#if !FO_WEB
+    if (fd >= 0 && ::flock(fd, LOCK_EX | LOCK_NB) != 0) {
+        ::close(fd);
+        return -1;
+    }
+#endif
+
+    return fd;
+}
+
+auto posix::sync_directory(const string& path) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WEB
+    ignore_unused(path);
+    return true;
+#else
+    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY);
+
+    if (fd < 0) {
+        return false;
+    }
+
+    bool synced = ::fsync(fd) == 0;
+    ::close(fd);
+    return synced;
+#endif
+}
+
 auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -528,11 +564,36 @@ auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
     return ::open(path.c_str(), O_RDONLY | LARGE_FILE_OPEN_FLAG);
 }
 
-auto posix::open_new_write_file(const string& path) noexcept -> int32_t
+auto posix::open_new_write_file(const string& path, bool append) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | LARGE_FILE_OPEN_FLAG, 0666);
+    int32_t fd = ::open(path.c_str(), O_WRONLY | O_CREAT | LARGE_FILE_OPEN_FLAG, 0666);
+
+    if (fd < 0) {
+        return -1;
+    }
+
+#if !FO_WEB
+    if (::flock(fd, LOCK_EX | LOCK_NB) != 0) {
+        ::close(fd);
+        return -1;
+    }
+#endif
+
+    if ((!append && truncate_file_to(fd, 0) != 0) || seek_file(fd, 0, SEEK_END) < 0) {
+        ::close(fd);
+        return -1;
+    }
+
+    return fd;
+}
+
+auto posix::resize_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return size <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) && truncate_file_to(fd, size) == 0 && seek_file(fd, static_cast<int64_t>(size), SEEK_SET) >= 0;
 }
 
 void posix::close_file(int32_t fd) noexcept

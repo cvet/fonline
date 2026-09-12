@@ -45,11 +45,11 @@ FO_DECLARE_EXCEPTION(ResourceIndexException);
 // The merged resource tree: one file naming every path the packs present and where its bytes live, carried by
 // a `.foindex` file. It holds references only - no payload. Full contract: Docs/ResourcePackFormat.md
 constexpr uint32_t RESOURCE_INDEX_MAGIC = 0x58494F46; // "FOIX"
-constexpr uint16_t RESOURCE_INDEX_VERSION_MAJOR = 1;
+constexpr uint16_t RESOURCE_INDEX_VERSION_MAJOR = 2;
 constexpr uint16_t RESOURCE_INDEX_VERSION_MINOR = 0;
 constexpr size_t RESOURCE_INDEX_HEADER_SIZE = 72;
-constexpr size_t RESOURCE_INDEX_PACK_SIZE = 16;
-constexpr size_t RESOURCE_INDEX_ENTRY_SIZE = 40;
+constexpr size_t RESOURCE_INDEX_PACK_SIZE = 32;
+constexpr size_t RESOURCE_INDEX_ENTRY_SIZE = 56;
 
 // The merged tree a client mounts, kept beside the packs under the writable root because it is built there
 constexpr string_view RESOURCE_INDEX_FILE_NAME = "Resources.foindex";
@@ -60,6 +60,9 @@ struct ResourceIndexPack
 {
     string Name {};
     uint64_t PackHash {};
+    uint64_t PatchHash {};
+    uint64_t PatchEnd {};
+    string PatchPath {};
 };
 
 // The parsed form and not the on-disk image: the file is written field by field, so member order and sizeof
@@ -85,11 +88,8 @@ auto ComputeResourceIndexPackListHash(const vector<ResourceIndexPack>& packs) no
 auto ReadResourceIndexHeader(string_view path, ResourceIndexHeader& header) noexcept -> bool;
 // Only the suffix after Embedded can be replaced by one disk-backed mount without changing its precedence
 auto GetResourceIndexPackNames(const vector<string>& pack_names) -> vector<string>;
-// Resolves each name against the directories in priority order and reads the hash from each pack's header,
-// so deciding whether the index still holds costs one small read per pack instead of a mount
+// Freshness binds the selected base header and the latest valid patch catalog
 auto ResolveResourceIndexPacks(const vector<string>& pack_dirs, const vector<string>& pack_names, vector<ResourceIndexPack>& packs, vector<string>& pack_paths) noexcept -> bool;
-// Whether the index on disk still describes exactly these packs, answered from headers alone so a caller can
-// decide to mount it without opening one
 auto IsResourceIndexCurrent(string_view path, const vector<string>& pack_dirs, const vector<string>& pack_names) noexcept -> bool;
 // Merges the packs in the given order, last one winning a shared path, and publishes the completed index. The
 // packs are read and released; nothing is ever written back into a `.fores`
@@ -126,6 +126,8 @@ private:
         uint64_t DecodedSize {};
         uint32_t PackIndex {};
         uint32_t Codec {};
+        uint32_t Source {};
+        uint64_t FileContentHash {};
     };
 
     void ParseIndex(const vector<string>& pack_dirs);
@@ -139,6 +141,7 @@ private:
     vector<FileEntry> _entries {};
     unordered_map<string_view, size_t> _entryLookup {};
     vector<disk_read_file> _packFiles {};
+    vector<disk_read_file> _patchFiles {};
     // Per pack, so an entry reports the mtime of the `.fores` its bytes live in - the same answer a direct
     // pack mount gives, which is what keeps the two views of one file indistinguishable
     vector<uint64_t> _packWriteTimes {};

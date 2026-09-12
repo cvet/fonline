@@ -316,10 +316,10 @@ def resolve_android_abi(arch: str) -> str:
 EMBEDDED_PACK_NAME = 'Embedded'
 
 RESOURCE_PACK_MAGIC = 0x53524F46
-RESOURCE_PACK_VERSION_MAJOR = 1
+RESOURCE_PACK_VERSION_MAJOR = 2
 RESOURCE_PACK_VERSION_MINOR = 0
-RESOURCE_PACK_HEADER_SIZE = 72
-RESOURCE_PACK_ENTRY_SIZE = 40
+RESOURCE_PACK_HEADER_SIZE = 80
+RESOURCE_PACK_ENTRY_SIZE = 48
 RESOURCE_PACK_CODEC_STORED = 0
 RESOURCE_PACK_CODEC_DEFLATE = 1
 RESOURCE_PACK_MIN_COMPRESSED_SIZE = 64
@@ -352,51 +352,54 @@ def encode_resource_pack_blob(data: bytes, compress_level: int, min_gain_percent
 
 
 def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, str | Path]], compress_level: int, min_gain_percent: int) -> None:
-	"""Write one engine resource pack: header, payload blobs, then the index over them."""
+	"""Write a full base pack with physical and decoded-content identities."""
 	assert 0 <= compress_level <= 9, 'Resource pack compression level is out of the zlib range'
 	assert 0 <= min_gain_percent <= 100, 'Resource pack minimum compression gain is not a percentage'
+	sorted_entries = sorted((name.replace('\\', '/'), path) for name, path in entries)
+	for ordinal, (name, _) in enumerate(sorted_entries):
+		assert name and all(part not in ('', '.', '..') for part in name.split('/')) and ':' not in name and '\0' not in name, 'Invalid resource path: ' + name
+		assert ordinal == 0 or sorted_entries[ordinal - 1][0] != name, 'Resource pack holds the same path twice: ' + name
 
-	sorted_entries = sorted(entries, key=lambda entry: entry[0])
-
-	for index in range(1, len(sorted_entries)):
-		assert sorted_entries[index - 1][0] != sorted_entries[index][0], 'Resource pack holds the same path twice: ' + sorted_entries[index][0]
-
-	body = bytearray()
-	index_records: list[tuple[str, int, int, int, int]] = []
-
-	for arcname, file_path in sorted_entries:
-		with open(file_path, 'rb') as src:
-			raw = src.read()
-
-		codec, blob = encode_resource_pack_blob(raw, compress_level, min_gain_percent)
-		index_records.append((arcname, RESOURCE_PACK_HEADER_SIZE + len(body), len(blob), len(raw), codec))
-		body += blob
-
-	data_size = len(body)
-	pool_offset = len(index_records) * RESOURCE_PACK_ENTRY_SIZE
-	index = bytearray()
-	pool = bytearray()
-
-	for arcname, data_offset, stored_size, decoded_size, codec in index_records:
-		path_bytes = arcname.encode('utf-8')
-		index += struct.pack('<IIQQQII', pool_offset + len(pool), len(path_bytes), data_offset, stored_size, decoded_size, codec, 0)
-		pool += path_bytes
-
-	index += pool
-	index_codec, stored_index = encode_resource_pack_blob(bytes(index), compress_level, min_gain_percent)
-	body += stored_index
-
-	header = bytearray(RESOURCE_PACK_HEADER_SIZE)
-	struct.pack_into('<IHH', header, 0, RESOURCE_PACK_MAGIC, RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR)
-	struct.pack_into('<Q', header, 8, fnv1a_64(bytes(body)))
-	struct.pack_into('<QQQ', header, 16, RESOURCE_PACK_HEADER_SIZE + data_size, len(stored_index), len(index))
-	struct.pack_into('<II', header, 40, index_codec, len(index_records))
-	struct.pack_into('<QQ', header, 48, RESOURCE_PACK_HEADER_SIZE, data_size)
-	struct.pack_into('<Q', header, 64, fnv1a_64(bytes(header[:64])))
-
+	index_records: list[tuple[str, int, int, int, int, int]] = []
+	body_hash = FNV_OFFSET
+	content_hash = fnv1a_64(struct.pack('<I', len(sorted_entries)))
 	with open(archive_path, 'wb') as dst:
+		dst.write(bytes(RESOURCE_PACK_HEADER_SIZE))
+		for arcname, file_path in sorted_entries:
+			raw = Path(file_path).read_bytes()
+			file_hash = fnv1a_64(raw)
+			codec, blob = encode_resource_pack_blob(raw, compress_level, min_gain_percent)
+			index_records.append((arcname, dst.tell(), len(blob), len(raw), codec, file_hash))
+			path_bytes = arcname.encode('utf-8')
+			content_hash = fnv1a_64(struct.pack('<IQQ', len(path_bytes), len(raw), file_hash), content_hash)
+			content_hash = fnv1a_64(path_bytes, content_hash)
+			body_hash = fnv1a_64(blob, body_hash)
+			dst.write(blob)
+
+		index_offset = dst.tell()
+		pool_offset = len(index_records) * RESOURCE_PACK_ENTRY_SIZE
+		index = bytearray()
+		pool = bytearray()
+		for arcname, data_offset, stored_size, decoded_size, codec, file_hash in index_records:
+			path_bytes = arcname.encode('utf-8')
+			index += struct.pack('<IIQQQIIQ', pool_offset + len(pool), len(path_bytes), data_offset, stored_size, decoded_size, codec, 0, file_hash)
+			pool += path_bytes
+		index += pool
+		index_codec, stored_index = encode_resource_pack_blob(bytes(index), compress_level, min_gain_percent)
+		body_hash = fnv1a_64(stored_index, body_hash)
+		dst.write(stored_index)
+		header = bytearray(RESOURCE_PACK_HEADER_SIZE)
+		struct.pack_into('<IHH', header, 0, RESOURCE_PACK_MAGIC, RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR)
+		struct.pack_into('<Q', header, 8, body_hash)
+		struct.pack_into('<QQQ', header, 16, index_offset, len(stored_index), len(index))
+		struct.pack_into('<II', header, 40, index_codec, len(index_records))
+		struct.pack_into('<QQ', header, 48, RESOURCE_PACK_HEADER_SIZE, index_offset - RESOURCE_PACK_HEADER_SIZE)
+		struct.pack_into('<Q', header, 64, content_hash)
+		struct.pack_into('<Q', header, 72, fnv1a_64(bytes(header[:72])))
+		dst.seek(0)
 		dst.write(header)
-		dst.write(body)
+
+
 def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipInfo, file_path: str) -> bool:
 	if archive_info.file_size != os.path.getsize(file_path):
 		return False
@@ -1334,6 +1337,7 @@ class Packager:
 		shutil.copy(template_activity_path, activity_path)
 		patch_file(activity_path, '$PACKAGE$', package_name)
 		patch_file(activity_path, '$CONFIG$', self.args.config)
+		patch_file(activity_path, '$RESOURCE_DIRECTORY$', json.dumps(self.client_res_dir.replace('\\', '/')))
 
 		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)
 		log('Android activity', activity_path)

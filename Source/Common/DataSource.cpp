@@ -304,8 +304,9 @@ auto DataSource::MountPack(string_view dir, string_view name, bool maybe_not_ava
     if (name == EMBEDDED_PACK_NAME) {
         return SafeAlloc::MakeUnique<EmbeddedFile>();
     }
-    else if (is_file_present(strex("{}.fores", path))) {
-        return SafeAlloc::MakeUnique<ResourcePackSource>(strex("{}.fores", path));
+    else if (OpenResourcePackFile(strex("{}.fores", path).str())) {
+        string base_path = strex("{}.fores", path).str();
+        return SafeAlloc::MakeUnique<ResourcePackSource>(base_path, GetResourcePatchPath(base_path));
     }
     else if (is_file_present(strex("{}.zip", path))) {
         return SafeAlloc::MakeUnique<ZipFile>(strex("{}.zip", path));

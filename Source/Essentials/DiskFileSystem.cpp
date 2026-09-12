@@ -332,6 +332,29 @@ auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool
     return !ec;
 }
 
+auto fs_sync_parent(string_view path) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    ignore_unused(path);
+    return true;
+#else
+    return posix::sync_directory(strex(path).extract_dir().str());
+#endif
+}
+
+auto fs_rename_durable(string_view from_path, string_view to_path) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return winapi::rename_file_durable(string(from_path), string(to_path));
+#else
+    return fs_rename(from_path, to_path) && fs_sync_parent(to_path) && fs_sync_parent(from_path);
+#endif
+}
+
 auto fs_open_ifstream(string_view path, std::ios::openmode mode) -> std::ifstream
 {
     FO_STACK_TRACE_ENTRY();
@@ -553,14 +576,30 @@ disk_read_file::disk_read_file(string_view path) noexcept
     _size = static_cast<uint64_t>(size);
 }
 
+disk_read_file::disk_read_file(string_view path, uint64_t offset, uint64_t size) noexcept :
+    disk_read_file(path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0 || offset > _size || size > _size - offset) {
+        close();
+        return;
+    }
+
+    _offset = offset;
+    _size = size;
+}
+
 disk_read_file::disk_read_file(disk_read_file&& other) noexcept :
     _descriptor {other._descriptor},
-    _size {other._size}
+    _size {other._size},
+    _offset {other._offset}
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     other._descriptor = -1;
     other._size = 0;
+    other._offset = 0;
 }
 
 auto disk_read_file::operator=(disk_read_file&& other) noexcept -> disk_read_file&
@@ -571,8 +610,10 @@ auto disk_read_file::operator=(disk_read_file&& other) noexcept -> disk_read_fil
         close();
         _descriptor = other._descriptor;
         _size = other._size;
+        _offset = other._offset;
         other._descriptor = -1;
         other._size = 0;
+        other._offset = 0;
     }
 
     return *this;
@@ -589,7 +630,7 @@ auto disk_read_file::read_at(uint64_t offset, span<uint8_t> buf) const noexcept 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_descriptor < 0) {
+    if (_descriptor < 0 || offset > _size || buf.size() > _size - offset) {
         return false;
     }
 
@@ -599,9 +640,9 @@ auto disk_read_file::read_at(uint64_t offset, span<uint8_t> buf) const noexcept 
         auto target = make_ptr(buf.data() + done);
 
 #if FO_WINDOWS
-        int64_t read_bytes = winapi::read_file_at(_descriptor, offset + done, target, buf.size() - done);
+        int64_t read_bytes = winapi::read_file_at(_descriptor, _offset + offset + done, target, buf.size() - done);
 #else
-        int64_t read_bytes = posix::read_file_at(_descriptor, offset + done, target, buf.size() - done);
+        int64_t read_bytes = posix::read_file_at(_descriptor, _offset + offset + done, target, buf.size() - done);
 #endif
 
         // Zero means the file ended before the span did, which for a declared extent is a corrupt file
@@ -629,16 +670,50 @@ void disk_read_file::close() noexcept
     }
 
     _size = 0;
+    _offset = 0;
 }
 
-disk_write_file::disk_write_file(string_view path) noexcept
+disk_directory_lock::disk_directory_lock(string_view path) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    _descriptor = winapi::open_new_write_file(string(path));
+    std::error_code error;
+    auto canonical = std::filesystem::weakly_canonical(std::filesystem::path {fs_make_path(path.empty() ? "." : path)}, error);
+
+    if (error) {
+        return;
+    }
+
+    string normalized = strex(fs_path_to_string(canonical)).lower_utf8();
+    uint64_t hash = fs_hash_data({reinterpret_cast<const uint8_t*>(normalized.data()), normalized.size()});
+    _handle = winapi::lock_named_mutex(strex("Global\\FOnlineResourceWrite_{:016x}", hash).str());
 #else
-    _descriptor = posix::open_new_write_file(string(path));
+    _descriptor = posix::lock_directory(string(path));
+#endif
+}
+
+disk_directory_lock::~disk_directory_lock()
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    winapi::unlock_named_mutex(_handle);
+#else
+    if (_descriptor >= 0) {
+        posix::close_file(_descriptor);
+    }
+#endif
+}
+
+disk_write_file::disk_write_file(string_view path, disk_write_mode mode) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    _descriptor = winapi::open_new_write_file(string(path), mode == disk_write_mode::Append);
+#else
+    _descriptor = posix::open_new_write_file(string(path), mode == disk_write_mode::Append);
 #endif
 }
 
@@ -711,6 +786,21 @@ auto disk_write_file::seek_to_begin() noexcept -> bool
     return winapi::seek_file_begin(_descriptor);
 #else
     return posix::seek_file_begin(_descriptor);
+#endif
+}
+
+auto disk_write_file::truncate_to(uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_descriptor < 0 || size > numeric_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    return winapi::resize_file(_descriptor, size);
+#else
+    return posix::resize_file(_descriptor, size);
 #endif
 }
 

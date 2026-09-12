@@ -141,6 +141,20 @@ namespace
         return !IsPackaged();
     }
 
+    static void WriteClientTestPack(string_view directory, string_view name, const vector<pair<string, string>>& files)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        REQUIRE(fs_create_directories(directory));
+        ResourcePackWriter writer {strex(directory).combine_path(strex("{}.fores", name)).str()};
+
+        for (const auto& [path, contents] : files) {
+            writer.AddFile(path, {reinterpret_cast<const uint8_t*>(contents.data()), contents.size()});
+        }
+
+        writer.Finish();
+    }
+
     static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerClientEngine compiler_engine {metadata_resources};
@@ -1956,12 +1970,8 @@ BoundsMaxZ = 1 1 1 1
 #endif
 }
 
-TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
+TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 {
-    if (!CanUseDirectoryBackedClientResourceFixtures()) {
-        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
-    }
-
     string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
     string writable_root = MakeTempClientResourceDir("writable_overlay");
     bool removed_base_before = fs_remove_dir_tree(unique_name);
@@ -1989,11 +1999,11 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
     outdated_writer.Write<uint16_t>(uint16_t {0});
 
     vector<uint8_t> current_metadata = BakerTests::MakeEmptyMetadataBlob();
-    REQUIRE(fs_write_file(strex(unique_name).combine_path(pack_name).combine_path(metadata_file).str(), outdated_metadata));
-    REQUIRE(fs_write_file(strex(writable_resources).combine_path(pack_name).combine_path(metadata_file).str(), current_metadata));
+    WriteClientTestPack(unique_name, pack_name, {{metadata_file, string(outdated_metadata.begin(), outdated_metadata.end())}});
+    WriteClientTestPack(writable_resources, pack_name, {{metadata_file, string(current_metadata.begin(), current_metadata.end())}});
 
     FileSystem install_resources;
-    install_resources.AddPacksSource(unique_name, {pack_name});
+    install_resources.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(strex(unique_name).combine_path(strex("{}.fores", pack_name)).str()));
     vector<uint8_t> installed_metadata = ReadMetadataBin(&install_resources, "Client");
     CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
 
@@ -2028,11 +2038,10 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
     string writable = strex(dir).combine_path("Writable").str();
     string overlay = fs_make_writable_path(writable, install);
 
-    REQUIRE(fs_write_file(strex(install).combine_path("Before/Shared.txt").str(), string_view {"before"}));
+    WriteClientTestPack(install, "Before", {{"Shared.txt", "before"}});
     REQUIRE(fs_write_file(strex(install).combine_path("Embedded/Shared.txt").str(), string_view {"embedded"}));
     REQUIRE(fs_write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"bootstrap"}));
-    REQUIRE(fs_write_file(strex(install).combine_path("Art/Shared.txt").str(), string_view {"art"}));
-    REQUIRE(fs_write_file(strex(overlay).combine_path("Before/Overlay.txt").str(), string_view {"writable"}));
+    WriteClientTestPack(overlay, "Before", {{"Shared.txt", "before"}, {"Overlay.txt", "writable"}});
 
     {
         ResourcePackWriter writer {strex(install).combine_path("Art.fores").str()};
@@ -2061,7 +2070,7 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
         FileSystem resources = GetClientResources(settings);
         CHECK(resources.ReadFileText("Shared.txt") == "art");
         CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
-        CHECK(resources.ReadFileText("Overlay.txt") == "writable");
+        CHECK(resources.ReadFileText("Overlay.txt") == "art");
         CHECK(resources.ReadFileHeader("Shared.txt").GetDataSource()->GetPackName() == index_path);
     }
 
@@ -2080,12 +2089,8 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
     }
 }
 
-TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
+TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
 {
-    if (!CanUseDirectoryBackedClientResourceFixtures()) {
-        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
-    }
-
     string unique_name = strex("lf_client_pack_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
     string writable_root = MakeTempClientResourceDir("writable_overlay");
     bool removed_base_before = fs_remove_dir_tree(unique_name);
@@ -2099,11 +2104,9 @@ TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
     });
 
     string writable_resources = fs_make_writable_path(writable_root, unique_name);
-    REQUIRE(fs_write_file(strex(unique_name).combine_path("Main/shared.txt").str(), string_view {"install-base"}));
-    REQUIRE(fs_write_file(strex(unique_name).combine_path("Main/base-only.txt").str(), string_view {"base-only"}));
-    REQUIRE(fs_write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"base-fallback"}));
-    REQUIRE(fs_write_file(strex(writable_resources).combine_path("Main/shared.txt").str(), string_view {"writable-overlay"}));
-    REQUIRE(fs_write_file(strex(writable_resources).combine_path("Main/overlay-only.txt").str(), string_view {"overlay-only"}));
+    WriteClientTestPack(unique_name, "Main", {{"shared.txt", "install-base"}, {"base-only.txt", "base-only"}});
+    WriteClientTestPack(unique_name, "Fallback", {{"fallback.txt", "base-fallback"}});
+    WriteClientTestPack(writable_resources, "Main", {{"shared.txt", "writable-base"}, {"overlay-only.txt", "overlay-only"}});
 
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Packaged, true);
@@ -2112,10 +2115,18 @@ TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
     settings.UserWritablePath = writable_root;
 
     FileSystem resources = GetClientResources(settings);
-    CHECK(resources.ReadFileText("shared.txt") == "writable-overlay");
-    CHECK(resources.ReadFileText("base-only.txt") == "base-only");
+    CHECK(resources.ReadFileText("shared.txt") == "writable-base");
+    CHECK_FALSE(resources.IsFileExists("base-only.txt"));
     CHECK(resources.ReadFileText("overlay-only.txt") == "overlay-only");
     CHECK(resources.ReadFileText("fallback.txt") == "base-fallback");
+
+    SECTION("MissingBaseDoesNotMountLooseFiles")
+    {
+        resources.CleanDataSources();
+        REQUIRE(fs_remove_file(strex(unique_name).combine_path("Fallback.fores").str()));
+        REQUIRE(fs_write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"loose"}));
+        CHECK_THROWS(GetClientResources(settings));
+    }
 }
 
 #if FO_ENABLE_3D

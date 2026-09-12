@@ -33,6 +33,8 @@
 
 #include "ResourcePack.h"
 
+#include "minizip/unzip.h"
+
 FO_BEGIN_NAMESPACE
 
 // Header layout, little endian throughout. The checksum covers everything before it, so a header that survived
@@ -48,7 +50,8 @@ static constexpr size_t HEADER_OFFSET_INDEX_CODEC = 40;
 static constexpr size_t HEADER_OFFSET_ENTRY_COUNT = 44;
 static constexpr size_t HEADER_OFFSET_DATA_OFFSET = 48;
 static constexpr size_t HEADER_OFFSET_DATA_SIZE = 56;
-static constexpr size_t HEADER_OFFSET_CHECKSUM = 64;
+static constexpr size_t HEADER_OFFSET_CONTENT_HASH = 64;
+static constexpr size_t HEADER_OFFSET_CHECKSUM = 72;
 
 // Entry layout inside the decoded index
 static constexpr size_t ENTRY_OFFSET_PATH_OFFSET = 0;
@@ -58,11 +61,18 @@ static constexpr size_t ENTRY_OFFSET_STORED_SIZE = 16;
 static constexpr size_t ENTRY_OFFSET_DECODED_SIZE = 24;
 static constexpr size_t ENTRY_OFFSET_CODEC = 32;
 static constexpr size_t ENTRY_OFFSET_FLAGS = 36;
+static constexpr size_t ENTRY_OFFSET_CONTENT_HASH = 40;
+static constexpr uint32_t PATCH_MAGIC = 0x50524F46;
+static constexpr uint32_t PATCH_FOOTER_MAGIC = 0x54524F46;
+
+static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<uint8_t>;
+static auto ReadPatchCatalog(const disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool;
+static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> vector<uint8_t>;
 
 // The offsets above are the format. These pin the record sizes to them, so widening a field without widening
 // the record it sits in stops compiling instead of writing a file nothing can read
 static_assert(HEADER_OFFSET_CHECKSUM + sizeof(uint64_t) == RESOURCE_PACK_HEADER_SIZE);
-static_assert(ENTRY_OFFSET_FLAGS + sizeof(uint32_t) == RESOURCE_PACK_ENTRY_SIZE);
+static_assert(ENTRY_OFFSET_CONTENT_HASH + sizeof(uint64_t) == RESOURCE_PACK_ENTRY_SIZE);
 static_assert(RESOURCE_PACK_MAGIC == (uint32_t {'F'} | uint32_t {'O'} << 8 | uint32_t {'R'} << 16 | uint32_t {'S'} << 24));
 
 static void BuildHeaderBytes(const ResourcePackHeader& header, span<uint8_t> buf) noexcept
@@ -80,6 +90,7 @@ static void BuildHeaderBytes(const ResourcePackHeader& header, span<uint8_t> buf
     span_write_uint32(buf, HEADER_OFFSET_ENTRY_COUNT, header.EntryCount);
     span_write_uint64(buf, HEADER_OFFSET_DATA_OFFSET, header.DataOffset);
     span_write_uint64(buf, HEADER_OFFSET_DATA_SIZE, header.DataSize);
+    span_write_uint64(buf, HEADER_OFFSET_CONTENT_HASH, header.ContentHash);
     span_write_uint64(buf, HEADER_OFFSET_CHECKSUM, HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {buf.data(), HEADER_OFFSET_CHECKSUM}));
 }
 
@@ -107,14 +118,102 @@ static auto ParseHeaderBytes(const_span<uint8_t> buf, ResourcePackHeader& header
     header.EntryCount = span_read_uint32(buf, HEADER_OFFSET_ENTRY_COUNT);
     header.DataOffset = span_read_uint64(buf, HEADER_OFFSET_DATA_OFFSET);
     header.DataSize = span_read_uint64(buf, HEADER_OFFSET_DATA_SIZE);
-    return true;
+    header.ContentHash = span_read_uint64(buf, HEADER_OFFSET_CONTENT_HASH);
+    return header.VersionMajor == RESOURCE_PACK_VERSION_MAJOR && header.VersionMinor == RESOURCE_PACK_VERSION_MINOR;
+}
+
+auto SerializeResourcePackHeader(const ResourcePackHeader& header) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8_t> data(RESOURCE_PACK_HEADER_SIZE);
+    BuildHeaderBytes(header, data);
+    return data;
+}
+
+auto ParseResourcePackHeader(const_span<uint8_t> data, ResourcePackHeader& header) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return data.size() == RESOURCE_PACK_HEADER_SIZE && ParseHeaderBytes(data, header);
+}
+
+auto ResolveResourcePackPath(const vector<string>& directories, string_view name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!directories.empty() && IsResourcePathCanonical(name), "Invalid resource pack search", name);
+    string writable = strex(directories.back()).combine_path(strex("{}.fores", name)).str();
+    string backup = strex("{}{}", writable, REPLACED_FILE_BACKUP_SUFFIX).str();
+
+    if (!fs_exists(writable) && fs_exists(backup)) {
+        disk_directory_lock lock {directories.back()};
+        FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", writable);
+
+        if (!fs_exists(writable) && fs_exists(backup)) {
+            FO_VERIFY_AND_THROW(fs_rename_durable(backup, writable), "Can't restore resource base backup", writable);
+        }
+    }
+
+    for (auto directory = directories.rbegin(); directory != directories.rend(); ++directory) {
+        string candidate = strex(*directory).combine_path(strex("{}.fores", name)).str();
+
+        if (OpenResourcePackFile(candidate)) {
+            return candidate;
+        }
+    }
+
+    return strex(directories.front()).combine_path(strex("{}.fores", name)).str();
+}
+
+auto OpenResourcePackFile(string_view path) noexcept -> disk_read_file
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t separator = path.find("!/");
+
+    if (separator == string_view::npos) {
+        return disk_read_file {path};
+    }
+
+    string archive_path {path.substr(0, separator)};
+    string asset_path {path.substr(separator + 2)};
+    auto archive = make_nptr(unzOpen64(archive_path.c_str()));
+
+    if (!archive) {
+        return {};
+    }
+
+    auto close_archive = scope_exit([&]() noexcept { unzClose(archive.get()); });
+    unz_file_info64 info {};
+
+    if (unzLocateFile(archive.get(), asset_path.c_str(), 1) != UNZ_OK || unzGetCurrentFileInfo64(archive.get(), &info, nullptr, 0, nullptr, 0, nullptr, 0) != UNZ_OK || info.compression_method != 0 || (info.flag & 1) != 0 || info.compressed_size != info.uncompressed_size || unzOpenCurrentFile(archive.get()) != UNZ_OK) {
+        return {};
+    }
+
+    uint64_t offset = numeric_cast<uint64_t>(unzGetCurrentFileZStreamPos64(archive.get()));
+    return disk_read_file {archive_path, offset, numeric_cast<uint64_t>(info.uncompressed_size)};
+}
+
+auto GetResourcePackWriteTime(string_view path) noexcept -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t separator = path.find("!/");
+    return fs_last_write_time(path.substr(0, separator));
 }
 
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    disk_read_file file {path};
+    disk_read_file file = OpenResourcePackFile(path);
+    return ReadResourcePackHeader(file, header);
+}
+
+auto ReadResourcePackHeader(const disk_read_file& file, ResourcePackHeader& header) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
 
     if (!file || file.get_size() < RESOURCE_PACK_HEADER_SIZE) {
         return false;
@@ -126,7 +225,8 @@ auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexce
         return false;
     }
 
-    return ParseHeaderBytes(const_span<uint8_t> {buf.data(), buf.size()}, header);
+    uint64_t size = file.get_size();
+    return ParseHeaderBytes(buf, header) && header.DataOffset == RESOURCE_PACK_HEADER_SIZE && header.DataSize <= size - RESOURCE_PACK_HEADER_SIZE && header.IndexOffset == header.DataOffset + header.DataSize && header.IndexOffset <= size && header.IndexStoredSize == size - header.IndexOffset;
 }
 
 auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexcept -> bool
@@ -134,14 +234,9 @@ auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexc
     FO_STACK_TRACE_ENTRY();
 
     ResourcePackHeader header;
+    disk_read_file file = OpenResourcePackFile(path);
 
-    if (!ReadResourcePackHeader(path, header) || header.PackHash != expected_pack_hash) {
-        return false;
-    }
-
-    disk_read_file file {path};
-
-    if (!file || file.get_size() < RESOURCE_PACK_HEADER_SIZE) {
+    if (!ReadResourcePackHeader(file, header) || header.PackHash != expected_pack_hash) {
         return false;
     }
 
@@ -237,18 +332,20 @@ void ResourcePackWriter::AddFile(string_view path, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_finished, "Pack writer already finished", _path, path);
+    FO_VERIFY_AND_THROW(!_finished && !_failed, "Pack writer is not accepting entries", _path, path);
     FO_VERIFY_AND_THROW(!path.empty(), "Pack entry path is empty", _path);
 
     uint32_t codec = 0;
     vector<uint8_t> blob = EncodeResourceBlob(data, _settings, codec);
 
-    Entry entry;
+    ResourcePackEntryRef entry;
     entry.Path = strex(path).normalize_path_slashes();
+    FO_VERIFY_AND_THROW(IsResourcePathCanonical(entry.Path), "Resource path is not canonical", entry.Path);
     entry.DataOffset = _bodyOffset;
     entry.StoredSize = numeric_cast<uint64_t>(blob.size());
     entry.DecodedSize = numeric_cast<uint64_t>(data.size());
     entry.Codec = codec;
+    entry.FileContentHash = HashResourceBytes(RESOURCE_PACK_HASH_SEED, data);
 
     WriteBody(const_span<uint8_t> {blob.data(), blob.size()});
     _entries.push_back(std::move(entry));
@@ -258,52 +355,32 @@ void ResourcePackWriter::WriteBody(const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(data.size() <= std::numeric_limits<uint64_t>::max() - _bodyOffset, "Resource base size overflow", _path);
+    _failed = true;
+
     if (!_file.write(data)) {
         throw ResourcePackException("Can't write pack body", _path, data.size());
     }
 
     _bodyHash = HashResourceBytes(_bodyHash, data);
     _bodyOffset += numeric_cast<uint64_t>(data.size());
+    _failed = false;
 }
 
 void ResourcePackWriter::Finish()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_finished, "Pack writer already finished", _path);
+    FO_VERIFY_AND_THROW(!_finished && !_failed, "Pack writer is not accepting a commit", _path);
 
-    // Sorted paths make the reader lookup a binary search and give the file one canonical byte layout
-    std::sort(_entries.begin(), _entries.end(), [](const Entry& left, const Entry& right) { return left.Path < right.Path; });
+    std::sort(_entries.begin(), _entries.end(), [](const ResourcePackEntryRef& left, const ResourcePackEntryRef& right) { return left.Path < right.Path; });
 
     for (size_t i = 1; i < _entries.size(); ++i) {
         FO_VERIFY_AND_THROW(_entries[i - 1].Path != _entries[i].Path, "Pack holds the same path twice", _path, _entries[i].Path);
     }
 
     uint64_t data_size = _bodyOffset - RESOURCE_PACK_HEADER_SIZE;
-    size_t pool_size = 0;
-
-    for (const Entry& entry : _entries) {
-        pool_size += entry.Path.size();
-    }
-
-    vector<uint8_t> index(_entries.size() * RESOURCE_PACK_ENTRY_SIZE + pool_size);
-    auto index_span = span<uint8_t> {index.data(), index.size()};
-    size_t pool_offset = _entries.size() * RESOURCE_PACK_ENTRY_SIZE;
-    size_t entry_offset = 0;
-
-    for (const Entry& entry : _entries) {
-        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_OFFSET, numeric_cast<uint32_t>(pool_offset));
-        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_LENGTH, numeric_cast<uint32_t>(entry.Path.size()));
-        span_write_uint64(index_span, entry_offset + ENTRY_OFFSET_DATA_OFFSET, entry.DataOffset);
-        span_write_uint64(index_span, entry_offset + ENTRY_OFFSET_STORED_SIZE, entry.StoredSize);
-        span_write_uint64(index_span, entry_offset + ENTRY_OFFSET_DECODED_SIZE, entry.DecodedSize);
-        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_CODEC, entry.Codec);
-        span_write_uint32(index_span, entry_offset + ENTRY_OFFSET_FLAGS, 0);
-
-        std::memcpy(index.data() + pool_offset, entry.Path.data(), entry.Path.size());
-        pool_offset += entry.Path.size();
-        entry_offset += RESOURCE_PACK_ENTRY_SIZE;
-    }
+    vector<uint8_t> index = BuildIndexBytes(_entries);
 
     uint32_t index_codec = 0;
     vector<uint8_t> stored_index = EncodeResourceBlob(const_span<uint8_t> {index.data(), index.size()}, _settings, index_codec);
@@ -318,10 +395,12 @@ void ResourcePackWriter::Finish()
     header.EntryCount = numeric_cast<uint32_t>(_entries.size());
     header.DataOffset = RESOURCE_PACK_HEADER_SIZE;
     header.DataSize = data_size;
+    header.ContentHash = ComputeResourcePackContentHash(_entries);
 
     WriteBody(const_span<uint8_t> {stored_index.data(), stored_index.size()});
     header.PackHash = _bodyHash;
 
+    _failed = true;
     array<uint8_t, RESOURCE_PACK_HEADER_SIZE> header_bytes = {};
     BuildHeaderBytes(header, span<uint8_t> {header_bytes.data(), header_bytes.size()});
 
@@ -337,37 +416,42 @@ void ResourcePackWriter::Finish()
     _finished = true;
 }
 
-ResourcePackSource::ResourcePackSource(string_view path) :
+ResourcePackSource::ResourcePackSource(string_view path, string_view patch_path) :
     _fileName {path},
-    _file {path}
+    _file {OpenResourcePackFile(path)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_file) {
-        throw DataSourceException("Can't open resource pack file", _fileName);
-    }
-
-    _writeTime = fs_last_write_time(_fileName);
-
-    if (_file.get_size() < RESOURCE_PACK_HEADER_SIZE) {
-        throw DataSourceException("Resource pack file is shorter than its header", _fileName, _file.get_size());
-    }
-
-    array<uint8_t, RESOURCE_PACK_HEADER_SIZE> header_bytes = {};
-
-    if (!_file.read_at(0, span<uint8_t> {header_bytes.data(), header_bytes.size()})) {
-        throw DataSourceException("Can't read resource pack header", _fileName);
-    }
-    if (!ParseHeaderBytes(const_span<uint8_t> {header_bytes.data(), header_bytes.size()}, _header)) {
-        throw DataSourceException("Resource pack header is not valid", _fileName);
-    }
-
-    // A minor bump stays readable by design, a major one changes what the fields mean
-    if (_header.VersionMajor != RESOURCE_PACK_VERSION_MAJOR) {
-        throw DataSourceException("Resource pack major version is not supported", _fileName, _header.VersionMajor, RESOURCE_PACK_VERSION_MAJOR);
-    }
-
+    FO_VERIFY_AND_THROW(_file, "Can't open resource pack file", path);
+    array<uint8_t, RESOURCE_PACK_HEADER_SIZE> bytes {};
+    FO_VERIFY_AND_THROW(_file.get_size() >= bytes.size() && _file.read_at(0, bytes) && ParseResourcePackHeader(bytes, _header), "Invalid resource pack header", path);
+    _writeTime = GetResourcePackWriteTime(path);
     ParseIndex();
+
+    if (!patch_path.empty()) {
+        _patchFile = disk_read_file {patch_path};
+
+        if (_patchFile) {
+            ResourcePatchInfo info;
+            vector<ResourcePackEntryRef> entries;
+
+            if (ReadPatchCatalog(_patchFile, _header, info, entries)) {
+                _patchInfo = info;
+                _header.ContentHash = info.ContentHash;
+                _entries = std::move(entries);
+                _writeTime = fs_last_write_time(patch_path);
+            }
+            else {
+                _patchFile.close();
+            }
+        }
+    }
+
+    _entryLookup.reserve(_entries.size());
+
+    for (size_t i = 0; i < _entries.size(); ++i) {
+        _entryLookup.emplace(_entries[i].Path, i);
+    }
 }
 
 void ResourcePackSource::ParseIndex()
@@ -375,82 +459,15 @@ void ResourcePackSource::ParseIndex()
     FO_STACK_TRACE_ENTRY();
 
     uint64_t file_size = _file.get_size();
-
-    auto fits_in_file = [file_size](uint64_t offset, uint64_t size) noexcept { return offset >= RESOURCE_PACK_HEADER_SIZE && size <= file_size && offset <= file_size - size; };
-
-    if (!fits_in_file(_header.DataOffset, _header.DataSize) || !fits_in_file(_header.IndexOffset, _header.IndexStoredSize)) {
-        throw DataSourceException("Resource pack section lies outside the file", _fileName, file_size, _header.DataOffset, _header.DataSize, _header.IndexOffset, _header.IndexStoredSize);
-    }
-
-    uint64_t entries_size = numeric_cast<uint64_t>(_header.EntryCount) * RESOURCE_PACK_ENTRY_SIZE;
-
-    if (_header.IndexDecodedSize < entries_size) {
-        throw DataSourceException("Resource pack index is too small for its entry count", _fileName, _header.IndexDecodedSize, _header.EntryCount);
-    }
-
-    // One contiguous read brings the whole index in, and it stays resident so every path below points into it
-    auto stored_index = vector<uint8_t>(numeric_cast<size_t>(_header.IndexStoredSize));
-
-    if (!_file.read_at(_header.IndexOffset, span<uint8_t> {stored_index.data(), stored_index.size()})) {
-        throw DataSourceException("Can't read resource pack index", _fileName, _header.IndexOffset, _header.IndexStoredSize);
-    }
-
-    if (_header.IndexCodec == static_cast<uint32_t>(ResourcePackCodec::Stored)) {
-        if (_header.IndexStoredSize != _header.IndexDecodedSize) {
-            throw DataSourceException("Stored resource pack index declares two different sizes", _fileName, _header.IndexStoredSize, _header.IndexDecodedSize);
-        }
-
-        _index = std::move(stored_index);
-    }
-    else if (_header.IndexCodec == static_cast<uint32_t>(ResourcePackCodec::Deflate)) {
-        _index = Compressor::DecompressExact(const_span<uint8_t> {stored_index.data(), stored_index.size()}, numeric_cast<size_t>(_header.IndexDecodedSize));
-    }
-    else {
-        throw DataSourceException("Resource pack index uses an unknown codec", _fileName, _header.IndexCodec);
-    }
-
-    auto index_span = const_span<uint8_t> {_index.data(), _index.size()};
-    size_t pool_begin = numeric_cast<size_t>(entries_size);
-    _entries.reserve(_header.EntryCount);
-    _entryLookup.reserve(_header.EntryCount);
-
-    for (uint32_t i = 0; i < _header.EntryCount; ++i) {
-        size_t entry_offset = numeric_cast<size_t>(i) * RESOURCE_PACK_ENTRY_SIZE;
-
-        FileEntry entry;
-        uint32_t path_offset = span_read_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_OFFSET);
-        uint32_t path_length = span_read_uint32(index_span, entry_offset + ENTRY_OFFSET_PATH_LENGTH);
-        entry.DataOffset = span_read_uint64(index_span, entry_offset + ENTRY_OFFSET_DATA_OFFSET);
-        entry.StoredSize = span_read_uint64(index_span, entry_offset + ENTRY_OFFSET_STORED_SIZE);
-        entry.DecodedSize = span_read_uint64(index_span, entry_offset + ENTRY_OFFSET_DECODED_SIZE);
-        entry.Codec = span_read_uint32(index_span, entry_offset + ENTRY_OFFSET_CODEC);
-
-        if (path_length == 0 || path_offset < pool_begin || numeric_cast<uint64_t>(path_offset) + path_length > _index.size()) {
-            throw DataSourceException("Resource pack entry path lies outside the string pool", _fileName, i, path_offset, path_length);
-        }
-
-        // Checked in an order that cannot overflow: the size fits the region before the offset is added to it
-        if (entry.StoredSize > _header.DataSize || entry.DataOffset < _header.DataOffset || entry.DataOffset - _header.DataOffset > _header.DataSize - entry.StoredSize) {
-            throw DataSourceException("Resource pack entry extent lies outside the data region", _fileName, i, entry.DataOffset, entry.StoredSize);
-        }
-        if (entry.Codec == static_cast<uint32_t>(ResourcePackCodec::Stored) && entry.StoredSize != entry.DecodedSize) {
-            throw DataSourceException("Stored resource pack entry declares two different sizes", _fileName, i, entry.StoredSize, entry.DecodedSize);
-        }
-        if (entry.Codec != static_cast<uint32_t>(ResourcePackCodec::Stored) && entry.Codec != static_cast<uint32_t>(ResourcePackCodec::Deflate)) {
-            throw DataSourceException("Resource pack entry uses an unknown codec", _fileName, i, entry.Codec);
-        }
-
-        entry.Path = string_view {reinterpret_cast<const char*>(_index.data()) + path_offset, path_length};
-
-        if (!_entryLookup.emplace(entry.Path, _entries.size()).second) {
-            throw DataSourceException("Resource pack holds the same path twice", _fileName, entry.Path);
-        }
-
-        _entries.push_back(entry);
-    }
+    FO_VERIFY_AND_THROW(_header.DataOffset == RESOURCE_PACK_HEADER_SIZE && _header.DataSize <= file_size - RESOURCE_PACK_HEADER_SIZE, "Invalid resource pack payload extent", _fileName);
+    FO_VERIFY_AND_THROW(_header.IndexOffset == _header.DataOffset + _header.DataSize && _header.IndexOffset <= file_size && _header.IndexStoredSize == file_size - _header.IndexOffset, "Invalid resource pack catalog extent", _fileName);
+    FO_VERIFY_AND_THROW(_header.IndexStoredSize <= std::numeric_limits<uint32_t>::max() && _header.IndexDecodedSize <= std::numeric_limits<uint32_t>::max(), "Resource catalog exceeds its size limit", _fileName);
+    vector<uint8_t> stored(numeric_cast<size_t>(_header.IndexStoredSize));
+    FO_VERIFY_AND_THROW(_file.read_at(_header.IndexOffset, stored), "Can't read resource pack catalog", _fileName);
+    _entries = DecodeResourcePackIndex(stored, _header);
 }
 
-auto ResourcePackSource::FindEntry(string_view path) const -> nptr<const FileEntry>
+auto ResourcePackSource::FindEntry(string_view path) const -> nptr<const ResourcePackEntryRef>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -463,21 +480,14 @@ auto ResourcePackSource::FindEntry(string_view path) const -> nptr<const FileEnt
     return make_ptr(&_entries[it->second]);
 }
 
-auto ResourcePackSource::ReadEntryData(const FileEntry& entry) const -> vector<uint8_t>
+auto ResourcePackSource::ReadEntryData(const ResourcePackEntryRef& entry) const -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto stored = vector<uint8_t>(numeric_cast<size_t>(entry.StoredSize));
-
-    if (!_file.read_at(entry.DataOffset, span<uint8_t> {stored.data(), stored.size()})) {
-        throw DataSourceException("Can't read file from resource pack", _fileName, entry.Path, entry.DataOffset, entry.StoredSize);
-    }
-
-    if (entry.Codec == static_cast<uint32_t>(ResourcePackCodec::Stored)) {
-        return stored;
-    }
-
-    return Compressor::DecompressExact(const_span<uint8_t> {stored.data(), stored.size()}, numeric_cast<size_t>(entry.DecodedSize));
+    const disk_read_file& file = entry.Source == 0 ? _file : _patchFile;
+    vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));
+    FO_VERIFY_AND_THROW(file.read_at(entry.DataOffset, stored), "Can't read resource pack payload", _fileName, entry.Path);
+    return DecodeResourceData(stored, entry);
 }
 
 auto ResourcePackSource::IsFileExists(string_view path) const -> bool
@@ -528,7 +538,7 @@ auto ResourcePackSource::GetFileNames(string_view dir, bool recursive, string_vi
     vector<string_view> names;
     names.reserve(_entries.size());
 
-    for (const FileEntry& entry : _entries) {
+    for (const ResourcePackEntryRef& entry : _entries) {
         names.emplace_back(entry.Path);
     }
 
@@ -539,14 +549,7 @@ auto ResourcePackSource::GetEntryRefs() const -> vector<ResourcePackEntryRef>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<ResourcePackEntryRef> refs;
-    refs.reserve(_entries.size());
-
-    for (const FileEntry& entry : _entries) {
-        refs.emplace_back(ResourcePackEntryRef {string(entry.Path), entry.DataOffset, entry.StoredSize, entry.DecodedSize, entry.Codec});
-    }
-
-    return refs;
+    return _entries;
 }
 
 auto ResourcePackSource::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
@@ -556,11 +559,431 @@ auto ResourcePackSource::GetIndexSnapshot() const -> optional<vector<IndexedFile
     vector<IndexedFile> snapshot;
     snapshot.reserve(_entries.size());
 
-    for (const FileEntry& entry : _entries) {
+    for (const ResourcePackEntryRef& entry : _entries) {
         snapshot.emplace_back(IndexedFile {string(entry.Path), numeric_cast<size_t>(entry.DecodedSize), _writeTime});
     }
 
     return snapshot;
+}
+
+auto IsResourcePathCanonical(string_view path) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (path.empty() || !strvex(path).is_valid_utf8() || path.find('\\') != string_view::npos || path.find(':') != string_view::npos || path.find('\0') != string_view::npos) {
+        return false;
+    }
+
+    size_t begin = 0;
+
+    while (begin <= path.size()) {
+        size_t end = path.find('/', begin);
+        string_view component = path.substr(begin, end == string_view::npos ? path.size() - begin : end - begin);
+
+        if (component.empty() || component == "." || component == "..") {
+            return false;
+        }
+        if (end == string_view::npos) {
+            return true;
+        }
+
+        begin = end + 1;
+    }
+
+    return false;
+}
+
+auto GetResourcePatchPath(string_view base_path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(base_path.ends_with(".fores"), "Resource base path has no pack extension", base_path);
+    return strex("{}.patch.fores", base_path.substr(0, base_path.size() - 6)).str();
+}
+
+auto ComputeResourcePackContentHash(const_span<ResourcePackEntryRef> entries) -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    array<uint8_t, 20> fields {};
+    span_write_uint32(fields, 0, numeric_cast<uint32_t>(entries.size()));
+    uint64_t hash = HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {fields.data(), 4});
+
+    for (const ResourcePackEntryRef& entry : entries) {
+        span_write_uint32(fields, 0, numeric_cast<uint32_t>(entry.Path.size()));
+        span_write_uint64(fields, 4, entry.DecodedSize);
+        span_write_uint64(fields, 12, entry.FileContentHash);
+        hash = HashResourceBytes(hash, fields);
+        hash = HashResourceBytes(hash, {reinterpret_cast<const uint8_t*>(entry.Path.data()), entry.Path.size()});
+    }
+
+    return hash;
+}
+
+static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    uint64_t size = numeric_cast<uint64_t>(entries.size()) * RESOURCE_PACK_ENTRY_SIZE;
+
+    string_view previous;
+
+    for (const ResourcePackEntryRef& entry : entries) {
+        FO_VERIFY_AND_THROW(IsResourcePathCanonical(entry.Path) && (previous.empty() || previous < entry.Path), "Resource catalog paths are not canonical, unique and sorted", entry.Path);
+        previous = entry.Path;
+        FO_VERIFY_AND_THROW(entry.Path.size() <= std::numeric_limits<uint32_t>::max() && size <= std::numeric_limits<uint32_t>::max() - entry.Path.size(), "Resource catalog exceeds its string pool limit");
+        size += entry.Path.size();
+    }
+
+    vector<uint8_t> index(numeric_cast<size_t>(size));
+    size_t pool_offset = entries.size() * RESOURCE_PACK_ENTRY_SIZE;
+
+    for (size_t i = 0; i < entries.size(); ++i) {
+        const ResourcePackEntryRef& entry = entries[i];
+        size_t offset = i * RESOURCE_PACK_ENTRY_SIZE;
+        span_write_uint32(index, offset + ENTRY_OFFSET_PATH_OFFSET, numeric_cast<uint32_t>(pool_offset));
+        span_write_uint32(index, offset + ENTRY_OFFSET_PATH_LENGTH, numeric_cast<uint32_t>(entry.Path.size()));
+        span_write_uint64(index, offset + ENTRY_OFFSET_DATA_OFFSET, entry.DataOffset);
+        span_write_uint64(index, offset + ENTRY_OFFSET_STORED_SIZE, entry.StoredSize);
+        span_write_uint64(index, offset + ENTRY_OFFSET_DECODED_SIZE, entry.DecodedSize);
+        span_write_uint32(index, offset + ENTRY_OFFSET_CODEC, entry.Codec);
+        span_write_uint32(index, offset + ENTRY_OFFSET_FLAGS, entry.Source);
+        span_write_uint64(index, offset + ENTRY_OFFSET_CONTENT_HASH, entry.FileContentHash);
+        std::memcpy(index.data() + pool_offset, entry.Path.data(), entry.Path.size());
+        pool_offset += entry.Path.size();
+    }
+
+    return index;
+}
+
+auto DecodeResourcePackIndex(const_span<uint8_t> stored, const ResourcePackHeader& header, uint64_t patch_data_end) -> vector<ResourcePackEntryRef>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    uint64_t pool_begin = numeric_cast<uint64_t>(header.EntryCount) * RESOURCE_PACK_ENTRY_SIZE;
+    FO_VERIFY_AND_THROW(header.IndexStoredSize == stored.size() && pool_begin <= header.IndexDecodedSize && header.IndexDecodedSize <= std::numeric_limits<uint32_t>::max(), "Invalid resource catalog size", header.IndexDecodedSize, header.EntryCount);
+    vector<uint8_t> index;
+
+    if (header.IndexCodec == static_cast<uint32_t>(ResourcePackCodec::Stored)) {
+        FO_VERIFY_AND_THROW(stored.size() == header.IndexDecodedSize, "Stored resource catalog size mismatch");
+        index.assign(stored.begin(), stored.end());
+    }
+    else {
+        FO_VERIFY_AND_THROW(header.IndexCodec == static_cast<uint32_t>(ResourcePackCodec::Deflate), "Unknown resource catalog codec", header.IndexCodec);
+        index = Compressor::DecompressExact(stored, numeric_cast<size_t>(header.IndexDecodedSize));
+    }
+
+    vector<ResourcePackEntryRef> entries;
+    entries.reserve(header.EntryCount);
+
+    for (uint32_t i = 0; i < header.EntryCount; ++i) {
+        size_t offset = numeric_cast<size_t>(i) * RESOURCE_PACK_ENTRY_SIZE;
+        uint32_t path_offset = span_read_uint32(index, offset + ENTRY_OFFSET_PATH_OFFSET);
+        uint32_t path_length = span_read_uint32(index, offset + ENTRY_OFFSET_PATH_LENGTH);
+        FO_VERIFY_AND_THROW(path_length > 0 && path_offset >= pool_begin && path_offset <= index.size() && path_length <= index.size() - path_offset, "Resource path lies outside catalog", i);
+        ResourcePackEntryRef entry;
+        entry.Path.assign(reinterpret_cast<const char*>(index.data() + path_offset), path_length);
+        FO_VERIFY_AND_THROW(IsResourcePathCanonical(entry.Path), "Resource path is not canonical", entry.Path);
+        FO_VERIFY_AND_THROW(entries.empty() || entries.back().Path < entry.Path, "Resource catalog paths are not unique and sorted", entry.Path);
+        entry.DataOffset = span_read_uint64(index, offset + ENTRY_OFFSET_DATA_OFFSET);
+        entry.StoredSize = span_read_uint64(index, offset + ENTRY_OFFSET_STORED_SIZE);
+        entry.DecodedSize = span_read_uint64(index, offset + ENTRY_OFFSET_DECODED_SIZE);
+        entry.Codec = span_read_uint32(index, offset + ENTRY_OFFSET_CODEC);
+        entry.Source = span_read_uint32(index, offset + ENTRY_OFFSET_FLAGS);
+        entry.FileContentHash = span_read_uint64(index, offset + ENTRY_OFFSET_CONTENT_HASH);
+        FO_VERIFY_AND_THROW(entry.Source <= 1 && (entry.Source == 0 || patch_data_end >= RESOURCE_PATCH_HEADER_SIZE), "Invalid resource source", entry.Path, entry.Source);
+        uint64_t begin = entry.Source == 0 ? header.DataOffset : RESOURCE_PATCH_HEADER_SIZE;
+        uint64_t extent = entry.Source == 0 ? header.DataSize : patch_data_end - RESOURCE_PATCH_HEADER_SIZE;
+        FO_VERIFY_AND_THROW(entry.DataOffset >= begin && entry.StoredSize <= extent && entry.DataOffset - begin <= extent - entry.StoredSize, "Resource extent lies outside payload", entry.Path);
+        FO_VERIFY_AND_THROW(entry.Codec <= static_cast<uint32_t>(ResourcePackCodec::Deflate) && (entry.Codec != 0 || entry.StoredSize == entry.DecodedSize), "Invalid resource codec or lengths", entry.Path);
+        entries.emplace_back(std::move(entry));
+    }
+
+    FO_VERIFY_AND_THROW(ComputeResourcePackContentHash(entries) == header.ContentHash, "Resource catalog content hash mismatch");
+    return entries;
+}
+
+static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(stored.size() == entry.StoredSize, "Resource payload length mismatch", entry.Path);
+    vector<uint8_t> data;
+
+    if (entry.Codec == 0) {
+        data.assign(stored.begin(), stored.end());
+    }
+    else {
+        FO_VERIFY_AND_THROW(entry.Codec == static_cast<uint32_t>(ResourcePackCodec::Deflate), "Unknown resource payload codec", entry.Path, entry.Codec);
+        data = Compressor::DecompressExact(stored, numeric_cast<size_t>(entry.DecodedSize));
+    }
+
+    FO_VERIFY_AND_THROW(data.size() == entry.DecodedSize && HashResourceBytes(RESOURCE_PACK_HASH_SEED, data) == entry.FileContentHash, "Resource payload content hash mismatch", entry.Path);
+    return data;
+}
+
+static auto ReadPatchCatalog(const disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    array<uint8_t, RESOURCE_PATCH_HEADER_SIZE> header {};
+
+    if (file.get_size() < header.size()) {
+        return false;
+    }
+
+    FO_VERIFY_AND_THROW(file.read_at(0, header), "Can't read resource patch header");
+    FO_VERIFY_AND_THROW(span_read_uint32(header, 0) == PATCH_MAGIC && span_read_uint16(header, 4) == RESOURCE_PACK_VERSION_MAJOR && span_read_uint16(header, 6) == RESOURCE_PACK_VERSION_MINOR && span_read_uint64(header, 16) == 0 && span_read_uint64(header, 24) == HashResourceBytes(RESOURCE_PACK_HASH_SEED, {header.data(), 24}), "Invalid resource patch header");
+
+    if (span_read_uint64(header, 8) != base_header.PackHash) {
+        return false;
+    }
+
+    auto try_footer = [&](const_span<uint8_t> footer, uint64_t offset) {
+        if (span_read_uint32(footer, 0) != PATCH_FOOTER_MAGIC || span_read_uint16(footer, 4) != RESOURCE_PACK_VERSION_MAJOR || span_read_uint16(footer, 6) != RESOURCE_PACK_VERSION_MINOR || span_read_uint64(footer, 8) != base_header.PackHash || span_read_uint64(footer, 48) != offset + RESOURCE_PATCH_FOOTER_SIZE || span_read_uint64(footer, 72) != HashResourceBytes(RESOURCE_PACK_HASH_SEED, footer.first(72))) {
+            return false;
+        }
+
+        ResourcePatchInfo candidate;
+        candidate.BasePackHash = base_header.PackHash;
+        candidate.ContentHash = span_read_uint64(footer, 16);
+        candidate.IndexOffset = span_read_uint64(footer, 24);
+        candidate.IndexStoredSize = span_read_uint64(footer, 32);
+        candidate.IndexDecodedSize = span_read_uint64(footer, 40);
+        candidate.CommittedSize = span_read_uint64(footer, 48);
+        candidate.IndexCodec = span_read_uint32(footer, 56);
+        candidate.EntryCount = span_read_uint32(footer, 60);
+        candidate.IndexHash = span_read_uint64(footer, 64);
+
+        if (candidate.IndexOffset < RESOURCE_PATCH_HEADER_SIZE || candidate.IndexOffset > offset || candidate.IndexStoredSize != offset - candidate.IndexOffset || candidate.IndexDecodedSize > std::numeric_limits<uint32_t>::max() || candidate.IndexStoredSize > std::numeric_limits<uint32_t>::max()) {
+            return false;
+        }
+
+        vector<uint8_t> stored(numeric_cast<size_t>(candidate.IndexStoredSize));
+
+        if (!file.read_at(candidate.IndexOffset, stored) || HashResourceBytes(RESOURCE_PACK_HASH_SEED, stored) != candidate.IndexHash) {
+            return false;
+        }
+
+        ResourcePackHeader effective = base_header;
+        effective.ContentHash = candidate.ContentHash;
+        effective.IndexStoredSize = candidate.IndexStoredSize;
+        effective.IndexDecodedSize = candidate.IndexDecodedSize;
+        effective.IndexCodec = candidate.IndexCodec;
+        effective.EntryCount = candidate.EntryCount;
+
+        try {
+            entries = DecodeResourcePackIndex(stored, effective, candidate.IndexOffset);
+        }
+        catch (const std::exception&) {
+            return false;
+        }
+
+        info = candidate;
+        return true;
+    };
+
+    uint64_t end = file.get_size();
+    array<uint8_t, RESOURCE_PATCH_FOOTER_SIZE> footer {};
+
+    if (end >= RESOURCE_PATCH_HEADER_SIZE + footer.size() && file.read_at(end - footer.size(), footer) && try_footer(footer, end - footer.size())) {
+        return true;
+    }
+
+    constexpr uint64_t SCAN_SIZE = 64 * 1024;
+    vector<uint8_t> buffer(numeric_cast<size_t>(std::min(end, SCAN_SIZE)));
+
+    while (end >= RESOURCE_PATCH_HEADER_SIZE + RESOURCE_PATCH_FOOTER_SIZE) {
+        uint64_t begin = end - std::min(end - RESOURCE_PATCH_HEADER_SIZE, SCAN_SIZE);
+        size_t size = numeric_cast<size_t>(end - begin);
+        FO_VERIFY_AND_THROW(file.read_at(begin, span<uint8_t> {buffer.data(), size}), "Can't read resource patch recovery window", begin, size);
+
+        for (size_t i = size - RESOURCE_PATCH_FOOTER_SIZE + 1; i != 0; --i) {
+            const_span<uint8_t> candidate {buffer.data() + i - 1, RESOURCE_PATCH_FOOTER_SIZE};
+
+            if (try_footer(candidate, begin + i - 1)) {
+                return true;
+            }
+        }
+
+        if (begin == RESOURCE_PATCH_HEADER_SIZE) {
+            break;
+        }
+
+        end = begin + RESOURCE_PATCH_FOOTER_SIZE - 1;
+    }
+
+    return false;
+}
+
+auto ReadResourcePatchInfo(string_view path, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    disk_read_file file = OpenResourcePackFile(path);
+    return ReadResourcePatchInfo(file, base_header);
+}
+
+auto ReadResourcePatchInfo(const disk_read_file& file, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ResourcePatchInfo info;
+    vector<ResourcePackEntryRef> entries;
+    return file && ReadPatchCatalog(file, base_header, info, entries) ? optional<ResourcePatchInfo> {info} : std::nullopt;
+}
+
+ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patch_path, vector<ResourcePackEntryRef> target_entries, uint64_t content_hash, ResourcePackWriteSettings settings) :
+    _basePath {base_path},
+    _patchPath {patch_path}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(settings.CompressLevel >= 0 && settings.CompressLevel <= 9 && settings.MinCompressGainPercent >= 0 && settings.MinCompressGainPercent <= 100, "Invalid resource patch compression settings");
+    ResourcePackSource base {base_path};
+    ResourcePackSource current {base_path, patch_path};
+    FO_VERIFY_AND_THROW(ComputeResourcePackContentHash(target_entries) == content_hash, "Patch target content hash mismatch");
+    _info.BasePackHash = base.GetPackHash();
+    _info.ContentHash = content_hash;
+    _startOffset = current.GetPatchInfo() ? current.GetPatchInfo()->CommittedSize : RESOURCE_PATCH_HEADER_SIZE;
+    _startIndexHash = current.GetPatchInfo() ? current.GetPatchInfo()->IndexHash : 0;
+    _originalSize = fs_file_size(patch_path).value_or(0);
+    _reset = !current.GetPatchInfo().has_value();
+    map<pair<uint64_t, uint64_t>, ResourcePackEntryRef> available;
+
+    for (ResourcePackEntryRef& entry : base.GetEntryRefs()) {
+        available.emplace(pair {entry.FileContentHash, entry.DecodedSize}, std::move(entry));
+    }
+
+    for (ResourcePackEntryRef& entry : current.GetEntryRefs()) {
+        available.emplace(pair {entry.FileContentHash, entry.DecodedSize}, std::move(entry));
+    }
+
+    set<pair<uint64_t, uint64_t>> verified;
+    uint64_t offset = _startOffset;
+
+    for (ResourcePackEntryRef& entry : target_entries) {
+        auto key = pair {entry.FileContentHash, entry.DecodedSize};
+        auto found = available.find(key);
+
+        if (found != available.end() && !verified.contains(key)) {
+            try {
+                size_t decoded_size = 0;
+                uint64_t write_time = 0;
+                auto data = (found->second.Source == 0 ? base : current).OpenFile(found->second.Path, decoded_size, write_time);
+                FO_VERIFY_AND_THROW(data && decoded_size == entry.DecodedSize, "Reusable resource is missing", entry.Path);
+                verified.emplace(key);
+            }
+            catch (const std::exception& ex) {
+                WriteLog("Resource patch: repairing damaged local content {}, {}", entry.Path, ex.what());
+                available.erase(found);
+                found = available.end();
+            }
+        }
+
+        if (found != available.end()) {
+            string path = std::move(entry.Path);
+            entry = found->second;
+            entry.Path = std::move(path);
+        }
+        else {
+            _downloads.push_back(entry);
+            entry.Source = 1;
+            entry.DataOffset = offset;
+            FO_VERIFY_AND_THROW(entry.StoredSize <= std::numeric_limits<uint64_t>::max() - offset, "Resource patch size overflow");
+            offset += entry.StoredSize;
+            available.emplace(key, entry);
+            verified.emplace(key);
+        }
+    }
+
+    vector<uint8_t> decoded = BuildIndexBytes(target_entries);
+    _info.IndexOffset = offset;
+    _info.IndexDecodedSize = decoded.size();
+    _info.EntryCount = numeric_cast<uint32_t>(target_entries.size());
+    _index = EncodeResourceBlob(decoded, settings, _info.IndexCodec);
+    _info.IndexStoredSize = _index.size();
+    _info.IndexHash = HashResourceBytes(RESOURCE_PACK_HASH_SEED, _index);
+    FO_VERIFY_AND_THROW(offset <= std::numeric_limits<uint64_t>::max() - RESOURCE_PATCH_FOOTER_SIZE && _index.size() <= std::numeric_limits<uint64_t>::max() - RESOURCE_PATCH_FOOTER_SIZE - offset, "Resource patch final size overflow");
+    _info.CommittedSize = offset + _index.size() + RESOURCE_PATCH_FOOTER_SIZE;
+}
+
+void ResourcePatchWriter::Begin()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_file && !_finished && !_failed, "Resource patch writer already started");
+    _directoryLock = SafeAlloc::MakeUnique<disk_directory_lock>(strex(_patchPath).extract_dir().str());
+    FO_VERIFY_AND_THROW(*_directoryLock, "Resource directory is being updated", _patchPath);
+    _failed = true;
+    ResourcePackHeader base;
+    FO_VERIFY_AND_THROW(ReadResourcePackHeader(_basePath, base) && base.PackHash == _info.BasePackHash, "Resource base changed during patch preparation", _basePath);
+    FO_VERIFY_AND_THROW(fs_file_size(_patchPath).value_or(0) == _originalSize, "Resource patch changed during preparation", _patchPath);
+
+    if (_reset && fs_exists(_patchPath)) {
+        FO_VERIFY_AND_THROW(fs_remove_file(_patchPath), "Can't remove an uncommitted or stale patch", _patchPath);
+    }
+
+    _file = disk_write_file {_patchPath, disk_write_mode::Append};
+    FO_VERIFY_AND_THROW(_file, "Can't open resource patch for appending", _patchPath);
+
+    if (_reset) {
+        array<uint8_t, RESOURCE_PATCH_HEADER_SIZE> header {};
+        span_write_uint32(header, 0, PATCH_MAGIC);
+        span_write_uint16(header, 4, RESOURCE_PACK_VERSION_MAJOR);
+        span_write_uint16(header, 6, RESOURCE_PACK_VERSION_MINOR);
+        span_write_uint64(header, 8, _info.BasePackHash);
+        span_write_uint64(header, 24, HashResourceBytes(RESOURCE_PACK_HASH_SEED, {header.data(), 24}));
+        FO_VERIFY_AND_THROW(_file.write(header), "Can't initialize resource patch", _patchPath);
+    }
+    else {
+        auto current = ReadResourcePatchInfo(_patchPath, base);
+        FO_VERIFY_AND_THROW(current && current->CommittedSize == _startOffset && current->IndexHash == _startIndexHash, "Resource patch commit changed during preparation", _patchPath);
+        FO_VERIFY_AND_THROW(_file.truncate_to(_startOffset), "Can't remove incomplete resource patch tail", _patchPath);
+    }
+
+    _failed = false;
+}
+
+void ResourcePatchWriter::AddEncodedFile(const_span<uint8_t> data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_file && !_failed && !_finished && _nextDownload < _downloads.size(), "Resource patch is not accepting payloads");
+    (void)DecodeResourceData(data, _downloads[_nextDownload]);
+    _failed = true;
+    FO_VERIFY_AND_THROW(_file.write(data), "Can't append resource patch payload", _patchPath);
+    ++_nextDownload;
+    _failed = false;
+}
+
+void ResourcePatchWriter::Finish()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_file && !_failed && !_finished && _nextDownload == _downloads.size(), "Resource patch is incomplete");
+    array<uint8_t, RESOURCE_PATCH_FOOTER_SIZE> footer {};
+    span_write_uint32(footer, 0, PATCH_FOOTER_MAGIC);
+    span_write_uint16(footer, 4, RESOURCE_PACK_VERSION_MAJOR);
+    span_write_uint16(footer, 6, RESOURCE_PACK_VERSION_MINOR);
+    span_write_uint64(footer, 8, _info.BasePackHash);
+    span_write_uint64(footer, 16, _info.ContentHash);
+    span_write_uint64(footer, 24, _info.IndexOffset);
+    span_write_uint64(footer, 32, _info.IndexStoredSize);
+    span_write_uint64(footer, 40, _info.IndexDecodedSize);
+    span_write_uint64(footer, 48, _info.CommittedSize);
+    span_write_uint32(footer, 56, _info.IndexCodec);
+    span_write_uint32(footer, 60, _info.EntryCount);
+    span_write_uint64(footer, 64, _info.IndexHash);
+    span_write_uint64(footer, 72, HashResourceBytes(RESOURCE_PACK_HASH_SEED, {footer.data(), 72}));
+    _failed = true;
+    FO_VERIFY_AND_THROW(_file.write(_index) && _file.flush(), "Can't flush resource patch catalog", _patchPath);
+    FO_VERIFY_AND_THROW(_file.write(footer) && _file.flush(), "Can't commit resource patch footer", _patchPath);
+    FO_VERIFY_AND_THROW(fs_sync_parent(_patchPath), "Can't persist resource patch directory entry", _patchPath);
+    _file.close();
+    _finished = true;
+    _failed = false;
+    _directoryLock.reset();
 }
 
 FO_END_NAMESPACE

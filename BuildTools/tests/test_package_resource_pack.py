@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import shutil
 import struct
 import sys
 import zlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -20,6 +22,21 @@ CODEC_STORED = _package.RESOURCE_PACK_CODEC_STORED
 CODEC_DEFLATE = _package.RESOURCE_PACK_CODEC_DEFLATE
 
 
+def test_android_activity_resolves_the_configured_asset_directory(tmp_path: Path) -> None:
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.target_output_path = str(tmp_path)
+    packager.client_res_dir = "Content/Resource Packs"
+    packager.args = SimpleNamespace(config="LocalTest")
+    template = tmp_path / "app/src/main/java-template"
+    template.mkdir(parents=True)
+    shutil.copy(BUILDTOOLS_DIR / "android-project/app/src/main/java-template/FOnlineActivity.java", template)
+    packager.patch_android_activity("com.fonline.test")
+    activity = (tmp_path / "app/src/main/java/com/fonline/test/FOnlineActivity.java").read_text()
+    assert 'getApplicationInfo().sourceDir + "!/assets/" + "Content/Resource Packs"' in activity
+    assert "getAssets().open" not in activity
+    assert "$RESOURCE_DIRECTORY$" not in activity
+
+
 def _write_pack(archive_path: Path, entries: list[tuple[str, Path]], level: int = 6, min_gain: int = 5) -> bytes:
     _package.write_resource_pack(archive_path, [(name, str(path)) for name, path in entries], level, min_gain)
     return archive_path.read_bytes()
@@ -29,7 +46,7 @@ def _parse(data: bytes) -> tuple[dict[str, object], list[dict[str, object]]]:
     """Read the pack back the way the engine reader does, so the test pins the layout rather than the writer."""
     magic, version_major, version_minor = struct.unpack_from("<IHH", data, 0)
     assert magic == _package.RESOURCE_PACK_MAGIC
-    assert _package.fnv1a_64(data[:64]) == struct.unpack_from("<Q", data, 64)[0]
+    assert _package.fnv1a_64(data[:72]) == struct.unpack_from("<Q", data, 72)[0]
     assert _package.fnv1a_64(data[HEADER_SIZE:]) == struct.unpack_from("<Q", data, 8)[0]
 
     index_offset, index_stored_size, index_decoded_size = struct.unpack_from("<QQQ", data, 16)
@@ -47,9 +64,11 @@ def _parse(data: bytes) -> tuple[dict[str, object], list[dict[str, object]]]:
     entries: list[dict[str, object]] = []
 
     for i in range(entry_count):
-        path_offset, path_length, blob_offset, stored_size, decoded_size, codec, flags = struct.unpack_from("<IIQQQII", index, i * ENTRY_SIZE)
+        path_offset, path_length, blob_offset, stored_size, decoded_size, codec, flags, file_hash = struct.unpack_from("<IIQQQIIQ", index, i * ENTRY_SIZE)
         assert flags == 0
         blob = data[blob_offset : blob_offset + stored_size]
+        decoded = zlib.decompress(blob) if codec == CODEC_DEFLATE else blob
+        assert _package.fnv1a_64(decoded) == file_hash
         entries.append(
             {
                 "path": index[path_offset : path_offset + path_length].decode("utf-8"),
@@ -150,3 +169,26 @@ def test_resource_pack_min_gain_keeps_a_weak_win_stored(tmp_path: Path) -> None:
 
     assert greedy[0]["codec"] == CODEC_DEFLATE
     assert strict[0]["codec"] == CODEC_STORED
+
+
+def test_content_hash_is_independent_of_compression(tmp_path: Path) -> None:
+    entries = _make_tree(tmp_path)
+    stored = _write_pack(tmp_path / "Stored.fores", entries, min_gain=100)
+    compressed = _write_pack(tmp_path / "Compressed.fores", entries)
+    assert struct.unpack_from("<Q", stored, 8) != struct.unpack_from("<Q", compressed, 8)
+    assert struct.unpack_from("<Q", stored, 64) == struct.unpack_from("<Q", compressed, 64)
+    _, parsed = _parse(compressed)
+    logical = bytearray(struct.pack("<I", len(parsed)))
+    for entry in parsed:
+        name = entry["path"].encode("utf-8")
+        logical.extend(struct.pack("<IQQ", len(name), len(entry["raw"]), _package.fnv1a_64(entry["raw"])))
+        logical.extend(name)
+    assert _package.fnv1a_64(logical) == struct.unpack_from("<Q", stored, 64)[0]
+
+
+@pytest.mark.parametrize("name", ["/root", "../escape", "a/../b", "a/./b", "a//b", "a/", "C:drive", "nul\0name"])
+def test_resource_pack_rejects_noncanonical_paths(tmp_path: Path, name: str) -> None:
+    source = tmp_path / "source"
+    source.write_bytes(b"content")
+    with pytest.raises(AssertionError):
+        _write_pack(tmp_path / "Invalid.fores", [(name, source)])

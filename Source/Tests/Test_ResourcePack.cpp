@@ -195,26 +195,26 @@ TEST_CASE("ResourcePack")
 
         string not_a_pack = MakeTempPackPath("not_a_pack");
         REQUIRE(fs_write_file(not_a_pack, string(RESOURCE_PACK_HEADER_SIZE + 16, '\0')));
-        CHECK_THROWS_AS(ResourcePackSource {not_a_pack}, DataSourceException);
+        CHECK_THROWS_AS(ResourcePackSource {not_a_pack}, VerificationException);
 
         ResourcePackHeader ignored_header;
         CHECK_FALSE(ReadResourcePackHeader(not_a_pack, ignored_header));
 
         string too_short = MakeTempPackPath("too_short");
         REQUIRE(fs_write_file(too_short, original->substr(0, RESOURCE_PACK_HEADER_SIZE - 1)));
-        CHECK_THROWS_AS(ResourcePackSource {too_short}, DataSourceException);
+        CHECK_THROWS_AS(ResourcePackSource {too_short}, VerificationException);
 
         // One flipped header byte breaks the header checksum, which is what stops a bad offset being believed
         string bad_header = MakeTempPackPath("bad_header");
         string bad_header_data = *original;
         bad_header_data[20] = static_cast<char>(bad_header_data[20] ^ 0xFF);
         REQUIRE(fs_write_file(bad_header, bad_header_data));
-        CHECK_THROWS_AS(ResourcePackSource {bad_header}, DataSourceException);
+        CHECK_THROWS_AS(ResourcePackSource {bad_header}, VerificationException);
 
         // A truncated body leaves the header intact, so the index read is what has to fail
         string truncated = MakeTempPackPath("truncated");
         REQUIRE(fs_write_file(truncated, original->substr(0, original->size() - 4)));
-        CHECK_THROWS_AS(ResourcePackSource {truncated}, DataSourceException);
+        CHECK_THROWS_AS(ResourcePackSource {truncated}, VerificationException);
 
         CHECK(fs_remove_file(pack_path));
         CHECK(fs_remove_file(not_a_pack));
@@ -312,14 +312,14 @@ TEST_CASE("ResourcePack")
                 }
 
                 // Recomputed so the extent check is what refuses the file rather than the header checksum
-                uint64_t checksum = fs_hash_data(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(patched.data()), 64});
+                uint64_t checksum = fs_hash_data(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(patched.data()), RESOURCE_PACK_HEADER_SIZE - 8});
 
                 for (size_t i = 0; i < 8; ++i) {
-                    patched[64 + i] = static_cast<char>((checksum >> (i * 8)) & 0xFF);
+                    patched[RESOURCE_PACK_HEADER_SIZE - 8 + i] = static_cast<char>((checksum >> (i * 8)) & 0xFF);
                 }
 
                 REQUIRE(fs_write_file(patched_path, patched));
-                CHECK_THROWS_AS(ResourcePackSource {patched_path}, DataSourceException);
+                CHECK_THROWS_AS(ResourcePackSource {patched_path}, VerificationException);
                 CHECK(fs_remove_file(patched_path));
             }
         }
@@ -331,21 +331,23 @@ TEST_CASE("ResourcePack")
     {
         // Produced by the packager from the same inputs with compression off, so both writers share one layout
         // clang-format off
-        static constexpr array<uint8_t, 241> GOLDEN_PACK = {
-            0x46, 0x4F, 0x52, 0x53, 0x01, 0x00, 0x00, 0x00, 0xAE, 0x07, 0xFB, 0xC9, 0x87, 0xC4, 0xC7, 0xD2,
-            0x59, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x98, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x98, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
-            0x48, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0xC2, 0x25, 0xFC, 0xBA, 0x4B, 0x0F, 0x1E, 0x6F, 0x61, 0x6C, 0x70, 0x68, 0x61, 0x20, 0x70, 0x61,
-            0x79, 0x6C, 0x6F, 0x61, 0x64, 0x62, 0x65, 0x74, 0x61, 0x78, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00,
-            0x00, 0x48, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x81, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        static constexpr array<uint8_t, 273> GOLDEN_PACK = {
+            0x46, 0x4F, 0x52, 0x53, 0x02, 0x00, 0x00, 0x00, 0xD1, 0xD5, 0xB1, 0xAE, 0xFA, 0xE3, 0x44, 0x9B,
+            0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xB0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
+            0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x63, 0x15, 0x3C, 0x0B, 0xE1, 0x91, 0x46, 0x23, 0x23, 0x6A, 0xC3, 0xEA, 0x09, 0xE4, 0x20, 0x72,
+            0x61, 0x6C, 0x70, 0x68, 0x61, 0x20, 0x70, 0x61, 0x79, 0x6C, 0x6F, 0x61, 0x64, 0x62, 0x65, 0x74,
+            0x61, 0x90, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x81, 0x60, 0x38, 0xFA, 0xC3, 0xAD, 0xC3,
+            0x8B, 0x99, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x5D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x89, 0x00, 0x00, 0x00, 0x0F, 0x00, 0x00,
-            0x00, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x41, 0x6C, 0x70, 0x68, 0x61, 0x2E, 0x62, 0x69, 0x6E, 0x5A, 0x65, 0x74, 0x61, 0x2E, 0x62,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x25, 0x23, 0x22, 0x84, 0xE4, 0x9C, 0xF2,
+            0xCB, 0xA1, 0x00, 0x00, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x5D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA7, 0x20, 0x46, 0x95, 0x9B, 0x61, 0x27,
+            0x76, 0x41, 0x6C, 0x70, 0x68, 0x61, 0x2E, 0x62, 0x69, 0x6E, 0x5A, 0x65, 0x74, 0x61, 0x2E, 0x62,
             0x69, 0x6E, 0x6E, 0x65, 0x73, 0x74, 0x65, 0x64, 0x2F, 0x42, 0x65, 0x74, 0x61, 0x2E, 0x62, 0x69,
             0x6E,
         };
@@ -416,6 +418,263 @@ TEST_CASE("ResourcePack")
         writer.AddFile("Payload.bin", MakeBytes("second"));
         CHECK_THROWS(writer.Finish());
     }
+}
+
+static void WritePatchTestPack(string_view path, const vector<pair<string, string>>& files, ResourcePackWriteSettings settings = {0, 100})
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ResourcePackWriter writer {path, settings};
+
+    for (const auto& [name, text] : files) {
+        writer.AddFile(name, MakeBytes(text));
+    }
+
+    writer.Finish();
+}
+
+static auto ApplyPatchTestUpdate(string_view base, string_view patch, string_view target_path) -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ResourcePackSource target {target_path};
+    ResourcePatchWriter writer {base, patch, target.GetEntryRefs(), target.GetContentHash(), {0, 100}};
+    disk_read_file target_file {target_path};
+    uint64_t downloaded = 0;
+    writer.Begin();
+
+    for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
+        vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));
+        REQUIRE(target_file.read_at(entry.DataOffset, data));
+        writer.AddEncodedFile(data);
+        downloaded += entry.StoredSize;
+    }
+
+    writer.Finish();
+    CHECK(fs_file_size(patch).value() == writer.GetFinalSize());
+    return downloaded;
+}
+
+TEST_CASE("ResourcePackPatch")
+{
+    string base = MakeTempPackPath("patch_base");
+    string patch = GetResourcePatchPath(base);
+    string target = MakeTempPackPath("patch_target");
+    string recovery = MakeTempPackPath("patch_recovery");
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs_remove_file(base);
+        (void)fs_remove_file(patch);
+        (void)fs_remove_file(target);
+        (void)fs_remove_file(recovery);
+    });
+    WritePatchTestPack(base, {{"A.txt", "same"}, {"B.txt", "old"}, {"C.txt", "deleted"}});
+    auto original_base = fs_read_file(base);
+    REQUIRE(original_base);
+    WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "changed"}, {"D.txt", "added"}});
+    CHECK(ApplyPatchTestUpdate(base, patch, target) == 12);
+    auto first_patch = fs_read_file(patch);
+    REQUIRE(first_patch);
+
+    SECTION("CompleteCatalogChoosesBothFilesAndDeletesBaseEntries")
+    {
+        ResourcePackSource view {base, patch};
+        ResourcePackSource wanted {target};
+        CHECK(view.GetContentHash() == wanted.GetContentHash());
+        CHECK(ReadWholeFile(view, "A.txt") == vector<uint8_t> {'s', 'a', 'm', 'e'});
+        CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+        CHECK_FALSE(view.IsFileExists("C.txt"));
+        auto entries = view.GetEntryRefs();
+        REQUIRE(entries.size() == 3);
+        CHECK(entries[0].Source == 0);
+        CHECK(entries[1].Source == 1);
+        CHECK(entries[2].Source == 1);
+    }
+
+    SECTION("SecondUpdateReusesPatchBytesAndRenamesWithoutDownload")
+    {
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "changed"}, {"E.txt", "added"}});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 0);
+        auto updated = fs_read_file(patch);
+        REQUIRE(updated);
+        CHECK(updated->starts_with(*first_patch));
+        ResourcePackSource view {base, patch};
+        CHECK_FALSE(view.IsFileExists("D.txt"));
+        CHECK(ReadWholeFile(view, "E.txt") == vector<uint8_t> {'a', 'd', 'd', 'e', 'd'});
+    }
+
+    SECTION("EmptyCatalogDeletesEveryResourceWithoutDownloadingPayloads")
+    {
+        WritePatchTestPack(target, {});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 0);
+        ResourcePackSource view {base, patch};
+        CHECK(view.GetEntryRefs().empty());
+        CHECK_FALSE(view.IsFileExists("A.txt"));
+        CHECK_FALSE(view.IsFileExists("B.txt"));
+        CHECK(view.GetContentHash() == ResourcePackSource(target).GetContentHash());
+    }
+
+    SECTION("CorruptedNewestCatalogDoesNotHideThePreviousCommit")
+    {
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "newer"}});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 5);
+        ResourcePackHeader header;
+        REQUIRE(ReadResourcePackHeader(base, header));
+        auto info = ReadResourcePatchInfo(patch, header);
+        REQUIRE(info);
+        auto bytes = fs_read_file(patch);
+        REQUIRE(bytes);
+        (*bytes)[numeric_cast<size_t>(info->IndexOffset)] ^= 1;
+        REQUIRE(fs_write_file(patch, *bytes));
+        ResourcePackSource view {base, patch};
+        CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+        REQUIRE(view.GetPatchInfo());
+        CHECK(view.GetPatchInfo()->CommittedSize == first_patch->size());
+    }
+
+    SECTION("EveryTruncatedSecondAppendKeepsFirstCommit")
+    {
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "newer"}});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 5);
+        auto complete = fs_read_file(patch);
+        REQUIRE(complete);
+
+        for (size_t cut = first_patch->size(); cut < complete->size(); ++cut) {
+            REQUIRE(fs_write_file(recovery, string_view {complete->data(), cut}));
+            ResourcePackSource view {base, recovery};
+            CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+            CHECK(view.IsFileExists("D.txt"));
+            REQUIRE(view.GetPatchInfo());
+            CHECK(view.GetPatchInfo()->CommittedSize == first_patch->size());
+        }
+    }
+
+    SECTION("RecoveryTrimsUncommittedTailBeforeNextAppend")
+    {
+        {
+            disk_write_file append {patch, disk_write_mode::Append};
+            REQUIRE(append);
+            vector<uint8_t> garbage(128 * 1024, uint8_t {'x'});
+            REQUIRE(append.write(garbage));
+        }
+
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "next"}});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 4);
+        auto updated = fs_read_file(patch);
+        REQUIRE(updated);
+        CHECK(updated->starts_with(*first_patch));
+        CHECK(updated->size() < first_patch->size() + 1024);
+    }
+
+    SECTION("BadDownloadedContentCannotPublishOrDamagePreviousCommit")
+    {
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "new"}});
+        ResourcePackSource wanted {target};
+        ResourcePatchWriter writer {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+        writer.Begin();
+        REQUIRE_THROWS(writer.AddEncodedFile(MakeBytes("bad")));
+        REQUIRE_THROWS(writer.Finish());
+        ResourcePackSource view {base, patch};
+        CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+    }
+
+    SECTION("WritersCannotTruncateEachOthersPatch")
+    {
+        ResourcePackSource wanted {target};
+        ResourcePatchWriter first {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+        ResourcePatchWriter second {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+        first.Begin();
+#if !FO_WEB
+        CHECK_THROWS(second.Begin());
+#endif
+        CHECK(fs_read_file(patch) == first_patch);
+    }
+
+    SECTION("RecompressedTargetReusesDecodedBaseContent")
+    {
+        string text(4096, 'A');
+        WritePatchTestPack(base, {{"Long.txt", text}});
+        original_base = fs_read_file(base);
+        REQUIRE(fs_remove_file(patch));
+        WritePatchTestPack(target, {{"Long.txt", text}, {"Renamed.txt", text}}, {6, 5});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 0);
+        ResourcePackSource view {base, patch};
+        CHECK(ReadWholeFile(view, "Renamed.txt").size() == text.size());
+    }
+
+    SECTION("ReaderKeepsItsCommittedViewWhileWriterAppends")
+    {
+        ResourcePackSource old_view {base, patch};
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "newer"}});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 5);
+        CHECK(ReadWholeFile(old_view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+        CHECK(old_view.IsFileExists("D.txt"));
+        ResourcePackSource new_view {base, patch};
+        CHECK(ReadWholeFile(new_view, "B.txt") == vector<uint8_t> {'n', 'e', 'w', 'e', 'r'});
+        CHECK_FALSE(new_view.IsFileExists("D.txt"));
+    }
+
+    SECTION("CorruptReusablePayloadIsDownloadedAgain")
+    {
+        string damaged = *first_patch;
+        damaged[RESOURCE_PATCH_HEADER_SIZE] ^= 1;
+        REQUIRE(fs_write_file(patch, damaged));
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "changed"}, {"Renamed.txt", "added"}});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 7);
+        ResourcePackSource view {base, patch};
+        CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+    }
+
+#if !FO_WINDOWS && !FO_WEB
+    SECTION("StalePatchResetPreservesPinnedOldInodes")
+    {
+        ResourcePackSource old_view {base, patch};
+        disk_read_file pinned_base {base};
+        disk_read_file pinned_patch {patch};
+        ResourcePackHeader before;
+        REQUIRE(ReadResourcePackHeader(pinned_base, before));
+        REQUIRE(fs_rename(base, recovery));
+        WritePatchTestPack(base, {{"A.txt", "fresh base"}});
+        original_base = fs_read_file(base);
+        WritePatchTestPack(target, {{"A.txt", "fresh base"}, {"New.txt", "fresh patch"}});
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 11);
+        CHECK(ReadWholeFile(old_view, "A.txt") == vector<uint8_t> {'s', 'a', 'm', 'e'});
+        CHECK(ReadWholeFile(old_view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+        ResourcePackHeader still_pinned;
+        REQUIRE(ReadResourcePackHeader(pinned_base, still_pinned));
+        CHECK(still_pinned.PackHash == before.PackHash);
+        auto pinned_commit = ReadResourcePatchInfo(pinned_patch, still_pinned);
+        REQUIRE(pinned_commit);
+        CHECK(pinned_commit->ContentHash == old_view.GetContentHash());
+        ResourcePackSource new_view {base, patch};
+        CHECK_FALSE(new_view.IsFileExists("B.txt"));
+        CHECK(new_view.IsFileExists("New.txt"));
+    }
+#endif
+
+    SECTION("ReplacementBaseExcludesLeftoverPatch")
+    {
+        WritePatchTestPack(base, {{"A.txt", "full reset"}});
+        original_base = fs_read_file(base);
+        ResourcePackSource view {base, patch};
+        CHECK_FALSE(view.GetPatchInfo());
+        CHECK_FALSE(view.IsFileExists("B.txt"));
+        CHECK(ReadWholeFile(view, "A.txt") == vector<uint8_t> {'f', 'u', 'l', 'l', ' ', 'r', 'e', 's', 'e', 't'});
+    }
+
+    SECTION("IdenticalLogicalBaseWithNewOffsetsExcludesTheOldPatch")
+    {
+        ResourcePackHeader before;
+        REQUIRE(ReadResourcePackHeader(base, before));
+        WritePatchTestPack(base, {{"C.txt", "deleted"}, {"B.txt", "old"}, {"A.txt", "same"}});
+        original_base = fs_read_file(base);
+        ResourcePackSource view {base, patch};
+        CHECK(view.GetContentHash() == before.ContentHash);
+        CHECK(view.GetPackHash() != before.PackHash);
+        CHECK_FALSE(view.GetPatchInfo());
+        CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'o', 'l', 'd'});
+    }
+
+    CHECK(fs_read_file(base) == original_base);
 }
 
 FO_END_NAMESPACE
