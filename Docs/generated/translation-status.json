@@ -27,8 +27,8 @@
       "english_path": "BuildTools/README.md",
       "english_path_state": "migrated",
       "russian_path": "BuildTools/README.ru.md",
-      "source_sha256": "4facb84c30e213d8bd67e2cd80fa7e5559c7c71267f4834f4ff8ef7bf77fe6d5",
-      "source_bytes": 46565,
+      "source_sha256": "100c847b0046db5a14f408de7d3751bfb86fd3ba9df56404c0dbae9d0985e173",
+      "source_bytes": 46756,
       "status": "current"
     },
     {
@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "0c119bea4138b849cfca1b7d88a597c9bc90fda0f9088938f6537d0ae8e51008",
-      "source_bytes": 26617,
+      "source_sha256": "bcf0897eb1da2bda0ab06f3df723b7625b619c96879a588d9a5e6ee26cbf830b",
+      "source_bytes": 27159,
       "status": "current"
     },
     {
@@ -1106,8 +1106,8 @@
       "english_path": "Docs/en/reference/buildtools/commands.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/buildtools/commands.md",
-      "source_sha256": "a531be1f0c9aed8a1daa0e04432bbd3764a5cc9229282be080aaa5752e11a41f",
-      "source_bytes": 18675,
+      "source_sha256": "e05ca437217ff4b3889c5acf6f821df66f5fe08ffb95b44d15ad9c98162bbd62",
+      "source_bytes": 18743,
       "status": "current"
     },
     {
@@ -1119,7 +1119,7 @@
       "english_path": "Docs/en/reference/buildtools/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/buildtools/index.md",
-      "source_sha256": "5292418969b8b4d962a49343d5208ce2bb4cec8df98f8395cfd7608d4d43d3ee",
+      "source_sha256": "37837843a72c7377ea3c89a8b0b65794ab4c5647ddeac1c7b99f6ef8580340d2",
       "source_bytes": 3160,
       "status": "current"
     },

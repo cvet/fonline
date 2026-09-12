@@ -8,7 +8,7 @@ permalink: /Docs/ru/contributing/testing/
 
 # Тестирование
 
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0c119bea4138b849cfca1b7d88a597c9bc90fda0f9088938f6537d0ae8e51008"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bcf0897eb1da2bda0ab06f3df723b7625b619c96879a588d9a5e6ee26cbf830b"} -->
 
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
@@ -95,6 +95,15 @@ BuildTools может запускать выбранные широкие сц�
 Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
+
+Обычный validator `unit-tests` разрешает `native` в toolchain текущего host:
+MSVC/Visual Studio на Windows, Xcode на macOS и Clang на Linux. Если Windows
+configure command требует `-A`, validator отклоняет cached generator не из
+семейства Visual Studio, но принимает любую cached версию Visual Studio вместо
+закрепления display name generator. Sanitizer validators остаются явно
+Linux-specific. `BuildTools/tests/test_native_unit_validation.py` покрывает
+platform resolution, передачу configure, проверки generator cache и
+неподдерживаемые hosts.
 
 Начинайте с минимального focused test и добавляйте общий target, когда изменение
 пересекает границы подсистем.

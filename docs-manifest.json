@@ -981,8 +981,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "4facb84c30e213d8bd67e2cd80fa7e5559c7c71267f4834f4ff8ef7bf77fe6d5",
-      "byte_size": 46565
+      "content_sha256": "100c847b0046db5a14f408de7d3751bfb86fd3ba9df56404c0dbae9d0985e173",
+      "byte_size": 46756
     },
     {
       "id": "client-runtime",
@@ -2690,8 +2690,8 @@
         "Docs/generated/cli.json",
         "BuildTools/docs_cli.py"
       ],
-      "content_sha256": "a531be1f0c9aed8a1daa0e04432bbd3764a5cc9229282be080aaa5752e11a41f",
-      "byte_size": 18675
+      "content_sha256": "e05ca437217ff4b3889c5acf6f821df66f5fe08ffb95b44d15ad9c98162bbd62",
+      "byte_size": 18743
     },
     {
       "id": "generated-cli-index",
@@ -2724,7 +2724,7 @@
         "BuildTools/docs_cli.py",
         "BuildTools/tests/test_docs_cli.py"
       ],
-      "content_sha256": "5292418969b8b4d962a49343d5208ce2bb4cec8df98f8395cfd7608d4d43d3ee",
+      "content_sha256": "37837843a72c7377ea3c89a8b0b65794ab4c5647ddeac1c7b99f6ef8580340d2",
       "byte_size": 3160
     },
     {
@@ -13691,8 +13691,8 @@
         "Docs/generated/source-inventory.json",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "0c119bea4138b849cfca1b7d88a597c9bc90fda0f9088938f6537d0ae8e51008",
-      "byte_size": 26617
+      "content_sha256": "bcf0897eb1da2bda0ab06f3df723b7625b619c96879a588d9a5e6ee26cbf830b",
+      "byte_size": 27159
     },
     {
       "id": "text-and-localization-guide",
@@ -14015,8 +14015,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "72bad6a7355e9768e56db292e23ad9f2cc25f0b3ed7d2648f6b92d4c2013dd98",
-      "byte_size": 2022716
+      "content_sha256": "e1f681588e57050fda2786f31ac1a04e794b23f70abddddeb0eced5d8383bead",
+      "byte_size": 2023258
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14050,8 +14050,8 @@
       "id": "cli_reference",
       "path": "Docs/generated/cli.json",
       "canonical_url": "https://fonline.ru/Docs/generated/cli.json",
-      "content_sha256": "21cb56059262932f99490dfc0f55978c39552927ce16fbcb67921805e53112e5",
-      "byte_size": 24041
+      "content_sha256": "2baff7fa34b580bbbd46ab5fc68e20fd46bff11377fd26a91bda82ff99411882",
+      "byte_size": 24111
     },
     {
       "id": "cmake_reference",
@@ -14169,7 +14169,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "7375b80753d43ba285fb6698f2559ce6a1edbd1ad3b90386627a408c671608f5",
+      "content_sha256": "8f87f21b2d638a0db226ad6d9d74c2c6c8ded2f778e6c9a3ad3d494d3bf723be",
       "byte_size": 265686
     },
     {
@@ -14197,7 +14197,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "0d087a0f68dcb98763ca404c26bc90514dd74d177b4ebcd08a9f6a5c0df7a039",
+      "content_sha256": "11bdf4c9cf65691a0240e7a2d456888fc3a2128dc973a2216e032e987d7aa31d",
       "byte_size": 104631
     },
     {
@@ -14218,15 +14218,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "123a30d65bde3319b464e94378dda2815a50618e71e28596cfcebd4d54b9964e",
-      "byte_size": 1205897
+      "content_sha256": "ce4525db8de44ab872b7894cc72a5f4741d4dfc97a804e131c0786ebdabf546d",
+      "byte_size": 1206108
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "5f861ab414b4072b4c40ec5fcd8d2295e139089a67f25c3a16bd60de738dbc44",
-      "byte_size": 1702436
+      "content_sha256": "1ccc0671fd17a1b6e99b94be3d72815a249381f0b14053a6ec85703a40cb6499",
+      "byte_size": 1702724
     }
   ]
 }

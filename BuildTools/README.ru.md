@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"4facb84c30e213d8bd67e2cd80fa7e5559c7c71267f4834f4ff8ef7bf77fe6d5"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"100c847b0046db5a14f408de7d3751bfb86fd3ba9df56404c0dbae9d0985e173"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -143,6 +143,10 @@ governance files, исключения source staging и release gates верс�
 Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
+
+Обычная validation target `unit-tests` выбирает toolchain нативного host:
+MSVC на Windows, Xcode на macOS и Clang на Linux. Sanitizer validators остаются
+явно platform-specific.
 
 Python regression tests BuildTools находятся в `Engine/BuildTools/tests/` и
 могут запускаться напрямую:

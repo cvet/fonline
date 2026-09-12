@@ -296,8 +296,8 @@
       "name": "prepare-workspace",
       "summary": "prepare shared workspace parts",
       "description": null,
-      "usage": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]",
-      "help_output": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]\n\npositional arguments:\n  {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx}\n                        workspace components to prepare\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "usage": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} ...]",
+      "help_output": "usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} ...]\n\npositional arguments:\n  {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx}\n                        workspace components to prepare\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.prepare-workspace.argument.parts",
@@ -315,6 +315,7 @@
             "android-ndk",
             "dotnet",
             "xwin",
+            "wix",
             "msan-libcxx"
           ],
           "default": null,
@@ -492,8 +493,8 @@
       "name": "prepare-host-workspace",
       "summary": "prepare host workspace and prerequisites",
       "description": null,
-      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]",
-      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]",
+      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.prepare-host-workspace.argument.host",
@@ -538,6 +539,7 @@
             "toolset",
             "dotnet",
             "windows-cross",
+            "wix",
             "msan-libcxx",
             "all"
           ],
@@ -569,5 +571,5 @@
     "global_argument_count": 0,
     "command_argument_count": 25
   },
-  "contract_digest": "7c062060f0beefe2657884e93a041fe0d079b5c535d122214e81ab94357b782d"
+  "contract_digest": "fe4230108f54098166ceb508251225ab910d03b975cd7bd5267b7c212341d27d"
 }

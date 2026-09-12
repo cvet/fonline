@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cli-commands","locale":"ru","source_path":"Docs/en/reference/buildtools/commands.md","source_sha256":"a531be1f0c9aed8a1daa0e04432bbd3764a5cc9229282be080aaa5752e11a41f"} -->
+<!-- docs-translation: {"document_id":"generated-cli-commands","locale":"ru","source_path":"Docs/en/reference/buildtools/commands.md","source_sha256":"e05ca437217ff4b3889c5acf6f821df66f5fe08ffb95b44d15ad9c98162bbd62"} -->
 
 # Команды BuildTools
 
@@ -220,21 +220,21 @@ options:
 Стабильный ID: `cli.buildtools.command.prepare-workspace`
 
 ```text
-usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]
+usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} ...]
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-cli-buildtools-command-prepare-workspace-argument-parts-6dfc61f96e"></a><code>cli.buildtools.command.prepare-workspace.argument.parts</code> | <code>parts</code> | <code>positional</code> | да | <code>+</code> | <code>toolset</code>, <code>emscripten</code>, <code>android-sdk</code>, <code>android-ndk</code>, <code>dotnet</code>, <code>xwin</code>, <code>msan-libcxx</code> | - | Подготавливаемые компоненты рабочего каталога. |
+| <a id="entry-cli-buildtools-command-prepare-workspace-argument-parts-6dfc61f96e"></a><code>cli.buildtools.command.prepare-workspace.argument.parts</code> | <code>parts</code> | <code>positional</code> | да | <code>+</code> | <code>toolset</code>, <code>emscripten</code>, <code>android-sdk</code>, <code>android-ndk</code>, <code>dotnet</code>, <code>xwin</code>, <code>wix</code>, <code>msan-libcxx</code> | - | Подготавливаемые компоненты рабочего каталога. |
 | <a id="entry-cli-buildtools-command-prepare-workspace-argument-check-6062fdb605"></a><code>cli.buildtools.command.prepare-workspace.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Проверить доступность без установки или сборки. |
 
 ### Точный вывод `--help`
 
 ```text
-usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx} ...]
+usage: buildtools.py prepare-workspace [-h] [--check] {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} [{toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx} ...]
 
 positional arguments:
-  {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,msan-libcxx}
+  {toolset,emscripten,android-sdk,android-ndk,dotnet,xwin,wix,msan-libcxx}
                         workspace components to prepare
 
 options:
@@ -366,13 +366,13 @@ options:
 ```text
 usage: buildtools.py prepare-host-workspace [-h] [--check]
                                             {linux,windows,macos}
-                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]
+                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]
 ```
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-host-8fb8276bf1"></a><code>cli.buildtools.command.prepare-host-workspace.argument.host</code> | <code>host</code> | <code>positional</code> | да | <code>1</code> | <code>linux</code>, <code>windows</code>, <code>macos</code> | - | Подготавливаемая host-платформа. |
-| <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-features-1d7026db67"></a><code>cli.buildtools.command.prepare-host-workspace.argument.features</code> | <code>features</code> | <code>positional</code> | нет | <code>*</code> | <code>common-packages</code>, <code>linux-packages</code>, <code>web-packages</code>, <code>android-packages</code>, <code>windows-cross-packages</code>, <code>msi-packages</code>, <code>all-packages</code>, <code>linux</code>, <code>web</code>, <code>android-arm32</code>, <code>android-arm64</code>, <code>android-x86</code>, <code>toolset</code>, <code>dotnet</code>, <code>windows-cross</code>, <code>msan-libcxx</code>, <code>all</code> | - | Подготавливаемые группы возможностей; не указывайте их, чтобы использовать значения host-системы по умолчанию. |
+| <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-features-1d7026db67"></a><code>cli.buildtools.command.prepare-host-workspace.argument.features</code> | <code>features</code> | <code>positional</code> | нет | <code>*</code> | <code>common-packages</code>, <code>linux-packages</code>, <code>web-packages</code>, <code>android-packages</code>, <code>windows-cross-packages</code>, <code>msi-packages</code>, <code>all-packages</code>, <code>linux</code>, <code>web</code>, <code>android-arm32</code>, <code>android-arm64</code>, <code>android-x86</code>, <code>toolset</code>, <code>dotnet</code>, <code>windows-cross</code>, <code>wix</code>, <code>msan-libcxx</code>, <code>all</code> | - | Подготавливаемые группы возможностей; не указывайте их, чтобы использовать значения host-системы по умолчанию. |
 | <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-check-f990629a92"></a><code>cli.buildtools.command.prepare-host-workspace.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Проверить доступность без установки или сборки. |
 
 ### Точный вывод `--help`
@@ -380,12 +380,12 @@ usage: buildtools.py prepare-host-workspace [-h] [--check]
 ```text
 usage: buildtools.py prepare-host-workspace [-h] [--check]
                                             {linux,windows,macos}
-                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all} ...]
+                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]
 
 positional arguments:
   {linux,windows,macos}
                         host platform to prepare
-  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,msan-libcxx,all}
+  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all}
                         feature groups to prepare; omit to use the host defaults
 
 options:

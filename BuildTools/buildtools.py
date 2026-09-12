@@ -145,7 +145,7 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	},
 	**make_validation_target_set('win64', 'win64', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('win64-clang', 'win64-clang', WIN64_CLANG_VALIDATION_TARGET_NAMES),
-	'unit-tests': make_validation_target('linux', 'unit-tests', 'Release', run_target_name='RunUnitTests'),
+	'unit-tests': make_validation_target('native', 'unit-tests', 'Release', run_target_name='RunUnitTests'),
 	'unit-tests-san-address': make_validation_target('linux', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'unit-tests-san-memory': make_validation_target('linux', 'unit-tests', 'San_Memory', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
@@ -2088,6 +2088,18 @@ def resolve_android_abi(platform_name: str) -> str:
 	return android_abi
 
 
+def resolve_validation_platform(platform_name: str) -> str:
+	if platform_name != 'native':
+		return platform_name
+	if os.name == 'nt':
+		return 'win64'
+	if sys.platform == 'darwin':
+		return 'mac'
+	if sys.platform.startswith('linux'):
+		return 'linux'
+	raise SystemExit(f'Unsupported native validation host: {sys.platform}')
+
+
 def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	build_env = os.environ.copy()
 	if compiler_name == 'gcc':
@@ -2324,7 +2336,8 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 		if part == '-G' and index + 1 < len(configure_cmd):
 			expected_generator = configure_cmd[index + 1]
 			break
-	if expected_generator is None:
+	requires_visual_studio = expected_generator is None and '-A' in configure_cmd
+	if expected_generator is None and not requires_visual_studio:
 		return False
 
 	cache_file = build_dir / 'CMakeCache.txt'
@@ -2335,7 +2348,12 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 	except OSError:
 		return False
 	match = _CMAKE_CACHE_GENERATOR_RE.search(text)
-	return bool(match and match.group(1).strip() != expected_generator)
+	if match is None:
+		return False
+	cached_generator = match.group(1).strip()
+	if expected_generator is not None:
+		return cached_generator != expected_generator
+	return not cached_generator.startswith('Visual Studio ')
 
 
 def prepare_validation_project(env: Mapping[str, str]) -> Path:
@@ -2358,7 +2376,7 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 		prepare_workspace(workspace_parts, False, env)
 
 	validation_root = prepare_validation_project(env)
-	platform_name = validation['platform']
+	platform_name = resolve_validation_platform(validation['platform'])
 	target_name = validation['target']
 	config = validation['config']
 	compiler_name = validation.get('compiler', 'clang')

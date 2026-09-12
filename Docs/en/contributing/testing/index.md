@@ -71,6 +71,14 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
+The ordinary `unit-tests` validator resolves `native` to the host toolchain:
+MSVC/Visual Studio on Windows, Xcode on macOS, and Clang on Linux. It rejects a
+cached non-Visual-Studio generator when the Windows configure command requires
+`-A`, while accepting any cached Visual Studio version rather than pinning the
+generator display name. Sanitizer validators remain explicitly Linux-specific.
+`BuildTools/tests/test_native_unit_validation.py` covers platform resolution,
+configure forwarding, generator-cache checks, and unsupported hosts.
+
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
 ### Unit tests under sanitizers

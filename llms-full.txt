@@ -4564,7 +4564,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 0c119bea4138b849cfca1b7d88a597c9bc90fda0f9088938f6537d0ae8e51008
+Content SHA-256: bcf0897eb1da2bda0ab06f3df723b7625b619c96879a588d9a5e6ee26cbf830b
 
 ---
 layout: default
@@ -4638,6 +4638,14 @@ For broad validation scenarios, the BuildTools validators can run selected scena
 Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
+
+The ordinary `unit-tests` validator resolves `native` to the host toolchain:
+MSVC/Visual Studio on Windows, Xcode on macOS, and Clang on Linux. It rejects a
+cached non-Visual-Studio generator when the Windows configure command requires
+`-A`, while accepting any cached Visual Studio version rather than pinning the
+generator display name. Sanitizer validators remain explicitly Linux-specific.
+`BuildTools/tests/test_native_unit_validation.py` covers platform resolution,
+configure forwarding, generator-cache checks, and unsupported hosts.
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
@@ -23119,7 +23127,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-cli-index =====
 Source: Docs/en/reference/buildtools/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/buildtools/
-Content SHA-256: 5292418969b8b4d962a49343d5208ce2bb4cec8df98f8395cfd7608d4d43d3ee
+Content SHA-256: 37837843a72c7377ea3c89a8b0b65794ab4c5647ddeac1c7b99f6ef8580340d2
 
 ---
 title: Generated BuildTools CLI Reference
@@ -23144,7 +23152,7 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>7c062060f0beefe2657884e93a041fe0d079b5c535d122214e81ab94357b782d</code> |
+| Contract digest | <code>fe4230108f54098166ceb508251225ab910d03b975cd7bd5267b7c212341d27d</code> |
 
 ## Coverage
 
