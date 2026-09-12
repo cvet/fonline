@@ -365,7 +365,10 @@ filtered payload into the managed resource pack, but CoreLib is platform-specifi
 For a Client part, `package.py` rebuilds that pack with the target binary
 directory's clean `ManagedRuntime` payload. For a Server part, it stages one such
 pack at `PlatformBinaries/<target>/<pack>.zip` for every distributed client
-target. It never copies a side-by-side `ManagedRuntime` directory or hoists Mono
+target. Native variants of one target share that updater path; their independently
+built CoreLib files need not be byte-identical, so the packager deterministically
+prefers the least-qualified binary entry (normally the default Release build).
+It never copies a side-by-side `ManagedRuntime` directory or hoists Mono
 DLLs into a package root. Native, Web, and Android packages retain the same
 resource paths while carrying target-appropriate contents; the backend restores
 them into the writable runtime cache.

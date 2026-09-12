@@ -880,7 +880,7 @@ class Packager:
 	def package_all_client_runtime_update_payloads(self) -> None:
 		copied_native_payloads: set[tuple[str, str]] = set()
 		copied_resource_payloads: set[tuple[str, str]] = set()
-		resource_payload_identities: dict[tuple[str, str], bytes] = {}
+		resource_payload_sources: dict[tuple[str, str], tuple[tuple[int, str], str]] = {}
 		# A variant that never reaches PlatformBinaries leaves its players with 'update the client
 		# manually' and nothing to act on, so every skip states its reason and the declared variants
 		# are verified before the package is called done
@@ -928,20 +928,13 @@ class Packager:
 				if managed_runtime_pack is not None:
 					payload_key = (request_target_name, managed_runtime_pack)
 					runtime_dir = os.path.join(entry_path, MANAGED_RUNTIME_DIRECTORY)
-					runtime_identity = self.read_managed_runtime_identity(runtime_dir)
-					previous_identity = resource_payload_identities.get(payload_key)
-					assert previous_identity is None or previous_identity == runtime_identity, (
-						'Client binary entries sharing update target ' + request_target_name
-						+ ' carry different managed runtime payloads')
-
-					if previous_identity is None:
-						payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
-						os.makedirs(payload_dir, exist_ok=True)
-						output_path = os.path.join(payload_dir, managed_runtime_pack + '.zip')
-						log('Client managed resource payload', output_path)
-						self.write_client_resource_pack_with_runtime(output_path, managed_runtime_pack, runtime_dir)
-						resource_payload_identities[payload_key] = runtime_identity
-						copied_resource_payloads.add(payload_key)
+					self.read_managed_runtime_identity(runtime_dir)
+					# One updater path serves all variants, whose independent equivalent CoreLib builds may differ.
+					# Prefer the least-qualified entry
+					source_priority = (len(entry_name), entry_name)
+					previous_source = resource_payload_sources.get(payload_key)
+					if previous_source is None or source_priority < previous_source[0]:
+						resource_payload_sources[payload_key] = (source_priority, runtime_dir)
 
 				parts = request_target_name.split('-', 1)
 				if len(parts) != 2:
@@ -1029,6 +1022,14 @@ class Packager:
 							shutil.copy(host_pdb_input, host_pdb_out)
 
 					copied_native_payloads.add(payload_key)
+
+		for (request_target_name, pack_name), (_, runtime_dir) in sorted(resource_payload_sources.items()):
+			payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+			os.makedirs(payload_dir, exist_ok=True)
+			output_path = os.path.join(payload_dir, pack_name + '.zip')
+			log('Client managed resource payload', output_path)
+			self.write_client_resource_pack_with_runtime(output_path, pack_name, runtime_dir)
+			copied_resource_payloads.add((request_target_name, pack_name))
 
 		self.verify_expected_client_runtime_payloads(
 			copied_native_payloads, copied_resource_payloads, managed_runtime_pack, skipped_entries)
