@@ -326,6 +326,10 @@ Every client/server resource pack is reopened after it is built — the zips wri
 
 MSI compiler/linker output is inherited by the package process. A failed `candle`, `light`, or `wixl` command
 therefore leaves its native file, ICE, or Windows Installer diagnostic in the build log before packaging exits.
+On Windows, `light` first runs with ICE validation enabled. If and only if that attempt reports the exact
+Windows Installer service-unavailable diagnostic, the creator retries the same link with `-sval`; Windows
+service accounts can therefore produce the required MSI even when the host cannot run ICE. Any authoring,
+linker, or ordinary ICE error still fails immediately, and failure of the fallback link is also fatal.
 
 An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing
 `restore|store|release --key <sha256> --archive <path>`. Before deflate, `package.py` hashes the stable entry

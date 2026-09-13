@@ -30,6 +30,25 @@ from typing import Any
 
 sys.path.append(os.getcwd())
 
+WINDOWS_INSTALLER_SERVICE_UNAVAILABLE = 'The Windows Installer Service could not be accessed.'
+
+
+def _run_streaming_capture(command: list[str]) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors='replace',
+    )
+    assert process.stdout is not None
+    output: list[str] = []
+    for line in process.stdout:
+        sys.stdout.write(line)
+        sys.stdout.flush()
+        output.append(line)
+    return subprocess.CompletedProcess(command, process.wait(), ''.join(output))
+
 
 def gen_guid() -> str:
     return str(uuid.uuid4()).upper()
@@ -543,11 +562,22 @@ class PackageGenerator:
         """
         if platform.system() == "Windows":
             subprocess.run([os.path.join(wixdir, 'candle')] + self.args1 + [self.main_xml], check=True)
-            subprocess.run([os.path.join(wixdir, 'light'),
-                            '-ext', 'WixUIExtension',
-                            '-cultures:en-us',
-                            '-dWixUILicenseRtf=' + self.license_file] + \
-                           self.args2 + ['-out', self.final_output, self.main_o], check=True)
+            light_command = [os.path.join(wixdir, 'light'),
+                             '-ext', 'WixUIExtension',
+                             '-cultures:en-us',
+                             '-dWixUILicenseRtf=' + self.license_file] + \
+                            self.args2 + ['-out', self.final_output, self.main_o]
+            light_result = _run_streaming_capture(light_command)
+            if light_result.returncode != 0:
+                if WINDOWS_INSTALLER_SERVICE_UNAVAILABLE in light_result.stdout:
+                    print(
+                        'Windows Installer service is unavailable for WiX ICE validation; '
+                        'retrying the same MSI link with validation disabled.',
+                        flush=True,
+                    )
+                    subprocess.run([light_command[0], '-sval'] + light_command[1:], check=True)
+                else:
+                    light_result.check_returncode()
         else:
             subprocess.run(
                 [os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml], check=True)

@@ -283,7 +283,7 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
     assert 'Directory Id="ProgramFilesFolder"' not in wxs
 
 
-def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def _make_createmsi_generator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> createmsi.PackageGenerator:
     config_path = tmp_path / "sample.json"
     config_path.write_text(json.dumps({
         "product_name": "Sample",
@@ -300,6 +300,24 @@ def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pyte
         "parts": [],
     }), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
+    generator = createmsi.PackageGenerator(config_path.name)
+    generator.generate_files()
+    return generator
+
+
+def test_createmsi_streaming_capture_tees_merged_output(capsys: pytest.CaptureFixture[str]) -> None:
+    command = [sys.executable, "-c", "import sys; print('stdout'); print('stderr', file=sys.stderr); sys.exit(7)"]
+
+    result = createmsi._run_streaming_capture(command)
+
+    assert result.returncode == 7
+    assert sorted(result.stdout.splitlines()) == ["stderr", "stdout"]
+    assert sorted(capsys.readouterr().out.splitlines()) == ["stderr", "stdout"]
+
+
+def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Linux")
     captured: list[list[str]] = []
 
@@ -309,18 +327,102 @@ def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pyte
 
     monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
 
-    generator = createmsi.PackageGenerator(config_path.name)
-    generator.generate_files()
     generator.build_package()
 
     assert captured == [["wixl", "--ext", "ui", "-o", "sample-1.0.0-64.msi", "sample.wxs"]]
 
     captured.clear()
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
+    streamed: list[list[str]] = []
+
+    def capture_stream(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+        streamed.append(cmd)
+        return createmsi.subprocess.CompletedProcess(cmd, 0, "")
+
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", capture_stream)
     generator.build_package("wix")
 
     assert captured[0][-1] == "sample.wxs"
     assert captured[0][0].endswith("candle")
-    assert captured[1][0].endswith("light")
-    assert "WixUIExtension" in captured[1]
-    assert "-sice:ICE61" in captured[1]
+    assert len(captured) == 1
+    assert streamed[0][0].endswith("light")
+    assert "WixUIExtension" in streamed[0]
+    assert "-sice:ICE61" in streamed[0]
+
+
+def test_createmsi_retries_without_validation_only_when_installer_service_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+    runs: list[list[str]] = []
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        runs.append(cmd)
+
+    def fail_validation(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+        return createmsi.subprocess.CompletedProcess(
+            cmd,
+            216,
+            "error LGHT0217: The Windows Installer Service could not be accessed.\n",
+        )
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", fail_validation)
+
+    generator.build_package("wix")
+
+    assert len(runs) == 2
+    assert runs[0][0].endswith("candle")
+    assert runs[1][0].endswith("light")
+    assert runs[1][1] == "-sval"
+
+
+def test_createmsi_does_not_suppress_unrelated_linker_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+    runs: list[list[str]] = []
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        runs.append(cmd)
+
+    def fail_link(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+        return createmsi.subprocess.CompletedProcess(cmd, 216, "error LGHT0204: Unresolved reference.\n")
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", fail_link)
+
+    with pytest.raises(createmsi.subprocess.CalledProcessError) as excinfo:
+        generator.build_package("wix")
+
+    assert excinfo.value.returncode == 216
+    assert len(runs) == 1
+    assert runs[0][0].endswith("candle")
+
+
+def test_createmsi_propagates_unvalidated_retry_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        if "-sval" in cmd:
+            raise createmsi.subprocess.CalledProcessError(5, cmd)
+
+    def fail_validation(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+        return createmsi.subprocess.CompletedProcess(
+            cmd,
+            216,
+            createmsi.WINDOWS_INSTALLER_SERVICE_UNAVAILABLE,
+        )
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", fail_validation)
+
+    with pytest.raises(createmsi.subprocess.CalledProcessError) as excinfo:
+        generator.build_package("wix")
+
+    assert excinfo.value.returncode == 5
