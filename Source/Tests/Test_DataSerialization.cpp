@@ -126,6 +126,28 @@ TEST_CASE("DataSerialization")
         CHECK(aligned_read_pos == zero_aligned_read_pos);
     }
 
+    SECTION("FieldsLandAtTheirOffset")
+    {
+        // The bytes are the on-disk contract the formats publish and package.py writes independently, so
+        // they are asserted rather than assumed
+        array<uint8_t, 16> buffer = {};
+
+        span_write_uint16(buffer, 0, uint16_t {0x1122});
+        span_write_uint32(buffer, 2, uint32_t {0x33445566});
+        span_write_uint64(buffer, 6, UINT64_C(0x778899AABBCCDDEE));
+
+        static constexpr array<uint8_t, 14> EXPECTED = {0x22, 0x11, 0x66, 0x55, 0x44, 0x33, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99, 0x88, 0x77};
+        CHECK(std::equal(EXPECTED.begin(), EXPECTED.end(), buffer.begin()));
+
+        CHECK(span_read_uint16(buffer, 0) == uint16_t {0x1122});
+        CHECK(span_read_uint32(buffer, 2) == uint32_t {0x33445566});
+        CHECK(span_read_uint64(buffer, 6) == UINT64_C(0x778899AABBCCDDEE));
+
+        // The last two bytes stay untouched, so a field never writes past the width it declares
+        CHECK(buffer[14] == 0);
+        CHECK(buffer[15] == 0);
+    }
+
     SECTION("ReadWriteRoundtrip")
     {
         vector<uint8_t> buf;

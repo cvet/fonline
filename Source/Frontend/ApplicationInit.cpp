@@ -308,7 +308,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
         // resource writer never fail on a missing parent directory
         fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources));
-        fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
+        fs_create_directories(GetClientWritableResourceDir(settings));
         WriteLog("Writable data path: {}", settings.UserWritablePath);
     }
 

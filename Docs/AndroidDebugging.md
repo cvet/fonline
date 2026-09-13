@@ -87,16 +87,19 @@ Use this split when debugging Android output:
 - **Release-package APK artifact issue** -> inspect the embedding project's `DefinePackage(...)` entries, its CI package matrix, `MakePackage-<type>`, and `Workspace/output/<DevName>-<type>` rather than the local debug Gradle directory first.
 - **AndroidTest package issue** -> remember it is defined as `BINARY Client Android arm64 Raw`, not an APK-producing package target.
 
-## Runtime Resource Copy
+## Runtime Resource Access
 
-Android packaging moves baked client resources into the Gradle project under `app/src/main/assets/Resources`.
+Packaging places complete `.fores` bases under `app/src/main/assets/` using the configured client resource
+directory (`Resources` by default) and marks `fores` as `noCompress`. `FOnlineActivity` passes that directory
+inside `<APK sourceDir>!/assets/` as `Baking.ClientResources`, the app files directory as
+`Common.UserWritablePath`, and its `Cache` directory as `Baking.CacheResources`.
+It does not copy or delete the resource tree on startup or package updates.
 
-On first launch after install/update, `FOnlineActivity` copies those assets into the app files directory and starts the engine with absolute overrides for:
-
-- `Baking.ClientResources`
-- `Baking.CacheResources`
-
-The activity tracks an `.asset_revision` based on Android package metadata and recopies resources when the installed package changes.
+The engine locates each `.fores` entry stored in the APK ZIP and reads its bounded file region with 64-bit positional reads.
+A compressed/encrypted outer entry is not seekable through this route and is rejected. Updates append to
+`<files>/Resources/Pack.patch.fores`; a full refresh installs `<files>/Resources/Pack.fores`, which takes
+precedence over the APK base. Patch binding excludes an old patch when the selected physical base changes.
+See [ResourcePackFormat.md](ResourcePackFormat.md) and [ClientUpdater.md](ClientUpdater.md).
 
 ## Practical Debugging Notes
 

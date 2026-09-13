@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import struct
 import sys
 from types import SimpleNamespace
-import zipfile
+import zlib
 
 import pytest
 
@@ -25,7 +26,10 @@ def make_packager(tmp_path: Path):
     packager.platform_binaries_dir = 'PlatformBinaries'
     packager.client_res_dir = 'Resources'
     packager.server_res_dir = 'ServerResources'
+    packager.compress_level = 6
+    packager.resource_pack_min_compress_gain = 5
     packager.zip_compress_level = 6
+    packager.resource_archive_paths = {}
     packager.baking_path = str(tmp_path / 'Baking')
     packager.get_target_resource_packs = lambda target: []
     packager.embedded_data = b''
@@ -34,6 +38,24 @@ def make_packager(tmp_path: Path):
     packager.read_config_data = lambda target: (None, '')
     packager.patch_packaged_binary = lambda *args: None
     return packager
+
+
+def read_resource_pack(path: Path) -> dict[str, bytes]:
+    data = path.read_bytes()
+    index_offset, index_stored_size = struct.unpack_from('<QQ', data, 16)
+    index_codec, entry_count = struct.unpack_from('<II', data, 40)
+    stored_index = data[index_offset:index_offset + index_stored_size]
+    index = zlib.decompress(stored_index) if index_codec == package.RESOURCE_PACK_CODEC_DEFLATE else stored_index
+    entries: dict[str, bytes] = {}
+
+    for ordinal in range(entry_count):
+        path_offset, path_length, blob_offset, stored_size, _, codec, _, _ = struct.unpack_from(
+            '<IIQQQIIQ', index, ordinal * package.RESOURCE_PACK_ENTRY_SIZE)
+        name = index[path_offset:path_offset + path_length].decode('utf-8')
+        stored = data[blob_offset:blob_offset + stored_size]
+        entries[name] = zlib.decompress(stored) if codec == package.RESOURCE_PACK_CODEC_DEFLATE else stored
+
+    return entries
 
 
 def add_managed_runtime_pack(
@@ -201,15 +223,14 @@ def test_client_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
 
     packager.package_target_managed_runtime_resources('Client')
 
-    with zipfile.ZipFile(output_resources / 'Scripts.zip') as archive:
-        entries = set(archive.namelist())
-        assert archive.read('Game.dll') == b'game scripts'
-        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
-        assert archive.read('Assemblies/Assemblies-client/FOnline.ManagedHost.dll') == b'host Client'
-        assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
-        assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
-        assert archive.read('ManagedRuntime/runtime.manifest') == b'windows manifest'
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'windows corelib'
+    entries = read_resource_pack(output_resources / 'Scripts.fores')
+    assert entries['Game.dll'] == b'game scripts'
+    assert entries['Assemblies/Assemblies-client/Scripts.Client.dll'] == b'Client'
+    assert entries['Assemblies/Assemblies-client/FOnline.ManagedHost.dll'] == b'host Client'
+    assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
+    assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
+    assert entries['ManagedRuntime/runtime.manifest'] == b'windows manifest'
+    assert entries['ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll'] == b'windows corelib'
 
 
 def test_server_package_replaces_baker_runtime_with_target_runtime(tmp_path: Path) -> None:
@@ -228,10 +249,10 @@ def test_server_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
 
     packager.package_target_managed_runtime_resources('Server')
 
-    with zipfile.ZipFile(output_resources / 'Scripts.zip') as archive:
-        assert archive.read('Game.dll') == b'game scripts'
-        assert archive.read('ManagedRuntime/runtime.manifest') == b'linux server manifest'
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'linux server corelib'
+    entries = read_resource_pack(output_resources / 'Scripts.fores')
+    assert entries['Game.dll'] == b'game scripts'
+    assert entries['ManagedRuntime/runtime.manifest'] == b'linux server manifest'
+    assert entries['ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll'] == b'linux server corelib'
 
 
 def test_server_stages_target_specific_scripts_for_web_and_windows(tmp_path: Path, monkeypatch) -> None:
@@ -256,20 +277,18 @@ def test_server_stages_target_specific_scripts_for_web_and_windows(tmp_path: Pat
     packager.package_all_client_runtime_update_payloads()
 
     platform_root = Path(packager.target_output_path) / 'PlatformBinaries'
-    with zipfile.ZipFile(platform_root / 'Windows-win64' / 'Scripts.zip') as archive:
-        entries = set(archive.namelist())
-        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
-        assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
-        assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'windows corelib'
-    with zipfile.ZipFile(platform_root / 'Web-wasm' / 'Scripts.zip') as archive:
-        entries = set(archive.namelist())
-        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
-        assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
-        assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'web corelib'
+    entries = read_resource_pack(platform_root / 'Windows-win64' / 'Scripts.fores')
+    assert entries['Assemblies/Assemblies-client/Scripts.Client.dll'] == b'Client'
+    assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
+    assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
+    assert entries['ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll'] == b'windows corelib'
+    entries = read_resource_pack(platform_root / 'Web-wasm' / 'Scripts.fores')
+    assert entries['Assemblies/Assemblies-client/Scripts.Client.dll'] == b'Client'
+    assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
+    assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
+    assert entries['ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll'] == b'web corelib'
     assert (platform_root / 'Windows-win64' / 'Game.dll').is_file()
-    assert list((platform_root / 'Web-wasm').glob('*')) == [platform_root / 'Web-wasm' / 'Scripts.zip']
+    assert list((platform_root / 'Web-wasm').glob('*')) == [platform_root / 'Web-wasm' / 'Scripts.fores']
 
 
 def test_shared_update_target_prefers_unqualified_managed_runtime(tmp_path: Path) -> None:
@@ -286,6 +305,6 @@ def test_shared_update_target_prefers_unqualified_managed_runtime(tmp_path: Path
 
     packager.package_all_client_runtime_update_payloads()
 
-    with zipfile.ZipFile(Path(packager.target_output_path) / 'PlatformBinaries' / 'Linux-x64' / 'Scripts.zip') as archive:
-        assert archive.read('ManagedRuntime/runtime.manifest') == b'default manifest'
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'default manifest'
+    entries = read_resource_pack(Path(packager.target_output_path) / 'PlatformBinaries' / 'Linux-x64' / 'Scripts.fores')
+    assert entries['ManagedRuntime/runtime.manifest'] == b'default manifest'
+    assert entries['ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll'] == b'default manifest'

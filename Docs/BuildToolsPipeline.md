@@ -337,6 +337,22 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 
 `package.py` owns the reusable package payload layout and optional post-processing. Target modes are logical package data rather than a property of the host filesystem: Linux executables are recorded in the aggregate package's internal `.lf-package-modes.json`, and the same override is written into ZIP/TAR members. A publisher consumes that manifest when copying a Raw tree off NTFS and must exclude the manifest from the public payload. For a Windows Client package that includes the `Wix` pack, the packager invokes `msicreator/createmsi.py` to build a per-user MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. Its file components use HKCU KeyPaths and explicit uninstall-directory removal, so both `wixl` and Windows ICE validation accept the same authoring. Windows `light` normally runs that ICE validation; only the exact diagnostic that the Windows Installer service is unavailable selects one retry with `-sval`, because service-account runners cannot always host ICE. The tentative validation output is buffered until its outcome is known: a successful fallback omits the superseded `error` lines so an enclosing MSBuild custom target cannot mistake a recovered link for failure. Authoring, linker, and ordinary ICE failures still emit their diagnostics and never select the fallback, and a failed fallback remains fatal. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX v3 `candle`/`light` on Windows) or a generator/build error fails the package. Windows can prepare the version-pinned portable toolset under `Workspace/wix3` with `buildtools.py prepare-workspace wix`; the download obeys `FO_DOWNLOAD_MIRROR`, and `package.py` discovers it without a global install. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
+Each `[ResourcePack]` becomes one `<Name>.fores` under the target's resource directory, written from the loose baked tree with the per-target file filter applied; the format is [ResourcePackFormat.md](ResourcePackFormat.md). It is the only form packaging writes - zip, bos and dat stay readable at mount time as optional support for foreign or legacy data, but nothing produces them any more. The writer lives in `package.py` rather than in the engine because the file list depends on the packaging target, which the baker does not know. `Baking.CompressLevel` sets the `.fores` deflate level and `Baking.ResourcePackMinCompressGain` the percentage a blob must give back before it is deflated instead of stored as it is. `Embedded` is the one exception: it is compiled into the executable rather than shipped as a file, stays a zip, and uses `Baking.ZipCompressLevel` together with outer distribution zip archives.
+
+`BuildTools/measure_resource_packs.py` writes a baked tree in both formats and reports what each costs -
+shipped bytes, bytes read to mount, the stored/deflate split and write time - so the choice of format stays
+answerable against a real corpus rather than from memory. It takes the baked root as an argument and deletes
+each artifact as it measures it, so it needs no project data and peaks at one pack in two formats. `--verify`
+adds the correctness half: every entry is read back out of the artifact and diffed against the source by name
+in both directions and by raw bytes, and the tool exits non-zero when anything differs.
+
+`BuildTools/analyze_resource_corpus.py` describes the tree itself rather than the artifacts: file and byte
+distribution by size, duplicates within and across packs, compression gain by extension, the largest files, and
+the size of the merged index over every pack raw and deflated. It lays those index bytes out for real, because
+a stand-in buffer deflates to nothing and would report an index several times smaller than one.
+
+Two writers of one binary format is a drift risk, so they are pinned together: `Source/Tests/Test_ResourcePack.cpp` holds a golden vector produced by `package.py` and asserts the engine writer reproduces it byte for byte. The vector is written with compression disabled, so a zlib version difference between Python and the engine cannot break it while the layout stays comparable.
+
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
 - `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
 - deep-link URI scheme ← `Auth.UriScheme`
@@ -372,7 +388,7 @@ pack with the corresponding binary directory's clean `ManagedRuntime` payload;
 this keeps the class libraries paired with the Mono runtime statically linked
 into the packaged application even when baking and native compilation ran in
 independent jobs or on different operating systems. For a Server part, it also
-stages one client pack at `PlatformBinaries/<target>/<pack>.zip` for every
+stages one client pack at `PlatformBinaries/<target>/<pack>.fores` for every
 distributed client target. Native variants of one target share that updater
 path; their independently
 built CoreLib files need not be byte-identical, so the packager deterministically

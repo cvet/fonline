@@ -111,6 +111,10 @@ Do not document one embedding project's `.fomain` contents as universal engine b
 
 Startup resolves one thing before all of this: `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` answers where the process may write, from the command line and the `INSTALLED` marker alone. It runs before the config is located, because the log file, the local-config cache and everything else land under that root — so `Common.UserWritablePath` is **not settable from a config file** and is registered as a read-only `FIXED_SETTING` beside the other engine-filled values (`Common.CommandLine`, `Common.Packaged`): `GlobalSettings::ApplyWritableRoot()` stores the resolved answer and every consumer reads it back from there. That is the only reason it is a setting at all — a dozen consumers across client, server, scripting and `SourceExt` hold settings and nothing else, so the setting is how a value resolved by a manual argv scan reaches them. The log file is then opened straight at its final location, so an application whose own directory is read-only never writes there at all. The command line is then applied to the live settings exactly **once**, after the config, sub-config and local config, so it takes final precedence over all of them; a single pass also keeps `+`-append overrides (`-Setting +value`) from accumulating twice. That single pass logs each `Set <name> to <value>` override. In that log, settings whose name contains one of the masking tokens are printed as `Set <name> to ***`, so a credential such as `Auth.WebTokenVerifySecret` never appears in plaintext (server logs may be shared). The tokens are the `Common.SecretSettingTokens` setting (a case-insensitive substring list, default `secret token password apikey`), which `GlobalSettings::IsSecretSettingName()` reads. Command-line overrides are logged only on the final pass — after `ApplyDefaultSettings()` and the config file have run — so the list is already populated, and an embedding project extends it through config to cover credentials the generic tokens miss (Last Frontier sets `Common.SecretSettingTokens = secret token password apikey dsn` so `Sentry.Dsn` is masked). Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `Platform::GetUserDataBase()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
 
+After the final command-line and automatic settings pass, writable paths are resolved again. This creates
+a newly selected writable root before log, cache or resource writes without applying command-line appends
+twice. The earlier resolution still selects the configured location of the local-config cache.
+
 ## Resource packs and data sources
 
 `ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` / `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
@@ -127,6 +131,21 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 
 - `MountDir(dir, recursive, non_cached, maybe_not_available)` for disk directory resources;
 - `MountPack(dir, name, maybe_not_available)` for packed resource data.
+
+`MountPack` probes by extension in a fixed order: `.fores`, then `.zip` and `.bos` (both read as ZIP), then
+`.dat` (Fallout). `.fores` is the engine pack format; a base can be paired with one `Pack.patch.fores` whose complete catalog selects base or patch bytes. Its contract is
+[ResourcePackFormat.md](ResourcePackFormat.md). A file that claims the `FORS` magic and fails validation throws; it is never
+downgraded to an empty source and never falls back to a sibling `.zip` of the same pack.
+
+Managed packaged-client resources use `AddClientPackSource` and require `.fores` bases. This route does not
+probe foreign archives or loose directories when a base is absent. Embedded keeps its executable-backed
+source; unpackaged development continues to read bake directories.
+
+Listing a source goes through `GetFileNamesGeneric`, which has two overloads over one filter. A source that
+genuinely owns its names - the zip, dat and directory ones, which copy them out of a central directory or a
+disk walk - passes its `vector<string>`. A source built on its own string pool passes a `vector<string_view>`
+into that pool instead, so the pack and the merged tree keep exactly one copy of every path and borrow it for
+the call rather than holding a second list for the life of the mount.
 
 `FileSystem` then combines sources and offers:
 
@@ -148,7 +167,7 @@ all of it, and a source whose answer depends on the world at call time returns `
 so a source that says nothing keeps being probed - a missed override costs a lookup, a wrong one serves a file that
 has since moved.
 
-Every pack-backed source offers a snapshot - `ZipFile`, `EmbeddedFile`, `FalloutDat`, `FilesList` - and so does the
+Every pack-backed source offers a snapshot - `ResourcePackSource`, `ZipFile`, `EmbeddedFile`, `FalloutDat` - and so does the
 empty stand-in a `maybe_not_available` mount produces when its pack is absent. That last one is not a detail:
 `GetClientResources()` mounts every pack name a second time against the writable overlay so a downloaded pack wins
 over the installed copy, and on a client that has downloaded nothing yet every one of those is absent. If an absent
@@ -176,7 +195,28 @@ container does not preserve.
 
 `Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings remain internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
 
-Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` owns that ordering for both the updater's post-sync metadata check and the gameplay `ClientEngine`; do not reconstruct the pack view independently in either path. The updater writes resource patches into that overlay, so the exact current files that pass validation also win runtime lookup and hash checks without modifying the install directory. A ZIP entry read failure identifies the archive path and the resource-relative entry in `DataSourceException` context; short reads also record the expected byte count, actual read result, and close result. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
+Packaged clients mount one effective source per configured logical pack. `GetClientResourcePackPath` selects
+writable `Pack.fores` first, otherwise the installed base; it recovers an interrupted writable-base backup
+before selection. `AddClientPackSource` pairs the selected base with writable `Pack.patch.fores`. Its complete
+catalog determines both present and deleted paths, without falling back to an older same-pack catalog.
+Read-only installation bytes remain untouched. Relative resource roots map under `UserWritablePath`; absolute
+installed/APK roots use `<UserWritablePath>/Resources` for replacements and patches.
+
+`GetClientResources()` can mount the suffix after the last Embedded entry through one `Resources.foindex`.
+The cache describes effective pairs, including writable replacements and patches. Prefix packs and Embedded
+keep their configured positions. A later logical pack wins regardless of where its selected files live.
+Cached and direct views preserve lookup, deletion, modification times and enumeration order.
+
+Freshness checks base headers and patch commit identities. Missing/stale caches use direct mounts. A corrupt
+cache body is logged and removed at the disposable-cache boundary, then authoritative pairs are mounted.
+The next updater rebuild recreates it. A corrupt authoritative source remains an error. See
+[ResourcePackFormat.md](ResourcePackFormat.md).
+
+Application bootstrap mounts Embedded followed by Core through the same `AddClientPackSource` helper, so
+Core also sees the selected writable replacement or patch. It does not consult the merged cache. The updater's
+post-sync metadata check and gameplay both obtain their resource view from `GetClientResources()`.
+
+Native binary update paths are described in [ClientUpdater.md](ClientUpdater.md).
 
 ## Low-level disk access
 

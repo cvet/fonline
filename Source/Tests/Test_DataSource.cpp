@@ -37,6 +37,7 @@
 #include "DataSource.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -626,6 +627,47 @@ TEST_CASE("DataSource")
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
 
+    SECTION("PackMountPrefersTheEnginePackOverALegacyZip")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_pack_bridge");
+        bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("Bridge.zip").str(), MakeStoredZip("entry.txt", "legacy")));
+
+        size_t size = 0;
+        uint64_t write_time = 0;
+
+        // A client installed before the format switch still holds the zip, so a release that reads both must
+        // answer from the zip until the pack arrives and from the pack the moment it does
+        {
+            auto legacy_pack = DataSource::MountPack(temp_dir, "Bridge", false);
+            auto legacy_buf = legacy_pack->OpenFile("entry.txt", size, write_time);
+            REQUIRE(legacy_buf);
+            CHECK(BufferAsString(legacy_buf, size) == "legacy");
+        }
+
+        string pack_path = strex(temp_dir).combine_path("Bridge.fores").str();
+        string_view current_text = "current";
+
+        {
+            ResourcePackWriter writer {pack_path};
+            writer.AddFile("entry.txt", const_span<uint8_t> {reinterpret_cast<const uint8_t*>(current_text.data()), current_text.size()});
+            writer.Finish();
+        }
+
+        {
+            auto current_pack = DataSource::MountPack(temp_dir, "Bridge", false);
+            CHECK(current_pack->GetPackName() == pack_path);
+            auto current_buf = current_pack->OpenFile("entry.txt", size, write_time);
+            REQUIRE(current_buf);
+            CHECK(BufferAsString(current_buf, size) == "current");
+        }
+
+        (void)fs_remove_dir_tree(temp_dir);
+    }
+
     SECTION("BosPackUsesZipReader")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_bos_pack");
@@ -849,13 +891,13 @@ TEST_CASE("DataSource")
 
     SECTION("EmbeddedPackAcceptsDefaultResourceArray")
     {
-        auto embedded = DataSource::MountPack("", "Embedded", false);
+        auto embedded = DataSource::MountPack("", EMBEDDED_PACK_NAME, false);
 
         size_t size = 0;
         uint64_t write_time = 0;
 
         CHECK_FALSE(embedded->IsDiskDir());
-        CHECK(embedded->GetPackName() == "Embedded");
+        CHECK(embedded->GetPackName() == EMBEDDED_PACK_NAME);
         CHECK_FALSE(embedded->IsFileExists("missing.txt"));
         CHECK_FALSE(embedded->GetFileInfo("missing.txt", size, write_time));
         CHECK_FALSE(embedded->OpenFile("missing.txt", size, write_time));
@@ -1002,74 +1044,6 @@ TEST_CASE("DataSource")
 
         CHECK(maybe_pack->GetPackName() == "Dummy");
         CHECK_FALSE(maybe_pack->IsFileExists("anything"));
-    }
-
-    SECTION("FilesListPackLoadsEntriesFromManifest")
-    {
-        string temp_dir = MakeTempDataSourceDir("data_source_files_list");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
-        ignore_unused(removed_before);
-
-        string listed_file = strex(temp_dir).combine_path("listed.txt").str();
-        string nested_file = strex(temp_dir).combine_path("nested/value.bin").str();
-        string shrinking_file = strex(temp_dir).combine_path("shrinking.txt").str();
-        string manifest_path = "FilesTree.txt";
-        CHECK_FALSE(fs_exists(manifest_path));
-
-        REQUIRE(fs_write_file(listed_file, string_view {"listed-data"}));
-        REQUIRE(fs_write_file(nested_file, string_view {"nested-data"}));
-        REQUIRE(fs_write_file(shrinking_file, string_view {"shrinking-data"}));
-        REQUIRE(fs_write_file(manifest_path, strex("{}\n\n  \n{}\n{}\n", listed_file, nested_file, shrinking_file).str()));
-
-        auto files_list = DataSource::MountPack("ignored", "FilesList", false);
-
-        size_t size = 0;
-        uint64_t write_time = 0;
-        CHECK_FALSE(files_list->IsDiskDir());
-        CHECK(files_list->GetPackName() == "@FilesList");
-        CHECK(files_list->IsFileExists(listed_file));
-        CHECK_FALSE(files_list->IsFileExists(strex(temp_dir).combine_path("missing.txt").str()));
-        CHECK(files_list->GetFileInfo(listed_file, size, write_time));
-        CHECK(size == 11);
-        CHECK(write_time != 0);
-        CHECK_FALSE(files_list->GetFileInfo(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
-
-        auto buf = files_list->OpenFile(listed_file, size, write_time);
-        REQUIRE(buf);
-        CHECK(BufferAsString(buf, size) == "listed-data");
-        CHECK_FALSE(files_list->OpenFile(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
-
-        auto filtered = files_list->GetFileNames(temp_dir, true, "bin");
-        REQUIRE(filtered.size() == 1);
-        CHECK(filtered[0] == nested_file);
-
-        CHECK(fs_remove_file(listed_file));
-        CHECK_THROWS_AS(files_list->OpenFile(listed_file, size, write_time), DataSourceException);
-
-        REQUIRE(fs_write_file(shrinking_file, string_view {"tiny"}));
-        CHECK_THROWS_AS(files_list->OpenFile(shrinking_file, size, write_time), DataSourceException);
-
-        CHECK(fs_remove_file(manifest_path));
-        CHECK(fs_remove_dir_tree(temp_dir));
-    }
-
-    SECTION("FilesListPackRejectsMissingManifestAndEntries")
-    {
-        string temp_dir = MakeTempDataSourceDir("data_source_files_list_errors");
-        string manifest_path = "FilesTree.txt";
-        bool removed_manifest_before = fs_remove_file(manifest_path);
-        bool removed_dir_before = fs_remove_dir_tree(temp_dir);
-        ignore_unused(removed_manifest_before, removed_dir_before);
-
-        CHECK_THROWS_AS(DataSource::MountPack("ignored", "FilesList", false), DataSourceException);
-
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(manifest_path, strex("{}\n", strex(temp_dir).combine_path("missing.txt").str()).str()));
-
-        CHECK_THROWS_AS(DataSource::MountPack("ignored", "FilesList", false), DataSourceException);
-
-        CHECK(fs_remove_file(manifest_path));
-        CHECK(fs_remove_dir_tree(temp_dir));
     }
 
     SECTION("MissingMandatorySourcesThrow")

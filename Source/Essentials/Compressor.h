@@ -49,7 +49,9 @@ public:
 
     [[nodiscard]] static auto CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t;
     [[nodiscard]] static auto Compress(const_span<uint8_t> data) -> vector<uint8_t>;
+    [[nodiscard]] static auto Compress(const_span<uint8_t> data, int32_t level) -> vector<uint8_t>;
     [[nodiscard]] static auto Decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
+    [[nodiscard]] static auto DecompressExact(const_span<uint8_t> data, size_t decoded_size) -> vector<uint8_t>;
 };
 
 class StreamCompressor final

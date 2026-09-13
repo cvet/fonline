@@ -38,25 +38,59 @@
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
+#include "ResourceIndex.h"
 
 FO_BEGIN_NAMESPACE
 
 extern void ClientInitHook(ptr<ClientEngine>);
+
+auto GetClientResourceIndexPath(const ClientSettings& settings) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> pack_dirs = GetClientPackDirs(settings);
+
+    // Beside the packs the updater writes, which is the writable overlay when there is one
+    return strex(pack_dirs.back()).combine_path(RESOURCE_INDEX_FILE_NAME).str();
+}
 
 auto GetClientResources(const ClientSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(settings.Packaged ? settings.ClientResources : settings.BakeOutput, settings.ClientResourceEntries);
+    vector<string> pack_dirs = GetClientPackDirs(settings);
+    string index_path = GetClientResourceIndexPath(settings);
+    vector<string> indexed_packs = GetResourceIndexPackNames(settings.ClientResourceEntries);
+    bool index_mounted = false;
 
-    // Downloaded packs land under the writable root, so for an installed client they are the current ones
-    // and must win over the install-dir copies
-    if (settings.Packaged && !settings.UserWritablePath.empty()) {
-        string writable_dir = fs_make_writable_path(settings.UserWritablePath, settings.ClientResources);
+    // Embedded keeps its configured position
+    if (settings.Packaged && !indexed_packs.empty() && IsResourceIndexCurrent(index_path, pack_dirs, indexed_packs)) {
+        unique_nptr<ResourceIndexSource> index;
 
+        try {
+            index = SafeAlloc::MakeUnique<ResourceIndexSource>(index_path, pack_dirs);
+        }
+        catch (const std::exception& ex) {
+            WriteLog("Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
+            (void)fs_remove_file(index_path);
+        }
+
+        if (index) {
+            size_t prefix_size = settings.ClientResourceEntries.size() - indexed_packs.size();
+
+            for (size_t i = 0; i < prefix_size; ++i) {
+                AddClientPackSource(resources, settings, settings.ClientResourceEntries[i]);
+            }
+
+            resources.AddCustomSource(index.take_not_null());
+            index_mounted = true;
+        }
+    }
+
+    if (!index_mounted) {
         for (const string& pack : settings.ClientResourceEntries) {
-            resources.AddPackSource(writable_dir, pack, true);
+            AddClientPackSource(resources, settings, pack);
         }
     }
 
