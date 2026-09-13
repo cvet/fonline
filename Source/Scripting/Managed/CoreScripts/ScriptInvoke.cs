@@ -110,9 +110,7 @@ public static partial class Game
     // same bounded exception accounting that AngelScript provided for caught script exceptions.
     public static void RecordCaughtException(Exception exception)
     {
-        if (exception == null) {
-            throw new ArgumentNullException(nameof(exception));
-        }
+        ArgumentNullException.ThrowIfNull(exception);
 
         RecordManagedException(exception, false);
     }
@@ -295,7 +293,7 @@ public static partial class Game
         try {
             if (value is IConvertible) {
                 result = (TEnum)Enum.ToObject(typeof(TEnum), value);
-                return Enum.IsDefined(typeof(TEnum), result);
+                return Enum.IsDefined(result);
             }
         }
         catch {
