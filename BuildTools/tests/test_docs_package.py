@@ -77,13 +77,15 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(extract("Client-Linux-x64-Profiling_OnDemand"), "")
         self.assertEqual(extract("Client-Linux-x64-Profiling_OnDemand-Debug-Steam"), "Steam")
 
-    def test_runtime_payload_postfix_rejects_unrelated_or_malformed_entries(self) -> None:
+    def test_runtime_payload_postfix_rejects_unrelated_entries_and_preserves_custom_names(self) -> None:
         extract = package_tool.Packager.extract_binary_entry_postfix
 
         self.assertIsNone(extract("Server-Linux-x64"))
         self.assertIsNone(extract("Client-Unknown-x64"))
-        with self.assertRaisesRegex(AssertionError, "Unexpected binary entry layout"):
-            extract("Client-Linux-x64-Debug_Profiling_OnDemand_bad")
+        self.assertEqual(
+            extract("Client-Linux-x64-Debug_Profiling_OnDemand_bad"),
+            "Debug_Profiling_OnDemand_bad",
+        )
 
     def test_current_model_has_stable_shape_ids_and_exact_help(self) -> None:
         model = docs_package.generate_package_model(ENGINE_ROOT)
@@ -98,7 +100,7 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(model["summary"]["pack_count"], 19)
         self.assertEqual(model["summary"]["implemented_pack_count"], 18)
         self.assertEqual(model["summary"]["artifact_pack_count"], 8)
-        self.assertEqual(model["summary"]["cli_argument_count"], 13)
+        self.assertEqual(model["summary"]["cli_argument_count"], 14)
         self.assertEqual(
             [entry["name"] for entry in model["targets"]],
             ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"],

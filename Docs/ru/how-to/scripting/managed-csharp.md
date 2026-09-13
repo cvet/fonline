@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 
 # Скрипты Managed C#
 
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"7157e2a2dab4e1247bd5819958c7b8d05345bb18ecec851676f55c7958171f3a"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"7499971886f77612c3126ec7091fbc3123a9d70d4057e7966bdbb856343b8255"} -->
 
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
@@ -171,7 +171,7 @@ Runtime toolchain готовит `SetupManagedRuntime`; `PrepareManagedRuntimePa
 
 Prepared runtime содержит managed class libraries, необходимые target, включая `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries и symbols исключены из resource payload. Mono и generated native interop table остаются linked в application.
 
-Managed baker помещает prepared runtime под `ManagedRuntime/` в тот же resource pack, что игровые assemblies. Client packaging пересобирает этот pack из runtime payload точного application target. Server packaging размещает target-specific copy для каждого распространяемого client target под `PlatformBinaries/<target>/`; updater подменяет им common pack для этого target.
+Managed baker помещает prepared runtime под `ManagedRuntime/` в тот же resource pack, что игровые assemblies. Client packaging пересобирает этот pack из runtime payload точного application target. Server packaging размещает одну target-specific copy для каждого распространяемого client target под `PlatformBinaries/<target>/`; updater подменяет ею common pack для этого target. Несколько native variants могут разделять один updater target, хотя их независимо собранные эквивалентные CoreLib payloads различаются побайтно, поэтому packaging детерминированно выбирает наименее квалифицированную подходящую binary entry — обычно default Release build — вместо требования byte-identical payloads.
 
 Runtime startup атомарно восстанавливает выбранный payload в `<CacheDir>/ManagedRuntime/<content-hash>/`, добавляет каталог class libraries в search path Mono и использует cached payload как source of truth. Unpackaged native development binaries также получают prepared payload рядом с executable; packaged native, Web и Android applications используют resource-pack copy.
 

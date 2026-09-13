@@ -2162,6 +2162,18 @@
         "owner": "runtime-rendering"
     },
     {
+        "domain": "api",
+        "change_id": "api-change.modified.6a5fac17ef1ecc0c",
+        "baseline_contract_sha256": "8c75cc749a6ba8af3d74d04ff1d1a35fef361ff0cc04d4e057bf18817679b89f",
+        "current_contract_sha256": "625cd047ec3deb8e03c243af000f2bfdf5b25b453eac2fbc3848b2fac921d561",
+        "classification": "breaking",
+        "rationale": "Compatibility migration version 53 deliberately prevents revision-mixed binaries and baked resources after the build/package cache, interthread transport, and allocator failure-path changes in this Engine update.",
+        "migration": "Update Engine and embedding project together, reconfigure native targets, perform a full resource bake, rebuild distributed binaries and packages, and validate updater payloads before rollout. Authored scripts and content require no textual migration solely for this version bump.",
+        "release_note": "Record migration version 53 with the workspace/archive cache, managed payload selection, MSI fallback, interthread transport, and allocator changes in the release documentation for this Engine revision.",
+        "compatibility": "The migration marker is revision-pinned. Old binaries or baked resources must not be combined with version-53 outputs; deployment and rollback use matching Engine binaries, metadata, packs, and project gitlink as one set.",
+        "owner": "engine-release"
+    },
+    {
         "domain": "cmake",
         "change_id": "cmake-change.removed.05c8d57f72868ecf",
         "baseline_contract_sha256": "17e0d9d90f84001e0c5696252429cb57d223e9e3c303f4a88303f73b559907bc",

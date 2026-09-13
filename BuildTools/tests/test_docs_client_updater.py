@@ -45,7 +45,7 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
         for marker in (
             "PromoteStagedReloadForRestart",
             "ApplyStagedBinaryUpdate",
-            "GetInstalledClientRuntimeBootstrapPath",
+            "MakeClientRuntimeBootstrapPath",
             "WriteClientRuntimeBootstrapTarget",
         ):
             self.assertIn(marker, host)

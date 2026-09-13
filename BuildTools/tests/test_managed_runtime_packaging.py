@@ -206,15 +206,20 @@ def test_server_stages_target_specific_scripts_for_web_and_windows(tmp_path: Pat
     assert list((platform_root / 'Web-wasm').glob('*')) == [platform_root / 'Web-wasm' / 'Scripts.zip']
 
 
-def test_shared_update_target_rejects_different_managed_runtimes(tmp_path: Path) -> None:
+def test_shared_update_target_prefers_unqualified_managed_runtime(tmp_path: Path) -> None:
     packager = make_packager(tmp_path)
     add_managed_runtime_pack(packager, tmp_path)
 
-    for suffix, identity in (('', b'default manifest'), ('-Steam', b'steam manifest')):
+    # Create the qualified variant first: filesystem enumeration order must not decide
+    # the single managed-resource payload shared by this platform/architecture target
+    for suffix, identity in (('-Steam', b'steam manifest'), ('', b'default manifest')):
         binary_dir = tmp_path / 'Binaries' / ('Client-Linux-x64' + suffix)
         binary_dir.mkdir(parents=True)
         (binary_dir / 'LF_Client.build-hash').write_text('build')
         add_binary_managed_runtime(binary_dir, identity, identity)
 
-    with pytest.raises(AssertionError, match='sharing update target Linux-x64'):
-        packager.package_all_client_runtime_update_payloads()
+    packager.package_all_client_runtime_update_payloads()
+
+    with zipfile.ZipFile(Path(packager.target_output_path) / 'PlatformBinaries' / 'Linux-x64' / 'Scripts.zip') as archive:
+        assert archive.read('ManagedRuntime/runtime.manifest') == b'default manifest'
+        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'default manifest'

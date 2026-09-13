@@ -2,6 +2,61 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-13 - build, packaging, transport, and allocator reconciliation
+
+Scope and source revisions:
+
+- Reconciled documentation branch head
+  `7122cae15674e6b76cd4f58db0cd115c7bafaa9e` with Engine
+  `origin/master` through `576c355b244715af515212b34a54f658fb1f0135`.
+- Audited the complete six-commit incoming range: Emscripten workspace caching,
+  deterministic resource-archive caching, MSI service-unavailable recovery,
+  target-wide Managed payload selection, interthread ping-watchdog ownership,
+  rpmalloc commit-failure propagation, and compatibility migration `0.0.53`.
+- Kept the four legacy monolithic documentation pages as redirect stubs. Their
+  reusable content remains owned by the locale-aware canonical pages.
+
+Documentation and tooling reconciliation:
+
+- Documented the `FO_WORKSPACE_CACHE` key and isolation boundary, the
+  `FO_RESOURCE_ARCHIVE_CACHE_HELPER` restore/store/release protocol and
+  validation boundary, and the exact Windows Installer service retry.
+- Documented least-qualified Managed target payload selection, including the
+  fact that independently built equivalent CoreLib assemblies need not be
+  byte-identical, and documented the interthread transport's explicit lifetime
+  in place of the remote-peer ping watchdog.
+- Synchronized the affected English/Russian pages and the Russian BuildTools
+  guide. Regenerated the API/reference, snippet, localization, route, site,
+  search, evaluation, and AI-delivery artifacts in dependency order.
+- Updated documentation tests for the current generated API and fixed their
+  Windows fixtures. External snippet validation now prefers an installed Git
+  Bash over the WSL launcher when no WSL distribution is available.
+- Recorded the compatibility-version change in
+  `Docs/contract-change-dispositions.json`; the enforced contract diff reports
+  one reviewed change and no missing dispositions.
+
+Validation:
+
+- The changed BuildTools/documentation test set passes 79 tests, 2 skips, and
+  13 subtests. External snippet parsing passes all 180 checks; the complete
+  snippet report passes 306 normative and 157 evidence blocks.
+- Documentation validation passes all 406 Markdown entries. Localization is
+  current for all 191 English/Russian pairs and all 4,790 generated
+  descriptions. AI evaluation passes 28 tasks and 67 retrieval checks at 100
+  percent success and 0.910 MRR.
+- The embedding Last Frontier checkout rebuilds `LF_UnitTests` successfully
+  with Managed scripting enabled. The full native suite passes 631,710
+  assertions in 420 test cases; the focused memory and transport cases pass 48
+  and 6 assertions respectively.
+
+Disposition:
+
+- The incoming behavior is represented in canonical reusable documentation,
+  generated discovery surfaces, focused tests, and compatibility records.
+  Embedding projects must still adopt the matching Engine revision, fully
+  rebake resources, rebuild distributed binaries/packages, and validate their
+  own cache helpers and release payloads as one coordinated update.
+
 ## 2026-09-02 - optional-pack test-comment reconciliation
 
 Scope and source revisions:

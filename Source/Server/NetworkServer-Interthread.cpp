@@ -45,6 +45,7 @@ public:
     auto operator=(NetworkServerConnection_Interthread&&) noexcept = delete;
     ~NetworkServerConnection_Interthread() override = default;
 
+    auto NeedsPingWatchdog() const noexcept -> bool override { return false; }
     void Receive(const_span<uint8_t> buf);
 
 private:

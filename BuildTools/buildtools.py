@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -906,6 +907,21 @@ def workspace_cache_store(name: str, source_path: Path) -> None:
 		log(f'Workspace cache store failed for {name} ({type(ex).__name__}: {ex})')
 
 
+def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path, label: str) -> None:
+	if not workspace_cache_url(name):
+		return
+
+	try:
+		log(f'Pack {label} for the workspace cache:', archive_path)
+		with tarfile.open(archive_path, 'w:gz') as archive:
+			archive.add(source_path, arcname=source_path.name)
+		workspace_cache_store(name, archive_path)
+	except (OSError, tarfile.TarError) as ex:
+		log(f'Workspace cache pack failed for {name} ({type(ex).__name__}: {ex})')
+	finally:
+		remove_path_if_exists(archive_path)
+
+
 def download_file(url: str, target_path: Path, label: str) -> None:
 	source = mirrored_url(url)
 	log(f'Download {label}:', source)
@@ -1052,8 +1068,41 @@ def extract_tar_safely(archive_path: Path, output_dir: Path) -> None:
 		for member in archive.getmembers():
 			member_path = (output_dir / member.name).resolve()
 			if member_path != output_root and output_root not in member_path.parents:
-				raise SystemExit(f'Archive member escapes output directory: {member.name}')
-		archive.extractall(output_dir)
+				raise tarfile.ExtractError(f'Archive member escapes output directory: {member.name}')
+		if hasattr(tarfile, 'data_filter'):
+			archive.extractall(output_dir, filter='data')
+		else:
+			archive.extractall(output_dir)
+
+
+def restore_workspace_cache_tree(
+	cached_path: Path,
+	workspace: Path,
+	directory_name: str,
+	label: str,
+	is_complete: Callable[[Path], bool],
+) -> bool:
+	"""Extract one cache tree in isolation and promote only its expected complete directory."""
+	ensure_dir(workspace)
+	staging = Path(tempfile.mkdtemp(prefix=f'.{directory_name}-cache-', dir=workspace))
+	destination = workspace / directory_name
+
+	try:
+		extract_tar_safely(cached_path, staging)
+		source = staging / directory_name
+		if source.is_symlink() or not is_complete(source):
+			log(f'Cached {label} tree is incomplete; preparing it locally')
+			return False
+		remove_path_if_exists(destination)
+		shutil.move(str(source), str(destination))
+		return True
+	except (OSError, tarfile.TarError) as ex:
+		log(f'Cached {label} archive is unusable ({type(ex).__name__}: {ex})')
+		remove_path_if_exists(destination)
+		return False
+	finally:
+		remove_path_if_exists(cached_path)
+		remove_path_if_exists(staging)
 
 
 def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
@@ -1200,6 +1249,12 @@ def build_emscripten_version(env: Mapping[str, str]) -> str:
 	if not version:
 		raise SystemExit('FO_EMSCRIPTEN_VERSION is not configured')
 	return version
+
+
+def build_emscripten_workspace_cache_name(env: Mapping[str, str]) -> str:
+	identity = f'{build_emscripten_version(env)}-{sys.platform}-{platform.machine()}'.lower()
+	safe_identity = re.sub(r'[^a-z0-9._-]+', '-', identity)
+	return f'emscripten-{safe_identity}.tar.gz'
 
 
 def build_android_ndk_version(env: Mapping[str, str]) -> str:
@@ -1454,22 +1509,52 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
 	if os.name == 'nt':
-		command = ['cmd', '/d', '/s', '/c', str(emsdk_root / 'emsdk.bat'), *args]
+		command = [sys.executable, emsdk_root / 'emsdk.py', *args]
 		run(command, cwd=emsdk_root)
 	else:
 		run([emsdk_root / 'emsdk', *args], cwd=emsdk_root)
+
+
+def is_emscripten_workspace_complete(emsdk_root: Path) -> bool:
+	environment_script = 'emsdk_env.bat' if os.name == 'nt' else 'emsdk_env.sh'
+	return all(path.is_file() for path in (
+		emsdk_root / '.emscripten',
+		emsdk_root / environment_script,
+		emsdk_root / 'upstream' / 'emscripten' / 'emcc.py',
+	))
+
+
+def restore_emscripten_workspace_cache(cached_path: Path, workspace: Path, emsdk_root: Path) -> bool:
+	return restore_workspace_cache_tree(
+		cached_path,
+		workspace,
+		emsdk_root.name,
+		'Emscripten SDK',
+		is_emscripten_workspace_complete,
+	)
 
 
 def prepare_emscripten_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	emsdk_root = workspace / 'emsdk'
 	remove_path_if_exists(emsdk_root)
+	ensure_dir(workspace)
+	cached_name = build_emscripten_workspace_cache_name(env)
+	cached_path = workspace / cached_name
+
+	if workspace_cache_fetch(cached_name, cached_path):
+		log('Unpack cached Emscripten SDK:', cached_path)
+		if restore_emscripten_workspace_cache(cached_path, workspace, emsdk_root):
+			return
 
 	clone_git_repo(emsdk_root, 'https://github.com/emscripten-core/emsdk.git')
 	run_emsdk_command(emsdk_root, 'list')
 	version = build_emscripten_version(env)
 	run_emsdk_command(emsdk_root, 'install', '--build=Release', '--shallow', version)
 	run_emsdk_command(emsdk_root, 'activate', '--build=Release', version)
+	if not is_emscripten_workspace_complete(emsdk_root):
+		raise SystemExit(f'Emscripten workspace is incomplete after activation: {emsdk_root}')
+	workspace_cache_store_tree(cached_name, cached_path, emsdk_root, 'Emscripten SDK')
 
 
 def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
@@ -1578,6 +1663,10 @@ def copy_xwin_arch_libraries(source_root: Path, target_root: Path, arch: str) ->
 		shutil.copytree(source_dir, target_dir, symlinks=True)
 
 
+def is_xwin_workspace_complete(xwin_root: Path) -> bool:
+	return (xwin_root / 'crt').is_dir() and (xwin_root / 'sdk').is_dir()
+
+
 def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	version = build_xwin_version(env)
@@ -1602,16 +1691,14 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 
 	if workspace_cache_fetch(cached_name, cached_path):
 		log('Unpack cached MSVC SDK:', cached_path)
-
-		with tarfile.open(cached_path, 'r:gz') as archive:
-			archive.extractall(workspace)
-
-		remove_path_if_exists(cached_path)
-
-		if xwin_splat_dir.is_dir():
+		if restore_workspace_cache_tree(
+			cached_path,
+			workspace,
+			xwin_splat_dir.name,
+			'MSVC SDK',
+			is_xwin_workspace_complete,
+		):
 			return
-
-		log('Cached MSVC SDK did not contain the splat tree, building it')
 
 	url = f'https://github.com/Jake-Shadle/xwin/releases/download/{version}/{archive_name}'
 	download_file(url, archive_path, 'xwin')
@@ -1635,12 +1722,7 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 		copy_xwin_arch_libraries(arch_splat_dir, xwin_splat_dir, arch)
 	remove_path_if_exists(xwin_extra_splat_dir)
 
-	log('Pack MSVC SDK for the workspace cache:', cached_path)
-	with tarfile.open(cached_path, 'w:gz') as archive:
-		archive.add(xwin_splat_dir, arcname=xwin_splat_dir.name)
-
-	workspace_cache_store(cached_name, cached_path)
-	remove_path_if_exists(cached_path)
+	workspace_cache_store_tree(cached_name, cached_path, xwin_splat_dir, 'MSVC SDK')
 
 
 def prepare_wix_workspace(env: Mapping[str, str]) -> None:

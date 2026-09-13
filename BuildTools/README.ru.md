@@ -6,7 +6,7 @@ locale: ru
 document_id: buildtools-readme
 ---
 
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"100c847b0046db5a14f408de7d3751bfb86fd3ba9df56404c0dbae9d0985e173"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"00c27249ac81bd73167507f13407acc81da39f0efa5a39e467cb5d8c04757918"} -->
 
 # Инструменты сборки FOnline Engine
 
@@ -619,6 +619,25 @@ Android Wi-Fi endpoints как нумерованный список, кешир
 каждую из них через ZIP reader с проверкой CRC, поэтому повреждённый архив
 ресурсов останавливает сборку пакета до того, как попадёт в загружаемый клиент
 или в источник обновлений сервера.
+
+Вывод MSI compiler/linker наследуется процессом packaging. Поэтому при сбое
+`candle`, `light` или `wixl` их native file, ICE или Windows Installer
+diagnostic остаётся в build log до завершения packaging. На Windows `light`
+сначала запускается с ICE validation. Только точное сообщение о недоступности
+Windows Installer service выбирает одну повторную попытку с `-sval`, чтобы
+service-account runner мог создать обязательный MSI без ICE. Любая ошибка
+authoring, linker, обычной ICE или fallback остаётся фатальной.
+
+Embedding build может задать `FO_RESOURCE_ARCHIVE_CACHE_HELPER` как Python
+helper с интерфейсом `restore|store|release --key <sha256> --archive <path>`.
+До deflate `package.py` хеширует стабильные имена и содержимое entries вместе с
+compression level. Код 0 от `restore` предоставляет готовый archive, 2 означает
+miss; после miss проверенный archive передаётся `store`, а прерванная запись
+вызывает `release`. Код 3 сообщает о недоступности optional cache и отключает
+следующие вызовы helper в этом package process. Обычные проверки entry list и
+CRC обязательны независимо от источника archive. Повторный идентичный archive
+в одном процессе копируется из первого проверенного результата без нового
+вызова helper.
 
 ## Packaging: изменение binary после сборки
 

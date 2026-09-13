@@ -1239,7 +1239,7 @@ A normal embedding-project workflow looks like this:
 ===== BEGIN DOCUMENT build-workflow =====
 Source: Docs/en/how-to/build/index.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/
-Content SHA-256: b4a1f3ef2d8d4497f88bc407166c6c7b53cf25d53318e8c9599a99540d7bba21
+Content SHA-256: e1cfaa86333e84c0584be14aa417263aa6b5c56053cf43f7bd8b10b4f551f32b
 
 ---
 layout: default
@@ -1379,7 +1379,7 @@ the environment:
 | variable | what it configures |
 |---|---|
 | `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
-| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The MSVC SDK tree is built once, stored under `xwin-<version>-<arches>.tar.gz`, and downloaded whole afterwards. |
+| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. Emscripten is keyed by SDK version, host OS, and architecture; the MSVC SDK tree is keyed by xwin version and contained architectures. Each complete tree is built once and downloaded whole afterwards. |
 | `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
 | `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
 
@@ -1391,8 +1391,12 @@ far from its cause. And a workspace cache that is empty, unreachable or refusing
 it exists to make the build faster and independent of other people's servers, not to become another
 way for it to fail.
 
-`xwin` fetches the Microsoft packages itself, so mirroring the engine's own downloads does not cover
-it — which is why its *result* is what the workspace cache holds.
+`emsdk` and `xwin` fetch their own packages, so mirroring the engine's direct downloads does not cover
+them. Their complete prepared results are therefore what the workspace cache holds. A corrupt or incomplete
+Emscripten cache object is discarded and rebuilt locally; cache creation and upload remain best-effort.
+Cached trees are extracted through the standard data-only tar filter after a path-boundary check. Extraction
+lands in a temporary sibling first, and only the named complete SDK directory is promoted, so an archive
+cannot overwrite another prepared workspace tree. The xwin cache follows the same restore rule.
 
 ## Where build logic lives
 
@@ -1450,7 +1454,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: 5df2df02955005f4e965544844fccbe243a56f562bec992e75976b52a63898a4
+Content SHA-256: ea8b09bc9fb4c922b6a4fd931a41d11b6a23f1bc15465790a4da551a40b8eb92
 
 ---
 layout: default
@@ -1649,7 +1653,7 @@ green landed job and a reviewed external repository commit/tag.
 
 - `Raw` retains the staged portable directory.
 - `Zip` emits a portable archive from that directory.
-- `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. POSIX package hosts require `wixl` 0.102 or newer.
+- `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. `light` runs ICE validation first and retries once with `-sval` only when the Windows Installer service is unavailable; every other linker/ICE failure and a failed fallback remain fatal. POSIX package hosts require `wixl` 0.102 or newer.
 - `OGL` adds the separately built OpenGL runtime variant.
 - `Lib` selects the library form where the target supports it.
 - `POSTFIX` keeps independently built variants, such as a depot-specific client, from colliding.
@@ -1667,7 +1671,7 @@ The packager assigns logical `0755` modes to target executables independently of
 
 ### Managed C# payload
 
-When `FO_MANAGED_SCRIPTING` is enabled, the `Managed` baker puts target-specific assemblies and a prepared `ManagedRuntime/` class-library payload into the selected resource pack. Native client packages consume the payload built for that exact application target; Web and Android carry it in their resource assets. A server package preparing client updates stages a target-specific pack under `PlatformBinaries/<target>/` and `-expect-client-runtime Platform:arch[:postfix]` makes a missing requested payload fail packaging. Inspect the assembly target, `runtime.manifest`, content hash, and packaged startup separately; see [Managed C# Scripting](../scripting/managed-csharp.md).
+When `FO_MANAGED_SCRIPTING` is enabled, the `Managed` baker puts target-specific assemblies and a prepared `ManagedRuntime/` class-library payload into the selected resource pack. Native client packages consume the payload built for that exact application target; Web and Android carry it in their resource assets. A server package preparing client updates stages one target-specific pack under `PlatformBinaries/<target>/` and `-expect-client-runtime Platform:arch[:postfix]` makes a missing requested payload fail packaging. If several native variants share that updater target, the least-qualified matching binary entry, normally default Release, supplies the pack; equivalent independently built CoreLib payloads need not be byte-identical. Inspect the assembly target, `runtime.manifest`, content hash, and packaged startup separately; see [Managed C# Scripting](../scripting/managed-csharp.md).
 
 ### Web client
 
@@ -1717,6 +1721,8 @@ Keep those product and infrastructure details in the embedding project. [Release
 ## Reproducibility and provenance
 
 FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. Outer ZIP and TAR packages use the target's logical file modes rather than the host filesystem's modes, so a Windows packaging host still emits executable Linux targets. Raw package parts merge their mode records into one package-root `.lf-package-modes.json` handoff instead of losing earlier parts. After producing a resource pack, `package.py` reopens it, compares the exact entry list with the planned inventory, and streams every entry through the CRC-checking ZIP reader; embedded packs are validated from the in-memory bytes before binary patching. These are package-construction gates, not proof that the installer, delivery channel, publication step, or installed filesystem preserved the result. The package declaration parser and generated contract are deterministic and checked in CI.
+
+`FO_RESOURCE_ARCHIVE_CACHE_HELPER` may name a project-owned Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers the deterministic entry names and contents plus compression level. A hit still passes the exact-entry and CRC gates above; a miss or explicitly unavailable optional cache falls back to local deflate, while malformed hits and unexpected helper failures stop packaging. The helper's storage, credentials, claims, retention, and service availability remain project-owned.
 
 That does not make every complete release bit-for-bit reproducible. Linked binaries, debug symbols, top-level archives, MSI/APK toolchains, signing timestamps, included files, and external SDKs may carry host- or time-dependent data. State the narrower guarantee you have actually tested.
 
@@ -3528,7 +3534,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 7157e2a2dab4e1247bd5819958c7b8d05345bb18ecec851676f55c7958171f3a
+Content SHA-256: 7499971886f77612c3126ec7091fbc3123a9d70d4057e7966bdbb856343b8255
 
 ---
 layout: default
@@ -3701,7 +3707,7 @@ The runtime toolchain is prepared by `SetupManagedRuntime`; `PrepareManagedRunti
 
 The prepared runtime contains managed class libraries required by the target, including `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries, and symbols are excluded from the resource payload. Mono and the generated native interop table remain linked into the application.
 
-The Managed baker places the prepared runtime under `ManagedRuntime/` in the same resource pack as the game assemblies. Client packaging rebuilds that pack from the runtime payload belonging to the exact application target. Server packaging stages a target-specific copy for every distributed client target under `PlatformBinaries/<target>/`; the updater substitutes that copy for the common pack when serving that target.
+The Managed baker places the prepared runtime under `ManagedRuntime/` in the same resource pack as the game assemblies. Client packaging rebuilds that pack from the runtime payload belonging to the exact application target. Server packaging stages one target-specific copy for every distributed client target under `PlatformBinaries/<target>/`; the updater substitutes that copy for the common pack when serving that target. Several native variants may share this updater target while their independently built equivalent CoreLib payloads differ byte-for-byte, so packaging deterministically chooses the least-qualified matching binary entry, normally the default Release build, instead of requiring those payloads to be identical.
 
 Runtime startup restores the selected payload atomically to `<CacheDir>/ManagedRuntime/<content-hash>/`, adds its class-library directory to Mono's search path, and uses the cached payload as the source of truth. Unpackaged native development binaries also receive the prepared payload beside the executable; packaged native, Web, and Android applications use the resource-pack copy.
 
@@ -15168,7 +15174,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 03cd28d36406ec6cf613938f944b1f5462f055b8e0357d8219a31fdee16f4679
+Content SHA-256: 81143cb1f0473e81708756171a139fc03c40a9ab19fd802a186e1fb2113f7bb5
 
 ---
 layout: default
@@ -15354,7 +15360,7 @@ The server runtime applies two independent limits to connections that have not l
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
 
-A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection.
+A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection. The in-process interthread transport opts out of this watchdog because its peer lifetime is explicit through the callback channel and a busy shared process can delay both ends together; closing either interthread endpoint still disconnects its peer immediately.
 
 ### Disconnect reasons
 
@@ -15377,8 +15383,7 @@ Every close records its cause in `DisconnectReason`, and `HardDisconnect(reason)
 The first recorded reason wins, preventing the transport's later generic `ClientClosed` callback from overwriting the specific cause. The reason appears in the closed-connection log and is available to `OnPlayerLogout` handlers through `Player.GetDisconnectReason()`. `ServerConnectionRecordsWhyItWasDisconnected` pins this contract.
 
 `ServerDisconnectsPreLoginConnectionAfterLoginTimeout` covers the runtime deadline, while
-`NetworkServerInterthreadCopiedListenerRejectsAfterShutdown` and the transport shutdown tests cover accepted
-connection ownership and concurrent accept rejection.
+`NetworkServerInterthreadCopiedListenerRejectsAfterShutdown`, `NetworkServerInterthreadOptsOutOfPingWatchdog`, and the transport shutdown tests cover accepted connection ownership, concurrent accept rejection, and the interthread watchdog exemption.
 
 `NetworkServer` starts transport-specific servers through factories:
 
@@ -18475,7 +18480,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: f478920db0485f4d0337495e99fe96f6d4205697f884bcf007a58a64e3f5a11d
+Content SHA-256: c125220bd50f495aeaa5c7437e1dca6aaa73ad286b70a2a8161567c0ca2118d1
 
 ---
 layout: default
@@ -18912,7 +18917,8 @@ is **not** gated off — both portable and installed clients self-update on ever
 Because the host resolves and loads the runtime DLL *before* settings, the runtime returns the writable live path through
 `ClientRuntimeResult::RequestedRuntimePath`. The host promotes that path, validates that it is absolute and
 has the current executable-derived runtime filename, writes it to the installed-client bootstrap selector,
-through `GetInstalledClientRuntimeBootstrapPath()` and `WriteClientRuntimeBootstrapTarget()`, and exits; it never loads it again in the same process. On the next launch the `INSTALLED` host reads the
+whose path is produced by `MakeClientRuntimeBootstrapPath()` and persisted by
+`WriteClientRuntimeBootstrapTarget()`, and exits; it never loads it again in the same process. On the next launch the `INSTALLED` host reads the
 selector from `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/<runtime><ext>.path` before
 settings, accepts it only when the live file or its `-staging` sibling exists, and loads that runtime directly.
 Missing, oversized, relative, newline-containing, wrong-basename, and stale selectors fall back to the frozen
@@ -18931,13 +18937,16 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Client packages** include the host executable and the matching runtime library renamed to the same basename next to it (for example, `<client-host>.exe` and `<client-host>.dll`). The host derives the library name from its own executable basename at startup, so no config patching is required to point one at the other.
 - **Sibling client variants are not dependency companions.** Regular and headless hosts/runtimes share a build-output directory, so the generic DLL/DSO companion scan excludes every Engine-owned `Client`/`ClientLib` and `ClientHeadless`/`ClientLibHeadless` input and alias. The packager then copies only the variants explicitly requested by the package under their packaged basenames. A stale headless build output therefore cannot leak into an ordinary portable, ZIP, or MSI client payload, while a package with the `Headless` token still receives its explicit headless host/runtime pair.
 - **Server packages** also stage every available client runtime library under `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
-- **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or an explicit command-line/UI choice still overrides that default. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
+- **Managed resource payloads** are rebuilt per distributed client target and staged below `PlatformBinaries/<target>/`. When several native binary variants share one updater target, the least-qualified matching entry, normally default Release, supplies the one target-wide pack; independently built equivalent CoreLib payloads need not be byte-identical.
+- **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or an explicit command-line/UI choice still overrides that default. Windows `light` retries once with `-sval` only for the exact Windows Installer service-unavailable diagnostic; other linker/ICE failures and a failed fallback remain fatal. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (for example, `<client-host>.dll.pdb`) — both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging — symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
 Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, requires the exact expected entry list, and streams every entry through Python's CRC-checking reader. The `Embedded` pack receives the same check through its in-memory buffer before it is patched into the executable. A truncated, CRC-invalid, or structurally mismatched resource archive therefore fails packaging before it becomes a downloadable client payload or the server's updater source. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers deterministic metadata, ordering, and the post-build validation boundary.
+
+Packaging may delegate deterministic resource-archive reuse to the project-owned helper named by `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. The helper receives `restore`, `store`, and `release` operations under a content-and-compression key; a miss or explicitly unavailable optional cache falls back to local creation. A restored archive still passes the exact-entry and CRC checks above, so caching cannot weaken updater payload validation.
 
 The internal config patch area has a fixed Engine-owned capacity of 10000 bytes;
 embedding projects cannot resize it. `package.py` discovers the reserved size
@@ -23211,7 +23220,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 8d4a8205c61efe7730b35f196533ef00399f01b2b09edb9489a92bf415af4183
+Content SHA-256: a65bb0127d2b9cec6b8e5377fd67e2aa1175562fb4527a0307501b86ccace166
 
 ---
 layout: default
@@ -23376,7 +23385,7 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 
 `package.py` owns the reusable package payload layout and optional post-processing. It records target-logical `0644`/`0755` file modes independently of the host filesystem, supplies them directly to ZIP/TAR writers, and merges Raw/Root records across package parts in the versioned package-root `.lf-package-modes.json` publication handoff. Manifest paths must be normalized POSIX-relative payload paths; absolute, drive-qualified, escaping, and backslash forms fail validation. A publisher of raw trees must apply the handoff and omit it from the public payload.
 
-For a Windows Client package that includes the `Wix` pack, `package.py` invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. Both supported build hosts use the same inline dialog authoring, so the dialog does not disappear when production runs `wixl` on Linux. The MSI is a **required** artifact when the `Wix` pack is requested. POSIX hosts require `wixl` 0.102 or newer with its bundled `ui` extension. Windows searches `FO_WIX_ROOT`, the prepared sibling `wix3` directory, then `candle`/`light` on `PATH`; `buildtools.py prepare-workspace wix` downloads the WiX v3 release pinned by `ThirdParty/wix` into that workspace with the normal mirror and SHA-256 checks. A missing toolset or generator/build error fails the package. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`; `common-packages` includes `php-cli` for the common runner contract. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
+For a Windows Client package that includes the `Wix` pack, `package.py` invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. Both supported build hosts use the same inline dialog authoring, so the dialog does not disappear when production runs `wixl` on Linux. The MSI is a **required** artifact when the `Wix` pack is requested. POSIX hosts require `wixl` 0.102 or newer with its bundled `ui` extension. Windows searches `FO_WIX_ROOT`, the prepared sibling `wix3` directory, then `candle`/`light` on `PATH`; `buildtools.py prepare-workspace wix` downloads the WiX v3 release pinned by `ThirdParty/wix` into that workspace with the normal mirror and SHA-256 checks. Windows `light` first runs normal ICE validation and retries once with `-sval` only for the exact diagnostic that the Windows Installer service is unavailable; authoring, linker, ordinary ICE, and fallback failures remain fatal. A missing toolset or generator/build error fails the package. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`; `common-packages` includes `php-cli` for the common runner contract. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
 - `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
@@ -23390,6 +23399,10 @@ The product uses `InstallScope="perUser"`. Start Menu and Desktop shortcut compo
 An MSI upgrade deliberately keeps a remembered `Program Files` path instead of moving an existing tree. The refreshed `INSTALLED` marker still routes cache, logs, resources, and native runtime updates to the per-user writable overlay described in [Client Updater](../../explanation/runtime/client-updater.md), so the retained executable location does not block later self-updates.
 
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
+
+Managed class libraries remain resource payload rather than binary companions. When several binary variants share one updater target, `package.py` validates every prepared `ManagedRuntime` tree and selects the least-qualified matching binary entry, normally the default Release build, to produce the single target-wide resource pack. Independently built equivalent CoreLib payloads are not required to be byte-identical.
+
+An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers stable entry names and contents plus compression level. A restored or newly written archive always passes the same exact-entry and CRC validation; misses and an optional-cache-unavailable result fall back to local creation, while other helper failures remain packaging errors. Repeated identical archives in one packaging process reuse the first validated result.
 
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the

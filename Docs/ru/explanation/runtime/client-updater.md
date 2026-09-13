@@ -6,7 +6,7 @@ document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
 
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"f478920db0485f4d0337495e99fe96f6d4205697f884bcf007a58a64e3f5a11d"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"c125220bd50f495aeaa5c7437e1dca6aaa73ad286b70a2a8161567c0ca2118d1"} -->
 
 # Разделение клиентской среды выполнения и обновление
 
@@ -509,9 +509,9 @@ Native runtime установленного клиента также обнов
 
 Host выбирает runtime до settings, поэтому runtime возвращает writable live path
 в `ClientRuntimeResult::RequestedRuntimePath`.
-Host проверяет absolute path и basename, продвигает файл, записывает selector и
-завершается через `GetInstalledClientRuntimeBootstrapPath()` и
-`WriteClientRuntimeBootstrapTarget()`. Следующий `INSTALLED` startup читает selector из
+Host проверяет absolute path и basename, продвигает файл, получает путь selector
+через `MakeClientRuntimeBootstrapPath()`, записывает его через
+`WriteClientRuntimeBootstrapTarget()` и завершается. Следующий `INSTALLED` startup читает selector из
 `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/<runtime><ext>.path`
 до settings. Он принимает только корректный путь, для которого существует live
 или staging. Missing, oversized, relative, newline/NUL-containing,
@@ -532,7 +532,8 @@ command line. MSI packager добавляет marker только во врем�
 - client package содержит host и runtime с одинаковым basename рядом, например `<client-host>.exe` и `<client-host>.dll`;
 - соседние обычные и headless client runtime не считаются dependency companions: generic DLL/DSO scan исключает все Engine-owned input и alias `Client`/`ClientLib` и `ClientHeadless`/`ClientLibHeadless`, после чего packager копирует только явно запрошенные variants под packaged basenames; оставшийся headless build output не попадает в обычный portable, ZIP или MSI payload, а token `Headless` по-прежнему добавляет явную headless-пару;
 - server package размещает доступные runtime в `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>`, чтобы клиенты других платформ могли обновиться;
-- Windows Client с `Wix` строит обязательный MSI из staged Raw payload, временно добавляет `INSTALLED`, регистрирует URI scheme через HKCU и падает при отсутствии toolset или ошибке generator;
+- Managed resource payload пересобирается для каждого распространяемого client target и размещается под `PlatformBinaries/<target>/`; если несколько native binary variants разделяют updater target, один target-wide pack получает payload наименее квалифицированной подходящей entry, обычно default Release, а независимо собранные эквивалентные CoreLib не обязаны быть byte-identical;
+- Windows Client с `Wix` строит обязательный MSI из staged Raw payload, временно добавляет `INSTALLED`, регистрирует URI scheme через HKCU и падает при отсутствии toolset или ошибке generator; Windows `light` повторяется один раз с `-sval` только для точного сообщения о недоступности Windows Installer service, а прочие linker/ICE failures и failed fallback остаются фатальными;
 - Windows runtime PDB называется `<runtime_dll>.pdb`, а host PDB сохраняет `<host_name>.pdb`; package patch CodeView `RSDS` меняет embedded PDB path на итоговое имя, и отсутствие input или неудачный patch считаются ошибкой;
 - host PDB staged вместе с runtime payload, но client скачивает его только при отсутствии локального файла и никогда не clobber существующую подходящую копию.
 
@@ -553,6 +554,13 @@ Truncated, CRC-invalid или структурно несовпадающий re
 останавливает package до публикации client payload или server updater source.
 Это закрепляет
 [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py).
+
+Packaging может передать reuse детерминированных resource archives
+принадлежащему проекту helper из `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. Helper
+получает операции `restore`, `store` и `release` с ключом содержимого и
+compression; miss или явно недоступный optional cache переходят к локальному
+созданию. Восстановленный archive всё равно проходит точные entry и CRC checks
+выше, поэтому caching не ослабляет проверку updater payload.
 
 Internal config patch area имеет фиксированную движком ёмкость 10000 bytes;
 подключаемые проекты не могут менять её размер. Перед записью bootstrap config

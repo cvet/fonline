@@ -2715,6 +2715,18 @@ extern int
 rpmalloc_test_get_span_commit_failures(void) {
 	return atomic_load_explicit(&global_test_span_commit_failures, memory_order_relaxed);
 }
+
+//! (FOnline Patch)
+extern int
+rpmalloc_test_initialize_pristine_thread_heap(void) {
+	if (get_thread_heap() != global_heap_default)
+		return 0;
+	heap_t* pristine_heap = heap_allocate(1);
+	if (!pristine_heap)
+		return 0;
+	set_thread_heap(pristine_heap);
+	return 1;
+}
 #endif
 
 ////////////

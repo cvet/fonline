@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 
 # Упаковка и выпуск
 
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"5df2df02955005f4e965544844fccbe243a56f562bec992e75976b52a63898a4"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"ea8b09bc9fb4c922b6a4fd931a41d11b6a23f1bc15465790a4da551a40b8eb92"} -->
 
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
@@ -255,7 +255,10 @@ evidence. Для Linux support и immutable example-release evidence необх�
 - `Wix` создаёт per-user MSI. На Windows подготовьте закреплённый Engine
   portable toolset WiX v3 командой `buildtools.py prepare-workspace wix`;
   `package.py` ищет `FO_WIX_ROOT`, соседний workspace `wix3`, затем
-  `candle`/`light` в `PATH`. На POSIX packaging host требуется `wixl` версии
+  `candle`/`light` в `PATH`. `light` сначала запускает ICE validation и
+  повторяется один раз с `-sval` только при недоступности Windows Installer
+  service; любая другая ошибка linker/ICE и failed fallback остаются
+  фатальными. На POSIX packaging host требуется `wixl` версии
   0.102 или новее.
 - `OGL` добавляет отдельно собранный OpenGL runtime variant.
 - `Lib` выбирает library form там, где target её поддерживает.
@@ -291,7 +294,7 @@ filesystem paths, process account, signals, logs и service manager игры.
 
 ### Payload Managed C#
 
-При включённом `FO_MANAGED_SCRIPTING` baker `Managed` помещает target-specific assemblies и подготовленный payload class libraries `ManagedRuntime/` в выбранный resource pack. Native client packages используют payload ровно своего application target; Web и Android несут его в assets ресурсов. Server package для client updates размещает target-specific pack в `PlatformBinaries/<target>/`, а `-expect-client-runtime Platform:arch[:postfix]` превращает отсутствие запрошенного payload в ошибку packaging. Проверяйте отдельно target assembly, `runtime.manifest`, content hash и запуск packaged artifact; см. [Скрипты Managed C#](../scripting/managed-csharp.md).
+При включённом `FO_MANAGED_SCRIPTING` baker `Managed` помещает target-specific assemblies и подготовленный payload class libraries `ManagedRuntime/` в выбранный resource pack. Native client packages используют payload ровно своего application target; Web и Android несут его в assets ресурсов. Server package для client updates размещает один target-specific pack в `PlatformBinaries/<target>/`, а `-expect-client-runtime Platform:arch[:postfix]` превращает отсутствие запрошенного payload в ошибку packaging. Если несколько native variants разделяют этот updater target, pack поставляет наименее квалифицированная подходящая binary entry — обычно default Release; эквивалентные независимо собранные CoreLib payloads не обязаны быть byte-identical. Проверяйте отдельно target assembly, `runtime.manifest`, content hash и запуск packaged artifact; см. [Скрипты Managed C#](../scripting/managed-csharp.md).
 
 ### Web client
 
@@ -386,6 +389,15 @@ in-memory bytes до patch binary. Это gates создания package, а н�
 того, что installer, delivery channel, publication step или installed filesystem
 сохранили результат. Parser package declarations и сгенерированный contract
 детерминированы и проверяются в CI.
+
+`FO_RESOURCE_ARCHIVE_CACHE_HELPER` может указывать на принадлежащий проекту
+Python helper с интерфейсом `restore|store|release --key <sha256> --archive
+<path>`. Ключ охватывает детерминированные имена и содержимое entries вместе с
+compression level. Cache hit всё равно проходит проверки точного entry list и
+CRC выше; miss или явно недоступный optional cache переходят к локальному
+deflate, а malformed hit и неожиданный failure helper останавливают packaging.
+Storage, credentials, claims, retention и service availability helper остаются
+ответственностью проекта.
 
 Это не делает каждый полный release бит-в-бит воспроизводимым. Linked binaries,
 debug symbols, top-level archives, toolchains MSI/APK, signing timestamps,

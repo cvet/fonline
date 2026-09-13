@@ -195,7 +195,7 @@ green landed job and a reviewed external repository commit/tag.
 
 - `Raw` retains the staged portable directory.
 - `Zip` emits a portable archive from that directory.
-- `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. POSIX package hosts require `wixl` 0.102 or newer.
+- `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. `light` runs ICE validation first and retries once with `-sval` only when the Windows Installer service is unavailable; every other linker/ICE failure and a failed fallback remain fatal. POSIX package hosts require `wixl` 0.102 or newer.
 - `OGL` adds the separately built OpenGL runtime variant.
 - `Lib` selects the library form where the target supports it.
 - `POSTFIX` keeps independently built variants, such as a depot-specific client, from colliding.
@@ -213,7 +213,7 @@ The packager assigns logical `0755` modes to target executables independently of
 
 ### Managed C# payload
 
-When `FO_MANAGED_SCRIPTING` is enabled, the `Managed` baker puts target-specific assemblies and a prepared `ManagedRuntime/` class-library payload into the selected resource pack. Native client packages consume the payload built for that exact application target; Web and Android carry it in their resource assets. A server package preparing client updates stages a target-specific pack under `PlatformBinaries/<target>/` and `-expect-client-runtime Platform:arch[:postfix]` makes a missing requested payload fail packaging. Inspect the assembly target, `runtime.manifest`, content hash, and packaged startup separately; see [Managed C# Scripting](../scripting/managed-csharp.md).
+When `FO_MANAGED_SCRIPTING` is enabled, the `Managed` baker puts target-specific assemblies and a prepared `ManagedRuntime/` class-library payload into the selected resource pack. Native client packages consume the payload built for that exact application target; Web and Android carry it in their resource assets. A server package preparing client updates stages one target-specific pack under `PlatformBinaries/<target>/` and `-expect-client-runtime Platform:arch[:postfix]` makes a missing requested payload fail packaging. If several native variants share that updater target, the least-qualified matching binary entry, normally default Release, supplies the pack; equivalent independently built CoreLib payloads need not be byte-identical. Inspect the assembly target, `runtime.manifest`, content hash, and packaged startup separately; see [Managed C# Scripting](../scripting/managed-csharp.md).
 
 ### Web client
 
@@ -263,6 +263,8 @@ Keep those product and infrastructure details in the embedding project. [Release
 ## Reproducibility and provenance
 
 FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. Outer ZIP and TAR packages use the target's logical file modes rather than the host filesystem's modes, so a Windows packaging host still emits executable Linux targets. Raw package parts merge their mode records into one package-root `.lf-package-modes.json` handoff instead of losing earlier parts. After producing a resource pack, `package.py` reopens it, compares the exact entry list with the planned inventory, and streams every entry through the CRC-checking ZIP reader; embedded packs are validated from the in-memory bytes before binary patching. These are package-construction gates, not proof that the installer, delivery channel, publication step, or installed filesystem preserved the result. The package declaration parser and generated contract are deterministic and checked in CI.
+
+`FO_RESOURCE_ARCHIVE_CACHE_HELPER` may name a project-owned Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers the deterministic entry names and contents plus compression level. A hit still passes the exact-entry and CRC gates above; a miss or explicitly unavailable optional cache falls back to local deflate, while malformed hits and unexpected helper failures stop packaging. The helper's storage, credentials, claims, retention, and service availability remain project-owned.
 
 That does not make every complete release bit-for-bit reproducible. Linked binaries, debug symbols, top-level archives, MSI/APK toolchains, signing timestamps, included files, and external SDKs may carry host- or time-dependent data. State the narrower guarantee you have actually tested.
 

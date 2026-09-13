@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 
 # Сеть и авторитетность
 
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"03cd28d36406ec6cf613938f944b1f5462f055b8e0357d8219a31fdee16f4679"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"81143cb1f0473e81708756171a139fc03c40a9ab19fd802a186e1fb2113f7bb5"} -->
 
 Этот документ описывает переиспользуемые сетевые слои движка: буферы сообщений, обработку отладочных hash, клиентские и серверные абстракции соединений и упорядоченный UDP-транспорт.
 
@@ -177,7 +177,7 @@ Send callback возвращает outgoing bytes **по значению**, и 
 - `ServerNetwork.InactivityDisconnectTime` ограничивает тишину между любыми входящими сообщениями;
 - `ServerNetwork.LoginTimeout` ограничивает время без значимого прогресса до входа, а `0` отключает лимит. Рукопожатие, authentication remote call и запросы update-файлов обновляют прогресс; транспортные ping не обновляют. Законный updater может продолжать работу, но peer не удерживает неавторизованный slot одними ответами ping.
 
-Авторизованное соединение также отключается, если перестаёт отвечать на ping. `ServerNetwork.ClientPingTime` задаёт interval; если предыдущий ping остаётся без ответа к моменту следующего, сервер записывает `PingTimeout` и выполняет hard disconnect.
+Авторизованное соединение также отключается, если перестаёт отвечать на ping. `ServerNetwork.ClientPingTime` задаёт interval; если предыдущий ping остаётся без ответа к моменту следующего, сервер записывает `PingTimeout` и выполняет hard disconnect. Внутрипроцессный interthread transport исключён из watchdog: lifetime peer явно управляется callback channel, а занятый общий процесс может задержать обе стороны одновременно; закрытие любого interthread endpoint всё равно немедленно отключает peer.
 
 ### Причины отключения
 
@@ -199,7 +199,7 @@ Send callback возвращает outgoing bytes **по значению**, и 
 
 Побеждает первая записанная причина: поздний generic callback `ClientClosed` от transport не перезаписывает конкретное основание. Причина входит в log закрытого соединения и доступна handlers `OnPlayerLogout` через `Player.GetDisconnectReason()`. Контракт закреплён `ServerConnectionRecordsWhyItWasDisconnected`.
 
-`ServerDisconnectsPreLoginConnectionAfterLoginTimeout` проверяет runtime deadline, а `NetworkServerInterthreadCopiedListenerRejectsAfterShutdown` и тесты остановки транспортов — владение принятыми соединениями и отказ конкурентному accept.
+`ServerDisconnectsPreLoginConnectionAfterLoginTimeout` проверяет runtime deadline, а `NetworkServerInterthreadCopiedListenerRejectsAfterShutdown`, `NetworkServerInterthreadOptsOutOfPingWatchdog` и тесты остановки транспортов — владение принятыми соединениями, отказ конкурентному accept и исключение interthread из watchdog.
 
 `NetworkServer` запускает реализации через фабрики:
 

@@ -17,9 +17,9 @@
     "query_count": 67,
     "pass_count": 67,
     "success_rate": 1.0,
-    "top_1_rate": 0.850746,
+    "top_1_rate": 0.835821,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.91791,
+    "mean_reciprocal_rank": 0.910448,
     "minimum_success_rate": 1.0
   },
   "passed_task_count": 28,
@@ -549,14 +549,14 @@
             "managed-csharp-scripting"
           ],
           "max_rank": 2,
-          "rank": 1,
+          "rank": 2,
           "passed": true,
           "top_document_ids": [
+            "buildtools-pipeline",
             "managed-csharp-scripting",
             "scripting-runtime",
             "debugging",
-            "script-lifecycle-concurrency",
-            "baking-pipeline"
+            "script-lifecycle-concurrency"
           ]
         },
         {
@@ -1967,8 +1967,8 @@
             "generated-package-index",
             "generated-api-metadata",
             "configuration-data-sources",
-            "client-updater",
-            "generated-package-matrix"
+            "managed-csharp-scripting",
+            "client-updater"
           ]
         },
         {

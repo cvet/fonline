@@ -180,8 +180,8 @@ class DocumentationAiEvaluationTests(unittest.TestCase):
         report = docs_ai_eval.evaluate(BUILDTOOLS_DIR.parent)
 
         self.assertEqual(report["error_count"], 0)
-        self.assertEqual(report["task_count"], 27)
-        self.assertEqual(report["retrieval"]["query_count"], 65)
+        self.assertEqual(report["task_count"], 28)
+        self.assertEqual(report["retrieval"]["query_count"], 67)
         self.assertEqual(report["retrieval"]["success_rate"], 1.0)
 
     def test_fixture_write_check_and_stale_detection(self) -> None:

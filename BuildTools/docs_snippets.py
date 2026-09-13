@@ -544,9 +544,9 @@ def _find_bash() -> str:
     configured = os.environ.get("DOCS_BASH")
     candidates = [
         configured,
-        shutil.which("bash"),
         r"C:\Program Files\Git\bin\bash.exe",
         r"C:\Program Files\Git\usr\bin\bash.exe",
+        shutil.which("bash"),
     ]
     for candidate in candidates:
         if candidate and Path(candidate).is_file():

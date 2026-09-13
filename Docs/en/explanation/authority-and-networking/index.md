@@ -182,7 +182,7 @@ The server runtime applies two independent limits to connections that have not l
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
 
-A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection.
+A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection. The in-process interthread transport opts out of this watchdog because its peer lifetime is explicit through the callback channel and a busy shared process can delay both ends together; closing either interthread endpoint still disconnects its peer immediately.
 
 ### Disconnect reasons
 
@@ -205,8 +205,7 @@ Every close records its cause in `DisconnectReason`, and `HardDisconnect(reason)
 The first recorded reason wins, preventing the transport's later generic `ClientClosed` callback from overwriting the specific cause. The reason appears in the closed-connection log and is available to `OnPlayerLogout` handlers through `Player.GetDisconnectReason()`. `ServerConnectionRecordsWhyItWasDisconnected` pins this contract.
 
 `ServerDisconnectsPreLoginConnectionAfterLoginTimeout` covers the runtime deadline, while
-`NetworkServerInterthreadCopiedListenerRejectsAfterShutdown` and the transport shutdown tests cover accepted
-connection ownership and concurrent accept rejection.
+`NetworkServerInterthreadCopiedListenerRejectsAfterShutdown`, `NetworkServerInterthreadOptsOutOfPingWatchdog`, and the transport shutdown tests cover accepted connection ownership, concurrent accept rejection, and the interthread watchdog exemption.
 
 `NetworkServer` starts transport-specific servers through factories:
 

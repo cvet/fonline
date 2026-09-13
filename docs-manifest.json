@@ -860,8 +860,8 @@
         "Docs/en/reference/buildtools/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "b4a1f3ef2d8d4497f88bc407166c6c7b53cf25d53318e8c9599a99540d7bba21",
-      "byte_size": 13168
+      "content_sha256": "e1cfaa86333e84c0584be14aa417263aa6b5c56053cf43f7bd8b10b4f551f32b",
+      "byte_size": 13712
     },
     {
       "id": "buildtools-pipeline",
@@ -911,8 +911,8 @@
         "Docs/en/reference/helper-cli/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "8d4a8205c61efe7730b35f196533ef00399f01b2b09edb9489a92bf415af4183",
-      "byte_size": 22318
+      "content_sha256": "a65bb0127d2b9cec6b8e5377fd67e2aa1175562fb4527a0307501b86ccace166",
+      "byte_size": 23500
     },
     {
       "id": "buildtools-readme",
@@ -981,8 +981,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "100c847b0046db5a14f408de7d3751bfb86fd3ba9df56404c0dbae9d0985e173",
-      "byte_size": 46756
+      "content_sha256": "00c27249ac81bd73167507f13407acc81da39f0efa5a39e467cb5d8c04757918",
+      "byte_size": 48311
     },
     {
       "id": "client-runtime",
@@ -1070,8 +1070,8 @@
         "ThirdParty/rpmalloc/rpmalloc/rpmalloc.c",
         "BuildTools/ExternalProjectEvidence.json"
       ],
-      "content_sha256": "f478920db0485f4d0337495e99fe96f6d4205697f884bcf007a58a64e3f5a11d",
-      "byte_size": 65379
+      "content_sha256": "c125220bd50f495aeaa5c7437e1dca6aaa73ad286b70a2a8161567c0ca2118d1",
+      "byte_size": 66368
     },
     {
       "id": "configuration-data-sources",
@@ -2363,7 +2363,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "4ee12953e9aae52f7f47b4abeea3f53db86c0fc04054a7c70653c595a49137d1",
+      "content_sha256": "7fed6d34c4370bd670a6a9c5359a4a4985258d7ba2b6147ffe0ef6ce9bc56910",
       "byte_size": 17824
     },
     {
@@ -12023,8 +12023,8 @@
         "Source/Tests/Test_ManagedScriptBaker.cpp",
         "BuildTools/tests/test_docs_managed_csharp.py"
       ],
-      "content_sha256": "7157e2a2dab4e1247bd5819958c7b8d05345bb18ecec851676f55c7958171f3a",
-      "byte_size": 25152
+      "content_sha256": "7499971886f77612c3126ec7091fbc3123a9d70d4057e7966bdbb856343b8255",
+      "byte_size": 25461
     },
     {
       "id": "map-format-guide",
@@ -12518,8 +12518,8 @@
         "Source/Server",
         "Source/Common"
       ],
-      "content_sha256": "03cd28d36406ec6cf613938f944b1f5462f055b8e0357d8219a31fdee16f4679",
-      "byte_size": 26280
+      "content_sha256": "81143cb1f0473e81708756171a139fc03c40a9ab19fd802a186e1fb2113f7bb5",
+      "byte_size": 26629
     },
     {
       "id": "nullability",
@@ -12601,8 +12601,8 @@
         "Docs/en/how-to/platforms/android-debugging.md",
         "Docs/en/explanation/runtime/client-updater.md"
       ],
-      "content_sha256": "5df2df02955005f4e965544844fccbe243a56f562bec992e75976b52a63898a4",
-      "byte_size": 29811
+      "content_sha256": "ea8b09bc9fb4c922b6a4fd931a41d11b6a23f1bc15465790a4da551a40b8eb92",
+      "byte_size": 30747
     },
     {
       "id": "particle-authoring-tools",
@@ -14015,8 +14015,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "edbdeb03edfed159c77c90abc0b31cae579ac8e7da6ddd99e630411925659a58",
-      "byte_size": 2023940
+      "content_sha256": "b23fb3573f01b7b759deaa689685f86125f8dfd88608525ad62b0b7081b069f6",
+      "byte_size": 2028249
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14029,14 +14029,14 @@
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "24e3014804e8c48c21ff70631c8520f209afff188dbb714ce6e23dd0d35d9a3f",
-      "byte_size": 113215
+      "content_sha256": "be80dea23d179e537ea3596eba670f1ab37fb1b8fae9482a9eca9525182a4b33",
+      "byte_size": 113220
     },
     {
       "id": "api_model",
       "path": "Docs/generated/api.json",
       "canonical_url": "https://fonline.ru/Docs/generated/api.json",
-      "content_sha256": "985e5c9756881aa7c813ae3d184006243ab42e71533e2016caab914d0c459d5c",
+      "content_sha256": "657fec664b42888090895662058c786cf08072c3bb9a511313ad851329fa0ebc",
       "byte_size": 3077868
     },
     {
@@ -14169,7 +14169,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "58ab534df16272b696f8a30191a4d7f4ec754a084059899afa5c7aa5450c07f2",
+      "content_sha256": "a107a3458d8f03a83b8e161133a515dee21ec9fbdb4cad864bb2f53087a849ce",
       "byte_size": 265686
     },
     {
@@ -14197,7 +14197,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "b02df544cf750a8c33ce083d39be88cc5d65b2681801b1116cc5c8555bd4905d",
+      "content_sha256": "268682391997c968076b6ab566190f39e9ebe965a5e9de79e5fb108ef4b6157b",
       "byte_size": 104631
     },
     {
@@ -14218,15 +14218,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "2f04acaa9b8dd71058f23401bb72afc2c7968b7a4974417e422dd0f5ddb5e3d3",
-      "byte_size": 1206272
+      "content_sha256": "28c44d45744999ed59a4a7fd3e7e9c6430dfd626d0b341859a85ef06ec6787a0",
+      "byte_size": 1208084
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "bb3243f650d78cf92baa89a3568dc4720275cff5e158daf396ef3aac43f00cfa",
-      "byte_size": 1703019
+      "content_sha256": "0a4f142e9e98935102adc44729fd46a56ddde7badf1b0843a58b842a0a6913df",
+      "byte_size": 1705835
     }
   ]
 }

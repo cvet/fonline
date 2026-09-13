@@ -27,8 +27,8 @@
       "english_path": "BuildTools/README.md",
       "english_path_state": "migrated",
       "russian_path": "BuildTools/README.ru.md",
-      "source_sha256": "100c847b0046db5a14f408de7d3751bfb86fd3ba9df56404c0dbae9d0985e173",
-      "source_bytes": 46756,
+      "source_sha256": "00c27249ac81bd73167507f13407acc81da39f0efa5a39e467cb5d8c04757918",
+      "source_bytes": 48311,
       "status": "current"
     },
     {
@@ -313,8 +313,8 @@
       "english_path": "Docs/en/explanation/authority-and-networking/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/authority-and-networking/index.md",
-      "source_sha256": "03cd28d36406ec6cf613938f944b1f5462f055b8e0357d8219a31fdee16f4679",
-      "source_bytes": 26280,
+      "source_sha256": "81143cb1f0473e81708756171a139fc03c40a9ab19fd802a186e1fb2113f7bb5",
+      "source_bytes": 26629,
       "status": "current"
     },
     {
@@ -391,8 +391,8 @@
       "english_path": "Docs/en/explanation/runtime/client-updater.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/client-updater.md",
-      "source_sha256": "f478920db0485f4d0337495e99fe96f6d4205697f884bcf007a58a64e3f5a11d",
-      "source_bytes": 65379,
+      "source_sha256": "c125220bd50f495aeaa5c7437e1dca6aaa73ad286b70a2a8161567c0ca2118d1",
+      "source_bytes": 66368,
       "status": "current"
     },
     {
@@ -482,8 +482,8 @@
       "english_path": "Docs/en/how-to/build/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/index.md",
-      "source_sha256": "b4a1f3ef2d8d4497f88bc407166c6c7b53cf25d53318e8c9599a99540d7bba21",
-      "source_bytes": 13168,
+      "source_sha256": "e1cfaa86333e84c0584be14aa417263aa6b5c56053cf43f7bd8b10b4f551f32b",
+      "source_bytes": 13712,
       "status": "current"
     },
     {
@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "5df2df02955005f4e965544844fccbe243a56f562bec992e75976b52a63898a4",
-      "source_bytes": 29811,
+      "source_sha256": "ea8b09bc9fb4c922b6a4fd931a41d11b6a23f1bc15465790a4da551a40b8eb92",
+      "source_bytes": 30747,
       "status": "current"
     },
     {
@@ -833,8 +833,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "7157e2a2dab4e1247bd5819958c7b8d05345bb18ecec851676f55c7958171f3a",
-      "source_bytes": 25152,
+      "source_sha256": "7499971886f77612c3126ec7091fbc3123a9d70d4057e7966bdbb856343b8255",
+      "source_bytes": 25461,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "8d4a8205c61efe7730b35f196533ef00399f01b2b09edb9489a92bf415af4183",
-      "source_bytes": 22318,
+      "source_sha256": "a65bb0127d2b9cec6b8e5377fd67e2aa1175562fb4527a0307501b86ccace166",
+      "source_bytes": 23500,
       "status": "current"
     },
     {
@@ -2068,7 +2068,7 @@
       "english_path": "Docs/en/reference/script-api/migrations.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/migrations.md",
-      "source_sha256": "4ee12953e9aae52f7f47b4abeea3f53db86c0fc04054a7c70653c595a49137d1",
+      "source_sha256": "7fed6d34c4370bd670a6a9c5359a4a4985258d7ba2b6147ffe0ef6ce9bc56910",
       "source_bytes": 17824,
       "status": "current"
     },

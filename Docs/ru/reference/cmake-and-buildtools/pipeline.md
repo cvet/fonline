@@ -8,7 +8,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 
 # Конвейер BuildTools
 
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"8d4a8205c61efe7730b35f196533ef00399f01b2b09edb9489a92bf415af4183"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"a65bb0127d2b9cec6b8e5377fd67e2aa1175562fb4527a0307501b86ccace166"} -->
 
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
@@ -271,7 +271,10 @@ inline-описание диалога, поэтому он не пропада�
 `FO_WIX_ROOT`, подготовленный соседний directory `wix3`, затем `candle`/`light`
 в `PATH`; `buildtools.py prepare-workspace wix` загружает закреплённый
 `ThirdParty/wix` release WiX v3 в этот workspace с обычными mirror и SHA-256
-checks. Отсутствие toolset или ошибка generator/build завершает packaging
+checks. Windows `light` сначала выполняет обычную ICE validation и повторяет
+link один раз с `-sval` только при точном сообщении о недоступности Windows
+Installer service; ошибки authoring, linker, обычной ICE и fallback остаются
+фатальными. Отсутствие toolset или ошибка generator/build завершает packaging
 ошибкой. В Debian/Ubuntu `wixl` поставляется отдельным apt package `wixl`, а не
 `msitools`; `common-packages` включает `php-cli` в общий runner contract.
 Installer values читаются из
@@ -308,6 +311,22 @@ writable overlay, описанный в
 
 Portable Raw/Zip artifacts завершаются до MSI и не содержат marker
 `INSTALLED`, поэтому остаются portable.
+
+Managed class libraries остаются resource payload, а не binary companions.
+Когда несколько binary variants разделяют один updater target, `package.py`
+проверяет каждое подготовленное дерево `ManagedRuntime` и выбирает наименее
+квалифицированную подходящую binary entry — обычно default Release build — для
+единственного target-wide resource pack. Независимо собранные эквивалентные
+CoreLib payloads не обязаны быть byte-identical.
+
+Embedding build может задать `FO_RESOURCE_ARCHIVE_CACHE_HELPER` как Python
+helper с интерфейсом `restore|store|release --key <sha256> --archive <path>`.
+Ключ охватывает стабильные имена и содержимое entries вместе с compression
+level. Восстановленный или только что записанный archive всегда проходит ту же
+проверку точного entry list и CRC; cache miss и результат недоступности
+optional cache переходят к локальному созданию, а прочие failures helper
+остаются packaging errors. Повторный идентичный archive в одном процессе
+packaging использует первый проверенный результат.
 
 Когда несколько package parts добавляются в один `SingleZip`, байт-идентичные
 файлы с одним archive path объединяются в одну entry. Разное содержимое по
