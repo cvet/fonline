@@ -98,10 +98,6 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             return maincfg.Save();
         };
 
-        // The metadata resource already ships every game setting's root-config value, so the binary config
-        // has to carry only what that baseline cannot express: a sub-config value that differs from it
-        auto root_config_settings = resolve_config_settings("");
-
         // Bootstrap settings are the exception: their consumer runs before the engine applies the metadata
         // baseline, so the delta form would leave them unreadable at the moment they are needed
         unordered_set<string> bootstrap_settings;
@@ -137,11 +133,13 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 auto shortened_value = strvex(value).is_explicit_bool() ? (strvex(value).to_bool() ? "1" : "0") : value;
 
                 if (is_game_only_setting) {
-                    auto root_it = root_config_settings.find(key);
+                    // The metadata resource already ships every game setting from this bake's active
+                    // configuration, so the binary config has to carry only what that exact baseline cannot express
+                    auto metadata_baseline_value = _context->Settings->FindSettingValue(key);
 
                     // The delta is written whatever it says: an empty or false override still has to beat
                     // a metadata baseline that says otherwise, so skip_write must not apply to it
-                    if (root_it == root_config_settings.end() || root_it->second != value) {
+                    if (!metadata_baseline_value || *metadata_baseline_value != value) {
                         server_config_content += strex("{}={}\n", key, shortened_value);
 
                         if (is_client_game_setting) {
