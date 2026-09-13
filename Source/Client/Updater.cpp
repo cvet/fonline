@@ -1210,9 +1210,8 @@ auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Everything else names a state this client cannot recover from on its own: an unusable protocol, a
-    // platform that cannot self-update, resources that will not sync. A server that is down or restarting
-    // is none of those, and reporting it would file one crash per player for every restart we already know about
+    // Client-local updater failures are reportable; transient server downtime would otherwise emit one crash
+    // per player for every restart
     return result != UpdaterResult::ConnectionFailed;
 }
 
@@ -1236,9 +1235,8 @@ void ShowUpdaterFailure(UpdaterResult result)
 
     WriteLog("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
 
-    // The dialog reaches one player; this reaches us. Every terminal failure here ends the client, and
-    // without a report the only trace is a screenshot the player chooses to send. The log line above stays
-    // unconditional, so a failure we deliberately do not report is still visible in the player's log
+    // Report terminal client failures before showing the dialog. The unconditional log still records
+    // deliberately unreported failures
     if (IsUpdaterFailureReportable(result)) {
         ReportUpdaterFailure(result, target_name);
     }

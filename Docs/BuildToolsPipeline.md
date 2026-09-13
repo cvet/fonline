@@ -367,10 +367,14 @@ Its output directories carry the ordinary resource-role suffixes, for example
 `-server`/`-client`/`-mapper` filtering to every path component, so it can reject
 a complete target directory and a Client pack never carries Server or Mapper
 assemblies.
-For a Client part, `package.py` rebuilds that pack with the target binary
-directory's clean `ManagedRuntime` payload. For a Server part, it stages one such
-pack at `PlatformBinaries/<target>/<pack>.zip` for every distributed client
-target. Native variants of one target share that updater path; their independently
+For a Client or Server part, `package.py` rebuilds that target's own resource
+pack with the corresponding binary directory's clean `ManagedRuntime` payload;
+this keeps the class libraries paired with the Mono runtime statically linked
+into the packaged application even when baking and native compilation ran in
+independent jobs or on different operating systems. For a Server part, it also
+stages one client pack at `PlatformBinaries/<target>/<pack>.zip` for every
+distributed client target. Native variants of one target share that updater
+path; their independently
 built CoreLib files need not be byte-identical, so the packager deterministically
 prefers the least-qualified binary entry (normally the default Release build).
 It never copies a side-by-side `ManagedRuntime` directory or hoists Mono

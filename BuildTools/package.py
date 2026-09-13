@@ -899,7 +899,7 @@ class Packager:
 		skipped_entries: list[str] = []
 		client_embedded_data = self.make_embedded_data_for_target('Client')
 		_, client_config_data = self.read_config_data('Client')
-		managed_runtime_pack = self.find_client_managed_runtime_pack()
+		managed_runtime_pack = self.find_managed_runtime_pack('Client')
 
 		for input_dir in self.args.input:
 			binaries_root = os.path.join(os.path.abspath(input_dir), 'Binaries')
@@ -1040,7 +1040,7 @@ class Packager:
 			os.makedirs(payload_dir, exist_ok=True)
 			output_path = os.path.join(payload_dir, pack_name + '.zip')
 			log('Client managed resource payload', output_path)
-			self.write_client_resource_pack_with_runtime(output_path, pack_name, runtime_dir)
+			self.write_resource_pack_with_runtime(output_path, pack_name, runtime_dir, 'Client')
 			copied_resource_payloads.add((request_target_name, pack_name))
 
 		self.verify_expected_client_runtime_payloads(
@@ -1326,14 +1326,14 @@ class Packager:
 		assert status in (None, 0), 'Resource archive cache store failed with exit code ' + str(status)
 		self.remember_resource_archive(archive_path, cache_key)
 
-	def find_client_managed_runtime_pack(self) -> str | None:
+	def find_managed_runtime_pack(self, target: Literal['Client', 'Server']) -> str | None:
 		assert self.baking_path, 'Baking path is not initialized'
 		managed_packs = [
 			pack_name
-			for pack_name in self.get_target_resource_packs('Client')
+			for pack_name in self.get_target_resource_packs(target)
 			if os.path.isdir(os.path.join(self.baking_path, pack_name, MANAGED_RUNTIME_DIRECTORY))
 		]
-		assert len(managed_packs) <= 1, 'Managed runtime payload must belong to exactly one client resource pack'
+		assert len(managed_packs) <= 1, f'Managed runtime payload must belong to exactly one {target.lower()} resource pack'
 		if not managed_packs:
 			return None
 
@@ -1351,7 +1351,13 @@ class Packager:
 		assert identity, 'Managed runtime manifest is empty: ' + manifest_path
 		return identity
 
-	def write_client_resource_pack_with_runtime(self, archive_path: str, pack_name: str, runtime_dir: str) -> None:
+	def write_resource_pack_with_runtime(
+		self,
+		archive_path: str,
+		pack_name: str,
+		runtime_dir: str,
+		target: Literal['Client', 'Server'],
+	) -> None:
 		assert self.baking_path, 'Baking path is not initialized'
 		self.read_managed_runtime_identity(runtime_dir)
 
@@ -1359,7 +1365,7 @@ class Packager:
 		baked_runtime_base = os.path.realpath(os.path.join(pack_base, MANAGED_RUNTIME_DIRECTORY))
 		zip_entries = [
 			(os.path.relpath(file_path, pack_base).replace(os.sep, '/'), file_path)
-			for file_path in self.collect_resource_files(pack_name, 'Client')
+			for file_path in self.collect_resource_files(pack_name, target)
 			if os.path.commonpath((baked_runtime_base, os.path.realpath(file_path))) != baked_runtime_base
 		]
 
@@ -1378,8 +1384,8 @@ class Packager:
 		)
 		self.write_zip_entries(archive_path, zip_entries)
 
-	def package_client_managed_runtime_resources(self) -> None:
-		managed_runtime_pack = self.find_client_managed_runtime_pack()
+	def package_target_managed_runtime_resources(self, target: Literal['Client', 'Server']) -> None:
+		managed_runtime_pack = self.find_managed_runtime_pack(target)
 		if managed_runtime_pack is None:
 			return
 
@@ -1387,18 +1393,24 @@ class Packager:
 		packaged_runtime_dir: str | None = None
 		for arch in self.iter_arches():
 			binary_entry = self.build_binary_entry(arch, BinaryVariant())
-			bin_path = self.get_input(os.path.join('Binaries', binary_entry), self.args.devname + '_Client')
+			bin_path = self.get_input(os.path.join('Binaries', binary_entry), self.args.devname + '_' + target)
 			runtime_dir = os.path.join(bin_path, MANAGED_RUNTIME_DIRECTORY)
 			runtime_identity = self.read_managed_runtime_identity(runtime_dir)
 			assert packaged_identity is None or packaged_identity == runtime_identity, (
-				'Client package architectures carry different managed runtime payloads')
+				f'{target} package architectures carry different managed runtime payloads')
 			packaged_identity = runtime_identity
 			packaged_runtime_dir = runtime_dir
 
-		assert packaged_runtime_dir is not None, 'Client package has no managed runtime source architecture'
-		archive_path = os.path.join(self.target_output_path, self.client_res_dir, managed_runtime_pack + '.zip')
-		log('Replace baked managed runtime with client platform payload', archive_path)
-		self.write_client_resource_pack_with_runtime(archive_path, managed_runtime_pack, packaged_runtime_dir)
+		assert packaged_runtime_dir is not None, f'{target} package has no managed runtime source architecture'
+		resource_dir = self.client_res_dir if target == 'Client' else self.server_res_dir
+		archive_path = os.path.join(self.target_output_path, resource_dir, managed_runtime_pack + '.zip')
+		log(f'Replace baked managed runtime with {target.lower()} platform payload', archive_path)
+		self.write_resource_pack_with_runtime(
+			archive_path,
+			managed_runtime_pack,
+			packaged_runtime_dir,
+			target,
+		)
 
 	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
 		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
@@ -2151,8 +2163,8 @@ class Packager:
 		try:
 			if not self.has_pack('NoRes'):
 				self.prepare_resources()
-				if self.args.target == 'Client':
-					self.package_client_managed_runtime_resources()
+				if self.args.target in ('Client', 'Server'):
+					self.package_target_managed_runtime_resources(self.args.target)
 
 			self.select_platform_packager()()
 

@@ -24,6 +24,7 @@ def make_packager(tmp_path: Path):
     packager.target_output_path = str(tmp_path / 'output')
     packager.platform_binaries_dir = 'PlatformBinaries'
     packager.client_res_dir = 'Resources'
+    packager.server_res_dir = 'ServerResources'
     packager.zip_compress_level = 6
     packager.baking_path = str(tmp_path / 'Baking')
     packager.get_target_resource_packs = lambda target: []
@@ -35,19 +36,21 @@ def make_packager(tmp_path: Path):
     return packager
 
 
-def add_managed_runtime_pack(packager, tmp_path: Path, baked_corelib: bytes = b'baker platform') -> Path:
+def add_managed_runtime_pack(
+    packager, tmp_path: Path, baked_corelib: bytes = b'baker platform', target: str = 'Client',
+) -> Path:
     scripts_dir = tmp_path / 'Baking' / 'Scripts'
     baked_runtime = scripts_dir / 'ManagedRuntime'
     (baked_runtime / 'lib' / 'netcoreapp').mkdir(parents=True)
     (scripts_dir / 'Game.dll').write_bytes(b'game scripts')
-    for target in ('Server', 'Client', 'Mapper'):
-        target_dir = scripts_dir / 'Assemblies' / f'Assemblies-{target.lower()}'
+    for managed_target in ('Server', 'Client', 'Mapper'):
+        target_dir = scripts_dir / 'Assemblies' / f'Assemblies-{managed_target.lower()}'
         target_dir.mkdir(parents=True)
-        (target_dir / f'Scripts.{target}.dll').write_bytes(target.encode())
-        (target_dir / 'FOnline.ManagedHost.dll').write_bytes(f'host {target}'.encode())
+        (target_dir / f'Scripts.{managed_target}.dll').write_bytes(managed_target.encode())
+        (target_dir / 'FOnline.ManagedHost.dll').write_bytes(f'host {managed_target}'.encode())
     (baked_runtime / 'runtime.manifest').write_bytes(b'baker manifest')
     (baked_runtime / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').write_bytes(baked_corelib)
-    packager.get_target_resource_packs = lambda target: ['Scripts']
+    packager.get_target_resource_packs = lambda requested_target: ['Scripts'] if requested_target == target else []
     return scripts_dir
 
 
@@ -196,7 +199,7 @@ def test_client_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
     output_resources = Path(packager.target_output_path) / packager.client_res_dir
     output_resources.mkdir(parents=True)
 
-    packager.package_client_managed_runtime_resources()
+    packager.package_target_managed_runtime_resources('Client')
 
     with zipfile.ZipFile(output_resources / 'Scripts.zip') as archive:
         entries = set(archive.namelist())
@@ -207,6 +210,28 @@ def test_client_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
         assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
         assert archive.read('ManagedRuntime/runtime.manifest') == b'windows manifest'
         assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'windows corelib'
+
+
+def test_server_package_replaces_baker_runtime_with_target_runtime(tmp_path: Path) -> None:
+    packager = make_packager(tmp_path)
+    add_managed_runtime_pack(packager, tmp_path, target='Server')
+    binary_dir = tmp_path / 'Binaries' / 'Server-Linux-x64'
+    binary_dir.mkdir(parents=True)
+    (binary_dir / 'LF_Server.build-hash').write_text('build')
+    add_binary_managed_runtime(binary_dir, b'linux server manifest', b'linux server corelib')
+    packager.args.arch = 'x64'
+    packager.args.platform = 'Linux'
+    packager.args.target = 'Server'
+    packager.args.binary_output_postfix = ''
+    output_resources = Path(packager.target_output_path) / packager.server_res_dir
+    output_resources.mkdir(parents=True)
+
+    packager.package_target_managed_runtime_resources('Server')
+
+    with zipfile.ZipFile(output_resources / 'Scripts.zip') as archive:
+        assert archive.read('Game.dll') == b'game scripts'
+        assert archive.read('ManagedRuntime/runtime.manifest') == b'linux server manifest'
+        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'linux server corelib'
 
 
 def test_server_stages_target_specific_scripts_for_web_and_windows(tmp_path: Path, monkeypatch) -> None:
