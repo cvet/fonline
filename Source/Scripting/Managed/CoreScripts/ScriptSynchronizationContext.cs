@@ -27,9 +27,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
         lock (SchedulerGate)
         {
-            if (_closed) {
-                throw new ObjectDisposedException(nameof(ScriptSynchronizationContext));
-            }
+            ObjectDisposedException.ThrowIf(_closed, typeof(ScriptSynchronizationContext));
 
             if (synchronous) {
                 SynchronousContexts.Add(this);
@@ -136,9 +134,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
                     Monitor.Wait(SchedulerGate);
                 }
 
-                if (_closed) {
-                    throw new ObjectDisposedException(nameof(ScriptSynchronizationContext));
-                }
+                ObjectDisposedException.ThrowIf(_closed, typeof(ScriptSynchronizationContext));
 
                 continuation = _continuations.Count != 0 ? _continuations.Dequeue() : null;
             }

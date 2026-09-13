@@ -92,6 +92,8 @@ static void RemoveStaleGeneratedManagedArtifacts(const std::filesystem::path& pr
 static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesystem::path;
 static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_view path_value) -> std::filesystem::path;
 static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const vector<string>& path_values) -> vector<string>;
+static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std::filesystem::path& config_dir) -> ManagedProjectAnalysis;
+static auto ParseManagedAnalyzerPackages(const vector<string>& entries) -> vector<pair<string, string>>;
 static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>;
 static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
 static auto MakeSolutionProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
@@ -101,7 +103,7 @@ static auto MakeManagedSolutionGuid(string_view value) -> string;
 static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> string;
 static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::filesystem::path;
 static auto FindManagedHostSource(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> std::filesystem::path;
-static auto GetManagedBakeStamp(const BakingContext& context, string_view target_name, const vector<std::filesystem::path>& source_files, const vector<string>& references, const std::filesystem::path& managed_host_source) -> uint64_t;
+static auto GetManagedBakeStamp(const BakingContext& context, string_view target_name, const vector<std::filesystem::path>& source_files, const vector<string>& references, const std::filesystem::path& managed_host_source, const ManagedProjectAnalysis& analysis) -> uint64_t;
 static auto MakeCsTypeToken(string_view name) -> string;
 static auto MakeCsTypeToken(const ComplexTypeDesc& type) -> string;
 static auto MakeCsTypeName(const BaseTypeDesc& type) -> string;
@@ -246,6 +248,8 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     // neither compiled nor referenced by the regenerated project on the very first bake after a change
     RemoveStaleGeneratedManagedArtifacts(managed_generated_dir, expected_generated_files);
 
+    ManagedProjectAnalysis analysis = MakeManagedProjectAnalysis(*settings, managed_config_dir);
+
     for (string_view target : MANAGED_TARGETS) {
         vector<std::filesystem::path> source_files;
         unordered_set<string> source_file_keys;
@@ -282,7 +286,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         std::ranges::sort(references);
 
         string assembly_res_path = MakeManagedEntryAssemblyResourcePath(managed_pack_name, target);
-        uint64_t managed_bake_stamp = GetManagedBakeStamp(*_context, target, source_files, references, managed_host_source);
+        uint64_t managed_bake_stamp = GetManagedBakeStamp(*_context, target, source_files, references, managed_host_source, analysis);
         bool should_bake = !_context->BakeChecker || _context->BakeChecker(assembly_res_path, managed_bake_stamp);
 
         if (_context->BakeChecker) {
@@ -311,7 +315,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     GenerateManagedHostProjectFile(managed_generated_dir, settings->ManagedScriptTargetFramework, managed_host_source);
-    GenerateUnifiedProjectFile(managed_generated_dir, strex("{}/{}/Assemblies", settings->BakeOutput, managed_pack_name).str(), managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, ResolveManagedPaths(managed_config_dir, settings->ManagedScriptAnalyzers));
+    GenerateUnifiedProjectFile(managed_generated_dir, strex("{}/{}/Assemblies", settings->BakeOutput, managed_pack_name).str(), managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, analysis);
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
     for (string_view target : MANAGED_TARGETS) {
@@ -956,7 +960,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     WriteTextFileIfChanged(project_path, file.str(), "Can't create generated Managed host project file");
 }
 
-void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view assemblies_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const vector<string>& analyzers)
+void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view assemblies_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const ManagedProjectAnalysis& analysis)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -994,6 +998,21 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     // See the host-project emitter above: this is what makes the IDE* code-style analyzers run in the build
     // rather than only in an editor, so `.editorconfig` severities become a CI gate
     file << "    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>\n";
+
+    // Emitted only when the embedder configured a profile, so an unconfigured project keeps the SDK
+    // defaults. EnableNETAnalyzers is stated explicitly so the profile does not rest on a movable default
+    if (!analysis.Level.empty() || !analysis.Mode.empty()) {
+        file << "    <EnableNETAnalyzers>true</EnableNETAnalyzers>\n";
+    }
+
+    if (!analysis.Level.empty()) {
+        file << "    <AnalysisLevel>" << EscapeXml(analysis.Level) << "</AnalysisLevel>\n";
+    }
+
+    if (!analysis.Mode.empty()) {
+        file << "    <AnalysisMode>" << EscapeXml(analysis.Mode) << "</AnalysisMode>\n";
+    }
+
     file << "    <NoWarn>$(NoWarn);8981</NoWarn>\n";
     file << "    <GenerateDependencyFile>false</GenerateDependencyFile>\n";
     file << "    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>\n";
@@ -1052,15 +1071,43 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
 
     // Roslyn analyzers run inside the script compilation, so their diagnostics are gated by the same
     // TreatWarningsAsErrors/.editorconfig pass that already gates code style
-    if (!analyzers.empty()) {
+    if (!analysis.AnalyzerProjects.empty()) {
         file << "  <ItemGroup>\n";
 
-        for (const string& analyzer : analyzers) {
+        for (const string& analyzer : analysis.AnalyzerProjects) {
             if (analyzer.empty()) {
                 continue;
             }
 
             file << "    <ProjectReference Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {fs_make_path(analyzer)})) << "\" OutputItemType=\"Analyzer\" ReferenceOutputAssembly=\"false\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />\n";
+        }
+
+        file << "  </ItemGroup>\n";
+    }
+
+    // Packaged analyzers are private assets: nothing consumes the script assembly as a library, and letting
+    // an analyzer dependency flow onward is how a host build ends up loading a second copy of Roslyn
+    if (!analysis.AnalyzerPackages.empty()) {
+        file << "  <ItemGroup>\n";
+
+        for (const auto& [package_name, package_version] : analysis.AnalyzerPackages) {
+            file << "    <PackageReference Include=\"" << EscapeXml(package_name) << "\" Version=\"" << EscapeXml(package_version) << "\" PrivateAssets=\"all\" />\n";
+        }
+
+        file << "  </ItemGroup>\n";
+    }
+
+    // Analyzer configuration the compiler reads rather than compiles, such as a banned-symbols list. The
+    // file name matters to the analyzer that consumes it, so the path is emitted as configured
+    if (!analysis.AdditionalFiles.empty()) {
+        file << "  <ItemGroup>\n";
+
+        for (const string& additional_file : analysis.AdditionalFiles) {
+            if (additional_file.empty()) {
+                continue;
+            }
+
+            file << "    <AdditionalFiles Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {fs_make_path(additional_file)})) << "\" />\n";
         }
 
         file << "  </ItemGroup>\n";
@@ -1243,7 +1290,7 @@ auto ManagedScriptBaker::RunCommand(string_view command, string_view fail_messag
     }
 }
 
-static auto GetManagedBakeStamp(const BakingContext& context, string_view target_name, const vector<std::filesystem::path>& source_files, const vector<string>& references, const std::filesystem::path& managed_host_source) -> uint64_t
+static auto GetManagedBakeStamp(const BakingContext& context, string_view target_name, const vector<std::filesystem::path>& source_files, const vector<string>& references, const std::filesystem::path& managed_host_source, const ManagedProjectAnalysis& analysis) -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1265,6 +1312,42 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
     for (const string& reference : references) {
         if (reference.find('/') != string::npos || reference.find('\\') != string::npos || reference.find(':') != string::npos || strex(reference).get_file_extension() == "dll") {
             merge_disk_file(reference);
+        }
+    }
+
+    // An analyzer decides which diagnostics are reported, so editing one must recompile the scripts:
+    // otherwise an added rule stays silent until something else changes, reading as a rule that found nothing
+    for (const string& analyzer_project : analysis.AnalyzerProjects) {
+        merge_disk_file(analyzer_project);
+    }
+
+    for (const string& additional_file : analysis.AdditionalFiles) {
+        merge_disk_file(additional_file);
+    }
+
+    // The same covers .editorconfig, where severities live: the stamp walks up from each source file exactly
+    // as Roslyn resolves it, because a severity is as much a compilation input as the analyzer reading it
+    unordered_set<string> visited_dirs;
+
+    for (const std::filesystem::path& source_file : source_files) {
+        std::filesystem::path dir = source_file.parent_path();
+
+        while (!dir.empty()) {
+            string dir_key = strex("{}", dir.string()).str();
+
+            if (!visited_dirs.emplace(dir_key).second) {
+                break;
+            }
+
+            merge_disk_file(strex("{}", (dir / ".editorconfig").string()).str());
+
+            std::filesystem::path parent = dir.parent_path();
+
+            if (parent == dir) {
+                break;
+            }
+
+            dir = parent;
         }
     }
 
@@ -1747,6 +1830,64 @@ static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const v
     }
 
     return paths;
+}
+
+static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std::filesystem::path& config_dir) -> ManagedProjectAnalysis
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ManagedProjectAnalysis {
+        .Level = TrimString(settings.ManagedScriptAnalysisLevel),
+        .Mode = TrimString(settings.ManagedScriptAnalysisMode),
+        .AnalyzerProjects = ResolveManagedPaths(config_dir, settings.ManagedScriptAnalyzers),
+        .AnalyzerPackages = ParseManagedAnalyzerPackages(settings.ManagedScriptAnalyzerPackages),
+        .AdditionalFiles = ResolveManagedPaths(config_dir, settings.ManagedScriptAdditionalFiles),
+    };
+}
+
+static auto ParseManagedAnalyzerPackages(const vector<string>& entries) -> vector<pair<string, string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A floating version makes the rule set depend on the day the build ran, which defeats the point of
+    // gating on analyzer diagnostics at all, so it is rejected here rather than emitted
+    constexpr string_view FLOATING_VERSION_CHARS = "*[]()<>=,";
+
+    vector<pair<string, string>> packages;
+    packages.reserve(entries.size());
+
+    for (const string& raw_entry : entries) {
+        string entry = TrimString(raw_entry);
+
+        if (entry.empty()) {
+            continue;
+        }
+
+        size_t version_sep = entry.find(',');
+
+        if (version_sep == string::npos) {
+            throw ManagedScriptBakerException("Analyzer package entry must be 'name,version'", entry);
+        }
+
+        string package_name = TrimString(entry.substr(0, version_sep));
+        string package_version = TrimString(entry.substr(version_sep + 1));
+
+        if (package_name.empty()) {
+            throw ManagedScriptBakerException("Analyzer package name is empty", entry);
+        }
+
+        if (package_version.empty()) {
+            throw ManagedScriptBakerException("Analyzer package version is empty", entry);
+        }
+
+        if (package_version.find_first_of(FLOATING_VERSION_CHARS) != string::npos) {
+            throw ManagedScriptBakerException("Analyzer package version must be exact", entry, package_version);
+        }
+
+        packages.emplace_back(std::move(package_name), std::move(package_version));
+    }
+
+    return packages;
 }
 
 static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>
