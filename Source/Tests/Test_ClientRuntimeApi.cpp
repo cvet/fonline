@@ -68,6 +68,19 @@ TEST_CASE("ClientRuntimeApi")
         CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Unknown));
     }
 
+    SECTION("OnlyClientSideUpdaterFailuresAreReported")
+    {
+        // A server that is down, restarting or unreachable is the one terminal result that says nothing
+        // about this client, so it must never reach the crash reporter - one event per player per restart
+        CHECK_FALSE(IsUpdaterFailureReportable(UpdaterResult::ConnectionFailed));
+
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::Failed));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::MetadataMismatch));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::UpdaterOutdated));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::PlatformUnsupported));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::ServerMissingNativeUpdate));
+    }
+
     SECTION("CurrentHostAbiIsSupported")
     {
         CHECK(IsSupportedClientRuntimeAbi(FO_CLIENT_RUNTIME_HOST_ABI_VERSION));

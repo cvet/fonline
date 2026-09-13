@@ -51,6 +51,7 @@ static constexpr string_view StrPlatformUnsupported = "Client outdated, please u
 static constexpr string_view StrUpdateFailed = "Client update failed. Please install the latest full client package.";
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
+static constexpr string_view StrServerUnavailable = "Can't connect to the server. It may be offline or restarting, please try again later.";
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
@@ -226,14 +227,14 @@ void Updater::AddText(string_view text)
     _messages.emplace_back(text);
 }
 
-void Updater::Abort(string_view text)
+void Updater::Abort(UpdaterResult result, string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
     _aborted = true;
 
     if (!_result.has_value()) {
-        _result = UpdaterResult::Failed;
+        _result = result;
     }
 
     AddText(text);
@@ -305,7 +306,7 @@ void Updater::GetNextFile()
         _tempFile.close();
 
         if (_tempFile.fail()) {
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -315,13 +316,13 @@ void Updater::GetNextFile()
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
             WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
             WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -351,7 +352,7 @@ void Updater::GetNextFile()
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
                         WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
-                        Abort(StrFilesystemError);
+                        Abort(UpdaterResult::Failed, StrFilesystemError);
                         return;
                     }
 
@@ -372,7 +373,7 @@ void Updater::GetNextFile()
 
         if (!dir.empty()) {
             if (!fs_create_directories(dir)) {
-                Abort(StrFilesystemError);
+                Abort(UpdaterResult::Failed, StrFilesystemError);
                 return;
             }
         }
@@ -382,7 +383,7 @@ void Updater::GetNextFile()
 
         if (!_tempFile) {
             WriteLog("Client updater: failed to open temp file {}", temp_path);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -475,13 +476,12 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         WriteLog("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
-        _result = UpdaterResult::UpdaterOutdated;
         WriteLog("Client updater: protocol is outdated, aborting");
-        Abort(StrUpdaterOutdated);
+        Abort(UpdaterResult::UpdaterOutdated, StrUpdaterOutdated);
     }
     else {
         WriteLog("Client updater: connection failed");
-        Abort(StrCantConnectToServer);
+        Abort(UpdaterResult::ConnectionFailed, StrCantConnectToServer);
     }
 }
 
@@ -490,7 +490,8 @@ void Updater::Net_OnDisconnect()
     FO_STACK_TRACE_ENTRY();
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
-        Abort(StrConnectionFailure);
+        // A drop while the transfer was still in flight is the server going away, not this client failing
+        Abort(UpdaterResult::ConnectionFailed, StrConnectionFailure);
     }
 }
 
@@ -715,7 +716,7 @@ void Updater::Net_OnUpdateFileData()
     int32_t data_size_raw = _conn.InBuf->Read<int32_t>();
 
     if (data_size_raw < 0) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -726,14 +727,14 @@ void Updater::Net_OnUpdateFileData()
     _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
     if (_filesToUpdate.empty() || !_tempFile.is_open()) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
     auto& update_file = _filesToUpdate.front();
 
     if (numeric_cast<uint64_t>(data_size) > update_file.RemaningSize) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -745,7 +746,7 @@ void Updater::Net_OnUpdateFileData()
     }
 
     if (!_tempFile) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -753,7 +754,7 @@ void Updater::Net_OnUpdateFileData()
 
     if (update_file.RemaningSize > 0) {
         if (data_size == 0) {
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -1198,9 +1199,21 @@ static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
         return "Failed";
     case UpdaterResult::MetadataMismatch:
         return "MetadataMismatch";
+    case UpdaterResult::ConnectionFailed:
+        return "ConnectionFailed";
     default:
         return "Unknown";
     }
+}
+
+auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Everything else names a state this client cannot recover from on its own: an unusable protocol, a
+    // platform that cannot self-update, resources that will not sync. A server that is down or restarting
+    // is none of those, and reporting it would file one crash per player for every restart we already know about
+    return result != UpdaterResult::ConnectionFailed;
 }
 
 // Reported, not thrown: the caller still owns the dialog and the quit that follows. Constructing the
@@ -1221,9 +1234,14 @@ void ShowUpdaterFailure(UpdaterResult result)
 
     string_view target_name = GetCurrentBinaryUpdateTargetName();
 
+    WriteLog("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
+
     // The dialog reaches one player; this reaches us. Every terminal failure here ends the client, and
-    // without a report the only trace is a screenshot the player chooses to send
-    ReportUpdaterFailure(result, target_name);
+    // without a report the only trace is a screenshot the player chooses to send. The log line above stays
+    // unconditional, so a failure we deliberately do not report is still visible in the player's log
+    if (IsUpdaterFailureReportable(result)) {
+        ReportUpdaterFailure(result, target_name);
+    }
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:
@@ -1240,6 +1258,9 @@ void ShowUpdaterFailure(UpdaterResult result)
         break;
     case UpdaterResult::Failed:
         Application::ShowErrorMessage(StrUpdateFailed, StrErrorMessageCaption, true);
+        break;
+    case UpdaterResult::ConnectionFailed:
+        Application::ShowErrorMessage(StrServerUnavailable, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:

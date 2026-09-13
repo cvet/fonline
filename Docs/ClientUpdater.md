@@ -546,6 +546,17 @@ headless variant. The splash UI (`Application::MainWindow`) is shared throughout
 user always sees indication of what is happening. The terminal state is exposed via
 `Updater::GetResult()` returning `UpdaterResult` (see header).
 
+`UpdaterResult::ConnectionFailed` separates "the server was not reachable" from "this client could not
+update itself". Both connection aborts land on it - the connect that never succeeded, and a drop while
+files were still in flight - and `IsUpdaterFailureReportable()` is what keeps it out of the crash
+reporter: a server that is down, restarting or unreachable from the player's network is an environment
+state, so filing it would cost one report per player per restart and carry nothing the server side does
+not already know. The failure is still visible - `ShowUpdaterFailure` writes the terminal result to the
+log unconditionally, before deciding whether to report it - and the player is told the server may be
+offline instead of being advised to reinstall a client that is not at fault. Every other result keeps
+reporting, `MetadataMismatch` included: its player-facing advice is also "try again later", but it names
+a server distributing resources it does not run on, which is a deployment defect worth a report.
+
 `CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())` decides whether the binary
 self-update step is even attempted: Windows / Linux / macOS are eligible; Web / iOS / Android
 currently require manual client updates because the platform either bundles the runtime
@@ -559,6 +570,7 @@ instead of looping back to the game which would only reject the connection again
 | Symptom | First signal |
 |---------|--------------|
 | Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
+| Client started while the server is down, restarting, or unreachable | client message box `Can't connect to the server. It may be offline or restarting, please try again later.`, client log `Client updater: connection failed` then `Client updater: terminal result ConnectionFailed`. Deliberately files **no** crash report - an offline server is not a client defect, and reporting it would flood the crash reporter on every restart |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
