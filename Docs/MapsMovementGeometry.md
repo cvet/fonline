@@ -60,7 +60,7 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 
 `GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
 
-`mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+`mdir` stores normalized angles and `hdir` stores discrete map directions. Native and managed constructors accept full signed 32-bit inputs and normalize before narrowing to their two-byte/one-byte ABI storage; negative and out-of-range values wrap into `[0, 360)` and `[0, MAP_DIR_COUNT)` respectively. Managed narrow integer arguments follow the same constructors. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
 
 ## Map camera projection
 

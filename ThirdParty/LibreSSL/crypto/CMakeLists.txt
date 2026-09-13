@@ -204,7 +204,6 @@ set(
 	crypto_legacy.c
 	crypto_memory.c
 	aes/aes.c
-	aes/aes_core.c
 	asn1/a_bitstr.c
 	asn1/a_enum.c
 	asn1/a_int.c
@@ -608,7 +607,12 @@ set(
 	x509/x_all.c
 )
 
-set(COMPAT_SRC empty.c)
+# (FOnline Patch) The amd64 assembly path supplies every aes_core entry point
+if(NOT "aes/aes_amd64.c" IN_LIST CRYPTO_SRC)
+	list(APPEND CRYPTO_SRC aes/aes_core.c)
+endif()
+
+set(COMPAT_SRC)
 
 set(CRYPTO_UNEXPORT ${CRYPTO_UNEXPORT} BIO_s_log)
 
@@ -768,13 +772,21 @@ foreach(SYM IN LISTS CRYPTO_UNEXPORT)
 endforeach()
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/crypto_p.sym ${SYMS})
 
-add_library(compat_obj OBJECT ${COMPAT_SRC})
-target_include_directories(compat_obj
-	PRIVATE
-		../include/compat
-	PUBLIC
-		../include
-		${CMAKE_BINARY_DIR}/include)
+# (FOnline Patch) Compatibility targets contain only actual platform shims
+if(COMPAT_SRC)
+	add_library(compat_obj OBJECT ${COMPAT_SRC})
+	target_include_directories(compat_obj
+		PRIVATE
+			../include/compat
+		PUBLIC
+			../include
+			${CMAKE_BINARY_DIR}/include)
+	set(COMPAT_OBJECTS $<TARGET_OBJECTS:compat_obj>)
+else()
+	add_library(compat_obj INTERFACE)
+	set(COMPAT_OBJECTS)
+endif()
+set(COMPAT_OBJECTS ${COMPAT_OBJECTS} PARENT_SCOPE)
 
 add_library(crypto_obj OBJECT ${CRYPTO_SRC})
 target_include_directories(crypto_obj
@@ -856,7 +868,8 @@ if(MSVC)
 	)
 endif()
 
-add_library(crypto $<TARGET_OBJECTS:crypto_obj> $<TARGET_OBJECTS:compat_obj> empty.c)
+# (FOnline Patch) Object inputs already supply the library language
+add_library(crypto $<TARGET_OBJECTS:crypto_obj> ${COMPAT_OBJECTS})
 
 export_symbol(crypto ${CMAKE_CURRENT_BINARY_DIR}/crypto_p.sym)
 target_link_libraries(crypto ${PLATFORM_LIBS})

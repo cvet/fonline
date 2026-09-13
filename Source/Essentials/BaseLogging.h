@@ -39,6 +39,8 @@
 FO_BEGIN_NAMESPACE
 
 extern void LogToFile(string_view path, bool append = false);
+// std::string because this module sits above StringObject in the Essentials order
+extern auto GetLogFilePath() -> std::string;
 extern void SetAsyncLogWriting(bool enabled);
 extern void SuspendAsyncLogWriting() noexcept;
 extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st = nullptr) noexcept;

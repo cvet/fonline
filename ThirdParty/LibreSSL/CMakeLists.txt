@@ -19,7 +19,11 @@ if(MSVC)
 	cmake_policy(SET CMP0091 NEW)
 endif()
 
-project(LibreSSL LANGUAGES C ASM)
+project(LibreSSL LANGUAGES C)
+# (FOnline Patch) MSVC uses ASM_MASM below, not its C compiler as generic ASM
+if(NOT MSVC)
+	enable_language(ASM)
+endif()
 
 include(CheckFunctionExists)
 include(CheckSymbolExists)

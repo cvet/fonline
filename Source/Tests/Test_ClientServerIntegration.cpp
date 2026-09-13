@@ -2219,7 +2219,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         BakerTests::OverrideSetting(client_settings.Packaged, true);
         BakerTests::OverrideSetting(client_settings.ClientResources, install);
         BakerTests::OverrideSetting(client_settings.ClientResourceEntries, vector<string> {"Embedded", "Metadata", "Art"});
-        client_settings.UserWritablePath = writable;
+        client_settings.ApplyWritableRoot(writable);
         Updater updater {&client_settings, &GetApp()->MainWindow};
         REQUIRE(WaitForUpdaterResult(updater));
         REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);

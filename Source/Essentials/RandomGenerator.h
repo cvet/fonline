@@ -111,6 +111,20 @@ public:
     // Uniform over [0, 1), with the 53 bits a double can hold exactly
     [[nodiscard]] auto next_normalized() noexcept -> float64_t { return static_cast<float64_t>(next() >> 11) * 0x1.0p-53; }
 
+    // The whole generator state: 32 bytes, enough to resume the exact sequence after a restart
+    using state_data = std::array<uint64_t, 4>;
+
+    [[nodiscard]] auto capture_state() const noexcept -> state_data { return _state; }
+
+    // xoshiro256++ sits at a fixed point when every word is zero and would only ever return zeros from there,
+    // so an all-zero state is rejected instead of silently producing a dead sequence
+    void restore_state(const state_data& state)
+    {
+        FO_VERIFY_AND_THROW(state[0] != 0 || state[1] != 0 || state[2] != 0 || state[3] != 0, "Random generator state must not be all zeros");
+
+        _state = state;
+    }
+
 private:
     [[nodiscard]] static auto rotate_left(uint64_t value, int32_t bits) noexcept -> uint64_t { return (value << bits) | (value >> (64 - bits)); }
 

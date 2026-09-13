@@ -35,10 +35,84 @@
 
 #include "Common.h"
 #include "DataSerialization.h"
+#include "EngineBase.h"
 #include "FileSystem.h"
+#include "ImGuiStuff.h"
+#include "MetadataRegistration.h"
 #include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
+
+class FramePumpTestBackend final : public ScriptSystemBackend
+{
+public:
+    explicit FramePumpTestBackend(function<void()> callback) :
+        _callback {std::move(callback)}
+    {
+        FO_STACK_TRACE_ENTRY();
+    }
+
+    void Process() override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        _callback();
+    }
+
+private:
+    function<void()> _callback;
+};
+
+class FramePumpTestEngine final : public BaseEngine
+{
+public:
+    FramePumpTestEngine(ptr<GlobalSettings> settings, EngineSideKind side) :
+        BaseEngine(settings, FileSystem {}, [this, side] {
+            if (side == EngineSideKind::ServerSide) {
+                RegisterServerStubMetadata(this, nullptr);
+            }
+            else if (side == EngineSideKind::ClientSide) {
+                RegisterClientStubMetadata(this, nullptr);
+            }
+            else {
+                RegisterMapperStubMetadata(this, nullptr);
+            }
+        })
+    {
+        FO_STACK_TRACE_ENTRY();
+    }
+};
+
+TEST_CASE("EngineFramePumpsOnlyItsOwnScriptBackends")
+{
+    GlobalSettings settings {false};
+    settings.ApplyDefaultSettings();
+
+    for (EngineSideKind side : {EngineSideKind::ServerSide, EngineSideKind::ClientSide, EngineSideKind::MapperSide}) {
+        FramePumpTestEngine first {&settings, side};
+        FramePumpTestEngine second {&settings, side};
+        int32_t first_calls = 0;
+        int32_t second_calls = 0;
+        first.RegisterBackend(7, SafeAlloc::MakeUnique<FramePumpTestBackend>([&] {
+            first_calls++;
+            CHECK(first.GetFrameTime() == first.GameTime.GetFrameTime());
+        }));
+        second.RegisterBackend(7, SafeAlloc::MakeUnique<FramePumpTestBackend>([&] { second_calls++; }));
+
+        first.FrameAdvance();
+        CHECK(first_calls == 1);
+        CHECK(second_calls == 0);
+        second.FrameAdvance();
+        CHECK(first_calls == 1);
+        CHECK(second_calls == 1);
+
+        first.ShutdownBackends();
+        first.FrameAdvance();
+        CHECK(first_calls == 1);
+        second.FrameAdvance();
+        CHECK(second_calls == 2);
+    }
+}
 
 TEST_CASE("CommonEvents")
 {

@@ -38,6 +38,7 @@
 
 #if !FO_WINDOWS
 #include <fcntl.h>
+#include <pwd.h>
 #include <unistd.h>
 #endif
 
@@ -90,6 +91,32 @@ auto posix::get_current_process_id() noexcept -> int32_t
     return static_cast<int32_t>(::getpid());
 #else
     return 0;
+#endif
+}
+
+auto posix::get_home_dir() noexcept -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if !FO_WEB
+    // The reentrant form: the shared one returns a pointer into storage another caller may replace
+    passwd pwd {};
+    passwd* result = nullptr;
+    vector<char> buffer;
+    buffer.resize(4096);
+
+    if (::getpwuid_r(::getuid(), &pwd, buffer.data(), buffer.size(), &result) != 0 || result == nullptr) {
+        return std::nullopt;
+    }
+
+    if (pwd.pw_dir == nullptr || pwd.pw_dir[0] == 0) {
+        return std::nullopt;
+    }
+
+    return string {pwd.pw_dir};
+
+#else
+    return std::nullopt;
 #endif
 }
 

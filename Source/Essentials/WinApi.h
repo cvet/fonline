@@ -58,6 +58,9 @@ namespace winapi
 
     auto get_current_process_id() noexcept -> uint32_t;
     auto get_module_file_name() noexcept -> optional<string>;
+    // Asked of the shell, not the environment: a service or a sandbox has no LOCALAPPDATA, and answering
+    // "none" sends the caller back to a directory it may not be allowed to write
+    auto get_local_app_data_path() noexcept -> optional<string>;
     auto get_process_working_set_size() noexcept -> size_t;
     auto get_process_private_usage() noexcept -> size_t;
     auto get_process_cpu_time_ns() noexcept -> optional<uint64_t>;

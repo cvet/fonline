@@ -567,7 +567,6 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-collection.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-compression.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-counters.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypt.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-array.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-cursor-cmd.c
@@ -577,7 +576,6 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-database.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-error.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-deprioritized-servers.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-flags.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-find-and-modify.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-generation-map.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-init.c
@@ -595,7 +593,6 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-interrupt.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-jitter-source.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-list.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-linux-distro-scanner.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-log.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-log-and-monitor-private.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-memcmp.c
@@ -603,7 +600,6 @@ set (MONGOC_SOURCES
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-oidc-cache.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-oidc-callback.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-oidc-env.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-opcode.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-optional.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-opts-helpers.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-opts.c
@@ -650,32 +646,70 @@ set (MONGOC_SOURCES
    ${mongo-c-driver_SOURCE_DIR}/src/common/src/common-oid.c
    ${mongo-c-driver_SOURCE_DIR}/src/common/src/common-thread.c
 
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-scram.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-ssl.c
-
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto-openssl.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rand-openssl.c
-
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto-cng.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rand-cng.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-secure-channel.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-secure-channel.c
-
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto-common-crypto.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rand-common-crypto.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-secure-transport.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-secure-transport.c
-
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto-openssl.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rand-openssl.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-openssl.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-openssl-bio.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-openssl.c
-   ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-ocsp-cache.c
    ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-bulkwrite.c
 )
+
+# (FOnline Patch) Archive only feature implementations; disabled translation units contain no symbols
+if (MONGOC_ENABLE_CLIENT_SIDE_ENCRYPTION)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypt.c
+   )
+endif ()
+if (CMAKE_SYSTEM_NAME MATCHES "^(Linux|Android)$")
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-linux-distro-scanner.c
+   )
+endif ()
+if (MONGOC_ENABLE_CRYPTO)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-scram.c
+   )
+endif ()
+if (MONGOC_ENABLE_SSL)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-ssl.c
+   )
+endif ()
+if (MONGOC_ENABLE_CRYPTO_LIBCRYPTO)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto-openssl.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rand-openssl.c
+   )
+endif ()
+if (MONGOC_ENABLE_CRYPTO_CNG)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto-cng.c
+   )
+endif ()
+if (MONGOC_ENABLE_SSL_SECURE_CHANNEL)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rand-cng.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-secure-channel.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-secure-channel.c
+   )
+endif ()
+if (MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-crypto-common-crypto.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-rand-common-crypto.c
+   )
+endif ()
+if (MONGOC_ENABLE_SSL_SECURE_TRANSPORT)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-secure-transport.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-secure-transport.c
+   )
+endif ()
+if (MONGOC_ENABLE_SSL_OPENSSL)
+   list (APPEND MONGOC_SOURCES
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-openssl.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-stream-tls-openssl-bio.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-openssl.c
+      ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-ocsp-cache.c
+   )
+endif ()
 
 if (MONGOC_ENABLE_SASL)
    list (APPEND MONGOC_SOURCES ${PROJECT_SOURCE_DIR}/src/mongoc/mongoc-sasl.c)

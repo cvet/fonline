@@ -58,6 +58,43 @@ The exact list depends on host OS and target platform, but common tools include:
 
 Prefer the embedding project's documented setup because it may pin specific SDK/tool versions.
 
+Linux managed builds compile position-independent objects and link executable targets as PIE.
+On x64, Mono's JIT requires low-address executable mappings; a large native `brk` heap in a
+non-PIE host can occupy that address range before the first managed call and make a small JIT
+allocation fail with `ENOMEM` despite available memory. Shared libraries retain PIC objects,
+including in MemorySanitizer configurations; the executable-only `-pie` option must not be
+applied to shared or module targets.
+
+## Fetching through a mirror of your own
+
+`prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from
+whoever publishes them. Each of those is a machine you do not run, and a dropped connection costs the
+job that is waiting on it. An embedding project may put a host of its own in front of them; the engine
+only needs to be told where it is, so nothing about that host is compiled in and everything travels in
+the environment:
+
+| variable | what it configures |
+|---|---|
+| `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
+| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The Emscripten SDK is keyed by version, host OS, and architecture; the MSVC SDK tree is keyed by xwin version and contained architectures. Each complete tree is built once and downloaded whole afterwards. |
+| `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
+| `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
+
+Unset, every one of them leaves the download path exactly as it was.
+
+Two behaviours are deliberate. A download is checked against the upstream `Content-Length`, because a
+dropped connection ends the read instead of raising and an archive cut in half unpacks into a failure
+far from its cause. And a workspace cache that is empty, unreachable or refusing is only a **miss**:
+it exists to make the build faster and independent of other people's servers, not to become another
+way for it to fail.
+
+`emsdk` and `xwin` fetch their own packages, so mirroring the engine's direct downloads does not cover
+them. Their complete prepared results are therefore what the workspace cache holds. A corrupt or incomplete
+Emscripten cache object is discarded and rebuilt locally; cache creation and upload remain best-effort.
+Cached trees are extracted through the standard data-only tar filter after a path-boundary check. Extraction
+lands in a temporary sibling first, and only the named complete SDK directory is promoted, so an archive
+cannot overwrite another prepared workspace tree. The existing xwin cache follows the same restore rule.
+
 ## Where build logic lives
 
 - [../BuildTools/README.md](../BuildTools/README.md) — BuildTools overview.

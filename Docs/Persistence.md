@@ -1,6 +1,6 @@
 # Persistence
 
-This document explains the server-side database abstraction, collection/key model, commit queue, recovery logs, and backend implementations.
+This document explains the server-side database abstraction, collection/key model, commit queue, backend-consistent snapshots, recovery logs, and backend implementations.
 
 Use it when changing `Source/Server/DataBase.*`, database settings, entity save/load code, or persistence tests.
 
@@ -19,6 +19,7 @@ Do not put live credentials, production connection strings, or host-specific rec
 - reads: `Get()`, `Valid()`;
 - writes: `Insert()`, `Update()`, `Delete()`;
 - commit control: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
+- backend snapshot: `CreateSnapshot()` and `RestoreSnapshot(bytes)`;
 - debug UI: `DrawGui()`.
 
 `ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
@@ -54,6 +55,7 @@ Core types:
 
 Backends can override:
 
+- `CreateSnapshotData()` and `RestoreSnapshotData()` when the backend can represent its whole content as bytes;
 - `TryReconnect()`;
 - `DrawGui()`;
 - test hooks such as `OnCommitOperationWrittenToOpLog()` and `OnPendingChangesRestored()`.
@@ -91,6 +93,18 @@ Writes are represented as commit operations:
 
 The public `DataBase` facade forwards write calls into this machinery. Backend write implementations should remain focused on durable record operations, while shared logic handles scheduling, operation logs, panic/retry policy, and metrics.
 
+## Backend-consistent snapshots
+
+`DataBase::CreateSnapshot()` returns the whole database content as bytes and `RestoreSnapshot(bytes)` puts such a content back. The database never names a file, creates a directory, or decides where a snapshot lives: storing the bytes is the caller's business. Shared `DataBaseImpl` logic requires an active commit thread for a capture, drains the pending commit queue, rejects a failed backend, then blocks new `Insert()` / `Update()` / `Delete()` producers until the backend operation returns or throws. A restore requires an already drained queue and blocks producers the same way. Concurrent snapshot operations serialize. Reads may continue, subject to the backend's own storage lock.
+
+A backend without a byte representation throws `DataBaseException` in both directions, so an unsupported backend fails loudly instead of returning an empty snapshot. These operations do not select slot names, publish packages, write manifests, capture Engine/runtime state, or authorize a save; those policies belong to the embedding session controller. The caller must first stop gameplay/runtime producers and materialize any exact state that needs to enter the commit queue.
+
+`DbSQLite::CreateSnapshotData()` serializes the database with `sqlite3_serialize()` while holding the source storage lock, so the bytes are the exact page image the database would have on disk with WAL content folded in. `RestoreSnapshotData()` loads those bytes into a private in-memory database with `sqlite3_deserialize()` and copies it into the live storage with the online-backup API: deserializing straight into the live handle would detach it from its file. The buffer handed to `sqlite3_deserialize()` is allocated with `sqlite3_malloc64()` and freed on close.
+
+`ServerEngine::CreateSnapshot()` is the higher Engine-state composition for a stable authoritative world. It first reaches quiescence and returns typed blockers for runtime-only script contexts, delayed closures, time events, or movement; only a ready world flushes exact time/id, creates the backend payload, and writes the paired versioned RNG/compatibility manifest. This does not change the narrower `DataBase` contract and is not atomic slot publication. Restore callers strictly read the manifest, copy the immutable database payload to an isolated live directory, and pass its state into a fresh `ServerEngine`; opening a selected snapshot directly as writable live storage is outside the supported contract.
+
+`DataBaseSnapshotDrainsAndBlocksNewProducers` pins the shared commit/producer barrier. `SQLiteDataBaseCreatesReopenableSnapshotWithoutOverwriting` pins pending-write inclusion, later-source-mutation exclusion, live-source independent reopen, no-overwrite behavior, and a failed destination that leaves no database file.
+
 ## Recovery logs and panic policy
 
 `DataBaseImpl::RecoveryLogHandle` owns an operation-log file:
@@ -126,7 +140,7 @@ When changing commit durability, validate failed-write recovery and pending-log 
 ## Backend-specific notes
 
 - JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths.
-- SQLite backend: enabled only when the build has `FO_HAVE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, and SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`.
+- SQLite backend: enabled only when the build has `FO_HAVE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`, and `CreateSnapshot()` returns the serialized page image rather than copying the live files.
 - Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; it shares the BSON conversion and allocator setup used by the JSON and SQLite backends.
 - Memory backend: useful for tests and non-durable runtime paths.
 
@@ -178,5 +192,6 @@ Relevant tests include:
 3. Validate integer-key and string-key collections when changing key handling.
 4. Validate commit queue drain with `StartCommitChanges()` / `WaitCommitChanges()`.
 5. Validate operation-log restore after a simulated failed commit when durability/recovery behavior changes.
-6. Validate entity save/load paths when persistent property semantics change.
-7. Never put production credentials or live connection strings into repository docs or tests.
+6. For snapshot changes, prove pending changes are included, later source mutations are excluded, the destination reopens while the source remains live, completed destinations are not overwritten, and failed destinations leave no database artifact.
+7. Validate entity save/load paths when persistent property semantics change.
+8. Never put production credentials or live connection strings into repository docs or tests.

@@ -30,6 +30,25 @@ from typing import Any
 
 sys.path.append(os.getcwd())
 
+WINDOWS_INSTALLER_SERVICE_UNAVAILABLE = 'The Windows Installer Service could not be accessed.'
+
+
+def _run_streaming_capture(command: list[str]) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors='replace',
+    )
+    assert process.stdout is not None
+    output: list[str] = []
+    for line in process.stdout:
+        sys.stdout.write(line)
+        sys.stdout.flush()
+        output.append(line)
+    return subprocess.CompletedProcess(command, process.wait(), ''.join(output))
+
 
 def gen_guid() -> str:
     return str(uuid.uuid4()).upper()
@@ -128,6 +147,7 @@ class PackageGenerator:
             'Languages': '1033',
             'Compressed': 'yes',
             'SummaryCodepage': '1252',
+            'InstallScope': 'perUser',
         })
 
         if self.major_upgrade is not None:
@@ -189,7 +209,7 @@ class PackageGenerator:
                                                  })
             ET.SubElement(comp, 'RegistryValue', {'Root': 'HKCU',
                                                   'Key': 'Software\\Microsoft\\' + self.name,
-                                                  'Name': 'Installed',
+                                                  'Name': 'StartMenuInstalled',
                                                   'Type': 'integer',
                                                   'Value': '1',
                                                   'KeyPath': 'yes',
@@ -211,7 +231,7 @@ class PackageGenerator:
                                                  })
             ET.SubElement(comp, 'RegistryValue', {'Root': 'HKCU',
                                                   'Key': 'Software\\Microsoft\\' + self.name,
-                                                  'Name': 'Installed',
+                                                  'Name': 'DesktopInstalled',
                                                   'Type': 'integer',
                                                   'Value': '1',
                                                   'KeyPath': 'yes',
@@ -494,7 +514,7 @@ class PackageGenerator:
                     'Id': 'Environment',
                     'Name': 'PATH',
                     'Part': 'last',
-                    'System': 'yes',
+                    'System': 'no',
                     'Action': 'set',
                     'Value': '[INSTALLDIR]',
                 })
@@ -506,6 +526,20 @@ class PackageGenerator:
                     'Name': f,
                     'Source': os.path.join(current_dir, f),
                 })
+            directory_id = 'INSTALLDIR' if current_dir == staging_dir else self.path_to_id(current_dir)
+            ET.SubElement(comp_xml_node, 'RemoveFolder', {
+                'Id': 'Remove_' + directory_id,
+                'Directory': directory_id,
+                'On': 'uninstall',
+            })
+            ET.SubElement(comp_xml_node, 'RegistryValue', {
+                'Root': 'HKCU',
+                'Key': 'Software\\' + self.name + '\\Components',
+                'Name': component_id,
+                'Type': 'integer',
+                'Value': '1',
+                'KeyPath': 'yes',
+            })
 
         for dirname in cur_node.dirs:
             dir_id = self.path_to_id(os.path.join(current_dir, dirname))
@@ -527,25 +561,41 @@ class PackageGenerator:
             sys.exit(1)
         """
         if platform.system() == "Windows":
-            subprocess.check_output([os.path.join(wixdir, 'candle')] + self.args1 + [self.main_xml])
-            subprocess.check_output([os.path.join(wixdir, 'light'),
-                                   '-ext', 'WixUIExtension',
-                                   '-cultures:en-us',
-                                   '-dWixUILicenseRtf=' + self.license_file] + \
-                                   self.args2 + ['-out', self.final_output, self.main_o])
+            subprocess.run([os.path.join(wixdir, 'candle')] + self.args1 + [self.main_xml], check=True)
+            light_command = [os.path.join(wixdir, 'light'),
+                             '-ext', 'WixUIExtension',
+                             '-cultures:en-us',
+                             '-dWixUILicenseRtf=' + self.license_file] + \
+                            self.args2 + ['-out', self.final_output, self.main_o]
+            light_result = _run_streaming_capture(light_command)
+            if light_result.returncode != 0:
+                if WINDOWS_INSTALLER_SERVICE_UNAVAILABLE in light_result.stdout:
+                    print(
+                        'Windows Installer service is unavailable for WiX ICE validation; '
+                        'retrying the same MSI link with validation disabled.',
+                        flush=True,
+                    )
+                    subprocess.run([light_command[0], '-sval'] + light_command[1:], check=True)
+                else:
+                    light_result.check_returncode()
         else:
-            subprocess.check_output([os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml])
+            subprocess.run(
+                [os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml], check=True)
 
 
 def run(args: list[str]) -> None:
+    wixdir = ''
+    if len(args) == 3 and args[0] == '--wix-dir':
+        wixdir = args[1]
+        args = args[2:]
     if len(args) != 1:
-        sys.exit('createmsi.py <msi definition json>')
+        sys.exit('createmsi.py [--wix-dir <directory>] <msi definition json>')
     jsonfile = args[0]
     if '/' in jsonfile or '\\' in jsonfile:
         sys.exit('Input file %s must not contain a path segment.' % jsonfile)
     p = PackageGenerator(jsonfile)
     p.generate_files()
-    p.build_package()
+    p.build_package(wixdir)
 
 
 def main() -> None:

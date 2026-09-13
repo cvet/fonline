@@ -1189,6 +1189,31 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.DestroyEntity(cr);
     }
 
+    SECTION("CustomInnerEntityCreationRetainsCoveredHolderOwnLock")
+    {
+        vector<hstring> map_pids {get_func("TestMap")};
+        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        auto map = loc->GetMaps().front();
+        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
+
+        nptr<SyncContext> sync_ctx = SyncContext::GetCurrentOnThisThread();
+        REQUIRE(sync_ctx);
+        sync_ctx->SyncEntity(map);
+        REQUIRE(map->GetEntityLock()->IsLockedByCurrentThread());
+        CHECK_FALSE(cr->GetEntityLock()->IsLockedByCurrentThread());
+
+        hstring custom_entry = get_func("CoverageItems");
+        auto custom = server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {});
+
+        CHECK(cr->GetEntityLock()->IsLockedByCurrentThread());
+        CHECK(custom->GetParent() == cr);
+        CHECK(custom->GetCustomHolderEntry() == custom_entry);
+
+        sync_ctx->SyncEntity(loc);
+        server->MapMngr.DestroyLocation(loc);
+    }
+
     SECTION("DirectLoadRestoresContainerItemTree")
     {
         auto container = server->ItemMngr.CreateItem(get_func("TestItem"), 1, nullptr);
@@ -1246,6 +1271,25 @@ TEST_CASE("LoadUnloadCritter")
         server->ItemMngr.DestroyItem(loaded);
         CHECK(server->EntityMngr.GetItem(container_id) == nullptr);
         CHECK(server->EntityMngr.GetItem(inner_id) == nullptr);
+    }
+
+    SECTION("ContainerRejectsItsOwnSubtree")
+    {
+        auto outer = server->ItemMngr.CreateItem(get_func("TestItem"), 1, nullptr);
+        auto outer_holder = outer.hold_ref();
+
+        auto inner = server->ItemMngr.AddItemContainer(outer, get_func("TestItem"), 1, {});
+        REQUIRE(inner);
+        auto inner_holder = inner.hold_ref();
+
+        CHECK_THROWS(outer->AddItemToContainer(outer, {}));
+        CHECK_THROWS(inner->AddItemToContainer(outer, {}));
+
+        CHECK(inner->GetOwnership() == ItemOwnership::ItemContainer);
+        CHECK(inner->GetContainerId() == outer->GetId());
+        CHECK(outer->GetOwnership() == ItemOwnership::Nowhere);
+
+        server->ItemMngr.DestroyItem(outer);
     }
 
     SECTION("DirectLoadMapRestoresCrittersAndItems")

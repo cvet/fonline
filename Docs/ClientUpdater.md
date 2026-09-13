@@ -1,6 +1,6 @@
 # Client Runtime Split and Updater
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Engine-owned documentation. Source paths under `../` are relative to the FOnline engine root.
 
 The native client ships as two artifacts:
 
@@ -19,6 +19,16 @@ module is needed. The headless host/runtime targets use the same dependency.
 
 The updater protocol is the same machinery used to deliver gameplay resources, but versioned independently from gameplay compatibility so a host released today can ingest tomorrow's runtime module without a host-side rebuild.
 
+
+## Managed runtime resource ownership
+
+Mono and the native interop shims are linked into each managed application. The managed class-library payload, including `System.Private.CoreLib.dll`, is data: the Managed baker writes it under `ManagedRuntime/` in the managed resource pack, and normal resource packaging delivers it with the game assemblies. An embedding project can assign that baker to a pack such as `Scripts`, so the payload lives in `Scripts.fores`; it is not an installation-level companion directory. CoreLib is nevertheless target-platform-specific: its Windows build imports Windows interop, while Unix, Android, and browser builds select their respective implementations.
+
+Before Mono initialization, the managed backend restores those resource files atomically into the writable content-addressed cache at `Cache/ManagedRuntime/<content-hash>/` and configures Mono from that directory. The resource payload wins whenever it exists. A filtered `ManagedRuntime/` beside an executable is only the fallback used by unpackaged applications and build tools.
+
+Updater targets therefore keep their ordinary platform/architecture names (`Windows-win64`, `Linux-x64`, `Web-wasm`, and so on). There is no managed-runtime target suffix or identity sidecar. Managed assembly directories use the ordinary resource-role suffixes (`Assemblies-server`, `Assemblies-client`, and `Assemblies-mapper`), and packaging applies those suffixes to directory components as well as filenames. During packaging, every Client resource pack therefore retains only `Assemblies/Assemblies-client/` and is rebuilt with the `ManagedRuntime` payload from its own binary target; Server and Mapper assemblies never enter the client artifact. A Server package stages those rebuilt packs at `PlatformBinaries/<target>/<pack>.fores`; when several native build variants share a target, the least-qualified entry (normally default Release) supplies this single target-wide pack, because independent builds can produce byte-distinct CoreLib files from the same source revision. `UpdaterBackend` tags configured pack names there as `ClientResources` and replaces the same-named common entry in that target's descriptor. Managed class-library changes still travel through the resource updater, while a native Mono or interop-shim change travels in the native runtime module and follows the existing native compatibility/restart protocol where native self-update is supported.
+
+Binary output postfixes are parsed on full flag boundaries: a custom postfix such as `Debug_Profiling_Total` remains a postfix and does not change the profiling variant.
 
 ## Server-side updater backend
 
@@ -51,8 +61,14 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `Source/Essentials/Platform.cpp`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/package.py`
+- `BuildTools/managed_runtime_payload.py`
 - `BuildTools/msicreator/createmsi.py`
 - `BuildTools/tests/test_package_zip_helpers.py`
+- `BuildTools/tests/test_managed_runtime_packaging.py`
+- `BuildTools/tests/test_managed_runtime_payload.py`
+- `BuildTools/tests/test_package_windows_arch_variants.py`
+- `Source/Scripting/Managed/ManagedRuntime.h`
+- `Source/Scripting/Managed/ManagedRuntime.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
@@ -201,8 +217,9 @@ A fresh launch sidesteps both: the new process loads the promoted runtime as its
 and enters the game without staging another update.
 
 > **Installed (writable-root) clients.** After promotion, the host records the writable live DLL in a
-> small selector under `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/`. On the next
-> launch an `INSTALLED` host reads and validates that selector before `InitApp`, then loads the writable
+> small selector in the writable root itself, next to the log and the session marker
+> (`MakeClientRuntimeBootstrapPath(<root>)` → `<root>/<runtime><ext>.path`). On the next launch a host
+> with a writable root reads and validates that selector before `InitApp`, then loads the writable
 > DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
 > names a different runtime, or points to neither a live nor staged file. Portable clients never consult
 > this selector. Gameplay resources use the same overlay precedence: `GetClientResources()` mounts the
@@ -338,7 +355,8 @@ UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
 The backend caps each portion by `Network.UpdateFileMaxPortionSize`. The client advances within the requested
-range and requests the remainder. It rejects negative, oversized or stalled replies. The server rejects an
+range and requests the remainder, using the existing temp-file size to resume a complete-file transfer after
+reconnect without server-side state. It rejects negative, oversized or stalled replies. The server rejects an
 unknown file index, mismatched expected artifact hash, out-of-bounds range, invalid portion setting or failed
 read. Disk mode retains opened file descriptors for the advertised artifacts; memory mode retains their bytes.
 Deployments must replace published artifacts, never modify the bytes of an opened artifact in place. An opened
@@ -375,6 +393,11 @@ file must reproduce the advertised physical hash and have a valid catalog with t
 durability ordering, then discards the backup. Only after promotion succeeds is `Pack.patch.fores` removed.
 The read-only installation remains intact; subsequent reads select the writable base. A stale leftover patch
 cannot apply to its replacement because its base binding differs.
+
+Complete native-file hash checks use `Updater::IsDiskFileHashMatch`, which caches `(size, mtime, hash)` in
+`CacheStorage` under a basename plus a hash of the full path. A changed size or modification time invalidates
+the entry. Resource freshness uses the pair's catalog `ContentHash`; a fully downloaded replacement base is
+instead verified against its header `PackHash` before promotion.
 
 Interrupted replacement recovery runs before updater reads, and shared base resolution restores a missing
 writable base from its backup before bootstrap/Core or cache selection can fall back to the installed copy.
@@ -429,7 +452,7 @@ auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uin
 | `ServerNetwork.UpdateFilesInMemory` | top-level + `[SubConfig]` | `True` keeps every packaged update file in RAM (low CPU under load). `False` serves from disk on demand (low RAM, more I/O). Public `[SubConfig]`s in this project: `PublicGame = True`, `DailyTest = True`, `Staging = True`. |
 | `Network.ForceMetadataVersion` | top-level | Testing only: overrides the layout version the client reports, so a divergence can be simulated without a second bake. Empty in every shipped config. |
 | `Baking.PlatformBinaries` | top-level | Directory the server reads per-target client runtime libraries from, and the packager writes them to. Default `PlatformBinaries`, resolved relative to the server's working directory / package root. |
-| `Client.UserWritablePath` | client | Writable data root for an **installed** client whose install dir is read-only. Empty (default) = **portable** (cache/logs/updates next to the exe). `*` = the per-OS user data dir. Otherwise an explicit absolute path. See the section below. |
+| `Common.UserWritablePath` | common | **Read-only**: the writable data root for everything written at runtime — log, cache, resource overlay, self-updated binaries, and on the server the database. Resolved at startup before any config is read, so it is not authorable: `--UserWritablePath <path>` names it, otherwise an `INSTALLED` marker beside the executable selects the per-OS user data dir plus the project name, otherwise it stays empty and everything is relative to the working directory. See the section below. |
 
 There is no auto-detection of memory vs disk mode in C++. Choose explicitly per environment.
 
@@ -440,15 +463,36 @@ user unpacks anywhere. The Windows MSI defaults to `%LOCALAPPDATA%`, but an **in
 still sit in a read-only directory after an explicit `Program Files` choice (or under `/usr/...`), so
 its writes must go to a per-user writable location instead.
 
-`Client.UserWritablePath` selects the model, resolved at startup by `ResolveUserWritablePath(settings)` (`Source/Frontend/ApplicationInit.cpp`, called from `LoadAppSettings`):
+`ResolveWritableRoot(args)` (`Source/Frontend/ApplicationInit.cpp`) answers it, and it is **settings-free
+by design**: the log, the cache and the local-config cache all live under this root, so nothing read from
+disk may decide where it is. It runs before the config is even located, which is why it is also the first
+thing `main` does — the log file opens at its final location instead of being moved there later. In order:
 
-- **empty → portable** (default): writable paths stay relative to the exe / working dir (unchanged behaviour).
-- **`*` → per-OS user data dir** (`Platform::GetUserDataBase()` via env, no SDL/shell32 dependency): Windows `%LOCALAPPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or `~/.local/share`, then `/<Common.GameName>`.
-- **explicit path** → that absolute writable root.
+1. **`--UserWritablePath <path>` on the command line** (the dotted `--Common.UserWritablePath` spelling is
+   accepted too), scanned by hand rather than through the settings parser. This is how Android passes the
+   directory the platform hands it (`FOnlineActivity.getArguments`), and how a test isolates a run.
+   A config file **cannot** set it: a value that lives inside the root cannot name the root. The value `*`
+   asks for the same per-user directory the marker selects, for a launcher that wants it without knowing
+   the per-OS path.
+2. **an `INSTALLED` marker beside the executable** → the per-OS user data dir from
+   `Platform::GetUserDataBase()` (environment first, the OS itself as fallback): Windows
+   `%LOCALAPPDATA%`, macOS/iOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or
+   `~/.local/share` — plus `FO_NICE_NAME`. Android is the exception on that lookup: it keeps no usable
+   `HOME`, so its internal storage path is asked of SDL instead. The **project** name, not `Common.GameName`, because the name
+   has to be known before any config is read; the Windows MSI installs into the same directory name, so a
+   default install keeps one folder rather than two.
+3. **otherwise portable**: every writable path stays relative and therefore resolves against the **working
+   directory**. That is the anchor of the whole portable layout — the main config is found by walking up
+   from `std::filesystem::current_path()`, and `ClientResources`, `CacheResources` and `BakeOutput` are
+   relative names read from the same place — so writes cannot be anchored to the executable's directory
+   without splitting them from the reads they pair with. A player launching the exe from Explorer, Steam
+   or a shortcut gets a working directory equal to the install directory; a launcher that sets a foreign
+   one breaks resource loading first.
 
-Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>` subdirs, and is
-**fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
-bad install config never bricks startup.
+Resolution is idempotent, creates the directory (and `LoadAppSettings` then pre-creates the
+`Cache`/`<ClientResources>` subdirs once their names are known), and is **fail-safe**: if the directory
+cannot be determined or created it logs a warning and falls back to the working directory, so a bad
+install never bricks startup.
 
 Android supplies its app-private writable root explicitly and reads installed full bases directly from
 uncompressed APK asset regions. Web uses its preloaded writable in-memory filesystem without persistence.
@@ -466,26 +510,30 @@ The updater's packaged-mode gates and resource-root choices use the already load
 the filesystem's physical archive-versus-directory selection.
 
 **Native binary self-update for installed builds writes the runtime into the writable root**
-(`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
-and the exe dir for a portable one, so a self-updated runtime lands at `<root>/<runtime_name><ext>` (mirroring
+(`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) comes from
+`GetClientBinaryDir(UserWritablePath)` — the one rule for where a client keeps the binaries it may replace:
+`<root>` when it has a writable root and the exe dir when it does not — so a self-updated runtime lands at `<root>/<runtime_name><ext>` (mirroring
 the install-dir layout, `<exe_dir>/<runtime_name><ext>`) alongside its `-staging` and `<...>.pdb` siblings. It
 is **not** gated off — both portable and installed clients self-update on every platform where
 `CanSelfUpdateNativeModules()` is true.
 
-Because the host resolves and loads the runtime DLL *before* settings (so it cannot compute `<root>` itself —
-`Common.GameName` is only known after `InitApp`), the runtime returns the writable live path through
-`ClientRuntimeResult::RequestedRuntimePath`. The host promotes that path, validates that it is absolute and
-has the current executable-derived runtime filename, writes it to the installed-client bootstrap selector,
-and exits; it never loads it again in the same process. On the next launch the `INSTALLED` host reads the
-selector from `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/<runtime><ext>.path` before
-settings, accepts it only when the live file or its `-staging` sibling exists, and loads that runtime directly.
-Missing, oversized, relative, newline-containing, wrong-basename, and stale selectors fall back to the frozen
-install-dir runtime. `--ClientLibPath` remains the final explicit override. Portable clients update their
-exe-dir sibling runtime and neither write nor read the installed selector.
+The runtime returns the writable live path through `ClientRuntimeResult::RequestedRuntimePath`. The host
+promotes that path, validates that it is absolute and has the current executable-derived runtime filename,
+writes it to the bootstrap selector, and exits; it never loads it again in the same process. The host
+resolves the writable root once at startup through `ResolveWritableRoot` and `GlobalSettings::ApplyWritableRoot`,
+and derives the selector path and the session marker from it — so both halves of the
+client answer "where does this client write" identically, and an explicitly configured `UserWritablePath`
+is honoured by the host as well. On the next launch the host reads the selector from
+`<root>/<runtime><ext>.path` before `InitApp`, accepts it only when the live file or its `-staging` sibling
+exists, and loads that runtime directly. Missing, oversized, relative, newline-containing, wrong-basename,
+and stale selectors fall back to the frozen install-dir runtime. `--ClientLibPath` remains the final
+explicit override. A client with no writable root updates its exe-dir sibling runtime in place and neither
+writes nor reads a selector — there is nothing for one to point at.
 
-**Trigger:** the installer drops an `INSTALLED` file next to the exe; when `Client.UserWritablePath`
-is empty and that marker is present, the client switches to `*` automatically. The portable zip has no
-marker. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added
+**Trigger:** the installer drops an `INSTALLED` file next to the exe, and its presence alone selects the
+per-user layout. The portable zip has no marker. Android needs none either — its launcher passes the
+platform's own directory on the command line; when macOS/iOS bundle packaging lands, the marker belongs in
+`Contents/MacOS/` beside the executable, since a bundle's contents are read-only. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added
 then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay portable).
 
 ## Packaging
@@ -495,6 +543,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Client packages** include the host exe (e.g. `LF_Client.exe`) and the matching runtime library renamed to the same basename next to it (`LF_Client.dll`). The host derives the library name from its own exe basename at startup, so no config patching is required to point one at the other.
 - **Sibling client variants are not runtime companions.** Native GUI and headless hosts/runtimes share a build-output directory, so `package.py` excludes all engine-owned `Client`/`ClientLib` and `ClientHeadless`/`ClientLibHeadless` library names from the generic DLL/DSO companion pass. Only variants requested by the package are copied explicitly under their packaged basenames. This keeps stale headless build outputs out of ordinary portable/installer payloads while preserving explicit `Headless` test packages.
 - **Server packages** also stage every available client runtime library under `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
+- **Managed class libraries are platform-specific resource data.** The Managed baker places the filtered payload under `ManagedRuntime/` in its resource pack and tags each managed assembly directory with the standard resource-role suffix. `package.py` filters those directory components, keeps only `Assemblies/Assemblies-client/` in each Client copy, rebuilds it with that target's side-by-side clean payload, and stages corresponding Server updater copies under `PlatformBinaries/<target>/<pack>.fores`; Server and Mapper assemblies are not delivered to clients, the side-by-side directory is not shipped, and native Mono files are not hoisted into package roots. Web and Android use the same resource path but receive their own target contents.
 - **Windows Client packages with the `Wix` pack** build an additive MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or explicit command-line/UI choice still overrides that default. WiX/wixl and the generated MSI are required when the pack requests `Wix`; a missing toolset or generator failure aborts the package instead of silently publishing only Raw/Zip.
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (e.g. `LastFrontier.dll.pdb`) â€” both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging â€” symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
@@ -550,6 +599,17 @@ headless variant. The splash UI (`Application::MainWindow`) is shared throughout
 user always sees indication of what is happening. The terminal state is exposed via
 `Updater::GetResult()` returning `UpdaterResult` (see header).
 
+`UpdaterResult::ConnectionFailed` separates "the server was not reachable" from "this client could not
+update itself". Both connection aborts land on it - the connect that never succeeded, and a drop while
+files were still in flight - and `IsUpdaterFailureReportable()` is what keeps it out of the crash
+reporter: a server that is down, restarting or unreachable from the player's network is an environment
+state, so filing it would cost one report per player per restart and carry nothing the server side does
+not already know. The failure is still visible - `ShowUpdaterFailure` writes the terminal result to the
+log unconditionally, before deciding whether to report it - and the player is told the server may be
+offline instead of being advised to reinstall a client that is not at fault. Every other result keeps
+reporting, `MetadataMismatch` included: its player-facing advice is also "try again later", but it names
+a server distributing resources it does not run on, which is a deployment defect worth a report.
+
 `CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())` decides whether the binary
 self-update step is even attempted: Windows / Linux / macOS are eligible; Web / iOS / Android
 currently require manual client updates because the platform either bundles the runtime
@@ -563,6 +623,7 @@ instead of looping back to the game which would only reject the connection again
 | Symptom | First signal |
 |---------|--------------|
 | Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
+| Client started while the server is down, restarting, or unreachable | client message box `Can't connect to the server. It may be offline or restarting, please try again later.`, client log `Client updater: connection failed` then `Client updater: terminal result ConnectionFailed`. Deliberately files **no** crash report - an offline server is not a client defect, and reporting it would flood the crash reporter on every restart |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
@@ -579,22 +640,22 @@ instead of looping back to the game which would only reject the connection again
 
 Local validation steps:
 
-1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and `ResolveUserWritablePath` fail-safe/creation behavior.
+1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and writable-root fail-safe/creation behavior.
 2. Build `LF_Client`; its native target dependency also builds `LF_ClientLib`. Confirm the client output directory contains the host plus the host-derived runtime alias (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux). Build `LF_ClientLib` explicitly when validating the runtime target in isolation.
 3. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup (Case 2 happy path: load DLL, resource updater finishes, game starts).
 4. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.
 5. Launch `LF_Client.exe --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime â†’ host fails (no fallback).
 6. Point `--ClientLibPath` to an invalid path, no `--ClientLibCompatibilityVersion` â†’ host falls back to embedded client (Case 1).
-7. Build a packaged server (e.g. `Daily`) and confirm `<Settings.PlatformBinaries>/<target>/<name><ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the per-target runtime libraries and that `ClientResources` pack list contains the resource zips.
+7. Build a packaged server (e.g. `Daily`) and confirm `<Settings.PlatformBinaries>/<target>/<name><ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the per-target runtime libraries and that `ClientResources` pack list contains the `.fores` resource packs.
 8. Interrupt a client mid-download (kill the network) and reconnect â€” the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 â†’ restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `LF_Client.exe`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Common.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force both a resource-pack update and a native update, close at the restart prompt, and launch again: the host should log `selected runtime ... from bootstrap ...`, load the writable-root runtime directly, and gameplay must read the updated writable pack rather than its frozen install-dir counterpart. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 
-- [BuildAndLaunch.md](../../Docs/BuildAndLaunch.md) â€” build / package commands and launch profiles.
-- [Architecture.md](../../Docs/Architecture.md) â€” engine + game build layout, target table.
+- [BuildWorkflow.md](BuildWorkflow.md) — configure, build and validation workflow.
+- [BuildToolsPipeline.md](BuildToolsPipeline.md) — packaging and generated-source stages.
+- [Architecture.md](Architecture.md) â€” engine + game build layout, target table.
 - [Debugging.md](Debugging.md) â€” debugger setup; the host vs runtime split affects which binary the debugger should attach to.
-- [SteamIntegration.md](../../Docs/SteamIntegration.md) â€” alternative distribution channel that bypasses the in-game updater.
 - [ResourcePackFormat.md](ResourcePackFormat.md) â€” the `.fores` pack and the derived `.foindex` tree the sync moves and rebuilds.

@@ -375,7 +375,10 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
     int64_t last = _engine->GetLastEntityId().underlying_value();
     int64_t start = _engine->Settings->EntityStartId;
-    _lastEntityId = std::max(last, start);
+
+    // A snapshot carries the exact boundary its world stopped at and validates it against the payload
+    // before this runs, so raising it to the configured floor would break the continuity it promises
+    _lastEntityId = _engine->IsRestoredFromSnapshot() ? last : std::max(last, start);
     _persistedEntityId = _lastEntityId;
 
     bool is_error = false;
@@ -1544,8 +1547,10 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
     auto holder_ref = holder.hold_ref();
     ignore_unused(holder_ref);
 
-    FO_VERIFY_AND_THROW(_engine->GetEntityType(holder->GetTypeName()).HolderEntries.count(entry), "Holder entity type has no custom inner entry with the requested name", holder->GetTypeName(), holder->GetId(), entry);
+    auto server_holder = holder.dyn_cast<ServerEntity>();
+    EnsureEntitySynced(server_holder);
 
+    FO_VERIFY_AND_THROW(_engine->GetEntityType(holder->GetTypeName()).HolderEntries.count(entry), "Holder entity type has no custom inner entry with the requested name", holder->GetTypeName(), holder->GetId(), entry);
     hstring type_name = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
     auto entity = ConstructCustomEntity(type_name, pid);

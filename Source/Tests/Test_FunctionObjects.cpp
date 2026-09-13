@@ -167,6 +167,10 @@ TEST_CASE("FunctionObjects")
 
         STATIC_REQUIRE(sizeof(move_only_function<void()>) == FUNCTION_INLINE_TARGET_SIZE + 2 * sizeof(void*));
         STATIC_REQUIRE(sizeof(copyable_function<void()>) == sizeof(move_only_function<void()>));
+        STATIC_REQUIRE(sizeof(details::function_storage) == FUNCTION_INLINE_TARGET_SIZE);
+        STATIC_REQUIRE(alignof(details::function_storage) == alignof(std::max_align_t));
+        STATIC_REQUIRE(offsetof(details::function_storage, heap) == 0);
+        STATIC_REQUIRE(offsetof(details::function_storage, inlined) == 0);
     }
 
     SECTION("EmptyState")
@@ -188,6 +192,33 @@ TEST_CASE("FunctionObjects")
 
         move_only_function<int32_t()> from_null_pointer = static_cast<int32_t (*)()>(nullptr);
         REQUIRE(!from_null_pointer);
+    }
+
+    SECTION("FunctionReferencesAndNullablePointers")
+    {
+        move_only_function<int32_t(int32_t)> from_reference = DoubleValue;
+        copyable_function<int32_t(int32_t)> copyable_reference = DoubleValue;
+        copyable_function<int32_t(int32_t)> copied_reference = copyable_reference;
+
+        CHECK(from_reference(21) == 42);
+        CHECK(copyable_reference(9) == 18);
+        CHECK(copied_reference(7) == 14);
+        CHECK_FALSE(from_reference.is_heap_allocated());
+        CHECK_FALSE(copyable_reference.is_heap_allocated());
+
+        using function_pointer = decltype(&DoubleValue);
+        using member_pointer = decltype(&MemberTarget::Triple);
+        function_pointer empty_function = nullptr;
+        member_pointer empty_member = nullptr;
+        move_only_function<int32_t(int32_t)> empty_move_function = empty_function;
+        copyable_function<int32_t(int32_t)> empty_copy_function = empty_function;
+        move_only_function<int32_t(const MemberTarget&, int32_t)> empty_move_member = empty_member;
+        copyable_function<int32_t(const MemberTarget&, int32_t)> empty_copy_member = empty_member;
+
+        CHECK_FALSE(empty_move_function);
+        CHECK_FALSE(empty_copy_function);
+        CHECK_FALSE(empty_move_member);
+        CHECK_FALSE(empty_copy_member);
     }
 
     SECTION("InlineStorageKeepsCommonTargetsOffTheHeap")
@@ -241,6 +272,21 @@ TEST_CASE("FunctionObjects")
         }
 
         REQUIRE(alive == 0);
+    }
+
+    SECTION("FundamentallyAlignedTargetsRemainInlineAfterCopyAndMove")
+    {
+        auto target = [alignment = std::max_align_t {}] { return reinterpret_cast<uintptr_t>(&alignment); };
+        STATIC_REQUIRE(details::function_target_fits_inline<decltype(target)>);
+        copyable_function<uintptr_t()> original = target;
+        copyable_function<uintptr_t()> copy = original;
+        move_only_function<uintptr_t()> moved = std::move(copy);
+
+        REQUIRE(!original.is_heap_allocated());
+        REQUIRE(!moved.is_heap_allocated());
+        REQUIRE(original() % alignof(std::max_align_t) == 0);
+        REQUIRE(moved() % alignof(std::max_align_t) == 0);
+        REQUIRE(original() != moved());
     }
 
     SECTION("MoveOnlyTargetSurvivesRelocation")

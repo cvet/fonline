@@ -82,6 +82,8 @@ The per-type *content* validator (`ClientDataValidation.*`, invoked for client p
 
 Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `HashResolver`.
 
+Client hash storage is filled from local resources at startup (proto packs, script `.hstr()` literals, dialog/text bakers) and from a map's `fomap-bin-client` hash table only when that map loads (`MapView::LoadStaticData`). Critter instance properties are not in the client map-bin. A Common / PublicSync / OwnerSync `hstring` whose string exists only as a map-instance override (or only in the server map-bin) will fail to resolve if it arrives before the matching client hash is registered.
+
 When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers.
 
 ### Unresolved hash recovery
@@ -170,7 +172,9 @@ The server runtime applies two independent limits to connections that have not l
 
 A logged-in connection is additionally dropped when it stops answering pings: `ServerNetwork.ClientPingTime`
 sets the interval, and a connection that has not answered the previous ping when the next one is due is hard
-disconnected.
+disconnected. The in-process interthread transport opts out of this watchdog: its peer lifetime is explicit
+through the callback channel, while a busy shared process can delay both ends of the ping exchange together.
+Closing either interthread endpoint still disconnects the other immediately.
 
 ### Disconnect reasons
 
@@ -329,6 +333,19 @@ The source tree supports several connection families:
 - WebSocket server support when built with `FO_HAVE_WEB_SOCKETS`.
 
 Build availability is controlled by compile-time feature toggles and platform dependencies. For build toggles and package workflow, see [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
+
+### A listener that cannot bind is retried before the startup gives up
+
+A restart races the process it replaces for its ports, and the loser used to take the whole startup
+down on its first attempt: the world loaded, a socket that frees itself within seconds was still
+held, and every bit of that work was thrown away. Each remote listener is therefore started through
+`ServerEngine::StartConnectionServer`, which retries until `ServerNetwork.ListenRetryTime` runs out,
+waiting `ServerNetwork.ListenRetryDelay` between attempts.
+
+Past the deadline the original exception is rethrown and the startup fails, because a server nobody
+can reach is not a started server — the retries buy the losing side of the race some time, they do
+not turn a dead port into an acceptable state. The interthread transport is not part of this: it
+binds nothing another process could hold, so a failure there is a defect rather than a race.
 
 ## Tests to inspect
 

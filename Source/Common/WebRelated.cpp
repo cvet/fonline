@@ -39,6 +39,9 @@
 
 #include "SDL3/SDL_hints.h"
 
+#include <sys/resource.h>
+#include <sys/utsname.h>
+
 // clang-format off
 EM_JS(int, WebGetWindowWidth, (), {
     return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
@@ -375,6 +378,40 @@ extern "C"
         else {
             FO_NAMESPACE WebRelated::ApplyCanvasLayout(settings);
         }
+    }
+
+    // Emscripten defines this only under ASYNCIFY, which the engine does not enable. SDL references it from
+    // its timer, video and GL backends, but the engine never reaches those paths
+    void emscripten_sleep(unsigned int ms)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        FO_UNREACHABLE_PLACE();
+    }
+
+    // Emscripten ships these two as weak stubs only in its libstubs library, which it links solely under
+    // ALLOW_UNIMPLEMENTED_SYSCALLS - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    int __syscall_uname(struct utsname* buf)
+    {
+        if (buf == nullptr) {
+            return -EFAULT;
+        }
+
+        const char* release = FO_STRINGIFY(__EMSCRIPTEN_MAJOR__) "." FO_STRINGIFY(__EMSCRIPTEN_MINOR__) "." FO_STRINGIFY(__EMSCRIPTEN_TINY__);
+
+        std::strcpy(buf->sysname, "Emscripten");
+        std::strcpy(buf->nodename, "emscripten");
+        std::strcpy(buf->release, release);
+        std::strcpy(buf->version, "#1");
+        std::strcpy(buf->machine, "wasm32");
+
+        return 0;
+    }
+
+    // A browser tab has no child processes, so there is never anything to reap
+    pid_t __syscall_wait4(pid_t, int*, int, struct rusage*)
+    {
+        return -ECHILD;
     }
 }
 #endif

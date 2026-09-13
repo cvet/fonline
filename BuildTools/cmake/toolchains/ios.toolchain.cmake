@@ -432,10 +432,11 @@ message(STATUS "Using libtool: ${BUILD_LIBTOOL}")
 # Configure libtool to be used instead of ar + ranlib to build static libraries.
 # This is required on Xcode 7+, but should also work on previous versions of
 # Xcode.
+# (FOnline Patch) Guarded modules retain empty members without suppressing other archive diagnostics
 set(CMAKE_C_CREATE_STATIC_LIBRARY
-  "${BUILD_LIBTOOL} -static -o <TARGET> <LINK_FLAGS> <OBJECTS> ")
+  "${BUILD_LIBTOOL} -static -no_warning_for_no_symbols -o <TARGET> <LINK_FLAGS> <OBJECTS> ")
 set(CMAKE_CXX_CREATE_STATIC_LIBRARY
-  "${BUILD_LIBTOOL} -static -o <TARGET> <LINK_FLAGS> <OBJECTS> ")
+  "${BUILD_LIBTOOL} -static -no_warning_for_no_symbols -o <TARGET> <LINK_FLAGS> <OBJECTS> ")
 # Find the toolchain's provided install_name_tool if none is found on the host
 if(NOT CMAKE_INSTALL_NAME_TOOL)
   execute_process(COMMAND xcrun -sdk ${CMAKE_OSX_SYSROOT} -find install_name_tool

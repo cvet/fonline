@@ -39,6 +39,7 @@ FO_BEGIN_NAMESPACE
 ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) noexcept :
     Entity(registrar, props, engine->Settings->ServerPropertiesPackData ? base_props : nullptr),
     _engine {engine},
+    _engineShutdownInProgress {engine->_shutdownInProgress},
     _id {id}
 {
     FO_STACK_TRACE_ENTRY();

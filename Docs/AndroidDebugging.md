@@ -92,10 +92,10 @@ Use this split when debugging Android output:
 Packaging places complete `.fores` bases under `app/src/main/assets/` using the configured client resource
 directory (`Resources` by default) and marks `fores` as `noCompress`. `FOnlineActivity` passes that directory
 inside `<APK sourceDir>!/assets/` as `Baking.ClientResources`, the app files directory as
-`Client.UserWritablePath`, and its `Cache` directory as `Baking.CacheResources`.
+`Common.UserWritablePath`, and its `Cache` directory as `Baking.CacheResources`.
 It does not copy or delete the resource tree on startup or package updates.
 
-The engine locates each stored ZIP entry and reads its bounded file region with 64-bit positional reads.
+The engine locates each `.fores` entry stored in the APK ZIP and reads its bounded file region with 64-bit positional reads.
 A compressed/encrypted outer entry is not seekable through this route and is rejected. Updates append to
 `<files>/Resources/Pack.patch.fores`; a full refresh installs `<files>/Resources/Pack.fores`, which takes
 precedence over the APK base. Patch binding excludes an old patch when the selected physical base changes.

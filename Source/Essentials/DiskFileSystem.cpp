@@ -38,6 +38,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended = false) -> std::filesystem::path;
+
 auto fs_make_path(string_view path) -> std::u8string
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -67,7 +69,13 @@ auto fs_exists(string_view path) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return std::filesystem::exists(std::filesystem::path {fs_make_path(path)}, ec) && !ec;
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    return std::filesystem::exists(fs_path, ec) && !ec;
 }
 
 auto fs_is_dir(string_view path) noexcept -> bool
@@ -75,7 +83,13 @@ auto fs_is_dir(string_view path) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    return std::filesystem::is_directory(std::filesystem::path {fs_make_path(path)}, ec) && !ec;
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    return std::filesystem::is_directory(fs_path, ec) && !ec;
 }
 
 auto fs_is_absolute_path(string_view path) noexcept -> bool
@@ -129,7 +143,12 @@ auto fs_create_directories(string_view dir) noexcept -> bool
     }
 
     std::error_code ec;
-    auto fs_dir = std::filesystem::path {fs_make_path(dir)};
+    auto fs_dir = fs_make_io_path(dir, ec);
+
+    if (ec) {
+        return false;
+    }
+
     std::filesystem::create_directories(fs_dir, ec);
     return std::filesystem::exists(fs_dir, ec) && !ec && std::filesystem::is_directory(fs_dir, ec) && !ec;
 }
@@ -139,7 +158,13 @@ auto fs_last_write_time(string_view path) noexcept -> uint64_t
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    auto wt = std::filesystem::last_write_time(std::filesystem::path {fs_make_path(path)}, ec);
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return 0;
+    }
+
+    auto wt = std::filesystem::last_write_time(fs_path, ec);
     return !ec ? wt.time_since_epoch().count() : 0;
 }
 
@@ -148,7 +173,13 @@ auto fs_file_size(string_view path) noexcept -> optional<uint64_t>
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    uintmax_t size = std::filesystem::file_size(std::filesystem::path {fs_make_path(path)}, ec);
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return std::nullopt;
+    }
+
+    uintmax_t size = std::filesystem::file_size(fs_path, ec);
     return !ec ? optional<uint64_t> {size} : std::nullopt;
 }
 
@@ -168,7 +199,12 @@ static auto fs_read_file_impl(string_view path, optional<size_t> max_size) -> op
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    auto fs_path = std::filesystem::path {fs_make_path(path)};
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return std::nullopt;
+    }
+
     uintmax_t file_size = std::filesystem::file_size(fs_path, ec);
 
     if (ec) {
@@ -238,13 +274,21 @@ auto fs_write_file(string_view path, string_view content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    string dir = strex(path).extract_dir().str();
+    size_t separator = path.find_last_of("/\\");
+    string_view dir = separator != string_view::npos ? path.substr(0, separator) : string_view {};
 
     if (!dir.empty() && !fs_create_directories(dir)) {
         return false;
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
+    std::error_code ec;
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    std::ofstream file {fs_path, std::ios::binary | std::ios::trunc};
 
     if (!file) {
         return false;
@@ -262,13 +306,21 @@ auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    string dir = strex(path).extract_dir().str();
+    size_t separator = path.find_last_of("/\\");
+    string_view dir = separator != string_view::npos ? path.substr(0, separator) : string_view {};
 
     if (!dir.empty() && !fs_create_directories(dir)) {
         return false;
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
+    std::error_code ec;
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    std::ofstream file {fs_path, std::ios::binary | std::ios::trunc};
 
     if (!file) {
         return false;
@@ -287,7 +339,12 @@ auto fs_remove_file(string_view path) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    auto fs_path = std::filesystem::path {fs_make_path(path)};
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return false;
+    }
+
     std::filesystem::remove(fs_path, ec);
     return !std::filesystem::exists(fs_path, ec) && !ec;
 }
@@ -297,7 +354,12 @@ auto fs_remove_dir_tree(string_view dir) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    auto fs_dir = std::filesystem::path {fs_make_path(dir)};
+    auto fs_dir = fs_make_io_path(dir, ec, true);
+
+    if (ec) {
+        return false;
+    }
+
     std::filesystem::remove_all(fs_dir, ec);
     return !std::filesystem::exists(fs_dir, ec) && !ec;
 }
@@ -306,8 +368,13 @@ auto fs_touch_file(string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fs_path = std::filesystem::path {fs_make_path(path)};
     std::error_code ec;
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return false;
+    }
+
     bool exists = std::filesystem::exists(fs_path, ec);
 
     if (ec) {
@@ -328,7 +395,19 @@ auto fs_rename(string_view from_path, string_view to_path) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    std::filesystem::rename(std::filesystem::path {fs_make_path(from_path)}, std::filesystem::path {fs_make_path(to_path)}, ec);
+    auto native_from_path = fs_make_io_path(from_path, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    auto native_to_path = fs_make_io_path(to_path, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    std::filesystem::rename(native_from_path, native_to_path, ec);
     return !ec;
 }
 
@@ -359,7 +438,14 @@ auto fs_open_ifstream(string_view path, std::ios::openmode mode) -> std::ifstrea
 {
     FO_STACK_TRACE_ENTRY();
 
-    return std::ifstream {std::filesystem::path {fs_make_path(path)}, mode};
+    std::error_code ec;
+    auto fs_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return {};
+    }
+
+    return std::ifstream {fs_path, mode};
 }
 
 auto fs_hash_file(string_view path) -> optional<uint64_t>
@@ -431,7 +517,19 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto full_dir = std::filesystem::path {fs_make_path(strex(base_dir).combine_path(cur_dir))};
+    std::error_code ec;
+    auto full_path = (std::filesystem::path {fs_make_path(base_dir)} / std::filesystem::path {fs_make_path(cur_dir)}).u8string();
+    auto full_dir = fs_make_io_path(string {full_path.begin(), full_path.end()}, ec);
+
+    if (ec) {
+        throw std::filesystem::filesystem_error("Resolve directory path", full_dir, ec);
+    }
+
+    // Layered data sources may lack the requested subdirectory; other filesystem errors must propagate
+    if (!std::filesystem::exists(full_dir)) {
+        return;
+    }
+
     auto dir_iterator = std::filesystem::directory_iterator(full_dir, std::filesystem::directory_options::follow_directory_symlink);
 
     for (const auto& dir_entry : dir_iterator) {
@@ -441,13 +539,13 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool rec
         if (!path.empty() && path.front() != '.' && path.front() != '~') {
             if (dir_entry.is_directory()) {
                 if (path.front() != '_' && recursive) {
-                    RecursiveDirLook(base_dir, strex(cur_dir).combine_path(path), recursive, visitor);
+                    RecursiveDirLook(base_dir, fs_path_to_string(std::filesystem::path {fs_make_path(cur_dir)} / dir_entry.path().filename()), recursive, visitor);
                 }
             }
             else {
                 uintmax_t file_size = dir_entry.file_size();
                 FO_VERIFY_AND_THROW(std::cmp_less_equal(file_size, std::numeric_limits<size_t>::max()), "Disk file is too large to fit into memory buffer");
-                visitor(strex(cur_dir).combine_path(path), static_cast<size_t>(file_size), dir_entry.last_write_time().time_since_epoch().count());
+                visitor(fs_path_to_string(std::filesystem::path {fs_make_path(cur_dir)} / dir_entry.path().filename()), static_cast<size_t>(file_size), dir_entry.last_write_time().time_since_epoch().count());
             }
         }
     }
@@ -846,6 +944,50 @@ void disk_write_file::close() noexcept
 #endif
         _descriptor = -1;
     }
+}
+
+static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended) -> std::filesystem::path
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto fs_path = std::filesystem::path {fs_make_path(path)};
+    ignore_unused(ec);
+    ignore_unused(force_extended);
+
+#if FO_WINDOWS
+    if (fs_path.empty() || fs_path.native().starts_with(LR"(\\?\)") || fs_path.native().starts_with(LR"(\\.\)")) {
+        return fs_path;
+    }
+
+    // MSVC absolute calls GetFullPathNameW, preserving Win32 dot/space and separator normalization
+    auto absolute_path = std::filesystem::absolute(fs_path, ec);
+
+    if (ec) {
+        return fs_path;
+    }
+    if (absolute_path.native().starts_with(LR"(\\.\)") || absolute_path.native().starts_with(LR"(\\?\)")) {
+        return absolute_path;
+    }
+
+    // Win32 directory creation reserves room for an 8.3 name below MAX_PATH
+    constexpr size_t long_path_start = 248;
+
+    if (force_extended || fs_path.native().size() >= long_path_start || absolute_path.native().size() >= long_path_start) {
+        const auto& native_path = absolute_path.native();
+
+        if (native_path.starts_with(LR"(\\)")) {
+            auto extended_path = std::filesystem::path {LR"(\\?\UNC\)"};
+            extended_path.concat(native_path.begin() + 2, native_path.end());
+            return extended_path;
+        }
+
+        auto extended_path = std::filesystem::path {LR"(\\?\)"};
+        extended_path += absolute_path;
+        return extended_path;
+    }
+#endif
+
+    return fs_path;
 }
 
 FO_END_NAMESPACE
