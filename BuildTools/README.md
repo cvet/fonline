@@ -324,12 +324,13 @@ APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace ou
 
 Every client/server resource pack is reopened after it is built — the zips written to disk and the in-memory pack embedded into the executable alike. Packaging verifies the exact entry list and streams every entry through the CRC-checking zip reader, so a damaged resource archive stops the package before it reaches either the downloadable client or the server updater source.
 
-MSI compiler/linker output is inherited by the package process. A failed `candle`, `light`, or `wixl` command
-therefore leaves its native file, ICE, or Windows Installer diagnostic in the build log before packaging exits.
-On Windows, `light` first runs with ICE validation enabled. If and only if that attempt reports the exact
-Windows Installer service-unavailable diagnostic, the creator retries the same link with `-sval`; Windows
-service accounts can therefore produce the required MSI even when the host cannot run ICE. Any authoring,
-linker, or ordinary ICE error still fails immediately, and failure of the fallback link is also fatal.
+MSI compiler/linker failures leave their native file, ICE, or Windows Installer diagnostic in the build log
+before packaging exits. On Windows, the first `light` run keeps its output buffered while ICE validation is
+classified. A successful validated link or a terminal failure then emits that output. If and only if the first
+attempt reports the exact Windows Installer service-unavailable diagnostic, the creator retries the same link
+with `-sval`; a successful retry suppresses the superseded `error` lines so MSBuild does not classify the
+otherwise successful custom target as failed. Any authoring, linker, or ordinary ICE error still fails
+immediately, and failure of the fallback link is also fatal.
 
 An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing
 `restore|store|release --key <sha256> --archive <path>`. Before deflate, `package.py` hashes the stable entry
