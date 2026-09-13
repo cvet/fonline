@@ -484,9 +484,9 @@ TEST_CASE("ManagedScriptBaker")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    CHECK(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.dll"));
-    CHECK(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.dll"));
-    CHECK(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.dll"));
 
     CHECK_FALSE(std::filesystem::exists(temp_dir.Path() / "UnitManaged.csproj"));
     CHECK_FALSE(std::filesystem::exists(temp_dir.Path() / "UnitManaged.Server.gen.csproj"));
@@ -735,9 +735,9 @@ TEST_CASE("ManagedScriptBaker")
     REQUIRE_NOTHROW(no_work_baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     CHECK(rig.Outputs.empty());
-    CHECK(checked_output_paths.contains("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll"));
-    CHECK(checked_output_paths.contains("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll"));
-    CHECK(checked_output_paths.contains("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-server/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-client/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-mapper/FOnline.ManagedHost.dll"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.csproj"));
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.sln"));
@@ -876,23 +876,23 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     ManagedScriptBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/TestPack.Server.dll")).find("entry-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/SharedDependency.dll")).find("helper-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/TestPack.Server.dll")).find("entry-Server") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/SharedDependency.dll")).find("helper-Server") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.pdb"));
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.deps.json"));
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/TestPack.Client.dll")).find("entry-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/SharedDependency.dll")).find("helper-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/TestPack.Client.dll")).find("entry-Client") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/SharedDependency.dll")).find("helper-Client") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.pdb"));
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.deps.json"));
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/SharedDependency.dll")).find("helper-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/SharedDependency.dll")).find("helper-Mapper") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.pdb"));
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.deps.json"));
     CHECK(BytesToText(rig.Outputs.at("ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll")) == "managed-corelib\n");
     CHECK(rig.Outputs.contains("ManagedRuntime/runtime.manifest"));
     CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/coreclr.dll"));

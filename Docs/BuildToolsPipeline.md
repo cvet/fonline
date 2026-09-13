@@ -362,6 +362,11 @@ normal Raw/Zip payload or the MSI derived from it; a package carrying the
 
 Managed class libraries are not binary companions. The Managed baker writes a
 filtered payload into the managed resource pack, but CoreLib is platform-specific.
+Its output directories carry the ordinary resource-role suffixes, for example
+`Assemblies/Assemblies-client/`. Resource packaging applies
+`-server`/`-client`/`-mapper` filtering to every path component, so it can reject
+a complete target directory and a Client pack never carries Server or Mapper
+assemblies.
 For a Client part, `package.py` rebuilds that pack with the target binary
 directory's clean `ManagedRuntime` payload. For a Server part, it stages one such
 pack at `PlatformBinaries/<target>/<pack>.zip` for every distributed client

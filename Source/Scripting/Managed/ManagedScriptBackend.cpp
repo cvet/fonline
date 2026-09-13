@@ -5172,7 +5172,8 @@ static auto CollectAssemblyResources(const FileSystem& resources, string_view ta
 {
     FO_STACK_TRACE_ENTRY();
 
-    string assembly_dir = strex("Assemblies/{}Assemblies", target_name).str();
+    string target_suffix = strex(target_name).lower().str();
+    string assembly_dir = strex("Assemblies/Assemblies-{}", target_suffix).str();
     vector<ManagedAssemblyResource> result;
 
     for (const FileHeader& file : resources.FilterFiles("dll", assembly_dir, false)) {

@@ -60,6 +60,11 @@ RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
 MANAGED_RUNTIME_DIRECTORY = 'ManagedRuntime'
 MANAGED_RUNTIME_MANIFEST = 'runtime.manifest'
 MANAGED_CORELIB_RELATIVE_PATH = os.path.join('lib', 'netcoreapp', 'System.Private.CoreLib.dll')
+RESOURCE_TARGET_EXCLUDED_SUFFIXES = {
+	'Server': ('-client', '-mapper'),
+	'Client': ('-server', '-mapper'),
+	'Mapper': ('-server',),
+}
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
@@ -1196,11 +1201,9 @@ class Packager:
 	def filter_resource_file(self, target: str, file_path: str) -> bool:
 		if not os.path.isfile(file_path):
 			return False
-		if target == 'Server' and (file_path.endswith('-client') or file_path.endswith('-mapper')):
-			return False
-		if target == 'Client' and (file_path.endswith('-server') or file_path.endswith('-mapper')):
-			return False
-		if target == 'Mapper' and file_path.endswith('-server'):
+		excluded_suffixes = RESOURCE_TARGET_EXCLUDED_SUFFIXES.get(target, ())
+		resource_path = os.path.relpath(file_path, self.baking_path) if self.baking_path else file_path
+		if any(path_part.endswith(excluded_suffixes) for path_part in Path(resource_path).parts):
 			return False
 		return True
 

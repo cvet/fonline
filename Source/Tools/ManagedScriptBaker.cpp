@@ -1638,7 +1638,8 @@ static auto MakeManagedOutputAssemblyResourcePath(string_view target_name, strin
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("Assemblies/{}Assemblies/{}", target_name, assembly_file_name).str();
+    string target_suffix = strex(target_name).lower().str();
+    return strex("Assemblies/Assemblies-{}/{}", target_suffix, assembly_file_name).str();
 }
 
 static auto IsGeneratedManagedArtifactFileName(string_view file_name) noexcept -> bool

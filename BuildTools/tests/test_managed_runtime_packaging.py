@@ -40,6 +40,11 @@ def add_managed_runtime_pack(packager, tmp_path: Path, baked_corelib: bytes = b'
     baked_runtime = scripts_dir / 'ManagedRuntime'
     (baked_runtime / 'lib' / 'netcoreapp').mkdir(parents=True)
     (scripts_dir / 'Game.dll').write_bytes(b'game scripts')
+    for target in ('Server', 'Client', 'Mapper'):
+        target_dir = scripts_dir / 'Assemblies' / f'Assemblies-{target.lower()}'
+        target_dir.mkdir(parents=True)
+        (target_dir / f'Scripts.{target}.dll').write_bytes(target.encode())
+        (target_dir / 'FOnline.ManagedHost.dll').write_bytes(f'host {target}'.encode())
     (baked_runtime / 'runtime.manifest').write_bytes(b'baker manifest')
     (baked_runtime / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').write_bytes(baked_corelib)
     packager.get_target_resource_packs = lambda target: ['Scripts']
@@ -68,6 +73,29 @@ def test_native_package_does_not_copy_managed_runtime_companions(tmp_path: Path)
 
     assert (output / 'SDL3.dll').read_bytes() == b'sdl'
     assert not (output / 'ManagedRuntime').exists()
+
+
+@pytest.mark.parametrize(('target', 'included_targets'), [
+    ('Server', {'Server'}),
+    ('Client', {'Client'}),
+    ('Mapper', {'Client', 'Mapper'}),
+])
+def test_resource_collection_applies_target_suffixes_to_directories(
+    tmp_path: Path, target: str, included_targets: set[str],
+) -> None:
+    packager = make_packager(tmp_path)
+    scripts_dir = add_managed_runtime_pack(packager, tmp_path)
+
+    files = packager.collect_resource_files('Scripts', target)
+    entries = {Path(file_path).relative_to(scripts_dir).as_posix() for file_path in files}
+
+    assert 'Game.dll' in entries
+    for managed_target in ('Server', 'Client', 'Mapper'):
+        assembly_prefix = f'Assemblies/Assemblies-{managed_target.lower()}/'
+        if managed_target in included_targets:
+            assert assembly_prefix + f'Scripts.{managed_target}.dll' in entries
+        else:
+            assert not any(entry.startswith(assembly_prefix) for entry in entries)
 
 
 @pytest.mark.parametrize('missing_binary', [False, True])
@@ -171,7 +199,12 @@ def test_client_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
     packager.package_client_managed_runtime_resources()
 
     with zipfile.ZipFile(output_resources / 'Scripts.zip') as archive:
+        entries = set(archive.namelist())
         assert archive.read('Game.dll') == b'game scripts'
+        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
+        assert archive.read('Assemblies/Assemblies-client/FOnline.ManagedHost.dll') == b'host Client'
+        assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
+        assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
         assert archive.read('ManagedRuntime/runtime.manifest') == b'windows manifest'
         assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'windows corelib'
 
@@ -199,8 +232,16 @@ def test_server_stages_target_specific_scripts_for_web_and_windows(tmp_path: Pat
 
     platform_root = Path(packager.target_output_path) / 'PlatformBinaries'
     with zipfile.ZipFile(platform_root / 'Windows-win64' / 'Scripts.zip') as archive:
+        entries = set(archive.namelist())
+        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
+        assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
+        assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
         assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'windows corelib'
     with zipfile.ZipFile(platform_root / 'Web-wasm' / 'Scripts.zip') as archive:
+        entries = set(archive.namelist())
+        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
+        assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
+        assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
         assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'web corelib'
     assert (platform_root / 'Windows-win64' / 'Game.dll').is_file()
     assert list((platform_root / 'Web-wasm').glob('*')) == [platform_root / 'Web-wasm' / 'Scripts.zip']
