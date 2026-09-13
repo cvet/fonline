@@ -33,7 +33,7 @@ sys.path.append(os.getcwd())
 WINDOWS_INSTALLER_SERVICE_UNAVAILABLE = 'The Windows Installer Service could not be accessed.'
 
 
-def _run_streaming_capture(command: list[str]) -> subprocess.CompletedProcess[str]:
+def _run_streaming_capture(command: list[str], *, stream: bool = True) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -44,8 +44,9 @@ def _run_streaming_capture(command: list[str]) -> subprocess.CompletedProcess[st
     assert process.stdout is not None
     output: list[str] = []
     for line in process.stdout:
-        sys.stdout.write(line)
-        sys.stdout.flush()
+        if stream:
+            sys.stdout.write(line)
+            sys.stdout.flush()
         output.append(line)
     return subprocess.CompletedProcess(command, process.wait(), ''.join(output))
 
@@ -567,7 +568,7 @@ class PackageGenerator:
                              '-cultures:en-us',
                              '-dWixUILicenseRtf=' + self.license_file] + \
                             self.args2 + ['-out', self.final_output, self.main_o]
-            light_result = _run_streaming_capture(light_command)
+            light_result = _run_streaming_capture(light_command, stream=False)
             if light_result.returncode != 0:
                 if WINDOWS_INSTALLER_SERVICE_UNAVAILABLE in light_result.stdout:
                     print(
@@ -577,7 +578,12 @@ class PackageGenerator:
                     )
                     subprocess.run([light_command[0], '-sval'] + light_command[1:], check=True)
                 else:
+                    sys.stdout.write(light_result.stdout)
+                    sys.stdout.flush()
                     light_result.check_returncode()
+            else:
+                sys.stdout.write(light_result.stdout)
+                sys.stdout.flush()
         else:
             subprocess.run(
                 [os.path.join(wixdir, 'wixl'), '--ext', 'ui', '-o', self.final_output, self.main_xml], check=True)

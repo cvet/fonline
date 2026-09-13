@@ -275,7 +275,7 @@ project's public script API, but that namespace does not make them engine-owned.
 - `FO_ANGELSCRIPT_SCRIPTING` enables the `CompileAngelScript` command target.
 - The target runs the project AS compiler app (`${FO_DEV_NAME}_ASCompiler`) with the main config arguments.
 - `CompileAngelScript` depends on `ForceCodeGeneration`, so script-visible generated metadata is current before compilation.
-- `FO_MANAGED_SCRIPTING` enables managed runtime loading, adds the `Managed` resource baker, and wires `CompileManagedScripts` to the standalone `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`). The baker discovers `.cs` sources from the resource packs declared in the main config (the same ownership model as AngelScript sources) and reads script configuration from settings with plain defaults — project name `FOnline`, assembly list `FOnline`, `dotnet msbuild`, `net10.0`, source dirs `Engine/Source/Scripting/Managed/CoreScripts` plus `Scripts` (relative to the directory containing the root applied config), generated output in the build `GeneratedSource/Managed` tree unless `Script.ManagedScriptGeneratedDir` points elsewhere; managed generated-dir overrides, extra sources, path references, and analyzers use the same config-relative rule; empty values are configuration errors, not fallbacks; the `Script.ManagedScriptAssemblies` / `ManagedScriptExtraSources` / `ManagedScriptExtraReferences` / `ManagedScriptMsBuild` / `ManagedScriptTargetFramework` / `ManagedScriptProjectName` / `ManagedScriptDirs` / `ManagedScriptGeneratedDir` / `ManagedScriptBakerDryRun` settings (`ScriptSettings` group) are the override channel for tests and special tooling. Script settings are not read from environment variables; `FO_MANAGED_RUNTIME` is only a build/tooling override for locating the prepared runtime payload. Script-level metadata tags such as `///@ Enum`, `///@ Property`, `///@ RefType`, and `///@ Setting` can live in C# source files; build-time codegen skips them (`script_metadata_tags`) and `MetadataBaker` consumes them during resource baking.
+- `FO_MANAGED_SCRIPTING` enables managed runtime loading, adds the `Managed` resource baker, and wires `CompileManagedScripts` to the standalone `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`). The baker discovers `.cs` sources from the resource packs declared in the main config (the same ownership model as AngelScript sources) and reads script configuration from settings with plain defaults — project name `FOnline`, assembly list `FOnline`, `dotnet msbuild`, `net10.0`, source dirs `Engine/Source/Scripting/Managed/CoreScripts` plus `Scripts` (relative to the directory containing the root applied config), generated output in the build `GeneratedSource/Managed` tree unless `Script.ManagedScriptGeneratedDir` points elsewhere; managed generated-dir overrides, extra sources, path references, and analyzers use the same config-relative rule; empty values are configuration errors, not fallbacks; the `Script.ManagedScriptAssemblies` / `ManagedScriptExtraSources` / `ManagedScriptExtraReferences` / `ManagedScriptMsBuild` / `ManagedScriptTargetFramework` / `ManagedScriptProjectName` / `ManagedScriptDirs` / `ManagedScriptGeneratedDir` / `ManagedScriptAnalyzers` / `ManagedScriptAnalyzerPackages` / `ManagedScriptAdditionalFiles` / `ManagedScriptAnalysisLevel` / `ManagedScriptAnalysisMode` / `ManagedScriptBakerDryRun` settings (`ScriptSettings` group) are the override channel for tests and special tooling. Script settings are not read from environment variables; `FO_MANAGED_RUNTIME` is only a build/tooling override for locating the prepared runtime payload. Script-level metadata tags such as `///@ Enum`, `///@ Property`, `///@ RefType`, and `///@ Setting` can live in C# source files; build-time codegen skips them (`script_metadata_tags`) and `MetadataBaker` consumes them during resource baking.
 - `BakeResources` and `ForceBakeResources` also depend on code generation and run the project baker app.
 
 Script compilation and resource baking are adjacent but not identical. Script compilation produces bytecode/runtime inputs; baking packages resources and metadata for runtime consumption. See [BakingPipeline.md](BakingPipeline.md) for resource baking.
@@ -333,6 +333,38 @@ Managed duration formatting selects units by absolute magnitude and preserves a 
 `long.MinValue`. This presentation change does not alter stored time units or the native ABI.
 
 A CLR exception caught entirely inside project C# does not cross an invocation boundary, so it cannot increment the managed exception counters automatically. A test harness that deliberately catches such an exception can call `Game.RecordCaughtException(exception)` before acknowledging it; the helper increments both managed exception counters without logging an already handled failure. Do not use it to suppress an unhandled or unrelated exception.
+
+### The analysis profile of the generated script project
+
+The generated script project always sets `Nullable=enable`, `TreatWarningsAsErrors=true` and
+`EnforceCodeStyleInBuild=true`, so every analyzer diagnostic the compilation reports is a build failure and
+the `IDE*` code-style rules run in the build rather than only in an editor. Everything above that baseline is
+the embedding project's choice, expressed through five settings and emitted only when configured, so a
+project that sets none of them gets the same project it got before these existed:
+
+| Setting | Emitted as | Purpose |
+|---|---|---|
+| `Script.ManagedScriptAnalysisLevel` | `<AnalysisLevel>` (plus an explicit `<EnableNETAnalyzers>true`) | Pins which version of the built-in .NET analyzer rule set applies |
+| `Script.ManagedScriptAnalysisMode` | `<AnalysisMode>` | Chooses how much of that rule set is enabled |
+| `Script.ManagedScriptAnalyzers` | `<ProjectReference OutputItemType="Analyzer" …>` | Analyzer projects built from source alongside the scripts |
+| `Script.ManagedScriptAnalyzerPackages` | `<PackageReference … PrivateAssets="all">` | Packaged analyzers, as `name,version` entries |
+| `Script.ManagedScriptAdditionalFiles` | `<AdditionalFiles>` | Analyzer configuration the compiler reads rather than compiles, such as a banned-symbols list |
+
+Three rules are enforced by the baker rather than left to the embedder:
+
+- **An analyzer package version must be exact.** A wildcard, a range or a missing version makes the reported
+  rule set depend on the day the build ran, which defeats gating on analyzer diagnostics; the baker throws
+  instead of emitting one.
+- **The profile covers the script project only.** The managed host project compiles engine-owned source, and
+  its analysis policy belongs to the engine, not to the embedder.
+- **Analyzers and their configuration files participate in the incremental bake check.** Editing an analyzer
+  project or a banned-symbols list recompiles the scripts. Without that, a newly added rule stays silent
+  until an unrelated source file changes, which is indistinguishable from a rule that found nothing.
+
+Severities are not part of this surface: they come from the embedding project's `.editorconfig`, which Roslyn
+resolves per source file, so the file governing `Scripts/**` is the one above those sources rather than one
+beside the generated project. Because the project sets `TreatWarningsAsErrors`, promoting a rule to `warning`
+there makes it a hard failure — roll a new rule out by severity, not all at once.
 
 `Source/Scripting/Managed/ManagedHost/` owns the stateless bootstrap used before project code can be loaded. The baker emits `FOnline.ManagedHost.gen.csproj`, references it from the generated project, and packages `FOnline.ManagedHost.dll` beside every target entry assembly. Its source timestamp and output path participate in the managed bake check, so incremental baking rebuilds a missing or changed host and does not delete an unchanged host as stale output.
 

@@ -70,6 +70,10 @@ FIXED_SETTING(string, Script, ManagedScriptGeneratedDir); // Directory for gener
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
 FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzers); // Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build
+FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzerPackages); // Roslyn analyzer NuGet packages as 'name,version' entries, version is mandatory and must be exact
+FIXED_SETTING(vector<string>, Script, ManagedScriptAdditionalFiles); // Analyzer configuration file paths passed to the script compilation as AdditionalFiles
+FIXED_SETTING(string, Script, ManagedScriptAnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
+FIXED_SETTING(string, Script, ManagedScriptAnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
 FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING_GROUP_END();
 

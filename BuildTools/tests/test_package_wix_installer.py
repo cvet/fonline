@@ -316,7 +316,9 @@ def test_createmsi_streaming_capture_tees_merged_output(capsys: pytest.CaptureFi
     assert sorted(capsys.readouterr().out.splitlines()) == ["stderr", "stdout"]
 
 
-def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_createmsi_uses_ui_extension_with_wixl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
     generator = _make_createmsi_generator(tmp_path, monkeypatch)
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Linux")
     captured: list[list[str]] = []
@@ -335,9 +337,10 @@ def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pyte
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
     streamed: list[list[str]] = []
 
-    def capture_stream(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+    def capture_stream(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
         streamed.append(cmd)
-        return createmsi.subprocess.CompletedProcess(cmd, 0, "")
+        assert stream is False
+        return createmsi.subprocess.CompletedProcess(cmd, 0, "link succeeded\n")
 
     monkeypatch.setattr(createmsi, "_run_streaming_capture", capture_stream)
     generator.build_package("wix")
@@ -348,10 +351,11 @@ def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pyte
     assert streamed[0][0].endswith("light")
     assert "WixUIExtension" in streamed[0]
     assert "-sice:ICE61" in streamed[0]
+    assert capsys.readouterr().out == "link succeeded\n"
 
 
 def test_createmsi_retries_without_validation_only_when_installer_service_is_unavailable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
 ) -> None:
     generator = _make_createmsi_generator(tmp_path, monkeypatch)
     runs: list[list[str]] = []
@@ -360,7 +364,8 @@ def test_createmsi_retries_without_validation_only_when_installer_service_is_una
         assert check is True
         runs.append(cmd)
 
-    def fail_validation(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+    def fail_validation(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
+        assert stream is False
         return createmsi.subprocess.CompletedProcess(
             cmd,
             216,
@@ -376,10 +381,13 @@ def test_createmsi_retries_without_validation_only_when_installer_service_is_una
     assert runs[0][0].endswith("candle")
     assert runs[1][0].endswith("light")
     assert runs[1][1] == "-sval"
+    output = capsys.readouterr().out
+    assert "retrying the same MSI link with validation disabled" in output
+    assert "error LGHT0217" not in output
 
 
 def test_createmsi_does_not_suppress_unrelated_linker_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
 ) -> None:
     generator = _make_createmsi_generator(tmp_path, monkeypatch)
     runs: list[list[str]] = []
@@ -388,7 +396,8 @@ def test_createmsi_does_not_suppress_unrelated_linker_failure(
         assert check is True
         runs.append(cmd)
 
-    def fail_link(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+    def fail_link(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
+        assert stream is False
         return createmsi.subprocess.CompletedProcess(cmd, 216, "error LGHT0204: Unresolved reference.\n")
 
     monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
@@ -400,6 +409,7 @@ def test_createmsi_does_not_suppress_unrelated_linker_failure(
     assert excinfo.value.returncode == 216
     assert len(runs) == 1
     assert runs[0][0].endswith("candle")
+    assert capsys.readouterr().out == "error LGHT0204: Unresolved reference.\n"
 
 
 def test_createmsi_propagates_unvalidated_retry_failure(
@@ -412,7 +422,8 @@ def test_createmsi_propagates_unvalidated_retry_failure(
         if "-sval" in cmd:
             raise createmsi.subprocess.CalledProcessError(5, cmd)
 
-    def fail_validation(cmd: list[str]) -> createmsi.subprocess.CompletedProcess[str]:
+    def fail_validation(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
+        assert stream is False
         return createmsi.subprocess.CompletedProcess(
             cmd,
             216,

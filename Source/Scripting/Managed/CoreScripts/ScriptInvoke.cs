@@ -110,9 +110,7 @@ public static partial class Game
     // same bounded exception accounting that AngelScript provided for caught script exceptions.
     public static void RecordCaughtException(Exception exception)
     {
-        if (exception == null) {
-            throw new ArgumentNullException(nameof(exception));
-        }
+        ArgumentNullException.ThrowIfNull(exception);
 
         RecordManagedException(exception, false);
     }
@@ -295,7 +293,7 @@ public static partial class Game
         try {
             if (value is IConvertible) {
                 result = (TEnum)Enum.ToObject(typeof(TEnum), value);
-                return Enum.IsDefined(typeof(TEnum), result);
+                return Enum.IsDefined(result);
             }
         }
         catch {
@@ -439,7 +437,7 @@ public static partial class Game
     }
 
     private static MethodInfo[] GetAttributedCallCandidates(ConcurrentDictionary<string, MethodInfo[]> cache,
-                                                             string funcName, Type attributeType)
+                                                            string funcName, Type attributeType)
     {
         return cache.GetOrAdd(funcName,
                               name =>
@@ -637,7 +635,12 @@ public static partial class Game
                     RecordManagedExceptionGlobal(failedTask.Exception, true);
                 }
             },
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            // Without an explicit scheduler the continuation would inherit TaskScheduler.Current, which inside a
+            // script continuation is the engine's context-bound scheduler -- the exact opposite of the foreign
+            // thread this recorder is written for, and a way back into the script context while reporting a fault
+            TaskScheduler.Default);
     }
 
     internal static void RecordManagedException(Exception ex, bool log)
