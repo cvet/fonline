@@ -314,6 +314,8 @@ TEST_CASE("ClientRuntimeApi")
 
 TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 {
+    CHECK(fs_is_absolute_path(MakeClientSessionMarkerPath("")));
+
     std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_session_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     string temp_dir = fs_path_to_string(base);
     // An absolute path stands for the resolved writable root: fs_make_writable_path leaves it as given

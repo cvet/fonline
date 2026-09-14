@@ -347,9 +347,12 @@ def test_createmsi_uses_ui_extension_with_wixl(
 
     assert captured[0][-1] == "sample.wxs"
     assert captured[0][0].endswith("candle")
+    assert "-wx" in captured[0]
     assert len(captured) == 1
     assert streamed[0][0].endswith("light")
     assert "WixUIExtension" in streamed[0]
+    assert "-wx" in streamed[0]
+    assert "-sice:ICE91" in streamed[0]
     assert "-sice:ICE61" in streamed[0]
     assert capsys.readouterr().out == "link succeeded\n"
 

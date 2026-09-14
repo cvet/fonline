@@ -178,7 +178,11 @@ link are specific to the browser and easy to break by "simplifying" them:
   fails on `mono_wasm_schedule_timer`, `mono_wasm_browser_entropy` and their neighbours. The glue is
   published beside the runtime as `dotnet.es6.*.js` and passed to the link as `--pre-js`, `--js-library`
   and `--extern-post-js`. Only the browser runtime marker carries the extra suffix, so changing the
-  browser subset does not invalidate the verified Linux and Android runtimes.
+  browser subset does not invalidate the verified Linux and Android runtimes. Runtime setup also
+  inherits the generic ASM compiler identity from the already identified Emscripten C driver before
+  Mono enables its `.S` source; this selects CMake's Clang ASM rules without changing the compiler
+  command. An `ASM compiler identification is unknown` / `Compiler/-ASM` warning means that the
+  source-patch anchor or the browser runtime marker contract has drifted and must be fixed there.
 - **`System.Globalization.Native` is deliberately not linked on wasm.** Statically it needs ICU at link
   time; the game ships none and runs invariant, so the library is dropped on the merits rather than
   stubbed. On every other platform it is still linked.

@@ -43,11 +43,12 @@ def _run_streaming_capture(command: list[str], *, stream: bool = True) -> subpro
     )
     assert process.stdout is not None
     output: list[str] = []
-    for line in process.stdout:
-        if stream:
-            sys.stdout.write(line)
-            sys.stdout.flush()
-        output.append(line)
+    with process.stdout:
+        for line in process.stdout:
+            if stream:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+            output.append(line)
     return subprocess.CompletedProcess(command, process.wait(), ''.join(output))
 
 
@@ -119,8 +120,8 @@ class PackageGenerator:
         self.feature_components = {}
         self.feature_properties = {}
         self.registry_action_keys: set[tuple[str, str]] = set()
-        self.args1: list[str] = []
-        self.args2: list[str] = []
+        self.args1: list[str] = ['-wx']
+        self.args2: list[str] = ['-wx', '-sice:ICE91']
         if self.major_upgrade is not None and self.major_upgrade.get('AllowSameVersionUpgrades') == 'yes':
             # WiX ICE61 cannot distinguish the intentional same-version major-upgrade policy from a
             # version-range authoring mistake. Keep all other linker warnings enabled.

@@ -207,6 +207,7 @@ DOWNLOAD_TIMEOUT_SEC = 900
 # prepared workspaces, which are built once and then downloaded whole
 DOWNLOAD_MIRROR_VAR = 'FO_DOWNLOAD_MIRROR'
 WORKSPACE_CACHE_VAR = 'FO_WORKSPACE_CACHE'
+WORKSPACE_CACHE_GZIP_LEVEL = 1
 CI_TOKEN_VAR = 'FO_CI_TOKEN'
 CI_CA_VAR = 'FO_CI_CA'
 
@@ -913,7 +914,7 @@ def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path,
 
 	try:
 		log(f'Pack {label} for the workspace cache:', archive_path)
-		with tarfile.open(archive_path, 'w:gz') as archive:
+		with tarfile.open(archive_path, 'w:gz', compresslevel=WORKSPACE_CACHE_GZIP_LEVEL) as archive:
 			archive.add(source_path, arcname=source_path.name)
 		workspace_cache_store(name, archive_path)
 	except (OSError, tarfile.TarError) as ex:
@@ -2504,7 +2505,7 @@ MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
 # subset or source patches change: an unchanged marker leaves a prepared host on the old runtime
 MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
-MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
+MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
@@ -2643,6 +2644,29 @@ def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
 	)
 	path.write_text(text.replace(anchor, anchor + patch, 1), encoding='utf-8')
 	log('Patched', path, '- preserved the zlib-ng warning level')
+
+
+def patch_runtime_browser_asm_compiler(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'CMakeLists.txt'
+	text = path.read_text(encoding='utf-8')
+	marker = '(FOnline Patch) Generic ASM uses the already identified Emscripten C compiler'
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = 'elseif(HOST_WASM)\n    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	patch = (
+		'elseif(HOST_WASM)\n'
+		f'    # {marker}\n'
+		'    set (CMAKE_ASM_COMPILER_ID "${CMAKE_C_COMPILER_ID}")\n'
+		'    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	)
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the browser Mono ASM compiler ID, unique anchor not found in {path}')
+
+	path.write_text(text.replace(anchor, patch, 1), encoding='utf-8')
+	log('Patched', path, '- inherited the Emscripten C compiler ID for ASM')
 
 
 def patch_runtime_android_sources(runtime_root: Path) -> None:
@@ -3018,6 +3042,9 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	def build_runtime() -> None:
 		patch_runtime_zlib_warning_level(runtime_root)
+
+		if os_name == 'browser':
+			patch_runtime_browser_asm_compiler(runtime_root)
 
 		if os_name == 'linux':
 			patch_runtime_linux_signal_actions(runtime_root)
