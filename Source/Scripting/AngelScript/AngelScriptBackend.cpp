@@ -235,8 +235,8 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY, 2));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 2));
 
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, !_settings->DebuggerEnabled));
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, !_settings->DebuggerEnabled));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, !_settings->AngelScriptDebuggerEnabled));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, !_settings->AngelScriptDebuggerEnabled));
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
     as_engine->SetEngineUserDataCleanupCallback(CleanupLineNumberTranslator, AS_PREPROCESSOR_LNT_USER_DATA);
@@ -253,7 +253,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     RegisterAngelScriptGlobals(as_engine);
     RegisterAngelScriptRemoteCalls(as_engine);
 
-    if (_engine && _settings->DebuggerEnabled) {
+    if (_engine && _settings->AngelScriptDebuggerEnabled) {
         if (!_debuggerEndpointServer) {
             try {
                 _debuggerEndpointServer.emplace(make_ptr(this));
@@ -447,10 +447,10 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     auto records = DeserializeFunctionAttributeRecords(reader);
     reader.VerifyEnd();
 
-    if (string bind_error = BindFunctionAttributeRecords(mod, records, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
+    if (string bind_error = BindFunctionAttributeRecords(mod, records, &_settings->AngelScriptExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptException(bind_error);
     }
-    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
+    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AngelScriptAttributedFunctionDirectCallAllowedNamespaces, &_settings->AngelScriptExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptException(usage_error);
     }
     if (string admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, lnt); !admin_remote_call_error.empty()) {
@@ -653,10 +653,10 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Unable to build module", as_result);
     }
 
-    if (string bind_error = BindFunctionAttributeRecords(mod, parsed_attributes, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
+    if (string bind_error = BindFunctionAttributeRecords(mod, parsed_attributes, &_settings->AngelScriptExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptCompilerException("Unable to bind function attributes", bind_error);
     }
-    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
+    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AngelScriptAttributedFunctionDirectCallAllowedNamespaces, &_settings->AngelScriptExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptCompilerException("Attributed function usage validation failed", usage_error);
     }
     if (string special_attr_error = ValidateSpecialFunctionAttributes(mod, lnt); !special_attr_error.empty()) {
@@ -732,7 +732,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
             string_view ns_view = name_space ? string_view {name_space.get()} : string_view {};
 
-            if (IsScriptNamespaceAllowed(ns_view, _settings->MutableGlobalsAllowedNamespaces)) {
+            if (IsScriptNamespaceAllowed(ns_view, _settings->AngelScriptMutableGlobalsAllowedNamespaces)) {
                 continue;
             }
 
@@ -780,7 +780,7 @@ void AngelScriptBackend::BindRequiredStuff()
     if (HasGameEngine()) {
         auto engine = GetGameEngine();
 
-        auto overrun_report_time = std::chrono::milliseconds(_settings->OverrunReportTime);
+        auto overrun_report_time = std::chrono::milliseconds(_settings->AngelScriptOverrunReportTime);
 
         _contextMngr.emplace(_asEngine, engine, overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer) {

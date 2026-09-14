@@ -91,7 +91,7 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
-Runtime overrun diagnostics use `Script.OverrunReportTime` as an independent threshold for two measurements.
+Runtime overrun diagnostics use `Script.AngelScriptOverrunReportTime` as an independent threshold for two measurements.
 `Script execution overrun` reports wall time after subtracting the server synchronization context's accumulated
 entity-lock wait, while `Script lock wait overrun` reports the contention component itself. Both messages include
 execution, lock-wait, and total wall durations, so a compute-heavy function and a wait-heavy function remain

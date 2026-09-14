@@ -55,12 +55,12 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
-FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script execution or entity-lock wait overrun, 0 to disable
-FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
-FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bind host
-FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
-FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
-FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+FIXED_SETTING(int32_t, Script, AngelScriptOverrunReportTime); // Time in milliseconds to report AngelScript execution or entity-lock wait overrun, 0 to disable
+FIXED_SETTING(bool, Script, AngelScriptDebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
+FIXED_SETTING(string, Script, AngelScriptDebuggerBindHost, "127.0.0.1"); // AngelScript debugger TCP bind host
+FIXED_SETTING(vector<string>, Script, AngelScriptMutableGlobalsAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
+FIXED_SETTING(vector<string>, Script, AngelScriptAttributedFunctionDirectCallAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
+FIXED_SETTING(vector<string>, Script, AngelScriptExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
 FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
 FIXED_SETTING(string, Script, ManagedScriptProjectName, "FOnline"); // Managed project base name
 FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
