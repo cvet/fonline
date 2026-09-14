@@ -35,6 +35,7 @@
 
 #include "AnimationInfo.h"
 #include "EngineBase.h"
+#include "EntityProtos.h"
 #include "Test_BakerHelpers.h"
 #include "TextPack.h"
 
@@ -326,6 +327,56 @@ TEST_CASE("EngineMetadata")
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "MiddleField"), HashTestMigrationToken(meta, "OldField"));
 
         CHECK_THROWS_AS(meta.RegisterMigrationRules(std::move(migration_rules)), VerificationException);
+    }
+
+    SECTION("PropertyMigrationRuleRetiringRegisteredPropertyRejected")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
+        (void)registrar->RegisterProperty({"Common", "int32", "Step", "Mutable", "Persistent", "PublicSync"});
+        (void)registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
+        AddTestMigrationRule(meta, "OldStep", "Step");
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+
+        EngineMetadata reuse_meta {[] { }};
+        reuse_meta.RegisterSide(EngineSideKind::ServerSide);
+        auto reuse_registrar = reuse_meta.RegisterEntityType("Item", true, false, true, true, true);
+        (void)reuse_registrar->RegisterProperty({"Common", "int32", "Step", "Mutable", "Persistent", "PublicSync"});
+        (void)reuse_registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
+        AddTestMigrationRule(reuse_meta, "Step", "LegacyStep");
+        CHECK_THROWS_AS(reuse_meta.FinalizeRegistration(), VerificationException);
+    }
+
+    SECTION("ProtoMigrationRuleRetiringRegisteredPrototypeRejected")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
+        meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("Rifle"), registrar));
+        meta.RegisterMigrationRule("Proto", "Item", "OldRifle", "Rifle");
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+
+        EngineMetadata reuse_meta {[] { }};
+        reuse_meta.RegisterSide(EngineSideKind::ServerSide);
+        auto reuse_registrar = reuse_meta.RegisterEntityType("Item", true, false, true, true, true);
+        reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Rifle"), reuse_registrar));
+        reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Carbine"), reuse_registrar));
+        reuse_meta.RegisterMigrationRule("Proto", "Item", "Carbine", "Rifle");
+        CHECK_THROWS_AS(reuse_meta.FinalizeRegistration(), VerificationException);
+    }
+
+    SECTION("EnumMigrationRuleRetiringRegisteredEntryRejected")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterEnumGroup("TestBody", "int32", {{"Men", 0}, {"Dog", 1}});
+        meta.RegisterMigrationRule("Enum", "TestBody", "Raider", "Men");
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+
+        EngineMetadata reuse_meta {[] { }};
+        reuse_meta.RegisterEnumGroup("TestBody", "int32", {{"Men", 0}, {"Dog", 1}, {"Raider", 2}});
+        reuse_meta.RegisterMigrationRule("Enum", "TestBody", "Raider", "Men");
+        CHECK_THROWS_AS(reuse_meta.FinalizeRegistration(), VerificationException);
     }
 }
 

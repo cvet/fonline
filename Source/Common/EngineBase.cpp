@@ -704,27 +704,36 @@ void EngineMetadata::FinalizeRegistration()
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }), "Registered struct layout has no fields");
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrar == nullptr; }), "Registered reference type has no methods or field registrar");
 
-    // A property name leaves circulation for good: stored data under a migrated name must never meet a live property
-    for (const auto& [rule_name, rules_by_type] : _migrationRules) {
-        if (rule_name.as_str() != "Property") {
-            continue;
-        }
-
-        for (const auto& [type_name, rules] : rules_by_type) {
-            nptr<const PropertyRegistrar> registrar = GetPropertyRegistrar(type_name);
-
-            for (const RefTypeDesc& ref_type : _refTypes | std::views::values) {
-                if (!registrar && ref_type.FieldsRegistrar && ref_type.FieldsRegistrar->GetTypeName() == type_name) {
-                    registrar = ref_type.FieldsRegistrar;
-                }
-            }
-
-            if (!registrar) {
-                continue;
-            }
-
+    // A name leaves circulation for good: stored data under a migrated name must never meet a registered one
+    for (const auto& [rule_name, rules_by_scope] : _migrationRules) {
+        for (const auto& [scope_name, rules] : rules_by_scope) {
             for (hstring target : rules | std::views::keys) {
-                FO_VERIFY_AND_THROW(!registrar->FindProperty(target.as_str()), "Property migration rule retires a name that is still a registered property", type_name, target);
+                bool registered = false;
+
+                if (rule_name.as_str() == "Property") {
+                    nptr<const PropertyRegistrar> registrar = GetPropertyRegistrar(scope_name);
+
+                    for (const RefTypeDesc& ref_type : _refTypes | std::views::values) {
+                        if (!registrar && ref_type.FieldsRegistrar && ref_type.FieldsRegistrar->GetTypeName() == scope_name) {
+                            registrar = ref_type.FieldsRegistrar;
+                        }
+                    }
+
+                    registered = registrar && registrar->FindProperty(target.as_str());
+                }
+                else if (rule_name.as_str() == "Proto") {
+                    // Prototype lookup always applies the rule, so a registered prototype under the old id would be unreachable
+                    const auto& protos = _protoMngr.GetAllProtos();
+                    auto it = protos.find(scope_name);
+                    registered = it != protos.end() && it->second.contains(target);
+                }
+                else if (rule_name.as_str() == "Enum") {
+                    // Enum resolution consults the rule only for an unknown name, so a registered entry would take the old stored meaning
+                    auto it = _enums.find(scope_name.as_str());
+                    registered = it != _enums.end() && it->second.contains(target.as_str());
+                }
+
+                FO_VERIFY_AND_THROW(!registered, "Migration rule retires a name that is still registered", rule_name, scope_name, target);
             }
         }
     }
