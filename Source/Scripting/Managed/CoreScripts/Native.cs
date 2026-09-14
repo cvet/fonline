@@ -265,6 +265,7 @@ internal static class Native
     }
 
     // Called by the engine when a script exception reaches native code
+    [CallableByEngine]
     internal static object?[] DescribeException(Exception exception)
     {
         DescribeException(exception, out string summary, out string? nativeError, out long[] frames);
