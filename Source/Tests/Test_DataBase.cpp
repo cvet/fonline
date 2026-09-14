@@ -2040,4 +2040,19 @@ TEST_CASE("SQLiteDataBaseRejectsCorruptedStoredKeys")
 }
 #endif
 
+#if FO_HAVE_MONGO
+TEST_CASE("MongoDataBaseCanBeCreatedAgainAfterAFailedStart")
+{
+    // The driver's init and cleanup are one-shot each. A database that cleaned up after failing to start left
+    // the next one in the process on freed handshake state, which is what a server stop and start does
+    GlobalSettings settings {false};
+    ptr<DataBaseSettings> db_settings = &settings;
+    string_view unreachable_uri = "mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200&connectTimeoutMS=200";
+
+    for (int32_t attempt = 0; attempt < 3; attempt++) {
+        CHECK_THROWS_AS(CreateMongoDataBase(db_settings, unreachable_uri, "lf_unit_tests", [] { }), DataBaseException);
+    }
+}
+#endif
+
 FO_END_NAMESPACE

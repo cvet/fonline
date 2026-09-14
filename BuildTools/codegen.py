@@ -2007,9 +2007,9 @@ def generate_generic_code() -> None:
         for prop_tag in codegen_tags['ExportProperty']:
             if prop_tag.entity == entity:
                 if 'SharedProperty' not in prop_tag.flags:
-                    global_lines.append('uint16_t ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                    global_lines.append('const uint16_t ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
                 elif prop_tag.name not in common_parsed:
-                    global_lines.append('uint16_t EntityProperties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                    global_lines.append('const uint16_t EntityProperties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
                     common_parsed.add(prop_tag.name)
                 index += 1
     global_lines.append('')

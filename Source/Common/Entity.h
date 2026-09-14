@@ -68,7 +68,7 @@ FO_BEGIN_NAMESPACE
         FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
-    static uint16_t prop##_RegIndex
+    static const uint16_t prop##_RegIndex
 
 #define FO_ENTITY_EVENT(event_name, ...) \
     EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \

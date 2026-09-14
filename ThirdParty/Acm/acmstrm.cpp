@@ -73,8 +73,7 @@ FillerProc Fillers[32] = {
 	&CACMUnpacker::Return0
 };
 
-short Amplitude_Buffer [0x10000] = {0};
-short *Buffer_Middle = &Amplitude_Buffer[0x8000];
+// (FOnline Patch) Amplitude_Buffer and Buffer_Middle are CACMUnpacker members now, see acmstrm.h
 
 void sub_4d3fcc (short *decBuff, int *someBuff, int someSize, int blocks);
 void sub_4d420c (int *decBuff, int *someBuff, int someSize, int blocks);
@@ -84,7 +83,9 @@ CACMUnpacker::CACMUnpacker (unsigned char* file_buf, int file_len, int &channels
 	buffPos(NULL),
 	decompBuff (NULL),
 	someBuff (NULL),
-	values(NULL)
+	values(NULL),
+	Amplitude_Buffer (),
+	Buffer_Middle (&Amplitude_Buffer[0x8000]) // (FOnline Patch) See acmstrm.h
 {
 	fileBuf = file_buf;
 	fileLen = file_len;

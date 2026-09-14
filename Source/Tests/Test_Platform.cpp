@@ -39,6 +39,7 @@
 #include "Platform.h"
 #include "Posix.h"
 #include "StringUtils.h"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -93,7 +94,30 @@ TEST_CASE("Platform")
         nptr<void> module = Platform::LoadModule("lf_missing_platform_module_for_tests");
         CHECK_FALSE(static_cast<bool>(module));
         Platform::UnloadModule(module);
+        CHECK_FALSE(static_cast<bool>(Platform::LoadPinnedModule("lf_missing_platform_module_for_tests")));
     }
+
+#if FO_WINDOWS
+    SECTION("PinnedModuleStaysLoadedAfterUnload")
+    {
+        // A system library this process has no other use for, so whether it is unmapped can be observed
+        string module_name = "msacm32.dll";
+
+        if (winapi::is_library_loaded(module_name)) {
+            SKIP("msacm32.dll is already held by this process, so an unload cannot be observed");
+        }
+
+        nptr<void> unpinned = Platform::LoadModule(module_name);
+        REQUIRE(unpinned);
+        Platform::UnloadModule(unpinned);
+        REQUIRE_FALSE(winapi::is_library_loaded(module_name));
+
+        nptr<void> pinned = Platform::LoadPinnedModule(module_name);
+        REQUIRE(pinned);
+        Platform::UnloadModule(pinned);
+        CHECK(winapi::is_library_loaded(module_name));
+    }
+#endif
 
     SECTION("InfoHelpersAreSafeToCall")
     {

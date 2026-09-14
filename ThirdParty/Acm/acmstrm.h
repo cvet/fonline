@@ -27,6 +27,10 @@ private:
 	int *values; // pointer to decompressed samples
 	int valCnt; // count of decompressed samples
 
+	// (FOnline Patch) Per decoder, not file-level globals: two streams decoded at once overwrote each other's dictionary
+	short Amplitude_Buffer [0x10000];
+	short *Buffer_Middle;
+
 	// Reading routines
 	unsigned char readNextPortion(); // read next block of data
 	void prepareBits (int bits); // request bits

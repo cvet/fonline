@@ -167,6 +167,22 @@ public:
 
     [[nodiscard]] auto IsAttached() const noexcept -> bool { return _thread != nullptr; }
 
+    // Detaches now instead of in the thread-local destructor, which on the main thread runs inside process exit,
+    // after Mono's own threads were killed possibly holding the locks the detach takes
+    void Release() noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (_thread == nullptr || _scopeDepth != 0 || mono_thread_current() != _thread) {
+            return;
+        }
+
+        Unpark();
+        mono_thread_detach(_thread);
+        _thread = nullptr;
+        _domain = nullptr;
+    }
+
     void Enter(MonoDomain* domain)
     {
         FO_STACK_TRACE_ENTRY();
@@ -5701,6 +5717,9 @@ ManagedScriptBackend::~ManagedScriptBackend()
         });
 
         FO_STRONG_ASSERT(managed_teardown_complete, "Managed backend teardown did not complete");
+
+        // Another backend on this thread attaches it again on its next pump
+        ManagedFrameWorkerThreadAttachment.Release();
     }
 
     _continuationPumps.clear();

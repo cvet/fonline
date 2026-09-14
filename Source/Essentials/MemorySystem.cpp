@@ -43,11 +43,16 @@
 
 FO_BEGIN_NAMESPACE
 
+struct MemorySystemData;
+static void FillBackupMemoryChunks(MemorySystemData& data);
+
 struct MemorySystemData
 {
-    MemorySystemData() { InitBackupMemoryChunks(); }
+    MemorySystemData() { FillBackupMemoryChunks(*this); }
 
     BadAllocCallback Callback {};
+    unique_arr_ptr<unique_arr_ptr<uint8_t>> BackupMemoryChunks {};
+    std::atomic_size_t BackupMemoryChunksCount {};
 };
 FO_GLOBAL_DATA(MemorySystemData, MemorySystem);
 
@@ -62,8 +67,6 @@ static void MemAlignedFree(nptr<void> ptr) noexcept;
 
 static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
 static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
-static unique_arr_ptr<unique_arr_ptr<uint8_t>> BackupMemoryChunks;
-static std::atomic_size_t BackupMemoryChunksCount;
 
 // Replace memory allocator
 #if FO_HAVE_RPMALLOC
@@ -569,29 +572,27 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_arr_ptr<unique_arr_ptr<uint8_t>> new_chunks {new unique_arr_ptr<uint8_t>[BACKUP_MEMORY_CHUNKS]()};
-
-    for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
-        new_chunks[i] = unique_arr_ptr<uint8_t> {new uint8_t[BACKUP_MEMORY_CHUNK_SIZE]()};
-    }
-
-    BackupMemoryChunks = std::move(new_chunks);
-    BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);
+    FillBackupMemoryChunks(*MemorySystem);
 }
 
 extern auto FreeBackupMemoryChunk() noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    // Out of memory after the set is torn down has no reserve left to give back
+    if (!MemorySystem.is_created()) {
+        return false;
+    }
+
     while (true) {
-        size_t cur_size = BackupMemoryChunksCount.load();
+        size_t cur_size = MemorySystem->BackupMemoryChunksCount.load();
 
         if (cur_size == 0) {
             return false;
         }
 
-        if (BackupMemoryChunksCount.compare_exchange_strong(cur_size, cur_size - 1)) {
-            BackupMemoryChunks[cur_size - 1].reset();
+        if (MemorySystem->BackupMemoryChunksCount.compare_exchange_strong(cur_size, cur_size - 1)) {
+            MemorySystem->BackupMemoryChunks[cur_size - 1].reset();
             return true;
         }
     }
@@ -626,7 +627,7 @@ extern void ReportBadAlloc(string_view message, string_view type_str, size_t cou
     WriteBaseLog("\n\n");
     SafeWriteStackTrace(GetStackTrace());
 
-    if (MemorySystem->Callback) {
+    if (MemorySystem.is_created() && MemorySystem->Callback) {
         MemorySystem->Callback();
     }
 }
@@ -638,6 +639,20 @@ extern void ReportAndExit(string_view message) noexcept
     WriteBaseLog(message);
 
     ExitApp(false);
+}
+
+static void FillBackupMemoryChunks(MemorySystemData& data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unique_arr_ptr<unique_arr_ptr<uint8_t>> new_chunks {new unique_arr_ptr<uint8_t>[BACKUP_MEMORY_CHUNKS]()};
+
+    for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
+        new_chunks[i] = unique_arr_ptr<uint8_t> {new uint8_t[BACKUP_MEMORY_CHUNK_SIZE]()};
+    }
+
+    data.BackupMemoryChunks = std::move(new_chunks);
+    data.BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);
 }
 
 FO_END_NAMESPACE

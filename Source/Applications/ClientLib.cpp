@@ -70,8 +70,22 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
 {
     FO_STACK_TRACE_ENTRY();
 
+    // The host carries on in this process after the call: nothing started here may still be running, or be
+    // killed holding a lock when the host exits, so the set is torn down before control goes back
+    auto join_before_return = scope_exit([]() noexcept { delete_global_data(); });
+
+    // The host reads the result strings after the call, when the global data they came from is already
+    // gone. The host never unloads this library (see its TryLoadRuntime), so storage it owns outlives the read
+    static string published_runtime_path;
+    static string published_compatibility_version;
+
     CommandLineArgs args {argc, argv};
-    RunClientRuntime(args, runtime_result);
+    auto result = make_nptr(runtime_result);
+    RunClientRuntime(args, result);
+
+    if (result) {
+        CaptureClientRuntimeResultStrings(*result, published_runtime_path, published_compatibility_version);
+    }
 }
 
 FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, ClientRuntimeExports* raw_exports) noexcept -> bool

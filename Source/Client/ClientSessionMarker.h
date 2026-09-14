@@ -49,7 +49,6 @@ enum class ClientShutdownStage : uint8_t
     ApplicationReset = 3,
     ShutdownHookDone = 4,
     RuntimeReturned = 5,
-    RuntimeUnloaded = 6,
 };
 
 struct PreviousClientSession

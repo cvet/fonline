@@ -251,6 +251,38 @@ auto winapi::load_library(const string& path) noexcept -> nptr<void>
     return ::LoadLibraryW(path_cstr.get());
 }
 
+auto winapi::load_pinned_library(const string& path) noexcept -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<void> module_handle = load_library(path);
+
+    if (!module_handle) {
+        return nullptr;
+    }
+
+    // A module handle is the module's base address, so asking by address names exactly this module
+    HMODULE pinned = nullptr;
+    auto module_address = module_handle.reinterpret_as<const wchar_t>();
+
+    if (::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, module_address.get(), &pinned) == FALSE) {
+        (void)::FreeLibrary(to_module_handle(module_handle));
+        return nullptr;
+    }
+
+    return module_handle;
+}
+
+auto winapi::is_library_loaded(const string& name) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring name_wide = strex(name).to_wide_char();
+    auto name_cstr = make_ptr(name_wide.c_str());
+
+    return ::GetModuleHandleW(name_cstr.get()) != nullptr;
+}
+
 void winapi::free_library(nptr<void> module_handle) noexcept
 {
     FO_STACK_TRACE_ENTRY();

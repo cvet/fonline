@@ -142,7 +142,7 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
     vector<uint8_t> server_received;
     size_t client_disconnect_count = 0;
 
-    InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
+    REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
 
         return [&](const_span<uint8_t> buf) {
@@ -153,9 +153,9 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
                 server_received.assign(buf.begin(), buf.end());
             }
         };
-    });
+    }));
 
-    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
 
     auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
@@ -200,13 +200,13 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
 
     InterthreadDataCallback server_send_to_client;
 
-    InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
+    REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
 
         return [](const_span<uint8_t>) { };
-    });
+    }));
 
-    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
 
     auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
@@ -229,7 +229,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     InterthreadDataCallback server_send_to_client;
     size_t client_disconnect_count = 0;
 
-    InterthreadListeners.emplace(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
+    REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
 
         return [&](const_span<uint8_t> buf) {
@@ -237,9 +237,9 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
                 client_disconnect_count++;
             }
         };
-    });
+    }));
 
-    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
+    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
 
     optional<ClientConnection::ConnectResult> connect_result;
     ClientConnection client {&settings};

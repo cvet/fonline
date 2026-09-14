@@ -91,6 +91,9 @@ struct Platform
 
     // Windows: LoadLibraryW family; Linux and macOS: dlopen family; other: nullptr
     static auto LoadModule(const string& module_name) noexcept -> nptr<void>;
+    // For a module that must never be unmapped, such as an engine library: statically linked runtimes install
+    // process-wide hooks into it that cannot be withdrawn. UnloadModule on the handle leaves it mapped
+    static auto LoadPinnedModule(const string& module_name) noexcept -> nptr<void>;
     static void UnloadModule(nptr<void> module_handle) noexcept;
     static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
     template<typename T>

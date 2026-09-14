@@ -36,8 +36,12 @@
 
 FO_BEGIN_NAMESPACE
 
-mutex InterthreadListenersLocker;
-map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+struct InterthreadData
+{
+    mutex ListenersLocker {};
+    map<uint16_t, InterthreadListener> Listeners FO_TSA_GUARDED_BY(ListenersLocker) {};
+};
+FO_GLOBAL_DATA(InterthreadData, Interthread);
 
 FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
                                                     "##############################################################################################################";
@@ -57,6 +61,48 @@ auto GetPackagedRuntimeName() -> string
     FO_STACK_TRACE_ENTRY();
 
     return PackagedBuildName;
+}
+
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.emplace(port, std::move(listener)).second;
+}
+
+auto RemoveInterthreadListener(uint16_t port) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.erase(port) != 0;
+}
+
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    auto it = Interthread->Listeners.find(port);
+
+    if (it == Interthread->Listeners.end()) {
+        return std::nullopt;
+    }
+
+    return it->second;
+}
+
+auto HasInterthreadListener(uint16_t port) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.contains(port);
 }
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
