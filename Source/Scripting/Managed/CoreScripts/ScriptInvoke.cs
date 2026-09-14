@@ -280,7 +280,8 @@ public static partial class Game
                 return Enum.IsDefined(result);
             }
         }
-        catch {
+        catch (ArgumentException) {
+            // Converts, but not to an integral type this enum is built on - which is the Try contract's answer
         }
 
         result = default;
@@ -303,21 +304,8 @@ public static partial class Game
     {
         string normalized = NormalizeEnumValueName(valueName);
 
-        try {
-            result = Enum.Parse(enumType, normalized, false);
-            return true;
-        }
-        catch {
-        }
-
-        try {
-            result = Enum.Parse(enumType, normalized, true);
-            return true;
-        }
-        catch {
-            result = null;
-            return false;
-        }
+        return Enum.TryParse(enumType, normalized, false, out result) ||
+               Enum.TryParse(enumType, normalized, true, out result);
     }
 
     private static string NormalizeEnumValueName(string valueName)
