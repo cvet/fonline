@@ -46,8 +46,6 @@ namespace PropertiesSerializer
 {
     [[nodiscard]] auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Document;
     [[nodiscard]] auto LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, hash_resolver& hashes, NameResolver& name_resolver) noexcept -> bool;
-    [[nodiscard]] auto ResolvePropertyFromValue(ptr<const PropertyRegistrar> registrar, string_view name, const AnyData::Value& value, nptr<const AnyData::Dict> document = nullptr) -> nptr<const Property>;
-    [[nodiscard]] auto ResolvePropertyFromText(ptr<const PropertyRegistrar> registrar, string_view name, string_view text, const function<optional<string_view>(string_view)>& read_sibling = {}) -> nptr<const Property>;
     [[nodiscard]] auto SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value;
     [[nodiscard]] auto SavePropertyToValue(ptr<const Property> prop, const_span<uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value;
     [[nodiscard]] auto SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> string;

@@ -690,10 +690,12 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("third = (int)__args[0];") == string::npos);
 
     string client_settings = ReadTextFile(script_dir / "ClientSettings.gen.cs");
-    CHECK(client_settings.find("public static List<int> View_GlobalDayColorTime") != string::npos);
+    CHECK(client_settings.find("    public static class View\n    {\n") != string::npos);
+    CHECK(client_settings.find("public static List<int> GlobalDayColorTime") != string::npos);
+    CHECK(client_settings.find("View_GlobalDayColor") == string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingIntList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColorTime\"") != string::npos);
-    CHECK(client_settings.find("public static List<byte> View_GlobalDayColor") != string::npos);
+    CHECK(client_settings.find("public static List<byte> GlobalDayColor\n") != string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingByteList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColor\"") != string::npos);
 

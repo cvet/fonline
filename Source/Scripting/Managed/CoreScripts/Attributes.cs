@@ -18,7 +18,7 @@ public sealed class EventAttribute : Attribute
 {
 }
 
-// Admits a static method to managed Game.Invoke / Game.InvokeAsync, which find it by reflection. It is not published
+// Admits a static method to managed ScriptFunc.Invoke / ScriptFunc.InvokeAsync, which find it by reflection. It is not published
 // in the native global function map: native code reaches a script method through [CallableFromNative]
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class CallableByNameAttribute : Attribute

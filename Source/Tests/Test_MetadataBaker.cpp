@@ -1323,18 +1323,16 @@ namespace TestValueTypePropertyOwner
 #endif
 }
 
-TEST_CASE("MetadataBakerPreservesPropertyVersionQualifiers")
+TEST_CASE("MetadataBakerCarriesPropertyRenameRules")
 {
     BakerTests::TestRig rig;
-    rig.AddSourceFile("Scripts/VersionedMetadata.cs", R"(
-///@ Property Critter Common int32 DataVersion Mutable Persistent PublicSync
-///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync
+    rig.AddSourceFile("Scripts/RenamedMetadata.cs", R"(
 ///@ Property Critter Common int16 Step Mutable Persistent PublicSync
-///@ MigrationRule Property Critter Step LegacyStep BeforeVersion DataVersion 3270
-///@ MigrationRule Property Critter RetiredStep LegacyStep BeforeVersion DataVersion 3270
+///@ MigrationRule Property Critter OldStep Step
 )");
     MetadataBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
     for (auto target : {"server", "client", "mapper"}) {
         EngineMetadata meta {[] { }};
         meta.RegisterSide(target == string_view {"server"} ? EngineSideKind::ServerSide : EngineSideKind::ClientSide);
@@ -1342,31 +1340,21 @@ TEST_CASE("MetadataBakerPreservesPropertyVersionQualifiers")
         meta.RegisterEnumGroup("CritterProperty", "int32", {});
         const auto& output = rig.Outputs.at(strex("TestPack.fometa-{}", target));
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
-        auto condition = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("PropertyBeforeVersion"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Step"));
-        REQUIRE(condition.has_value());
-        CHECK(condition.value().as_str() == "DataVersion 3270");
-        auto retired_condition = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("PropertyBeforeVersion"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("RetiredStep"));
-        REQUIRE(retired_condition.has_value());
-        CHECK(retired_condition.value().as_str() == "DataVersion 3270");
         auto registrar = meta.GetPropertyRegistrar("Critter");
         REQUIRE(registrar);
         Properties props(registrar);
         AnyData::Document doc;
-        doc.Emplace("DataVersion", int64_t {3270});
-        doc.Emplace("Step", int64_t {7});
-        doc.Emplace("LegacyStep", int64_t {4});
-        doc.Emplace("RetiredStep", int64_t {9});
+        doc.Emplace("OldStep", int64_t {7});
         REQUIRE(PropertiesSerializer::LoadFromDocument(&props, doc, meta.Hashes, meta));
         CHECK(props.GetValue<int16_t>(registrar->FindProperty("Step").as_ptr()) == 7);
-        CHECK(props.GetValue<int32_t>(registrar->FindProperty("LegacyStep").as_ptr()) == 4);
     }
 }
 
-TEST_CASE("MetadataBakerRejectsInvalidPropertyVersionQualifiers")
+TEST_CASE("MetadataBakerRejectsPropertyRuleRetiringLiveName")
 {
-    for (auto rule : {"Property Critter Step LegacyStep BeforeVersion DataVersion 0", "Property Critter Step LegacyStep BeforeVersion DataVersion 9223372036854775808", "Property Critter Step LegacyStep BeforeVersion Step 3270", "Property Critter Step LegacyStep BeforeVersion Missing 3270", "Proto Critter Step LegacyStep BeforeVersion DataVersion 3270", "Property Critter Step LegacyStep BeforeVersion DataVersion"}) {
+    for (auto rule : {"Property Critter Step LegacyStep", "Property Critter Step LegacyStep BeforeVersion DataVersion 3270"}) {
         BakerTests::TestRig rig;
-        rig.AddSourceFile("Scripts/InvalidVersionedMetadata.cs", strex("///@ Property Critter Common int32 DataVersion Mutable Persistent PublicSync\n///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync\n///@ Property Critter Common int16 Step Mutable Persistent PublicSync\n///@ MigrationRule {}\n", rule));
+        rig.AddSourceFile("Scripts/ReusedMetadata.cs", strex("///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync\n///@ Property Critter Common int16 Step Mutable Persistent PublicSync\n///@ MigrationRule {}\n", rule));
         MetadataBaker baker(rig.MakeContext());
         CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
     }

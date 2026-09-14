@@ -638,35 +638,6 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
     rules.emplace(htarget, hreplacement);
 }
 
-void EngineMetadata::RegisterPropertyMigrationBeforeVersion(string_view entity_type, string_view target, string_view version_property, string_view before_version)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    int64_t cutoff = 0;
-    auto parsed = std::from_chars(before_version.data(), before_version.data() + before_version.size(), cutoff);
-    FO_VERIFY_AND_THROW(parsed.ec == std::errc() && parsed.ptr == before_version.data() + before_version.size() && cutoff > 0, "Invalid property migration version cutoff", before_version);
-    auto registrar = GetPropertyRegistrar(entity_type);
-
-    if (!registrar) {
-        for (const auto& [name, fields_registrar] : _dynamicRefTypeRegistrars) {
-            if (fields_registrar->GetTypeName().as_str() == entity_type) {
-                registrar = fields_registrar.as_ptr();
-                break;
-            }
-        }
-    }
-
-    FO_VERIFY_AND_THROW(registrar, "Unknown versioned property migration entity", entity_type);
-    auto replacement_prop = registrar->FindPersistedProperty(target);
-    auto version_prop = registrar->FindProperty(version_property);
-    FO_VERIFY_AND_THROW(replacement_prop && version_prop, "Versioned property migration requires replacement and version properties", entity_type, target, version_property);
-    const BaseTypeDesc& version_type = version_prop->GetBaseType();
-    FO_VERIFY_AND_THROW(version_prop->IsPlainData() && version_type.IsInt, "Property migration version must be an integer property", version_property);
-    FO_VERIFY_AND_THROW(version_property != target, "Property migration cannot depend on its own version", target);
-    FO_VERIFY_AND_THROW(CheckMigrationRule(Hashes.to_hashed_string("Property"), Hashes.to_hashed_string(entity_type), Hashes.to_hashed_string(target)).has_value(), "Version condition requires a property migration rule", entity_type, target);
-    RegisterMigrationRule("PropertyBeforeVersion", entity_type, target, strex("{} {}", version_property, before_version));
-}
-
 auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
 {
     FO_STACK_TRACE_ENTRY();
@@ -732,6 +703,31 @@ void EngineMetadata::FinalizeRegistration()
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }), "Registered struct layout has no fields");
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrar == nullptr; }), "Registered reference type has no methods or field registrar");
+
+    // A property name leaves circulation for good: stored data under a migrated name must never meet a live property
+    for (const auto& [rule_name, rules_by_type] : _migrationRules) {
+        if (rule_name.as_str() != "Property") {
+            continue;
+        }
+
+        for (const auto& [type_name, rules] : rules_by_type) {
+            nptr<const PropertyRegistrar> registrar = GetPropertyRegistrar(type_name);
+
+            for (const RefTypeDesc& ref_type : _refTypes | std::views::values) {
+                if (!registrar && ref_type.FieldsRegistrar && ref_type.FieldsRegistrar->GetTypeName() == type_name) {
+                    registrar = ref_type.FieldsRegistrar;
+                }
+            }
+
+            if (!registrar) {
+                continue;
+            }
+
+            for (hstring target : rules | std::views::keys) {
+                FO_VERIFY_AND_THROW(!registrar->FindProperty(target.as_str()), "Property migration rule retires a name that is still a registered property", type_name, target);
+            }
+        }
+    }
 
     _registrationFinalized = true;
 }

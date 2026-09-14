@@ -981,7 +981,7 @@ static void InvokeManagedScriptDelegate(MonoObject* delegate_obj, string_view co
     ThrowIfManagedException(exception, context, &entry);
 }
 
-// Script code reports an exception it caught itself; see Game.RecordManagedException
+// Script code reports an exception it caught itself; see ScriptExceptions.Record
 static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames)
 {
     FO_STACK_TRACE_ENTRY();
