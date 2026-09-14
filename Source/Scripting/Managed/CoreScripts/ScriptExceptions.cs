@@ -18,8 +18,17 @@ public static class ScriptExceptions
     // Synchronous faults only: a deferred Task fault completes on a foreign thread and counts globally
     public static int ContextCount => _contextCount;
 
+    // A script-owned dispatch boundary -- a loop that runs independent content callbacks and must survive one of
+    // them failing -- stops the fault there and reports it exactly as an engine dispatch boundary would
+    public static void Report(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        Record(exception, true);
+    }
+
     // An exception caught entirely inside script code never crosses a dispatch boundary, so the runtime cannot
-    // observe it. A harness that deliberately catches one reports it here to keep the accounting whole
+    // observe it. A harness that deliberately catches one as expected reports it here to keep the accounting whole
     public static void RecordCaught(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);

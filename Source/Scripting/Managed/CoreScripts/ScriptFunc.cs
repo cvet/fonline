@@ -8,8 +8,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 
 // Calls a script function by name: a managed static method admitted by [CallableByName] (or [AdminRemoteCall] for
-// InvokeAdmin), falling back to the native global-function map. A fault in the target is accounted in
-// ScriptExceptions and answered with false
+// TryInvokeAdmin), falling back to the native global-function map. A name that resolves nowhere throws, and an
+// exception thrown by the target reaches the caller unchanged
 public static class ScriptFunc
 {
     private const BindingFlags InvokeMethodFlags =
@@ -22,159 +22,162 @@ public static class ScriptFunc
     private static readonly ConcurrentDictionary<string, MethodInfo[]> AdminCallCandidates =
         new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
 
-    public static bool Invoke(string funcName, params object?[]? args)
+    // An asynchronous target runs until its first incomplete await; a fault after that is observed and accounted in
+    // ScriptExceptions, because this caller has already returned
+    public static void Invoke(string funcName, params object?[]? args)
     {
-        return InvokeCore(funcName, args ?? Array.Empty<object?>());
+        object?[] invokeArgs = args ?? Array.Empty < object ?>();
+        MethodInfo? method = FindInvokeMethod(funcName, invokeArgs);
+
+        if (method == null) {
+            InvokeNative(funcName, invokeArgs);
+            return;
+        }
+
+        CoerceInvokeArgs(method, invokeArgs);
+        CompleteOrObserve(InvokeTarget(method, invokeArgs));
     }
 
     // Awaits the dispatched target when it is asynchronous. `Invoke` only observes the returned Task
     // for faults, which leaves an async target still running after the call returns; a caller that
     // needs the work finished before it reads the resulting state must await this instead
-    public static Task<bool> InvokeAsync(string funcName, params object?[]? args)
+    public static async Task InvokeAsync(string funcName, params object?[]? args)
     {
-        return InvokeCoreAsync(funcName, args ?? Array.Empty<object?>());
+        object?[] invokeArgs = args ?? Array.Empty < object ?>();
+        MethodInfo? method = FindInvokeMethod(funcName, invokeArgs);
+
+        if (method == null) {
+            InvokeNative(funcName, invokeArgs);
+            return;
+        }
+
+        CoerceInvokeArgs(method, invokeArgs);
+
+        if (InvokeTarget(method, invokeArgs) is Task task) {
+            await task;
+        }
     }
 
-    // Admin commands have their own allowlist and do not become internal name-dispatch targets merely
-    // because the same method is exposed to an authenticated administrator
-    public static bool InvokeAdmin(string funcName, params object?[]? args)
+    // Admin commands have their own allowlist and do not become internal name-dispatch targets merely because the
+    // same method is exposed to an authenticated administrator. The name comes from the administrator, so a name
+    // that matches no admin function is an expected answer; a failure inside the function still propagates
+    public static bool TryInvokeAdmin(string funcName, params object?[]? args)
     {
-        return InvokeAdminCore(funcName, args ?? Array.Empty<object?>());
+        object?[] invokeArgs = args ?? Array.Empty < object ?>();
+        MethodInfo? method = FindAdminCallMethod(funcName, invokeArgs);
+
+        if (method == null) {
+            return false;
+        }
+
+        CoerceInvokeArgs(method, invokeArgs);
+        CompleteOrObserve(InvokeTarget(method, invokeArgs));
+        return true;
     }
 
-    public static bool Invoke<TResult>(string funcName, ref TResult result)
+    // The result form: the target either returns the value or writes it through a trailing ref/out parameter, which
+    // receives the caller's current value first
+    public static void Invoke<TResult>(string funcName, ref TResult result)
     {
         object?[] args = { result };
-        return InvokeCoreWithResult(funcName, args, 0) && CopyInvokeResult(args, 0, ref result);
+        InvokeWithResult(funcName, args, 0);
+        result = ConvertInvokeResult<TResult>(args[0]);
     }
 
-    public static bool Invoke<TResult>(string funcName, object? arg0, ref TResult result)
+    public static void Invoke<TResult>(string funcName, object? arg0, ref TResult result)
     {
         object?[] args = { arg0, result };
-        return InvokeCoreWithResult(funcName, args, 1) && CopyInvokeResult(args, 1, ref result);
+        InvokeWithResult(funcName, args, 1);
+        result = ConvertInvokeResult<TResult>(args[1]);
     }
 
-    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, ref TResult result)
+    public static void Invoke<TResult>(string funcName, object? arg0, object? arg1, ref TResult result)
     {
         object?[] args = { arg0, arg1, result };
-        return InvokeCoreWithResult(funcName, args, 2) && CopyInvokeResult(args, 2, ref result);
+        InvokeWithResult(funcName, args, 2);
+        result = ConvertInvokeResult<TResult>(args[2]);
     }
 
-    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, ref TResult result)
+    public static void Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, result };
-        return InvokeCoreWithResult(funcName, args, 3) && CopyInvokeResult(args, 3, ref result);
+        InvokeWithResult(funcName, args, 3);
+        result = ConvertInvokeResult<TResult>(args[3]);
     }
 
-    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
+    public static void Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
                                        ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, result };
-        return InvokeCoreWithResult(funcName, args, 4) && CopyInvokeResult(args, 4, ref result);
+        InvokeWithResult(funcName, args, 4);
+        result = ConvertInvokeResult<TResult>(args[4]);
     }
 
-    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
+    public static void Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
                                        object? arg4, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, arg4, result };
-        return InvokeCoreWithResult(funcName, args, 5) && CopyInvokeResult(args, 5, ref result);
+        InvokeWithResult(funcName, args, 5);
+        result = ConvertInvokeResult<TResult>(args[5]);
     }
 
-    public static bool Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
+    public static void Invoke<TResult>(string funcName, object? arg0, object? arg1, object? arg2, object? arg3,
                                        object? arg4, object? arg5, ref TResult result)
     {
         object?[] args = { arg0, arg1, arg2, arg3, arg4, arg5, result };
-        return InvokeCoreWithResult(funcName, args, 6) && CopyInvokeResult(args, 6, ref result);
+        InvokeWithResult(funcName, args, 6);
+        result = ConvertInvokeResult<TResult>(args[6]);
     }
 
-    private static async Task<bool> InvokeCoreAsync(string funcName, object?[] args)
+    private static void InvokeWithResult(string funcName, object?[] args, int resultIndex)
     {
-        try {
-            MethodInfo? method = FindInvokeMethod(funcName, args);
-            if (method == null) {
-                return Native.InvokeScriptFunc(funcName, args);
-            }
+        MethodInfo? method = FindInvokeMethod(funcName, args);
 
+        if (method != null) {
             CoerceInvokeArgs(method, args);
-            object? result = method.Invoke(null, args);
-
-            if (result is Task task) {
-                await task;
-            }
-
-            return true;
+            CompleteOrObserve(InvokeTarget(method, args));
+            return;
         }
-        catch (Exception ex) {
-            ScriptExceptions.Record(ex, true);
-            return false;
+
+        object?[] inputArgs = new object?[args.Length - 1];
+        Array.Copy(args, 0, inputArgs, 0, resultIndex);
+        Array.Copy(args, resultIndex + 1, inputArgs, resultIndex, args.Length - resultIndex - 1);
+        method = FindInvokeResultMethod(funcName, inputArgs);
+
+        if (method == null) {
+            InvokeNative(funcName, args);
+            return;
+        }
+
+        CoerceInvokeArgs(method, inputArgs);
+        args[resultIndex] = InvokeTarget(method, inputArgs);
+    }
+
+    private static void InvokeNative(string funcName, object?[] args)
+    {
+        if (!Native.InvokeScriptFunc(funcName, args)) {
+            Invariant.Failed("Script function is not found", funcName, args.Length);
         }
     }
 
-    private static bool InvokeCore(string funcName, object?[] args)
+    // Reflection would wrap the target's exception in TargetInvocationException; the caller must see the original
+    private static object? InvokeTarget(MethodInfo method, object?[] args)
     {
-        try {
-            MethodInfo? method = FindInvokeMethod(funcName, args);
-            if (method == null) {
-                return Native.InvokeScriptFunc(funcName, args);
-            }
-
-            CoerceInvokeArgs(method, args);
-            object? result = method.Invoke(null, args);
-            ScriptExceptions.ObserveTask(result);
-            return true;
-        }
-        catch (Exception ex) {
-            ScriptExceptions.Record(ex, true);
-            return false;
-        }
+        return method.Invoke(null, BindingFlags.DoNotWrapExceptions, null, args, CultureInfo.InvariantCulture);
     }
 
-    private static bool InvokeAdminCore(string funcName, object?[] args)
+    private static void CompleteOrObserve(object? result)
     {
-        try {
-            MethodInfo? method = FindAdminCallMethod(funcName, args);
-            if (method == null) {
-                return false;
-            }
-
-            CoerceInvokeArgs(method, args);
-            object? result = method.Invoke(null, args);
-            ScriptExceptions.ObserveTask(result);
-            return true;
+        if (result is not Task task) {
+            return;
         }
-        catch (Exception ex) {
-            ScriptExceptions.Record(ex, true);
-            return false;
-        }
-    }
 
-    private static bool InvokeCoreWithResult(string funcName, object?[] args, int resultIndex)
-    {
-        try {
-            MethodInfo? method = FindInvokeMethod(funcName, args);
-            if (method != null) {
-                CoerceInvokeArgs(method, args);
-                object? result = method.Invoke(null, args);
-                ScriptExceptions.ObserveTask(result);
-                return true;
-            }
-
-            object?[] inputArgs = new object?[args.Length - 1];
-            Array.Copy(args, 0, inputArgs, 0, resultIndex);
-            Array.Copy(args, resultIndex + 1, inputArgs, resultIndex, args.Length - resultIndex - 1);
-            method = FindInvokeResultMethod(funcName, inputArgs);
-            if (method == null) {
-                return Native.InvokeScriptFunc(funcName, args);
-            }
-
-            CoerceInvokeArgs(method, inputArgs);
-            args[resultIndex] = method.Invoke(null, inputArgs);
-            return true;
+        if (task.IsCompleted) {
+            task.GetAwaiter().GetResult();
+            return;
         }
-        catch (Exception ex) {
-            ScriptExceptions.Record(ex, true);
-            return false;
-        }
+
+        ScriptExceptions.ObserveTask(task);
     }
 
     private static MethodInfo? FindInvokeMethod(string funcName, object?[] args)
@@ -398,16 +401,9 @@ public static class ScriptFunc
         return type.IsByRef ? type.GetElementType()! : type;
     }
 
-    private static bool CopyInvokeResult<TResult>(object?[] args, int index, ref TResult result)
+    private static TResult ConvertInvokeResult<TResult>(object? value)
     {
-        try {
-            object? value = CoerceInvokeArg(typeof(TResult), args[index]);
-            result = value == null ? default! : (TResult)value;
-            return true;
-        }
-        catch (Exception ex) {
-            ScriptExceptions.Record(ex, true);
-            return false;
-        }
+        object? converted = CoerceInvokeArg(typeof(TResult), value);
+        return converted == null ? default! : (TResult)converted;
     }
 }

@@ -139,7 +139,7 @@ static void AppendMutableArgAssignments(ostringstream& out, const_span<ArgDesc> 
 static void AppendMutableEventArgAssignments(ostringstream& out, const_span<ArgDesc> args, string_view source_name);
 static void AppendProperty(ostringstream& out, const string& type_name, const string& property_name, bool writable, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names, optional<string_view> initializer, bool is_ref_type);
 static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, string_view owner_type_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
-static void AppendSettingProperty(ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names);
+static void AppendSettingProperty(ostringstream& out, string_view indent, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names);
 static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures, bool async_callbacks);
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool;
 static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
@@ -876,7 +876,20 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         out << "public static partial class Settings\n";
         out << "{\n";
 
-        unordered_set<string> setting_names;
+        // A setting `Domain.Name` is read as `Settings.Domain.Name`: the domain becomes a nested class
+        map<string, vector<pair<string, ComplexTypeDesc>>> settings_by_domain;
+
+        auto add_setting = [&](const string& setting_name, ComplexTypeDesc setting_type) {
+            size_t separator = setting_name.find('.');
+            bool is_domain_form = separator != string::npos && separator != 0 && separator + 1 != setting_name.size() && setting_name.find('.', separator + 1) == string::npos;
+
+            if (!is_domain_form) {
+                throw ManagedScriptBakerException("Managed setting name must have the Domain.Name form", setting_name);
+            }
+
+            settings_by_domain[setting_name.substr(0, separator)].emplace_back(setting_name, std::move(setting_type));
+        };
+
         map<string, const BaseTypeDesc*> sorted_settings;
 
         for (const auto& [setting_name, setting_type] : meta.GetGameSettings()) {
@@ -884,9 +897,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         }
 
         for (const auto& [setting_name, setting_type] : sorted_settings) {
-            string accessor_name = setting_name;
-            std::ranges::replace(accessor_name, '.', '_');
-            AppendSettingProperty(out, ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = *setting_type}, EscapeCsIdentifier(accessor_name), setting_name, setting_names);
+            add_setting(setting_name, ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = *setting_type});
         }
 
         // Engine ExportSettings are absent from GetGameSettings(), so pull them from the codegen-generated
@@ -904,10 +915,36 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         }
 
         for (const auto& [setting_name, type_name] : export_settings) {
-            string accessor_name = setting_name;
-            std::ranges::replace(accessor_name, '.', '_');
-            ComplexTypeDesc setting_type = meta.ResolveComplexType(type_name);
-            AppendSettingProperty(out, setting_type, EscapeCsIdentifier(accessor_name), setting_name, setting_names);
+            add_setting(setting_name, meta.ResolveComplexType(type_name));
+        }
+
+        string domain_indent = strex("{}{}", CS_INDENT, CS_INDENT).str();
+        bool first_domain = true;
+
+        for (const auto& [domain_name, domain_settings] : settings_by_domain) {
+            if (!first_domain) {
+                out << "\n";
+            }
+
+            first_domain = false;
+            unordered_set<string> member_names;
+            ostringstream members;
+
+            for (const auto& [setting_name, setting_type] : domain_settings) {
+                AppendSettingProperty(members, domain_indent, setting_type, EscapeCsIdentifier(setting_name.substr(domain_name.size() + 1)), setting_name, member_names);
+            }
+
+            string members_text {members.view()};
+
+            // Every property ends with a separating blank line, and the last one sits right before the closing brace
+            while (members_text.ends_with("\n\n")) {
+                members_text.pop_back();
+            }
+
+            out << CS_INDENT << "public static class " << EscapeCsIdentifier(domain_name) << "\n";
+            out << CS_INDENT << "{\n";
+            out << members_text;
+            out << CS_INDENT << "}\n";
         }
 
         out << "}\n";
@@ -3215,7 +3252,7 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     out << CS_INDENT << "}\n\n";
 }
 
-static void AppendSettingProperty(ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names)
+static void AppendSettingProperty(ostringstream& out, string_view indent, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3333,20 +3370,20 @@ static void AppendSettingProperty(ostringstream& out, const ComplexTypeDesc& typ
         throw ManagedScriptBakerException("Unsupported Managed setting type", strex("{} {}", setting_name, type_name).str());
     }
 
-    out << CS_INDENT << "public static " << type_name << " " << property_name << "\n";
-    out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    get\n";
-    out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        return " << getter_cast << "global::FOnline.Native." << getter_method << "(\n";
-    out << CS_INDENT << "            \"" << setting_literal << "\");\n";
-    out << CS_INDENT << "    }\n";
-    out << CS_INDENT << "    set\n";
-    out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        global::FOnline.Native." << setter_method << "(\n";
-    out << CS_INDENT << "            \"" << setting_literal << "\",\n";
-    out << CS_INDENT << "            " << setter_value << ");\n";
-    out << CS_INDENT << "    }\n";
-    out << CS_INDENT << "}\n\n";
+    out << indent << "public static " << type_name << " " << property_name << "\n";
+    out << indent << "{\n";
+    out << indent << "    get\n";
+    out << indent << "    {\n";
+    out << indent << "        return " << getter_cast << "global::FOnline.Native." << getter_method << "(\n";
+    out << indent << "            \"" << setting_literal << "\");\n";
+    out << indent << "    }\n";
+    out << indent << "    set\n";
+    out << indent << "    {\n";
+    out << indent << "        global::FOnline.Native." << setter_method << "(\n";
+    out << indent << "            \"" << setting_literal << "\",\n";
+    out << indent << "            " << setter_value << ");\n";
+    out << indent << "    }\n";
+    out << indent << "}\n\n";
 }
 
 static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures, bool async_callbacks)
