@@ -227,6 +227,11 @@ static auto WriteFakeManagedMsBuildScript(const std::filesystem::path& dir) -> s
     WriteTextFile(script_path, R"(@echo off
 if not defined FO_FAKE_MSBUILD_ROOT exit /b 1
 echo %* | findstr /C:"-verbosity:quiet" >nul || exit /b 2
+if defined FO_FAKE_MSBUILD_FAIL (
+    echo error CS0000: fake compile failure
+    exit /b 3
+)
+echo fake-msbuild-output
 set "ROOT=%FO_FAKE_MSBUILD_ROOT%"
 mkdir "%ROOT%\ServerAssemblies" 2>nul
 mkdir "%ROOT%\ClientAssemblies" 2>nul
@@ -258,6 +263,11 @@ case " $* " in
     *" -verbosity:quiet "*) ;;
     *) exit 2 ;;
 esac
+if [ -n "$FO_FAKE_MSBUILD_FAIL" ]; then
+    echo "error CS0000: fake compile failure"
+    exit 3
+fi
+echo fake-msbuild-output
 mkdir -p "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies" "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies" "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies"
 printf 'entry-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.dll"
 printf 'helper-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/SharedDependency.dll"
@@ -979,29 +989,48 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
 
-    ManagedScriptBaker baker(rig.MakeContext());
-    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    vector<string> log_messages;
+    SetLogCallback("managed-script-baker-compiler-output-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { log_messages.emplace_back(message); });
+    auto remove_log_callback = scope_exit([]() noexcept { SetLogCallback("managed-script-baker-compiler-output-test", {}); });
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/TestPack.Server.dll")).find("entry-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/SharedDependency.dll")).find("helper-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.deps.json"));
+    auto logged = [&log_messages](string_view text) { return std::ranges::any_of(log_messages, [text](const string& message) { return message.find(text) != string::npos; }); };
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/TestPack.Client.dll")).find("entry-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/SharedDependency.dll")).find("helper-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.deps.json"));
+    // The compiler runs without a console of its own, so its output must reach the log or a failed bake explains nothing
+    SECTION("CompilerFailureReachesTheLog")
+    {
+        ScopedEnvVar fail_compile {"FO_FAKE_MSBUILD_FAIL", "1"};
+        ManagedScriptBaker failing_baker(rig.MakeContext());
+        REQUIRE_THROWS_WITH(failing_baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("compilation failed"));
+        CHECK(logged("error CS0000: fake compile failure"));
+    }
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/SharedDependency.dll")).find("helper-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.deps.json"));
-    CHECK(BytesToText(rig.Outputs.at("ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll")) == "managed-corelib\n");
-    CHECK(rig.Outputs.contains("ManagedRuntime/runtime.manifest"));
-    CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/coreclr.dll"));
+    SECTION("CompiledAssembliesArePacked")
+    {
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(logged("fake-msbuild-output"));
+
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/TestPack.Server.dll")).find("entry-Server") != string::npos);
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/SharedDependency.dll")).find("helper-Server") != string::npos);
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.pdb"));
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.deps.json"));
+
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/TestPack.Client.dll")).find("entry-Client") != string::npos);
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/SharedDependency.dll")).find("helper-Client") != string::npos);
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.pdb"));
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.deps.json"));
+
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/SharedDependency.dll")).find("helper-Mapper") != string::npos);
+        CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.pdb"));
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.deps.json"));
+        CHECK(BytesToText(rig.Outputs.at("ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll")) == "managed-corelib\n");
+        CHECK(rig.Outputs.contains("ManagedRuntime/runtime.manifest"));
+        CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/coreclr.dll"));
+    }
 #endif
 }
 

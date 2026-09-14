@@ -1283,7 +1283,33 @@ auto ManagedScriptBaker::RunCommand(string_view command, string_view fail_messag
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32_t exit_code = std::system(string(command).c_str());
+    string pending_output;
+
+    auto log_complete_lines = [&pending_output](string_view chunk) {
+        pending_output.append(chunk);
+        size_t line_end = pending_output.find('\n');
+
+        while (line_end != string::npos) {
+            string line = TrimString(pending_output.substr(0, line_end));
+
+            if (!line.empty()) {
+                WriteLog("{}", line);
+            }
+
+            pending_output.erase(0, line_end + 1);
+            line_end = pending_output.find('\n');
+        }
+    };
+
+    // std::system would hand the command to a console of its own, which a windowed host such as a server baking
+    // on startup shows as a separate terminal; the hidden-window runner routes the compiler output to the log instead
+#if FO_WINDOWS
+    int32_t exit_code = winapi::run_process_capturing_output(strex("cmd.exe /d /s /c \"{}\"", command).str(), log_complete_lines);
+#else
+    int32_t exit_code = posix::run_process_capturing_output(string(command), log_complete_lines);
+#endif
+
+    log_complete_lines("\n");
 
     if (exit_code != 0) {
         throw ManagedScriptBakerException(fail_message, exit_code);
