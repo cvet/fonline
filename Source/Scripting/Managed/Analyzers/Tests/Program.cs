@@ -647,7 +647,7 @@ namespace LastFrontier
     }
 }");
 
-        // Both deconstruction spellings declare through a designation that ends before the await.
+        // Both deconstruction spellings declare through a designation that ends before the await
         Check(failures, "a value a deconstructing await produced is fresh", @"
 namespace LastFrontier
 {

@@ -197,6 +197,13 @@ Changing the SGen clear or collector mode only moves those reports between Mono'
 bytes for bounded MSan diagnostics, but does not qualify the whole runtime for either sanitizer.
 Use the managed-disabled engine unit validators for native MSan/TSan coverage and ASan/UBSan
 for managed runtime execution.
+Managed-script Clang builds compile `San_Address` and `San_Address_Undefined` with
+`-fsanitize-address-use-after-return=never`. Mono SGen pins objects by conservatively scanning the real
+thread stacks, while ASan's stack-use-after-return mode (on by default on Linux) moves every address-taken
+native local, such as the `void* args[]` handed to `mono_runtime_invoke`, into a heap fake frame the collector
+never scans. A managed reference held only there is moved or collected underneath the native code, and the
+damage surfaces later as SGen faults (`copy_object_no_checks`, `no object of size`) rather than as an ASan
+report. MSVC AddressSanitizer does not enable fake stacks unless asked, so it needs no counterpart.
 `unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
