@@ -2,8 +2,8 @@ namespace FOnline;
 
 // Always-on managed invariant checks use the engine exception layout: the message followed by one
 // "\n- <arg>" line per context value. A thrown managed exception is caught by
-// Native.InvokeEvent, logged via Native.Log, and converts the event to StopChain -- mirroring AngelScript's
-// "violated verify => logged, chain stopped" behavior, so no new native binding is needed.
+// Native.InvokeEvent, reported through the engine exception reporter, and converts the event to StopChain --
+// mirroring AngelScript's "violated verify => logged, chain stopped" behavior.
 //
 // The port tool (Tools/ManagedPort) rewrites `verify(...)` -> `Game.Verify(...)`; ported modules import
 // `FOnline`, so `Game` resolves here without an extra `using`. `Game` is a partial static class (its other

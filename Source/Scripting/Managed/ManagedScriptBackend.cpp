@@ -58,6 +58,7 @@ FO_DISABLE_WARNINGS_PUSH()
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/loader.h>
 #include <mono/metadata/mono-config.h>
+#include <mono/metadata/mono-debug.h>
 #include <mono/metadata/object.h>
 #include <mono/metadata/reflection.h>
 #include <mono/metadata/threads.h>
@@ -293,6 +294,59 @@ private:
     bool _usesWorkerCache {};
 };
 
+// A native call into managed script code. Entries chain per thread, innermost first, so the stack-trace provider can
+// give every run of managed frames the native stack it was entered from; see Docs/Debugging.md
+class ManagedScriptEntryScope final
+{
+public:
+    // Not inlined, so the birth capture can skip exactly the constructor frame
+    FO_NO_INLINE explicit ManagedScriptEntryScope(MonoMethod* method) noexcept;
+    ManagedScriptEntryScope(const ManagedScriptEntryScope&) = delete;
+    ManagedScriptEntryScope(ManagedScriptEntryScope&&) noexcept = delete;
+    auto operator=(const ManagedScriptEntryScope&) = delete;
+    auto operator=(ManagedScriptEntryScope&&) noexcept = delete;
+    ~ManagedScriptEntryScope();
+
+    [[nodiscard]] static auto GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>;
+    [[nodiscard]] auto GetMethod() const noexcept -> MonoMethod* { return _method; }
+    [[nodiscard]] auto GetNextRunning() const noexcept -> nptr<ManagedScriptEntryScope>;
+
+    void CopyBirthFrames(ScriptStackTraceLayer& layer) const noexcept;
+    void AppendBirthRuntimeFrames(MonoDomain* domain, ScriptStackTraceLayer& layer) const;
+    void Leave() noexcept { _running = false; }
+    void SetCrossedNativeException(std::exception_ptr exception, MonoString* message);
+    auto FindCrossedNativeException(MonoString* message) const noexcept -> std::exception_ptr;
+
+private:
+    MonoMethod* _method {};
+    nptr<ManagedScriptEntryScope> _parent {};
+    bool _running {true};
+    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> _birthFrames {};
+    uint32_t _birthFrameCount {};
+    bool _birthTruncated {};
+    vector<pair<uint32_t, std::exception_ptr>> _crossedNativeExceptions {};
+};
+
+// Per-thread chain of script entries; threads are partitioned by engine ownership, so the slot never observes a
+// foreign engine
+static thread_local nptr<ManagedScriptEntryScope> CurrentScriptEntry {};
+
+// A managed exception reduced to what a native stack trace carries
+struct ManagedExceptionDescription
+{
+    string Summary {};
+    std::exception_ptr NativeException {};
+    vector<pair<MonoMethod*, int32_t>> Frames {};
+};
+
+struct ManagedStackWalk
+{
+    nptr<ManagedScriptEntryScope> Entry {};
+    MonoMethod* OutermostMethod {};
+    ScriptStackTraceLayer Layer {};
+    vector<ScriptStackTraceLayer> Layers {};
+};
+
 static void ReleaseManagedGcHandle(MonoDomain* domain, uint32_t& handle) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -327,6 +381,20 @@ static auto GetActiveBackendOrThrow() -> ptr<ManagedScriptBackend>;
 static auto GetActiveEntityManagerOrThrow() -> ptr<EntityManagerApi>;
 static auto GetTargetName(EngineSideKind side) -> string_view;
 static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> GlobalSettings*;
+
+// Script entries, exceptions and stack traces
+static auto InvokeManagedScript(MonoMethod* method, MonoObject* obj, void** args, string_view context) -> MonoObject*;
+static void InvokeManagedScriptDelegate(MonoObject* delegate_obj, string_view context);
+static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames);
+static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*;
+static void CollectManagedScriptStackLayers(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
+static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, int32_t il_offset, mono_bool managed, void* data) -> mono_bool;
+static auto DescribeManagedException(MonoObject* exception, nptr<ManagedScriptEntryScope> entry) -> ManagedExceptionDescription;
+static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<MonoMethod*, int32_t>>;
+static auto MakeManagedExceptionLayer(const vector<pair<MonoMethod*, int32_t>>& frames) -> ScriptStackTraceLayer;
+static auto MakeManagedStackFrame(MonoMethod* method, int32_t il_offset) -> optional<StackTraceFrame>;
+static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const NativeStackFrameAddress> frames, ScriptStackTraceLayer& layer);
+static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool;
 
 // Native ABI: logging, hashing, backend and prototype queries
 static void NativeLog(MonoString* text);
@@ -535,7 +603,7 @@ static auto GetDomainOrThrow(void* domain) -> MonoDomain*;
 static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesystem::path>& paths) -> MonoArray*;
 static auto ToStringAndFree(MonoString* text) -> string;
 static auto ManagedObjectToString(MonoObject* obj) -> string;
-static void ThrowIfManagedException(MonoObject* exception, string_view context);
+static void ThrowIfManagedException(MonoObject* exception, string_view context, nptr<ManagedScriptEntryScope> entry = nullptr);
 
 // Helper struct definitions
 
@@ -886,6 +954,384 @@ static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> GlobalSetti
     return nullptr;
 }
 
+// === Script entries, exceptions and stack traces ===
+
+// Every native call into script code goes through an entry, which is what places its frames in native stack traces
+static auto InvokeManagedScript(MonoMethod* method, MonoObject* obj, void** args, string_view context) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ManagedScriptEntryScope entry {method};
+    MonoObject* exception = nullptr;
+    MonoObject* result = mono_runtime_invoke(method, obj, args, &exception);
+    entry.Leave();
+    ThrowIfManagedException(exception, context, &entry);
+    return result;
+}
+
+static void InvokeManagedScriptDelegate(MonoObject* delegate_obj, string_view context)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The delegate target is not known natively, so the entry claims whichever frames run under its invoke
+    ManagedScriptEntryScope entry {nullptr};
+    MonoObject* exception = nullptr;
+    mono_runtime_delegate_invoke(delegate_obj, nullptr, &exception);
+    entry.Leave();
+    ThrowIfManagedException(exception, context, &entry);
+}
+
+// Script code reports an exception it caught itself; see Game.RecordManagedException
+static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        string summary_str = ToStringAndFree(summary);
+        nptr<ManagedScriptEntryScope> entry = ManagedScriptEntryScope::GetInnermostRunning();
+
+        // A native failure handed to script as an error string is reported as the native exception it was
+        if (entry && native_error != nullptr) {
+            if (std::exception_ptr crossed = entry->FindCrossedNativeException(native_error)) {
+                try {
+                    std::rethrow_exception(crossed);
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
+
+                return;
+            }
+        }
+
+        StackTraceData st = GetStackTrace();
+        SpliceCaughtScriptFrames(st, MakeManagedExceptionLayer(ReadManagedExceptionFrames(frames)));
+        ReportExceptionAndContinue(ScriptException(st, "Managed script exception", summary_str));
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+// Called from the catch of an internal call. Script receives the message, and the running entry keeps the exception
+// in case script lets the error propagate
+static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    MonoString* message = mono_string_new(mono_domain_get(), ex.what());
+
+    if (nptr<ManagedScriptEntryScope> entry = ManagedScriptEntryScope::GetInnermostRunning()) {
+        entry->SetCrossedNativeException(std::current_exception(), message);
+    }
+
+    return message;
+}
+
+static void CollectManagedScriptStackLayers(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        // Script frames exist on a thread only under a running entry, which also proves the thread is attached
+        nptr<ManagedScriptEntryScope> entry = ManagedScriptEntryScope::GetInnermostRunning();
+
+        if (!entry) {
+            return;
+        }
+
+        ManagedStackWalk walk;
+        walk.Entry = entry;
+        mono_stack_walk(&CollectManagedStackFrame, &walk);
+
+        if (!walk.Layer.ScriptFrames.empty()) {
+            walk.Layers.emplace_back(std::move(walk.Layer));
+        }
+
+        if (walk.Layers.empty()) {
+            return;
+        }
+
+        MonoDomain* domain = mono_get_root_domain();
+        AppendRuntimeNativeFrames(domain, {st.NativeFrames.data(), st.NativeFrameCount}, walk.Layers.front());
+
+        for (nptr<ManagedScriptEntryScope> running = entry; running; running = running->GetNextRunning()) {
+            running->AppendBirthRuntimeFrames(domain, walk.Layers.front());
+        }
+
+        for (ScriptStackTraceLayer& layer : walk.Layers) {
+            out_layers.emplace_back(std::move(layer));
+        }
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
+}
+
+// Visits frames innermost first. A run of script frames ends at the runtime-invoke wrapper native code entered it through
+static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, int32_t il_offset, mono_bool managed, void* data) -> mono_bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(native_offset);
+
+    try {
+        auto walk = cast_from_void<ManagedStackWalk*>(data).as_ptr();
+
+        if (managed != 0) {
+            if (optional<StackTraceFrame> frame = MakeManagedStackFrame(method, il_offset)) {
+                walk->Layer.ScriptFrames.emplace_back(std::move(*frame));
+                walk->OutermostMethod = method;
+            }
+        }
+        else if (walk->Entry && !walk->Layer.ScriptFrames.empty() && IsManagedRuntimeInvokeWrapper(method)) {
+            MonoMethod* entry_method = walk->Entry->GetMethod();
+
+            // An invoke that no entry recorded, such as a class constructor or an internal helper, stays in the enclosing run
+            if (entry_method == nullptr || entry_method == walk->OutermostMethod) {
+                walk->Entry->CopyBirthFrames(walk->Layer);
+                walk->Layers.emplace_back(std::exchange(walk->Layer, ScriptStackTraceLayer {}));
+                walk->Entry = walk->Entry->GetNextRunning();
+            }
+        }
+
+        return 0;
+    }
+    catch (...) {
+        return 1;
+    }
+}
+
+static auto DescribeManagedException(MonoObject* exception, nptr<ManagedScriptEntryScope> entry) -> ManagedExceptionDescription
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ManagedExceptionDescription description;
+    nptr<ManagedScriptBackend> backend = ActiveBackend;
+
+    // The describing helper is part of the core scripts, which are not loaded while the load context itself is created
+    if (!backend || backend->GetImages().empty()) {
+        description.Summary = ManagedObjectToString(exception);
+        return description;
+    }
+
+    MonoClass* native_class = FindFOnlineClass(backend.as_ptr(), "Native");
+    MonoMethod* describe_method = mono_class_get_method_from_name(native_class, "DescribeException", 1);
+    FO_VERIFY_AND_THROW(describe_method != nullptr, "Managed Native.DescribeException method not found");
+
+    void* args[] = {exception};
+    MonoObject* describe_exception = nullptr;
+    ManagedObjectRoot result;
+    result.SetObject(mono_runtime_invoke(describe_method, nullptr, args, &describe_exception));
+    FO_VERIFY_AND_THROW(describe_exception == nullptr && result.GetObject() != nullptr, "Managed exception description failed", ManagedObjectToString(describe_exception), ManagedObjectToString(exception));
+
+    auto parts = reinterpret_cast<MonoArray*>(result.GetObject());
+    FO_VERIFY_AND_THROW(mono_array_length(parts) == 3, "Managed exception description must hold summary, native error and frames", mono_array_length(parts));
+
+    description.Summary = ToStringAndFree(reinterpret_cast<MonoString*>(mono_array_get(parts, MonoObject*, 0)));
+
+    if (entry) {
+        description.NativeException = entry->FindCrossedNativeException(reinterpret_cast<MonoString*>(mono_array_get(parts, MonoObject*, 1)));
+    }
+
+    description.Frames = ReadManagedExceptionFrames(reinterpret_cast<MonoArray*>(mono_array_get(parts, MonoObject*, 2)));
+    return description;
+}
+
+static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<MonoMethod*, int32_t>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t values_count = frames != nullptr ? mono_array_length(frames) : 0;
+    FO_VERIFY_AND_THROW(values_count % 2 == 0, "Managed exception frames must pair a method handle with an IL offset", values_count);
+
+    vector<pair<MonoMethod*, int32_t>> result;
+    result.reserve(values_count / 2);
+
+    for (size_t i = 0; i < values_count; i += 2) {
+        int64_t method_handle = mono_array_get(frames, int64_t, i);
+        int64_t il_offset = mono_array_get(frames, int64_t, i + 1);
+        result.emplace_back(std::bit_cast<MonoMethod*>(numeric_cast<uintptr_t>(method_handle)), numeric_cast<int32_t>(il_offset));
+    }
+
+    return result;
+}
+
+static auto MakeManagedExceptionLayer(const vector<pair<MonoMethod*, int32_t>>& frames) -> ScriptStackTraceLayer
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ScriptStackTraceLayer layer;
+    layer.ScriptFrames.reserve(frames.size());
+
+    for (const auto& [method, il_offset] : frames) {
+        if (optional<StackTraceFrame> frame = MakeManagedStackFrame(method, il_offset)) {
+            layer.ScriptFrames.emplace_back(std::move(*frame));
+        }
+    }
+
+    return layer;
+}
+
+// Generated marshalling stubs (reflection invoke stubs and the like) are runtime plumbing, not script frames
+static auto MakeManagedStackFrame(MonoMethod* method, int32_t il_offset) -> optional<StackTraceFrame>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    StackTraceFrame frame;
+    frame.Type = StackTraceFrame::FrameType::Script;
+
+    if (char* full_name = mono_method_full_name(method, 1); full_name != nullptr) {
+        // Mono spells a method "Namespace.Outer/Inner:Method (args)", while script code reads "Namespace.Outer.Inner.Method(args)"
+        string name {full_name};
+        mono_free(full_name);
+
+        if (name.starts_with("(wrapper ")) {
+            return std::nullopt;
+        }
+        if (size_t separator = name.find(':'); separator != string::npos) {
+            name[separator] = '.';
+        }
+        if (size_t args_space = name.find(" ("); args_space != string::npos) {
+            name.erase(args_space, 1);
+        }
+
+        std::ranges::replace(name, '/', '.');
+        frame.Function.assign(name.data(), name.size());
+    }
+
+    if (il_offset >= 0 && mono_debug_enabled() != 0) {
+        if (MonoDebugMethodInfo* method_info = mono_debug_lookup_method(method); method_info != nullptr) {
+            if (MonoDebugSourceLocation* location = mono_debug_method_lookup_location(method_info, il_offset); location != nullptr) {
+                string file = location->source_file != nullptr ? string {location->source_file} : string {};
+                uint32_t line = location->row;
+                mono_debug_free_source_location(location);
+
+                frame.File.assign(file.data(), file.size());
+                frame.Line = line;
+            }
+        }
+    }
+
+    return frame;
+}
+
+static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const NativeStackFrameAddress> frames, ScriptStackTraceLayer& layer)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (NativeStackFrameAddress address : frames) {
+        // A return address may sit just past the end of its method, so the lookup asks for the call instruction
+        if (address > 1 && mono_jit_info_table_find(domain, std::bit_cast<void*>(address - 1)) != nullptr) {
+            layer.RuntimeNativeFrames.emplace_back(address);
+        }
+    }
+}
+
+// mono_runtime_invoke enters managed code through generated wrappers named after the signature they marshal
+static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const char* name = method != nullptr ? mono_method_get_name(method) : nullptr;
+    return name != nullptr && string_view {name}.starts_with("runtime_invoke");
+}
+
+ManagedScriptEntryScope::ManagedScriptEntryScope(MonoMethod* method) noexcept :
+    _method {method},
+    _parent {CurrentScriptEntry}
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    CaptureNativeStackFrames(_birthFrames, _birthFrameCount, _birthTruncated, 1);
+    CurrentScriptEntry = this;
+}
+
+ManagedScriptEntryScope::~ManagedScriptEntryScope()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(CurrentScriptEntry == this, "Managed script entries must unwind in nesting order");
+    CurrentScriptEntry = _parent;
+
+    for (const auto& [handle, exception] : _crossedNativeExceptions) {
+        mono_gchandle_free(handle);
+    }
+}
+
+auto ManagedScriptEntryScope::GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<ManagedScriptEntryScope> entry = CurrentScriptEntry;
+
+    while (entry && !entry->_running) {
+        entry = entry->_parent;
+    }
+
+    return entry;
+}
+
+auto ManagedScriptEntryScope::GetNextRunning() const noexcept -> nptr<ManagedScriptEntryScope>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<ManagedScriptEntryScope> entry = _parent;
+
+    while (entry && !entry->_running) {
+        entry = entry->_parent;
+    }
+
+    return entry;
+}
+
+void ManagedScriptEntryScope::CopyBirthFrames(ScriptStackTraceLayer& layer) const noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    layer.BirthNativeFrames = _birthFrames;
+    layer.BirthNativeFrameCount = _birthFrameCount;
+    layer.BirthNativeTruncated = _birthTruncated;
+}
+
+void ManagedScriptEntryScope::AppendBirthRuntimeFrames(MonoDomain* domain, ScriptStackTraceLayer& layer) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    AppendRuntimeNativeFrames(domain, {_birthFrames.data(), _birthFrameCount}, layer);
+}
+
+void ManagedScriptEntryScope::SetCrossedNativeException(std::exception_ptr exception, MonoString* message)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Exception.Message preserves this string's identity; a strong handle keeps the key valid through moving collections
+    uint32_t handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(message), 0);
+    _crossedNativeExceptions.emplace_back(handle, std::move(exception));
+}
+
+auto ManagedScriptEntryScope::FindCrossedNativeException(MonoString* message) const noexcept -> std::exception_ptr
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (message == nullptr) {
+        return {};
+    }
+
+    for (nptr<const ManagedScriptEntryScope> entry = this; entry; entry = entry->_parent) {
+        for (const auto& [handle, exception] : entry->_crossedNativeExceptions) {
+            if (mono_gchandle_get_target(handle) == reinterpret_cast<MonoObject*>(message)) {
+                return exception;
+            }
+        }
+    }
+
+    return {};
+}
+
 // === Native ABI: logging, hashing, backend and prototype queries ===
 
 static void NativeLog(MonoString* text)
@@ -968,14 +1414,12 @@ static auto NativeRunScriptContinuation(MonoObject* continuation) -> MonoString*
 
         engine->RunScriptContext([&] {
             ActiveBackendScope active_backend {backend};
-            MonoObject* exception = nullptr;
-            mono_runtime_delegate_invoke(continuation, nullptr, &exception);
-            ThrowIfManagedException(exception, "Managed continuation failed");
+            InvokeManagedScriptDelegate(continuation, "Managed continuation failed");
         });
         return nullptr;
     }
     catch (const std::exception& ex) {
-        return mono_string_new(mono_domain_get(), ex.what());
+        return MakeManagedNativeError(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -1218,7 +1662,7 @@ static auto NativeGetEntityValueAsInt(void* entity_ptr, int32_t prop_index, Mono
         return NativeGetEntityValueAsIntImpl(entity_ptr, prop_index);
     }
     catch (const std::exception& ex) {
-        *error = mono_string_new(mono_domain_get(), ex.what());
+        *error = MakeManagedNativeError(ex);
         return 0;
     }
 }
@@ -1244,7 +1688,7 @@ static auto NativeSetEntityValueAsInt(void* entity_ptr, int32_t prop_index, int3
         return nullptr;
     }
     catch (const std::exception& ex) {
-        return mono_string_new(mono_domain_get(), ex.what());
+        return MakeManagedNativeError(ex);
     }
 }
 
@@ -1273,7 +1717,7 @@ static auto NativeGetEntityValueAsAny(void* entity_ptr, int32_t prop_index, Mono
         return NativeGetEntityValueAsAnyImpl(entity_ptr, prop_index);
     }
     catch (const std::exception& ex) {
-        *error = mono_string_new(mono_domain_get(), ex.what());
+        *error = MakeManagedNativeError(ex);
         return nullptr;
     }
 }
@@ -1299,7 +1743,7 @@ static auto NativeSetEntityValueAsAny(void* entity_ptr, int32_t prop_index, Mono
         return nullptr;
     }
     catch (const std::exception& ex) {
-        return mono_string_new(mono_domain_get(), ex.what());
+        return MakeManagedNativeError(ex);
     }
 }
 
@@ -1766,7 +2210,7 @@ static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name,
         return NativeGetPropertyImpl(owner_type, property_name, entity_ptr);
     }
     catch (const std::exception& ex) {
-        *error = mono_string_new(mono_domain_get(), ex.what());
+        *error = MakeManagedNativeError(ex);
         return nullptr;
     }
 }
@@ -1816,7 +2260,7 @@ static auto NativeSetProperty(MonoString* owner_type, MonoString* property_name,
         return nullptr;
     }
     catch (const std::exception& ex) {
-        return mono_string_new(mono_domain_get(), ex.what());
+        return MakeManagedNativeError(ex);
     }
 }
 
@@ -2197,7 +2641,7 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
         return NativeCallMethodImpl(owner_type, method_name, method_index, entity_ptr, args);
     }
     catch (const std::exception& ex) {
-        *error = mono_string_new(mono_domain_get(), ex.what());
+        *error = MakeManagedNativeError(ex);
         return nullptr;
     }
 }
@@ -2757,6 +3201,7 @@ static void RegisterInternalCalls()
 
     mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
     mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
+    mono_add_internal_call("FOnline.Native::ReportExceptionInternal", reinterpret_cast<const void*>(NativeReportException));
     mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
     mono_add_internal_call("FOnline.Native::GetHash", reinterpret_cast<const void*>(NativeGetHash));
     mono_add_internal_call("FOnline.Native::GetEntityId", reinterpret_cast<const void*>(NativeGetEntityId));
@@ -2868,10 +3313,7 @@ static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, Mono
     }
 
     void* invoke_args[] = {handler, args_array};
-    MonoObject* exception = nullptr;
-    MonoObject* result = mono_runtime_invoke(invoke_callback, nullptr, invoke_args, &exception);
-    ThrowIfManagedException(exception, "Managed property callback failed");
-    return result;
+    return InvokeManagedScript(invoke_callback, nullptr, invoke_args, "Managed property callback failed");
 }
 
 static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend, MonoString* owner_type, MonoString* property_name, bool require_virtual, bool require_marshalable_value) -> ptr<const Property>
@@ -2966,10 +3408,8 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
     }
 
     void* invoke_args[] = {mono_gchandle_get_target(handler_handle), get_args_array()};
-    MonoObject* exception = nullptr;
     ManagedObjectRoot result;
-    result.SetObject(mono_runtime_invoke(invoke_callback, nullptr, invoke_args, &exception));
-    ThrowIfManagedException(exception, "Managed callback failed");
+    result.SetObject(InvokeManagedScript(invoke_callback, nullptr, invoke_args, "Managed callback failed"));
 
     for (size_t i = 0; i < args.size(); i++) {
         if (args[i].IsMutable) {
@@ -3268,10 +3708,8 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
     mono_bool has_result = subscription->HasExplicitResult ? 1 : 0;
     void* args[] = {mono_gchandle_get_target(subscription->Handler), &has_result, get_args_array()};
-    MonoObject* exception = nullptr;
     ManagedObjectRoot ret;
-    ret.SetObject(mono_runtime_invoke(invoke_event, nullptr, args, &exception));
-    ThrowIfManagedException(exception, "Managed event handler failed");
+    ret.SetObject(InvokeManagedScript(invoke_event, nullptr, args, "Managed event handler failed"));
 
     for (size_t i = 0; i < subscription->Args.size(); i++) {
         if (subscription->Args[i].IsMutable) {
@@ -5280,6 +5718,12 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 #endif
 
+#if !FO_WEB
+    // Script frames in stack traces carry file and line only with the portable PDBs embedded in the assemblies loaded,
+    // which has to be requested before the domain exists
+    mono_debug_init(MONO_DEBUG_FORMAT_MONO);
+#endif
+
     auto lib_dir = runtime_dir / "lib";
     auto etc_dir = runtime_dir / "etc";
     auto config_file = etc_dir / "mono" / "config";
@@ -5530,13 +5974,24 @@ static auto ManagedObjectToString(MonoObject* obj) -> string
     return ToStringAndFree(str);
 }
 
-static void ThrowIfManagedException(MonoObject* exception, string_view context)
+static void ThrowIfManagedException(MonoObject* exception, string_view context, nptr<ManagedScriptEntryScope> entry)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (exception != nullptr) {
-        throw ScriptSystemException("Managed exception", context, ManagedObjectToString(exception));
+    if (exception == nullptr) {
+        return;
     }
+
+    ManagedExceptionDescription description = DescribeManagedException(exception, entry);
+
+    // A native failure handed to script as an error string, which script did not handle, continues as the native exception
+    if (description.NativeException) {
+        std::rethrow_exception(description.NativeException);
+    }
+
+    StackTraceData st = GetStackTrace();
+    AddUnwoundScriptFrames(st, MakeManagedExceptionLayer(description.Frames));
+    throw ScriptException(st, "Managed script exception", description.Summary, context);
 }
 
 // ManagedScriptBackend member functions
@@ -5695,9 +6150,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
                 ActiveBackendScope active_backend {this};
 
                 for (nptr<void> shutdown : _continuationShutdowns) {
-                    MonoObject* exception = nullptr;
-                    mono_runtime_invoke(shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, &exception);
-                    ThrowIfManagedException(exception, "Managed continuation shutdown failed");
+                    (void)InvokeManagedScript(shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation shutdown failed");
                 }
             });
 
@@ -5746,9 +6199,7 @@ void ManagedScriptBackend::Process()
     ManagedThreadAttachment managed_thread {domain, ManagedThreadAttachmentMode::CacheForThread};
 
     for (nptr<void> pump : _continuationPumps) {
-        MonoObject* exception = nullptr;
-        mono_runtime_invoke(pump.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, &exception);
-        ThrowIfManagedException(exception, "Managed continuation pump failed");
+        (void)InvokeManagedScript(pump.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation pump failed");
     }
 }
 
@@ -5803,21 +6254,7 @@ void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* metho
         return;
     }
 
-    MonoObject* exception = nullptr;
-    mono_runtime_invoke(init_method, nullptr, nullptr, &exception);
-
-    if (exception != nullptr) {
-        string exception_text = "Managed initialization exception";
-
-        if (MonoString* exception_str = mono_object_to_string(exception, nullptr); exception_str != nullptr) {
-            if (char* exception_utf8 = mono_string_to_utf8(exception_str); exception_utf8 != nullptr) {
-                exception_text = exception_utf8;
-                mono_free(exception_utf8);
-            }
-        }
-
-        throw ScriptSystemException("Managed initializator failed", exception_text);
-    }
+    (void)InvokeManagedScript(init_method, nullptr, nullptr, "Managed initializator failed");
 }
 
 void ManagedScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
@@ -5885,6 +6322,8 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                 if (domain == nullptr) {
                     throw ScriptSystemException("Failed to initialize Managed runtime domain");
                 }
+
+                SetScriptStackTraceProvider("Managed", &CollectManagedScriptStackLayers);
 
 #if !FO_WEB
                 // mono_jit_init_version attaches its caller; adopt that attachment into this scope so the

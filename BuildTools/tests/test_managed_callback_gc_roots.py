@@ -168,6 +168,15 @@ static void ThrowIfManagedException(MonoObject* exception, const char* message)
 {
     if (exception != nullptr) throw ScriptSystemException(message);
 }
+
+// Stack-trace bookkeeping is covered separately; this probe exercises callback argument and result roots
+static auto InvokeManagedScript(MonoMethod* method, MonoObject* object, void** args, const char* message) -> MonoObject*
+{
+    MonoObject* exception = nullptr;
+    MonoObject* result = mono_runtime_invoke(method, object, args, &exception);
+    ThrowIfManagedException(exception, message);
+    return result;
+}
 static MonoObject* BoxNativeCallValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, void*)
 {
     if (backend->CheckRoots && !backend->HasRoot(mono_array_class_get(mono_get_object_class(), 1))) {

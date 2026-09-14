@@ -61,6 +61,8 @@ struct ScriptStackTraceLayer
     std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
+    // Addresses inside code the script runtime generated (JIT output), which ScriptFrames already describe
+    std::vector<NativeStackFrameAddress> RuntimeNativeFrames {};
 };
 
 struct StackTraceData
@@ -86,11 +88,14 @@ struct CatchedStackTraceData
 #endif
 #define FO_NO_STACK_TRACE_ENTRY()
 
-using ScriptStackTraceProvider = std::function<void(std::vector<ScriptStackTraceLayer>& out_layers)>;
+// A provider appends its layers innermost first and may inspect the native frames already captured for the same trace
+using ScriptStackTraceProvider = std::function<void(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers)>;
 
-extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept;
-extern auto HasScriptStackTraceProvider() noexcept -> bool;
+extern void SetScriptStackTraceProvider(std::string_view name, ScriptStackTraceProvider provider) noexcept;
+extern auto HasScriptStackTraceProvider(std::string_view name) noexcept -> bool;
 extern auto GetStackTrace() noexcept -> StackTraceData;
+extern void AddUnwoundScriptFrames(StackTraceData& st, ScriptStackTraceLayer layer);
+extern void SpliceCaughtScriptFrames(StackTraceData& st, ScriptStackTraceLayer layer);
 extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
 extern void ClearResolvedStackTraceCache() noexcept;
 extern auto GetResolvedStackTraceCacheSize() noexcept -> size_t;

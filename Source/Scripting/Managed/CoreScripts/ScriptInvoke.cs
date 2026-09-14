@@ -185,10 +185,6 @@ public static partial class Game
 
             return true;
         }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
-        }
         catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
@@ -208,10 +204,6 @@ public static partial class Game
             ObserveInvokeTask(result);
             return true;
         }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
-        }
         catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
@@ -230,10 +222,6 @@ public static partial class Game
             object? result = method.Invoke(null, args);
             ObserveInvokeTask(result);
             return true;
-        }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
         }
         catch (Exception ex) {
             RecordManagedException(ex, true);
@@ -263,10 +251,6 @@ public static partial class Game
             CoerceInvokeArgs(method, inputArgs);
             args[resultIndex] = method.Invoke(null, inputArgs);
             return true;
-        }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
         }
         catch (Exception ex) {
             RecordManagedException(ex, true);
@@ -653,7 +637,7 @@ public static partial class Game
     {
         Interlocked.Increment(ref _managedGlobalExceptionCount);
         if (log) {
-            Native.Log(ex.ToString());
+            Native.ReportException(ex);
         }
     }
 }

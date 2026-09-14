@@ -29,6 +29,9 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `../Source/Scripting/AngelScript/AngelScriptHelpers.cpp`
 - `../Source/Scripting/AngelScript/AngelScriptContext.cpp`
+- `../Source/Scripting/Managed/ManagedScriptBackend.cpp`
+- `../Source/Scripting/Managed/CoreScripts/Native.cs`
+- `../Source/Scripting/Managed/CoreScripts/ScriptInvoke.cs`
 - `../Source/Frontend/ApplicationInit.cpp`
 - `../Source/Tests/Test_StackTrace.cpp`
 - `../Source/Tests/Test_ExceptionHandling.cpp`
@@ -41,36 +44,52 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 The engine no longer maintains a thread-local manual call stack. The `FO_STACK_TRACE_ENTRY()` macro is now empty outside Tracy builds (under `FO_TRACY` it expands to `ZoneScoped` only), and stack traces are constructed on demand from two independent sources at the moment a `StackTraceData` is captured:
 
 1. **Native frames.** [../Source/Essentials/StackTrace.cpp](../Source/Essentials/StackTrace.cpp) calls `backward::StackTrace::load_here(...)` to capture raw return addresses. Symbol resolution is deferred â€” `ResolveStackTrace`, `FormatStackTrace`, `SafeWriteStackTrace`, and `GetStackTraceEntry` resolve via `backward::TraceResolver` only when frames are actually needed. Resolved native frames are cached globally by instruction pointer in a capped process-local cache (`STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES`) so repeated exception formatting and script/native anchor matching reuse symbol data. The capture path is allocation-free aside from the storage on the `StackTraceData` itself.
-2. **Script frames.** Higher layers register a `ScriptStackTraceProvider` via `SetScriptStackTraceProvider(...)`. The provider is called synchronously during capture and pre-resolves frames eagerly because script execution state is ephemeral (the active context's call stack changes after we leave the capture site).
+2. **Script frames.** Each scripting backend registers a `ScriptStackTraceProvider` under its own name via `SetScriptStackTraceProvider(name, provider)`, so AngelScript and managed scripting can be enabled together. A provider is called synchronously during capture, receives the native frames already captured for the same trace, and pre-resolves its frames eagerly because script execution state is ephemeral (the call stack changes after we leave the capture site). When more than one provider contributes, their layers are ordered by birth depth: a backend entered through a deeper native call captured the longer birth stack.
 
-Pre-resolved script frames live behind a `shared_ptr<const vector<StackTraceFrame>>` so copying a `StackTraceData` (notably during `BaseEngineException` propagation) remains noexcept.
+Script frames are grouped into `ScriptStackTraceLayer`s, one per native entry into script code, innermost first. Each layer carries its script frames, the native stack captured when that entry was made (`BirthNativeFrames`), and optionally the native addresses of code the script runtime generated (`RuntimeNativeFrames`, the JIT output that the script frames already describe). The layers live behind a `shared_ptr<const vector<ScriptStackTraceLayer>>` so copying a `StackTraceData` (notably during `BaseEngineException` propagation) remains noexcept.
 
 ### AngelScript bridge
 
-[../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) installs `CollectScriptStackLayers` through the AngelScript stack-trace installer. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `StackTraceFrame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`).
+[../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) registers `CollectScriptStackLayers` under the name `AngelScript`. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `StackTraceFrame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`). Each context records its birth native stack in `RequestContext`, which is what anchors the layer in a later trace.
 
-The provider handles the multi-context case naturally: if a script function called a native function that re-entered scripting on a fresh context, the active (child) context's frames are emitted first, then the parent context's frames are appended. The two sub-stacks read continuously in the formatted output, with native bridging frames showing up after all script frames once symbols are resolved.
+### Managed (Mono) bridge
+
+[../Source/Scripting/Managed/ManagedScriptBackend.cpp](../Source/Scripting/Managed/ManagedScriptBackend.cpp) registers `CollectManagedScriptStackLayers` under the name `Managed` when the Mono domain is created. Every native call into script code goes through `InvokeManagedScript` / `InvokeManagedScriptDelegate`, which open a `ManagedScriptEntryScope`: the scope captures the birth native stack and joins a per-thread chain of entries, innermost first. Helper invokes that run no script code (wrapper constructors, `Native.IsList` and similar) do not open an entry.
+
+The provider does nothing on a thread with no running entry. Otherwise it walks the managed stack with `mono_stack_walk`, innermost first, and cuts it into layers at the runtime-invoke wrappers (`runtime_invoke_*`) through which `mono_runtime_invoke` enters managed code. A run of frames becomes the layer of the next running entry when its outermost managed method is the method that entry invoked (a delegate entry accepts any run); a runtime invoke no entry recorded, such as a class constructor, stays part of the enclosing run. Native addresses that `mono_jit_info_table_find` attributes to JIT code, in the trace and in the entries' birth stacks, become the layers' `RuntimeNativeFrames`.
+
+Frame names come from `mono_method_full_name`, rewritten to C# member-access spelling (`Namespace.Outer.Inner.Method(args)`). File and line come from the portable PDBs embedded in the script assemblies: `ConfigureManagedRuntime` calls `mono_debug_init` before the domain exists on every platform except web, where the interpreter would pay for the line tables on every method. Without debug info the frames carry names only.
+
+Managed exceptions reach native code through the same trace:
+
+- **Unhandled at an entry.** `ThrowIfManagedException` asks `Native.DescribeException` (CoreScripts) for a summary (`Type: Message`, inner causes joined by ` ---> `, reflection and single-task wrappers skipped) and the thrown frames as runtime method handle and IL offset pairs, taken from `System.Diagnostics.StackTrace(exception)` so rethrown and `await`-captured segments keep their order. All branches of an `AggregateException` contribute their causes and frames. The frames are resolved like live ones and added with `AddUnwoundScriptFrames`, and the entry throws `ScriptException("Managed script exception", summary, context)`.
+- **Caught and handled by script.** `Game.RecordManagedException(ex, log: true)` (event handlers that stop the chain, continuations, `Game.Invoke` failures, observed task faults) calls the `Native.ReportException` internal call. The engine captures the live trace, replaces the live frames above the catching frame with the thrown frames (`SpliceCaughtScriptFrames`) and reports a `ScriptException` through `ReportExceptionAndContinue`, so these failures reach the log and the exception callback exactly as AngelScript script exceptions did.
+- **Native failure handed to script.** Internal calls that return an error string (`CallMethod`, the property accessors, `RunScriptContinuation`) keep each native exception in the innermost running entry, keyed by the identity of its managed message string. Strong GC handles preserve those keys across moving collections and are released when the entry ends. Reporting or propagating a `NativeCallException` searches the current and enclosing entries, preserving the original native throw site even for repeated reports or several errors with identical messages. Only reflection and single-cause aggregate wrappers are transparent: a semantic managed wrapper retains its own summary and frames. If the originating entry has already ended (for example, an exception retained across an asynchronous suspension), the managed exception description remains available but the saved native exception does not.
+
+### Unified frame ordering
+
+`ResolveStackTrace` and `FormatStackTrace` produce one most-recent-first list in which each script layer sits at the native frame that entered it, exactly where the script ran:
+
+```
+[Native] native code the script called (throw site)
+[Script] innermost layer, top frame
+[Script] ..., frame the native entry invoked
+[Native] runtime frames that entered the layer (mono_runtime_invoke, ...)
+[Native] entry function and its callers
+[Script] next layer out
+[Native] ...
+[Native] main
+```
+
+A layer is anchored by matching its birth stack against the bottom of the trace. The native frames above the anchor are split around the layer's `RuntimeNativeFrames`: frames above the generated code were called by script, frames below it are the runtime entering script, and the generated-code addresses themselves are never printed. A layer without birth frames cannot be anchored, so its script frames are emitted at the current position. When the trace does not reach a layer's entry at all — a native unwinder that cannot step through JIT code stops at the first such frame, which is what happens on Linux — the rest of the trace is emitted, then the layer, and resolution continues along the layer's own birth stack; frames the trace and the birth stack share are printed once.
+
+`AddUnwoundScriptFrames(st, layer)` adds the frames of an exception that already unwound back to native code as the innermost layer, entered from the point where `st` was captured. `SpliceCaughtScriptFrames(st, layer)` handles an exception caught by script: the innermost live layer keeps only the frames below the catching frame (matched by function name), preceded by the thrown frames.
 
 `AngelScriptBackend` mutes the AngelScript message callback during final script-engine teardown. Runtime and compilation messages still go through the normal callback before teardown begins, but shutdown-only GC survivor messages are kept out of normal logs.
 
 When `ServerEntity::ValidateAccess()` reports `Entity access without sync`, the server log includes the entity parent/widen chain and the script/native stack. This identifies the uncovered entity path and the access site; the engine does not currently retain a `SyncContext` transition history, so earlier cover replacement or `Release()` activity must still be reconstructed from the surrounding execution path.
 
 The Essentials module never depends on AngelScript directly; the bridge is one-way through the function pointer registered at runtime. This keeps the `Essentials` layer reusable and avoids forcing the whole engine to compile against AngelScript headers.
-
-### Unified frame ordering
-
-The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, most-recent first:
-
-```
-[Script] active context, top frame
-[Script] active context, ..., bottom frame
-[Script] parent context, top frame
-[Script] ..., bottom frame
-[Script] ..., root context, bottom frame
-[Native] caller of root context Execute()
-[Native] ...
-[Native] main
-```
 
 `FormatStackTrace` prefixes lines with `[Script]` or `[Native]` so the boundary between sub-stacks is obvious in logs. `SafeWriteStackTrace` uses the same format, with an allocation-free fallback that writes raw `0x...` addresses when symbol resolution fails (used for OOM and crash paths).
 
@@ -79,14 +98,16 @@ The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, 
 | Function | Purpose |
 |----------|---------|
 | `GetStackTrace()` | Capture native PCs + query script provider. Returns a `StackTraceData` snapshot. |
-| `GetStackTraceEntry(deep)` | Resolve a single frame at depth `deep` (0 = topmost). Script frames first, native frames after. |
+| `GetStackTraceEntry(deep)` | Resolve a single frame at depth `deep` (0 = topmost) of the unified order. |
 | `ResolveStackTrace(st)` | Resolve every frame into a `vector<StackTraceFrame>` (full symbol resolution). |
 | `FormatStackTrace(st)` | Human-readable multi-line string with `[Script]` / `[Native]` prefixes. |
 | `SafeWriteStackTrace(st)` | Writes the trace to the base log; tolerant of OOM (falls back to hex addresses). |
 | `ClearResolvedStackTraceCache()` | Clear the process-wide native-frame resolution cache. |
 | `GetResolvedStackTraceCacheSize()` | Return the current native-frame resolution cache size. |
-| `SetScriptStackTraceProvider(p)` | Install the script-frame provider. Pass an empty function to clear. |
-| `HasScriptStackTraceProvider()` | Test hook to confirm a provider is registered. |
+| `SetScriptStackTraceProvider(name, p)` | Install or replace the script-frame provider registered under `name`. Pass an empty function to remove it. |
+| `HasScriptStackTraceProvider(name)` | Test hook to confirm a provider is registered under `name`. |
+| `AddUnwoundScriptFrames(st, layer)` | Add the frames of a script exception that already unwound to native code as the innermost layer, entered where `st` was captured. |
+| `SpliceCaughtScriptFrames(st, layer)` | Replace the innermost layer's frames above the catching frame with the frames of a script exception caught by script code. |
 
 `BaseEngineException` captures `GetStackTrace()` at construction so the trace stored on the exception object reflects the throw site. The crash printer in `ExceptionHandling.cpp` writes `FATAL ERROR!`, a `Crash reason:` line with the native SEH exception / signal / runtime termination code captured by `backward.hpp`, then calls `SafeWriteStackTrace` with the trace captured by `SetCrashStackTrace`.
 
@@ -121,11 +142,12 @@ Every abnormal death must leave usable diagnostics in the log file, not only on 
 
 `../Source/Tests/Test_StackTrace.cpp` exercises the new API:
 
-- Provider registration / unregistration is observable via `HasScriptStackTraceProvider`.
+- Named provider registration / unregistration is observable via `HasScriptStackTraceProvider(name)`, a provider sees the captured native frames, and layers of several providers nest by birth depth.
 - Script frames captured by the provider preserve the most-recent-first ordering.
 - Multi-context concatenation (top-most context's frames first, then parent) renders in the expected order.
 - `[Script]` / `[Native]` prefixes are present in `FormatStackTrace`.
-- Resolved unified order places script frames before native frames.
+- Birth-stack anchoring interleaves native frames between layers; runtime (JIT) frames split the native region above a layer and are not printed; a trace that stops inside generated code continues along the layer's birth stack, reading frames the two share once.
+- `AddUnwoundScriptFrames` and `SpliceCaughtScriptFrames` place the frames of an unwound and a caught script exception.
 - Native frame resolution populates the global cache once per unique instruction pointer and reuses entries on repeated resolution.
 - `GetStackTraceEntry(deep)` returns the depth-th frame and `nullopt` for out-of-range depths.
 - An empty `StackTraceData` formats to header-only.

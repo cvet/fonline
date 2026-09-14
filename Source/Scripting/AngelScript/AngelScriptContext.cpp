@@ -51,7 +51,7 @@
 FO_BEGIN_NAMESPACE
 
 static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, uint32_t stack_level) noexcept -> optional<StackTraceFrame>;
-static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
+static void CollectScriptStackLayers(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
 
 static auto IsSameScriptContext(ptr<const AngelScript::asIScriptContext> lhs, ptr<const AngelScript::asIScriptContext> rhs) noexcept -> bool
 {
@@ -62,7 +62,7 @@ static auto IsSameScriptContext(ptr<const AngelScript::asIScriptContext> lhs, pt
 
 struct AngelScriptStackTraceInstaller
 {
-    AngelScriptStackTraceInstaller() noexcept { SetScriptStackTraceProvider(&CollectScriptStackLayers); }
+    AngelScriptStackTraceInstaller() noexcept { SetScriptStackTraceProvider("AngelScript", &CollectScriptStackLayers); }
 };
 FO_GLOBAL_DATA(AngelScriptStackTraceInstaller, AngelScriptStackTraceInstall);
 
@@ -685,9 +685,11 @@ static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, u
     }
 }
 
-static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept
+static void CollectScriptStackLayers(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(st);
 
     try {
         // asGetActiveContext lazily allocates AngelScript TLS even on stack-trace-only threads.

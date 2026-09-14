@@ -127,6 +127,13 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
+`python -m pytest BuildTools/tests/test_managed_stack_traces.py BuildTools/tests/test_managed_async_callbacks.py`
+checks the canonical managed exception descriptions and callback failure accounting. The stack-trace probes
+cover transparent versus semantic wrappers, all aggregate causes, and message identity. A CMake-built native
+fixture compiles the canonical `ManagedScriptEntryScope` against a GC-handle fixture to verify independent
+errors with identical messages, nested lookup, repeated reporting, moving handle targets and scope cleanup.
+The fixture models handle ownership; it does not replace a real Mono GC/runtime check.
+
 The native callback GC probe uses an existing Linux Mono embedding runtime (its `include/mono-2.0`
 and `lib` directories), Clang, and the .NET 10 SDK on `PATH`:
 
