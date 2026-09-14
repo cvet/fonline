@@ -156,17 +156,17 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        if (_thread != nullptr) {
+        if (_thread) {
             FO_STRONG_ASSERT(_scopeDepth == 0, "Managed thread attachment cache destroyed inside an active scope");
 
-            if (mono_thread_current() == _thread) {
+            if (_thread == mono_thread_current()) {
                 Unpark();
-                mono_thread_detach(_thread);
+                mono_thread_detach(_thread.get());
             }
         }
     }
 
-    [[nodiscard]] auto IsAttached() const noexcept -> bool { return _thread != nullptr; }
+    [[nodiscard]] auto IsAttached() const noexcept -> bool { return static_cast<bool>(_thread); }
 
     // Detaches now instead of in the thread-local destructor, which on the main thread runs inside process exit,
     // after Mono's own threads were killed possibly holding the locks the detach takes
@@ -174,28 +174,28 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        if (_thread == nullptr || _scopeDepth != 0 || mono_thread_current() != _thread) {
+        if (!_thread || _scopeDepth != 0 || _thread != mono_thread_current()) {
             return;
         }
 
         Unpark();
-        mono_thread_detach(_thread);
+        mono_thread_detach(_thread.get());
         _thread = nullptr;
         _domain = nullptr;
     }
 
-    void Enter(MonoDomain* domain)
+    void Enter(ptr<MonoDomain> domain)
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (_thread == nullptr) {
-            _thread = mono_thread_attach(domain);
-            FO_VERIFY_AND_THROW(_thread != nullptr, "Failed to attach native thread to Managed runtime domain");
+        if (!_thread) {
+            _thread = mono_thread_attach(domain.get());
+            FO_VERIFY_AND_THROW(_thread, "Failed to attach native thread to Managed runtime domain");
             _domain = domain;
         }
         else {
             FO_VERIFY_AND_THROW(_domain == domain, "Managed worker attachment changed runtime domain");
-            FO_VERIFY_AND_THROW(mono_thread_current() == _thread, "Managed worker attachment belongs to another thread");
+            FO_VERIFY_AND_THROW(_thread == mono_thread_current(), "Managed worker attachment belongs to another thread");
         }
 
         if (_scopeDepth == 0) {
@@ -226,15 +226,15 @@ private:
 
         if (_parked) {
             void* stack_data = nullptr;
-            mono_threads_exit_gc_safe_region_unbalanced(_gcSafeCookie, &stack_data);
+            mono_threads_exit_gc_safe_region_unbalanced(_gcSafeCookie.get(), &stack_data);
             _gcSafeCookie = nullptr;
             _parked = false;
         }
     }
 
-    MonoDomain* _domain {};
-    MonoThread* _thread {};
-    void* _gcSafeCookie {};
+    nptr<MonoDomain> _domain {};
+    nptr<MonoThread> _thread {};
+    nptr<void> _gcSafeCookie {};
     size_t _scopeDepth {};
     bool _parked {};
 };
@@ -245,7 +245,7 @@ static thread_local ManagedThreadAttachmentCache ManagedFrameWorkerThreadAttachm
 class ManagedThreadAttachment final
 {
 public:
-    explicit ManagedThreadAttachment(MonoDomain* domain, ManagedThreadAttachmentMode mode = ManagedThreadAttachmentMode::PreserveExisting)
+    explicit ManagedThreadAttachment(ptr<MonoDomain> domain, ManagedThreadAttachmentMode mode = ManagedThreadAttachmentMode::PreserveExisting)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -255,16 +255,16 @@ public:
             return;
         }
 
-        MonoThread* current_thread = mono_thread_current();
+        nptr<MonoThread> current_thread = mono_thread_current();
 
-        if (current_thread == nullptr) {
+        if (!current_thread) {
             if (mode == ManagedThreadAttachmentMode::CacheForThread) {
                 ManagedFrameWorkerThreadAttachment.Enter(domain);
                 _usesWorkerCache = true;
             }
             else {
-                _attachedThread = mono_thread_attach(domain);
-                FO_VERIFY_AND_THROW(_attachedThread != nullptr, "Failed to attach native thread to Managed runtime domain");
+                _attachedThread = mono_thread_attach(domain.get());
+                FO_VERIFY_AND_THROW(_attachedThread, "Failed to attach native thread to Managed runtime domain");
             }
         }
         else if (mode == ManagedThreadAttachmentMode::AdoptExisting) {
@@ -284,13 +284,13 @@ public:
         if (_usesWorkerCache) {
             ManagedFrameWorkerThreadAttachment.Leave();
         }
-        else if (_attachedThread != nullptr) {
-            mono_thread_detach(_attachedThread);
+        else if (_attachedThread) {
+            mono_thread_detach(_attachedThread.get());
         }
     }
 
 private:
-    MonoThread* _attachedThread {};
+    nptr<MonoThread> _attachedThread {};
     bool _usesWorkerCache {};
 };
 
@@ -300,7 +300,7 @@ class ManagedScriptEntryScope final
 {
 public:
     // Not inlined, so the birth capture can skip exactly the constructor frame
-    FO_NO_INLINE explicit ManagedScriptEntryScope(MonoMethod* method) noexcept;
+    FO_NO_INLINE explicit ManagedScriptEntryScope(nptr<MonoMethod> method) noexcept;
     ManagedScriptEntryScope(const ManagedScriptEntryScope&) = delete;
     ManagedScriptEntryScope(ManagedScriptEntryScope&&) noexcept = delete;
     auto operator=(const ManagedScriptEntryScope&) = delete;
@@ -308,7 +308,7 @@ public:
     ~ManagedScriptEntryScope();
 
     [[nodiscard]] static auto GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>;
-    [[nodiscard]] auto GetMethod() const noexcept -> MonoMethod* { return _method; }
+    [[nodiscard]] auto GetMethod() const noexcept -> nptr<MonoMethod> { return _method; }
     [[nodiscard]] auto GetNextRunning() const noexcept -> nptr<ManagedScriptEntryScope>;
 
     void CopyBirthFrames(ScriptStackTraceLayer& layer) const noexcept;
@@ -318,7 +318,7 @@ public:
     auto FindCrossedNativeException(MonoString* message) const noexcept -> std::exception_ptr;
 
 private:
-    MonoMethod* _method {};
+    nptr<MonoMethod> _method {};
     nptr<ManagedScriptEntryScope> _parent {};
     bool _running {true};
     std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> _birthFrames {};
@@ -336,18 +336,18 @@ struct ManagedExceptionDescription
 {
     string Summary {};
     std::exception_ptr NativeException {};
-    vector<pair<MonoMethod*, int32_t>> Frames {};
+    vector<pair<ptr<MonoMethod>, int32_t>> Frames {};
 };
 
 struct ManagedStackWalk
 {
     nptr<ManagedScriptEntryScope> Entry {};
-    MonoMethod* OutermostMethod {};
+    nptr<MonoMethod> OutermostMethod {};
     ScriptStackTraceLayer Layer {};
     vector<ScriptStackTraceLayer> Layers {};
 };
 
-static void ReleaseManagedGcHandle(MonoDomain* domain, uint32_t& handle) noexcept
+static void ReleaseManagedGcHandle(nptr<MonoDomain> domain, uint32_t& handle) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -356,7 +356,7 @@ static void ReleaseManagedGcHandle(MonoDomain* domain, uint32_t& handle) noexcep
     }
 
     safe_call([&] {
-        FO_VERIFY_AND_THROW(domain != nullptr, "Managed runtime domain is unavailable during GC handle release");
+        FO_VERIFY_AND_THROW(domain, "Managed runtime domain is unavailable during GC handle release");
         ManagedThreadAttachment managed_thread {domain};
         mono_gchandle_free(handle);
         handle = 0;
@@ -390,9 +390,9 @@ static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*;
 static void CollectManagedScriptStackLayers(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
 static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, int32_t il_offset, mono_bool managed, void* data) -> mono_bool;
 static auto DescribeManagedException(MonoObject* exception, nptr<ManagedScriptEntryScope> entry) -> ManagedExceptionDescription;
-static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<MonoMethod*, int32_t>>;
-static auto MakeManagedExceptionLayer(const vector<pair<MonoMethod*, int32_t>>& frames) -> ScriptStackTraceLayer;
-static auto MakeManagedStackFrame(MonoMethod* method, int32_t il_offset) -> optional<StackTraceFrame>;
+static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<ptr<MonoMethod>, int32_t>>;
+static auto MakeManagedExceptionLayer(const vector<pair<ptr<MonoMethod>, int32_t>>& frames) -> ScriptStackTraceLayer;
+static auto MakeManagedStackFrame(ptr<MonoMethod> method, int32_t il_offset) -> optional<StackTraceFrame>;
 static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const NativeStackFrameAddress> frames, ScriptStackTraceLayer& layer);
 static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool;
 
@@ -617,7 +617,7 @@ struct ManagedScalarValue
     hstring Hash {};
     nptr<Entity> EntityPtr {};
     refcount_nptr<DynamicRefTypeInstance> DynamicRefType {};
-    void* RefTypePtr {};
+    nptr<void> RefTypePtr {};
 
     [[nodiscard]] auto Alloc(const BaseTypeDesc& type) -> void*
     {
@@ -700,7 +700,7 @@ struct ManagedDictBridgeData : ManagedObjectRoot
 struct ManagedCallbackBridgeData
 {
     nptr<ManagedScriptBackend> Backend {};
-    MonoDomain* Domain {};
+    nptr<MonoDomain> Domain {};
     ComplexTypeDesc Type {};
     uint32_t Handler {};
     hstring Name {};
@@ -828,8 +828,8 @@ struct ManagedNativeValue : ManagedScalarValue
 struct ManagedEventSubscription
 {
     nptr<ManagedScriptBackend> Backend {};
-    MonoDomain* Domain {};
-    MonoImage* Image {};
+    nptr<MonoDomain> Domain {};
+    nptr<MonoImage> Image {};
     vector<ComplexTypeDesc> Args {};
     uint32_t Handler {};
     bool HasExplicitResult {};
@@ -1082,16 +1082,18 @@ static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, 
         auto walk = cast_from_void<ManagedStackWalk*>(data).as_ptr();
 
         if (managed != 0) {
+            FO_VERIFY_AND_THROW(method != nullptr, "Managed stack frame has no method");
+
             if (optional<StackTraceFrame> frame = MakeManagedStackFrame(method, il_offset)) {
                 walk->Layer.ScriptFrames.emplace_back(std::move(*frame));
                 walk->OutermostMethod = method;
             }
         }
         else if (walk->Entry && !walk->Layer.ScriptFrames.empty() && IsManagedRuntimeInvokeWrapper(method)) {
-            MonoMethod* entry_method = walk->Entry->GetMethod();
+            nptr<MonoMethod> entry_method = walk->Entry->GetMethod();
 
             // An invoke that no entry recorded, such as a class constructor or an internal helper, stays in the enclosing run
-            if (entry_method == nullptr || entry_method == walk->OutermostMethod) {
+            if (!entry_method || entry_method == walk->OutermostMethod) {
                 walk->Entry->CopyBirthFrames(walk->Layer);
                 walk->Layers.emplace_back(std::exchange(walk->Layer, ScriptStackTraceLayer {}));
                 walk->Entry = walk->Entry->GetNextRunning();
@@ -1141,26 +1143,27 @@ static auto DescribeManagedException(MonoObject* exception, nptr<ManagedScriptEn
     return description;
 }
 
-static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<MonoMethod*, int32_t>>
+static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<ptr<MonoMethod>, int32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t values_count = frames != nullptr ? mono_array_length(frames) : 0;
     FO_VERIFY_AND_THROW(values_count % 2 == 0, "Managed exception frames must pair a method handle with an IL offset", values_count);
 
-    vector<pair<MonoMethod*, int32_t>> result;
+    vector<pair<ptr<MonoMethod>, int32_t>> result;
     result.reserve(values_count / 2);
 
     for (size_t i = 0; i < values_count; i += 2) {
         int64_t method_handle = mono_array_get(frames, int64_t, i);
         int64_t il_offset = mono_array_get(frames, int64_t, i + 1);
+        FO_VERIFY_AND_THROW(method_handle != 0, "Managed exception frame has no method handle", i);
         result.emplace_back(std::bit_cast<MonoMethod*>(numeric_cast<uintptr_t>(method_handle)), numeric_cast<int32_t>(il_offset));
     }
 
     return result;
 }
 
-static auto MakeManagedExceptionLayer(const vector<pair<MonoMethod*, int32_t>>& frames) -> ScriptStackTraceLayer
+static auto MakeManagedExceptionLayer(const vector<pair<ptr<MonoMethod>, int32_t>>& frames) -> ScriptStackTraceLayer
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1177,14 +1180,14 @@ static auto MakeManagedExceptionLayer(const vector<pair<MonoMethod*, int32_t>>& 
 }
 
 // Generated marshalling stubs (reflection invoke stubs and the like) are runtime plumbing, not script frames
-static auto MakeManagedStackFrame(MonoMethod* method, int32_t il_offset) -> optional<StackTraceFrame>
+static auto MakeManagedStackFrame(ptr<MonoMethod> method, int32_t il_offset) -> optional<StackTraceFrame>
 {
     FO_STACK_TRACE_ENTRY();
 
     StackTraceFrame frame;
     frame.Type = StackTraceFrame::FrameType::Script;
 
-    if (char* full_name = mono_method_full_name(method, 1); full_name != nullptr) {
+    if (char* full_name = mono_method_full_name(method.get(), 1); full_name != nullptr) {
         // Mono spells a method "Namespace.Outer/Inner:Method (args)", while script code reads "Namespace.Outer.Inner.Method(args)"
         string name {full_name};
         mono_free(full_name);
@@ -1204,7 +1207,7 @@ static auto MakeManagedStackFrame(MonoMethod* method, int32_t il_offset) -> opti
     }
 
     if (il_offset >= 0 && mono_debug_enabled() != 0) {
-        if (MonoDebugMethodInfo* method_info = mono_debug_lookup_method(method); method_info != nullptr) {
+        if (MonoDebugMethodInfo* method_info = mono_debug_lookup_method(method.get()); method_info != nullptr) {
             if (MonoDebugSourceLocation* location = mono_debug_method_lookup_location(method_info, il_offset); location != nullptr) {
                 string file = location->source_file != nullptr ? string {location->source_file} : string {};
                 uint32_t line = location->row;
@@ -1240,7 +1243,7 @@ static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool
     return name != nullptr && string_view {name}.starts_with("runtime_invoke");
 }
 
-ManagedScriptEntryScope::ManagedScriptEntryScope(MonoMethod* method) noexcept :
+ManagedScriptEntryScope::ManagedScriptEntryScope(nptr<MonoMethod> method) noexcept :
     _method {method},
     _parent {CurrentScriptEntry}
 {
@@ -3565,7 +3568,7 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
     };
     func_desc->AttributeChecker = [](string_view /*attribute*/) -> bool { return true; };
 
-    MonoDomain* domain = callback->Domain;
+    nptr<MonoDomain> domain = callback->Domain;
     return make_unique_del_ptr(std::move(func_desc).release(), [domain, handler_handle](ScriptFuncDesc* desc) mutable {
         ReleaseManagedGcHandle(domain, handler_handle);
         delete desc;
@@ -3683,7 +3686,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
         throw ScriptSystemException("Managed event argument count mismatch");
     }
 
-    MonoClass* native_class = mono_class_from_name(subscription->Image, "FOnline", "Native");
+    MonoClass* native_class = mono_class_from_name(subscription->Image.get(), "FOnline", "Native");
 
     if (native_class == nullptr) {
         throw ScriptSystemException("Managed Native class not found");
@@ -4516,7 +4519,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
     if (base_type.IsRefType) {
         if (IsDynamicManagedRefType(base_type)) {
             storage.DynamicRefType = CreateDynamicRefTypeFromManaged(backend, base_type, value);
-            storage.RefTypePtr = storage.DynamicRefType.get();
+            storage.RefTypePtr = storage.DynamicRefType;
         }
         else {
             storage.RefTypePtr = ExtractRefPtr(value);
@@ -4595,7 +4598,7 @@ static void ReconcileMutableDynamicRefTypeOwner(const ComplexTypeDesc& type, Man
         return;
     }
 
-    nptr<DynamicRefTypeInstance> current {static_cast<DynamicRefTypeInstance*>(storage.RefTypePtr)};
+    nptr<DynamicRefTypeInstance> current = storage.RefTypePtr.reinterpret_as<DynamicRefTypeInstance>();
 
     if (storage.DynamicRefType.as_nptr() == current) {
         return;
@@ -6099,7 +6102,7 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
     try {
         nptr<MonoImage> host_image = _managedHostImage.reinterpret_as<MonoImage>();
         if (domain && host_image) {
-            ManagedThreadAttachment managed_thread {domain.get()};
+            ManagedThreadAttachment managed_thread {domain};
             MonoObject* load_scope = mono_gchandle_get_target(load_scope_handle);
 
             if (load_scope == nullptr) {
@@ -6131,7 +6134,7 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
         WriteLog("Managed load-context release failed with an unknown exception");
     }
 
-    ReleaseManagedGcHandle(domain.get(), load_scope_handle);
+    ReleaseManagedGcHandle(domain, load_scope_handle);
     _managedHostImage = nullptr;
 }
 
