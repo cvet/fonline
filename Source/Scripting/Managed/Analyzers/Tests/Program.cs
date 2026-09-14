@@ -647,6 +647,28 @@ namespace LastFrontier
     }
 }");
 
+        // Both deconstruction spellings declare through a designation that ends before the await.
+        Check(failures, "a value a deconstructing await produced is fresh", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task<(Critter Found, bool Loaded)> Find() { return Task.FromResult<(Critter, bool)>((null, false)); }
+
+        public static async Task Run([RequiresCover] Critter cr)
+        {
+            (Critter found, bool loaded) = await Find();
+            Needs(found);
+            var (other, reloaded) = await Find();
+            Needs(other);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}");
+
         // A covered collection covers what is taken out of it -- the acquisition reached the elements too.
         Check(failures, "an element read by index carries the collection cover", @"
 namespace LastFrontier

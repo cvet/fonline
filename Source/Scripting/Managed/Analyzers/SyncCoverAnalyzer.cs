@@ -664,10 +664,19 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     private static bool DeclaredAtOrAfter(ISymbol tracked, int position, CancellationToken cancellationToken)
     {
         foreach (SyntaxReference reference in tracked.DeclaringSyntaxReferences) {
+            SyntaxNode declaration = reference.GetSyntax(cancellationToken);
+
             // The declarator of `T x = await ...` starts before the await and ends after it, so the end is
             // what says whether the await produced this value.
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax declarator &&
-                declarator.Span.End >= position) {
+            if (declaration is VariableDeclaratorSyntax declarator && declarator.Span.End >= position) {
+                return true;
+            }
+
+            // A deconstruction `(T x, bool y) = await ...` declares through a designation that ends before the
+            // await, so the assignment it sits on the left of is what answers the same question.
+            if (declaration is SingleVariableDesignationSyntax designation &&
+                designation.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault() is { } deconstruction &&
+                deconstruction.Left.Span.Contains(designation.Span) && deconstruction.Span.End >= position) {
                 return true;
             }
         }

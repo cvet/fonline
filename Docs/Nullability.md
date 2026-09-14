@@ -365,7 +365,9 @@ Embedding projects can therefore use `verify` in any `.fos` module without inclu
 
 The managed backend supplies the equivalent engine-owned `Game.Verify` helper in
 `Source/Scripting/Managed/CoreScripts/Verify.cs`; its condition is annotated with
-`[DoesNotReturnIf(false)]` so C# nullable flow analysis narrows a proved value. Both forms state an **invariant**:
+`[DoesNotReturnIf(false)]` so C# nullable flow analysis narrows a proved value. Keep using the checked `T?` local
+after the check, as the native side does with a checked `nptr<T>`: copying it into a second `T` local adds nothing
+the flow analysis does not already know. Both forms state an **invariant**:
 a condition that holds whenever our own code - server logic *and* our client - behaves correctly. A failure means
 a bug, so it throws. Crucially these checks run in **every** configuration; there is no `NDEBUG`-style strip, so
 they are always the runtime guard, never a debug-only check. (The name is `verify`, not `assert`, precisely to
