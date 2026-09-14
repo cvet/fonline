@@ -232,11 +232,25 @@ standalone Clang assembler probe; without the inherited ID, configure reports an
 unknown compiler and looks for `Compiler/-ASM`. The source patch leaves the compiler
 driver and `.S` build command unchanged, and rejects a moved upstream anchor.
 
-Browser, Android, Apple, and Linux source-patch contracts have separate `BUILT` and
+Windows runtime objects embed their debug information: C and C++ sources compile with
+`/Z7` instead of the upstream `/Zi`, in every configuration, while MASM keeps `/Zi`,
+which already embeds it. A `/Zi` object records only a reference to a compiler PDB
+beside it in the runtime's object tree. That PDB is not part of the published tree,
+so each engine link that consumed the archives reported `LNK4099` once per object
+and dropped the runtime's native symbols. `/Z7` makes the archives larger. The patch
+rewrites the shared `eng/native/configurecompiler.cmake` and Mono's own
+`src/mono/CMakeLists.txt`, which does not include it. It also rewrites the per-configuration
+flag variables, because CMake's MSVC defaults put `/Zi` into Debug. Every anchor is
+checked before either file is written. The regression configures both project shapes
+in Debug and Release and requires `/Z7` alone on every C command line.
+
+Browser, Android, Apple, Linux, and Windows source-patch contracts have separate `BUILT` and
 `READY` marker suffixes, synchronized between `buildtools.py` and the CMake runtime
 target. Existing browser caches ending in `_wasmglue` rebuild and republish once
-with the ASM identification patch; the cloned source is retained. Windows keeps its
-cache key. Change the affected platform's suffix when its patch contract changes,
+with the ASM identification patch; Windows caches without `_embedded_debug_info`
+rebuild and republish once with embedded debug information. Both keep the cloned source.
+A `FO_MANAGED_RUNTIME_PREBUILT` tree is adopted as given, so it has to be rebuilt
+on Windows to benefit. Change the affected platform's suffix when its patch contract changes,
 so a ready cache cannot bypass new source edits.
 
 Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
