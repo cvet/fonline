@@ -138,18 +138,18 @@ public static partial class Game
             return result;
         }
 
-        Verify(false, "Enum value is not found");
+        Invariant.Failed("Enum value is not found");
         return default;
     }
 
     public static int ParseGenericEnum(string enumName, object valueName)
     {
         Type? enumType = FindEnumType(enumName);
-        Verify(enumType != null, "Enum type is not found");
+        Invariant.Verify(enumType != null, "Enum type is not found");
         string text = valueName is hstring hvalue
                         ? hvalue.ToString()
                         : Convert.ToString(valueName, CultureInfo.InvariantCulture) ?? string.Empty;
-        Verify(TryParseEnumObject(enumType, text, out object? result), "Enum value is not found");
+        Invariant.Verify(TryParseEnumObject(enumType, text, out object? result), "Enum value is not found");
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }
 
@@ -185,10 +185,6 @@ public static partial class Game
 
             return true;
         }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
-        }
         catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
@@ -208,10 +204,6 @@ public static partial class Game
             ObserveInvokeTask(result);
             return true;
         }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
-        }
         catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
@@ -230,10 +222,6 @@ public static partial class Game
             object? result = method.Invoke(null, args);
             ObserveInvokeTask(result);
             return true;
-        }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
         }
         catch (Exception ex) {
             RecordManagedException(ex, true);
@@ -264,10 +252,6 @@ public static partial class Game
             args[resultIndex] = method.Invoke(null, inputArgs);
             return true;
         }
-        catch (TargetInvocationException ex) {
-            RecordManagedException(ex.InnerException ?? ex, true);
-            return false;
-        }
         catch (Exception ex) {
             RecordManagedException(ex, true);
             return false;
@@ -296,7 +280,8 @@ public static partial class Game
                 return Enum.IsDefined(result);
             }
         }
-        catch {
+        catch (ArgumentException) {
+            // Converts, but not to an integral type this enum is built on - which is the Try contract's answer
         }
 
         result = default;
@@ -319,21 +304,8 @@ public static partial class Game
     {
         string normalized = NormalizeEnumValueName(valueName);
 
-        try {
-            result = Enum.Parse(enumType, normalized, false);
-            return true;
-        }
-        catch {
-        }
-
-        try {
-            result = Enum.Parse(enumType, normalized, true);
-            return true;
-        }
-        catch {
-            result = null;
-            return false;
-        }
+        return Enum.TryParse(enumType, normalized, false, out result) ||
+               Enum.TryParse(enumType, normalized, true, out result);
     }
 
     private static string NormalizeEnumValueName(string valueName)
@@ -581,7 +553,7 @@ public static partial class Game
 
         if (nonNullableTarget.IsEnum) {
             if (value is string enumText) {
-                Verify(TryParseEnumObject(nonNullableTarget, enumText, out object? enumValue), "Enum value is not found");
+                Invariant.Verify(TryParseEnumObject(nonNullableTarget, enumText, out object? enumValue), "Enum value is not found");
                 return enumValue;
             }
 
@@ -653,7 +625,7 @@ public static partial class Game
     {
         Interlocked.Increment(ref _managedGlobalExceptionCount);
         if (log) {
-            Native.Log(ex.ToString());
+            Native.ReportException(ex);
         }
     }
 }

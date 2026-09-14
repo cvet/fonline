@@ -11,6 +11,7 @@ public static class Initializator
 {
     private static bool _initializedEarly;
 
+    [CallableByEngine]
     static void InitializeEarly()
     {
         if (_initializedEarly) {
@@ -62,6 +63,7 @@ public static class Initializator
         }
     }
 
+    [CallableByEngine]
     static void Initialize()
     {
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(true);

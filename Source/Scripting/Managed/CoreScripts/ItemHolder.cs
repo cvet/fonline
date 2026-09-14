@@ -31,7 +31,7 @@ public static class ItemHolderExtensions
     {
         Entity? holder = item.FindHolder();
 
-        Game.Verify(holder != null, "Item has no holder");
+        Invariant.Verify(holder != null, "Item has no holder");
         return holder;
     }
 

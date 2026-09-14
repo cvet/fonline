@@ -497,12 +497,14 @@ def replace_internal_call(source, declaration, replacement):
 
 
 def build_probe(dotnet, output, probe_source):
-    for name in ("Native.cs", "ScriptInvoke.cs", "Attributes.cs", "Verify.cs", "Async.cs", "ScriptSynchronizationContext.cs", "Initializator.cs"):
+    for name in ("Native.cs", "ScriptInvoke.cs", "Attributes.cs", "Invariant.cs", "Async.cs", "ScriptSynchronizationContext.cs", "Initializator.cs"):
         source = (CORE / name).read_text(encoding="utf-8")
         if name == "Native.cs":
-            # External logging and native continuation entry are the only substituted boundaries
+            # External reporting and native continuation entry are the only substituted boundaries
             source = replace_internal_call(source, "internal static extern void Log(string text);",
                                            'internal static void Log(string text) => Console.WriteLine("ENGINE_RECORDED " + text);')
+            source = replace_internal_call(source, "private static extern void ReportExceptionInternal(string summary, string? nativeError, long[] frames);",
+                                           'private static void ReportExceptionInternal(string summary, string? nativeError, long[] frames) => Log(summary);')
             source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(Action continuation);",
                                            "private static string? RunScriptContinuationInternal(Action continuation) { continuation(); return null; }")
         (output / name).write_text(source, encoding="utf-8")

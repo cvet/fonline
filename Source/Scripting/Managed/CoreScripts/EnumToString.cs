@@ -14,7 +14,7 @@ public static partial class Game
         where T : struct, System.Enum
     {
         string? name = System.Enum.GetName(value);
-        Verify(name != null, "Invalid enum index", typeof(T).Name, value);
+        Invariant.Verify(name != null, "Invalid enum index", typeof(T).Name, value);
         return fullSpecification ? typeof(T).Name + "::" + name : name;
     }
 

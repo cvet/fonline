@@ -127,6 +127,13 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
+`python -m pytest BuildTools/tests/test_managed_stack_traces.py BuildTools/tests/test_managed_async_callbacks.py`
+checks the canonical managed exception descriptions and callback failure accounting. The stack-trace probes
+cover transparent versus semantic wrappers, all aggregate causes, and message identity. A CMake-built native
+fixture compiles the canonical `ManagedScriptEntryScope` against a GC-handle fixture to verify independent
+errors with identical messages, nested lookup, repeated reporting, moving handle targets and scope cleanup.
+The fixture models handle ownership; it does not replace a real Mono GC/runtime check.
+
 The native callback GC probe uses an existing Linux Mono embedding runtime (its `include/mono-2.0`
 and `lib` directories), Clang, and the .NET 10 SDK on `PATH`:
 
@@ -190,6 +197,13 @@ Changing the SGen clear or collector mode only moves those reports between Mono'
 bytes for bounded MSan diagnostics, but does not qualify the whole runtime for either sanitizer.
 Use the managed-disabled engine unit validators for native MSan/TSan coverage and ASan/UBSan
 for managed runtime execution.
+Managed-script Clang builds compile `San_Address` and `San_Address_Undefined` with
+`-fsanitize-address-use-after-return=never`. Mono SGen pins objects by conservatively scanning the real
+thread stacks, while ASan's stack-use-after-return mode (on by default on Linux) moves every address-taken
+native local, such as the `void* args[]` handed to `mono_runtime_invoke`, into a heap fake frame the collector
+never scans. A managed reference held only there is moved or collected underneath the native code, and the
+damage surfaces later as SGen faults (`copy_object_no_checks`, `no object of size`) rather than as an ASan
+report. MSVC AddressSanitizer does not enable fake stacks unless asked, so it needs no counterpart.
 `unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains

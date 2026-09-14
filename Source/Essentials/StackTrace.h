@@ -64,6 +64,8 @@ namespace stack_trace
         std::array<native_frame_address, MAX_NATIVE_FRAMES> birth_native_frames {};
         uint32_t birth_native_frame_count {};
         bool birth_native_truncated {};
+        // Addresses inside code the script runtime generated (JIT output), which script_frames already describe
+        std::vector<native_frame_address> runtime_native_frames {};
     };
 
     struct data
@@ -80,11 +82,14 @@ namespace stack_trace
         data catched {};
     };
 
-    using script_provider = std::function<void(std::vector<script_layer>& out_layers)>;
+    // A provider appends its layers innermost first and may inspect the native frames already captured for the same trace
+    using script_provider = std::function<void(const data& st, std::vector<script_layer>& out_layers)>;
 
-    void set_script_provider(script_provider provider) noexcept;
-    auto has_script_provider() noexcept -> bool;
+    void set_script_provider(std::string_view name, script_provider provider) noexcept;
+    auto has_script_provider(std::string_view name) noexcept -> bool;
     auto get() noexcept -> data;
+    void add_unwound_script_frames(data& st, script_layer layer);
+    void splice_caught_script_frames(data& st, script_layer layer);
     void capture_native_frames(std::array<native_frame_address, MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
     void clear_resolved_cache() noexcept;
     auto get_resolved_cache_size() noexcept -> size_t;
