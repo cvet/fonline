@@ -122,7 +122,7 @@ internal static class OwnershipProbe
     {
     }
 
-    // Game.Invoke finds it by reflection; nothing is published for it
+    // ScriptFunc.Invoke finds it by reflection; nothing is published for it
     [CallableByName]
     public static void NamedOnly()
     {

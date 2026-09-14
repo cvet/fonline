@@ -41,18 +41,6 @@ public static partial class Game
     public static void Log(string text) => Native.Log(text);
 }
 
-public enum GameProperty
-{
-    Value
-}
-public enum ModifierEvent
-{
-    Value
-}
-public enum ModifierScope
-{
-    Value
-}
 public enum CritterProperty
 {
     Strength = 7

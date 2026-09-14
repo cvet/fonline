@@ -5,27 +5,22 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 
-public static partial class Game
+// Calls a script function by name: a managed static method admitted by [CallableByName] (or [AdminRemoteCall] for
+// InvokeAdmin), falling back to the native global-function map. A fault in the target is accounted in
+// ScriptExceptions and answered with false
+public static class ScriptFunc
 {
     private const BindingFlags InvokeMethodFlags =
         BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 
     // Core scripts are compiled into each backend's entry assembly, so these caches are engine-local
-    private static readonly Lazy<Type[]> InvokeTypes = new Lazy<Type[]>(() => typeof(Game).Assembly.GetTypes());
+    private static readonly Lazy<Type[]> InvokeTypes = new Lazy<Type[]>(() => typeof(ScriptFunc).Assembly.GetTypes());
     private static readonly ConcurrentDictionary<string, MethodInfo[]> InvokeCandidates =
         new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
     private static readonly ConcurrentDictionary<string, MethodInfo[]> AdminCallCandidates =
         new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
-    private static readonly ConcurrentDictionary<string, Type[]> EnumCandidates =
-        new ConcurrentDictionary<string, Type[]>(StringComparer.Ordinal);
-
-    private static int _managedGlobalExceptionCount;
-
-    [ThreadStatic]
-    private static int _managedContextExceptionCount;
 
     public static bool Invoke(string funcName, params object?[]? args)
     {
@@ -34,7 +29,7 @@ public static partial class Game
 
     // Awaits the dispatched target when it is asynchronous. `Invoke` only observes the returned Task
     // for faults, which leaves an async target still running after the call returns; a caller that
-    // needs the work finished before it reads the resulting state must await this instead.
+    // needs the work finished before it reads the resulting state must await this instead
     public static Task<bool> InvokeAsync(string funcName, params object?[]? args)
     {
         return InvokeCoreAsync(funcName, args ?? Array.Empty<object?>());
@@ -42,9 +37,9 @@ public static partial class Game
 
     // Admin commands have their own allowlist and do not become internal name-dispatch targets merely
     // because the same method is exposed to an authenticated administrator
-    public static bool CallAdminFunc(string funcName, params object?[]? args)
+    public static bool InvokeAdmin(string funcName, params object?[]? args)
     {
-        return CallAdminFuncCore(funcName, args ?? Array.Empty<object?>());
+        return InvokeAdminCore(funcName, args ?? Array.Empty<object?>());
     }
 
     public static bool Invoke<TResult>(string funcName, ref TResult result)
@@ -92,82 +87,6 @@ public static partial class Game
         return InvokeCoreWithResult(funcName, args, 6) && CopyInvokeResult(args, 6, ref result);
     }
 
-    public static int GetGlobalExceptionCount()
-    {
-        return _managedGlobalExceptionCount;
-    }
-
-    // Reflects synchronous faults only; deferred (Task continuation) faults run on a foreign
-    // thread and increment the global counter exclusively.
-    public static int GetContextExceptionCount()
-    {
-        return _managedContextExceptionCount;
-    }
-
-    // A managed exception caught entirely inside project C# never crosses InvokeCore or a native callback
-    // boundary, so the runtime cannot observe it automatically. Test harnesses that deliberately exercise
-    // and catch such a path report the caught instance here before acknowledging it; this preserves the
-    // same bounded exception accounting that AngelScript provided for caught script exceptions.
-    public static void RecordCaughtException(Exception exception)
-    {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        RecordManagedException(exception, false);
-    }
-
-    public static int GetAsInt(GameProperty prop)
-    {
-        return Convert.ToInt32(Native.GetProperty("Game", prop.ToString(), IntPtr.Zero), CultureInfo.InvariantCulture);
-    }
-
-    public static void SetAsInt(GameProperty prop, int value)
-    {
-        Native.SetProperty("Game", prop.ToString(), IntPtr.Zero, value);
-    }
-
-    public static bool TryParseEnum<TEnum>(string valueName, out TEnum result)
-        where TEnum : struct, Enum
-    {
-        return TryParseEnumValue(valueName, out result);
-    }
-
-    public static TEnum ParseEnumValue<TEnum>(object value)
-        where TEnum : struct, Enum
-    {
-        if (TryParseEnumValue(value, out TEnum result)) {
-            return result;
-        }
-
-        Invariant.Failed("Enum value is not found");
-        return default;
-    }
-
-    public static int ParseGenericEnum(string enumName, object valueName)
-    {
-        Type? enumType = FindEnumType(enumName);
-        Invariant.Verify(enumType != null, "Enum type is not found");
-        string text = valueName is hstring hvalue
-                        ? hvalue.ToString()
-                        : Convert.ToString(valueName, CultureInfo.InvariantCulture) ?? string.Empty;
-        Invariant.Verify(TryParseEnumObject(enumType, text, out object? result), "Enum value is not found");
-        return Convert.ToInt32(result, CultureInfo.InvariantCulture);
-    }
-
-    public static ModifierEvent ParseEnum_ModifierEvent(object value)
-    {
-        return ParseEnumValue<ModifierEvent>(value);
-    }
-
-    public static ModifierScope ParseEnum_ModifierScope(object value)
-    {
-        return ParseEnumValue<ModifierScope>(value);
-    }
-
-    public static CritterProperty ParseEnum_CritterProperty(object value)
-    {
-        return ParseEnumValue<CritterProperty>(value);
-    }
-
     private static async Task<bool> InvokeCoreAsync(string funcName, object?[] args)
     {
         try {
@@ -186,7 +105,7 @@ public static partial class Game
             return true;
         }
         catch (Exception ex) {
-            RecordManagedException(ex, true);
+            ScriptExceptions.Record(ex, true);
             return false;
         }
     }
@@ -201,16 +120,16 @@ public static partial class Game
 
             CoerceInvokeArgs(method, args);
             object? result = method.Invoke(null, args);
-            ObserveInvokeTask(result);
+            ScriptExceptions.ObserveTask(result);
             return true;
         }
         catch (Exception ex) {
-            RecordManagedException(ex, true);
+            ScriptExceptions.Record(ex, true);
             return false;
         }
     }
 
-    private static bool CallAdminFuncCore(string funcName, object?[] args)
+    private static bool InvokeAdminCore(string funcName, object?[] args)
     {
         try {
             MethodInfo? method = FindAdminCallMethod(funcName, args);
@@ -220,11 +139,11 @@ public static partial class Game
 
             CoerceInvokeArgs(method, args);
             object? result = method.Invoke(null, args);
-            ObserveInvokeTask(result);
+            ScriptExceptions.ObserveTask(result);
             return true;
         }
         catch (Exception ex) {
-            RecordManagedException(ex, true);
+            ScriptExceptions.Record(ex, true);
             return false;
         }
     }
@@ -236,7 +155,7 @@ public static partial class Game
             if (method != null) {
                 CoerceInvokeArgs(method, args);
                 object? result = method.Invoke(null, args);
-                ObserveInvokeTask(result);
+                ScriptExceptions.ObserveTask(result);
                 return true;
             }
 
@@ -253,103 +172,9 @@ public static partial class Game
             return true;
         }
         catch (Exception ex) {
-            RecordManagedException(ex, true);
+            ScriptExceptions.Record(ex, true);
             return false;
         }
-    }
-
-    private static bool TryParseEnumValue<TEnum>(object value, out TEnum result)
-        where TEnum : struct, Enum
-    {
-        if (value is TEnum typed) {
-            result = typed;
-            return true;
-        }
-
-        if (value is hstring hvalue) {
-            return TryParseEnumValue(hvalue.ToString(), out result);
-        }
-
-        if (value is string svalue) {
-            return TryParseEnumValue(svalue, out result);
-        }
-
-        try {
-            if (value is IConvertible) {
-                result = (TEnum)Enum.ToObject(typeof(TEnum), value);
-                return Enum.IsDefined(result);
-            }
-        }
-        catch (ArgumentException) {
-            // Converts, but not to an integral type this enum is built on - which is the Try contract's answer
-        }
-
-        result = default;
-        return false;
-    }
-
-    private static bool TryParseEnumValue<TEnum>(string valueName, out TEnum result)
-        where TEnum : struct, Enum
-    {
-        string normalized = NormalizeEnumValueName(valueName);
-
-        if (Enum.TryParse(normalized, false, out result)) {
-            return true;
-        }
-
-        return Enum.TryParse(normalized, true, out result);
-    }
-
-    private static bool TryParseEnumObject(Type enumType, string valueName, out object? result)
-    {
-        string normalized = NormalizeEnumValueName(valueName);
-
-        return Enum.TryParse(enumType, normalized, false, out result) ||
-               Enum.TryParse(enumType, normalized, true, out result);
-    }
-
-    private static string NormalizeEnumValueName(string valueName)
-    {
-        string normalized = valueName.Replace("::", ".").Replace(" ", string.Empty);
-        int dot = normalized.LastIndexOf('.');
-        if (dot >= 0) {
-            normalized = normalized.Substring(dot + 1);
-        }
-
-        return normalized;
-    }
-
-    private static Type? FindEnumType(string enumName)
-    {
-        string normalized = enumName.Replace("::", ".").Replace(" ", string.Empty);
-        string shortName = normalized;
-        int dot = shortName.LastIndexOf('.');
-        if (dot >= 0) {
-            shortName = shortName.Substring(dot + 1);
-        }
-
-        Type[] candidates =
-            EnumCandidates.GetOrAdd(normalized,
-                                    _ =>
-                                    {
-                                        Type? fallback = null;
-
-                                        foreach (Type type in InvokeTypes.Value) {
-                                            if (!type.IsEnum) {
-                                                continue;
-                                            }
-                                            if (type.FullName == normalized) {
-                                                return new[] { type };
-                                            }
-                                            if (type.Name == shortName) {
-                                                fallback ??= type;
-                                            }
-                                        }
-
-                                        return fallback == null ? Array.Empty<Type>() : new[] { fallback };
-                                    });
-
-        return candidates.Length == 0 ? null : candidates[0];
     }
 
     private static MethodInfo? FindInvokeMethod(string funcName, object?[] args)
@@ -464,11 +289,11 @@ public static partial class Game
 
         if (moduleName != null) {
             string normalized = moduleName.Replace("::", ".");
-            Assembly gameAssembly = typeof(Game).Assembly;
-            qualifiedType = gameAssembly.GetType(normalized) ?? gameAssembly.GetType("FOnline." + normalized);
+            Assembly scriptAssembly = typeof(ScriptFunc).Assembly;
+            qualifiedType = scriptAssembly.GetType(normalized) ?? scriptAssembly.GetType("FOnline." + normalized);
 
             if (qualifiedType == null) {
-                // Game scripts live in the host assembly, which is not always `typeof(Game).Assembly`
+                // Game scripts live in the host assembly, which is not always this one
                 // when CoreScripts are compiled into a separate engine module. Nested types keep the
                 // reflection `Outer+Inner` spelling that callers already pass
                 foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()) {
@@ -553,7 +378,8 @@ public static partial class Game
 
         if (nonNullableTarget.IsEnum) {
             if (value is string enumText) {
-                Invariant.Verify(TryParseEnumObject(nonNullableTarget, enumText, out object? enumValue), "Enum value is not found");
+                Invariant.Verify(Enums.TryParseObject(nonNullableTarget, enumText, out object? enumValue),
+                                 "Enum value is not found");
                 return enumValue;
             }
 
@@ -580,52 +406,8 @@ public static partial class Game
             return true;
         }
         catch (Exception ex) {
-            RecordManagedException(ex, true);
+            ScriptExceptions.Record(ex, true);
             return false;
-        }
-    }
-
-    internal static void ObserveInvokeTask(object? result)
-    {
-        if (result is not Task task) {
-            return;
-        }
-
-        if (task.IsCompleted) {
-            if (task.IsFaulted && task.Exception != null) {
-                RecordManagedException(task.Exception, true);
-            }
-            return;
-        }
-
-        _ = task.ContinueWith(
-            static failedTask =>
-            {
-                if (failedTask.Exception != null) {
-                    // Deferred fault runs on a foreign thread, so only the global counter is
-                    // incremented here. GetContextExceptionCount reflects synchronous faults only.
-                    RecordManagedExceptionGlobal(failedTask.Exception, true);
-                }
-            },
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-            // Without an explicit scheduler the continuation would inherit TaskScheduler.Current, which inside a
-            // script continuation is the engine's context-bound scheduler -- the exact opposite of the foreign
-            // thread this recorder is written for, and a way back into the script context while reporting a fault
-            TaskScheduler.Default);
-    }
-
-    internal static void RecordManagedException(Exception ex, bool log)
-    {
-        _managedContextExceptionCount++;
-        RecordManagedExceptionGlobal(ex, log);
-    }
-
-    private static void RecordManagedExceptionGlobal(Exception ex, bool log)
-    {
-        Interlocked.Increment(ref _managedGlobalExceptionCount);
-        if (log) {
-            Native.ReportException(ex);
         }
     }
 }

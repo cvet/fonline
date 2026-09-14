@@ -99,7 +99,7 @@ internal static class Native
                     task.GetAwaiter().GetResult();
                 }
                 else {
-                    Game.ObserveInvokeTask(task);
+                    ScriptExceptions.ObserveTask(task);
                 }
 
                 return EventResult.ContinueChain;
@@ -112,7 +112,7 @@ internal static class Native
             return EventResult.ContinueChain;
         }
         catch (Exception ex) {
-            Game.RecordManagedException(ex, true);
+            ScriptExceptions.Record(ex, true);
             return EventResult.StopChain;
         }
     }
@@ -149,19 +149,19 @@ internal static class Native
             }
 
             // Task-returning script functions are registered as native void callbacks. Waiting here would
-            // block the script pump that must fire Game.YieldAsync's completion event, so let the callback
+            // block the script pump that must fire ScriptTask.Delay's completion event, so let the callback
             // continue asynchronously and retain deferred exception accounting.
             if (task.IsCompleted) {
                 task.GetAwaiter().GetResult();
             }
             else {
-                Game.ObserveInvokeTask(task);
+                ScriptExceptions.ObserveTask(task);
             }
 
             return null;
         }
         catch (Exception ex) {
-            Game.RecordManagedException(ex, false);
+            ScriptExceptions.Record(ex, false);
             throw;
         }
     }

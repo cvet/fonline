@@ -857,7 +857,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "    catch (Exception ex)\n";
                     out << CS_INDENT << "    {\n";
-                    out << CS_INDENT << "        global::FOnline.Game.RecordManagedException(ex, true);\n";
+                    out << CS_INDENT << "        global::FOnline.ScriptExceptions.Record(ex, true);\n";
                     out << CS_INDENT << "        return EventResult.StopChain;\n";
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "}\n";

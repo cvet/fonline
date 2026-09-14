@@ -77,18 +77,18 @@ internal static class Program
              () =>
              {
                  long result = 1;
-                 Check(Game.Invoke("DispatchProbe::WriteInt", ref result), "Invocation failed");
+                 Check(ScriptFunc.Invoke("DispatchProbe::WriteInt", ref result), "Invocation failed");
                  Check(result == 42, "Converted result was lost");
              }),
             ("managed return value populates ref result",
              () =>
              {
                  long result = 1;
-                 Check(Game.Invoke("DispatchProbe::ReturnInt", ref result), "Return-value invocation failed");
+                 Check(ScriptFunc.Invoke("DispatchProbe::ReturnInt", ref result), "Return-value invocation failed");
                  Check(result == 42, "Managed return value was lost");
 
                  string formatted = "";
-                 Check(Game.Invoke("DispatchProbe::FormatInt", 7, ref formatted),
+                 Check(ScriptFunc.Invoke("DispatchProbe::FormatInt", 7, ref formatted),
                        "Return-value invocation with an argument failed");
                  Check(formatted == "[7]", "Managed return value with an argument was lost");
              }),
@@ -96,42 +96,44 @@ internal static class Program
              () =>
              {
                  byte result = 1;
-                 int before = Game.GetGlobalExceptionCount();
-                 Check(!Game.Invoke("DispatchProbe::WriteLargeInt", ref result), "Overflow must fail");
+                 int before = ScriptExceptions.GlobalCount;
+                 Check(!ScriptFunc.Invoke("DispatchProbe::WriteLargeInt", ref result), "Overflow must fail");
                  Check(result == 1, "Failed conversion changed caller result");
-                 Check(Game.GetGlobalExceptionCount() == before + 1, "Overflow was not recorded once");
+                 Check(ScriptExceptions.GlobalCount == before + 1, "Overflow was not recorded once");
              }),
             ("qualified enum argument",
              () =>
              {
-                 Check(Game.Invoke("DispatchProbe::TakeEnum", "CritterProperty::strength"), "Enum argument failed");
+                 Check(ScriptFunc.Invoke("DispatchProbe::TakeEnum", "CritterProperty::strength"),
+                       "Enum argument failed");
                  Check(ExampleGame.DispatchProbe.EnumValue == CritterProperty.Strength, "Wrong enum value");
              }),
             ("qualified module",
-             () => Check(Game.Invoke("ExampleGame.DispatchProbe::NoArgs"), "Qualified module was not found")),
+             () => Check(ScriptFunc.Invoke("ExampleGame.DispatchProbe::NoArgs"), "Qualified module was not found")),
             ("nested module type",
              () =>
              {
-                 Check(Game.Invoke("ExampleGame.DispatchProbe+Inner::Mark"), "Nested type was not found");
+                 Check(ScriptFunc.Invoke("ExampleGame.DispatchProbe+Inner::Mark"), "Nested type was not found");
                  Check(ExampleGame.DispatchProbe.Inner.Marked, "Nested invocation did not run");
              }),
             ("overload candidates retain argument matching",
              () =>
              {
-                 Check(Game.Invoke("DispatchProbe::Overload", new ExampleGame.First()), "First overload failed");
+                 Check(ScriptFunc.Invoke("DispatchProbe::Overload", new ExampleGame.First()), "First overload failed");
                  Check(ExampleGame.DispatchProbe.OverloadValue == 1, "Wrong first overload");
-                 Check(Game.Invoke("DispatchProbe::Overload", new ExampleGame.Second()), "Second overload failed");
+                 Check(ScriptFunc.Invoke("DispatchProbe::Overload", new ExampleGame.Second()),
+                       "Second overload failed");
                  Check(ExampleGame.DispatchProbe.OverloadValue == 2, "Cache reused an incompatible overload");
              }),
             ("warm dispatch avoids reflection rescans",
              () =>
              {
                  for (int i = 0; i < 100; i++) {
-                     Check(Game.Invoke("DispatchProbe::NoArgs"), "Warmup failed");
+                     Check(ScriptFunc.Invoke("DispatchProbe::NoArgs"), "Warmup failed");
                  }
                  long before = GC.GetAllocatedBytesForCurrentThread();
                  for (int i = 0; i < 1000; i++) {
-                     Check(Game.Invoke("DispatchProbe::NoArgs"), "Warm invocation failed");
+                     Check(ScriptFunc.Invoke("DispatchProbe::NoArgs"), "Warm invocation failed");
                  }
                  Check(GC.GetAllocatedBytesForCurrentThread() - before < 128_000,
                        "Warm dispatch repeatedly allocates reflection inventories");
@@ -156,18 +158,18 @@ internal static class Program
              () =>
              {
                  int before = Native.FallbackCalls;
-                 Check(!Game.Invoke("DispatchProbe::Unmarked"), "Unmarked managed method was invoked");
+                 Check(!ScriptFunc.Invoke("DispatchProbe::Unmarked"), "Unmarked managed method was invoked");
                  Check(Native.FallbackCalls == before + 1, "Unmarked method did not fall through to native lookup");
              }),
             ("admin and internal named calls use separate allowlists",
              () =>
              {
                  int beforeFallback = Native.FallbackCalls;
-                 Check(Game.CallAdminFunc("DispatchProbe::AdminOnly"), "Admin method was not callable by name");
+                 Check(ScriptFunc.InvokeAdmin("DispatchProbe::AdminOnly"), "Admin method was not callable by name");
                  Check(ExampleGame.DispatchProbe.AdminCallCount == 1, "Admin method did not run");
-                 Check(!Game.CallAdminFunc("DispatchProbe::NoArgs"),
+                 Check(!ScriptFunc.InvokeAdmin("DispatchProbe::NoArgs"),
                        "Internal named method leaked into the admin allowlist");
-                 Check(!Game.Invoke("DispatchProbe::AdminOnly"),
+                 Check(!ScriptFunc.Invoke("DispatchProbe::AdminOnly"),
                        "Admin method leaked into the internal named-call allowlist");
                  Check(ExampleGame.DispatchProbe.AdminCallCount == 1,
                        "Rejected internal invocation still ran the admin method");
@@ -178,15 +180,15 @@ internal static class Program
              () =>
              {
                  int before = Native.FallbackCalls;
-                 Check(!Game.Invoke("Missing::Function"), "Missing method succeeded");
-                 Check(!Game.Invoke("Missing::Function"), "Cached missing method succeeded");
+                 Check(!ScriptFunc.Invoke("Missing::Function"), "Missing method succeeded");
+                 Check(!ScriptFunc.Invoke("Missing::Function"), "Cached missing method succeeded");
                  Check(Native.FallbackCalls == before + 2, "Cached miss bypassed native fallback");
              }),
             ("exact enum namespace wins",
              () =>
              {
-                 Check(Game.ParseGenericEnum("FirstEnums::Shared", "Value") == 1, "First exact name was shadowed");
-                 Check(Game.ParseGenericEnum("SecondEnums::Shared", "Value") == 2, "Second exact name was shadowed");
+                 Check(Enums.Parse("FirstEnums::Shared", "Value") == 1, "First exact name was shadowed");
+                 Check(Enums.Parse("SecondEnums::Shared", "Value") == 2, "Second exact name was shadowed");
              }),
             ("foreign assembly enums are isolated",
              () =>
@@ -199,7 +201,7 @@ internal static class Program
                  type.DefineLiteral("Value", 1);
                  type.CreateTypeInfo();
                  try {
-                     Game.ParseGenericEnum("ForeignEnum", "Value");
+                     Enums.Parse("ForeignEnum", "Value");
                  }
                  catch (InvalidOperationException) {
                      return;
@@ -239,7 +241,7 @@ internal static class Program
         }
 
         try {
-            Check(await Game.InvokeAsync("DispatchProbe::AsyncCall"), "Async invocation failed");
+            Check(await ScriptFunc.InvokeAsync("DispatchProbe::AsyncCall"), "Async invocation failed");
             Check(ExampleGame.DispatchProbe.AsyncFinished, "Async invocation returned before completion");
             Console.WriteLine("PASS awaited invocation");
         }

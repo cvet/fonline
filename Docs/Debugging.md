@@ -31,7 +31,8 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../Source/Scripting/AngelScript/AngelScriptContext.cpp`
 - `../Source/Scripting/Managed/ManagedScriptBackend.cpp`
 - `../Source/Scripting/Managed/CoreScripts/Native.cs`
-- `../Source/Scripting/Managed/CoreScripts/ScriptInvoke.cs`
+- `../Source/Scripting/Managed/CoreScripts/ScriptFunc.cs`
+- `../Source/Scripting/Managed/CoreScripts/ScriptExceptions.cs`
 - `../Source/Frontend/ApplicationInit.cpp`
 - `../Source/Tests/Test_StackTrace.cpp`
 - `../Source/Tests/Test_ExceptionHandling.cpp`
@@ -63,7 +64,7 @@ Frame names come from `mono_method_full_name`, rewritten to C# member-access spe
 Managed exceptions reach native code through the same trace:
 
 - **Unhandled at an entry.** `ThrowIfManagedException` asks `Native.DescribeException` (CoreScripts) for a summary (`Type: Message`, inner causes joined by ` ---> `, reflection and single-task wrappers skipped) and the thrown frames as runtime method handle and IL offset pairs, taken from `System.Diagnostics.StackTrace(exception)` so rethrown and `await`-captured segments keep their order. All branches of an `AggregateException` contribute their causes and frames. The frames are resolved like live ones and added with `AddUnwoundScriptFrames`, and the entry throws `ScriptException("Managed script exception", summary, context)`.
-- **Caught and handled by script.** `Game.RecordManagedException(ex, log: true)` (event handlers that stop the chain, continuations, `Game.Invoke` failures, observed task faults) calls the `Native.ReportException` internal call. The engine captures the live trace, replaces the live frames above the catching frame with the thrown frames (`SpliceCaughtScriptFrames`) and reports a `ScriptException` through `ReportExceptionAndContinue`, so these failures reach the log and the exception callback exactly as AngelScript script exceptions did.
+- **Caught and handled by script.** `ScriptExceptions.Record(ex, log: true)` (event handlers that stop the chain, continuations, `ScriptFunc.Invoke` failures, observed task faults) calls the `Native.ReportException` internal call. The engine captures the live trace, replaces the live frames above the catching frame with the thrown frames (`SpliceCaughtScriptFrames`) and reports a `ScriptException` through `ReportExceptionAndContinue`, so these failures reach the log and the exception callback exactly as AngelScript script exceptions did.
 - **Native failure handed to script.** Internal calls that return an error string (`CallMethod`, the property accessors, `RunScriptContinuation`) keep each native exception in the innermost running entry, keyed by the identity of its managed message string. Strong GC handles preserve those keys across moving collections and are released when the entry ends. Reporting or propagating a `NativeCallException` searches the current and enclosing entries, preserving the original native throw site even for repeated reports or several errors with identical messages. Only reflection and single-cause aggregate wrappers are transparent: a semantic managed wrapper retains its own summary and frames. If the originating entry has already ended (for example, an exception retained across an asynchronous suspension), the managed exception description remains available but the saved native exception does not.
 
 ### Unified frame ordering

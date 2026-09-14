@@ -220,7 +220,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
             continuation();
         }
         catch (Exception ex) {
-            Game.RecordManagedException(ex, true);
+            ScriptExceptions.Record(ex, true);
         }
         finally {
             SetSynchronizationContext(previous);
