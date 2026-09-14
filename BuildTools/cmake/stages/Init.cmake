@@ -455,6 +455,12 @@ if(WIN32)
 		AddCompileOptionsList(/MP /Zc:preprocessor)
 	endif()
 
+	# MSBuild builds /m projects at once and each runs its own /MP compilers, so a cold build starts cores x cores cl.exe;
+	# MultiToolTask with an enforced count caps the whole build at the core count
+	if(CMAKE_GENERATOR MATCHES "Visual Studio")
+		list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=true" "EnforceProcessCountAcrossBuilds=true")
+	endif()
+
 	AddLinkOptionsList(
 		/INCREMENTAL:NO
 		/OPT:REF

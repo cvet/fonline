@@ -85,6 +85,12 @@ extensions, or baker implementation.
 
 It also establishes build hash and common generation context. Start here when a build option is missing or validated too early/late.
 
+MSVC compiles with `/MP`, and MSBuild builds up to `/m` projects at once, so on its own a cold Visual Studio
+generator build runs cores x cores `cl.exe` processes and exhausts memory on a runner with less than about
+2 GiB per core (`C1060` compiler heap and `LNK1102` failures). `Init.cmake` therefore adds
+`UseMultiToolTask=true` and `EnforceProcessCountAcrossBuilds=true` to `CMAKE_VS_GLOBALS` for Visual Studio
+generators, which makes MSBuild cap the compiler processes of the whole build at the core count.
+
 ### `ProjectOptions.cmake`
 
 Normalizes and validates project-level option combinations. Examples from the current stage include checks around code coverage, build mode combinations, and scripting/tool compatibility such as `FO_BUILD_ASCOMPILER` requiring AngelScript support.
