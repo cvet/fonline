@@ -68,7 +68,7 @@ FO_BEGIN_NAMESPACE
         FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
-    static uint16_t prop##_RegIndex
+    static const uint16_t prop##_RegIndex
 
 #define FO_ENTITY_EVENT(event_name, ...) \
     EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \
@@ -254,7 +254,7 @@ protected:
 private:
     auto FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>;
     auto EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCallbackData>>;
-    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback);
+    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback, string_view event_name);
     void UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept;
 
     Properties _props;

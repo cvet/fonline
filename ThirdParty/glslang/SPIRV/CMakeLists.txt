@@ -38,10 +38,15 @@ set(SPIRV_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/SpvBuilder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SpvPostProcess.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/doc.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SpvTools.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/disassemble.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/CInterface/spirv_c_interface.cpp
-    PARENT_SCOPE)
+)
+
+# (FOnline Patch) SpvTools has no implementation without the optimizer
+if(ENABLE_OPT)
+    list(APPEND SPIRV_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/SpvTools.cpp)
+endif()
+set(SPIRV_SOURCES ${SPIRV_SOURCES} PARENT_SCOPE)
 
 set(SPIRV_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/bitutils.h

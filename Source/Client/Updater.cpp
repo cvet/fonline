@@ -51,18 +51,22 @@ static constexpr string_view StrPlatformUnsupported = "Client outdated, please u
 static constexpr string_view StrUpdateFailed = "Client update failed. Please install the latest full client package.";
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
+static constexpr string_view StrServerUnavailable = "Can't connect to the server. It may be offline or restarting, please try again later.";
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
+static constexpr string_view ClientRuntimeBootstrapExtension = ".path";
 static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
+static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view;
+static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept;
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings),
     _cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
-    _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : string(settings->UserWritablePath)},
+    _binaryDir {GetClientBinaryDir(settings->UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
     _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
@@ -94,7 +98,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _sprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprMngr));
 
-    // wait screen
+    // Wait screen
     if (!_settings->DefaultSplash.empty()) {
         _splashPic = _sprMngr.LoadSprite(_settings->DefaultSplash, AtlasType::OneImage);
 
@@ -223,14 +227,14 @@ void Updater::AddText(string_view text)
     _messages.emplace_back(text);
 }
 
-void Updater::Abort(string_view text)
+void Updater::Abort(UpdaterResult result, string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
     _aborted = true;
 
     if (!_result.has_value()) {
-        _result = UpdaterResult::Failed;
+        _result = result;
     }
 
     AddText(text);
@@ -302,7 +306,7 @@ void Updater::GetNextFile()
         _tempFile.close();
 
         if (_tempFile.fail()) {
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -312,13 +316,13 @@ void Updater::GetNextFile()
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
             logging::write("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
             logging::write("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -348,7 +352,7 @@ void Updater::GetNextFile()
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
                         logging::write("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
-                        Abort(StrFilesystemError);
+                        Abort(UpdaterResult::Failed, StrFilesystemError);
                         return;
                     }
 
@@ -369,7 +373,7 @@ void Updater::GetNextFile()
 
         if (!dir.empty()) {
             if (!fs::create_directories(dir)) {
-                Abort(StrFilesystemError);
+                Abort(UpdaterResult::Failed, StrFilesystemError);
                 return;
             }
         }
@@ -379,7 +383,7 @@ void Updater::GetNextFile()
 
         if (!_tempFile) {
             logging::write("Client updater: failed to open temp file {}", temp_path);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -472,13 +476,12 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         logging::write("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
-        _result = UpdaterResult::UpdaterOutdated;
         logging::write("Client updater: protocol is outdated, aborting");
-        Abort(StrUpdaterOutdated);
+        Abort(UpdaterResult::UpdaterOutdated, StrUpdaterOutdated);
     }
     else {
         logging::write("Client updater: connection failed");
-        Abort(StrCantConnectToServer);
+        Abort(UpdaterResult::ConnectionFailed, StrCantConnectToServer);
     }
 }
 
@@ -487,7 +490,8 @@ void Updater::Net_OnDisconnect()
     FO_STACK_TRACE_ENTRY();
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
-        Abort(StrConnectionFailure);
+        // A drop while the transfer was still in flight is the server going away, not this client failing
+        Abort(UpdaterResult::ConnectionFailed, StrConnectionFailure);
     }
 }
 
@@ -712,7 +716,7 @@ void Updater::Net_OnUpdateFileData()
     int32_t data_size_raw = _conn.InBuf->Read<int32_t>();
 
     if (data_size_raw < 0) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -723,14 +727,14 @@ void Updater::Net_OnUpdateFileData()
     _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
     if (_filesToUpdate.empty() || !_tempFile.is_open()) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
     auto& update_file = _filesToUpdate.front();
 
     if (numeric_cast<uint64_t>(data_size) > update_file.RemaningSize) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -742,7 +746,7 @@ void Updater::Net_OnUpdateFileData()
     }
 
     if (!_tempFile) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -750,7 +754,7 @@ void Updater::Net_OnUpdateFileData()
 
     if (update_file.RemaningSize > 0) {
         if (data_size == 0) {
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -859,21 +863,6 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
     }
 
     return true;
-}
-
-auto Updater::GetClientBinaryDir() -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if constexpr (FO_WEB) {
-        // The web client runs from the virtual filesystem root and has no on-disk exe path
-        return "/";
-    }
-    else {
-        auto exe_path = platform::get_exe_path();
-        FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
-        return strex(exe_path.value()).extract_dir().str();
-    }
 }
 
 auto Updater::GetRuntimeLivePath() const -> string
@@ -1014,23 +1003,49 @@ auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
     }
 }
 
-auto GetClientRuntimeLivePath() -> string
+auto GetClientBinaryDir(string_view user_writable_path) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    string binary_dir;
+    // A writable root holds everything this client writes, the modules it replaces included; without one
+    // the client is portable and owns its own directory
+    if (!user_writable_path.empty()) {
+        return string(user_writable_path);
+    }
 
     if constexpr (FO_WEB) {
-        // No on-disk runtime companion on web; the runtime lives at the virtual filesystem root
-        binary_dir = "/";
+        // The web client runs from the virtual filesystem root and has no on-disk exe path
+        return "/";
     }
     else {
         auto exe_path = platform::get_exe_path();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
-        binary_dir = strex(exe_path.value()).extract_dir().str();
+        return strex(exe_path.value()).extract_dir().str();
+    }
+}
+
+auto GetClientRuntimeLivePath() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Always the module shipped beside the executable: an update never replaces the host, so this stays
+    // the base runtime a selector may point away from
+    string binary_dir = GetClientBinaryDir("");
+    return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+}
+
+auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Nothing to select without a writable root: the module then lives beside the exe and is replaced
+    // in place, which the host finds on its own
+    if (user_writable_path.empty()) {
+        return std::nullopt;
     }
 
-    return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+    string selector_name = strex("{}{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension(), ClientRuntimeBootstrapExtension).str();
+    return fs::resolve_path(fs::make_writable_path(user_writable_path, selector_name));
 }
 
 auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
@@ -1165,11 +1180,66 @@ auto GetCurrentClientRuntimeLibraryName() -> string
     return string(FO_DEV_NAME);
 }
 
+static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (result) {
+    case UpdaterResult::ResourcesReady:
+        return "ResourcesReady";
+    case UpdaterResult::BinariesStaged:
+        return "BinariesStaged";
+    case UpdaterResult::PlatformUnsupported:
+        return "PlatformUnsupported";
+    case UpdaterResult::ServerMissingNativeUpdate:
+        return "ServerMissingNativeUpdate";
+    case UpdaterResult::UpdaterOutdated:
+        return "UpdaterOutdated";
+    case UpdaterResult::Failed:
+        return "Failed";
+    case UpdaterResult::MetadataMismatch:
+        return "MetadataMismatch";
+    case UpdaterResult::ConnectionFailed:
+        return "ConnectionFailed";
+    default:
+        return "Unknown";
+    }
+}
+
+auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Client-local updater failures are reportable; transient server downtime would otherwise emit one crash
+    // per player for every restart
+    return result != UpdaterResult::ConnectionFailed;
+}
+
+// Reported, not thrown: the caller still owns the dialog and the quit that follows. Constructing the
+// exception is what carries a fixed message, context values and a stack trace into the crash reporter
+static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    safe_call([&] {
+        ClientUpdateException ex("Client update did not complete", UpdaterResultToString(result), target_name, GetUpdatePlatformName(GetCurrentUpdatePlatform()), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+        exceptions::report_and_continue(ex);
+    });
+}
+
 void ShowUpdaterFailure(UpdaterResult result)
 {
     FO_STACK_TRACE_ENTRY();
 
     string_view target_name = GetCurrentBinaryUpdateTargetName();
+
+    logging::write("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
+
+    // Report terminal client failures before showing the dialog. The unconditional log still records
+    // deliberately unreported failures
+    if (IsUpdaterFailureReportable(result)) {
+        ReportUpdaterFailure(result, target_name);
+    }
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:
@@ -1186,6 +1256,9 @@ void ShowUpdaterFailure(UpdaterResult result)
         break;
     case UpdaterResult::Failed:
         Application::ShowErrorMessage(StrUpdateFailed, StrErrorMessageCaption, true);
+        break;
+    case UpdaterResult::ConnectionFailed:
+        Application::ShowErrorMessage(StrServerUnavailable, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:

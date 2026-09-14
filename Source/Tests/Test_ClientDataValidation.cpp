@@ -37,6 +37,7 @@
 #include "DataSerialization.h"
 #include "EngineBase.h"
 #include "PropertiesSerializer.h"
+#include "RemoteCallWire.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -634,6 +635,40 @@ TEST_CASE("ClientDataValidationFuzz")
 
     CHECK(rejected > 0); // corruption is actually detected
     CHECK(accepted + rejected == iterations);
+}
+
+TEST_CASE("RemoteCallStructFieldStorage", "[network]")
+{
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    meta.RegisterValueType("HashWrapper");
+    meta.RegisterValueTypeLayout("HashWrapper", {{"Value", "hstring"}});
+    meta.RegisterValueType("NestedHashes");
+    meta.RegisterValueTypeLayout("NestedHashes", {{"First", "HashWrapper"}, {"Second", "hstring"}});
+    const BaseTypeDesc& type = meta.GetBaseType("NestedHashes");
+    hstring first = meta.Hashes.to_hashed_string("First");
+    hstring second = meta.Hashes.to_hashed_string("Second");
+    vector<uint8_t> wire;
+    data_writer writer(wire);
+    writer.write<hstring::hash_t>(first.as_hash());
+    writer.write<hstring::hash_t>(second.as_hash());
+    RemoteCallReadStorage storage;
+    data_reader reader(wire);
+    ptr<uint8_t> fields = ReadRemoteCallSimple(reader, type, meta.Hashes, storage, {}).reinterpret_as<uint8_t>();
+    reader.verify_end();
+    CHECK(fields.as_uintptr() % alignof(std::max_align_t) == 0);
+
+    for (size_t i = 0; i < 100; i++) {
+        data_reader another_reader(wire);
+        ReadRemoteCallSimple(another_reader, type, meta.Hashes, storage, {});
+    }
+
+    CHECK(*fields.reinterpret_as<hstring>() == first);
+    CHECK(*fields.offset(sizeof(hstring)).reinterpret_as<hstring>() == second);
+    wire.pop_back();
+    data_reader truncated_reader(wire);
+    CHECK_THROWS(ReadRemoteCallSimple(truncated_reader, type, meta.Hashes, storage, {}));
+    CHECK(*fields.reinterpret_as<hstring>() == first);
 }
 
 FO_END_NAMESPACE

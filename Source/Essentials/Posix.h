@@ -53,6 +53,9 @@ namespace posix
 
     auto get_current_process_id() noexcept -> int32_t;
     auto get_executable_path() noexcept -> optional<string>;
+    // Read from the user database, not $HOME: a service or a web runtime has none, and answering "none"
+    // sends the caller back to a directory it may not be allowed to write
+    auto get_home_dir() noexcept -> optional<string>;
 
     // Detaches into a background process: the parent exits, the child drops the standard streams and leads a
     // new session. Returns false only when the fork itself failed, and never returns in the parent
@@ -80,6 +83,8 @@ namespace posix
     auto run_process_capturing_output(const string& command, const function<void(string_view)>& on_output) -> int32_t;
 
     auto load_library(const string& path) noexcept -> nptr<void>;
+    // Loaded with RTLD_NODELETE: dlclose no longer unmaps it, and it stays until the process exits
+    auto load_pinned_library(const string& path) noexcept -> nptr<void>;
     void free_library(nptr<void> module_handle) noexcept;
     // A null module handle searches the default scope, which is how the engine reaches its own exports
     auto get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>;

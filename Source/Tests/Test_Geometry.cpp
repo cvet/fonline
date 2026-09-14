@@ -63,6 +63,25 @@ TEST_CASE("Matrix convention")
     }
 }
 
+TEST_CASE("Direction constructors normalize full-width inputs")
+{
+    int32_t direction_count = GameSettings::MAP_DIR_COUNT;
+    CHECK(hdir(direction_count).value() == 0);
+    CHECK(hdir(direction_count + 1).value() == 1);
+    CHECK(hdir(-1).value() == direction_count - 1);
+    CHECK(hdir(-direction_count - 1).value() == direction_count - 1);
+    CHECK(hdir(std::numeric_limits<int32_t>::min()).value() == (direction_count == 6 ? 4 : 0));
+    CHECK(hdir(std::numeric_limits<int32_t>::max()).value() == (direction_count == 6 ? 1 : 7));
+
+    CHECK(mdir(-1).angle() == 359);
+    CHECK(mdir(360).angle() == 0);
+    CHECK(mdir(721).angle() == 1);
+    CHECK(mdir(std::numeric_limits<int16_t>::min()).angle() == 352);
+    CHECK(mdir(std::numeric_limits<int16_t>::max()).angle() == 7);
+    CHECK(mdir(std::numeric_limits<int32_t>::min()).angle() == 232);
+    CHECK(mdir(std::numeric_limits<int32_t>::max()).angle() == 127);
+}
+
 TEST_CASE("GeometryHelper")
 {
     // GetDistance

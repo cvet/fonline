@@ -79,8 +79,8 @@ private:
     vector<UpdateFileData> _updateFiles {};
     vector<UpdateFileInfo> _commonUpdateFiles {};
     vector<uint8_t> _commonUpdateFilesDesc {};
-    map<string, vector<UpdateFileInfo>> _binaryTargetUpdateFiles {};
-    map<string, vector<uint8_t>> _binaryTargetUpdateFilesDesc {};
+    map<string, vector<UpdateFileInfo>> _platformTargetUpdateFiles {};
+    map<string, vector<uint8_t>> _platformTargetUpdateFilesDesc {};
 };
 
 FO_END_NAMESPACE

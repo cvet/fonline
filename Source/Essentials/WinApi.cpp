@@ -45,6 +45,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <psapi.h>
+#include <shlobj.h>
 #endif
 #include "WinApiUndef.inc"
 
@@ -150,6 +151,26 @@ auto winapi::get_module_file_name() noexcept -> optional<string>
     return strex().parse_wide_char(path_data.as_ptr()).str();
 }
 
+auto winapi::get_local_app_data_path() noexcept -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    PWSTR raw_path = nullptr;
+
+    if (::SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, nullptr, &raw_path) != S_OK) {
+        ::CoTaskMemFree(raw_path);
+        return std::nullopt;
+    }
+
+    auto free_path = scope_exit([raw_path]() noexcept { ::CoTaskMemFree(raw_path); });
+
+    if (raw_path == nullptr || raw_path[0] == 0) {
+        return std::nullopt;
+    }
+
+    return strex().parse_wide_char(make_ptr(raw_path)).str();
+}
+
 auto winapi::get_process_working_set_size() noexcept -> size_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -228,6 +249,38 @@ auto winapi::load_library(const string& path) noexcept -> nptr<void>
     auto path_cstr = make_ptr(path_wide.c_str());
 
     return ::LoadLibraryW(path_cstr.get());
+}
+
+auto winapi::load_pinned_library(const string& path) noexcept -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<void> module_handle = load_library(path);
+
+    if (!module_handle) {
+        return nullptr;
+    }
+
+    // A module handle is the module's base address, so asking by address names exactly this module
+    HMODULE pinned = nullptr;
+    auto module_address = module_handle.reinterpret_as<const wchar_t>();
+
+    if (::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, module_address.get(), &pinned) == FALSE) {
+        (void)::FreeLibrary(to_module_handle(module_handle));
+        return nullptr;
+    }
+
+    return module_handle;
+}
+
+auto winapi::is_library_loaded(const string& name) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring name_wide = strex(name).to_wide_char();
+    auto name_cstr = make_ptr(name_wide.c_str());
+
+    return ::GetModuleHandleW(name_cstr.get()) != nullptr;
 }
 
 void winapi::free_library(nptr<void> module_handle) noexcept

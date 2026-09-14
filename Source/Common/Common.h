@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 46
+///@ MigrationRule Version 0 0 53
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -522,6 +522,7 @@ struct BaseTypeDesc
     bool IsSingleton {};
     bool IsFixedType {};
     bool IsEntityProto {};
+    bool IsAbstractEntity {};
     nptr<const BaseTypeDesc> EnumUnderlyingType {};
     nptr<const StructLayoutDesc> StructLayout {};
     nptr<const RefTypeDesc> RefType {};
@@ -549,12 +550,20 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
+// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them, codegen
+// does
+#define FO_REQUIRES_COVER
+#define FO_PROVIDES_COVER
+
 struct ArgDesc
 {
     string Name {};
     ComplexTypeDesc Type {};
     bool Nullable {};
     string DefaultValue {};
+
+    // The caller must already hold synchronization cover for this argument
+    bool RequiresCover {};
 };
 
 struct FieldDesc
@@ -580,10 +589,17 @@ struct MethodDesc
     bool PassOwnership {};
     bool ReturnNullable {};
     bool Async {};
+
+    // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
+    // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
+    bool ReturnProvidesCover {};
 };
 
 struct StructLayoutDesc
 {
+    unique_del_ptr<void> (*CreateNative)() {};
+    void (*CopyNative)(ptr<void>, ptr<const void>) {};
+    size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };
@@ -872,8 +888,14 @@ private:
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
-extern mutex InterthreadListenersLocker;
-extern map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadListener = copyable_function<InterthreadDataCallback(InterthreadDataCallback)>;
+
+// One table for the process, keyed by virtual port, so an embedded client finds the server running beside it.
+// Listeners are handed out by copy and called outside the table's lock
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool;
+auto RemoveInterthreadListener(uint16_t port) -> bool;
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
+auto HasInterthreadListener(uint16_t port) -> bool;
 
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t

@@ -82,6 +82,8 @@ The per-type *content* validator (`ClientDataValidation.*`, invoked for client p
 
 Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `hash_resolver`.
 
+Client hash storage is filled from local resources at startup (proto packs, script `.hstr()` literals, dialog/text bakers) and from a map's `fomap-bin-client` hash table only when that map loads (`MapView::LoadStaticData`). Critter instance properties are not in the client map-bin. A Common / PublicSync / OwnerSync `hstring` whose string exists only as a map-instance override (or only in the server map-bin) will fail to resolve if it arrives before the matching client hash is registered.
+
 When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers.
 
 ### Unresolved hash recovery
@@ -93,7 +95,7 @@ The engine recovers from this instead of looping on the disconnect:
 1. `ClientEngine` registers a `hash_storage` resolve-failure handler. When the client hits an unknown hash on an established connection, the handler writes `NetMessage::UnresolvedHash` and performs one immediate pending-output flush. `ClientConnection::Process` still turns the following `NetBufferException` into a normal disconnect for direct buffer reads; lazy script/property exceptions may be contained by the script event system, so the server also hard-disconnects the reporter after receiving the hash. The report is tiny and the connection was just live, so it lands in the kernel send buffer without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client keeps no state, writes nothing to disk, and learns the string on the next normal reconnect.
 2. The server (`Process_UnresolvedHash`) resolves the reported hash against its own storage, logs it, and — when it can resolve the string — stores it in the persistent `HashReports` database collection (keyed by the string) and remembers it in memory. Hashes the server cannot resolve either are logged once per session and not stored. If a transport reports the close before the server worker reaches already-delivered input, the server checks a hard-disconnected connection for a pending `UnresolvedHash` before cleanup. The server then drops the connection (`HardDisconnect`), since a client that reported a bad hash has already stopped parsing the stream and is reconnecting — this also covers a client that reports without disconnecting itself.
 3. The server broadcasts a newly learned string to all already-connected clients (`NetMessage::HashList`) and, on every handshake, sends the full known set to the connecting client right after `InitData` (`SendAllReportedHashes`). `HashList` is a count followed by length-prefixed strings.
-4. Clients feed each received string through `hash_resolver::ToHashedString`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
+4. Clients feed each received string through `hash_resolver::to_hashed_string`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
 
 The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `hash_storage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
 
@@ -170,7 +172,9 @@ The server runtime applies two independent limits to connections that have not l
 
 A logged-in connection is additionally dropped when it stops answering pings: `ServerNetwork.ClientPingTime`
 sets the interval, and a connection that has not answered the previous ping when the next one is due is hard
-disconnected.
+disconnected. The in-process interthread transport opts out of this watchdog: its peer lifetime is explicit
+through the callback channel, while a busy shared process can delay both ends of the ping exchange together.
+Closing either interthread endpoint still disconnects the other immediately.
 
 ### Disconnect reasons
 
@@ -329,6 +333,19 @@ The source tree supports several connection families:
 - WebSocket server support when built with `FO_HAVE_WEB_SOCKETS`.
 
 Build availability is controlled by compile-time feature toggles and platform dependencies. For build toggles and package workflow, see [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
+
+### A listener that cannot bind is retried before the startup gives up
+
+A restart races the process it replaces for its ports, and the loser used to take the whole startup
+down on its first attempt: the world loaded, a socket that frees itself within seconds was still
+held, and every bit of that work was thrown away. Each remote listener is therefore started through
+`ServerEngine::StartConnectionServer`, which retries until `ServerNetwork.ListenRetryTime` runs out,
+waiting `ServerNetwork.ListenRetryDelay` between attempts.
+
+Past the deadline the original exception is rethrown and the startup fails, because a server nobody
+can reach is not a started server — the retries buy the losing side of the race some time, they do
+not turn a dead port into an acceptable state. The interthread transport is not part of this: it
+binds nothing another process could hold, so a failure there is a defect rather than a race.
 
 ## Tests to inspect
 

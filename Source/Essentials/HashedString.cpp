@@ -100,14 +100,28 @@ auto hash_storage::to_hashed_string(string_view s) -> hstring
 
     {
         // Add new entry
+        scoped_lock locker {_hash_storage_locker};
+
+        if (auto it = _hash_storage.find(hash_value); it != _hash_storage.end()) {
+#if FO_DEBUG
+            bool collision_detected = s != it->second->str;
+#else
+            bool collision_detected = s.length() != it->second->str.length();
+#endif
+
+            if (collision_detected) {
+                throw HashCollisionException("Hash collision", s, it->second->str, hash_value);
+            }
+
+            return hstring(it->second.get());
+        }
+
         auto entry = safe_alloc::make_unique<hstring::entry>();
         entry->hash = hash_value;
         entry->str = string(s);
 
-        scoped_lock locker {_hash_storage_locker};
-
-        const auto [it, inserted] = _hash_storage.emplace(hash_value, std::move(entry));
-        ignore_unused(inserted); // Do not assert because somebody else can insert it already
+        auto [it, inserted] = _hash_storage.emplace(hash_value, std::move(entry));
+        FO_VERIFY_AND_THROW(inserted, "Hash storage insertion failed");
 
         return hstring(it->second.get());
     }

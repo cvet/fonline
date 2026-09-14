@@ -64,6 +64,15 @@ struct Application::Context
     unordered_map<int32_t, MouseButton> MouseButtonsMap {MakeMouseButtonMap()};
 };
 
+// Error messages the player dismissed with "Ignore All" for the rest of the run. Error windows are shown
+// before and without an application, so the list belongs to the process set rather than to one
+struct IgnoredErrorMessagesData
+{
+    mutex Locker {};
+    unordered_set<string> Messages FO_TSA_GUARDED_BY(Locker) {};
+};
+FO_GLOBAL_DATA(IgnoredErrorMessagesData, IgnoredErrorMessages);
+
 int32_t AppRender::MAX_ATLAS_WIDTH {};
 int32_t AppRender::MAX_ATLAS_HEIGHT {};
 int32_t AppRender::MAX_BONES {};
@@ -463,7 +472,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_METAL
     else if (Settings.ForceMetal) {
         _ctx->ActiveRendererType = RenderType::Metal;
-        throw NotImplementedException(FO_LINE_STR);
+        throw AppInitException("Metal renderer is not available");
     }
 #endif
 
@@ -715,6 +724,10 @@ Application::~Application()
 
     _ctx->ClearColor = {150, 150, 150, 255};
     _ctx->ActiveRendererType = RenderType::Null;
+
+    // The whole of SDL, not the subsystems this constructor started: the progress and options windows start
+    // video on their own. Joins SDL's device threads and withdraws its OS notifications while they can stop
+    SDL_Quit();
 }
 
 void Application::OpenLink(string_view link)
@@ -3165,13 +3178,13 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
         verb_message += strex("\n\n{}", traceback);
     }
 
-    static mutex ignore_entries_locker;
-    static unordered_set<string> ignore_entries FO_TSA_GUARDED_BY(ignore_entries_locker);
+    // Outside the set there is nothing to remember a dismissal in, so every such message is shown
+    bool can_ignore = !fatal_error && IgnoredErrorMessages.is_created();
 
-    if (!fatal_error) {
-        scoped_lock locker {ignore_entries_locker};
+    if (can_ignore) {
+        scoped_lock locker {IgnoredErrorMessages->Locker};
 
-        if (ignore_entries.count(verb_message) != 0) {
+        if (IgnoredErrorMessages->Messages.count(verb_message) != 0) {
             return;
         }
     }
@@ -3208,8 +3221,8 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
     auto message_ptr = make_ptr(verb_message.c_str());
     data.title = title_ptr.get();
     data.message = message_ptr.get();
-    data.numbuttons = fatal_error ? 2 : 4;
-    data.buttons = fatal_error ? buttons_with_exit : buttons_with_ignore;
+    data.numbuttons = can_ignore ? 4 : 2;
+    data.buttons = can_ignore ? buttons_with_ignore : buttons_with_exit;
 
     int32_t buttonid = 0;
     while (SDL_ShowMessageBox(&data, &buttonid)) {
@@ -3217,8 +3230,8 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
             SDL_SetClipboardText(message_ptr.get());
         }
         else if (buttonid == 1) {
-            scoped_lock locker {ignore_entries_locker};
-            ignore_entries.emplace(verb_message);
+            scoped_lock locker {IgnoredErrorMessages->Locker};
+            IgnoredErrorMessages->Messages.emplace(verb_message);
             break;
         }
         else if (buttonid == 3) {

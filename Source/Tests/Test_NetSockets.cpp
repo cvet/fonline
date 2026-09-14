@@ -135,6 +135,27 @@ TEST_CASE("NetSockets")
         CHECK(std::equal(payload.begin(), payload.end(), buffer.begin()));
         CHECK(host == "127.0.0.1");
         CHECK(port != 0);
+
+        vector<uint8_t> oversized_payload(65536);
+        CHECK(sender.send_to("127.0.0.1", receiver_port, oversized_payload) == -1);
+    }
+
+    SECTION("NonBlockingTcpPreservesWouldBlockError")
+    {
+        tcp_server server;
+        uint16_t port = ListenTcpLoopback(server);
+        tcp_socket client;
+
+        REQUIRE(client.connect_async("127.0.0.1", port));
+        REQUIRE(client.can_write(ReadTimeout));
+        REQUIRE(client.peek_socket_error() == 0);
+        REQUIRE(server.can_accept(ReadTimeout));
+
+        tcp_socket accepted = server.accept();
+        REQUIRE(accepted.is_valid());
+        array<uint8_t, 16> buffer {};
+        CHECK(client.receive(buffer) == -1);
+        CHECK(net_sockets::last_recv_was_would_block());
     }
 
     SECTION("TcpLoopbackConnectSendAndReceive")
@@ -159,6 +180,10 @@ TEST_CASE("NetSockets")
 
         REQUIRE(received == numeric_cast<int32_t>(payload.size()));
         CHECK(std::equal(payload.begin(), payload.end(), buffer.begin()));
+
+        client.close();
+        REQUIRE(accepted.can_read(ReadTimeout));
+        CHECK(accepted.receive(buffer) == 0);
     }
 }
 

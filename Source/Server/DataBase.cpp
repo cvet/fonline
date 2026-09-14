@@ -284,6 +284,22 @@ void DataBase::WaitCommitChanges()
     _impl->WaitCommitChanges();
 }
 
+auto DataBase::CreateSnapshot() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->CreateSnapshot();
+}
+
+void DataBase::RestoreSnapshot(const_span<uint8_t> snapshot_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->RestoreSnapshot(snapshot_data);
+}
+
 void DataBase::ClearChanges() noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -443,8 +459,9 @@ void DataBaseImpl::InitializeOpLogs()
         return;
     };
 
-    open_log_file(_pendingChangesLog, _settings->OpLogPath, "pending database changes file");
-    open_log_file(_committedChangesLog, strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
+    string oplog_path = fs::make_writable_path(_settings->UserWritablePath, _settings->OpLogPath);
+    open_log_file(_pendingChangesLog, oplog_path, "pending database changes file");
+    open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
     if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
@@ -665,7 +682,11 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
     ValidateCollectionKey(collection_name, id);
 
     {
-        scoped_lock locker {_stateLocker};
+        unique_lock locker {_stateLocker};
+
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
 
         auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Insert;
@@ -686,7 +707,11 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
     ValidateCollectionKey(collection_name, id);
 
     {
-        scoped_lock locker {_stateLocker};
+        unique_lock locker {_stateLocker};
+
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
 
         auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Update;
@@ -706,7 +731,11 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
     ValidateCollectionKey(collection_name, id);
 
     {
-        scoped_lock locker {_stateLocker};
+        unique_lock locker {_stateLocker};
+
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
 
         auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Delete;
@@ -749,6 +778,103 @@ void DataBaseImpl::WaitCommitChanges()
 
         _commitThreadDoneSignal.wait(locker);
     }
+}
+
+auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    {
+        unique_lock locker {_stateLocker};
+
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
+
+        if (!_commitThreadActive) {
+            throw DataBaseException("Database snapshot requires an active commit thread");
+        }
+
+        while (!_pendingCommitOperations.empty()) {
+            if (!InValidState()) {
+                throw DataBaseException("Database snapshot cannot drain a failed backend");
+            }
+
+            _commitThreadDoneSignal.wait(locker);
+        }
+
+        if (!InValidState()) {
+            throw DataBaseException("Database snapshot requires a valid backend");
+        }
+
+        _snapshotInProgress = true;
+    }
+
+    auto finish_snapshot = scope_exit([this]() noexcept {
+        safe_call([this] {
+            {
+                scoped_lock locker {_stateLocker};
+                _snapshotInProgress = false;
+            }
+
+            _snapshotDoneSignal.notify_all();
+        });
+    });
+
+    return CreateSnapshotData();
+}
+
+void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (snapshot_data.empty()) {
+        throw DataBaseException("Database snapshot data is empty");
+    }
+
+    {
+        unique_lock locker {_stateLocker};
+
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
+
+        if (!_pendingCommitOperations.empty()) {
+            throw DataBaseException("Database snapshot restore requires a drained commit queue", _pendingCommitOperations.size());
+        }
+        if (!InValidState()) {
+            throw DataBaseException("Database snapshot restore requires a valid backend");
+        }
+
+        _snapshotInProgress = true;
+    }
+
+    auto finish_restore = scope_exit([this]() noexcept {
+        safe_call([this] {
+            {
+                scoped_lock locker {_stateLocker};
+                _snapshotInProgress = false;
+            }
+
+            _snapshotDoneSignal.notify_all();
+        });
+    });
+
+    RestoreSnapshotData(snapshot_data);
+}
+
+auto DataBaseImpl::CreateSnapshotData() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    throw DataBaseException("Database backend does not support snapshots");
+}
+
+void DataBaseImpl::RestoreSnapshotData(const_span<uint8_t> snapshot_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    throw DataBaseException("Database backend does not support snapshots", snapshot_data.size());
 }
 
 void DataBaseImpl::ClearChanges() noexcept

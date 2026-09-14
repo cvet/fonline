@@ -57,7 +57,7 @@ High-value source areas to document:
 - `Source/Common/` — shared runtime model, entities, properties, networking primitives, maps, configs.
 - `Source/Client/` — client runtime, rendering-facing model, resources, network client.
 - `Source/Server/` — server runtime, entity managers, database backends, networking, updater backend.
-- `Source/Scripting/` — AngelScript/Mono/Native integration and script method registration.
+- `Source/Scripting/` — AngelScript/Managed/Native integration and script method registration.
 - `Source/Tools/` — baker, mapper, editors, asset processors.
 - `Source/Frontend/` — application abstraction and rendering backends.
 - `Source/Essentials/` — low-level platform, logging, memory, filesystem, serialization, sockets, utility layer.
@@ -488,9 +488,9 @@ High-value source areas to document:
 
 ### Task 7.1: Document scripting system overview
 
-**Status:** completed — `Docs/Scripting.md` now documents `ScriptSystem`, AngelScript backend lifecycle, attributes, entity/remote-call bridges, native exports, core scripts, Mono/native roots, tests, and validation.
+**Status:** completed — `Docs/Scripting.md` now documents `ScriptSystem`, AngelScript backend lifecycle, attributes, entity/remote-call bridges, native exports, core scripts, Managed/native roots, tests, and validation.
 
-**Objective:** Explain how AngelScript/Native/Mono integration is structured.
+**Objective:** Explain how AngelScript/Native/Managed integration is structured.
 
 **Files:**
 - Create: `Docs/Scripting.md`
@@ -502,7 +502,7 @@ High-value source areas to document:
 - `Source/Common/ScriptSystem.*`
 - `Source/Scripting/AngelScript/`
 - `Source/Scripting/Native/`
-- `Source/Scripting/Mono/`
+- `Source/Scripting/Managed/`
 - `Source/Scripting/*ScriptMethods.cpp`
 - `Source/Tools/AngelScriptBaker.*`
 - `Source/Applications/ASCompilerApp.cpp`

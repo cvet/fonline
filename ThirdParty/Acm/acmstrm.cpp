@@ -9,7 +9,7 @@ char Table1 [27] =
 		16, 17, 18,  20, 21, 22,  24, 25, 26,
 		32, 33, 34,  36, 37, 38,  40, 41, 42};
 //Eng: in base-4 system it is:
-//Rus: в четверичной системе это будет:
+//Rus: пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ:
 //		000 001 002  010 011 012  020 021 022
 //		100 101 102  110 111 112  120 121 122
 //		200 201 202  210 211 212  220 221 222
@@ -20,7 +20,7 @@ short Table2 [125] =
 		192,193,194,195,196, 200,201,202,203,204, 208,209,210,211,212, 216,217,218,219,220, 224,225,226,227,228,
 		256,257,258,259,260, 264,265,266,267,268, 272,273,274,275,276, 280,281,282,283,284, 288,289,290,291,292};
 //Eng: in base-8 system:
-//Rus: в восьмеричной системе:
+//Rus: пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ:
 //		000 001 002 003 004  010 011 012 013 014 ...
 //		100 101 102 103 104 ...
 //		200 ...
@@ -73,8 +73,7 @@ FillerProc Fillers[32] = {
 	&CACMUnpacker::Return0
 };
 
-short Amplitude_Buffer [0x10000] = {0};
-short *Buffer_Middle = &Amplitude_Buffer[0x8000];
+// (FOnline Patch) Amplitude_Buffer and Buffer_Middle are CACMUnpacker members now, see acmstrm.h
 
 void sub_4d3fcc (short *decBuff, int *someBuff, int someSize, int blocks);
 void sub_4d420c (int *decBuff, int *someBuff, int someSize, int blocks);
@@ -84,7 +83,9 @@ CACMUnpacker::CACMUnpacker (unsigned char* file_buf, int file_len, int &channels
 	buffPos(NULL),
 	decompBuff (NULL),
 	someBuff (NULL),
-	values(NULL)
+	values(NULL),
+	Amplitude_Buffer (),
+	Buffer_Middle (&Amplitude_Buffer[0x8000]) // (FOnline Patch) See acmstrm.h
 {
 	fileBuf = file_buf;
 	fileLen = file_len;
@@ -276,8 +277,8 @@ int CACMUnpacker::readAndDecompress (unsigned short* buff, int count)
 {
 //Eng: takes new values (of type int) and writes them into output buffer (of type word),
 //  the values are shifted by packAttrs bits
-//Rus: берет новые значения (типа инт) и записывает в выходной буффер (типа ворд),
-// при этом значения делятся на packAttrs бит
+//Rus: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ),
+// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ packAttrs пїЅпїЅпїЅ
 	int res = 0;
 	while (res < count)
 	{
@@ -304,7 +305,7 @@ int CACMUnpacker::Return0 (int pass, int ind)
 int CACMUnpacker::ZeroFill (int pass, int ind)
 {
 //Eng: used when the whole column #pass is zero-filled
-//Rus: используется, когда весь столбец с номером pass заполнен нулями
+//Rus: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ pass пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
 //	the meaning is following:
 
@@ -338,10 +339,10 @@ int CACMUnpacker::LinearFill (int pass, int ind)
 int CACMUnpacker::k1_3bits (int pass, int ind)
 {
 //Eng: column with number pass is filled with zeros, and also +/-1, zeros are repeated frequently
-//Rus: cтолбец pass заполнен нулями, а также +/- 1, но нули часто идут подряд
+//Rus: cпїЅпїЅпїЅпїЅпїЅпїЅ pass пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅ +/- 1, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 // efficiency (bits per value): 3-p0-2.5*p00, p00 - cnt of paired zeros, p0 - cnt of single zeros.
 //Eng: it makes sense to use, when the freqnecy of paired zeros (p00) is greater than 2/3
-//Rus: имеет смысл использовать, когда вероятность парных нулей (p00) больше 2/3
+//Rus: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (p00) пїЅпїЅпїЅпїЅпїЅпїЅ 2/3
 	for (int i=0; i<packAttrs2; i++) {
 		prepareBits (3);
 		if ((nextBits & 1) == 0) {
@@ -363,10 +364,10 @@ int CACMUnpacker::k1_3bits (int pass, int ind)
 }
 int CACMUnpacker::k1_2bits (int pass, int ind) {
 //Eng: column is filled with zero and +/-1
-//Rus: cтолбец pass заполнен нулями, а также +/- 1
+//Rus: cпїЅпїЅпїЅпїЅпїЅпїЅ pass пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅ +/- 1
 // efficiency: 2-P0. P0 - cnt of any zero (P0 = p0 + p00)
 //Eng: use it when P0 > 1/3
-//Rus: имеет смысл использовать, когда вероятность нуля больше 1/3
+//Rus: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 1/3
 	for (int i=0; i<packAttrs2; i++) {
 		prepareBits (2);
 		if ((nextBits & 1) == 0) {
@@ -383,7 +384,7 @@ int CACMUnpacker::k1_2bits (int pass, int ind) {
 }
 int CACMUnpacker::t1_5bits (int pass, int ind) {
 //Eng: all the -1, 0, +1 triplets
-//Rus: все комбинации троек -1, 0, +1.
+//Rus: пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ -1, 0, +1.
 // efficiency: always 5/3 bits per value
 // use it when P0 <= 1/3
 	for (int i=0; i<packAttrs2; i++) {
@@ -404,7 +405,7 @@ int CACMUnpacker::k2_4bits (int pass, int ind) {
 // -2, -1, 0, 1, 2, and repeating zeros
 // efficiency: 4-2*p0-3.5*p00, p00 - cnt of paired zeros, p0 - cnt of single zeros.
 //Eng: makes sense to use when p00>2/3
-//Rus: имеет смысл использовать, когда вероятность парных нулей (p00) больше 2/3
+//Rus: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (p00) пїЅпїЅпїЅпїЅпїЅпїЅ 2/3
 	for (int i=0; i<packAttrs2; i++) {
 		prepareBits (4);
 		if ((nextBits & 1) == 0) {
@@ -431,7 +432,7 @@ int CACMUnpacker::k2_3bits (int pass, int ind) {
 // -2, -1, 0, 1, 2
 // efficiency: 3-2*P0, P0 - cnt of any zero (P0 = p0 + p00)
 //Eng: use when P0>1/3
-//Rus: имеет смысл использовать, когда вероятность нуля больше 1/3
+//Rus: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 1/3
 	for (int i=0; i<packAttrs2; i++) {
 		prepareBits (3);
 		if ((nextBits & 1) == 0) {
@@ -452,8 +453,8 @@ int CACMUnpacker::k2_3bits (int pass, int ind) {
 int CACMUnpacker::t2_7bits (int pass, int ind) {
 //Eng: all the +/-2, +/-1, 0  triplets
 // efficiency: always 7/3 bits per value
-//Rus: все комбинации троек -2, -1, 0, +1, 2.
-// эффективность: 7/3 бита на значение - всегда
+//Rus: пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ -2, -1, 0, +1, 2.
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: 7/3 пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ
 // use it when p0 <= 1/3
 	for (int i=0; i<packAttrs2; i++) {
 		char bits = getBits (7) & 0x7f;
@@ -525,7 +526,7 @@ int CACMUnpacker::k4_5bits (int pass, int ind) {
 // fills with values: +/-4, +/-3, +/-2, +/-1, 0, and double zeros
 // efficiency: 5-3*p0-4.5*p00, p00 - cnt of paired zeros, p0 - cnt of single zeros.
 //Eng: makes sense to use when p00>2/3
-//Rus: имеет смысл использовать, когда вероятность парных нулей (p00) больше 2/3
+//Rus: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (p00) пїЅпїЅпїЅпїЅпїЅпїЅ 2/3
 	for (int i=0; i<packAttrs2; i++) {
 		prepareBits (5);
 		if ((nextBits & 1) == 0) {
@@ -569,8 +570,8 @@ int CACMUnpacker::k4_4bits (int pass, int ind) {
 int CACMUnpacker::t3_7bits (int pass, int ind) {
 //Eng: all the pairs of values from -5 to +5
 // efficiency: 7/2 bits per value
-//Rus: все комбинации пар от -5 до +5
-// эффективность: 7/2 бита на значение - всегда
+//Rus: пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ -5 пїЅпїЅ +5
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: 7/2 пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ
 	for (int i=0; i<packAttrs2; i++) {
 		char bits = getBits (7) & 0x7f;
 		unsigned char val = Table3 [(unsigned char)bits];
@@ -597,13 +598,13 @@ void sub_4d3fcc (short *decBuff, int *someBuff, int someSize, int blocks) {
 			decBuff += 2;
 			someBuff++;
 //Eng: reverse process most likely will be:
-//Rus: обратный процесс будет, по всей видимости:
+//Rus: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:
 //	pk[0]  = real[0] - db[0] - 2*db[1];
 //	pk[ss] = 2*pk[0] - db[1] - real[ss];
 //	db[0]  = pk[0];
 //	db[1]  = pk[ss];
 //Eng: or even
-//Rus: а может даже:
+//Rus: пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ:
 //	db[i][0] = (pk[i]    = real[i] - db[i][0] - 2*db[i][1]);
 //	db[i][1] = (pk[i+ss] = 2*pk[i] - db[i][1] - real[i+ss]);
 		}
@@ -659,7 +660,7 @@ void sub_4d3fcc (short *decBuff, int *someBuff, int someSize, int blocks) {
 			decBuff [0] = row_2;
 			decBuff [1] = row_3;
 //Eng: the same as in previous cases, but larger. The process is seem to be reversible
-//Rus: то же самое, что и в предыдущих случаях, только больше по количеству. Радует, что процесс обратимый
+//Rus: пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			decBuff += 2;
 			someBuff++;
 		}

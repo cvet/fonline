@@ -1763,7 +1763,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
     auto previous_exception_callback = exceptions::get_callback();
     std::atomic_int exception_reports {};
@@ -1771,7 +1771,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     std::atomic_bool disconnected {};
-    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
         if (data.empty()) {
             disconnected.store(true);
         }
@@ -1812,10 +1812,10 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
     std::atomic_bool disconnected {};
-    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
         if (data.empty()) {
             disconnected.store(true);
         }
@@ -1851,11 +1851,11 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
     mutex received_data_lock;
     vector<uint8_t> received_data;
-    auto send_to_server = InterthreadListeners[port]([&received_data_lock, &received_data](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
         if (!data.empty()) {
             scoped_lock locker {received_data_lock};
             received_data.insert(received_data.end(), data.begin(), data.end());
@@ -1932,11 +1932,11 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
     mutex received_data_lock;
     vector<uint8_t> received_data;
-    auto send_to_server = InterthreadListeners[port]([&received_data_lock, &received_data](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
         if (!data.empty()) {
             scoped_lock locker {received_data_lock};
             received_data.insert(received_data.end(), data.begin(), data.end());

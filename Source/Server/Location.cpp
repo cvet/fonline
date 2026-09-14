@@ -55,7 +55,7 @@ Location::~Location()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!_engine->IsShutdownInProgress()) {
+    if (!IsEngineShutdownInProgress()) {
         FO_VERIFY_AND_CONTINUE(_locMaps.empty(), "Server location has maps during destruction", GetId(), _locMaps.size());
     }
 }

@@ -295,6 +295,42 @@ TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
     CHECK(conn->IsDisconnected());
 }
 
+TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
+{
+    SECTION("ordinary transports retain the remote-peer watchdog")
+    {
+        auto settings = MakeServerNetworkSettings();
+        auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
+
+        REQUIRE(net_connection->NeedsPingWatchdog());
+        connection->MarkHandshakeComplete();
+
+        CHECK(connection->NeedPing(nanotime {}));
+    }
+
+    SECTION("interthread peers use their explicit callback lifetime")
+    {
+        auto settings = MakeServerNetworkSettings();
+        auto port = TestServerPort.fetch_add(1);
+        BakerTests::OverrideSetting(settings.ServerPort, port);
+
+        shared_ptr<NetworkServerConnection> accepted_conn;
+        auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); });
+        auto cleanup = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+        auto client_send = FindInterthreadListener(port).value()([](const_span<uint8_t>) { });
+        REQUIRE(accepted_conn);
+        REQUIRE(client_send);
+        CHECK_FALSE(accepted_conn->NeedsPingWatchdog());
+
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, accepted_conn);
+        connection->MarkHandshakeComplete();
+
+        CHECK_FALSE(connection->NeedPing(nanotime {}));
+    }
+}
+
 TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 {
     auto settings = MakeServerNetworkSettings();
@@ -313,13 +349,13 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     auto shutdown = scope_exit([&server, port]() noexcept {
         safe_call([&server] { server->Shutdown(); });
 
-        safe_call([port] { InterthreadListeners.erase(port); });
+        safe_call([port] { (void)RemoveInterthreadListener(port); });
     });
 
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
     CHECK_THROWS(NetworkServer::StartInterthreadServer(&settings, [](shared_ptr<NetworkServerConnection>) { }));
 
-    auto client_send = InterthreadListeners[port]([&](const_span<uint8_t> buf) {
+    auto client_send = FindInterthreadListener(port).value()([&](const_span<uint8_t> buf) {
         if (buf.empty()) {
             client_disconnect_count++;
         }
@@ -351,7 +387,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 
     server->Shutdown();
 
-    CHECK(InterthreadListeners.count(port) == 0);
+    CHECK_FALSE(HasInterthreadListener(port));
 }
 
 TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
@@ -367,16 +403,10 @@ TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
         auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection>) { accepted_count++; });
         auto cleanup = scope_exit([&server, port]() noexcept {
             safe_call([&server] { server->Shutdown(); });
-            safe_call([port] {
-                scoped_lock locker {InterthreadListenersLocker};
-                InterthreadListeners.erase(port);
-            });
+            safe_call([port] { (void)RemoveInterthreadListener(port); });
         });
 
-        {
-            scoped_lock locker {InterthreadListenersLocker};
-            copied_listener = InterthreadListeners.at(port);
-        }
+        copied_listener = FindInterthreadListener(port).value();
 
         server->Shutdown();
     }

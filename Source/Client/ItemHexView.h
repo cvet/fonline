@@ -73,6 +73,7 @@ public:
     void SetMultihexEntries(vector<mpos> entries);
 
 private:
+    void OnDestroySelf() override;
     void SetupSprite(ptr<MapSprite> mspr) override;
 
     shared_ptr<Sprite> _anim {};

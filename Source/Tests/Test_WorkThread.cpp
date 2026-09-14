@@ -139,20 +139,18 @@ TEST_CASE("WorkThread")
         CHECK(worker.get_jobs_count() == 0);
     }
 
-    SECTION("ExceptionHandlerRunsBeforeGlobalExceptionReport")
+    SECTION("AnExceptionHandlerTakesOverTheReporting")
     {
+        // The handler knows what the failure means to its owner and when to say so. Reporting here as
+        // well would print the same exception twice, the second copy behind everything the handler started
         auto prev_callback = exceptions::get_callback();
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
-        work_thread worker {"ExceptionOrderWorker"};
+        work_thread worker {"ExceptionHandlerWorker"};
         std::atomic_bool handler_called = false;
         std::atomic_bool report_called = false;
-        std::atomic_bool report_saw_handler = false;
 
-        exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) {
-            report_saw_handler = handler_called.load();
-            report_called = true;
-        });
+        exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) { report_called = true; });
 
         worker.set_exception_handler([&](const std::exception&) {
             handler_called = true;
@@ -164,8 +162,24 @@ TEST_CASE("WorkThread")
         worker.wait();
 
         CHECK(handler_called.load());
+        CHECK_FALSE(report_called.load());
+    }
+
+    SECTION("WithoutAHandlerTheExceptionIsStillReported")
+    {
+        auto prev_callback = exceptions::get_callback();
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+
+        work_thread worker {"ExceptionReportWorker"};
+        std::atomic_bool report_called = false;
+
+        exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) { report_called = true; });
+
+        worker.add_job([]() -> optional<timespan> { throw std::runtime_error("boom"); });
+
+        worker.wait();
+
         CHECK(report_called.load());
-        CHECK(report_saw_handler.load());
     }
 
     SECTION("ClearRemovesQueuedJobsWhilePaused")

@@ -47,6 +47,9 @@ FO_BEGIN_NAMESPACE
 FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
 FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
+static void InitializeMongoRuntime();
+static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain, const char* message, void* user_data);
+
 class DbMongo final : public DataBaseImpl
 {
 public:
@@ -68,8 +71,7 @@ public:
             throw DataBaseException("DbMongo escape char can't be '.'", db_settings->MongoEscapeChar);
         }
 
-        mongoc_init();
-        auto mongoc_cleanup_guard = scope_fail([]() noexcept { mongoc_cleanup(); });
+        InitializeMongoRuntime();
 
         bson_error_t error;
         string uri_text = string(uri);
@@ -183,7 +185,6 @@ public:
 
         mongoc_database_destroy(_database.get());
         mongoc_client_destroy(_client.get());
-        mongoc_cleanup();
     }
 
 protected:
@@ -535,6 +536,49 @@ auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, str
 {
     InitializeBsonMemory();
     return safe_alloc::make_unique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
+}
+
+// Once per process and never undone. mongoc_init and mongoc_cleanup are each one-shot: a cleanup frees the
+// handshake data and its lock, and no later init restores them, so a second database would run on freed state
+static void InitializeMongoRuntime()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static std::once_flag once;
+    std::call_once(once, [] {
+        mongoc_init();
+        mongoc_log_set_handler(&MongoLogHandler, nullptr);
+    });
+}
+
+static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain, const char* message, void* user_data)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(user_data);
+
+    auto domain_text = make_nptr(log_domain);
+    auto message_text = make_nptr(message);
+    string_view domain = domain_text ? string_view(domain_text.get()) : string_view("mongoc");
+    string_view text = message_text ? string_view(message_text.get()) : string_view();
+
+    safe_call([&] {
+        switch (log_level) {
+        case MONGOC_LOG_LEVEL_ERROR:
+        case MONGOC_LOG_LEVEL_CRITICAL:
+            logging::write(logging::type::error, "Mongo driver [{}]: {}", domain, text);
+            break;
+        case MONGOC_LOG_LEVEL_WARNING:
+            logging::write(logging::type::warning, "Mongo driver [{}]: {}", domain, text);
+            break;
+        case MONGOC_LOG_LEVEL_MESSAGE:
+        case MONGOC_LOG_LEVEL_INFO:
+            logging::write("Mongo driver [{}]: {}", domain, text);
+            break;
+        default:
+            break;
+        }
+    });
 }
 
 FO_GCC_IGNORE_WARNINGS_POP()

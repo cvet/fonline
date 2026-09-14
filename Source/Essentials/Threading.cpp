@@ -136,7 +136,7 @@ static auto submit_impl(thread_pool& pool, string_view task_name, function<void(
 
         pool.pending.push_back(pool_task {string(task_name), std::move(task)});
 
-        // workers must outnumber pending tasks, not merely be non-idle: a worker inside idle_count may
+        // Workers must outnumber pending tasks, not merely be non-idle: a worker inside idle_count may
         // already be committed to an earlier notify, and a long-lived task never parks again
         if (pool.pending.size() > pool.idle_count && can_spawn_worker) {
             // Reserve/register the worker while still holding the pool lock so concurrent
@@ -195,7 +195,7 @@ static void worker_loop(thread_pool* pool) noexcept
             --pool->idle_count;
 
             if (pool->pending.empty()) {
-                // stopping is true and queue drained — exit. workers are joined in
+                // Stopping is true and queue drained — exit. Workers are joined in
                 // `internal_shutdown`
                 return;
             }

@@ -52,10 +52,10 @@ public:
 
     explicit DbJson(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _storageDir {storage_dir},
+        _storageDir {fs::make_writable_path(db_settings->UserWritablePath, storage_dir)},
         _jsonIndent {db_settings->JsonIndent}
     {
-        fs::create_directories(storage_dir);
+        fs::create_directories(_storageDir);
         StartCommitThread();
     }
 

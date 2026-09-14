@@ -59,15 +59,70 @@
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ServerInitException);
+FO_DECLARE_EXCEPTION(ServerQuiescenceException);
+FO_DECLARE_EXCEPTION(ServerSnapshotException);
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem;
+
+enum class ServerSnapshotBlockerKind : uint8_t
+{
+    SuspendedScriptContexts,
+    ActiveScriptContexts,
+    RetainedScriptContexts,
+    DelayedCallbacks,
+    TimeEvents,
+    CritterMovements,
+};
+
+struct ServerSnapshotBlocker
+{
+    ServerSnapshotBlockerKind Kind {};
+    size_t Count {};
+};
+
+struct ServerSnapshotState
+{
+    static constexpr uint32_t FORMAT_VERSION = 1;
+
+    uint32_t FormatVersion {FORMAT_VERSION};
+    string CompatibilityVersion {};
+    string MetadataVersion {};
+    synctime SynchronizedTime {};
+    ident_t LastEntityId {};
+    random_generator::state_data RandomState {};
+};
+
+// The captured world as plain bytes plus the state that describes them. Storing the pair, naming it,
+// versioning the container and publishing it atomically are the embedder's business, not the Engine's
+struct ServerSnapshotCaptureResult
+{
+    bool ReachedQuiescence {};
+    vector<ServerSnapshotBlocker> Blockers {};
+    optional<ServerSnapshotState> State {};
+    vector<uint8_t> Payload {};
+};
+
+struct ServerSnapshotRestore
+{
+    ServerSnapshotState State {};
+    vector<uint8_t> Payload {};
+};
+
+struct ServerQuiescenceState
+{
+    synctime SynchronizedTime {};
+    random_generator::state_data RandomState {};
+};
 
 class ServerEngine final : public BaseEngine, public EntityManagerApi
 {
     friend class ServerScriptSystem;
+    friend class ServerEntity;
 
 public:
-    explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources);
+    using QuiescenceCallback = function<void(const ServerQuiescenceState&)>;
+
+    explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot = std::nullopt);
 
     ServerEngine(const ServerEngine&) = delete;
     ServerEngine(ServerEngine&&) noexcept = delete;
@@ -78,13 +133,15 @@ public:
     [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine> { return this; }
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
-    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
+    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress->load(); }
+    [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
     [[nodiscard]] auto RequireCurrentSyncContext() const -> ptr<SyncContext>;
     [[nodiscard]] auto GetEntityLock() const noexcept -> ptr<EntityLock> { return _entityLock; }
     [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
+    [[nodiscard]] auto IsConnectionAdmissionOpen() const -> bool;
     [[nodiscard]] auto GetWorkerThreadCount() const -> int32_t;
 
     void Shutdown() override;
@@ -116,6 +173,8 @@ public:
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
+    auto RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool;
+    auto CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult;
     void DrawGui();
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
@@ -190,6 +249,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterSendInitialInfo, ptr<Critter> /*cr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterItemTransferIn, ptr<Critter> /*cr*/, ptr<Item> /*sourceItem*/, ptr<Item> /*resultItem*/, int32_t /*count*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, ptr<Item> /*item*/, bool /*firstTime*/);
@@ -201,7 +262,7 @@ public:
 private:
     std::atomic_bool _started {false};
     std::atomic_bool _startingError {false};
-    std::atomic_bool _shutdownInProgress {false};
+    shared_ptr<std::atomic_bool> _shutdownInProgress {safe_alloc::make_shared<std::atomic_bool>(false)};
 
 public:
     EntityManager EntityMngr;
@@ -257,7 +318,9 @@ private:
 
     void SyncPoint();
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
+    auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
 
+    void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
     void ProcessPlayer(ptr<Player> player);
@@ -363,6 +426,10 @@ private:
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     mutable mutex _notLoggedInPlayersLocker {};
     vector<refcount_ptr<Player>> _notLoggedInPlayers FO_TSA_GUARDED_BY(_notLoggedInPlayersLocker) {};
+    mutable mutex _connectionAdmissionLocker {};
+    bool _connectionAdmissionOpen FO_TSA_GUARDED_BY(_connectionAdmissionLocker) {true};
+    mutex _quiescenceLocker {};
+    optional<ServerSnapshotRestore> _restoreSnapshot {};
     mutable mutex _connRateLocker {};
     unordered_map<string, ConnRateState> _connRates FO_TSA_GUARDED_BY(_connRateLocker) {};
 

@@ -74,6 +74,99 @@ TEST_CASE("DiskFileSystem")
         CHECK(fs::remove_dir_tree(temp_dir));
     }
 
+    SECTION("LongUnicodePathsSupportRelativeAndAbsoluteFileOperations")
+    {
+        auto temp_leaf = std::filesystem::path {fs::make_path(MakeTempTestDir("long_paths"))}.filename();
+        string temp_dir = fs::path_to_string(std::filesystem::current_path() / temp_leaf);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string relative_file {"Юникод"};
+
+        while (relative_file.size() < 350) {
+            relative_file = strex(relative_file).combine_path("nested-directory-segment").str();
+        }
+
+        relative_file = strex(relative_file).combine_path("данные.bin").str();
+        string file_path = strex(temp_dir).combine_path(relative_file).str();
+        string renamed_path = strex(temp_dir).combine_path("renamed.bin").str();
+        string control_path = strex(temp_dir).combine_path("control.bin").str();
+        string_view content {"long path payload"};
+        auto native_file = std::filesystem::path {fs::make_path(file_path)};
+        auto relative_native = native_file.lexically_relative(std::filesystem::current_path());
+        string relative_input = fs::path_to_string(relative_native);
+        REQUIRE(native_file.native().size() > 320);
+        REQUIRE_FALSE(relative_input.empty());
+        CHECK(fs::is_absolute_path(file_path));
+        CHECK(fs::is_relative_path(relative_input));
+        REQUIRE(fs::write_file(control_path, content));
+        REQUIRE(fs::write_file(relative_input, content));
+        REQUIRE(fs::exists(file_path));
+        REQUIRE(fs::file_size(file_path).has_value());
+        CHECK(*fs::file_size(file_path) == content.size());
+        REQUIRE(fs::read_file(file_path).has_value());
+        CHECK(*fs::read_file(file_path) == content);
+        REQUIRE(fs::read_file_bounded(relative_input, content.size()).has_value());
+        CHECK(*fs::read_file_bounded(relative_input, content.size()) == content);
+        CHECK_FALSE(fs::read_file_bounded(relative_input, content.size() - 1).has_value());
+        REQUIRE(fs::hash_file(relative_input).has_value());
+        CHECK(fs::hash_file(relative_input) == fs::hash_file(control_path));
+        REQUIRE(fs::touch_file(file_path));
+        CHECK(fs::last_write_time(file_path) != 0);
+        {
+            auto stream = fs::open_ifstream(relative_input);
+            REQUIRE(stream.is_open());
+            CHECK(fs::stream_get_size(stream) == content.size());
+        }
+
+        vector<string> entries;
+        fs::iterate_dir(temp_dir, true, [&](string_view name, size_t, uint64_t) { entries.emplace_back(name); });
+        CHECK(entries.size() == 2);
+        CHECK(std::ranges::find(entries, relative_file) != entries.end());
+#if FO_WINDOWS
+        CHECK(fs::read_file(file_path + ". ") == fs::read_file(file_path));
+        CHECK(fs::read_file(control_path + ". ") == fs::read_file(control_path));
+        string extended_path = string {"\\\\?\\"} + file_path;
+        std::ranges::replace(extended_path, '/', '\\');
+        CHECK(fs::read_file(extended_path) == fs::read_file(file_path));
+        string literal_path = extended_path + ". ";
+        string_view literal_content {"literal extended path"};
+        REQUIRE(fs::write_file(literal_path, literal_content));
+        REQUIRE(fs::read_file(literal_path).has_value());
+        CHECK(*fs::read_file(literal_path) == literal_content);
+        CHECK(fs::read_file(file_path + ". ") == fs::read_file(file_path));
+        REQUIRE(fs::remove_file(literal_path));
+        string literal_dir = extended_path + ".dir. ";
+        string literal_child = literal_dir + "\\child.bin";
+        REQUIRE(fs::write_file(literal_child, literal_content));
+        vector<string> literal_entries;
+        fs::iterate_dir(literal_dir, true, [&](string_view name, size_t, uint64_t) { literal_entries.emplace_back(name); });
+        REQUIRE(literal_entries.size() == 1);
+        CHECK(literal_entries.front() == "child.bin");
+        REQUIRE(fs::remove_dir_tree(literal_dir));
+        string short_dir = strex(temp_dir).combine_path("short-dir").str();
+        string literal_short_dir = string {"\\\\?\\"} + short_dir + ". ";
+        std::ranges::replace(literal_short_dir, '/', '\\');
+        string literal_short_child = literal_short_dir + "\\child.bin";
+        REQUIRE(fs::write_file(strex(short_dir).combine_path("child.bin").str(), content));
+        REQUIRE(fs::write_file(literal_short_child, literal_content));
+        REQUIRE(fs::remove_dir_tree(short_dir + ". "));
+        CHECK_FALSE(fs::exists(short_dir));
+        REQUIRE(fs::read_file(literal_short_child).has_value());
+        CHECK(*fs::read_file(literal_short_child) == literal_content);
+        REQUIRE(fs::remove_dir_tree(literal_short_dir));
+#endif
+
+        REQUIRE(fs::rename(file_path, renamed_path));
+        CHECK_FALSE(fs::exists(file_path));
+        REQUIRE(fs::read_file(renamed_path).has_value());
+        CHECK(*fs::read_file(renamed_path) == content);
+        REQUIRE(fs::remove_file(renamed_path));
+        string long_dir = fs::path_to_string(native_file.parent_path());
+        REQUIRE(fs::exists(long_dir));
+        REQUIRE(fs::remove_dir_tree(temp_dir));
+        CHECK_FALSE(fs::exists(long_dir));
+        CHECK_FALSE(fs::exists(temp_dir));
+    }
+
     SECTION("IterateDirRespectsRecursiveFlag")
     {
         string temp_dir = MakeTempTestDir("diskfs_iterate");
@@ -98,6 +191,20 @@ TEST_CASE("DiskFileSystem")
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
+
+#if FO_LINUX || FO_MAC
+    SECTION("IterateDirPropagatesFilesystemErrors")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_failed_lookup");
+        REQUIRE(fs::create_directories(temp_dir));
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        auto loop_path = std::filesystem::path {fs::make_path(temp_dir)} / "loop";
+        std::filesystem::create_directory_symlink("loop", loop_path);
+        bool visited = false;
+        CHECK_THROWS_AS(fs::iterate_dir(fs::path_to_string(loop_path), false, [&](string_view, size_t, uint64_t) { visited = true; }), std::filesystem::filesystem_error);
+        CHECK_FALSE(visited);
+    }
+#endif
 
     SECTION("TouchAndStreamHelpersWork")
     {

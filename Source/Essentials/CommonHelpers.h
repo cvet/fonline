@@ -511,6 +511,20 @@ template<typename T>
 }
 
 template<typename T>
+[[nodiscard]] inline auto bytes_to_objects(const_span<uint8_t> data) noexcept -> const_span<T>
+{
+    if (data.empty()) {
+        return {};
+    }
+
+    FO_STRONG_ASSERT(data.size() % sizeof(T) == 0, "Byte span size is not a whole multiple of the object size");
+    auto bytes = make_nptr(data.data());
+    FO_STRONG_ASSERT(bytes, "Byte span has a null pointer");
+    ptr<const T> values = bytes.template reinterpret_as<T>();
+    return make_span(values, data.size() / sizeof(T));
+}
+
+template<typename T>
 [[nodiscard]] inline auto object_to_bytes(T& object) noexcept -> span<uint8_t>
 {
     auto object_ptr = make_ptr(&object);

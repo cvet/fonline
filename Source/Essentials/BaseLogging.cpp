@@ -76,6 +76,7 @@ struct base_logging_data
 
     std::mutex log_locker {};
     std::ofstream log_file_handle {};
+    std::string log_file_path {};
     std::atomic_bool async_enabled {};
     std::mutex async_queue_mutex {};
     std::condition_variable async_signal {};
@@ -104,7 +105,10 @@ void logging::to_file(string_view path, bool append)
         std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
         base_logging->log_file_handle.open(std::string(path), open_mode);
 
-        if (!base_logging->log_file_handle) {
+        if (base_logging->log_file_handle) {
+            base_logging->log_file_path.assign(path);
+        }
+        else {
             open_failed = true;
         }
     }
@@ -112,6 +116,17 @@ void logging::to_file(string_view path, bool append)
     if (open_failed) {
         logging::write_base(std::string("Can't create log file '").append(path).append("'\n"));
     }
+}
+
+auto logging::get_file_path() -> std::string
+{
+    if (!base_logging.is_created()) {
+        return {};
+    }
+
+    std::scoped_lock locker {base_logging->log_locker};
+
+    return base_logging->log_file_path;
 }
 
 void logging::set_async_writing(bool enabled)
@@ -130,7 +145,7 @@ void logging::set_async_writing(bool enabled)
 
 void logging::suspend_async_writing() noexcept
 {
-    if (base_logging != nullptr) {
+    if (base_logging.is_created()) {
         base_logging->async_enabled.store(false, std::memory_order_release);
     }
 }
@@ -138,7 +153,7 @@ void logging::suspend_async_writing() noexcept
 void logging::write_base(string_view message, const stack_trace::catched_data* st) noexcept
 {
     try {
-        if (base_logging == nullptr) {
+        if (!base_logging.is_created()) {
             std::cout << message;
 
             if (st != nullptr) {
@@ -323,7 +338,7 @@ static void write_sync(string_view message) noexcept
 
 static void flush_log_at_exit()
 {
-    if (base_logging != nullptr) {
+    if (base_logging.is_created()) {
         stop_async_worker();
 
         if (base_logging->log_locker.try_lock()) {

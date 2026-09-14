@@ -27,7 +27,6 @@ Read this page together with:
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/Gui.fos`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`
@@ -98,6 +97,12 @@ A typical client lifetime has these phases:
 8. **Shutdown** disconnects networking, destroys inner entities, clears caches and render targets, and releases frontend resources.
 
 When changing startup or shutdown behavior, keep script events, manager lifetime, entity registration, and network callbacks in sync; these paths are tightly coupled.
+
+**Terminal states report themselves.** A client that ends badly used to leave no trace we could read: the updater's fatal failures call `Application::ShowErrorMessage` directly, which never reaches the exception callback the crash reporter chains, and a shutdown that hangs is past the point where anything can be sent. Two things close that.
+
+`ShowUpdaterFailure` (`Source/Client/Updater.cpp`) reports every terminal `UpdaterResult` before it shows the dialog, carrying the result name, the binary update target, the platform and the build. `ServerMissingNativeUpdate` in particular means the server offered no native modules for this client's target — a distribution problem no player can fix by reinstalling, and one we would otherwise hear about only through a screenshot.
+
+`ClientSessionMarker` (`Source/Client/ClientSessionMarker.{h,cpp}`) records how far shutdown got. The runtime writes the marker once the application is initialized, updates it at each stage (`MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`), the host records the stage that happens after the runtime returns (`RuntimeReturned`; the library is never unloaded, so nothing follows it) and clears the file immediately before `exit_app`. A marker still present on the next launch means the previous run never finished, and the runtime reports it — with the stage — once the crash reporter is alive. The file sits in the client's writable root, as does the log: the host resolves the root as its first act and opens `<root>/<exe>.log` for the whole launch, and the runtime appends to the same file. Both halves call the same `ResolveWritableRoot(args)`, which reads no settings at all, so nothing crosses the host/runtime boundary and the two cannot disagree (see [ClientUpdater.md](ClientUpdater.md#installed-vs-portable-writable-data)). The marker path is made absolute even in portable mode, so runtime teardown cannot retarget it if a loaded dependency changes the process working directory. That root is the same one the cache, the resource overlay and the log use, so an installed client whose own directory is read-only still records its shutdown. `Source/Tests/Test_ClientRuntimeApi.cpp` pins the round trip.
 
 ## Server connection and message dispatch
 
@@ -484,7 +489,7 @@ Input semantics originate in `Source/Frontend/Application.h`; game-specific UI b
 
 `ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 

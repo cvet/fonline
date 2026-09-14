@@ -94,15 +94,7 @@ void ClientConnection::Connect()
         // First try interthread communication
         auto port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-        bool has_interthread_listener = false;
-
-        {
-            scoped_lock locker {InterthreadListenersLocker};
-
-            has_interthread_listener = InterthreadListeners.count(port) != 0;
-        }
-
-        if (has_interthread_listener) {
+        if (HasInterthreadListener(port)) {
             _netConnection = NetworkClientConnection::CreateInterthreadConnection(_settings);
             _connectingOverUdp = false;
             _udpFallbackTried = false;
@@ -181,7 +173,7 @@ void ClientConnection::ProcessConnection()
         return;
     }
 
-    // wait for connecting result
+    // Wait for connecting result
     if (_netConnection->IsConnecting()) {
         _netConnection->CheckStatus(true);
 

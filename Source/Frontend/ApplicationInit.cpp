@@ -39,6 +39,8 @@
 #include "FileSystem.h"
 #include "WebRelated.h"
 
+#include "SDL3/SDL_system.h"
+
 FO_BEGIN_NAMESPACE
 
 // File the installer drops next to the exe to mark an installed (non-portable) build. The portable
@@ -53,6 +55,7 @@ static void SetupExceptionCallback(bool show_message_on_exception);
 static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing);
 static auto LoadTestingAppSettings() -> GlobalSettings;
 static void PrebakeResources(BakingSettings& settings);
+static auto FindWritablePathArg(CommandLineArgs args) -> string;
 static void SetupSignals();
 
 auto IsAppInitialized() noexcept -> bool
@@ -117,8 +120,9 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     TracySetProgramName(FO_NICE_NAME);
 #endif
 
-    // Logging
-    logging::to_file(GetExeLogFileName(), is_enum_set(flags, AppInitFlags::AppendLogFile));
+    // Logging. The writable root is resolved from the command line and the installer marker alone, so
+    // the log opens at its final location before anything is read from disk
+    logging::to_file(fs::make_writable_path(ResolveWritableRoot(args), GetExeLogFileName()), is_enum_set(flags, AppInitFlags::AppendLogFile));
 
     if (is_enum_set(flags, AppInitFlags::DisableLogTags)) {
         logging::disable_tags();
@@ -126,17 +130,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     logging::write("Starting {}", FO_NICE_NAME);
 
-    // Load settings
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
-
-    // Installed client: the install dir is read-only, so move the log file into the per-user writable
-    // data dir now that settings (and the resolved writable path) are known
-    if (!settings.UserWritablePath.empty()) {
-        string log_path = fs::make_writable_path(settings.UserWritablePath, GetExeLogFileName());
-        logging::write("Switch log to path '{}'", log_path);
-        logging::to_file(log_path, is_enum_set(flags, AppInitFlags::AppendLogFile));
-        logging::write("Starting {}", FO_NICE_NAME);
-    }
 
     logging::write("Version: {}", settings.GameVersion);
 
@@ -255,7 +249,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
                     break;
                 }
                 else {
-                    if (dir.has_parent_path()) {
+                    if (dir.has_parent_path() && dir.parent_path() != dir) {
                         dir = dir.parent_path();
                     }
                     else {
@@ -306,9 +300,17 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         settings.ApplyInternalConfig();
     }
 
-    // Resolve the installed-client writable root now that the config is applied, so the local-config
-    // cache below — and all later cache/log/update writes — land in the per-user writable directory
-    ResolveUserWritablePath(settings);
+    // Resolved before the config was even found, so the local-config cache below - and every later
+    // cache, log and update write - lands where this process is allowed to write
+    settings.ApplyWritableRoot(ResolveWritableRoot(args));
+
+    if (!settings.UserWritablePath.empty()) {
+        // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
+        // resource writer never fail on a missing parent directory
+        fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.CacheResources));
+        fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.ClientResources));
+        logging::write("Writable data path: {}", settings.UserWritablePath);
+    }
 
     string cache_dir = fs::make_writable_path(settings.UserWritablePath, settings.CacheResources);
 
@@ -326,54 +328,74 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     return settings;
 }
 
-void ResolveUserWritablePath(GlobalSettings& settings)
+auto ResolveWritableRoot(CommandLineArgs args) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Resolve settings.UserWritablePath to an absolute writable root, or "" to stay portable
-    string root = string(settings.UserWritablePath);
+    // Deliberately settings-free: the log, the cache and the local config all live under this root, so
+    // nothing that is read from disk may decide where it is. Only the command line and the marker do
+    string root = FindWritablePathArg(args);
 
     if (root.empty()) {
-        // No explicit path: switch to the per-user writable layout only when the installer marker is
-        // present next to the exe; otherwise stay portable
         auto exe_path = platform::get_exe_path();
 
         if (!exe_path.has_value() || !fs::exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
-            settings.UserWritablePath = "";
-            return;
+            return "";
         }
 
         root = "*";
     }
 
+    // An explicit "*" asks for the same per-user directory the marker selects, which is how a launcher
+    // requests it without knowing the per-OS path
     if (root == "*") {
+        // Android keeps no usable HOME, and its writable root is only reachable through the JNI bridge
+        // that SDL owns, so it is asked there; everywhere else the Essentials lookup applies
+#if FO_ANDROID
+        const char* internal_storage = SDL_GetAndroidInternalStoragePath();
+        string base = internal_storage != nullptr ? string(internal_storage) : string();
+#else
         string base = platform::get_user_data_base();
+#endif
 
         if (base.empty()) {
-            logging::write(logging::type::warning, "Client user-writable path requested but no user data dir found; using portable layout");
-            settings.UserWritablePath = "";
-            return;
+            logging::write(logging::type::warning, "Installed layout requested but no user data dir found; writing to the working directory");
+            return "";
         }
 
-        root = strex(base).combine_path(settings.GameName).str();
+        // Named after the project rather than Common.GameName, which is a config value and therefore
+        // unknown this early - and a window title must not be able to move a player's data
+        root = strex(base).combine_path(FO_NICE_NAME).str();
     }
 
     root = fs::resolve_path(root);
 
     if (!fs::create_directories(root)) {
-        logging::write(logging::type::warning, "Can't create client user-writable path '{}'; using portable layout", root);
-        settings.UserWritablePath = "";
-        return;
+        logging::write(logging::type::warning, "Can't create writable path '{}'; writing to the working directory", root);
+        return "";
     }
 
-    settings.UserWritablePath = root;
+    return root;
+}
 
-    // Pre-create the writable cache + resource-overlay subdirs so the cache and the self-update
-    // resource writer never fail on a missing parent directory
-    fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.CacheResources));
-    fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.ClientResources));
+static auto FindWritablePathArg(CommandLineArgs args) -> string
+{
+    FO_STACK_TRACE_ENTRY();
 
-    logging::write("Client user-writable data path: {}", root);
+    // Scanned by hand rather than through the settings parser, which runs far later
+    for (size_t i = 0; i + 1 < args.size(); i++) {
+        string_view arg = strex(args.Get(i)).trim().strv();
+
+        if (arg == "-UserWritablePath" || arg == "--UserWritablePath" || arg == "-Common.UserWritablePath" || arg == "--Common.UserWritablePath") {
+            string_view value = strex(args.Get(i + 1)).trim().strv();
+
+            if (!value.empty() && !CommandLineArgs::IsOption(value)) {
+                return string(value);
+            }
+        }
+    }
+
+    return "";
 }
 
 static void PrebakeResources(BakingSettings& settings)
@@ -383,15 +405,14 @@ static void PrebakeResources(BakingSettings& settings)
     using BakeResourcesFunc = bool (*)(void*);
     auto bake_resources = platform::get_func_addr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
 
-    nptr<void> baker_dll = nullptr;
-    auto unload_baker_dll = scope_exit([&]() noexcept { platform::unload_module(baker_dll); });
-
     strex lib_name = strex("{}_BakerLib", FO_DEV_NAME);
 
     if (bake_resources == nullptr) {
         auto exe_path = platform::get_exe_path();
         string lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
-        baker_dll = platform::load_module(lib_path);
+        // Never unloaded: like every engine library it carries statically linked runtimes whose process-wide
+        // callbacks cannot be withdrawn, so unmapping it would leave them pointing at nothing
+        nptr<void> baker_dll = platform::load_pinned_module(lib_path);
 
         if (baker_dll) {
             bake_resources = platform::get_func_addr<BakeResourcesFunc>(baker_dll, "FO_BakeResources");

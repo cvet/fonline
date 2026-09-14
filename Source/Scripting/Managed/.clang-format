@@ -1,0 +1,74 @@
+# Style for the engine's managed sources. It sits here rather than in Source/.clang-format because that
+# file is the native one and this subtree is the only C# in the engine; clang-format takes the nearest
+# config, so a .cs file below this directory is styled by these rules and a .cpp beside it by the C++ ones.
+# The decisions mirror the native config wherever they carry over to C#, so both halves read alike.
+# Generated C# needs no exemption here: its emitter writes `// clang-format off` into every file.
+---
+Language: CSharp
+BasedOnStyle: LLVM
+
+ColumnLimit: 120
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+AccessModifierOffset: 0
+NamespaceIndentation: None
+
+# A type or a method opens its block on the next line, a control statement on the same one:
+# `if (x) {` beside `void F()\n{`
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterControlStatement: Never
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: false
+
+# A wrapped call takes one argument per line, as the native code does
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: BinPack
+
+AlignAfterOpenBracket: Align
+AlignOperands: AlignAfterOperator
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+BreakBeforeBinaryOperators: None
+
+# A wrapped ternary leads with its operator, the way C# is written everywhere else
+BreakBeforeTernaryOperators: true
+BreakStringLiterals: false
+IndentCaseLabels: false
+
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: false
+  AtStartOfFile: true
+MaxEmptyLinesToKeep: 1
+
+# Comments keep the width their author chose; reflowing them breaks tables and lists
+ReflowComments: Never
+SortUsingDeclarations: LexicographicNumeric
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 1
+SpacesInSquareBrackets: false
+...

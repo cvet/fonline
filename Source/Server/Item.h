@@ -73,6 +73,7 @@ public:
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool;
     [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>>;
     [[nodiscard]] auto GetOwnedLock() noexcept -> ptr<EntityLock>;
+    [[nodiscard]] auto IsInsideContainer(ptr<const Item> container) -> bool;
 
     auto AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>;
     void RemoveItemFromContainer(ptr<Item> item);

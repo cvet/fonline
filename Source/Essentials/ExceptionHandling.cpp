@@ -65,6 +65,8 @@ struct except_handling_data
     {
 #if HAS_NATIVE_TRACE
         if (!is_run_in_debugger()) {
+            // Outlives the set on purpose: crashes must be caught for the whole process, after teardown too. Its
+            // handlers stay installed, which is safe because an engine library is never unloaded
             [[maybe_unused]] static backward::SignalHandling sh;
             assert(sh.loaded());
         }
@@ -73,8 +75,6 @@ struct except_handling_data
 
     std::mutex callback_locker {};
     exceptions::callback callback {};
-    optional<stack_trace::data> crash_stack_trace {};
-    optional<string> crash_info {};
 };
 FO_GLOBAL_DATA(except_handling_data, exception_handling);
 
@@ -110,13 +110,18 @@ static auto get_signal_name(int32_t signum) noexcept -> string_view;
 static backward_o_stream_buffer crash_stream_buf;
 static auto crash_stream = std::ostream(&crash_stream_buf); // Passed to Printer::print in backward.hpp
 
+// A crash handler fires at any moment of the process, the client host running on after its runtime tore the
+// global data down included, so the record it fills lives as long as the stream that prints it
+static optional<stack_trace::data> crash_stack_trace;
+static optional<string> crash_info;
+
 FO_END_NAMESPACE
 void SetCrashStackTrace() noexcept // Called in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        FO_NAMESPACE exception_handling->crash_stack_trace = FO_NAMESPACE stack_trace::get();
+        FO_NAMESPACE crash_stack_trace = FO_NAMESPACE stack_trace::get();
     }
     catch (...) {
         // Best effort: keep the original fatal error alive even if stack capture fails
@@ -219,6 +224,12 @@ void exceptions::set_callback(exceptions::callback callback) noexcept
 auto exceptions::get_callback() noexcept -> exceptions::callback
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    // Exceptions are still reported after the global data is torn down, by a thread the set did not own or
+    // by the host the runtime returned to. They go to the base log, which keeps working without the set
+    if (!exception_handling.is_created()) {
+        return {};
+    }
 
     std::scoped_lock locker {exception_handling->callback_locker};
 
@@ -339,8 +350,8 @@ void backward_o_stream_buffer::write_header() const noexcept
 
     logging::write_base("\n");
 
-    if (exception_handling->crash_stack_trace.has_value()) {
-        logging::safe_write_stack_trace(*exception_handling->crash_stack_trace);
+    if (crash_stack_trace.has_value()) {
+        logging::safe_write_stack_trace(*crash_stack_trace);
     }
 }
 
@@ -349,7 +360,7 @@ static void set_crash_info(string info) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        exception_handling->crash_info = std::move(info);
+        crash_info = std::move(info);
     }
     catch (...) {
         // Best effort: crash handlers must not throw while recording context
@@ -361,8 +372,8 @@ static auto safe_write_crash_info() noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        if (exception_handling->crash_info.has_value()) {
-            logging::write_base(strex("Crash reason: {}\n", *exception_handling->crash_info));
+        if (crash_info.has_value()) {
+            logging::write_base(strex("Crash reason: {}\n", *crash_info));
             return true;
         }
     }

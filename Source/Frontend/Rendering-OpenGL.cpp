@@ -50,6 +50,8 @@
 #if FO_OPENGL_ES
 
 #if FO_IOS
+// ForceOpenGL and the automatic fallback retain Apple's OpenGLES declarations
+#define GLES_SILENCE_DEPRECATION
 #include <OpenGLES/ES3/gl.h>
 #include <OpenGLES/ES3/glext.h>
 #else
@@ -561,8 +563,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     atlas_h = std::min(max_viewport_size[1], atlas_h);
     FO_VERIFY_AND_THROW(atlas_w >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas width is below the required minimum", AppRender::MIN_ATLAS_SIZE);
     FO_VERIFY_AND_THROW(atlas_h >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas height is below the required minimum", AppRender::MIN_ATLAS_SIZE);
-    const_cast<int32_t&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<int32_t&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    AppRender::MAX_ATLAS_WIDTH = atlas_w;
+    AppRender::MAX_ATLAS_HEIGHT = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D

@@ -136,6 +136,13 @@ auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
     return _randomGenerator.next_between(min_value, max_value);
 }
 
+void SpriteManager::UnsubscribeWindowEvents() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _eventUnsubscriber.Unsubscribe();
+}
+
 auto SpriteManager::GetWindowSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();

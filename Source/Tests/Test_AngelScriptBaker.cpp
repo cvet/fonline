@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #if FO_ANGELSCRIPT_SCRIPTING
+#include "AngelScriptBackend.h"
 #include "AngelScriptBaker.h"
 #include "Test_BakerHelpers.h"
 #endif
@@ -109,6 +110,54 @@ TEST_CASE("AngelScriptBaker")
         CHECK(local_rig.Outputs.size() == 2);
     }
 
+    SECTION("RegistersVerifyMacroWithoutCoreScripts")
+    {
+        TestRig local_rig;
+        local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+
+        BakerServerEngine compiler_engine {local_rig.BakedFiles};
+        REQUIRE_NOTHROW(CompileInlineScripts(&compiler_engine, "VerifyMacroScripts", {{"Scripts/VerifyMacro.fos", R"(
+namespace VerifyMacro
+{
+    void Check(bool condition)
+    {
+        verify(condition, "Programmatic verify failed", 17, "context");
+    }
+}
+)"}},
+            [](string_view) { }));
+    }
+
+    SECTION("RejectsIncompatibleOrOversizedBytecodeContainers")
+    {
+        TestRig local_rig;
+        AddAngelScriptMetadataForAllSides(local_rig);
+        BakerServerEngine compiler_engine {local_rig.BakedFiles};
+        vector<uint8_t> valid = CompileInlineScripts(&compiler_engine, "ContainerTest", {{"Scripts/Container.fos", "namespace Container { void Touch() {} }"}}, [](string_view) { });
+        REQUIRE(valid.size() > 11);
+
+        for (bool incompatible : {true, false}) {
+            vector<uint8_t> malformed = valid;
+
+            if (incompatible) {
+                malformed[0] ^= 0xff;
+            }
+            else {
+                uint32_t oversized = std::numeric_limits<uint32_t>::max();
+                memory::copy(malformed.data() + sizeof(uint32_t) + 3 * sizeof(uint8_t), &oversized, sizeof(oversized));
+            }
+
+            auto source = safe_alloc::make_unique<MemoryDataSource>("MalformedBytecode");
+            source->AddFile("ContainerTest.fos-bin-server", malformed);
+            FileSystem resources;
+            resources.AddCustomSource(std::move(source));
+            ScriptSettings settings;
+            AngelScriptBackend backend(&settings);
+            backend.RegisterMetadata(&compiler_engine);
+            CHECK_THROWS(backend.LoadBinaryScripts(resources));
+        }
+    }
+
     SECTION("RejectsBrokenScripts")
     {
         TestRig local_rig;
@@ -177,7 +226,7 @@ TEST_CASE("AngelScript mutable globals are disallowed")
 #if FO_ANGELSCRIPT_SCRIPTING
     using namespace BakerTests;
 
-    // Defaults: ScriptSettings::MutableGlobalsAllowedSourcePaths is empty, so no path is exempt.
+    // Defaults: ScriptSettings::AngelScriptMutableGlobalsAllowedSourcePaths is empty, so no path is exempt.
     // The gate must fire for any non-const module-level global
     TestRig rig;
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());

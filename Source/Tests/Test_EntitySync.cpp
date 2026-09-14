@@ -325,7 +325,7 @@ TEST_CASE("EntityLock")
             lock.Release();
         });
 
-        // wait until both waiters are fully enqueued before releasing, so the grant order is
+        // Wait until both waiters are fully enqueued before releasing, so the grant order is
         // determined purely by ticket value and not by thread-startup timing under load
         while (lock.WaiterCount() != 2) {
             std::this_thread::yield();
@@ -364,7 +364,7 @@ TEST_CASE("EntityLock")
         auto t2 = make_waiter(50, 2);
         auto t3 = make_waiter(75, 3);
 
-        // wait until all three waiters are fully enqueued before releasing, so the grant order is
+        // Wait until all three waiters are fully enqueued before releasing, so the grant order is
         // determined purely by ticket value and not by thread-startup timing under load
         while (lock.WaiterCount() != 3) {
             std::this_thread::yield();

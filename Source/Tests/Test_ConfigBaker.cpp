@@ -248,6 +248,48 @@ TEST_CASE("ConfigBaker")
         std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
+    SECTION("ComparesPackageDeltasAgainstTheActiveMetadataBakeConfig")
+    {
+        string temp_dir = MakeConfigBakerTempDir();
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
+        string config_path = strex(temp_dir).combine_path("Test.fomain");
+        REQUIRE(fs::write_file(config_path,
+            MakeCompleteConfigBakerConfig() +
+                "Server.CustomEnabled = true\n"
+                "Client.CustomTitle = Root\n"
+                "[SubConfig]\n"
+                "Name = Public\n"
+                "Server.CustomEnabled = false\n"
+                "Client.CustomTitle = Public\n"
+                "[SubConfig]\n"
+                "Name = Staging\n"
+                "Parent = Public\n"
+                "Server.CustomEnabled = true\n"
+                "Client.CustomTitle = Root\n"));
+
+        TestRig rig;
+        rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool", "False"}}}}));
+        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Setting", {{"Client.CustomTitle", "string", "Public"}}}}));
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        rig.Settings.ApplySubConfigSection("Public");
+
+        ConfigBaker baker(rig.MakeContext("ConfigPack"));
+        REQUIRE_NOTHROW(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
+
+        string public_server_config = rig.GetOutputText("Public.fomain-server");
+        string staging_server_config = rig.GetOutputText("Staging.fomain-server");
+        string staging_client_config = rig.GetOutputText("Staging.fomain-client");
+        CHECK(public_server_config.find("Server.CustomEnabled=") == string::npos);
+        CHECK(public_server_config.find("Client.CustomTitle=") == string::npos);
+        CHECK(staging_server_config.find("Server.CustomEnabled=1\n") != string::npos);
+        CHECK(staging_server_config.find("Client.CustomTitle=Root\n") != string::npos);
+        CHECK(staging_client_config.find("Client.CustomTitle=Root\n") != string::npos);
+        CHECK(staging_client_config.find("Server.CustomEnabled=") == string::npos);
+
+        std::error_code ec;
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
+    }
+
     SECTION("KeepsBootstrapGameSettingWhenSubConfigRepeatsRootValue")
     {
         string temp_dir = MakeConfigBakerTempDir();

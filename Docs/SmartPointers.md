@@ -101,7 +101,7 @@ ptr<const char> storage_end = storage_begin.get() + _s.size();
 if (view_begin < storage_begin || !(view_begin < storage_end)) { ... }
 ```
 
-One exception: an **exported/ABI parameter whose name is fixed by an external contract** (or pinned in the smart-pointer-audit allowlist) keeps its name; narrow it to a `<name>_ptr` local rather than renaming the parameter.
+One exception: an **exported/ABI parameter whose name is fixed by an external contract** (or named as a boundary in the smart-pointer audit's patterns) keeps its name; narrow it to a `<name>_ptr` local rather than renaming the parameter.
 
 The same naming applies to every narrowing form (`unique_nptr<T>::take_not_null()`, `refcount_nptr<T>::take_not_null()`, custom-deleter `take_not_null(...)`, …).
 
@@ -248,14 +248,10 @@ Embedding projects can keep lightweight migration guards in source control. The 
 
 ```bash
 python3 Tools/SmartPointerAudit/smart_pointer_audit.py \
-  --fail-on error \
-  --raw-pointer-low-level-allowlist Tools/SmartPointerAudit/raw_pointer_low_level_allowlist.tsv \
-  --raw-pointer-abi-allowlist Tools/SmartPointerAudit/raw_pointer_abi_allowlist.tsv \
-  --raw-pointer-container-abi-allowlist Tools/SmartPointerAudit/raw_pointer_container_abi_allowlist.tsv \
-  --raw-pointer-header-abi-allowlist Tools/SmartPointerAudit/raw_pointer_header_abi_allowlist.tsv
+  --fail-on error
 python3 Tools/SmartPointerAudit/smart_pointer_clang_query.py --diff-base origin/main --require-tooling
 ```
 
-The first command is the regular textual non-regression audit. Exact line-level allowlists keep reviewed raw ABI and low-level raw rows from drifting; count budgets are not used, and class reference members fail directly without an allowlist. Nullable owners such as `unique_nptr<T>` and `unique_del_nptr<T>` are counted for inventory only, not quarantined. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
+The first command is the regular textual non-regression audit. It keeps no baselines or allowlists: raw-pointer boundaries are recognized by named shapes in the audit itself, so moving code never breaks the gate, and a new kind of boundary is named there in the change that introduces it. A raw ABI signature in a header fails unless it is one of the named header C ABI shapes, and class reference members fail directly. Nullable owners such as `unique_nptr<T>` and `unique_del_nptr<T>` are counted for inventory only, not quarantined. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
 
 As an embedding-project example, Last Frontier runs the full audit invocation in CI on every push and exposes the same command locally as the `Analyze :: Smart Pointer Audit` VS Code task (bundled into its `Analyze All` and pre-commit validation tasks).

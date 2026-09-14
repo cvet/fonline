@@ -43,6 +43,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto make_module_file_name(const string& module_name) noexcept -> string;
+
 void platform::info_log(const string& str) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -84,6 +86,8 @@ auto platform::get_user_data_base() noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();
 
+    // The environment answers first, because a user who redirected it meant to. Only when it is silent
+    // is the OS asked: nothing here drops the caller back to the install directory it cannot write
 #if FO_WINDOWS
     if (const char* local = std::getenv("LOCALAPPDATA"); local != nullptr && local[0] != 0) {
         return local;
@@ -91,12 +95,22 @@ auto platform::get_user_data_base() noexcept -> string
     if (const char* roaming = std::getenv("APPDATA"); roaming != nullptr && roaming[0] != 0) {
         return roaming;
     }
+    if (auto shell_path = winapi::get_local_app_data_path(); shell_path.has_value()) {
+        return shell_path.value();
+    }
+
     return "";
+
 #elif FO_MAC || FO_IOS
     if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != 0) {
         return strex(home).combine_path("Library/Application Support").str();
     }
+    if (auto home_dir = posix::get_home_dir(); home_dir.has_value()) {
+        return strex(home_dir.value()).combine_path("Library/Application Support").str();
+    }
+
     return "";
+
 #else
     if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != 0) {
         return xdg;
@@ -104,6 +118,10 @@ auto platform::get_user_data_base() noexcept -> string
     if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != 0) {
         return strex(home).combine_path(".local/share").str();
     }
+    if (auto home_dir = posix::get_home_dir(); home_dir.has_value()) {
+        return strex(home_dir.value()).combine_path(".local/share").str();
+    }
+
     return "";
 #endif
 }
@@ -193,16 +211,21 @@ auto platform::load_module(const string& module_name) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto add_extension = [](const string& path, string_view extension) -> string { //
-        return path.ends_with(extension) ? path : strex(strex::safe_format, "{}{}", path, extension).str();
-    };
+#if FO_WINDOWS
+    return winapi::load_library(make_module_file_name(module_name));
+#else
+    return posix::load_library(make_module_file_name(module_name));
+#endif
+}
+
+auto platform::load_pinned_module(const string& module_name) noexcept -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    return winapi::load_library(add_extension(module_name, ".dll"));
-#elif FO_MAC
-    return posix::load_library(add_extension(module_name, ".dylib"));
+    return winapi::load_pinned_library(make_module_file_name(module_name));
 #else
-    return posix::load_library(add_extension(module_name, ".so"));
+    return posix::load_pinned_library(make_module_file_name(module_name));
 #endif
 }
 
@@ -230,6 +253,21 @@ auto platform::get_func_addr(nptr<void> module_handle, const string& func_name) 
 #else
     return posix::get_symbol_address(module_handle, func_name).get();
 #endif
+}
+
+static auto make_module_file_name(const string& module_name) noexcept -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    string_view extension = ".dll";
+#elif FO_MAC
+    string_view extension = ".dylib";
+#else
+    string_view extension = ".so";
+#endif
+
+    return module_name.ends_with(extension) ? module_name : strex(strex::safe_format, "{}{}", module_name, extension).str();
 }
 
 FO_END_NAMESPACE

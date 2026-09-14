@@ -39,22 +39,32 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
+    std::atomic<int32_t> CreateCallCount {};
     int32_t DeleteCallCount {};
     vector<int32_t> DeleteCallOrder {};
 
-    void DeleteCallbackA()
+    void CreateCallback() noexcept
+    {
+        CreateCallCount.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    void DeleteNoop() noexcept
+    {
+    }
+
+    void DeleteCallbackA() noexcept
     {
         ++DeleteCallCount;
         DeleteCallOrder.emplace_back(1);
     }
 
-    void DeleteCallbackB()
+    void DeleteCallbackB() noexcept
     {
         ++DeleteCallCount;
         DeleteCallOrder.emplace_back(2);
     }
 
-    void DeleteCallbackC()
+    void DeleteCallbackC() noexcept
     {
         ++DeleteCallCount;
         DeleteCallOrder.emplace_back(3);
@@ -75,6 +85,11 @@ namespace
 
         ~GlobalDataCallbacksGuard()
         {
+            // Hand the set back as created without running anything: this test never touched the real
+            // globals of the process, and building them a second time would end the run
+            global_data::callbacks_count = 0;
+            (void)global_data::create();
+
             std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(global_data::create_callbacks));
             std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
             global_data::callbacks_count = SavedCount;
@@ -86,6 +101,7 @@ TEST_CASE("GlobalData")
 {
     GlobalDataCallbacksGuard callbacks_guard;
 
+    CreateCallCount.store(0, std::memory_order_relaxed);
     DeleteCallCount = 0;
     DeleteCallOrder.clear();
 
@@ -114,6 +130,85 @@ TEST_CASE("GlobalData")
 
         CHECK(DeleteCallCount == 0);
         CHECK(DeleteCallOrder.empty());
+    }
+
+    SECTION("SecondCreateLeavesTheSetAlone")
+    {
+        // The baker library entry also runs inside an application whose set exists: a second sweep must not build
+        // every global twice, and the answer tells that caller the set is not its own to tear down
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteNoop;
+
+        global_data::destroy();
+        CHECK(global_data::create());
+        CHECK_FALSE(global_data::create());
+
+        CHECK(CreateCallCount.load(std::memory_order_relaxed) == 1);
+    }
+
+    SECTION("CreateAndDeleteAlternate")
+    {
+        // Teardown is not the end of the process any more: the runtime library tears its set down as it
+        // returns to the host, and a library loaded again has to get a working set
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteCallbackA;
+
+        global_data::destroy();
+        (void)global_data::create();
+        global_data::destroy();
+        (void)global_data::create();
+
+        CHECK(CreateCallCount.load(std::memory_order_relaxed) == 2);
+        CHECK(DeleteCallCount == 2);
+    }
+
+    SECTION("SweepFromAnotherThreadWaitsRatherThanRacing")
+    {
+        // A second thread must see a finished set, not a half-built one: it blocks until the sweep that
+        // started first is done
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteNoop;
+
+        global_data::destroy();
+
+        std::thread creator {[] { (void)global_data::create(); }};
+        creator.join();
+
+        (void)global_data::create();
+
+        CHECK(CreateCallCount.load(std::memory_order_relaxed) == 1);
+    }
+
+    SECTION("RacingCreateBuildsTheSetOnce")
+    {
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteNoop;
+
+        global_data::destroy();
+
+        vector<std::thread> racers;
+        racers.reserve(8);
+        std::atomic<int32_t> builders {};
+
+        for (size_t i = 0; i < 8; i++) {
+            racers.emplace_back([&builders] {
+                if (global_data::create()) {
+                    builders.fetch_add(1, std::memory_order_relaxed);
+                }
+            });
+        }
+
+        for (auto& racer : racers) {
+            racer.join();
+        }
+
+        CHECK(CreateCallCount.load(std::memory_order_relaxed) == 1);
+        // Exactly one caller is told the set is its own, so exactly one tears it down
+        CHECK(builders.load(std::memory_order_relaxed) == 1);
     }
 }
 

@@ -11,9 +11,19 @@ on:
   push:
     branches: [master]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Validation scope
+        type: choice
+        default: all
+        options:
+          - all
+          - managed-apple
 
 jobs:
   check-formatting:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Check formatting
     runs-on: ubuntu-24.04
     defaults:
@@ -25,6 +35,7 @@ jobs:
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
   unit-tests:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Run unit tests
     runs-on: ubuntu-24.04
     defaults:
@@ -35,6 +46,7 @@ jobs:
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: BuildTools/validate.sh unit-tests
   unit-tests-sanitizers:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Run unit tests (${{matrix.sanitizer}} sanitizer)
     runs-on: ubuntu-24.04
     defaults:
@@ -54,6 +66,7 @@ jobs:
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: BuildTools/validate.sh unit-tests-san-${{matrix.sanitizer}}
   code-coverage:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Run code coverage
     runs-on: ubuntu-24.04
     defaults:
@@ -63,11 +76,30 @@ jobs:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: BuildTools/validate.sh code-coverage
-    - uses: codecov/codecov-action@v4
+    - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
+  windows-file-io:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
+    name: Probe native Windows file paths
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+    - name: Compare file open and directory enumeration with both CRTs
+      run: python BuildTools/probe_windows_file_io.py --output Workspace/windows-file-io.json
+    - uses: actions/upload-artifact@v6
+      if: always()
+      with:
+        name: windows-file-io
+        path: Workspace/windows-file-io*
+        if-no-files-found: error
   windows:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Windows validate (${{ matrix.app }})
     runs-on: windows-2025
     strategy:
@@ -84,6 +116,7 @@ jobs:
     - uses: actions/checkout@v6
     - run: BuildTools/validate.cmd ${{matrix.app}}
   ubuntu:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Ubuntu validate (${{ matrix.app }})
     runs-on: ubuntu-24.04
     defaults:
@@ -124,6 +157,7 @@ jobs:
     - run: BuildTools/prepare-workspace.sh ${{ matrix.prepare }}
     - run: BuildTools/validate.sh ${{matrix.app}}
   macos:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: macOS validate (${{ matrix.runner }} / ${{ matrix.app }})
     runs-on: ${{ matrix.runner }}
     defaults:
@@ -144,3 +178,34 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/validate.sh ${{matrix.app}}
+  managed-apple:
+    if: ${{github.event_name == 'workflow_dispatch' && (!inputs.job || inputs.job == 'all' || inputs.job == 'managed-apple')}}
+    name: Managed Apple validate (${{ matrix.runner }} / ${{ matrix.app }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - runner: macos-26-intel
+          app: managed-mac-client
+        - runner: macos-26
+          app: managed-mac-client
+        - runner: macos-26-intel
+          app: managed-ios-simulator-client
+        - runner: macos-26
+          app: managed-ios-device-client
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+    - name: Check available build storage
+      run: df -h .
+    - run: BuildTools/validate.sh ${{matrix.app}}
+    - name: Record remaining build storage
+      if: always()
+      run: df -h .

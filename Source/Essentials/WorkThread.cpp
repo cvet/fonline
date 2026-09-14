@@ -285,11 +285,16 @@ void work_thread::thread_entry() noexcept
                     }
                 }
                 catch (const std::exception& ex) {
-                    // Exception handling
+                    // A handler owns the reporting: it knows what the failure means to its owner and when to
+                    // say so, and reporting here too would repeat it behind everything the handler set going
+                    bool handled = false;
+
                     {
                         scoped_lock locker {_data_locker};
 
                         if (_exception_handler) {
+                            handled = true;
+
                             try {
                                 if (_exception_handler(ex)) {
                                     _jobs.clear();
@@ -301,7 +306,9 @@ void work_thread::thread_entry() noexcept
                         }
                     }
 
-                    exceptions::report_and_continue(ex);
+                    if (!handled) {
+                        exceptions::report_and_continue(ex);
+                    }
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();

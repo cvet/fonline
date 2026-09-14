@@ -310,7 +310,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DumpAtlases(ptr<ClientEngine> client)
 {
-    client->SprMngr.GetAtlasMngr()->DumpAtlases();
+    client->SprMngr.GetAtlasMngr()->DumpAtlases(client->Settings->UserWritablePath);
 }
 
 ///@ ExportMethod
@@ -871,6 +871,26 @@ FO_SCRIPT_API void Client_Game_SimulateTouchUp(ptr<ClientEngine> client, int64_t
 FO_SCRIPT_API void Client_Game_SimulateTouchTap(ptr<ClientEngine> client, ipos32 pos)
 {
     client->ProcessInputEvent(InputEvent {InputEvent::TouchTapEvent {pos.x, pos.y}});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateDisconnect(ptr<ClientEngine> client)
+{
+    // Delivers the notification a real disconnect ends with, leaving the connection itself alone, the way
+    // simulated input delivers a key without a keyboard: a test of the reaction must not end its own session
+    client->OnDisconnected.Fire();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateConnectingFailed(ptr<ClientEngine> client)
+{
+    client->OnConnectingFailed.Fire();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateInfoMessage(ptr<ClientEngine> client, EngineInfoMessage infoMessage, string_view extraText = "")
+{
+    client->OnInfoMessage.Fire(infoMessage, string(extraText));
 }
 
 ///@ ExportMethod
@@ -1568,7 +1588,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    string path = strex(filePath).format_path().str();
+    string path = fs::make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
@@ -1583,9 +1603,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
 {
-    ignore_unused(client);
-
-    string path = strex(filePath).format_path().str();
+    string path = fs::make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {

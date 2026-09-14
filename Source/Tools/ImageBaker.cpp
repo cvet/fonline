@@ -61,7 +61,7 @@ struct SpriteInfoBakingStats
 };
 
 // clang-format off
-alignas(ucolor) static uint8_t FoPalette[] = {
+alignas(ucolor) static const uint8_t FoPalette[] = {
     // Transparent color
     0x00, 0x00, 0x00, 0x00,
     // Default colors
@@ -852,7 +852,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Make palette
-        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
+        const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -867,7 +867,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
             }
 
             custom_palette[0] = ucolor {0};
-            palette = span<ucolor> {custom_palette};
+            palette = const_span<ucolor> {custom_palette};
         }
 
         for (uint16_t frm = 0; frm < frm_count; frm++) {
@@ -1117,7 +1117,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Make palette
-        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
+        const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -1132,7 +1132,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
             }
 
             custom_palette[0] = ucolor {0};
-            palette = span<ucolor> {custom_palette};
+            palette = const_span<ucolor> {custom_palette};
         }
 
         for (uint16_t frm = 0; frm < frm_count; frm++) {
@@ -2696,7 +2696,6 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
             {
                 ignore_unused(png_ptr);
                 ignore_unused(error_msg);
-                // logging::write("PNG loading warning: {}", error_msg);
             }
         };
 

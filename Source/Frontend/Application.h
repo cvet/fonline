@@ -840,7 +840,9 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
 void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
 void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
 auto GetExeLogFileName() -> string;
-void ResolveUserWritablePath(GlobalSettings& settings);
+// The one answer to "where may this process write": the command line, else the installer marker beside
+// the executable, else the working directory - settings-free, so it holds before anything is read
+auto ResolveWritableRoot(CommandLineArgs args) -> string;
 auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 auto IsQuitSignalReceived() noexcept -> bool;
 

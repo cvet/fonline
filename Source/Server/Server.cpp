@@ -32,12 +32,14 @@
 //
 
 #include "Server.h"
+#include "AngelScriptBackend.h"
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "Application.h"
 #include "ClientDataValidation.h"
 #include "EntitySync.h"
 #include "ImGuiStuff.h"
+#include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "PropertiesSerializer.h"
@@ -59,22 +61,70 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources) :
+static void ValidateServerSnapshotState(const ServerSnapshotState& state)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (state.FormatVersion != ServerSnapshotState::FORMAT_VERSION) {
+        throw ServerSnapshotException("Unsupported server snapshot format version", state.FormatVersion);
+    }
+    if (state.CompatibilityVersion.empty() || state.CompatibilityVersion.size() > 512) {
+        throw ServerSnapshotException("Invalid snapshot compatibility version");
+    }
+    if (state.MetadataVersion.empty() || state.MetadataVersion.size() > 512) {
+        throw ServerSnapshotException("Invalid snapshot metadata version");
+    }
+    if (state.SynchronizedTime.milliseconds() < 0) {
+        throw ServerSnapshotException("Invalid snapshot synchronized time", state.SynchronizedTime);
+    }
+    if (state.LastEntityId.underlying_value() < 0) {
+        throw ServerSnapshotException("Invalid snapshot entity id boundary", state.LastEntityId);
+    }
+    if (std::ranges::all_of(state.RandomState, [](uint64_t part) { return part == 0; })) {
+        throw ServerSnapshotException("Invalid snapshot random state: every generator word is zero");
+    }
+}
+
+ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot) :
     BaseEngine(settings, std::move(resources), [&] { RegisterServerMetadata(this, &resources); }),
     EntityMngr(make_ptr(this)),
     MapMngr(make_ptr(this)),
     CrMngr(make_ptr(this)),
-    ItemMngr(make_ptr(this))
+    ItemMngr(make_ptr(this)),
+    _restoreSnapshot {std::move(restore_snapshot)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    SetStartingUp(true);
 
     logging::write("Start server");
     logging::write("Updater version: {}", FO_UPDATER_VERSION);
     logging::write("Compatibility version: {}", Settings->CompatibilityVersion);
     logging::write("Metadata version: {}", GetMetadataVersion());
 
+    if (_restoreSnapshot) {
+        ValidateServerSnapshotState(_restoreSnapshot->State);
+
+        if (_restoreSnapshot->Payload.empty()) {
+            throw ServerSnapshotException("Snapshot restore requires a database payload");
+        }
+        if (_restoreSnapshot->State.CompatibilityVersion != Settings->CompatibilityVersion) {
+            throw ServerSnapshotException("Snapshot compatibility version mismatch", _restoreSnapshot->State.CompatibilityVersion, Settings->CompatibilityVersion);
+        }
+        if (_restoreSnapshot->State.MetadataVersion != GetMetadataVersion()) {
+            throw ServerSnapshotException("Snapshot metadata version mismatch", _restoreSnapshot->State.MetadataVersion, GetMetadataVersion());
+        }
+
+        try {
+            RestoreRandomState(_restoreSnapshot->State.RandomState);
+        }
+        catch (const std::exception& ex) {
+            throw ServerSnapshotException("Snapshot random state is invalid", ex.what());
+        }
+    }
+
     _starter.set_exception_handler([this](const std::exception& ex) FO_DEFERRED {
-        ignore_unused(ex);
+        exceptions::report_and_continue(ex);
 
         _startingError = true;
 
@@ -236,7 +286,8 @@ auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
     }
 
     auto exe_path = platform::get_exe_path();
-    _healthFileName = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
+    string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME)).str();
+    _healthFileName = fs::make_writable_path(Settings->UserWritablePath, health_file_name);
 
     if (WriteHealthFile("Starting...")) {
         _mainWorker.add_job(WrapJobWithSync([this]() FO_DEFERRED { return HealthFileJob(); }));
@@ -307,6 +358,9 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, *Settings, Resources);
 #endif
+#if FO_MANAGED_SCRIPTING
+    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
+#endif
 
     return std::nullopt;
 }
@@ -330,18 +384,17 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
         return std::nullopt;
     }
 
+    auto on_connection = [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); };
+
     if (Settings->EnableUdp) {
-        unique_ptr<NetworkServer> udp_server = NetworkServer::StartUdpSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-        _connectionServers.emplace_back(std::move(udp_server));
+        StartConnectionServer("UDP", [&] { return NetworkServer::StartUdpSocketsServer(Settings, on_connection); });
     }
 
 #if FO_HAVE_ASIO
-    unique_ptr<NetworkServer> asio_server = NetworkServer::StartAsioServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-    _connectionServers.emplace_back(std::move(asio_server));
+    StartConnectionServer("TCP", [&] { return NetworkServer::StartAsioServer(Settings, on_connection); });
 #endif
 #if FO_HAVE_WEB_SOCKETS
-    unique_ptr<NetworkServer> web_sockets_server = NetworkServer::StartWebSocketsServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-    _connectionServers.emplace_back(std::move(web_sockets_server));
+    StartConnectionServer("WebSockets", [&] { return NetworkServer::StartWebSocketsServer(Settings, on_connection); });
 #endif
 
     return std::nullopt;
@@ -415,6 +468,13 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
         FO_VERIFY_AND_THROW(IsAppInitialized(), "App is not initialized");
         GetApp()->RequestQuit(false);
     });
+
+    if (_restoreSnapshot) {
+        // The world is replaced before anything reads it, and the payload is released right after so a
+        // long-lived server does not keep a second copy of the whole database in memory
+        DbStorage.RestoreSnapshot(_restoreSnapshot->Payload);
+        _restoreSnapshot->Payload = {};
+    }
 
     return std::nullopt;
 }
@@ -606,12 +666,24 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             }
         }
 
+        if (_restoreSnapshot) {
+            if (globals_doc.Empty()) {
+                throw ServerInitException("Snapshot restore requires a stored global state");
+            }
+            if (GetSynchronizedTime() != _restoreSnapshot->State.SynchronizedTime) {
+                throw ServerInitException("Snapshot synchronized time does not match its database payload", GetSynchronizedTime(), _restoreSnapshot->State.SynchronizedTime);
+            }
+            if (GetLastEntityId() != _restoreSnapshot->State.LastEntityId) {
+                throw ServerInitException("Snapshot entity id boundary does not match its database payload", GetLastEntityId(), _restoreSnapshot->State.LastEntityId);
+            }
+        }
+
         GameTime.SetSynchronizedTime(GetSynchronizedTime());
         FrameAdvance();
 
         // Worker pool
         int32_t worker_threads = Settings->SingleThreadedLogic ? 1 : Settings->WorkerThreads;
-        _workerPool.emplace("ServerPool", worker_threads, &_shutdownInProgress, /*start_paused*/ true);
+        _workerPool.emplace("ServerPool", worker_threads, _shutdownInProgress.as_ptr(), /*start_paused*/ true);
 
         TimeEventManager::DispatcherHooks hooks;
         hooks.Schedule = [this](refcount_ptr<Entity> entity, uint32_t event_id, timespan delay) { OnTimeEventSchedule(std::move(entity), event_id, delay); };
@@ -706,6 +778,7 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 
     // Set started flag AFTER workerPool is resumed and mainWorker has jobs queued so
     // external observers (tests, network OnNewConnection) only see a fully-running server
+    SetStartingUp(false);
     _started = true;
 
     return std::nullopt;
@@ -1026,6 +1099,15 @@ auto ServerEngine::GetCompletedServerJobsCount() const -> uint64_t
     return _completedServerStatsJobs.load(std::memory_order_relaxed);
 }
 
+auto ServerEngine::IsConnectionAdmissionOpen() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_connectionAdmissionLocker};
+
+    return _connectionAdmissionOpen && _started && !IsShutdownInProgress();
+}
+
 // Zero until the pool is created in InitMetadataJob, so an aborted startup reports no workers rather than faulting
 auto ServerEngine::GetWorkerThreadCount() const -> int32_t
 {
@@ -1038,9 +1120,13 @@ void ServerEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(!GetCurrentSyncContext(), "Server shutdown must be requested outside a server execution context");
+
+    scoped_lock quiescence_locker {_quiescenceLocker};
+
     logging::write("Stop server");
 
-    _shutdownInProgress.store(true, std::memory_order_release);
+    _shutdownInProgress->store(true, std::memory_order_release);
 
     // Shutdown runs on a caller thread with no SyncContext, so one is stood up here to satisfy the invariant
     // that any entity touch happens under a primary context
@@ -1295,6 +1381,157 @@ void ServerEngine::Unlock()
     }
 }
 
+auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!callback) {
+        throw ServerQuiescenceException("Server quiescence requires a callback");
+    }
+    if (GetCurrentSyncContext()) {
+        throw ServerQuiescenceException("Server quiescence must be requested outside a server execution context");
+    }
+
+    scoped_lock quiescence_locker {_quiescenceLocker};
+
+    if (!_started || IsShutdownInProgress()) {
+        throw ServerQuiescenceException("Server quiescence requires a running server");
+    }
+    if (GameTime.IsPaused()) {
+        throw ServerQuiescenceException("Server game timer is already paused");
+    }
+
+    bool admission_was_open;
+    {
+        scoped_lock admission_locker {_connectionAdmissionLocker};
+        admission_was_open = _connectionAdmissionOpen;
+        _connectionAdmissionOpen = false;
+    }
+
+    auto restore_admission = scope_exit([this, admission_was_open]() noexcept {
+        safe_call([this, admission_was_open] {
+            scoped_lock admission_locker {_connectionAdmissionLocker};
+            _connectionAdmissionOpen = admission_was_open;
+        });
+    });
+
+    if (!Lock(max_wait_time)) {
+        return false;
+    }
+
+    auto unlock = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+
+    GameTime.Pause();
+    auto resume_time = scope_exit([this]() noexcept { safe_call([this] { GameTime.Resume(); }); });
+
+    _workerPool->FreezeSchedulingTime();
+    auto resume_scheduling_time = scope_exit([this]() noexcept { safe_call([this] { _workerPool->ResumeSchedulingTime(); }); });
+
+    vector<refcount_ptr<Player>> not_logged_in_players;
+    {
+        scoped_lock locker {_notLoggedInPlayersLocker};
+        not_logged_in_players = _notLoggedInPlayers;
+    }
+
+    SyncWholeWorld(*RequireCurrentSyncContext(), not_logged_in_players);
+
+    ServerQuiescenceState state;
+    state.SynchronizedTime = GameTime.GetSynchronizedTime();
+    state.RandomState = CaptureRandomState();
+
+    callback(state);
+    return true;
+}
+
+auto ServerEngine::CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(GameTime.IsPaused(), "Snapshot eligibility requires a paused game timer");
+    FO_VERIFY_AND_THROW(_workerPool, "Snapshot eligibility requires an initialized worker pool");
+
+    vector<ServerSnapshotBlocker> blockers;
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    if (auto backend = GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX); backend) {
+        if (auto context_mngr = backend->GetContextMngr(); context_mngr) {
+            auto diagnostics = context_mngr->GetDiagnostics();
+
+            if (diagnostics.SuspendedContexts != 0) {
+                blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::SuspendedScriptContexts, .Count = diagnostics.SuspendedContexts});
+            }
+            if (diagnostics.ActiveContexts != 0) {
+                blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::ActiveScriptContexts, .Count = diagnostics.ActiveContexts});
+            }
+            if (diagnostics.OtherBusyContexts != 0) {
+                blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::RetainedScriptContexts, .Count = diagnostics.OtherBusyContexts});
+            }
+        }
+    }
+#endif
+
+    auto worker_diagnostics = _workerPool->GetDiagnostics();
+
+    if (worker_diagnostics.AnonymousScheduledJobs != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::DelayedCallbacks, .Count = worker_diagnostics.AnonymousScheduledJobs});
+    }
+
+    auto time_event_diagnostics = TimeEventMngr.GetDiagnostics();
+
+    if (time_event_diagnostics.EventCount != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::TimeEvents, .Count = time_event_diagnostics.EventCount});
+    }
+
+    size_t moving_critters = 0;
+
+    for (const auto& critter : EntityMngr.GetCritters()) {
+        if (!critter->IsDestroyed() && critter->IsMoving()) {
+            moving_critters++;
+        }
+    }
+
+    if (moving_critters != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::CritterMovements, .Count = moving_critters});
+    }
+
+    return blockers;
+}
+
+auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ServerSnapshotCaptureResult result;
+    result.ReachedQuiescence = RunInQuiescence(max_wait_time, [&](const ServerQuiescenceState& quiescence_state) {
+        result.Blockers = CollectSnapshotBlockers();
+
+        if (!result.Blockers.empty()) {
+            return;
+        }
+
+        EntityMngr.FlushExactEntityId();
+        FlushExactSyncTime();
+
+        ServerSnapshotState state;
+        state.CompatibilityVersion = Settings->CompatibilityVersion;
+        state.MetadataVersion = string {GetMetadataVersion()};
+        state.SynchronizedTime = quiescence_state.SynchronizedTime;
+        state.LastEntityId = GetLastEntityId();
+        state.RandomState = quiescence_state.RandomState;
+
+        result.Payload = DbStorage.CreateSnapshot();
+
+        if (result.Payload.empty()) {
+            throw ServerSnapshotException("Snapshot database payload is empty");
+        }
+
+        ValidateServerSnapshotState(state);
+        result.State = std::move(state);
+    });
+
+    return result;
+}
+
 void ServerEngine::SyncPoint()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1481,6 +1718,7 @@ void ServerEngine::DrawGui()
             info_row("Worker pool queued keys", has_worker_pool ? strex("{}", worker_pool_diagnostics.QueuedKeys).str() : string("n/a"));
             info_row("Worker pool active workers", has_worker_pool ? strex("{}", worker_pool_diagnostics.ActiveWorkers).str() : string("n/a"));
             info_row("Worker pool paused", has_worker_pool ? strex("{}", worker_pool_diagnostics.Paused).str() : string("n/a"));
+            info_row("Worker pool scheduling time frozen", has_worker_pool ? strex("{}", worker_pool_diagnostics.SchedulingTimeFrozen).str() : string("n/a"));
             info_row("CPU system load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuSystemLoad)).str() : string("n/a"));
             info_row("CPU process load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessLoad)).str() : string("n/a"));
             info_row("CPU process core load", _stats.CpuUsageAvailable ? strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessCoreLoad)).str() : string("n/a"));
@@ -1869,11 +2107,42 @@ auto ServerEngine::EvaluateConnectionRate(ConnRateState& state, int64_t now_sec,
     return state.Count <= rate_per_sec;
 }
 
+void ServerEngine::StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::chrono::milliseconds retry_delay {std::max(Settings->ListenRetryDelay, 1)};
+    nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ListenRetryTime, 0)};
+
+    for (int32_t attempt = 1;; attempt++) {
+        try {
+            _connectionServers.emplace_back(start());
+
+            if (attempt != 1) {
+                logging::write("Listener {} started on attempt {}", what, attempt);
+            }
+
+            break;
+        }
+        catch (const std::exception&) {
+            if (nanotime::now() >= deadline) {
+                logging::write("Listener {} did not start within {} ms of retries", what, std::max(Settings->ListenRetryTime, 0));
+                throw;
+            }
+
+            logging::write("Listener {} did not start on attempt {}, retrying in {} ms", what, attempt, retry_delay.count());
+            coarse_sleep(retry_delay);
+        }
+    }
+}
+
 void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_started || _shutdownInProgress) {
+    unique_lock admission_locker {_connectionAdmissionLocker};
+
+    if (!_connectionAdmissionOpen || !_started || IsShutdownInProgress()) {
         net_connection->Disconnect();
         return;
     }

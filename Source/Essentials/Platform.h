@@ -89,6 +89,9 @@ namespace platform
 
     // Windows: LoadLibraryW family; Linux and macOS: dlopen family; other: nullptr
     auto load_module(const string& module_name) noexcept -> nptr<void>;
+    // For a module that must never be unmapped, such as an engine library: statically linked runtimes install
+    // process-wide hooks into it that cannot be withdrawn. unload_module on the handle leaves it mapped
+    auto load_pinned_module(const string& module_name) noexcept -> nptr<void>;
     void unload_module(nptr<void> module_handle) noexcept;
     auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
     template<typename T>
