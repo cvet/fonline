@@ -312,9 +312,23 @@ For a generic ref-result overload, managed lookup first preserves the traditiona
 the mutable result. If that shape is absent, it invokes a synchronous managed method against the input arguments
 and copies its return value into the ref result before considering the native fallback.
 
-`Game.Invoke` considers only static methods carrying `[CallableByName]`; the marker does not register a method in
-the native global-function map. An embedding project that exposes selected methods to native lookup uses its own
-additional marker and registrar; Last Frontier calls that project-owned marker `[CallableFromNative]`.
+Three markers cover the three ways a managed method is reached by name, and none of them implies another:
+
+- `[CallableByName]` admits a static method to managed `Game.Invoke` / `Game.InvokeAsync`, which find it by
+  reflection. It publishes nothing in the native global-function map.
+- `[CallableFromNative]` publishes a script method in that map under its `Module::Func` name during
+  `InitializeEarly` (`ScriptFuncRegistration.RegisterEngineAttributeFuncs`), so the engine, embedding C++ and
+  `Native.InvokeScriptFunc` resolve it through `ScriptSystem::FindFunc`. A method called both ways carries both.
+- `[CallableByEngine]`, described below, marks the backend's own entries and registers nothing.
+
+`[CallableByEngine]` is engine-internal and registers nothing. It marks a method `ManagedScriptBackend.cpp`
+resolves itself through Mono metadata of its declaring class (`mono_class_get_method_from_name`): the `Native`
+helpers, `Initializator.InitializeEarly` / `Initialize`, and the `ManagedLoadContextHost` entries. Nothing in managed
+code calls these methods and native code never checks the marker, so it is a hint telling a reader that their name
+and parameter count are relied on natively. Script code reached from native code uses `[CallableFromNative]` instead. The load-context host is
+compiled from its own source file and cannot see CoreScripts, so it declares a private copy of the marker.
+Constructors the backend looks up (`.ctor` on a generated wrapper) are outside this contract: the generator owns
+both sides of that shape.
 
 Managed named invocation resolves qualified module names directly and short names within the current entry
 assembly. Its type and method-candidate caches belong to that backend's load context. Candidate compatibility

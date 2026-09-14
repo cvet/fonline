@@ -73,6 +73,7 @@ internal static class Native
                                            null)!;
     }
 
+    [CallableByEngine]
     internal static EventResult InvokeEvent(Delegate handler, bool hasExplicitResult, object?[] args)
     {
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasExplicitResult);
@@ -116,6 +117,7 @@ internal static class Native
         }
     }
 
+    [CallableByEngine]
     internal static object? InvokeCallback(Delegate handler, object?[] args)
     {
         MethodInfo delegateInvoke = handler.GetType().GetMethod("Invoke") ??
@@ -164,11 +166,13 @@ internal static class Native
         }
     }
 
+    [CallableByEngine]
     internal static void PumpContinuations()
     {
         ScriptSynchronizationContext.Pump();
     }
 
+    [CallableByEngine]
     internal static void ShutdownContinuations()
     {
         ScriptSynchronizationContext.Shutdown();
@@ -361,16 +365,19 @@ internal static class Native
                (exception is AggregateException aggregate && aggregate.InnerExceptions.Count == 1);
     }
 
+    [CallableByEngine]
     internal static bool IsList(object value)
     {
         return value is IList;
     }
 
+    [CallableByEngine]
     internal static bool IsDictionary(object value)
     {
         return value is IDictionary;
     }
 
+    [CallableByEngine]
     internal static bool IsDelegate(object value)
     {
         return value is Delegate;
@@ -422,6 +429,7 @@ internal static class Native
         return "[" + name + "]";
     }
 
+    [CallableByEngine]
     internal static string GetDelegateKey(Delegate handler)
     {
         if (handler == null) {
@@ -456,21 +464,25 @@ internal static class Native
         return key;
     }
 
+    [CallableByEngine]
     internal static int GetListCount(object value)
     {
         return ((IList)value).Count;
     }
 
+    [CallableByEngine]
     internal static object? GetListItem(object value, int index)
     {
         return ((IList)value)[index];
     }
 
+    [CallableByEngine]
     internal static int GetDictionaryCount(object value)
     {
         return ((IDictionary)value).Count;
     }
 
+    [CallableByEngine]
     internal static object GetDictionaryKey(object value, int index)
     {
         int i = 0;
@@ -485,6 +497,7 @@ internal static class Native
         throw new ArgumentOutOfRangeException(nameof(index));
     }
 
+    [CallableByEngine]
     internal static object? GetDictionaryValue(object value, int index)
     {
         int i = 0;
@@ -499,27 +512,32 @@ internal static class Native
         throw new ArgumentOutOfRangeException(nameof(index));
     }
 
+    [CallableByEngine]
     internal static object CreateList(Type elementType)
     {
         return Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType))!;
     }
 
+    [CallableByEngine]
     internal static void AddListItem(object list, object value)
     {
         ((IList)list).Add(value);
     }
 
+    [CallableByEngine]
     internal static object CreateDictionary(Type keyType, Type valueType)
     {
         return Activator.CreateInstance(typeof(Dictionary<, >).MakeGenericType(keyType, valueType))!;
     }
 
+    [CallableByEngine]
     internal static object CreateDictionaryOfList(Type keyType, Type elementType)
     {
         Type listType = typeof(List<>).MakeGenericType(elementType);
         return Activator.CreateInstance(typeof(Dictionary<, >).MakeGenericType(keyType, listType))!;
     }
 
+    [CallableByEngine]
     internal static void AddDictionaryItem(object dictionary, object key, object value)
     {
         ((IDictionary)dictionary).Add(key, value);

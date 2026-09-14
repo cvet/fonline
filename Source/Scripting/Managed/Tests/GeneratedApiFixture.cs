@@ -8,7 +8,7 @@ internal static class Native
     public static readonly System.Collections.Generic.List<string> RegisteredFunctions = new();
     public static readonly System.Collections.Generic.List<string> RegisteredRemoteCalls = new();
     public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result,
-                                                Delegate handler) => RegisteredFunctions.Add(name);
+                                                Delegate handler) => RegisteredFunctions.Add(name + ":" + attribute);
     public static void RegisterRemoteCallHandler(string name, int parameters,
                                                  Delegate handler) => RegisteredRemoteCalls.Add(name);
     public static int FallbackCalls;

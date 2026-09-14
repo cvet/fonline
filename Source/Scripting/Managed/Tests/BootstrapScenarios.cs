@@ -63,7 +63,12 @@ internal static class BootstrapScenarios
                 }
             }
             else if (OwnershipProbe.Initialized != 1 ||
-                     !Native.RegisteredFunctions.SequenceEqual(new[] { "OwnershipProbe::Registered" }) ||
+                     !Native.RegisteredFunctions
+                          .Where(name => name.StartsWith("OwnershipProbe::", StringComparison.Ordinal))
+                          .SequenceEqual(new[] {
+                              "OwnershipProbe::NativeEntry:CallableFromNative",
+                              "OwnershipProbe::Registered:BootstrapHandler",
+                          }) ||
                      !Native.RegisteredRemoteCalls.SequenceEqual(new[] { "RemoteProbe" })) {
                 throw new InvalidOperationException(
                     "Managed initialization and registrations depend on the working directory");
@@ -108,6 +113,18 @@ internal static class OwnershipProbe
 
     [BootstrapHandler]
     public static void Registered()
+    {
+    }
+
+    // Native code reaches it by name, so it is published in the global function map
+    [CallableFromNative]
+    public static void NativeEntry()
+    {
+    }
+
+    // Game.Invoke finds it by reflection; nothing is published for it
+    [CallableByName]
+    public static void NamedOnly()
     {
     }
 
