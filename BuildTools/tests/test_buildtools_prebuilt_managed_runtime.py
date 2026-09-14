@@ -112,6 +112,7 @@ def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, 
 
 @pytest.mark.parametrize("target,legacy_apple_patch", [
     ("linux", False),
+    ("browser", False),
     ("android", False), ("osx", False), ("ios", False), ("iossimulator", False),
     ("osx", True), ("ios", True), ("iossimulator", True),
 ])
@@ -121,7 +122,12 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     runtime = workspace / "runtime"
     runtime.mkdir(parents=True)
     triplet = f"{target}.x64.Release"
-    previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + ("_apple_sources" if legacy_apple_patch else "")
+    if target == "browser":
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_wasmglue"
+    elif legacy_apple_patch:
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_apple_sources"
+    else:
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX
     (workspace / "CLONED_v10.0.11").touch()
     for phase in ("BUILT", "READY"):
         (workspace / f"{phase}_v10.0.11_{triplet}{previous_suffix}").touch()
@@ -146,10 +152,20 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         corelib.write_text("patched corelib", encoding="utf-8")
 
     monkeypatch.setattr(_buildtools, "clone_git_repo", reject_clone)
-    for name in ("patch_runtime_zlib_warning_level", "patch_runtime_linux_signal_actions", "patch_runtime_apple_sources", "patch_runtime_ios_sources", "patch_runtime_android_sources", "patch_runtime_android_x86_atomics"):
+    patch_names = (
+        "patch_runtime_zlib_warning_level",
+        "patch_runtime_browser_asm_compiler",
+        "patch_runtime_linux_signal_actions",
+        "patch_runtime_apple_sources",
+        "patch_runtime_ios_sources",
+        "patch_runtime_android_sources",
+        "patch_runtime_android_x86_atomics",
+    )
+    for name in patch_names:
         monkeypatch.setattr(_buildtools, name, lambda path, name=name: calls.append(name))
     monkeypatch.setattr(_buildtools, "run_runtime_build", build)
     monkeypatch.setattr(_buildtools, "copy_interop_shim_libraries", lambda *args: calls.append("publish"))
+    monkeypatch.setattr(_buildtools, "copy_browser_runtime_glue", lambda *args: None)
     resolve = _buildtools.resolve_mono_marker_suffix
     with monkeypatch.context() as old_markers:
         old_markers.setattr(_buildtools, "resolve_mono_marker_suffix", lambda _target: previous_suffix)
@@ -157,7 +173,8 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     assert calls == [] and archive.read_text() == "archive"
     _buildtools.setup_mono(target, "x64", "Release", env)
     assert archive.read_text() == "patched runtime"
-    expected_patch = (["patch_runtime_linux_signal_actions"] if target == "linux" else
+    expected_patch = (["patch_runtime_browser_asm_compiler"] if target == "browser" else
+                      ["patch_runtime_linux_signal_actions"] if target == "linux" else
                       ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics"] if target == "android" else
                       ["patch_runtime_apple_sources"])
     if target in ("ios", "iossimulator"):
@@ -202,6 +219,43 @@ def test_mono_patch_fails_loudly_when_the_anchor_moves(tmp_path: Path) -> None:
 
     with pytest.raises(SystemExit):
         _buildtools.patch_runtime_sources(tmp_path)
+
+
+def test_browser_mono_inherits_the_identified_c_compiler_for_asm(tmp_path: Path) -> None:
+    cmake_lists = tmp_path / "src/mono/mono/utils/CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    cmake_lists.write_text(
+        "elseif(HOST_WASM)\n"
+        '    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+        '    set (CMAKE_ASM_COMPILER_TARGET "${CMAKE_C_COMPILER_TARGET}")\n'
+        "    enable_language(ASM)\n"
+        "endif()\n",
+        encoding="utf-8",
+    )
+
+    _buildtools.patch_runtime_browser_asm_compiler(tmp_path)
+    patched = cmake_lists.read_text(encoding="utf-8")
+
+    assert 'set (CMAKE_ASM_COMPILER_ID "${CMAKE_C_COMPILER_ID}")' in patched
+    assert "(FOnline Patch) Generic ASM uses the already identified Emscripten C compiler" in patched
+    assert patched.index("CMAKE_ASM_COMPILER_ID") < patched.index("enable_language(ASM)")
+
+    _buildtools.patch_runtime_browser_asm_compiler(tmp_path)
+    assert cmake_lists.read_text(encoding="utf-8") == patched
+
+
+@pytest.mark.parametrize("anchor_count", [0, 2])
+def test_browser_mono_asm_patch_requires_a_unique_anchor(tmp_path: Path, anchor_count: int) -> None:
+    cmake_lists = tmp_path / "src/mono/mono/utils/CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    anchor = 'elseif(HOST_WASM)\n    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+    original = anchor * anchor_count
+    cmake_lists.write_text(original, encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="unique anchor not found"):
+        _buildtools.patch_runtime_browser_asm_compiler(tmp_path)
+
+    assert cmake_lists.read_text(encoding="utf-8") == original
 
 
 def test_mono_linux_signal_actions_are_initialized_for_msan(tmp_path: Path) -> None:

@@ -91,7 +91,7 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
-Runtime overrun diagnostics use `Script.OverrunReportTime` as an independent threshold for two measurements.
+Runtime overrun diagnostics use `Script.AngelScriptOverrunReportTime` as an independent threshold for two measurements.
 `Script execution overrun` reports wall time after subtracting the server synchronization context's accumulated
 entity-lock wait, while `Script lock wait overrun` reports the contention component itself. Both messages include
 execution, lock-wait, and total wall durations, so a compute-heavy function and a wait-heavy function remain
@@ -408,7 +408,7 @@ Managed remote-call registration accepts `void`, `Task`, and `Task<T>` handlers 
 
 Managed `hstring` values are exposed to C# as value-type hashes, while construction, `hstring.ToString()`, and `Game.GetHashStr()` use the active backend's ordinary `EngineMetadata::Hashes`. Static C# `hstring` fields initialize independently in each backend load context, so their literals are interned directly into that engine instance; there is no process-wide managed literal table or cross-engine fallback. Value structs with `hstring` fields, such as `LanguageName`, convert native `hstring` entries to managed hashes and back explicitly instead of copying raw native `hstring` bytes.
 
-Managed `StringExtensions` mirror selected AngelScript string helpers in C#. UTF-8 byte-buffer helpers such as `rawLength()`, `rawGet()`, `rawResize()`, and `rawSet()` intentionally preserve the AngelScript raw-string contract; because C# strings are immutable, `rawResize()` and `rawSet()` return the rebuilt string and the port tool rewrites statement-form calls into receiver assignments. Parsing helpers such as `tryToInt()` and `toInt()` accept nullable managed receivers, so nullable callback payloads and `object.ToString()` results follow the normal failed-parse/default path. `hstr()` also accepts nullable managed receivers and hashes the empty string when the receiver is null.
+Managed CoreScripts do not mirror AngelScript's string, array or dictionary members; managed code uses the BCL for them. The `hstr()` string extension accepts nullable managed receivers and hashes the empty string when the receiver is null.
 
 Managed `ident` has a CoreScript string constructor and `ToString()` override so string-backed `any_t` property access and GUI parameter conversion can round-trip entity identifiers without generated value-struct special cases.
 

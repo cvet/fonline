@@ -760,7 +760,7 @@ if(FO_MANAGED_SCRIPTING)
     string(REPLACE "\\" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
     # Keep in sync with buildtools.py so subset and source patches invalidate only their platforms
     if(FO_WEB)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue_asm_id)
     elseif(FO_ANDROID)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_android_sources)
     elseif(FO_MAC OR FO_IOS)

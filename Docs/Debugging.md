@@ -157,7 +157,7 @@ Current `../../.vscode/launch.json` entries use:
 
 These native launch configurations depend on `Prepare :: Launch (Debug)`, which currently bakes resources and builds the debug `LF_Server` binary before attaching the C++ debugger.
 
-The AngelScript debugger requires `Script.DebuggerEnabled = True`. The maintained native and web debug launch routes set it explicitly; ordinary `LocalTest` launches leave it disabled, and `GameplayTests` also forces it off. The TCP endpoint binds to `Script.DebuggerBindHost = 127.0.0.1` by default. Remote binding must be an explicit command-line or subconfig override on a trusted network.
+The AngelScript debugger requires `Script.AngelScriptDebuggerEnabled = True`. The maintained native and web debug launch routes set it explicitly; ordinary `LocalTest` launches leave it disabled, and `GameplayTests` also forces it off. The TCP endpoint binds to `Script.AngelScriptDebuggerBindHost = 127.0.0.1` by default. Remote binding must be an explicit command-line or subconfig override on a trusted network.
 
 ## Fast Route Selection
 
@@ -252,8 +252,8 @@ If you need to trace the current debugging flow through the live repository, sta
 Current checks worth running when debugger launch flow, attach assumptions, or troubleshooting guidance changes:
 
 - verify native, AngelScript, and web debugging entries against `../../.vscode/launch.json`, including the AngelScript discovery port `43001`; keep this guide focused on debugger route selection rather than duplicating every launch profile
-- `../../Tools/CiChecks/check_debug_workflows.py` verifies launch/task references, explicit `Script.DebuggerEnabled = True` on maintained debug routes, and rejects the obsolete debugger-setting spelling in maintained tooling
-- `../../LastFrontier.fomain` keeps ordinary launches debugger-off with a loopback bind default, while `GameplayTests` explicitly preserves `Script.DebuggerEnabled = False`
+- `../../Tools/CiChecks/check_debug_workflows.py` verifies launch/task references, explicit `Script.AngelScriptDebuggerEnabled = True` on maintained debug routes, and rejects the obsolete debugger-setting spelling in maintained tooling
+- `../../LastFrontier.fomain` keeps ordinary launches debugger-off with a loopback bind default, while `GameplayTests` explicitly preserves `Script.AngelScriptDebuggerEnabled = False`
 - `Docs/Testing.md` remains the reference for the current `LF_ServerHeadless --ApplySubConfig GameplayTests` workflow and `Validation Boundary Test Routing` table used during gameplay bug triage
 - `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` cover embedded-client interaction, GUI, and UI-text paths that are commonly rechecked when debugging workflows depend on client-visible behavior
 - `Docs/WebDebugging.md` and `Docs/AndroidDebugging.md` confirm the browser and external-device branches of the general debug-path selection table

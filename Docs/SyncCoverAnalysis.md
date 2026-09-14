@@ -191,7 +191,9 @@ version got wrong and that the self-tests pin:
   than pattern-matching the shape.
 
 A value the await itself produced, or one declared after it, is fresh and exempt — the await held no cover for
-it to lose.
+it to lose. That includes both deconstruction spellings, `(T x, bool y) = await ...` and
+`var (x, y) = await ...`: their designations end before the await in the text, so the assignment they sit in
+is what decides, not the designation's own position.
 
 What remains unmodelled is a loop whose re-proof sits at the top of the next iteration, and any path shape a
 source walk cannot see. The rule under-reports there rather than guessing.

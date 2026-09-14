@@ -69,7 +69,7 @@ auto MakeClientSessionMarkerPath(string_view writable_root) -> string
 
     // Named after the executable, so two clients sharing one root keep their own
     string marker_name = strex("{}{}", strex(GetExeLogFileName()).erase_file_extension(), SessionMarkerExtension).str();
-    return fs_make_writable_path(writable_root, marker_name);
+    return fs_resolve_path(fs_make_writable_path(writable_root, marker_name));
 }
 
 auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<PreviousClientSession>

@@ -2648,8 +2648,6 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
             }
         },
         client_facade_call);
-
-    WriteLog("Registered managed inbound remote call '{}' ({} wire arg(s), {}){}", name, inbound_call.Args.size(), server_side ? "server" : "client", client_facade_call ? ", replacing script handler" : "");
 }
 
 static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoArray* args_array)

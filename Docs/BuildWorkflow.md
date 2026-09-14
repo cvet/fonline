@@ -90,7 +90,9 @@ way for it to fail.
 
 `emsdk` and `xwin` fetch their own packages, so mirroring the engine's direct downloads does not cover
 them. Their complete prepared results are therefore what the workspace cache holds. A corrupt or incomplete
-Emscripten cache object is discarded and rebuilt locally; cache creation and upload remain best-effort.
+Emscripten cache object is discarded and rebuilt locally; cache creation and upload remain best-effort. Cache
+fills use gzip's fast level because they run on the producing job's critical path; the modestly larger object is
+amortized by every later restore and does not change the tar.gz format or cache identity.
 Cached trees are extracted through the standard data-only tar filter after a path-boundary check. Extraction
 lands in a temporary sibling first, and only the named complete SDK directory is promoted, so an archive
 cannot overwrite another prepared workspace tree. The existing xwin cache follows the same restore rule.

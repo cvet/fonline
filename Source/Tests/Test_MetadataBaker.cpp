@@ -1331,6 +1331,7 @@ TEST_CASE("MetadataBakerPreservesPropertyVersionQualifiers")
 ///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync
 ///@ Property Critter Common int16 Step Mutable Persistent PublicSync
 ///@ MigrationRule Property Critter Step LegacyStep BeforeVersion DataVersion 3270
+///@ MigrationRule Property Critter RetiredStep LegacyStep BeforeVersion DataVersion 3270
 )");
     MetadataBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
@@ -1344,6 +1345,9 @@ TEST_CASE("MetadataBakerPreservesPropertyVersionQualifiers")
         auto condition = meta.CheckMigrationRule(meta.Hashes.ToHashedString("PropertyBeforeVersion"), meta.Hashes.ToHashedString("Critter"), meta.Hashes.ToHashedString("Step"));
         REQUIRE(condition.has_value());
         CHECK(condition.value().as_str() == "DataVersion 3270");
+        auto retired_condition = meta.CheckMigrationRule(meta.Hashes.ToHashedString("PropertyBeforeVersion"), meta.Hashes.ToHashedString("Critter"), meta.Hashes.ToHashedString("RetiredStep"));
+        REQUIRE(retired_condition.has_value());
+        CHECK(retired_condition.value().as_str() == "DataVersion 3270");
         auto registrar = meta.GetPropertyRegistrar("Critter");
         REQUIRE(registrar);
         Properties props(registrar);
@@ -1351,6 +1355,7 @@ TEST_CASE("MetadataBakerPreservesPropertyVersionQualifiers")
         doc.Emplace("DataVersion", int64_t {3270});
         doc.Emplace("Step", int64_t {7});
         doc.Emplace("LegacyStep", int64_t {4});
+        doc.Emplace("RetiredStep", int64_t {9});
         REQUIRE(PropertiesSerializer::LoadFromDocument(&props, doc, meta.Hashes, meta));
         CHECK(props.GetValue<int16_t>(registrar->FindProperty("Step").as_ptr()) == 7);
         CHECK(props.GetValue<int32_t>(registrar->FindProperty("LegacyStep").as_ptr()) == 4);

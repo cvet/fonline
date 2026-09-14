@@ -21,7 +21,7 @@ def test_runtime_publish_does_not_inherit_the_outer_target_name(tmp_path, monkey
     dotnet = shutil.which("dotnet")
     if dotnet is None:
         pytest.skip("dotnet SDK is required for actual MSBuild publishing")
-    version = subprocess.check_output([dotnet, "--version"], text=True).strip()
+    version = subprocess.check_output([dotnet, "--version"], cwd=tmp_path, text=True).strip()
     framework = f"net{version.split('.')[0]}.0"
     runtime = tmp_path / "runtime with spaces"
     for name in ("Alpha", "Beta"):
