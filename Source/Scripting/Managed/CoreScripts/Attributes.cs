@@ -18,8 +18,28 @@ public sealed class EventAttribute : Attribute
 {
 }
 
+// Admits a static method to managed ScriptFunc.Invoke / ScriptFunc.InvokeAsync, which find it by reflection. It is not published
+// in the native global function map: native code reaches a script method through [CallableFromNative]
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class CallableByNameAttribute : Attribute
+{
+}
+
+// Publishes a script method in the cross-backend global function map under its `Module::Func` name, so native code
+// - the engine, embedding C++, Native.InvokeScriptFunc - resolves it through ScriptSystem::FindFunc. Independent of
+// [CallableByName]: a method called both ways carries both markers
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class CallableFromNativeAttribute : Attribute
+{
+}
+
+// Engine-internal hint for a method the managed backend resolves itself through Mono metadata of its declaring
+// class (mono_class_get_method_from_name): the Native helpers, Initializator and the load-context host entries.
+// Nothing in managed code calls such a method, so the marker is what says its name and parameter count are relied
+// on natively. Native code never checks for it and nothing is registered by it; script code reached from native
+// code uses [CallableFromNative]
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class CallableByEngineAttribute : Attribute
 {
 }
 

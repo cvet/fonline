@@ -91,6 +91,7 @@ extern auto IsValidClientRuntimeExports(const ClientRuntimeExports& exports) noe
 extern auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeMetadata& metadata, string_view compatibility_version) noexcept -> bool;
 extern auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeResult& result, string_view compatibility_version) noexcept -> bool;
 extern auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_result, ClientRuntimeHostPromoteFunc promote_runtime) -> optional<bool>;
+extern void CaptureClientRuntimeResultStrings(ClientRuntimeResult& result, string& runtime_path, string& compatibility_version);
 extern auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view;
 
 FO_END_NAMESPACE

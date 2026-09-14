@@ -65,6 +65,8 @@ struct ExceptHandlingData
     {
 #if HAS_NATIVE_TRACE
         if (!IsRunInDebugger()) {
+            // Outlives the set on purpose: crashes must be caught for the whole process, after teardown too. Its
+            // handlers stay installed, which is safe because an engine library is never unloaded
             [[maybe_unused]] static backward::SignalHandling sh;
             assert(sh.loaded());
         }
@@ -73,8 +75,6 @@ struct ExceptHandlingData
 
     std::mutex CallbackLocker {};
     ExceptionCallback Callback {};
-    optional<StackTraceData> CrashStackTrace {};
-    optional<string> CrashInfo {};
 };
 FO_GLOBAL_DATA(ExceptHandlingData, ExceptionHandling);
 
@@ -110,13 +110,18 @@ static auto GetSignalName(int32_t signum) noexcept -> string_view;
 static BackwardOStreamBuffer CrashStreamBuf;
 static auto CrashStream = std::ostream(&CrashStreamBuf); // Passed to Printer::print in backward.hpp
 
+// A crash handler fires at any moment of the process, the client host running on after its runtime tore the
+// global data down included, so the record it fills lives as long as the stream that prints it
+static optional<StackTraceData> CrashStackTrace;
+static optional<string> CrashInfo;
+
 FO_END_NAMESPACE
 extern void SetCrashStackTrace() noexcept // Called in backward.hpp
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        FO_NAMESPACE ExceptionHandling->CrashStackTrace = FO_NAMESPACE GetStackTrace();
+        FO_NAMESPACE CrashStackTrace = FO_NAMESPACE GetStackTrace();
     }
     catch (...) {
         // Best effort: keep the original fatal error alive even if stack capture fails
@@ -219,6 +224,12 @@ extern void SetExceptionCallback(ExceptionCallback callback) noexcept
 extern auto GetExceptionCallback() noexcept -> ExceptionCallback
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    // Exceptions are still reported after the global data is torn down, by a thread the set did not own or
+    // by the host the runtime returned to. They go to the base log, which keeps working without the set
+    if (!ExceptionHandling.is_created()) {
+        return {};
+    }
 
     std::scoped_lock locker {ExceptionHandling->CallbackLocker};
 
@@ -339,8 +350,8 @@ void BackwardOStreamBuffer::WriteHeader() const noexcept
 
     WriteBaseLog("\n");
 
-    if (ExceptionHandling->CrashStackTrace.has_value()) {
-        SafeWriteStackTrace(*ExceptionHandling->CrashStackTrace);
+    if (CrashStackTrace.has_value()) {
+        SafeWriteStackTrace(*CrashStackTrace);
     }
 }
 
@@ -349,7 +360,7 @@ static void SetCrashInfo(string info) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        ExceptionHandling->CrashInfo = std::move(info);
+        CrashInfo = std::move(info);
     }
     catch (...) {
         // Best effort: crash handlers must not throw while recording context
@@ -361,8 +372,8 @@ static auto SafeWriteCrashInfo() noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        if (ExceptionHandling->CrashInfo.has_value()) {
-            WriteBaseLog(strex("Crash reason: {}\n", *ExceptionHandling->CrashInfo));
+        if (CrashInfo.has_value()) {
+            WriteBaseLog(strex("Crash reason: {}\n", *CrashInfo));
             return true;
         }
     }

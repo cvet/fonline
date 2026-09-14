@@ -71,6 +71,6 @@ internal static class RemoteCallScriptFuncs
 
     private static void ObserveRemoteCallTask(Task task)
     {
-        Game.ObserveInvokeTask(task);
+        ScriptExceptions.ObserveTask(task);
     }
 }

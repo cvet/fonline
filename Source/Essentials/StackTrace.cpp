@@ -62,7 +62,7 @@ struct ResolvedNativeFrameCacheEntry
 struct StackTraceState
 {
     std::mutex ProviderLocker {};
-    ScriptStackTraceProvider Provider {};
+    std::vector<std::pair<std::string, ScriptStackTraceProvider>> Providers {};
     std::mutex ResolvedNativeFramesLocker {};
     std::unordered_map<uintptr_t, ResolvedNativeFrameCacheEntry> ResolvedNativeFrames {};
     std::deque<uintptr_t> ResolvedNativeFrameOrder {};
@@ -71,9 +71,11 @@ struct StackTraceState
 #endif
 };
 
-static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
-static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t to, std::vector<StackTraceFrame>& out) noexcept;
-static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t;
+static void CollectScriptLayers(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
+static void ResolveLayerRegion(std::span<const NativeStackFrameAddress> source, uint32_t from, uint32_t to, const std::vector<NativeStackFrameAddress>& hidden, const ScriptStackTraceLayer& layer, std::vector<StackTraceFrame>& out);
+static void ResolveNativeRange(std::span<const NativeStackFrameAddress> frames, uint32_t from, uint32_t to, const std::vector<NativeStackFrameAddress>& hidden, std::vector<StackTraceFrame>& out) noexcept;
+static auto FindLayerNativeAnchor(std::span<const NativeStackFrameAddress> trace, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t;
+static auto FindLayerBirthOverlap(std::span<const NativeStackFrameAddress> trace, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t;
 static auto SameFrameFunction(NativeStackFrameAddress a, NativeStackFrameAddress b) noexcept -> bool;
 static auto ResolveFunctionKey(NativeStackFrameAddress addr) noexcept -> uintptr_t;
 static auto ResolveNativeFrame(NativeStackFrameAddress addr, uint32_t index) -> ResolvedNativeFrameCacheEntry;
@@ -102,7 +104,7 @@ extern auto GetStackTrace() noexcept -> StackTraceData
 
     try {
         std::vector<ScriptStackTraceLayer> script_layers;
-        CollectScriptLayers(script_layers);
+        CollectScriptLayers(st, script_layers);
 
         if (!script_layers.empty()) {
             st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(script_layers));
@@ -115,47 +117,105 @@ extern auto GetStackTrace() noexcept -> StackTraceData
     return st;
 }
 
+// A script exception that already unwound back into native code has only its recorded frames left; they become the
+// innermost layer, entered from the native point where st was captured
+extern void AddUnwoundScriptFrames(StackTraceData& st, ScriptStackTraceLayer layer)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    layer.BirthNativeFrames = st.NativeFrames;
+    layer.BirthNativeFrameCount = st.NativeFrameCount;
+    layer.BirthNativeTruncated = st.NativeTruncated;
+
+    std::vector<ScriptStackTraceLayer> layers;
+    layers.emplace_back(std::move(layer));
+
+    if (st.ScriptLayers) {
+        layers.insert(layers.end(), st.ScriptLayers->begin(), st.ScriptLayers->end());
+    }
+
+    st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+}
+
+// A script exception caught by script code unwound only down to the catching frame, which is still live in the innermost
+// layer, so the recorded frames replace the live frames above it
+extern void SpliceCaughtScriptFrames(StackTraceData& st, ScriptStackTraceLayer layer)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (layer.ScriptFrames.empty()) {
+        return;
+    }
+
+    std::vector<ScriptStackTraceLayer> layers;
+
+    if (st.ScriptLayers) {
+        layers.assign(st.ScriptLayers->begin(), st.ScriptLayers->end());
+    }
+
+    if (layers.empty()) {
+        layers.emplace_back(std::move(layer));
+    }
+    else {
+        std::vector<StackTraceFrame>& live_frames = layers.front().ScriptFrames;
+        const std::string& catching_function = layer.ScriptFrames.back().Function;
+        auto catching_it = std::ranges::find_if(live_frames, [&](const StackTraceFrame& frame) { return frame.Function == catching_function; });
+        auto below_catch_it = catching_it != live_frames.end() ? std::next(catching_it) : live_frames.begin();
+
+        layer.ScriptFrames.insert(layer.ScriptFrames.end(), below_catch_it, live_frames.end());
+        live_frames = std::move(layer.ScriptFrames);
+    }
+
+    st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+}
+
 extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     std::vector<StackTraceFrame> frames;
+    std::span<const NativeStackFrameAddress> source {st.NativeFrames.data(), st.NativeFrameCount};
 
     if (!st.ScriptLayers || st.ScriptLayers->empty()) {
-        frames.reserve(st.NativeFrameCount);
-        ResolveNativeRange(st, 0, st.NativeFrameCount, frames);
+        frames.reserve(source.size());
+        ResolveNativeRange(source, 0, st.NativeFrameCount, {}, frames);
         return frames;
     }
 
     const auto& layers = *st.ScriptLayers;
 
     size_t reserve_count = st.NativeFrameCount;
+    std::vector<NativeStackFrameAddress> hidden;
 
     for (const auto& layer : layers) {
-        reserve_count += layer.ScriptFrames.size();
+        reserve_count += layer.ScriptFrames.size() + layer.BirthNativeFrameCount;
+        hidden.insert(hidden.end(), layer.RuntimeNativeFrames.begin(), layer.RuntimeNativeFrames.end());
     }
 
     frames.reserve(reserve_count);
 
-    uint32_t prev_anchor = 0;
+    uint32_t pos = 0;
 
     for (const auto& layer : layers) {
-        uint32_t anchor = FindLayerNativeAnchor(st, layer, prev_anchor);
+        uint32_t anchor = FindLayerNativeAnchor(source, layer, pos);
 
-        if (anchor < st.NativeFrameCount && anchor > prev_anchor) {
-            ResolveNativeRange(st, prev_anchor, anchor, frames);
-            prev_anchor = anchor;
+        if (anchor < source.size()) {
+            ResolveLayerRegion(source, pos, anchor, hidden, layer, frames);
+            pos = anchor;
         }
-
-        for (const auto& frame : layer.ScriptFrames) {
-            frames.push_back(frame);
+        else if (layer.BirthNativeFrameCount != 0) {
+            // The trace ends above the frame that entered this layer, as it does when the native unwinder cannot step
+            // through script-runtime generated code, so the stack below the layer is read from its own birth capture
+            ResolveLayerRegion(source, pos, FindLayerBirthOverlap(source, layer, pos), hidden, layer, frames);
+            source = std::span<const NativeStackFrameAddress> {layer.BirthNativeFrames.data(), layer.BirthNativeFrameCount};
+            pos = 0;
+        }
+        else {
+            ResolveLayerRegion(source, pos, pos, hidden, layer, frames);
         }
     }
 
-    if (prev_anchor < st.NativeFrameCount) {
-        ResolveNativeRange(st, prev_anchor, st.NativeFrameCount, frames);
-    }
-
+    ResolveNativeRange(source, pos, static_cast<uint32_t>(source.size()), hidden, frames);
     return frames;
 }
 
@@ -283,24 +343,42 @@ extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_T
 #endif
 }
 
-extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept
+extern void SetScriptStackTraceProvider(std::string_view name, ScriptStackTraceProvider provider) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    StackTraceState& state = GetStackTraceState();
-    std::scoped_lock locker {state.ProviderLocker};
+    try {
+        StackTraceState& state = GetStackTraceState();
+        std::scoped_lock locker {state.ProviderLocker};
 
-    state.Provider = std::move(provider);
+        auto it = std::ranges::find_if(state.Providers, [&](const auto& entry) { return entry.first == name; });
+
+        if (!provider) {
+            if (it != state.Providers.end()) {
+                state.Providers.erase(it);
+            }
+        }
+        else if (it != state.Providers.end()) {
+            it->second = std::move(provider);
+        }
+        else {
+            state.Providers.emplace_back(std::string {name}, std::move(provider));
+            std::ranges::sort(state.Providers, {}, &std::pair<std::string, ScriptStackTraceProvider>::first);
+        }
+    }
+    catch (...) {
+        BreakIntoDebugger();
+    }
 }
 
-extern auto HasScriptStackTraceProvider() noexcept -> bool
+extern auto HasScriptStackTraceProvider(std::string_view name) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     StackTraceState& state = GetStackTraceState();
     std::scoped_lock locker {state.ProviderLocker};
 
-    return !!state.Provider;
+    return std::ranges::any_of(state.Providers, [&](const auto& entry) { return entry.first == name; });
 }
 
 extern void ClearResolvedStackTraceCache() noexcept
@@ -336,30 +414,78 @@ extern auto GetResolvedStackTraceCacheSize() noexcept -> size_t
     return 0;
 }
 
-static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept
+static void CollectScriptLayers(const StackTraceData& st, std::vector<ScriptStackTraceLayer>& out_layers) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ScriptStackTraceProvider provider;
+    try {
+        std::vector<ScriptStackTraceProvider> providers;
 
-    {
-        StackTraceState& state = GetStackTraceState();
-        std::scoped_lock locker {state.ProviderLocker};
+        {
+            StackTraceState& state = GetStackTraceState();
+            std::scoped_lock locker {state.ProviderLocker};
 
-        provider = state.Provider;
+            for (const auto& entry : state.Providers) {
+                providers.emplace_back(entry.second);
+            }
+        }
+
+        size_t contributors = 0;
+
+        for (const ScriptStackTraceProvider& provider : providers) {
+            size_t prev_size = out_layers.size();
+
+            try {
+                provider(st, out_layers);
+            }
+            catch (...) {
+                BreakIntoDebugger();
+            }
+
+            if (out_layers.size() != prev_size) {
+                contributors++;
+            }
+        }
+
+        // Layers of different backends nest through native calls, and a deeper entry captured a longer birth stack
+        if (contributors > 1) {
+            std::ranges::stable_sort(out_layers, std::ranges::greater {}, &ScriptStackTraceLayer::BirthNativeFrameCount);
+        }
     }
-
-    if (provider) {
-        try {
-            provider(out_layers);
-        }
-        catch (...) {
-            BreakIntoDebugger();
-        }
+    catch (...) {
+        BreakIntoDebugger();
     }
 }
 
-static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t to, std::vector<StackTraceFrame>& out) noexcept
+// The native frames above a layer's anchor hold the script-runtime frames of that layer: natives above them were called
+// by script, natives below them are the runtime entering it, so the script frames go where the runtime frames are
+static void ResolveLayerRegion(std::span<const NativeStackFrameAddress> source, uint32_t from, uint32_t to, const std::vector<NativeStackFrameAddress>& hidden, const ScriptStackTraceLayer& layer, std::vector<StackTraceFrame>& out)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    uint32_t first_runtime = to;
+    uint32_t last_runtime = to;
+
+    for (uint32_t i = from; i < to; i++) {
+        if (std::ranges::find(hidden, source[i]) == hidden.end()) {
+            continue;
+        }
+        if (first_runtime == to) {
+            first_runtime = i;
+        }
+
+        last_runtime = i;
+    }
+
+    ResolveNativeRange(source, from, first_runtime, hidden, out);
+    out.insert(out.end(), layer.ScriptFrames.begin(), layer.ScriptFrames.end());
+
+    if (last_runtime != to) {
+        ResolveNativeRange(source, last_runtime + 1, to, hidden, out);
+    }
+}
+
+static void ResolveNativeRange(std::span<const NativeStackFrameAddress> frames, uint32_t from, uint32_t to, const std::vector<NativeStackFrameAddress>& hidden, std::vector<StackTraceFrame>& out) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -369,9 +495,9 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
 
     try {
         for (uint32_t i = from; i < to; i++) {
-            NativeStackFrameAddress addr = st.NativeFrames[i];
+            NativeStackFrameAddress addr = frames[i];
 
-            if (addr == 0) {
+            if (addr == 0 || std::ranges::find(hidden, addr) != hidden.end()) {
                 continue;
             }
 
@@ -383,22 +509,22 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
     }
 }
 
-static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t
+static auto FindLayerNativeAnchor(std::span<const NativeStackFrameAddress> trace, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    uint32_t trace_n = static_cast<uint32_t>(trace.size());
+
     if (layer.BirthNativeFrameCount == 0) {
-        return st.NativeFrameCount;
+        return trace_n;
     }
 
     uint32_t birth_n = layer.BirthNativeFrameCount;
-    uint32_t trace_n = st.NativeFrameCount;
-
     uint32_t matched = 0;
 
     while (matched < birth_n && matched < trace_n) {
         NativeStackFrameAddress birth_addr = layer.BirthNativeFrames[birth_n - 1 - matched];
-        NativeStackFrameAddress trace_addr = st.NativeFrames[trace_n - 1 - matched];
+        NativeStackFrameAddress trace_addr = trace[trace_n - 1 - matched];
 
         if (!SameFrameFunction(birth_addr, trace_addr)) {
             break;
@@ -408,16 +534,43 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
     }
 
     if (matched == 0) {
-        return st.NativeFrameCount;
+        return trace_n;
     }
 
     uint32_t anchor = trace_n - matched;
 
     if (anchor < search_from) {
-        return st.NativeFrameCount;
+        return trace_n;
     }
 
     return anchor;
+}
+
+// A trace that stops above the layer entry may still reach into the head of the birth stack; that shared part is
+// read once, from the birth stack
+static auto FindLayerBirthOverlap(std::span<const NativeStackFrameAddress> trace, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    uint32_t trace_n = static_cast<uint32_t>(trace.size());
+    uint32_t birth_n = layer.BirthNativeFrameCount;
+
+    for (uint32_t start = std::max(search_from, trace_n > birth_n ? trace_n - birth_n : 0u); start < trace_n; start++) {
+        bool overlaps = true;
+
+        for (uint32_t i = start; i < trace_n; i++) {
+            if (!SameFrameFunction(trace[i], layer.BirthNativeFrames[i - start])) {
+                overlaps = false;
+                break;
+            }
+        }
+
+        if (overlaps) {
+            return start;
+        }
+    }
+
+    return trace_n;
 }
 
 static auto SameFrameFunction(NativeStackFrameAddress a, NativeStackFrameAddress b) noexcept -> bool

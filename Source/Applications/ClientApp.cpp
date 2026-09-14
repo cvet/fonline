@@ -85,7 +85,6 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool;
 static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClientRuntime;
 static auto ResolveBundledRuntimePath() -> string;
 static auto GetCurrentClientRuntimeFileName() -> string;
-static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result);
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
@@ -95,7 +94,7 @@ int main(int argc, char** argv) // Handled by SDL
 {
     FO_STACK_TRACE_ENTRY();
 
-    CreateGlobalData();
+    create_global_data();
 
 #if !FO_TESTING_APP
     CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
@@ -187,19 +186,10 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
 
     WriteLog("Client runtime host: loaded DLL {}, runtime {}, build {}, compatibility {}, ABI {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat, exports.Metadata.HostAbiVersion);
 
-    // Declared before the unload guard so it is still alive when that guard runs: destructors go in
-    // reverse, and the guard reads the writable root the runtime reported
     ClientRuntimeHostResult runtime_result {};
     runtime_result.Result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
     runtime_result.LoadedBuildHash = loaded_build_hash;
 
-    auto unload_runtime = scope_exit([&]() noexcept {
-        SetClientShutdownStage(session_marker, ClientShutdownStage::RuntimeReturned);
-        WriteLog("Client runtime host: unloading DLL {}, runtime {}, build {}, compatibility {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat);
-        Platform::UnloadModule(runtime_module);
-        WriteLog("Client runtime host: unloaded DLL {}", requested_runtime.Path);
-        SetClientShutdownStage(session_marker, ClientShutdownStage::RuntimeUnloaded);
-    });
     vector<char*> runtime_args(args.size());
 
     for (size_t index = 0; index < args.size(); ++index) {
@@ -208,12 +198,16 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
 
     WriteLog("Client runtime host: entering DLL {}, runtime {}, build {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash);
     exports.Run(numeric_cast<int32_t>(args.size()), runtime_args.data(), &runtime_result.Result);
-    CaptureRuntimeResultStrings(runtime_result);
+    SetClientShutdownStage(session_marker, ClientShutdownStage::RuntimeReturned);
+    CaptureClientRuntimeResultStrings(runtime_result.Result, runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
     WriteLog("Client runtime host: DLL {} returned {}, success {}, requested path {}, requested compatibility {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
 
+    // Not a reason to fall back to the embedded runtime: the library has run, so its own copies of the
+    // statically linked runtimes are live in this process, and starting a second set beside them is unsafe
     if (!IsValidClientRuntimeResult(runtime_result.Result)) {
         WriteLog("Client runtime host: DLL {} returned invalid result {}, success {}, requested path {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath);
-        return std::nullopt;
+        runtime_result.Result.ResultKind = ClientRuntimeResultKind::FatalError;
+        runtime_result.Result.Success = false;
     }
 
     return runtime_result;
@@ -256,7 +250,7 @@ static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult
     ClientRuntimeHostResult runtime_result {};
     runtime_result.LoadedBuildHash = FO_BUILD_HASH;
     runtime_result.Result = RunClientRuntime(args);
-    CaptureRuntimeResultStrings(runtime_result);
+    CaptureClientRuntimeResultStrings(runtime_result.Result, runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
     WriteLog("Client runtime host: embedded client returned {}, success {}, requested path {}, requested compatibility {}", ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath, runtime_result.RequestedCompatibilityVersion);
     return runtime_result;
 }
@@ -483,8 +477,10 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Pinned from the first moment and never unloaded, even when rejected below: the library's static
+    // initialization already registered process-wide callbacks into it (the allocator's per-thread cleanup)
     WriteLog("Client runtime host: loading DLL {}", requested_runtime.Path);
-    auto runtime_module = Platform::LoadModule(requested_runtime.Path);
+    auto runtime_module = Platform::LoadPinnedModule(requested_runtime.Path);
 
     if (!runtime_module) {
         WriteLog("Client runtime host: LoadModule failed for {}", requested_runtime.Path);
@@ -495,7 +491,6 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
 
     if (query_exports == nullptr) {
         WriteLog("Client runtime host: DLL {} does not export FO_QueryClientRuntimeExports", requested_runtime.Path);
-        Platform::UnloadModule(runtime_module);
         return nullptr;
     }
 
@@ -508,7 +503,6 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
 
     if (!query_ok || !exports_valid || !abi_supported) {
         WriteLog("Client runtime host: DLL {} rejected, export query {}, metadata {}, ABI {}, runtime ABI {}, host ABI {}", requested_runtime.Path, query_ok ? "ok" : "failed", exports_valid ? "valid" : "invalid", abi_supported ? "supported" : "unsupported", exports.Metadata.HostAbiVersion, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
-        Platform::UnloadModule(runtime_module);
         return nullptr;
     }
 
@@ -516,7 +510,6 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
         string metadata_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string();
         string metadata_build = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
         WriteLog("Client runtime host: DLL {} rejected by compatibility check, requested {}, DLL compatibility {}, DLL build {}", requested_runtime.Path, requested_runtime.CompatibilityVersion, metadata_compat, metadata_build);
-        Platform::UnloadModule(runtime_module);
         return nullptr;
     }
 
@@ -635,25 +628,4 @@ static auto GetCurrentClientRuntimeFileName() -> string
     FO_STACK_TRACE_ENTRY();
 
     return strex("{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
-}
-
-static void CaptureRuntimeResultStrings(ClientRuntimeHostResult& runtime_result)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (runtime_result.Result.RequestedRuntimePath != nullptr) {
-        runtime_result.RequestedRuntimePath = runtime_result.Result.RequestedRuntimePath;
-        runtime_result.Result.RequestedRuntimePath = runtime_result.RequestedRuntimePath.c_str();
-    }
-    else {
-        runtime_result.RequestedRuntimePath.clear();
-    }
-
-    if (runtime_result.Result.RequestedCompatibilityVersion != nullptr) {
-        runtime_result.RequestedCompatibilityVersion = runtime_result.Result.RequestedCompatibilityVersion;
-        runtime_result.Result.RequestedCompatibilityVersion = runtime_result.RequestedCompatibilityVersion.c_str();
-    }
-    else {
-        runtime_result.RequestedCompatibilityVersion.clear();
-    }
 }

@@ -192,6 +192,38 @@ TEST_CASE("ClientRuntimeApi")
         CHECK_FALSE(IsClientRuntimeCompatibilityMatch(result, "compat-b"));
     }
 
+    SECTION("CapturedResultStringsOutliveTheirSource")
+    {
+        // The runtime frees the data its result strings came from before the host reads them, so the capture
+        // must own copies. Longer than the inline string buffer, so a freed source would really be heap
+        ClientRuntimeResult result {};
+        string runtime_path;
+        string compatibility_version;
+        string_view expected_path = "C:/Games/LastFrontier/Staged/LF_Client.runtime.staged.dll";
+
+        {
+            string source_path {expected_path};
+            string source_compatibility = "compatibility-version-of-the-staged-runtime";
+            result.RequestedRuntimePath = source_path.c_str();
+            result.RequestedCompatibilityVersion = source_compatibility.c_str();
+            CaptureClientRuntimeResultStrings(result, runtime_path, compatibility_version);
+        }
+
+        REQUIRE(result.RequestedRuntimePath == runtime_path.c_str());
+        CHECK(string_view(result.RequestedRuntimePath) == expected_path);
+        CHECK(string_view(result.RequestedCompatibilityVersion) == "compatibility-version-of-the-staged-runtime");
+
+        // The host captures what the runtime already captured: the second pass must keep the text
+        CaptureClientRuntimeResultStrings(result, runtime_path, compatibility_version);
+        CHECK(string_view(result.RequestedRuntimePath) == expected_path);
+
+        // An absent string stays absent and leaves nothing behind
+        result.RequestedCompatibilityVersion = nullptr;
+        CaptureClientRuntimeResultStrings(result, runtime_path, compatibility_version);
+        CHECK(result.RequestedCompatibilityVersion == nullptr);
+        CHECK(compatibility_version.empty());
+    }
+
     SECTION("ReloadRequestPromotesAndExitsForRestart")
     {
         optional<ClientRuntimeHostResult> runtime_result {std::in_place};
@@ -345,7 +377,7 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 
     // A clean exit leaves nothing for the next run to find
     BeginClientSession(marker);
-    SetClientShutdownStage(marker, ClientShutdownStage::RuntimeUnloaded);
+    SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
     EndClientSession(marker);
     CHECK(!fs_exists(marker));
     CHECK(!TakePreviousClientSession(marker).has_value());

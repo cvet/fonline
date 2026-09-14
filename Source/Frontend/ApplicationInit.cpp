@@ -110,7 +110,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     }
 
     // Create global data as soon as possible
-    CreateGlobalData();
+    create_global_data();
 
     // Write log and show message box on exception
     SetupExceptionCallback(IsEnumSet(flags, AppInitFlags::ShowMessageOnException));
@@ -405,15 +405,14 @@ static void PrebakeResources(BakingSettings& settings)
     using BakeResourcesFunc = bool (*)(void*);
     auto bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
 
-    nptr<void> baker_dll = nullptr;
-    auto unload_baker_dll = scope_exit([&]() noexcept { Platform::UnloadModule(baker_dll); });
-
     strex lib_name = strex("{}_BakerLib", FO_DEV_NAME);
 
     if (bake_resources == nullptr) {
         auto exe_path = Platform::GetExePath();
         string lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
-        baker_dll = Platform::LoadModule(lib_path);
+        // Never unloaded: like every engine library it carries statically linked runtimes whose process-wide
+        // callbacks cannot be withdrawn, so unmapping it would leave them pointing at nothing
+        nptr<void> baker_dll = Platform::LoadPinnedModule(lib_path);
 
         if (baker_dll) {
             bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(baker_dll, "FO_BakeResources");

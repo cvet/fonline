@@ -35,26 +35,76 @@
 
 FO_BEGIN_NAMESPACE
 
-GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-int32_t GlobalDataCallbacksCount;
+global_data_callback create_global_data_callbacks[MAX_GLOBAL_DATA_CALLBACKS];
+global_data_callback delete_global_data_callbacks[MAX_GLOBAL_DATA_CALLBACKS];
+int32_t global_data_callbacks_count;
 
-extern void CreateGlobalData()
+// This module is the process-wide bootstrap registry that every engine instance is built on, so its state
+// is file-scope by necessity. The arrays are filled by static constructors, which run single-threaded
+static std::recursive_mutex GlobalDataLocker;
+static bool GlobalDataCreated = false;
+static bool GlobalDataSweeping = false;
+
+// A callback that reaches back into a sweep would build or tear down the set on top of itself. The lock is
+// recursive so that the second entry arrives here and says what happened, instead of hanging inside it
+static void verify_not_sweeping()
 {
-    static std::once_flag once;
-
-    std::call_once(once, [] {
-        for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
-            CreateGlobalDataCallbacks[i]();
-        }
-    });
+    if (GlobalDataSweeping) {
+        report_global_data_misuse_and_exit("global data set", "swept from inside one of its own callbacks");
+    }
 }
 
-extern void DeleteGlobalData()
+extern auto create_global_data() -> bool
 {
-    for (int32_t i = 0; i < GlobalDataCallbacksCount; i++) {
-        DeleteGlobalDataCallbacks[i]();
+    std::scoped_lock locker {GlobalDataLocker};
+
+    verify_not_sweeping();
+
+    if (GlobalDataCreated) {
+        return false;
     }
+
+    GlobalDataSweeping = true;
+
+    // The callbacks are noexcept, so this loop either completes or the process is gone: no caller ever
+    // observes a partially built set of globals, and nothing can skip the reset below
+    for (int32_t i = 0; i < global_data_callbacks_count; i++) {
+        create_global_data_callbacks[i]();
+    }
+
+    GlobalDataSweeping = false;
+    GlobalDataCreated = true;
+    return true;
+}
+
+extern void delete_global_data()
+{
+    std::scoped_lock locker {GlobalDataLocker};
+
+    verify_not_sweeping();
+
+    if (!GlobalDataCreated) {
+        return;
+    }
+
+    GlobalDataCreated = false;
+    GlobalDataSweeping = true;
+
+    for (int32_t i = 0; i < global_data_callbacks_count; i++) {
+        delete_global_data_callbacks[i]();
+    }
+
+    GlobalDataSweeping = false;
+}
+
+[[noreturn]] extern void report_global_data_misuse_and_exit(const char* class_name, const char* misuse) noexcept
+{
+    // Below the logging layer, so the message goes straight out; the log file may not even exist yet
+    std::cerr << "\nGLOBAL DATA MISUSE!\n" << class_name << " " << misuse << "\n";
+    std::cerr.flush();
+
+    ignore_unused(BreakIntoDebugger());
+    ExitApp(false);
 }
 
 FO_END_NAMESPACE

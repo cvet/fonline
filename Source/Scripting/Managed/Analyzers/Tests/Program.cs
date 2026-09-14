@@ -114,7 +114,7 @@ namespace FOnline
         public static void Unlock() { }
 
         // The rest of the surface, which shares the type but takes entities as ordinary arguments.
-        public static void Verify(bool condition, string message, params object[] context) { }
+        public static bool CallStaticItemFunction(Critter? cr, StaticItem staticItem, Item? usedItem, string param) { return true; }
     }
 }
 
@@ -647,7 +647,7 @@ namespace LastFrontier
     }
 }");
 
-        // Both deconstruction spellings declare through a designation that ends before the await.
+        // Both deconstruction spellings declare through a designation that ends before the await
         Check(failures, "a value a deconstructing await produced is fresh", @"
 namespace LastFrontier
 {
@@ -853,7 +853,7 @@ namespace LastFrontier
     using FOnline;
     public static class Probe
     {
-        public static void Reports(StaticItem item) { Game.Verify(false, ""Context"", item); }
+        public static void Uses(StaticItem item) { Game.CallStaticItemFunction(null, item, null, """"); }
     }
 }");
 

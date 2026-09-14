@@ -79,7 +79,7 @@ extern void WriteLogMessage(LogType type, string_view message, nptr<const Catche
     FO_STACK_TRACE_ENTRY();
 
     try {
-        if (Logging == nullptr) {
+        if (!Logging.is_created()) {
             string result;
             result.reserve(message.length() + 1);
             result += message;
@@ -226,7 +226,7 @@ static void FlushLogAtExit()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (Logging != nullptr) {
+    if (Logging.is_created()) {
         std::scoped_lock locker {Logging->Locker};
 
         FlushLogMessageRepeatsLocked();

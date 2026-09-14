@@ -60,8 +60,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
     // The Game methods whose subject is an entity to cover. Game also carries the whole rest of the
     // script surface, so a rule about acquisitions must name these rather than take the type as a whole:
-    // a static item passed to Game.Verify as failure context or to Game.CallStaticItemFunction as its
-    // subject is an ordinary argument, not an acquisition.
+    // a static item passed to Game.CallStaticItemFunction as its subject is an ordinary argument, not an
+    // acquisition.
     private static readonly string[] GameCoverPrimitiveNames =
         { "Sync", "SyncRelease", "Lock", "Unlock", "TrySyncEntity", "IsEntityLocked" };
 
@@ -673,7 +673,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             }
 
             // A deconstruction `(T x, bool y) = await ...` declares through a designation that ends before the
-            // await, so the assignment it sits on the left of is what answers the same question.
+            // await, so the assignment it sits on the left of is what answers the same question
             if (declaration is SingleVariableDesignationSyntax designation &&
                 designation.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault() is { } deconstruction &&
                 deconstruction.Left.Span.Contains(designation.Span) && deconstruction.Span.End >= position) {

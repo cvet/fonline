@@ -888,8 +888,14 @@ private:
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
-extern mutex InterthreadListenersLocker;
-extern map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadListener = copyable_function<InterthreadDataCallback(InterthreadDataCallback)>;
+
+// One table for the process, keyed by virtual port, so an embedded client finds the server running beside it.
+// Listeners are handed out by copy and called outside the table's lock
+extern auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool;
+extern auto RemoveInterthreadListener(uint16_t port) -> bool;
+extern auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
+extern auto HasInterthreadListener(uint16_t port) -> bool;
 
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t

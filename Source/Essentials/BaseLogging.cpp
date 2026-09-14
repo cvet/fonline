@@ -120,7 +120,7 @@ extern void LogToFile(string_view path, bool append)
 
 extern auto GetLogFilePath() -> std::string
 {
-    if (BaseLogging == nullptr) {
+    if (!BaseLogging.is_created()) {
         return {};
     }
 
@@ -145,7 +145,7 @@ extern void SetAsyncLogWriting(bool enabled)
 
 extern void SuspendAsyncLogWriting() noexcept
 {
-    if (BaseLogging != nullptr) {
+    if (BaseLogging.is_created()) {
         BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
     }
 }
@@ -153,7 +153,7 @@ extern void SuspendAsyncLogWriting() noexcept
 extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) noexcept
 {
     try {
-        if (BaseLogging == nullptr) {
+        if (!BaseLogging.is_created()) {
             std::cout << message;
 
             if (st != nullptr) {
@@ -338,7 +338,7 @@ static void WriteSync(string_view message) noexcept
 
 static void FlushLogAtExit()
 {
-    if (BaseLogging != nullptr) {
+    if (BaseLogging.is_created()) {
         StopAsyncWorker();
 
         if (BaseLogging->LogLocker.try_lock()) {

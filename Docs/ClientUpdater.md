@@ -150,7 +150,7 @@ differs from the host's compatibility, embedded fallback is refused rather than 
 host code.
 
 Startup/runtime handoff diagnostics go to the normal `<host>.log` through the regular `WriteLog` path.
-The host brings up engine global data (`CreateGlobalData()` in `main`) and opens that log fresh up front
+The host brings up engine global data (`create_global_data()` in `main`) and opens that log fresh up front
 (`LogToFile(GetExeLogFileName(), false)`) — the host runs first, so it truncates. It then keeps its handle
 open across the loaded-DLL call instead of closing before the handoff: `LogToFile` opens the file without
 an exclusive lock (the platform default —
@@ -174,11 +174,29 @@ disappears, then the DLL's `InitApp` creates a fresh one. Without this teardown 
 modules' independent `unique_ptr<Application> App` statics would briefly co-exist.
 
 When the client runtime is running from a loaded DLL, `RunClientRuntime` also resets `App`
-before returning to the host so SDL windows, renderers, and other frontend resources are
-released before `Platform::UnloadModule`. Both embedded and DLL-backed runtime exits call
-`ApplicationShutdownHook()` before handing control back to the host; embedding projects use
-that hook to stop process-global integrations such as in-process crash handlers before a
-runtime module can be unloaded.
+before returning to the host, and the application's destructor ends with `SDL_Quit()`, so SDL
+windows, renderers, device threads and OS notifications are gone before control goes back. Both
+embedded and DLL-backed runtime exits call `ApplicationShutdownHook()` before handing control back
+to the host; embedding projects use that hook to stop process-global integrations such as
+in-process crash handlers. `RunClientRuntimeAbi` then tears down the runtime's global data
+(`delete_global_data()`), which joins the async log writer and the global pools: the host carries on
+in the same process, and nothing the runtime started may still be running, or be killed holding a
+lock, when the host exits.
+
+**The runtime library is never unloaded.** The host loads it with `Platform::LoadPinnedModule`,
+before it even queries the exports, and does not unload it when the runtime is rejected or returns.
+The runtimes statically linked into it install process-wide hooks during the library's own static
+initialization and first run that cannot be withdrawn — Mono's vectored exception handler and
+unhandled-exception filter, rpmalloc's per-thread FLS cleanup callback, the backward-cpp crash
+filter — so unmapping the library would leave them pointing at nothing. (With the static CRT a
+running `std::thread` also keeps its module mapped, which is why an earlier `FreeLibrary` here never
+actually unloaded anything.) Two consequences follow. The strings a `ClientRuntimeResult` points at
+are published into storage the library owns (`CaptureClientRuntimeResultStrings`), because the
+global data they were produced from is gone by the time the host reads them. And a runtime that ran
+and returned an invalid result is treated as a fatal result rather than a reason to start the
+embedded client: its own Mono and SDL are live in the process, and a second set beside them is not
+safe. Embedded fallback remains for a library that is missing, fails to load, or is rejected before
+`Run`.
 
 ### Self-update applies on the next launch (user restart)
 
@@ -273,7 +291,7 @@ its only `InitApp`.
 
 The runtime stages a new module as `<live>-staging` next to the live module, where `<live>` is the updater's binary output path `Updater::GetRuntimeLivePath()` = `<Updater::_binaryDir>/<runtime_name><ext>` (the full live path including the platform runtime extension, e.g. `<exe_dir>/LastFrontier.dll` for a portable client, or `<UserWritablePath>/LastFrontier.dll` for an installed one). After each binary payload is fully downloaded and hash-validated, the updater also makes a best-effort attempt to promote that staged file to the live path immediately; if the live file is locked, the `-staging` file is left in place for the host's startup/exit-time promotion pass. The host promotes via `MakeClientRuntimeStagingPath(runtime_live_path)` â†’ `runtime_live_path` rename: at startup this is the path selected from the exe-dir default, installed-client bootstrap, or explicit CLI; after `ReloadRequested` it is the runtime-supplied `RequestedRuntimePath`. `RequestedRuntimePath` is the post-swap path (`<live>`), not the staging path. The host promotes it and exits; `LoadModule` happens only in the next process.
 
-**Linux module isolation.** The runtime `.so` must stay loadable with `dlopen` from an engine host executable that exports its own engine symbols (`-rdynamic` for stack-trace symbolization). Two build rules keep that true. First, engine runtime modules link with `-Wl,-Bsymbolic` (`AddSharedApplication` in [../BuildTools/cmake/helpers/Build.cmake](../BuildTools/cmake/helpers/Build.cmake)), so the module binds global references — the global-data registry, allocator, logging — to its own definitions instead of interposing on the host executable's exported copies; each module keeps private engine state, mirroring the Windows DLL model (without this, the module's `CreateGlobalData` resolves to the host's already-fired copy and the module crashes on its first global-data access). Second, vendored rpmalloc does not force initial-exec TLS on Linux (`(FOnline Patch)` in `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`): an IE-model TLS relocation makes glibc place the module's entire TLS segment into the limited static TLS surplus at `dlopen`, which fails with `cannot allocate memory in static TLS block`. The host/runtime C ABI keeps allocation ownership module-local (all strings are copied at the boundary), so per-module allocator state is safe.
+**Linux module isolation.** The runtime `.so` must stay loadable with `dlopen` from an engine host executable that exports its own engine symbols (`-rdynamic` for stack-trace symbolization). Two build rules keep that true. First, engine runtime modules link with `-Wl,-Bsymbolic` (`AddSharedApplication` in [../BuildTools/cmake/helpers/Build.cmake](../BuildTools/cmake/helpers/Build.cmake)), so the module binds global references — the global-data registry, allocator, logging — to its own definitions instead of interposing on the host executable's exported copies; each module keeps private engine state, mirroring the Windows DLL model (without this, the module's `create_global_data` resolves to the host's already-fired copy and the module crashes on its first global-data access). Second, vendored rpmalloc does not force initial-exec TLS on Linux (`(FOnline Patch)` in `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`): an IE-model TLS relocation makes glibc place the module's entire TLS segment into the limited static TLS surplus at `dlopen`, which fails with `cannot allocate memory in static TLS block`. The host/runtime C ABI keeps allocation ownership module-local (all strings are copied at the boundary), so per-module allocator state is safe.
 
 A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) is staged side-by-side as `<live>.pdb-staging` and usually promotes immediately because PDBs are not held by the loaded runtime module; if it is locked by a debugger or another process, `ApplyStagedBinaryUpdate` retries after the main DLL swap succeeds. The PDB swap is best-effort â€” failure only degrades stack traces, so it never blocks the runtime swap, while the DLL swap remains backup-rename-rollback atomic. The client-side filter accepts a server file whose basename starts with `<runtime_name>.`, so the DLL (`LastFrontier.dll`) and its PDB sibling (`LastFrontier.dll.pdb`) both match and ride the same `UpdateFileTarget::ClientBinaries` channel. **The runtime DLL and its `<live>.pdb` are fetched only together, in binaries mode** (when the DLL is actually being updated) — a client whose DLL is already current does not pull `<live>.pdb` on its own. **The host PDB (`<host_name>.pdb`, e.g. `LastFrontier.pdb`) is also delivered, but the client fetches it only to recover a *missing* local copy and never overwrites a present one.** The host exe is frozen and its PDB is build-specific, so the server's host PDB matches only an up-to-date host: an up-to-date client re-downloads a matching PDB, while an older host's matching local PDB is never clobbered (a non-matching server-build PDB is written only when the local one is absent, where the debugger ignores it by GUID). `accept_binaries` is `_binariesMode || CanSelfUpdateNativeModules(...)`, so host-PDB recovery also works on a normal resource-sync connect.
 

@@ -56,8 +56,6 @@ auto GetClientShutdownStageName(ClientShutdownStage stage) noexcept -> string_vi
         return "ShutdownHookDone";
     case ClientShutdownStage::RuntimeReturned:
         return "RuntimeReturned";
-    case ClientShutdownStage::RuntimeUnloaded:
-        return "RuntimeUnloaded";
     default:
         return "Unknown";
     }
@@ -112,7 +110,7 @@ auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<Pre
 
         if (key == "Stage") {
             int32_t raw_stage = strex(value).to_int32();
-            session.Stage = static_cast<ClientShutdownStage>(numeric_cast<uint8_t>(std::clamp(raw_stage, 0, static_cast<int32_t>(ClientShutdownStage::RuntimeUnloaded))));
+            session.Stage = static_cast<ClientShutdownStage>(numeric_cast<uint8_t>(std::clamp(raw_stage, 0, static_cast<int32_t>(ClientShutdownStage::RuntimeReturned))));
         }
         else if (key == "Build") {
             session.BuildHash = value;

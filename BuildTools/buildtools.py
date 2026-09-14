@@ -953,7 +953,8 @@ def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = N
 	if branch_name is not None:
 		command.extend(['--branch', branch_name])
 	command.append(str(target_path))
-	run(command)
+	# A reset connection mid-clone leaves a partial checkout that git refuses to clone into, so drop it before retrying
+	run_with_retry(command, label=f'Clone {repo_url}', on_retry=lambda: remove_path_if_exists(target_path))
 
 
 def resolve_visual_studio_2022_dev_cmd() -> Path | None:
