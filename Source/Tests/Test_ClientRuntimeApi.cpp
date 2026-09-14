@@ -68,6 +68,19 @@ TEST_CASE("ClientRuntimeApi")
         CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Unknown));
     }
 
+    SECTION("OnlyClientSideUpdaterFailuresAreReported")
+    {
+        // A server that is down, restarting or unreachable is the one terminal result that says nothing
+        // about this client, so it must never reach the crash reporter - one event per player per restart
+        CHECK_FALSE(IsUpdaterFailureReportable(UpdaterResult::ConnectionFailed));
+
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::Failed));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::MetadataMismatch));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::UpdaterOutdated));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::PlatformUnsupported));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::ServerMissingNativeUpdate));
+    }
+
     SECTION("CurrentHostAbiIsSupported")
     {
         CHECK(IsSupportedClientRuntimeAbi(FO_CLIENT_RUNTIME_HOST_ABI_VERSION));
@@ -301,6 +314,8 @@ TEST_CASE("ClientRuntimeApi")
 
 TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 {
+    CHECK(fs_is_absolute_path(MakeClientSessionMarkerPath("")));
+
     std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_session_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     string temp_dir = fs_path_to_string(base);
     // An absolute path stands for the resolved writable root: fs_make_writable_path leaves it as given

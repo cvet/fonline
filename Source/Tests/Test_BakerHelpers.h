@@ -114,14 +114,14 @@ namespace BakerTests
     {
         OverrideSetting(settings.DisableNetworking, true);
         OverrideSetting(settings.OpLogEnabled, false);
-        OverrideSetting(settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+        OverrideSetting(settings.AngelScriptMutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
     }
 
     inline auto MakeScriptCompilerSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
         settings.ApplyDefaultSettings();
-        OverrideSetting(settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+        OverrideSetting(settings.AngelScriptMutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
         return settings;
     }
 
@@ -504,7 +504,7 @@ namespace BakerTests
             OverrideSetting(Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
             // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
             // as the compile-time ones; the gate-test re-overrides this on its own rig
-            OverrideSetting(Settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+            OverrideSetting(Settings.AngelScriptMutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
 
             auto source_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Tests");
             _sourceData = source_ds.get();

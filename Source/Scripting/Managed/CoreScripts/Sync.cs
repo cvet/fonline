@@ -1080,11 +1080,11 @@ public static partial class Sync
             return false;
         }
 
-        Critter? controlledCr = player.GetControlledCritter();
+        Critter? cr = player.GetControlledCritter();
         Map? viewMap = player.GetViewMapTarget();
         List<Entity> roots = new List<Entity> { notLoggedInPlayer, player };
-        if (controlledCr != null) {
-            roots.Add(controlledCr);
+        if (cr != null) {
+            roots.Add(cr);
         }
         if (viewMap != null) {
             roots.Add(viewMap);
@@ -1093,14 +1093,13 @@ public static partial class Sync
         if (!await Lock(roots)) {
             return false;
         }
-        if (player.GetControlledCritter() != controlledCr || player.GetViewMapTarget() != viewMap) {
+        if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap) {
             return false;
         }
-        if (controlledCr == null) {
+        if (cr == null) {
             return true;
         }
 
-        Critter cr = controlledCr;
         Map? map = cr.GetMap();
         if (map != null) {
             List<Entity> mapScope = new List<Entity>(roots);

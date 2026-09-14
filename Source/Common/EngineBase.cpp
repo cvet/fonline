@@ -657,9 +657,9 @@ void EngineMetadata::RegisterPropertyMigrationBeforeVersion(string_view entity_t
     }
 
     FO_VERIFY_AND_THROW(registrar, "Unknown versioned property migration entity", entity_type);
-    auto prop = registrar->FindProperty(target);
+    auto replacement_prop = registrar->FindPersistedProperty(target);
     auto version_prop = registrar->FindProperty(version_property);
-    FO_VERIFY_AND_THROW(prop && version_prop, "Versioned property migration requires current target and version properties", entity_type, target, version_property);
+    FO_VERIFY_AND_THROW(replacement_prop && version_prop, "Versioned property migration requires replacement and version properties", entity_type, target, version_property);
     const BaseTypeDesc& version_type = version_prop->GetBaseType();
     FO_VERIFY_AND_THROW(version_prop->IsPlainData() && version_type.IsInt, "Property migration version must be an integer property", version_property);
     FO_VERIFY_AND_THROW(version_property != target, "Property migration cannot depend on its own version", target);

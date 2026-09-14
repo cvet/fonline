@@ -17,6 +17,8 @@ public static partial class Game
     private static readonly Lazy<Type[]> InvokeTypes = new Lazy<Type[]>(() => typeof(Game).Assembly.GetTypes());
     private static readonly ConcurrentDictionary<string, MethodInfo[]> InvokeCandidates =
         new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, MethodInfo[]> AdminCallCandidates =
+        new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.Ordinal);
     private static readonly ConcurrentDictionary<string, Type[]> EnumCandidates =
         new ConcurrentDictionary<string, Type[]>(StringComparer.Ordinal);
 
@@ -36,6 +38,13 @@ public static partial class Game
     public static Task<bool> InvokeAsync(string funcName, params object?[]? args)
     {
         return InvokeCoreAsync(funcName, args ?? Array.Empty<object?>());
+    }
+
+    // Admin commands have their own allowlist and do not become internal name-dispatch targets merely
+    // because the same method is exposed to an authenticated administrator
+    public static bool CallAdminFunc(string funcName, params object?[]? args)
+    {
+        return CallAdminFuncCore(funcName, args ?? Array.Empty<object?>());
     }
 
     public static bool Invoke<TResult>(string funcName, ref TResult result)
@@ -101,9 +110,7 @@ public static partial class Game
     // same bounded exception accounting that AngelScript provided for caught script exceptions.
     public static void RecordCaughtException(Exception exception)
     {
-        if (exception == null) {
-            throw new ArgumentNullException(nameof(exception));
-        }
+        ArgumentNullException.ThrowIfNull(exception);
 
         RecordManagedException(exception, false);
     }
@@ -211,6 +218,29 @@ public static partial class Game
         }
     }
 
+    private static bool CallAdminFuncCore(string funcName, object?[] args)
+    {
+        try {
+            MethodInfo? method = FindAdminCallMethod(funcName, args);
+            if (method == null) {
+                return false;
+            }
+
+            CoerceInvokeArgs(method, args);
+            object? result = method.Invoke(null, args);
+            ObserveInvokeTask(result);
+            return true;
+        }
+        catch (TargetInvocationException ex) {
+            RecordManagedException(ex.InnerException ?? ex, true);
+            return false;
+        }
+        catch (Exception ex) {
+            RecordManagedException(ex, true);
+            return false;
+        }
+    }
+
     private static bool InvokeCoreWithResult(string funcName, object?[] args, int resultIndex)
     {
         try {
@@ -263,7 +293,7 @@ public static partial class Game
         try {
             if (value is IConvertible) {
                 result = (TEnum)Enum.ToObject(typeof(TEnum), value);
-                return Enum.IsDefined(typeof(TEnum), result);
+                return Enum.IsDefined(result);
             }
         }
         catch {
@@ -381,11 +411,37 @@ public static partial class Game
         return null;
     }
 
+    private static MethodInfo? FindAdminCallMethod(string funcName, object?[] args)
+    {
+        if (string.IsNullOrWhiteSpace(funcName)) {
+            return null;
+        }
+
+        foreach (MethodInfo method in GetAdminCallCandidates(funcName)) {
+            if (IsInvokeMethodCompatible(method, args)) {
+                return method;
+            }
+        }
+
+        return null;
+    }
+
     private static MethodInfo[] GetInvokeCandidates(string funcName)
     {
-        return InvokeCandidates.GetOrAdd(funcName,
-                                         name =>
-                                         {
+        return GetAttributedCallCandidates(InvokeCandidates, funcName, typeof(CallableByNameAttribute));
+    }
+
+    private static MethodInfo[] GetAdminCallCandidates(string funcName)
+    {
+        return GetAttributedCallCandidates(AdminCallCandidates, funcName, typeof(AdminRemoteCallAttribute));
+    }
+
+    private static MethodInfo[] GetAttributedCallCandidates(ConcurrentDictionary<string, MethodInfo[]> cache,
+                                                            string funcName, Type attributeType)
+    {
+        return cache.GetOrAdd(funcName,
+                              name =>
+                              {
             ParseInvokeName(name, out string? moduleName, out string methodName);
             var methods = new List<MethodInfo>();
 
@@ -394,20 +450,20 @@ public static partial class Game
 
                 foreach (MethodInfo method in declared) {
                     if (!method.ContainsGenericParameters && method.Name == methodName &&
-                        Attribute.IsDefined(method, typeof(CallableByNameAttribute))) {
+                        Attribute.IsDefined(method, attributeType)) {
                         methods.Add(method);
                     }
                 }
                 foreach (MethodInfo method in declared) {
                     if (!method.ContainsGenericParameters && method.Name == methodName + "_" &&
-                        Attribute.IsDefined(method, typeof(CallableByNameAttribute))) {
+                        Attribute.IsDefined(method, attributeType)) {
                         methods.Add(method);
                     }
                 }
             }
 
             return methods.ToArray();
-                                         });
+                              });
     }
 
     private static void ParseInvokeName(string funcName, out string? moduleName, out string methodName)
@@ -436,8 +492,20 @@ public static partial class Game
 
         if (moduleName != null) {
             string normalized = moduleName.Replace("::", ".");
-            Assembly assembly = typeof(Game).Assembly;
-            qualifiedType = assembly.GetType(normalized) ?? assembly.GetType("FOnline." + normalized);
+            Assembly gameAssembly = typeof(Game).Assembly;
+            qualifiedType = gameAssembly.GetType(normalized) ?? gameAssembly.GetType("FOnline." + normalized);
+
+            if (qualifiedType == null) {
+                // Game scripts live in the host assembly, which is not always `typeof(Game).Assembly`
+                // when CoreScripts are compiled into a separate engine module. Nested types keep the
+                // reflection `Outer+Inner` spelling that callers already pass
+                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+                    qualifiedType = assembly.GetType(normalized);
+                    if (qualifiedType != null) {
+                        break;
+                    }
+                }
+            }
 
             if (qualifiedType != null) {
                 yield return qualifiedType;
@@ -567,7 +635,12 @@ public static partial class Game
                     RecordManagedExceptionGlobal(failedTask.Exception, true);
                 }
             },
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            // Without an explicit scheduler the continuation would inherit TaskScheduler.Current, which inside a
+            // script continuation is the engine's context-bound scheduler -- the exact opposite of the foreign
+            // thread this recorder is written for, and a way back into the script context while reporting a fault
+            TaskScheduler.Default);
     }
 
     internal static void RecordManagedException(Exception ex, bool log)

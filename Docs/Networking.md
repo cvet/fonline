@@ -172,7 +172,9 @@ The server runtime applies two independent limits to connections that have not l
 
 A logged-in connection is additionally dropped when it stops answering pings: `ServerNetwork.ClientPingTime`
 sets the interval, and a connection that has not answered the previous ping when the next one is due is hard
-disconnected.
+disconnected. The in-process interthread transport opts out of this watchdog: its peer lifetime is explicit
+through the callback channel, while a busy shared process can delay both ends of the ping exchange together.
+Closing either interthread endpoint still disconnects the other immediately.
 
 ### Disconnect reasons
 

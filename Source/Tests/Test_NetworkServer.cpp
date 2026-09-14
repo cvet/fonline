@@ -295,6 +295,42 @@ TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
     CHECK(conn->IsDisconnected());
 }
 
+TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
+{
+    SECTION("ordinary transports retain the remote-peer watchdog")
+    {
+        auto settings = MakeServerNetworkSettings();
+        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+
+        REQUIRE(net_connection->NeedsPingWatchdog());
+        connection->MarkHandshakeComplete();
+
+        CHECK(connection->NeedPing(nanotime {}));
+    }
+
+    SECTION("interthread peers use their explicit callback lifetime")
+    {
+        auto settings = MakeServerNetworkSettings();
+        auto port = TestServerPort.fetch_add(1);
+        BakerTests::OverrideSetting(settings.ServerPort, port);
+
+        shared_ptr<NetworkServerConnection> accepted_conn;
+        auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); });
+        auto cleanup = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+        auto client_send = InterthreadListeners.at(port)([](const_span<uint8_t>) { });
+        REQUIRE(accepted_conn);
+        REQUIRE(client_send);
+        CHECK_FALSE(accepted_conn->NeedsPingWatchdog());
+
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, accepted_conn);
+        connection->MarkHandshakeComplete();
+
+        CHECK_FALSE(connection->NeedPing(nanotime {}));
+    }
+}
+
 TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 {
     auto settings = MakeServerNetworkSettings();

@@ -119,17 +119,6 @@ AddCommandTarget(ForceCodeGeneration
 # The interop shim table is generated here rather than in ThirdParty because it needs the Python
 # interpreter this stage resolves, while the archives it reads come from the Managed runtime setup
 if(FO_MANAGED_SCRIPTING)
-    AddCommandTarget(ManagedRuntimeIdentity
-        COMMAND_ARGS
-        COMMAND ${Python3_EXECUTABLE}
-            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/managed_runtime_identity.py"
-            --runtime-dir "${FO_MANAGED_RUNTIME_DIR}"
-            --header "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedRuntimeIdentity.gen.h"
-            --identity-file "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedRuntimeIdentity.txt"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-    AddDependencies(ManagedRuntimeIdentity SetupManagedRuntime)
-    AppendList(FO_GEN_DEPENDENCIES ManagedRuntimeIdentity)
-
     SetValue(FO_MANAGED_PINVOKE_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/generate_pinvoke_table.py")
 
     # The archives carry target objects, so the reader must be the target toolchain's nm. Most toolchains

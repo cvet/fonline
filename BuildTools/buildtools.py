@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -145,7 +146,7 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	},
 	**make_validation_target_set('win64', 'win64', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('win64-clang', 'win64-clang', WIN64_CLANG_VALIDATION_TARGET_NAMES),
-	'unit-tests': make_validation_target('linux', 'unit-tests', 'Release', run_target_name='RunUnitTests'),
+	'unit-tests': make_validation_target('native', 'unit-tests', 'Release', run_target_name='RunUnitTests'),
 	'unit-tests-san-address': make_validation_target('linux', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'unit-tests-san-memory': make_validation_target('linux', 'unit-tests', 'San_Memory', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
@@ -206,6 +207,7 @@ DOWNLOAD_TIMEOUT_SEC = 900
 # prepared workspaces, which are built once and then downloaded whole
 DOWNLOAD_MIRROR_VAR = 'FO_DOWNLOAD_MIRROR'
 WORKSPACE_CACHE_VAR = 'FO_WORKSPACE_CACHE'
+WORKSPACE_CACHE_GZIP_LEVEL = 1
 CI_TOKEN_VAR = 'FO_CI_TOKEN'
 CI_CA_VAR = 'FO_CI_CA'
 
@@ -260,7 +262,7 @@ def _fos_collapse_nullable_angle(match: 're.Match[str]', suffix: str) -> str:
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'12',
+		'13',
 		[
 			'clang-20',
 			'clang-format-20',
@@ -272,6 +274,7 @@ LINUX_PACKAGE_GROUPS = {
 			'cmake',
 			'python3',
 			'python3-pytest',
+			'php-cli',
 			'wget',
 			'unzip',
 			'binutils-dev',
@@ -547,6 +550,7 @@ def resolve_env() -> EnvMap:
 		'FO_DOTNET_RUNTIME': read_first_line(third_party / 'dotnet-runtime'),
 		'FO_IOS_SDK': read_first_line(third_party / 'iOS-sdk'),
 		'FO_XWIN_VERSION': read_first_line(third_party / 'xwin'),
+		'FO_WIX_VERSION': read_first_line(third_party / 'wix'),
 	}
 
 	xwin_root = workspace / 'xwin'
@@ -606,6 +610,7 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_IOS_SDK',
 		'FO_XWIN_VERSION',
 		'FO_XWIN_ROOT',
+		'FO_WIX_VERSION',
 	]:
 		log('-', f'{key}={env.get(key, "")}')
 
@@ -903,6 +908,21 @@ def workspace_cache_store(name: str, source_path: Path) -> None:
 		log(f'Workspace cache store failed for {name} ({type(ex).__name__}: {ex})')
 
 
+def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path, label: str) -> None:
+	if not workspace_cache_url(name):
+		return
+
+	try:
+		log(f'Pack {label} for the workspace cache:', archive_path)
+		with tarfile.open(archive_path, 'w:gz', compresslevel=WORKSPACE_CACHE_GZIP_LEVEL) as archive:
+			archive.add(source_path, arcname=source_path.name)
+		workspace_cache_store(name, archive_path)
+	except (OSError, tarfile.TarError) as ex:
+		log(f'Workspace cache pack failed for {name} ({type(ex).__name__}: {ex})')
+	finally:
+		remove_path_if_exists(archive_path)
+
+
 def download_file(url: str, target_path: Path, label: str) -> None:
 	source = mirrored_url(url)
 	log(f'Download {label}:', source)
@@ -1049,8 +1069,41 @@ def extract_tar_safely(archive_path: Path, output_dir: Path) -> None:
 		for member in archive.getmembers():
 			member_path = (output_dir / member.name).resolve()
 			if member_path != output_root and output_root not in member_path.parents:
-				raise SystemExit(f'Archive member escapes output directory: {member.name}')
-		archive.extractall(output_dir)
+				raise tarfile.ExtractError(f'Archive member escapes output directory: {member.name}')
+		if hasattr(tarfile, 'data_filter'):
+			archive.extractall(output_dir, filter='data')
+		else:
+			archive.extractall(output_dir)
+
+
+def restore_workspace_cache_tree(
+	cached_path: Path,
+	workspace: Path,
+	directory_name: str,
+	label: str,
+	is_complete: Callable[[Path], bool],
+) -> bool:
+	"""Extract one cache tree in isolation and promote only its expected complete directory."""
+	ensure_dir(workspace)
+	staging = Path(tempfile.mkdtemp(prefix=f'.{directory_name}-cache-', dir=workspace))
+	destination = workspace / directory_name
+
+	try:
+		extract_tar_safely(cached_path, staging)
+		source = staging / directory_name
+		if source.is_symlink() or not is_complete(source):
+			log(f'Cached {label} tree is incomplete; preparing it locally')
+			return False
+		remove_path_if_exists(destination)
+		shutil.move(str(source), str(destination))
+		return True
+	except (OSError, tarfile.TarError) as ex:
+		log(f'Cached {label} archive is unusable ({type(ex).__name__}: {ex})')
+		remove_path_if_exists(destination)
+		return False
+	finally:
+		remove_path_if_exists(cached_path)
+		remove_path_if_exists(staging)
 
 
 def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
@@ -1199,6 +1252,12 @@ def build_emscripten_version(env: Mapping[str, str]) -> str:
 	return version
 
 
+def build_emscripten_workspace_cache_name(env: Mapping[str, str]) -> str:
+	identity = f'{build_emscripten_version(env)}-{sys.platform}-{platform.machine()}'.lower()
+	safe_identity = re.sub(r'[^a-z0-9._-]+', '-', identity)
+	return f'emscripten-{safe_identity}.tar.gz'
+
+
 def build_android_ndk_version(env: Mapping[str, str]) -> str:
 	version = env.get('FO_ANDROID_NDK_VERSION', '')
 	if not version:
@@ -1242,6 +1301,25 @@ def build_xwin_version(env: Mapping[str, str]) -> str:
 
 def build_xwin_workspace_version(env: Mapping[str, str]) -> str:
 	return f'{build_xwin_version(env)}-{"-".join(XWIN_SPLAT_ARCHES)}'
+
+
+def build_wix_version(env: Mapping[str, str]) -> str:
+	version = env.get('FO_WIX_VERSION', '')
+	if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+		raise SystemExit('FO_WIX_VERSION is not configured (Engine/ThirdParty/wix missing or invalid)')
+	return version
+
+
+def build_wix_workspace_version(env: Mapping[str, str]) -> str:
+	return build_wix_version(env)
+
+
+def build_wix_download_spec(env: Mapping[str, str]) -> tuple[str, str]:
+	version = build_wix_version(env)
+	major, minor, patch = version.split('.')
+	tag = f'wix{major}{minor}{patch}rtm'
+	archive_name = f'wix{major}{minor}-binaries.zip'
+	return archive_name, f'https://github.com/wixtoolset/wix3/releases/download/{tag}/{archive_name}'
 
 
 def discover_clang_version(executable: str = 'clang++-20') -> str:
@@ -1432,22 +1510,52 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
 	if os.name == 'nt':
-		command = ['cmd', '/d', '/s', '/c', str(emsdk_root / 'emsdk.bat'), *args]
+		command = [sys.executable, emsdk_root / 'emsdk.py', *args]
 		run(command, cwd=emsdk_root)
 	else:
 		run([emsdk_root / 'emsdk', *args], cwd=emsdk_root)
+
+
+def is_emscripten_workspace_complete(emsdk_root: Path) -> bool:
+	environment_script = 'emsdk_env.bat' if os.name == 'nt' else 'emsdk_env.sh'
+	return all(path.is_file() for path in (
+		emsdk_root / '.emscripten',
+		emsdk_root / environment_script,
+		emsdk_root / 'upstream' / 'emscripten' / 'emcc.py',
+	))
+
+
+def restore_emscripten_workspace_cache(cached_path: Path, workspace: Path, emsdk_root: Path) -> bool:
+	return restore_workspace_cache_tree(
+		cached_path,
+		workspace,
+		emsdk_root.name,
+		'Emscripten SDK',
+		is_emscripten_workspace_complete,
+	)
 
 
 def prepare_emscripten_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	emsdk_root = workspace / 'emsdk'
 	remove_path_if_exists(emsdk_root)
+	ensure_dir(workspace)
+	cached_name = build_emscripten_workspace_cache_name(env)
+	cached_path = workspace / cached_name
+
+	if workspace_cache_fetch(cached_name, cached_path):
+		log('Unpack cached Emscripten SDK:', cached_path)
+		if restore_emscripten_workspace_cache(cached_path, workspace, emsdk_root):
+			return
 
 	clone_git_repo(emsdk_root, 'https://github.com/emscripten-core/emsdk.git')
 	run_emsdk_command(emsdk_root, 'list')
 	version = build_emscripten_version(env)
 	run_emsdk_command(emsdk_root, 'install', '--build=Release', '--shallow', version)
 	run_emsdk_command(emsdk_root, 'activate', '--build=Release', version)
+	if not is_emscripten_workspace_complete(emsdk_root):
+		raise SystemExit(f'Emscripten workspace is incomplete after activation: {emsdk_root}')
+	workspace_cache_store_tree(cached_name, cached_path, emsdk_root, 'Emscripten SDK')
 
 
 def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
@@ -1556,6 +1664,10 @@ def copy_xwin_arch_libraries(source_root: Path, target_root: Path, arch: str) ->
 		shutil.copytree(source_dir, target_dir, symlinks=True)
 
 
+def is_xwin_workspace_complete(xwin_root: Path) -> bool:
+	return (xwin_root / 'crt').is_dir() and (xwin_root / 'sdk').is_dir()
+
+
 def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	version = build_xwin_version(env)
@@ -1580,16 +1692,14 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 
 	if workspace_cache_fetch(cached_name, cached_path):
 		log('Unpack cached MSVC SDK:', cached_path)
-
-		with tarfile.open(cached_path, 'r:gz') as archive:
-			archive.extractall(workspace)
-
-		remove_path_if_exists(cached_path)
-
-		if xwin_splat_dir.is_dir():
+		if restore_workspace_cache_tree(
+			cached_path,
+			workspace,
+			xwin_splat_dir.name,
+			'MSVC SDK',
+			is_xwin_workspace_complete,
+		):
 			return
-
-		log('Cached MSVC SDK did not contain the splat tree, building it')
 
 	url = f'https://github.com/Jake-Shadle/xwin/releases/download/{version}/{archive_name}'
 	download_file(url, archive_path, 'xwin')
@@ -1613,12 +1723,31 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 		copy_xwin_arch_libraries(arch_splat_dir, xwin_splat_dir, arch)
 	remove_path_if_exists(xwin_extra_splat_dir)
 
-	log('Pack MSVC SDK for the workspace cache:', cached_path)
-	with tarfile.open(cached_path, 'w:gz') as archive:
-		archive.add(xwin_splat_dir, arcname=xwin_splat_dir.name)
+	workspace_cache_store_tree(cached_name, cached_path, xwin_splat_dir, 'MSVC SDK')
 
-	workspace_cache_store(cached_name, cached_path)
-	remove_path_if_exists(cached_path)
+
+def prepare_wix_workspace(env: Mapping[str, str]) -> None:
+	if os.name != 'nt':
+		raise SystemExit('The workspace-local WiX v3 toolset is only used on Windows hosts; POSIX packaging uses wixl')
+
+	workspace = Path(env['FO_WORKSPACE'])
+	wix_root = workspace / 'wix3'
+	archive_name, url = build_wix_download_spec(env)
+	archive_path = workspace / archive_name
+
+	remove_path_if_exists(archive_path)
+	remove_path_if_exists(wix_root)
+	ensure_dir(workspace)
+	download_file(url, archive_path, 'WiX Toolset v3')
+
+	log('Unpack WiX Toolset v3:', archive_path)
+	extract_zip_with_permissions(archive_path, wix_root)
+	remove_path_if_exists(archive_path)
+
+	missing = [name for name in ('candle.exe', 'light.exe', 'WixUIExtension.dll') if not (wix_root / name).is_file()]
+	if missing:
+		remove_path_if_exists(wix_root)
+		raise SystemExit('Unexpected WiX Toolset archive layout; missing: ' + ', '.join(missing))
 
 
 def prepare_msan_libcxx_workspace(env: Mapping[str, str]) -> None:
@@ -1694,6 +1823,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-ndk': lambda: build_android_ndk_workspace_version(env),
 		'dotnet': lambda: build_dotnet_version(env),
 		'xwin': lambda: build_xwin_workspace_version(env),
+		'wix': lambda: build_wix_workspace_version(env),
 		'msan-libcxx': lambda: build_msan_libcxx_version(env),
 	}
 	part_actions = {
@@ -1703,6 +1833,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-ndk': prepare_android_ndk_workspace,
 		'dotnet': prepare_dotnet_workspace,
 		'xwin': prepare_xwin_workspace,
+		'wix': prepare_wix_workspace,
 		'msan-libcxx': prepare_msan_libcxx_workspace,
 	}
 
@@ -1745,7 +1876,8 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 	'windows': {
 		'toolset': ['toolset'],
 		'web': ['emscripten'],
-		'all': ['toolset', 'emscripten'],
+		'wix': ['wix'],
+		'all': ['toolset', 'emscripten', 'wix'],
 	},
 	'macos': {},
 }
@@ -2039,6 +2171,18 @@ def resolve_android_abi(platform_name: str) -> str:
 	return android_abi
 
 
+def resolve_validation_platform(platform_name: str) -> str:
+	if platform_name != 'native':
+		return platform_name
+	if os.name == 'nt':
+		return 'win64'
+	if sys.platform == 'darwin':
+		return 'mac'
+	if sys.platform.startswith('linux'):
+		return 'linux'
+	raise SystemExit(f'Unsupported native validation host: {sys.platform}')
+
+
 def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	build_env = os.environ.copy()
 	if compiler_name == 'gcc':
@@ -2275,7 +2419,8 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 		if part == '-G' and index + 1 < len(configure_cmd):
 			expected_generator = configure_cmd[index + 1]
 			break
-	if expected_generator is None:
+	requires_visual_studio = expected_generator is None and '-A' in configure_cmd
+	if expected_generator is None and not requires_visual_studio:
 		return False
 
 	cache_file = build_dir / 'CMakeCache.txt'
@@ -2286,7 +2431,12 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 	except OSError:
 		return False
 	match = _CMAKE_CACHE_GENERATOR_RE.search(text)
-	return bool(match and match.group(1).strip() != expected_generator)
+	if match is None:
+		return False
+	cached_generator = match.group(1).strip()
+	if expected_generator is not None:
+		return cached_generator != expected_generator
+	return not cached_generator.startswith('Visual Studio ')
 
 
 def prepare_validation_project(env: Mapping[str, str]) -> Path:
@@ -2309,7 +2459,7 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 		prepare_workspace(workspace_parts, False, env)
 
 	validation_root = prepare_validation_project(env)
-	platform_name = validation['platform']
+	platform_name = resolve_validation_platform(validation['platform'])
 	target_name = validation['target']
 	config = validation['config']
 	compiler_name = validation.get('compiler', 'clang')
@@ -2355,7 +2505,7 @@ MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
 # subset or source patches change: an unchanged marker leaves a prepared host on the old runtime
 MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
-MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
+MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
@@ -2494,6 +2644,29 @@ def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
 	)
 	path.write_text(text.replace(anchor, anchor + patch, 1), encoding='utf-8')
 	log('Patched', path, '- preserved the zlib-ng warning level')
+
+
+def patch_runtime_browser_asm_compiler(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'CMakeLists.txt'
+	text = path.read_text(encoding='utf-8')
+	marker = '(FOnline Patch) Generic ASM uses the already identified Emscripten C compiler'
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = 'elseif(HOST_WASM)\n    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	patch = (
+		'elseif(HOST_WASM)\n'
+		f'    # {marker}\n'
+		'    set (CMAKE_ASM_COMPILER_ID "${CMAKE_C_COMPILER_ID}")\n'
+		'    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	)
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the browser Mono ASM compiler ID, unique anchor not found in {path}')
+
+	path.write_text(text.replace(anchor, patch, 1), encoding='utf-8')
+	log('Patched', path, '- inherited the Emscripten C compiler ID for ASM')
 
 
 def patch_runtime_android_sources(runtime_root: Path) -> None:
@@ -2869,6 +3042,9 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	def build_runtime() -> None:
 		patch_runtime_zlib_warning_level(runtime_root)
+
+		if os_name == 'browser':
+			patch_runtime_browser_asm_compiler(runtime_root)
 
 		if os_name == 'linux':
 			patch_runtime_linux_signal_actions(runtime_root)
@@ -3258,7 +3434,7 @@ def create_parser() -> argparse.ArgumentParser:
 	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'wix', 'msan-libcxx'])
 	prepare_parser.add_argument('--check', action='store_true')
 
 	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
@@ -3297,6 +3473,7 @@ def create_parser() -> argparse.ArgumentParser:
 			'toolset',
 			'dotnet',
 			'windows-cross',
+			'wix',
 			'msan-libcxx',
 			'all',
 		],

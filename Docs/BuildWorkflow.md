@@ -76,7 +76,7 @@ the environment:
 | variable | what it configures |
 |---|---|
 | `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
-| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The MSVC SDK tree is built once, stored under `xwin-<version>-<arches>.tar.gz`, and downloaded whole afterwards. |
+| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The Emscripten SDK is keyed by version, host OS, and architecture; the MSVC SDK tree is keyed by xwin version and contained architectures. Each complete tree is built once and downloaded whole afterwards. |
 | `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
 | `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
 
@@ -88,8 +88,14 @@ far from its cause. And a workspace cache that is empty, unreachable or refusing
 it exists to make the build faster and independent of other people's servers, not to become another
 way for it to fail.
 
-`xwin` fetches the Microsoft packages itself, so mirroring the engine's own downloads does not cover
-it — which is why its *result* is what the workspace cache holds.
+`emsdk` and `xwin` fetch their own packages, so mirroring the engine's direct downloads does not cover
+them. Their complete prepared results are therefore what the workspace cache holds. A corrupt or incomplete
+Emscripten cache object is discarded and rebuilt locally; cache creation and upload remain best-effort. Cache
+fills use gzip's fast level because they run on the producing job's critical path; the modestly larger object is
+amortized by every later restore and does not change the tar.gz format or cache identity.
+Cached trees are extracted through the standard data-only tar filter after a path-boundary check. Extraction
+lands in a temporary sibling first, and only the named complete SDK directory is promoted, so an archive
+cannot overwrite another prepared workspace tree. The existing xwin cache follows the same restore rule.
 
 ## Where build logic lives
 

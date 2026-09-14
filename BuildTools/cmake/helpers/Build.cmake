@@ -752,17 +752,15 @@ function(CopyManagedRuntimeToTarget targetName)
 	if(NOT FO_MANAGED_SCRIPTING OR NOT TARGET ${targetName})
 		return()
 	endif()
-	if(NOT TARGET SetupManagedRuntime OR NOT DEFINED FO_MANAGED_RUNTIME_DIR)
+	if(NOT TARGET PrepareManagedRuntimePayload OR NOT DEFINED FO_MANAGED_RUNTIME_PAYLOAD_DIR)
 		return()
 	endif()
 
-	add_dependencies(${targetName} SetupManagedRuntime ManagedRuntimeIdentity)
+	add_dependencies(${targetName} PrepareManagedRuntimePayload)
 	AddCustomCommand(TARGET ${targetName} POST_BUILD
 		COMMAND ${CMAKE_COMMAND}
-			-DINPUT_DIR="${FO_MANAGED_RUNTIME_DIR}"
+			-DINPUT_DIR="${FO_MANAGED_RUNTIME_PAYLOAD_DIR}"
 			-DOUTPUT_DIR="$<TARGET_FILE_DIR:${targetName}>"
-			-DIDENTITY_FILE="${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedRuntimeIdentity.txt"
-			-DTARGET_NAME="$<TARGET_FILE_BASE_NAME:${targetName}>"
 			-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/CopyManagedRuntime.cmake"
 		COMMENT "Copy Managed runtime for ${targetName}")
 endfunction()

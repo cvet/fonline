@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import io
 import json
 import os
@@ -18,19 +19,18 @@ import tarfile
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import IO, Callable, Iterable, Literal, Sequence
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
 
 import buildtools
 import foconfig
-from managed_runtime_identity import runtime_identity
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 # Mirrors CanSelfUpdateNativeModules() in Source/Client/Updater.cpp: only these clients fetch native
-# modules from the server. Android and iOS update through their store, Web through its bundle, so no
-# runtime payload is staged for them and none may be demanded of a server package
+# modules from the server. Every platform still receives its target-specific managed class libraries
+# as an ordinary resource pack; this list controls only native client modules
 SELF_UPDATING_CLIENT_PLATFORMS = ('Windows', 'Linux', 'macOS')
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
@@ -57,10 +57,25 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
-RUNTIME_COMPANION_DIRECTORIES = ('ManagedRuntime',)
+MANAGED_RUNTIME_DIRECTORY = 'ManagedRuntime'
+MANAGED_RUNTIME_MANIFEST = 'runtime.manifest'
+MANAGED_CORELIB_RELATIVE_PATH = os.path.join('lib', 'netcoreapp', 'System.Private.CoreLib.dll')
+RESOURCE_TARGET_EXCLUDED_SUFFIXES = {
+	'Server': ('-client', '-mapper'),
+	'Client': ('-server', '-mapper'),
+	'Mapper': ('-server',),
+}
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
+PACKAGE_MODE_MANIFEST = '.lf-package-modes.json'
+PACKAGE_MODE_MANIFEST_VERSION = 1
+PACKAGE_FILE_MODES = frozenset({0o644, 0o755})
+RESOURCE_ARCHIVE_CACHE_FORMAT = 1
+RESOURCE_ARCHIVE_CACHE_HELPER_ENV = 'FO_RESOURCE_ARCHIVE_CACHE_HELPER'
+RESOURCE_ARCHIVE_CACHE_MISS = 2
+RESOURCE_ARCHIVE_CACHE_UNAVAILABLE = 3
+RESOURCE_ARCHIVE_HASH_CHUNK_BYTES = 1024 * 1024
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -320,8 +335,15 @@ def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
-def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipInfo, file_path: str) -> bool:
+def zip_entry_matches_file(
+	archive: zipfile.ZipFile,
+	archive_info: zipfile.ZipInfo,
+	file_path: str,
+	expected_mode: int | None = None,
+) -> bool:
 	if archive_info.file_size != os.path.getsize(file_path):
+		return False
+	if expected_mode is not None and (archive_info.external_attr >> 16) & 0o777 != expected_mode:
 		return False
 
 	with archive.open(archive_info) as archive_file, open(file_path, 'rb') as source_file:
@@ -354,7 +376,14 @@ def validate_resource_zip(archive_source: str | Path | IO[bytes], expected_entri
 		raise AssertionError(f'Resource pack validation failed for {archive_name}: {error}') from error
 
 
-def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
+def make_zip(
+	name: str | Path,
+	path: str | Path,
+	compress_level: int,
+	mode: Literal['w', 'a'] = 'w',
+	mode_overrides: Mapping[str, int] | None = None,
+) -> None:
+	mode_overrides = mode_overrides or {}
 	with zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
 		existing_entries = {entry.filename: entry for entry in archive.infolist()}
 
@@ -362,12 +391,22 @@ def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Lite
 			for file_name in files:
 				file_path = os.path.join(root, file_name)
 				archive_name = os.path.relpath(file_path, path).replace(os.sep, '/')
+				logical_mode = mode_overrides.get(archive_name)
 				existing_entry = existing_entries.get(archive_name)
 				if existing_entry is not None:
-					assert zip_entry_matches_file(archive, existing_entry, file_path), 'Conflicting zip entry while merging package parts: ' + archive_name
+					assert zip_entry_matches_file(archive, existing_entry, file_path, logical_mode), 'Conflicting zip entry while merging package parts: ' + archive_name
 					continue
 
-				archive.write(file_path, archive_name)
+				if logical_mode is None:
+					archive.write(file_path, archive_name)
+				else:
+					assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+					info = zipfile.ZipInfo.from_file(file_path, archive_name)
+					info.create_system = 3
+					info.compress_type = zipfile.ZIP_DEFLATED
+					info.external_attr = logical_mode << 16
+					with open(file_path, 'rb') as source, archive.open(info, 'w') as destination:
+						shutil.copyfileobj(source, destination)
 				existing_entries[archive_name] = archive.getinfo(archive_name)
 
 
@@ -379,6 +418,69 @@ def resolve_safe_relative_path(root: Path, relative_path: str, description: str)
 	resolved_path = (resolved_root / path).resolve()
 	assert resolved_path == resolved_root or resolved_root in resolved_path.parents, f'{description} escapes its root: {relative_path}'
 	return resolved_path
+
+
+def validate_package_mode_path(relative_path: str) -> None:
+	assert relative_path and '\\' not in relative_path, f'Package mode path must use POSIX separators: {relative_path!r}'
+	posix_path = PurePosixPath(relative_path)
+	windows_path = PureWindowsPath(relative_path)
+	assert not posix_path.is_absolute() and not windows_path.drive, f'Package mode path must be relative: {relative_path}'
+	assert relative_path == posix_path.as_posix(), f'Package mode path is not normalized: {relative_path}'
+	assert all(part not in ('', '.', '..') for part in posix_path.parts), f'Package mode path must not escape its root: {relative_path}'
+
+
+def read_package_mode_manifest(package_root: Path) -> dict[str, int]:
+	manifest_path = package_root / PACKAGE_MODE_MANIFEST
+	if not manifest_path.is_file():
+		return {}
+
+	try:
+		manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+	except (OSError, json.JSONDecodeError) as error:
+		raise AssertionError(f'Invalid package mode manifest {manifest_path}: {error}') from error
+
+	assert isinstance(manifest, dict), f'Package mode manifest must be an object: {manifest_path}'
+	assert manifest.get('version') == PACKAGE_MODE_MANIFEST_VERSION, f'Unsupported package mode manifest version: {manifest.get("version")!r}'
+	assert set(manifest) == {'version', 'files'}, f'Package mode manifest has unknown fields: {manifest_path}'
+	files = manifest.get('files')
+	assert isinstance(files, dict), f'Package mode manifest files must be an object: {manifest_path}'
+
+	modes: dict[str, int] = {}
+	for relative_path, encoded_mode in files.items():
+		assert isinstance(relative_path, str), f'Package mode path must be a string: {relative_path!r}'
+		validate_package_mode_path(relative_path)
+		assert isinstance(encoded_mode, str) and re.fullmatch(r'[0-7]{3}', encoded_mode), f'Invalid package mode for {relative_path}: {encoded_mode!r}'
+		logical_mode = int(encoded_mode, 8)
+		assert logical_mode in PACKAGE_FILE_MODES, f'Unsupported package mode for {relative_path}: {encoded_mode}'
+		file_path = resolve_safe_relative_path(package_root, relative_path, 'Package mode path')
+		assert file_path.is_file(), f'Package mode path is not a file: {relative_path}'
+		modes[relative_path] = logical_mode
+	return modes
+
+
+def write_package_mode_manifest(package_root: Path, modes: Mapping[str, int]) -> None:
+	manifest_path = package_root / PACKAGE_MODE_MANIFEST
+	if not modes:
+		manifest_path.unlink(missing_ok=True)
+		return
+
+	for relative_path, logical_mode in modes.items():
+		validate_package_mode_path(relative_path)
+		assert logical_mode in PACKAGE_FILE_MODES, f'Unsupported package mode for {relative_path}: {logical_mode!r}'
+		assert resolve_safe_relative_path(package_root, relative_path, 'Package mode path').is_file(), f'Package mode path is not a file: {relative_path}'
+
+	payload = {
+		'version': PACKAGE_MODE_MANIFEST_VERSION,
+		'files': {relative_path: format(logical_mode, '03o') for relative_path, logical_mode in sorted(modes.items())},
+	}
+	with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=package_root, prefix=PACKAGE_MODE_MANIFEST + '.', suffix='.tmp', delete=False) as output:
+		temporary_path = Path(output.name)
+		json.dump(payload, output, indent=2)
+		output.write('\n')
+	try:
+		os.replace(temporary_path, manifest_path)
+	finally:
+		temporary_path.unlink(missing_ok=True)
 
 
 def iter_package_include_files(target_root: Path) -> list[Path]:
@@ -543,8 +645,23 @@ def package_web_resources(
 		loader_path.replace(output_path / 'Resources.js')
 
 
-def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
+def make_tar(
+	name: str | Path,
+	path: str | Path,
+	mode: Literal['w', 'w:gz'],
+	mode_overrides: Mapping[str, int] | None = None,
+) -> None:
+	mode_overrides = mode_overrides or {}
+	archive_root = os.path.basename(os.fspath(path)).replace(os.sep, '/')
+
 	def filter_member(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
+		relative_name = tar_info.name.replace('\\', '/')
+		if relative_name.startswith(archive_root + '/'):
+			relative_name = relative_name[len(archive_root) + 1:]
+		logical_mode = mode_overrides.get(relative_name)
+		if logical_mode is not None:
+			assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+			tar_info.mode = logical_mode
 		return tar_info
 
 	with tarfile.open(name, mode) as archive:
@@ -589,6 +706,8 @@ class Packager:
 	embedded_data: bytes = field(init=False, default=b'')
 	config_data: bytes = field(init=False, default=b'')
 	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
+	logical_file_modes: dict[str, int] = field(init=False, default_factory=dict)
+	resource_archive_paths: dict[str, str] = field(init=False, default_factory=dict)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
@@ -763,18 +882,6 @@ class Packager:
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
 
-		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
-			if entry_name in excluded_names:
-				continue
-
-			entry_path = os.path.join(bin_path, entry_name)
-			if not os.path.isdir(entry_path):
-				continue
-
-			output_path = os.path.join(self.target_output_path, entry_name)
-			log('Runtime companion directory included', entry_name)
-			shutil.copytree(entry_path, output_path, dirs_exist_ok=True)
-
 	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
@@ -783,13 +890,16 @@ class Packager:
 		return output_file_path
 
 	def package_all_client_runtime_update_payloads(self) -> None:
-		copied_payloads: set[tuple[str, str]] = set()
+		copied_native_payloads: set[tuple[str, str]] = set()
+		copied_resource_payloads: set[tuple[str, str]] = set()
+		resource_payload_sources: dict[tuple[str, str], tuple[tuple[int, str], str]] = {}
 		# A variant that never reaches PlatformBinaries leaves its players with 'update the client
 		# manually' and nothing to act on, so every skip states its reason and the declared variants
 		# are verified before the package is called done
 		skipped_entries: list[str] = []
 		client_embedded_data = self.make_embedded_data_for_target('Client')
 		_, client_config_data = self.read_config_data('Client')
+		managed_runtime_pack = self.find_managed_runtime_pack('Client')
 
 		for input_dir in self.args.input:
 			binaries_root = os.path.join(os.path.abspath(input_dir), 'Binaries')
@@ -809,29 +919,45 @@ class Packager:
 				if entry_postfix is None:
 					continue
 
-				parts = request_target_name.split('-', 1)
-				if len(parts) != 2:
-					continue
-
-				platform = parts[0]
-				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
-				if not runtime_ext:
-					continue
-
 				default_runtime_variant = BinaryVariant()
 				headless_runtime_variant = BinaryVariant(role='Headless')
 
-				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
+				build_hash_path = os.path.join(entry_path, self.args.devname + '_Client.build-hash')
+				if not os.path.isfile(build_hash_path):
+					build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
 				if not os.path.isfile(build_hash_path):
 					skipped_entries.append(entry_name + ': no build hash file at ' + build_hash_path)
-					log('Client runtime update payload skipped', entry_name, 'no build hash file')
+					log('Client platform update payload skipped', entry_name, 'no build hash file')
 					continue
 
 				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
 					build_hash = file.read().strip()
 				if build_hash != self.args.buildhash:
 					skipped_entries.append(entry_name + ': built from ' + build_hash + ', package is ' + self.args.buildhash)
-					log('Client runtime update payload skipped', entry_name, 'build hash', build_hash, '!= package build hash', self.args.buildhash)
+					log('Client platform update payload skipped', entry_name, 'build hash', build_hash, '!= package build hash', self.args.buildhash)
+					continue
+
+				if managed_runtime_pack is not None:
+					payload_key = (request_target_name, managed_runtime_pack)
+					runtime_dir = os.path.join(entry_path, MANAGED_RUNTIME_DIRECTORY)
+					self.read_managed_runtime_identity(runtime_dir)
+					# One updater path serves all variants, whose independent equivalent CoreLib builds may differ.
+					# Prefer the least-qualified entry
+					source_priority = (len(entry_name), entry_name)
+					previous_source = resource_payload_sources.get(payload_key)
+					if previous_source is None or source_priority < previous_source[0]:
+						resource_payload_sources[payload_key] = (source_priority, runtime_dir)
+
+				parts = request_target_name.split('-', 1)
+				if len(parts) != 2:
+					continue
+
+				platform = parts[0]
+				if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
+					continue
+
+				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
+				if not runtime_ext:
 					continue
 
 				suffix = ''
@@ -868,15 +994,8 @@ class Packager:
 						continue
 
 					payload_target_name = request_target_name
-					identity_path = Path(entry_path) / (runtime_input_name + '.managed-runtime-id')
-					runtime_dir = Path(entry_path) / 'ManagedRuntime'
-					if identity_path.exists() or runtime_dir.exists():
-						identity = identity_path.read_text(encoding='utf-8').strip()
-						if identity != runtime_identity(runtime_dir):
-							raise ValueError('Managed runtime companions differ from the compiled client: ' + entry_path)
-						payload_target_name += '-Managed-' + identity
 					payload_key = (payload_target_name, output_name)
-					if payload_key in copied_payloads:
+					if payload_key in copied_native_payloads:
 						continue
 
 					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, payload_target_name)
@@ -914,22 +1033,38 @@ class Packager:
 							log('Client host PDB included', host_pdb_out)
 							shutil.copy(host_pdb_input, host_pdb_out)
 
-					copied_payloads.add(payload_key)
+					copied_native_payloads.add(payload_key)
 
-		self.verify_expected_client_runtime_payloads(copied_payloads, skipped_entries)
+		for (request_target_name, pack_name), (_, runtime_dir) in sorted(resource_payload_sources.items()):
+			payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+			os.makedirs(payload_dir, exist_ok=True)
+			output_path = os.path.join(payload_dir, pack_name + '.zip')
+			log('Client managed resource payload', output_path)
+			self.write_resource_pack_with_runtime(output_path, pack_name, runtime_dir, 'Client')
+			copied_resource_payloads.add((request_target_name, pack_name))
 
-	def verify_expected_client_runtime_payloads(self, copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> None:
+		self.verify_expected_client_runtime_payloads(
+			copied_native_payloads, copied_resource_payloads, managed_runtime_pack, skipped_entries)
+
+	@staticmethod
+	def staged_payload_satisfies(copied_payloads: set[tuple[str, str]], target_name: str, output_name: str) -> bool:
+		return (target_name, output_name) in copied_payloads
+
+	def verify_expected_client_runtime_payloads(
+		self,
+		copied_native_payloads: set[tuple[str, str]],
+		copied_resource_payloads: set[tuple[str, str]],
+		managed_runtime_pack: str | None,
+		skipped_entries: list[str],
+	) -> None:
 		# The server package declares which client variants it distributes. Without this check a variant
 		# that was not built, or was built from another commit, is dropped in silence and the first
 		# report comes from a player told to update the client by hand
-		for expectation in self.args.expect_client_runtime:
+		for expectation in getattr(self.args, 'expect_client_runtime', ()) or ():
 			parts = expectation.split(':')
 			assert len(parts) in (2, 3), 'Expected client runtime must be Platform:arch[:postfix], got: ' + expectation
 			platform, arch = parts[0], parts[1]
 			postfix = parts[2] if len(parts) == 3 else ''
-
-			if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
-				continue
 
 			if platform == 'Android':
 				entry_arch = resolve_android_abi(arch)
@@ -941,14 +1076,33 @@ class Packager:
 			target_name = self.build_runtime_update_target_name(binary_entry)
 			assert target_name is not None, 'Expected client runtime names an unknown platform/arch: ' + expectation
 
-			output_name = self.args.nicename + ('_' + postfix if postfix else '')
-			if (target_name, output_name) in copied_payloads:
+			if managed_runtime_pack is not None and (target_name, managed_runtime_pack) not in copied_resource_payloads:
+				reasons = self.describe_missing_client_payloads(copied_resource_payloads, skipped_entries)
+				raise AssertionError(
+					'Client managed resource payload missing from the server package: expected '
+					+ managed_runtime_pack + '.zip under PlatformBinaries/' + target_name
+					+ ' (from ' + binary_entry + '). This client would receive managed class libraries for another platform. Skipped entries: '
+					+ reasons)
+
+			if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
 				continue
 
-			reasons = '; '.join(skipped_entries) if skipped_entries else 'no client binaries directory was found for it'
+			output_name = self.args.nicename + ('_' + postfix if postfix else '')
+			if self.staged_payload_satisfies(copied_native_payloads, target_name, output_name):
+				continue
+
+			reasons = self.describe_missing_client_payloads(copied_native_payloads, skipped_entries)
 			raise AssertionError(
 				'Client runtime payload missing from the server package: expected ' + output_name + ' under PlatformBinaries/' + target_name
 				+ ' (from ' + binary_entry + '). Clients of this variant would be told to update manually. Skipped entries: ' + reasons)
+
+	@staticmethod
+	def describe_missing_client_payloads(copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> str:
+		if skipped_entries:
+			return '; '.join(skipped_entries)
+		if copied_payloads:
+			return 'staged ' + ', '.join(sorted(target + '/' + name for target, name in copied_payloads))
+		return 'no client binaries directory was found for it'
 
 	def merge_additional_config_data(self, *entries: str | None) -> str | None:
 		lines = [entry for entry in entries if entry]
@@ -993,6 +1147,32 @@ class Packager:
 		if self.target_output_path:
 			shutil.rmtree(self.target_output_path, True)
 
+	def record_logical_file_mode(self, file_path: str | Path, logical_mode: int) -> None:
+		assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+		relative_path = Path(file_path).resolve().relative_to(Path(self.target_output_path).resolve()).as_posix()
+		validate_package_mode_path(relative_path)
+		if not hasattr(self, 'logical_file_modes'):
+			self.logical_file_modes = {}
+		self.logical_file_modes[relative_path] = logical_mode
+
+	def persist_logical_file_modes(self) -> None:
+		package_root = Path(self.output_path)
+		target_root = Path(self.target_output_path)
+		target_prefix = target_root.resolve().relative_to(package_root.resolve()).as_posix().rstrip('/') + '/'
+		all_modes = {
+			path: mode
+			for path, mode in read_package_mode_manifest(package_root).items()
+			if not path.startswith(target_prefix)
+		}
+
+		logical_file_modes = getattr(self, 'logical_file_modes', {})
+		if self.has_pack('Raw'):
+			all_modes.update({target_prefix + path: mode for path, mode in logical_file_modes.items()})
+		if self.has_pack('Root'):
+			all_modes.update(logical_file_modes)
+
+		write_package_mode_manifest(package_root, all_modes)
+
 	def get_input(self, subdir: str, input_type: str) -> str:
 		for input_dir in self.args.input:
 			abs_dir = os.path.join(os.path.abspath(input_dir), subdir)
@@ -1021,11 +1201,9 @@ class Packager:
 	def filter_resource_file(self, target: str, file_path: str) -> bool:
 		if not os.path.isfile(file_path):
 			return False
-		if target == 'Server' and (file_path.endswith('-client') or file_path.endswith('-mapper')):
-			return False
-		if target == 'Client' and (file_path.endswith('-server') or file_path.endswith('-mapper')):
-			return False
-		if target == 'Mapper' and file_path.endswith('-server'):
+		excluded_suffixes = RESOURCE_TARGET_EXCLUDED_SUFFIXES.get(target, ())
+		resource_path = os.path.relpath(file_path, self.baking_path) if self.baking_path else file_path
+		if any(path_part.endswith(excluded_suffixes) for path_part in Path(resource_path).parts):
 			return False
 		return True
 
@@ -1055,12 +1233,184 @@ class Packager:
 
 	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
 		zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+		self.write_zip_entries(archive_path, zip_entries)
 
-		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for arcname, file_path in zip_entries:
-				self.write_stable_zip_entry(archive, file_path, arcname)
+	def resource_archive_cache_key(self, zip_entries: Sequence[tuple[str, str]]) -> str:
+		digest = hashlib.sha256()
+		digest.update(struct.pack('<II', RESOURCE_ARCHIVE_CACHE_FORMAT, self.zip_compress_level))
 
-		validate_resource_zip(archive_path, [arcname for arcname, _ in zip_entries])
+		for arcname, file_path in zip_entries:
+			name = arcname.encode('utf-8')
+			digest.update(struct.pack('<QQ', len(name), os.path.getsize(file_path)))
+			digest.update(name)
+
+			with open(file_path, 'rb') as source:
+				for chunk in iter(lambda: source.read(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES), b''):
+					digest.update(chunk)
+
+		return digest.hexdigest()
+
+	def run_resource_archive_cache_helper(self, action: str, key: str, archive_path: str) -> int | None:
+		if getattr(self, 'resource_archive_cache_unavailable', False):
+			return None
+
+		helper = os.environ.get(RESOURCE_ARCHIVE_CACHE_HELPER_ENV)
+
+		if not helper:
+			return None
+
+		assert os.path.isfile(helper), RESOURCE_ARCHIVE_CACHE_HELPER_ENV + ' is not a file: ' + helper
+		status = subprocess.run(
+			[sys.executable, helper, action, '--key', key, '--archive', archive_path], check=False).returncode
+
+		if status == RESOURCE_ARCHIVE_CACHE_UNAVAILABLE:
+			self.resource_archive_cache_unavailable = True
+
+		return status
+
+	def restore_resource_archive(self, archive_path: str, key: str, entry_names: Sequence[str]) -> bool:
+		local_archives = getattr(self, 'resource_archive_paths', {})
+		local_path = local_archives.get(key)
+
+		if local_path is not None and os.path.isfile(local_path):
+			if os.path.realpath(local_path) != os.path.realpath(archive_path):
+				shutil.copy2(local_path, archive_path)
+
+			validate_resource_zip(archive_path, entry_names)
+			log('Resource archive local hit', key)
+			return True
+
+		status = self.run_resource_archive_cache_helper('restore', key, archive_path)
+
+		if status is None or status in (RESOURCE_ARCHIVE_CACHE_MISS, RESOURCE_ARCHIVE_CACHE_UNAVAILABLE):
+			return False
+
+		assert status == 0, 'Resource archive cache restore failed with exit code ' + str(status)
+		validate_resource_zip(archive_path, entry_names)
+		log('Resource archive cache hit', key)
+		return True
+
+	def remember_resource_archive(self, archive_path: str, key: str) -> None:
+		if not hasattr(self, 'resource_archive_paths'):
+			self.resource_archive_paths = {}
+
+		archive_identity = os.path.realpath(archive_path)
+		self.resource_archive_paths = {
+			cached_key: cached_path
+			for cached_key, cached_path in self.resource_archive_paths.items()
+			if os.path.realpath(cached_path) != archive_identity
+		}
+		self.resource_archive_paths[key] = archive_path
+
+	def write_zip_entries(self, archive_path: str, zip_entries: Sequence[tuple[str, str]]) -> None:
+		zip_entries = sorted(zip_entries)
+		entry_names = [arcname for arcname, _ in zip_entries]
+		assert len(entry_names) == len(set(entry_names)), 'Duplicate resource zip entry in ' + archive_path
+		cache_key = self.resource_archive_cache_key(zip_entries)
+
+		if self.restore_resource_archive(archive_path, cache_key, entry_names):
+			self.remember_resource_archive(archive_path, cache_key)
+			return
+
+		try:
+			with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
+				for arcname, file_path in zip_entries:
+					self.write_stable_zip_entry(archive, file_path, arcname)
+
+			validate_resource_zip(archive_path, entry_names)
+		except Exception:
+			self.run_resource_archive_cache_helper('release', cache_key, archive_path)
+			raise
+
+		status = self.run_resource_archive_cache_helper('store', cache_key, archive_path)
+		assert status in (None, 0), 'Resource archive cache store failed with exit code ' + str(status)
+		self.remember_resource_archive(archive_path, cache_key)
+
+	def find_managed_runtime_pack(self, target: Literal['Client', 'Server']) -> str | None:
+		assert self.baking_path, 'Baking path is not initialized'
+		managed_packs = [
+			pack_name
+			for pack_name in self.get_target_resource_packs(target)
+			if os.path.isdir(os.path.join(self.baking_path, pack_name, MANAGED_RUNTIME_DIRECTORY))
+		]
+		assert len(managed_packs) <= 1, f'Managed runtime payload must belong to exactly one {target.lower()} resource pack'
+		if not managed_packs:
+			return None
+
+		self.read_managed_runtime_identity(os.path.join(self.baking_path, managed_packs[0], MANAGED_RUNTIME_DIRECTORY))
+		return managed_packs[0]
+
+	@staticmethod
+	def read_managed_runtime_identity(runtime_dir: str) -> bytes:
+		manifest_path = os.path.join(runtime_dir, MANAGED_RUNTIME_MANIFEST)
+		corelib_path = os.path.join(runtime_dir, MANAGED_CORELIB_RELATIVE_PATH)
+		assert os.path.isfile(manifest_path), 'Managed runtime manifest not found: ' + manifest_path
+		assert os.path.isfile(corelib_path), 'Managed System.Private.CoreLib.dll not found: ' + corelib_path
+		with open(manifest_path, 'rb') as manifest_file:
+			identity = manifest_file.read()
+		assert identity, 'Managed runtime manifest is empty: ' + manifest_path
+		return identity
+
+	def write_resource_pack_with_runtime(
+		self,
+		archive_path: str,
+		pack_name: str,
+		runtime_dir: str,
+		target: Literal['Client', 'Server'],
+	) -> None:
+		assert self.baking_path, 'Baking path is not initialized'
+		self.read_managed_runtime_identity(runtime_dir)
+
+		pack_base = os.path.join(self.baking_path, pack_name)
+		baked_runtime_base = os.path.realpath(os.path.join(pack_base, MANAGED_RUNTIME_DIRECTORY))
+		zip_entries = [
+			(os.path.relpath(file_path, pack_base).replace(os.sep, '/'), file_path)
+			for file_path in self.collect_resource_files(pack_name, target)
+			if os.path.commonpath((baked_runtime_base, os.path.realpath(file_path))) != baked_runtime_base
+		]
+
+		runtime_files = sorted(
+			file_path
+			for file_path in glob.glob(os.path.join(runtime_dir, '**'), recursive=True)
+			if os.path.isfile(file_path)
+		)
+		assert runtime_files, 'Managed runtime payload is empty: ' + runtime_dir
+		zip_entries.extend(
+			(
+				MANAGED_RUNTIME_DIRECTORY + '/' + os.path.relpath(file_path, runtime_dir).replace(os.sep, '/'),
+				file_path,
+			)
+			for file_path in runtime_files
+		)
+		self.write_zip_entries(archive_path, zip_entries)
+
+	def package_target_managed_runtime_resources(self, target: Literal['Client', 'Server']) -> None:
+		managed_runtime_pack = self.find_managed_runtime_pack(target)
+		if managed_runtime_pack is None:
+			return
+
+		packaged_identity: bytes | None = None
+		packaged_runtime_dir: str | None = None
+		for arch in self.iter_arches():
+			binary_entry = self.build_binary_entry(arch, BinaryVariant())
+			bin_path = self.get_input(os.path.join('Binaries', binary_entry), self.args.devname + '_' + target)
+			runtime_dir = os.path.join(bin_path, MANAGED_RUNTIME_DIRECTORY)
+			runtime_identity = self.read_managed_runtime_identity(runtime_dir)
+			assert packaged_identity is None or packaged_identity == runtime_identity, (
+				f'{target} package architectures carry different managed runtime payloads')
+			packaged_identity = runtime_identity
+			packaged_runtime_dir = runtime_dir
+
+		assert packaged_runtime_dir is not None, f'{target} package has no managed runtime source architecture'
+		resource_dir = self.client_res_dir if target == 'Client' else self.server_res_dir
+		archive_path = os.path.join(self.target_output_path, resource_dir, managed_runtime_pack + '.zip')
+		log(f'Replace baked managed runtime with {target.lower()} platform payload', archive_path)
+		self.write_resource_pack_with_runtime(
+			archive_path,
+			managed_runtime_pack,
+			packaged_runtime_dir,
+			target,
+		)
 
 	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
 		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
@@ -1284,6 +1634,7 @@ class Packager:
 
 				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
 
+				self.record_logical_file_mode(output_file_path, 0o755)
 				st = os.stat(output_file_path)
 				os.chmod(output_file_path, st.st_mode | stat.S_IEXEC)
 
@@ -1333,15 +1684,8 @@ class Packager:
 		file_packager_path = os.path.join(emsdk_root, 'upstream', 'emscripten', 'tools', 'file_packager.py')
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
 
-		# The wasm module carries the Mono runtime itself, but its class library is data the client reads at
-		# startup, so it is preloaded into the same virtual filesystem the resources land in. Assemblies
-		# only: the native part is already linked in, and the headers beside them are build-time artifacts
-		managed_runtime_lib_path = os.path.join(bin_path, 'ManagedRuntime', 'lib', 'netcoreapp')
-		assert os.path.isdir(managed_runtime_lib_path), f'Managed runtime assemblies not found: {managed_runtime_lib_path}'
-
 		preload_roots = [
 			(Path(self.target_output_path) / self.client_res_dir, self.client_res_dir),
-			(Path(managed_runtime_lib_path), 'ManagedRuntime/lib/netcoreapp'),
 		]
 		preload_files = [
 			(file_path, '/' + virtual_root + '/' + file_path.relative_to(root).as_posix())
@@ -1472,21 +1816,6 @@ class Packager:
 			assets_res_dir = os.path.join(assets_dir, self.client_res_dir)
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
-
-		# The Managed runtime travels in the package like the resources do: Mono needs a real filesystem
-		# path for it, so the launcher unpacks assets to app storage and names the result to the engine.
-		# Only the managed assemblies go in - Mono itself is linked into the native library, so the
-		# runtime's own shared objects and headers would be dead weight, and the assemblies carry no
-		# architecture, which keeps one copy correct for every ABI in the package
-		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
-			assemblies_source = os.path.join(bin_path, entry_name, 'lib', 'netcoreapp')
-			if not os.path.isdir(assemblies_source):
-				continue
-
-			assets_runtime_dir = os.path.join(assets_dir, entry_name, 'lib', 'netcoreapp')
-			shutil.rmtree(os.path.join(assets_dir, entry_name), ignore_errors=True)
-			shutil.copytree(assemblies_source, assets_runtime_dir)
-			log('Managed runtime assemblies packaged', assets_runtime_dir)
 
 		# Read Android config from the baked target config so SubConfig overrides affect APK metadata
 		android_config = self.get_effective_config_section()
@@ -1639,24 +1968,25 @@ class Packager:
 		log('Code signing: done')
 
 	def finalize_output(self) -> None:
+		logical_file_modes = getattr(self, 'logical_file_modes', {})
 		self.sign_windows_binaries()
 
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
-			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level)
+			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level, mode_overrides=logical_file_modes)
 
 		if self.has_pack('SingleZip'):
 			log('Add to single zip archive')
 			single_zip_path = os.path.join(self.output_path, os.path.basename(self.output_path) + '.zip')
-			make_zip(single_zip_path, self.target_output_path, self.zip_compress_level, 'a')
+			make_zip(single_zip_path, self.target_output_path, self.zip_compress_level, 'a', logical_file_modes)
 
 		if self.has_pack('Tar'):
 			log('Create tar archive')
-			make_tar(self.target_output_path + '.tar', self.target_output_path, 'w')
+			make_tar(self.target_output_path + '.tar', self.target_output_path, 'w', logical_file_modes)
 
 		if self.has_pack('TarGz'):
 			log('Create tar.gz archive')
-			make_tar(self.target_output_path + '.tar.gz', self.target_output_path, 'w:gz')
+			make_tar(self.target_output_path + '.tar.gz', self.target_output_path, 'w:gz', logical_file_modes)
 
 		if self.has_pack('Root'):
 			shutil.copytree(self.target_output_path, self.output_path, dirs_exist_ok=True)
@@ -1666,6 +1996,8 @@ class Packager:
 
 		if not self.has_pack('Raw'):
 			shutil.rmtree(self.target_output_path, True)
+
+		self.persist_logical_file_modes()
 
 	def resolve_game_version(self) -> str:
 		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
@@ -1680,15 +2012,29 @@ class Packager:
 				raw = version_file.read().strip()
 		return raw
 
-	def ensure_msi_toolset(self) -> None:
+	def ensure_msi_toolset(self) -> str:
 		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
 		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
 		# (candle/light) on Windows, GNOME wixl elsewhere — matching msicreator/createmsi.py. On
 		# Debian/Ubuntu wixl ships in its own "wixl" apt package (the "msitools" package carries only
 		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl)
 		if os.name == 'nt':
+			candidate_roots: list[Path] = []
+			configured_root = os.environ.get('FO_WIX_ROOT', '')
+			if configured_root:
+				candidate_roots.append(Path(configured_root))
+			for input_path in self.args.input:
+				candidate = Path(input_path).resolve().parent / 'wix3'
+				if candidate not in candidate_roots:
+					candidate_roots.append(candidate)
+
+			for candidate_root in candidate_roots:
+				if all((candidate_root / (tool + '.exe')).is_file() for tool in ('candle', 'light')):
+					return str(candidate_root)
+
 			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
-			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
+			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found); run buildtools.py prepare-workspace wix'
+			return ''
 		else:
 			wixl = shutil.which('wixl')
 			assert wixl is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
@@ -1697,6 +2043,7 @@ class Packager:
 			assert version_match is not None, 'Unable to determine wixl version from: ' + version_output
 			version = tuple(int(part or '0') for part in version_match.groups())
 			assert version >= (0, 102, 0), 'Wix pack directory UI requires wixl 0.102 or newer (found %s)' % version_output
+			return ''
 
 	def make_wix_installer(self) -> None:
 		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
@@ -1707,7 +2054,7 @@ class Packager:
 		# game-specific values come from the project config, so the engine packager stays game-agnostic
 		assert self.args.platform == 'Windows' and self.args.target == 'Client', 'Wix pack is only valid for the Windows Client target'
 
-		self.ensure_msi_toolset()
+		wix_root = self.ensure_msi_toolset()
 
 		scheme = self.fomain.mainSection().getStr('Auth.UriScheme', '').strip()
 		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
@@ -1800,7 +2147,11 @@ class Packager:
 			log('Wix: building MSI installer', config_path)
 			# createmsi.py requires a bare json filename (no path segment) and resolves it plus the staged
 			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir
-			subprocess.run([sys.executable, createmsi, os.path.basename(config_path)], cwd=work_dir, check=True)
+			command = [sys.executable, createmsi]
+			if wix_root:
+				command.extend(['--wix-dir', wix_root])
+			command.append(os.path.basename(config_path))
+			subprocess.run(command, cwd=work_dir, check=True)
 			log('Wix: MSI built (registers %s:// URI scheme, Start Menu + Desktop shortcuts, installs writable-data marker)' % scheme)
 		finally:
 			if os.path.exists(marker_path):
@@ -1812,6 +2163,8 @@ class Packager:
 		try:
 			if not self.has_pack('NoRes'):
 				self.prepare_resources()
+				if self.args.target in ('Client', 'Server'):
+					self.package_target_managed_runtime_resources(self.args.target)
 
 			self.select_platform_packager()()
 

@@ -12,6 +12,9 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
+The ordinary `unit-tests` validation target selects the native host toolchain: MSVC on Windows,
+Xcode on macOS, and Clang on Linux. Sanitizer validators remain explicitly platform-specific.
+
 BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can be run directly:
 
 ```bash
@@ -124,6 +127,7 @@ At the moment the shared flow covers:
 - `android-ndk`
 - `dotnet`
 - `xwin`
+- `wix`
 - `msan-libcxx`
 
 Linux system package installation is explicit and separate from workspace preparation:
@@ -136,7 +140,7 @@ Linux system package installation is explicit and separate from workspace prepar
 - `msi-packages`
 - `all-packages`
 
-Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
+Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `php-cli` and `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
 
 Host prerequisite checks are also available through the main tool:
 
@@ -172,6 +176,8 @@ Host wrapper scripts now delegate to the unified workspace preparation command:
 - `buildtools.py prepare-host-workspace macos ...`
 
 Emscripten version is pinned by `Engine/ThirdParty/emscripten` and installed into `Workspace/emsdk`.
+On Windows, BuildTools runs `emsdk.py` with its own `sys.executable`; a different legacy `python` earlier
+on `PATH` must not decide whether the pinned SDK can be prepared.
 
 Examples:
 
@@ -179,6 +185,7 @@ Examples:
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset
 python3 Engine/BuildTools/buildtools.py prepare-workspace emscripten
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
+python3 Engine/BuildTools/buildtools.py prepare-workspace wix
 python3 Engine/BuildTools/buildtools.py prepare-workspace msan-libcxx
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
@@ -187,6 +194,13 @@ python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-package
 The `toolset` workspace always enables the baker and disables runtime applications and tests. It leaves
 `FO_BUILD_ASCOMPILER` to the embedding project's `SetOptionValues` default, so AngelScript projects can
 prepare their compiler while managed-only projects do not receive an incompatible forced override.
+
+`wix` is Windows-only and prepares the portable WiX v3 release pinned by
+`Engine/ThirdParty/wix` under `Workspace/wix3`. Downloads use
+`FO_DOWNLOAD_MIRROR` like other workspace archives, and the SHA-256 is checked
+before extraction. `package.py` discovers this directory from its output input,
+so no global installation or persistent `PATH` mutation is required. POSIX
+package hosts continue to use the provisioned `wixl` command.
 
 `msan-libcxx` is Linux-only and intentionally excluded from the default `all`
 workspace feature because it downloads matching LLVM sources and builds
@@ -309,6 +323,24 @@ APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace ou
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.
 
 Every client/server resource pack is reopened after it is built — the zips written to disk and the in-memory pack embedded into the executable alike. Packaging verifies the exact entry list and streams every entry through the CRC-checking zip reader, so a damaged resource archive stops the package before it reaches either the downloadable client or the server updater source.
+
+MSI compiler/linker failures leave their native file, ICE, or Windows Installer diagnostic in the build log
+before packaging exits. Windows `candle` and `light` promote warnings to errors. The generator suppresses
+ICE91 only: every emitted MSI is explicitly per-user under `LocalAppDataFolder`, which is the exact package
+shape for which that mixed-scope warning is inapplicable. On Windows, the first `light` run keeps its output
+buffered while ICE validation is classified. A successful validated link or a terminal failure then emits that
+output. If and only if the first attempt reports the exact Windows Installer service-unavailable diagnostic,
+the creator retries the same link with `-sval`; a successful retry suppresses the superseded `error` lines so
+MSBuild does not classify the otherwise successful custom target as failed. Any authoring, linker, or ordinary
+ICE error still fails immediately, and failure of the fallback link is also fatal.
+
+An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing
+`restore|store|release --key <sha256> --archive <path>`. Before deflate, `package.py` hashes the stable entry
+names and contents plus compression level. Exit code 0 from `restore` supplies a ready archive, while 2 is a
+miss; after a miss the validated archive is passed to `store`, and an interrupted write calls `release`. Exit
+code 3 reports an unavailable optional cache and disables later helper calls in the same package process.
+Regardless of origin, the normal entry-list and CRC validation remains mandatory. Identical archives needed
+twice by one package process are copied from its first validated result without another helper call.
 
 ## Packaging: post-build binary patching
 

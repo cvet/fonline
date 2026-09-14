@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,58 +29,23 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
 
 #pragma once
 
 #include "Common.h"
 
-#include "Settings.h"
+#if FO_MANAGED_SCRIPTING
+
+#include "FileSystem.h"
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(UpdaterException);
+inline constexpr string_view MANAGED_RUNTIME_RESOURCE_DIR = "ManagedRuntime";
+inline constexpr string_view MANAGED_RUNTIME_MANIFEST_FILE = "runtime.manifest";
 
-class Player;
-
-class UpdaterBackend final
-{
-public:
-    UpdaterBackend() = default;
-    UpdaterBackend(const UpdaterBackend&) = delete;
-    UpdaterBackend(UpdaterBackend&&) = delete;
-    auto operator=(const UpdaterBackend&) -> UpdaterBackend& = delete;
-    auto operator=(UpdaterBackend&&) -> UpdaterBackend& = delete;
-
-    [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
-
-    void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
-    void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
-
-private:
-    static void VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version);
-
-    struct UpdateFileData
-    {
-        bool InMemory {};
-        string DiskPath;
-        vector<uint8_t> MemoryData {};
-        uint64_t Size {};
-        uint64_t Hash {};
-    };
-
-    struct UpdateFileInfo
-    {
-        uint32_t FileIndex {};
-        string ClientPath;
-        UpdateFileTarget Target {UpdateFileTarget::ClientResources};
-    };
-
-    vector<UpdateFileData> _updateFiles {};
-    vector<UpdateFileInfo> _commonUpdateFiles {};
-    vector<uint8_t> _commonUpdateFilesDesc {};
-    map<string, vector<UpdateFileInfo>> _platformTargetUpdateFiles {};
-    map<string, vector<uint8_t>> _platformTargetUpdateFilesDesc {};
-};
+auto FindManagedRuntimeDirectory() -> optional<std::filesystem::path>;
+auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cache_dir) -> optional<std::filesystem::path>;
 
 FO_END_NAMESPACE
+
+#endif

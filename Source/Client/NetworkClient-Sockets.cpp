@@ -60,6 +60,8 @@ protected:
     void DisconnectImpl() noexcept override;
 
 private:
+    void ApplyTcpNoDelay();
+
     tcp_socket _sock;
 
     // Game server endpoint that needs to travel inside the SOCKS / HTTP CONNECT payload (proxy mode only)
@@ -109,12 +111,8 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
             throw NetworkClientException("Can't connect to the game server", host, port, net_sockets::last_error_text());
         }
 
-#if !FO_WEB
-        if (_settings->DisableTcpNagle && !_sock.set_nodelay(true)) {
-            WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
-        }
-#endif
-
+        // No TCP_NODELAY here: this connect is still in flight, and Winsock answers a socket option on a
+        // connecting socket with WSAEINVAL. CheckStatusImpl sets it the moment the connection completes
         return;
     }
 
@@ -135,9 +133,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         throw NetworkClientException("Can't connect to proxy server", _settings->ProxyHost, _settings->ProxyPort, net_sockets::last_error_text());
     }
 
-    if (_settings->DisableTcpNagle && !_sock.set_nodelay(true)) {
-        WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
-    }
+    ApplyTcpNoDelay();
 
     // After proxy connect succeeds, the network layer expects the same notion of "connected"
     _isConnecting = false;
@@ -314,6 +310,8 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
 
             _isConnecting = false;
             _isConnected = true;
+
+            ApplyTcpNoDelay();
         }
 
         return true;
@@ -331,6 +329,21 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
     }
 
     return false;
+}
+
+void NetworkClientConnection_Sockets::ApplyTcpNoDelay()
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if !FO_WEB
+    if (!_settings->DisableTcpNagle) {
+        return;
+    }
+
+    if (!_sock.set_nodelay(true)) {
+        WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
+    }
+#endif
 }
 
 auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8_t> buf) -> size_t

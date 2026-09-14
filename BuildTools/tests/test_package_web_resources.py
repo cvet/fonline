@@ -170,7 +170,7 @@ def test_packager_stderr_and_nonzero_exit_are_preserved(tmp_path: Path, capfd: p
     )
     with pytest.raises(AssertionError, match="file_packager.py failed for Resources-0: 7"):
         _package.package_web_resources(tmp_path, failing_packager, [(source, "/Resources/asset")])
-    assert capfd.readouterr().err == "warning: fixture warning\nerror: fixture failure\n"
+    assert capfd.readouterr().err.splitlines() == ["warning: fixture warning", "error: fixture failure"]
     assert not (tmp_path / "Resources.js").exists()
 
 

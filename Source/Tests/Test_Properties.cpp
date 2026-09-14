@@ -5384,6 +5384,27 @@ TEST_CASE("PropertiesVersionQualifiedNamesPreserveExistingSavedDocuments")
         CHECK(restored.GetValue<int16_t>(live_prop) == 0);
         CHECK(restored.GetValue<int32_t>(legacy_prop) == 100000);
     }
+
+    SECTION("A retired stored name is ignored at its version cutover")
+    {
+        meta.RegisterMigrationRule("Property", "VersionedQuest", "RetiredStep", "LegacyStep");
+        meta.RegisterPropertyMigrationBeforeVersion("VersionedQuest", "RetiredStep", "DataVersion", "3270");
+
+        AnyData::Document current_doc;
+        current_doc.Emplace("DataVersion", int64_t {3270});
+        current_doc.Emplace("RetiredStep", int64_t {7});
+        current_doc.Emplace("LegacyStep", int64_t {4});
+        Properties current(registrar);
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&current, current_doc, meta.Hashes, meta));
+        CHECK(current.GetValue<int32_t>(legacy_prop) == 4);
+
+        AnyData::Document old_doc;
+        old_doc.Emplace("DataVersion", int64_t {3269});
+        old_doc.Emplace("RetiredStep", int64_t {7});
+        Properties old(registrar);
+        REQUIRE(PropertiesSerializer::LoadFromDocument(&old, old_doc, meta.Hashes, meta));
+        CHECK(old.GetValue<int32_t>(legacy_prop) == 7);
+    }
 }
 
 TEST_CASE("PropertiesVersionQualifiedRefTypeNamesUseSiblingVersion")

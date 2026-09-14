@@ -191,7 +191,9 @@ version got wrong and that the self-tests pin:
   than pattern-matching the shape.
 
 A value the await itself produced, or one declared after it, is fresh and exempt — the await held no cover for
-it to lose.
+it to lose. That includes both deconstruction spellings, `(T x, bool y) = await ...` and
+`var (x, y) = await ...`: their designations end before the await in the text, so the assignment they sit in
+is what decides, not the designation's own position.
 
 What remains unmodelled is a loop whose re-proof sits at the top of the next iteration, and any path shape a
 source walk cannot see. The rule under-reports there rather than guessing.
@@ -285,6 +287,13 @@ severity, not all at once.
   `GlobalPropertiesToRemove` is load-bearing: without it the analyzer inherits the script project's
   `OutputPath` and lands in the baked script assembly directory, where the baker would pick it up as a
   runtime script assembly.
+- The setting is a **list**, so this analyzer is not the only one an embedding project can carry: a project
+  with rules of its own adds a second entry rather than growing this one, which keeps game-specific
+  diagnostics out of the reusable engine. The rest of the analysis profile — rule-set version and mode,
+  packaged analyzers, analyzer configuration files — is described in
+  [Scripting.md](Scripting.md#the-analysis-profile-of-the-generated-script-project). Editing an analyzer
+  project re-triggers the managed bake, so a new rule takes effect on the next build rather than waiting for
+  an unrelated source file to change.
 
 ## Next: the engine's own exports
 

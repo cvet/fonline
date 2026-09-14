@@ -326,6 +326,11 @@ rpmalloc_test_set_span_commit_failures(int failures);
 //! (FOnline Patch) Return the number of unconsumed injected failures
 RPMALLOC_EXPORT int
 rpmalloc_test_get_span_commit_failures(void);
+
+//! (FOnline Patch) Attach a pristine heap to an allocator-uninitialized calling thread
+//! so allocator-path tests do not depend on free pages retained by earlier tests
+RPMALLOC_EXPORT int
+rpmalloc_test_initialize_pristine_thread_heap(void);
 #endif
 
 #if RPMALLOC_FIRST_CLASS_HEAPS

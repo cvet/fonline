@@ -55,12 +55,12 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(ScriptSettings, virtual BaseSettings);
-FIXED_SETTING(int32_t, Script, OverrunReportTime); // Time in milliseconds to report script execution or entity-lock wait overrun, 0 to disable
-FIXED_SETTING(bool, Script, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
-FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1"); // Debugger TCP bind host
-FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
-FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
-FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+FIXED_SETTING(int32_t, Script, AngelScriptOverrunReportTime); // Time in milliseconds to report AngelScript execution or entity-lock wait overrun, 0 to disable
+FIXED_SETTING(bool, Script, AngelScriptDebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
+FIXED_SETTING(string, Script, AngelScriptDebuggerBindHost, "127.0.0.1"); // AngelScript debugger TCP bind host
+FIXED_SETTING(vector<string>, Script, AngelScriptMutableGlobalsAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
+FIXED_SETTING(vector<string>, Script, AngelScriptAttributedFunctionDirectCallAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
+FIXED_SETTING(vector<string>, Script, AngelScriptExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
 FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
 FIXED_SETTING(string, Script, ManagedScriptProjectName, "FOnline"); // Managed project base name
 FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
@@ -70,6 +70,10 @@ FIXED_SETTING(string, Script, ManagedScriptGeneratedDir); // Directory for gener
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
 FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzers); // Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build
+FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzerPackages); // Roslyn analyzer NuGet packages as 'name,version' entries, version is mandatory and must be exact
+FIXED_SETTING(vector<string>, Script, ManagedScriptAdditionalFiles); // Analyzer configuration file paths passed to the script compilation as AdditionalFiles
+FIXED_SETTING(string, Script, ManagedScriptAnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
+FIXED_SETTING(string, Script, ManagedScriptAnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
 FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING_GROUP_END();
 

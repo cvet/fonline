@@ -36,6 +36,7 @@
 #include "Test_BakerHelpers.h"
 
 #if FO_MANAGED_SCRIPTING
+#include "ManagedRuntime.h"
 #include "ManagedScriptBackend.h"
 #include "ManagedScriptBaker.h"
 #include "ManagedScripting.h"
@@ -302,6 +303,31 @@ static auto MakeManagedGeneratedCs(string_view body) -> string
 
 #endif
 
+TEST_CASE("Managed runtime resources are restored into a content-addressed cache")
+{
+#if FO_MANAGED_SCRIPTING
+    ScopedTempDirectory temp_dir;
+    auto resource_root = temp_dir.Path() / "Resources";
+    auto cache_root = temp_dir.Path() / "Cache";
+    WriteTextFile(resource_root / "ManagedRuntime" / "lib" / "netcoreapp" / "System.Private.CoreLib.dll", "managed-corelib\n");
+    WriteTextFile(resource_root / "ManagedRuntime" / "runtime.manifest", "manifest\n");
+
+    FileSystem resources;
+    resources.AddDirSource(resource_root.string(), true);
+
+    auto restored = RestoreManagedRuntimeResources(resources, cache_root.string());
+    REQUIRE(restored.has_value());
+    CHECK(restored->parent_path() == cache_root / "ManagedRuntime");
+    auto restored_corelib = *restored / "lib" / "netcoreapp" / "System.Private.CoreLib.dll";
+    CHECK(ReadTextFile(restored_corelib) == "managed-corelib\n");
+
+    WriteTextFile(restored_corelib, "damaged\n");
+    auto restored_again = RestoreManagedRuntimeResources(resources, cache_root.string());
+    REQUIRE(restored_again == restored);
+    CHECK(ReadTextFile(restored_corelib) == "managed-corelib\n");
+#endif
+}
+
 TEST_CASE("Managed scripting rejects metadata without a script system")
 {
 #if FO_MANAGED_SCRIPTING
@@ -360,6 +386,7 @@ TEST_CASE("ManagedScriptBaker")
     std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
     std::filesystem::path managed_reference = managed_source_dir / "References" / "ManagedDependency.dll";
     std::filesystem::path managed_analyzer = managed_source_dir / "Analyzers" / "ManagedAnalyzer.csproj";
+    std::filesystem::path banned_symbols = managed_source_dir / "Analyzers" / "BannedSymbols.txt";
     std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
@@ -369,6 +396,7 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
     WriteTextFile(managed_reference, "managed-reference\n");
     WriteTextFile(managed_analyzer, "<Project />\n");
+    WriteTextFile(banned_symbols, "M:System.Environment.Exit(System.Int32);Process lifetime is not the script layer's decision.\n");
 
     std::filesystem::path server_source = script_dir / "ServerOnly.cs";
     std::filesystem::path client_source = script_dir / "ClientOnly.cs";
@@ -426,6 +454,10 @@ TEST_CASE("ManagedScriptBaker")
         });
     OverrideSetting(rig.Settings.ManagedScriptExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core"});
     OverrideSetting(rig.Settings.ManagedScriptAnalyzers, vector<string> {"ManagedSupport/Analyzers/ManagedAnalyzer.csproj"});
+    OverrideSetting(rig.Settings.ManagedScriptAnalyzerPackages, vector<string> {"Unit.Analyzer,1.2.3", "Unit.Banned.Analyzer,4.5.6"});
+    OverrideSetting(rig.Settings.ManagedScriptAdditionalFiles, vector<string> {"ManagedSupport/Analyzers/BannedSymbols.txt"});
+    OverrideSetting(rig.Settings.ManagedScriptAnalysisLevel, "10.0");
+    OverrideSetting(rig.Settings.ManagedScriptAnalysisMode, "All");
     OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
     rig.AddBakedFile("Metadata.fometa-server",
         MakeMetadataBlob({
@@ -458,9 +490,9 @@ TEST_CASE("ManagedScriptBaker")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    CHECK(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.dll"));
-    CHECK(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.dll"));
-    CHECK(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.dll"));
 
     CHECK_FALSE(std::filesystem::exists(temp_dir.Path() / "UnitManaged.csproj"));
     CHECK_FALSE(std::filesystem::exists(temp_dir.Path() / "UnitManaged.Server.gen.csproj"));
@@ -532,9 +564,21 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("Obsolete.gen.cs") != string::npos);
     CHECK(unified_project.find("<ProjectReference Include=\"FOnline.ManagedHost.gen.csproj\" />") != string::npos);
 
+    // The analysis profile: level and mode as properties, analyzer packages as private package references,
+    // and the analyzer configuration file as an AdditionalFiles item beside them
+    CHECK(unified_project.find("<EnableNETAnalyzers>true</EnableNETAnalyzers>") != string::npos);
+    CHECK(unified_project.find("<AnalysisLevel>10.0</AnalysisLevel>") != string::npos);
+    CHECK(unified_project.find("<AnalysisMode>All</AnalysisMode>") != string::npos);
+    CHECK(unified_project.find("<PackageReference Include=\"Unit.Analyzer\" Version=\"1.2.3\" PrivateAssets=\"all\" />") != string::npos);
+    CHECK(unified_project.find("<PackageReference Include=\"Unit.Banned.Analyzer\" Version=\"4.5.6\" PrivateAssets=\"all\" />") != string::npos);
+    CHECK(unified_project.find("<AdditionalFiles Include=\"../../ManagedSupport/Analyzers/BannedSymbols.txt\" />") != string::npos);
+
     string managed_host_project = ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj");
     CHECK(managed_host_project.find("<AssemblyName>FOnline.ManagedHost</AssemblyName>") != string::npos);
     CHECK(managed_host_project.find("ManagedHost/ManagedLoadContextHost.cs") != string::npos);
+    // The profile covers the script project only; the host compiles engine-owned source
+    CHECK(managed_host_project.find("<AnalysisMode>") == string::npos);
+    CHECK(managed_host_project.find("<PackageReference") == string::npos);
 
     string server_enums = ReadTextFile(script_dir / "ServerEnums.gen.cs");
     CHECK(server_enums.find("// <auto-generated />") == 0);
@@ -709,9 +753,9 @@ TEST_CASE("ManagedScriptBaker")
     REQUIRE_NOTHROW(no_work_baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     CHECK(rig.Outputs.empty());
-    CHECK(checked_output_paths.contains("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll"));
-    CHECK(checked_output_paths.contains("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll"));
-    CHECK(checked_output_paths.contains("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-server/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-client/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-mapper/FOnline.ManagedHost.dll"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.csproj"));
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.sln"));
@@ -806,6 +850,94 @@ TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisi
 #endif
 }
 
+TEST_CASE("ManagedScriptBaker rebakes when an editorconfig above the sources changes")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+    std::filesystem::path editor_config = temp_dir.Path() / ".editorconfig";
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    WriteTextFile(editor_config, "root = true\n");
+
+    // An .editorconfig above the sources must move the bake stamp. Its write time is set rather than
+    // rewritten, because two writes can land inside one filesystem timestamp tick
+    auto future_time = std::filesystem::last_write_time(editor_config) + std::chrono::hours(24);
+    std::filesystem::last_write_time(editor_config, future_time);
+
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitEditorConfig");
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    vector<uint64_t> stamps;
+    ManagedScriptBaker baker(rig.MakeContext("TestPack", [&stamps](string_view path, uint64_t write_time) {
+        ignore_unused(path);
+        stamps.emplace_back(write_time);
+        return false;
+    }));
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    REQUIRE(!stamps.empty());
+    CHECK(std::ranges::max(stamps) == fs_last_write_time(strex("{}", editor_config.string()).str()));
+#endif
+}
+
+TEST_CASE("ManagedScriptBaker rejects an analyzer package without an exact version")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitPackages");
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    // A wildcard version, a range and a missing one each make the reported rule set depend on the day the
+    // build ran, so the baker refuses them instead of emitting a project whose analysis silently drifts
+    string_view rejected_entry = GENERATE("Unit.Analyzer,1.2.*", "Unit.Analyzer,[1.2.3,2.0.0)", "Unit.Analyzer,", "Unit.Analyzer", ",1.2.3");
+    OverrideSetting(rig.Settings.ManagedScriptAnalyzerPackages, vector<string> {string(rejected_entry)});
+
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Analyzer package"));
+#endif
+}
+
 TEST_CASE("ManagedScriptBaker packs helper assemblies")
 {
 #if FO_MANAGED_SCRIPTING
@@ -819,16 +951,21 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     std::filesystem::path shared_source = script_dir / "Shared.cs";
     std::filesystem::path fake_msbuild_root = temp_dir.Path() / "Baking" / "TestPack" / "Assemblies";
     std::filesystem::path fake_msbuild = WriteFakeManagedMsBuildScript(temp_dir.Path());
+    std::filesystem::path managed_runtime_dir = temp_dir.Path() / "ManagedRuntime";
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
     WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
     WriteTextFile(shared_source, "namespace Demo { public static class Shared {} }\n");
+    WriteTextFile(managed_runtime_dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll", "managed-corelib\n");
+    WriteTextFile(managed_runtime_dir / "lib" / "netcoreapp" / "coreclr.dll", "native-coreclr\n");
+    WriteTextFile(managed_runtime_dir / "runtime.manifest", "0000000000000000000000000000000000000000000000000000000000000000  lib/netcoreapp/System.Private.CoreLib.dll\n");
 
     ScopedCurrentPath current_path(temp_dir.Path());
     // The fake msbuild helper is a spawned child process; env is the legitimate channel to parameterize it
     ScopedEnvVar msbuild_root {"FO_FAKE_MSBUILD_ROOT", fake_msbuild_root.string()};
+    ScopedEnvVar managed_runtime {"FO_MANAGED_RUNTIME", managed_runtime_dir.string()};
 
     TestRig rig;
     OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
@@ -845,23 +982,26 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     ManagedScriptBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/TestPack.Server.dll")).find("entry-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/SharedDependency.dll")).find("helper-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/TestPack.Server.dll")).find("entry-Server") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/SharedDependency.dll")).find("helper-Server") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-server/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.pdb"));
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.deps.json"));
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/TestPack.Client.dll")).find("entry-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/SharedDependency.dll")).find("helper-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/TestPack.Client.dll")).find("entry-Client") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/SharedDependency.dll")).find("helper-Client") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-client/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.pdb"));
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.deps.json"));
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/SharedDependency.dll")).find("helper-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/SharedDependency.dll")).find("helper-Mapper") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/Assemblies-mapper/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.pdb"));
+    CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.deps.json"));
+    CHECK(BytesToText(rig.Outputs.at("ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll")) == "managed-corelib\n");
+    CHECK(rig.Outputs.contains("ManagedRuntime/runtime.manifest"));
+    CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/coreclr.dll"));
 #endif
 }
 

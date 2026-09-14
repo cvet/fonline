@@ -339,13 +339,15 @@ internal static class Native
 
             key += method.Module.ModuleVersionId.ToString();
             key += ":";
-            key += method.MetadataToken.ToString();
+            key += method.MetadataToken.ToString(System.Globalization.CultureInfo.InvariantCulture);
             key += ":";
             key += method.DeclaringType != null ? method.DeclaringType.FullName : string.Empty;
             key += ":";
             key += method.Name;
             key += ":";
-            key += target != null ? RuntimeHelpers.GetHashCode(target).ToString() : "static";
+            key += target != null
+                     ? RuntimeHelpers.GetHashCode(target).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                     : "static";
         }
 
         return key;
@@ -377,7 +379,7 @@ internal static class Native
             i++;
         }
 
-        throw new IndexOutOfRangeException();
+        throw new ArgumentOutOfRangeException(nameof(index));
     }
 
     internal static object? GetDictionaryValue(object value, int index)
@@ -391,7 +393,7 @@ internal static class Native
             i++;
         }
 
-        throw new IndexOutOfRangeException();
+        throw new ArgumentOutOfRangeException(nameof(index));
     }
 
     internal static object CreateList(Type elementType)

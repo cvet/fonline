@@ -225,11 +225,18 @@ implementation. Regression coverage compiles the Android x86 PIC path and, when
 a Linux i386 loader and libc are installed, executes concurrent operations at
 both four- and eight-byte alignment.
 
-Android and Apple source patches have separate `BUILT` and `READY` marker
-suffixes, synchronized between `buildtools.py` and the CMake runtime target.
-Existing caches with the older suffix rebuild and republish those runtimes once;
-the cloned source is retained. Linux, Windows, and browser marker keys stay
-unchanged. Change the affected platform's suffix when its patch contract changes,
+Browser Mono inherits its ASM compiler ID, version, and target from the already
+identified Emscripten C compiler before enabling generic ASM. CMake defines generic
+ASM as assembly handled by the C compiler, but `emcc --version` does not match its
+standalone Clang assembler probe; without the inherited ID, configure reports an
+unknown compiler and looks for `Compiler/-ASM`. The source patch leaves the compiler
+driver and `.S` build command unchanged, and rejects a moved upstream anchor.
+
+Browser, Android, Apple, and Linux source-patch contracts have separate `BUILT` and
+`READY` marker suffixes, synchronized between `buildtools.py` and the CMake runtime
+target. Existing browser caches ending in `_wasmglue` rebuild and republish once
+with the ASM identification patch; the cloned source is retained. Windows keeps its
+cache key. Change the affected platform's suffix when its patch contract changes,
 so a ready cache cannot bypass new source edits.
 
 Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
@@ -294,7 +301,7 @@ Start here when source grouping, library dependencies, or runtime layer boundari
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Managed script generation and compilation through the `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`, wired to the `CompileManagedScripts` target) when Managed scripting is enabled, with `SetupManagedRuntime` preparing the Mono runtime, Mono corelib, and managed .NET runtime assemblies under the CMake build tree before managed-linked applications are built. It also builds and publishes the interop shims (`libs.native`) and `libminipal`, which CoreLib reaches the OS through on every non-Windows platform — `Interop.Sys` is `libSystem.Native`, and the first managed call already needs it. The shims are linked statically and resolved at run time from a generated entry-point table (`BuildTools/generate_pinvoke_table.py`) served through a Mono dl fallback, because Windows and WebAssembly cannot load them as shared libraries. For the browser the subset additionally carries `mono.wasmruntime`, whose JavaScript glue is published beside the runtime and passed to the Emscripten link as `--pre-js` / `--js-library` / `--extern-post-js`.
+- Managed script generation and compilation through the `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`, wired to the `CompileManagedScripts` target) when Managed scripting is enabled, with `SetupManagedRuntime` preparing Mono, Mono corelib, and the managed .NET class libraries under the CMake build tree before managed-linked applications are built. `PrepareManagedRuntimePayload` filters that publish tree down to managed PE assemblies from `lib/netcoreapp`, requires `System.Private.CoreLib.dll`, and writes a SHA-256 manifest. The Managed baker places this clean payload under `ManagedRuntime/` in its resource pack; native Mono/JIT files, headers, import libraries, symbols, and other build products never enter the resource output. The payload is target-platform-specific because CoreLib compiles different OS interop implementations. A client package therefore replaces the baker target's copy with `Binaries/Client-<platform>-<arch>/ManagedRuntime`, and a server package emits the same rebuilt pack under each distributed client's `PlatformBinaries/<target>/` directory. Setup also builds and publishes the interop shims (`libs.native`) and `libminipal`, which CoreLib reaches the OS through on every non-Windows platform — `Interop.Sys` is `libSystem.Native`, and the first managed call already needs it. The shims are linked statically and resolved at run time from a generated entry-point table (`BuildTools/generate_pinvoke_table.py`) served through a Mono dl fallback, because Windows and WebAssembly cannot load them as shared libraries. For the browser the subset additionally carries `mono.wasmruntime`, whose JavaScript glue is published beside the runtime and passed to the Emscripten link as `--pre-js` / `--js-library` / `--extern-post-js`.
   The runtime is built with the **host's** toolchain, so `SetupManagedRuntime` follows the host and not the target: CMake invokes `buildtools.py setup-mono` with its configured Python interpreter; that helper invokes the runtime's `build.cmd` on Windows and `build.sh` elsewhere. One target is out of reach that way — `dotnet/runtime` has no Windows cross-target, so a non-Windows host cannot produce `windows.<arch>.<config>` at all. For that case the runtime is built once on Windows and handed over: point **`FO_MANAGED_RUNTIME_PREBUILT`** at a directory holding published `output/mono/<triplet>` trees (or at a single triplet's tree) and `setup-mono` adopts it in place of the source build, writing the same ready marker. Without it, a Windows target on a non-Windows host is refused at configure time with the reason rather than failing later inside `dotnet/runtime`.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
@@ -335,7 +342,7 @@ See [Applications.md](Applications.md).
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
 
-`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. The same inline dialog authoring is used by both supported build hosts; it does not disappear when production runs `wixl` on Linux. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
+`package.py` owns the reusable package payload layout and optional post-processing. Target modes are logical package data rather than a property of the host filesystem: Linux executables are recorded in the aggregate package's internal `.lf-package-modes.json`, and the same override is written into ZIP/TAR members. A publisher consumes that manifest when copying a Raw tree off NTFS and must exclude the manifest from the public payload. For a Windows Client package that includes the `Wix` pack, the packager invokes `msicreator/createmsi.py` to build a per-user MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. Its file components use HKCU KeyPaths and explicit uninstall-directory removal, so both `wixl` and Windows ICE validation accept the same authoring. Windows `candle` and `light` promote warnings to errors. ICE91 alone is suppressed because every generated package has `InstallScope=perUser` and lives below `LocalAppDataFolder`, the package-only-per-user case for which ICE91 is inapplicable; the conditional ICE61 suppression remains limited to the declared same-version major-upgrade policy. Windows `light` normally runs the remaining ICE validation; only the exact diagnostic that the Windows Installer service is unavailable selects one retry with `-sval`, because service-account runners cannot always host ICE. The tentative validation output is buffered until its outcome is known: a successful fallback omits the superseded `error` lines so an enclosing MSBuild custom target cannot mistake a recovered link for failure. Authoring, linker, and ordinary ICE failures still emit their diagnostics and never select the fallback, and a failed fallback remains fatal. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX v3 `candle`/`light` on Windows) or a generator/build error fails the package. Windows can prepare the version-pinned portable toolset under `Workspace/wix3` with `buildtools.py prepare-workspace wix`; the download obeys `FO_DOWNLOAD_MIRROR`, and `package.py` discovers it without a global install. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
 - `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
@@ -360,14 +367,39 @@ headless runtime remains available as a build artifact without leaking into a
 normal Raw/Zip payload or the MSI derived from it; a package carrying the
 `Headless` token still receives the renamed headless host/runtime pair.
 
+Managed class libraries are not binary companions. The Managed baker writes a
+filtered payload into the managed resource pack, but CoreLib is platform-specific.
+Its output directories carry the ordinary resource-role suffixes, for example
+`Assemblies/Assemblies-client/`. Resource packaging applies
+`-server`/`-client`/`-mapper` filtering to every path component, so it can reject
+a complete target directory and a Client pack never carries Server or Mapper
+assemblies.
+For a Client or Server part, `package.py` rebuilds that target's own resource
+pack with the corresponding binary directory's clean `ManagedRuntime` payload;
+this keeps the class libraries paired with the Mono runtime statically linked
+into the packaged application even when baking and native compilation ran in
+independent jobs or on different operating systems. For a Server part, it also
+stages one client pack at `PlatformBinaries/<target>/<pack>.zip` for every
+distributed client target. Native variants of one target share that updater
+path; their independently
+built CoreLib files need not be byte-identical, so the packager deterministically
+prefers the least-qualified binary entry (normally the default Release build).
+It never copies a side-by-side `ManagedRuntime` directory or hoists Mono
+DLLs into a package root. Native, Web, and Android packages retain the same
+resource paths while carrying target-appropriate contents; the backend restores
+them into the writable runtime cache.
+
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the
 same path are a packaging error; the packager never emits ambiguous duplicate
-ZIP names. Applications sharing a package root must therefore be built with
-the same runtime payload. `buildtools.py build <platform> full <config>` builds
-the client, server and tools in one CMake tree with one `SetupManagedRuntime`
-output. Both `full` and `toolset` leave `FO_BUILD_ASCOMPILER` to the embedding
-project's default so a managed-only project does not enable AngelScript tools.
+ZIP names. Applications sharing a package root must therefore agree on every
+common file they emit. Each Client package part owns its target-specific managed
+resource pack; server-side updater copies live below distinct target directories.
+`buildtools.py build <platform> full
+<config>` builds the client, server and tools in one CMake tree with one
+`SetupManagedRuntime` output. Both `full` and `toolset` leave
+`FO_BUILD_ASCOMPILER` to the embedding project's default so a managed-only
+project does not enable AngelScript tools.
 
 The universal package schema has no `EffekseerEditor` binary role. Separately
 built tools are declared alongside `BINARY` parts with

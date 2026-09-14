@@ -95,6 +95,7 @@ auto posix::get_home_dir() noexcept -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
 
+#if !FO_WEB
     // The reentrant form: the shared one returns a pointer into storage another caller may replace
     passwd pwd {};
     passwd* result = nullptr;
@@ -110,6 +111,10 @@ auto posix::get_home_dir() noexcept -> optional<string>
     }
 
     return string {pwd.pw_dir};
+
+#else
+    return std::nullopt;
+#endif
 }
 
 auto posix::get_executable_path() noexcept -> optional<string>

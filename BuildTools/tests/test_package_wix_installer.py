@@ -41,6 +41,7 @@ def _make_packager(
         target=target,
         arch=arch,
         binary_output_postfix=binary_output_postfix,
+        input=[str(tmp_path / "output")],
     )
     return packager
 
@@ -74,6 +75,20 @@ def test_ensure_msi_toolset_requires_wixl_on_posix(tmp_path: Path, monkeypatch: 
         packager.ensure_msi_toolset()
 
 
+def test_ensure_msi_toolset_finds_workspace_local_wix_on_windows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    if os.name != "nt":
+        pytest.skip("workspace-local WiX binaries are Windows executables")
+    wix_root = tmp_path / "wix3"
+    wix_root.mkdir()
+    (wix_root / "candle.exe").write_bytes(b"candle")
+    (wix_root / "light.exe").write_bytes(b"light")
+    packager = _make_packager(tmp_path, ["Common.GameVersion = 1.0.0"])
+    monkeypatch.delenv("FO_WIX_ROOT", raising=False)
+    monkeypatch.setattr(_package.shutil, "which", lambda name: None)
+
+    assert packager.ensure_msi_toolset() == str(wix_root)
+
+
 def _staged_client(output_dir: Path) -> Path:
     staged = output_dir / "LF-Client"
     (staged / "Resources").mkdir(parents=True)
@@ -96,14 +111,16 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     ]
     packager = _make_packager(tmp_path, fomain_lines)
     packager.target_output_path = str(staged)
-    monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: None)
+    workspace_wix = tmp_path / "wix3"
+    monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: str(workspace_wix))
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
 
     captured: dict[str, object] = {}
 
-    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False) -> SimpleNamespace:
+    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False, env: dict[str, str] | None = None) -> SimpleNamespace:
         captured["cmd"] = cmd
         captured["cwd"] = cwd
+        captured["env"] = env
         # The writable-data marker must exist inside the staged payload at MSI build time
         assert (Path(cwd) / "LF-Client" / "INSTALLED").is_file()
         # Drive only createmsi's WiX XML generation without requiring wixl or light
@@ -121,6 +138,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
 
     # createmsi resolves a bare JSON filename against work_dir
     assert captured["cmd"][-1] == "LastFrontier.wix.json"
+    assert captured["cmd"][-3:-1] == ["--wix-dir", str(workspace_wix)]
     assert "/" not in str(captured["cmd"][-1]) and "\\" not in str(captured["cmd"][-1])
     assert captured["cwd"] == str(output_dir)
 
@@ -170,6 +188,12 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert 'Indirect="yes"' not in wxs
     assert 'Remote="yes"' not in wxs
     assert 'Directory Id="LF_Client_Resources"' in wxs
+    assert 'InstallScope="perUser"' in wxs
+    assert 'Name="ApplicationFiles0" Type="integer" Value="1" KeyPath="yes"' in wxs
+    assert 'Name="ApplicationFiles1" Type="integer" Value="1" KeyPath="yes"' in wxs
+    assert 'RemoveFolder Id="Remove_INSTALLDIR" Directory="INSTALLDIR" On="uninstall"' in wxs
+    assert 'RemoveFolder Id="Remove_LF_Client_Resources" Directory="LF_Client_Resources" On="uninstall"' in wxs
+    assert 'System="no"' in wxs
     assert "WixUI_FeatureTree" not in wxs
 
 
@@ -186,6 +210,28 @@ def test_make_wix_installer_rejects_missing_upgrade_code(tmp_path: Path, monkeyp
 
     with pytest.raises(AssertionError, match="MsiUpgradeCode"):
         packager.make_wix_installer()
+
+
+def test_workspace_wix_builds_a_real_msi_when_requested(tmp_path: Path) -> None:
+    wix_root = os.environ.get("FO_WIX_ROOT", "")
+    if os.name != "nt" or not (Path(wix_root) / "candle.exe").is_file():
+        pytest.skip("set FO_WIX_ROOT to a prepared WiX v3 directory for the integration check")
+
+    output_dir = tmp_path / "output"
+    staged = _staged_client(output_dir)
+    packager = _make_packager(tmp_path, [
+        "Common.GameName = Last Frontier",
+        "Common.GameVersion = 0.3.422",
+        "Auth.UriScheme = lastfrontier",
+        "Packaging.MsiUpgradeCode = B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D",
+    ])
+    packager.target_output_path = str(staged)
+
+    packager.make_wix_installer()
+
+    installers = list(output_dir.glob("LastFrontier-0.3.422-64.msi"))
+    assert len(installers) == 1 and installers[0].stat().st_size > 0
+    assert not (staged / "INSTALLED").exists()
 
 
 def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -207,9 +253,10 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
 
     captured: dict[str, object] = {}
 
-    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False) -> SimpleNamespace:
+    def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False, env: dict[str, str] | None = None) -> SimpleNamespace:
         captured["cmd"] = cmd
         captured["cwd"] = cwd
+        captured["env"] = env
         assert (staged / "INSTALLED").is_file()
         previous = os.getcwd()
         os.chdir(cwd)
@@ -236,7 +283,7 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
     assert 'Directory Id="ProgramFilesFolder"' not in wxs
 
 
-def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def _make_createmsi_generator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> createmsi.PackageGenerator:
     config_path = tmp_path / "sample.json"
     config_path.write_text(json.dumps({
         "product_name": "Sample",
@@ -253,22 +300,143 @@ def test_createmsi_uses_ui_extension_with_wixl(tmp_path: Path, monkeypatch: pyte
         "parts": [],
     }), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(createmsi.platform, "system", lambda: "Linux")
-    captured: list[list[str]] = []
-    monkeypatch.setattr(createmsi.subprocess, "check_output", lambda cmd: captured.append(cmd))
-
+    monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
     generator = createmsi.PackageGenerator(config_path.name)
     generator.generate_files()
+    return generator
+
+
+def test_createmsi_streaming_capture_tees_merged_output(capsys: pytest.CaptureFixture[str]) -> None:
+    command = [sys.executable, "-c", "import sys; print('stdout'); print('stderr', file=sys.stderr); sys.exit(7)"]
+
+    result = createmsi._run_streaming_capture(command)
+
+    assert result.returncode == 7
+    assert sorted(result.stdout.splitlines()) == ["stderr", "stdout"]
+    assert sorted(capsys.readouterr().out.splitlines()) == ["stderr", "stdout"]
+
+
+def test_createmsi_uses_ui_extension_with_wixl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+    monkeypatch.setattr(createmsi.platform, "system", lambda: "Linux")
+    captured: list[list[str]] = []
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        captured.append(cmd)
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
+
     generator.build_package()
 
     assert captured == [["wixl", "--ext", "ui", "-o", "sample-1.0.0-64.msi", "sample.wxs"]]
 
     captured.clear()
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
+    streamed: list[list[str]] = []
+
+    def capture_stream(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
+        streamed.append(cmd)
+        assert stream is False
+        return createmsi.subprocess.CompletedProcess(cmd, 0, "link succeeded\n")
+
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", capture_stream)
     generator.build_package("wix")
 
     assert captured[0][-1] == "sample.wxs"
     assert captured[0][0].endswith("candle")
-    assert captured[1][0].endswith("light")
-    assert "WixUIExtension" in captured[1]
-    assert "-sice:ICE61" in captured[1]
+    assert "-wx" in captured[0]
+    assert len(captured) == 1
+    assert streamed[0][0].endswith("light")
+    assert "WixUIExtension" in streamed[0]
+    assert "-wx" in streamed[0]
+    assert "-sice:ICE91" in streamed[0]
+    assert "-sice:ICE61" in streamed[0]
+    assert capsys.readouterr().out == "link succeeded\n"
+
+
+def test_createmsi_retries_without_validation_only_when_installer_service_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+    runs: list[list[str]] = []
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        runs.append(cmd)
+
+    def fail_validation(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
+        assert stream is False
+        return createmsi.subprocess.CompletedProcess(
+            cmd,
+            216,
+            "error LGHT0217: The Windows Installer Service could not be accessed.\n",
+        )
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", fail_validation)
+
+    generator.build_package("wix")
+
+    assert len(runs) == 2
+    assert runs[0][0].endswith("candle")
+    assert runs[1][0].endswith("light")
+    assert runs[1][1] == "-sval"
+    output = capsys.readouterr().out
+    assert "retrying the same MSI link with validation disabled" in output
+    assert "error LGHT0217" not in output
+
+
+def test_createmsi_does_not_suppress_unrelated_linker_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+    runs: list[list[str]] = []
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        runs.append(cmd)
+
+    def fail_link(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
+        assert stream is False
+        return createmsi.subprocess.CompletedProcess(cmd, 216, "error LGHT0204: Unresolved reference.\n")
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", fail_link)
+
+    with pytest.raises(createmsi.subprocess.CalledProcessError) as excinfo:
+        generator.build_package("wix")
+
+    assert excinfo.value.returncode == 216
+    assert len(runs) == 1
+    assert runs[0][0].endswith("candle")
+    assert capsys.readouterr().out == "error LGHT0204: Unresolved reference.\n"
+
+
+def test_createmsi_propagates_unvalidated_retry_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+
+    def capture_run(cmd: list[str], *, check: bool) -> None:
+        assert check is True
+        if "-sval" in cmd:
+            raise createmsi.subprocess.CalledProcessError(5, cmd)
+
+    def fail_validation(cmd: list[str], *, stream: bool = True) -> createmsi.subprocess.CompletedProcess[str]:
+        assert stream is False
+        return createmsi.subprocess.CompletedProcess(
+            cmd,
+            216,
+            createmsi.WINDOWS_INSTALLER_SERVICE_UNAVAILABLE,
+        )
+
+    monkeypatch.setattr(createmsi.subprocess, "run", capture_run)
+    monkeypatch.setattr(createmsi, "_run_streaming_capture", fail_validation)
+
+    with pytest.raises(createmsi.subprocess.CalledProcessError) as excinfo:
+        generator.build_package("wix")
+
+    assert excinfo.value.returncode == 5

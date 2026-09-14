@@ -109,6 +109,12 @@ internal static class Program
              }),
             ("qualified module",
              () => Check(Game.Invoke("ExampleGame.DispatchProbe::NoArgs"), "Qualified module was not found")),
+            ("nested module type",
+             () =>
+             {
+                 Check(Game.Invoke("ExampleGame.DispatchProbe+Inner::Mark"), "Nested type was not found");
+                 Check(ExampleGame.DispatchProbe.Inner.Marked, "Nested invocation did not run");
+             }),
             ("overload candidates retain argument matching",
              () =>
              {
@@ -152,6 +158,21 @@ internal static class Program
                  int before = Native.FallbackCalls;
                  Check(!Game.Invoke("DispatchProbe::Unmarked"), "Unmarked managed method was invoked");
                  Check(Native.FallbackCalls == before + 1, "Unmarked method did not fall through to native lookup");
+             }),
+            ("admin and internal named calls use separate allowlists",
+             () =>
+             {
+                 int beforeFallback = Native.FallbackCalls;
+                 Check(Game.CallAdminFunc("DispatchProbe::AdminOnly"), "Admin method was not callable by name");
+                 Check(ExampleGame.DispatchProbe.AdminCallCount == 1, "Admin method did not run");
+                 Check(!Game.CallAdminFunc("DispatchProbe::NoArgs"),
+                       "Internal named method leaked into the admin allowlist");
+                 Check(!Game.Invoke("DispatchProbe::AdminOnly"),
+                       "Admin method leaked into the internal named-call allowlist");
+                 Check(ExampleGame.DispatchProbe.AdminCallCount == 1,
+                       "Rejected internal invocation still ran the admin method");
+                 Check(Native.FallbackCalls == beforeFallback + 1,
+                       "Rejected internal invocation did not preserve the native fallback");
              }),
             ("native fallback remains available",
              () =>
@@ -251,6 +272,7 @@ public static class DispatchProbe
 {
     public static CritterProperty EnumValue;
     public static int OverloadValue;
+    public static int AdminCallCount;
     public static bool AsyncFinished;
     [CallableByName]
     public static void WriteInt(ref int value)
@@ -296,6 +318,20 @@ public static class DispatchProbe
     {
         await Task.Yield();
         AsyncFinished = true;
+    }
+    [AdminRemoteCall]
+    public static void AdminOnly()
+    {
+        AdminCallCount++;
+    }
+    public static class Inner
+    {
+        public static bool Marked;
+        [CallableByName]
+        public static void Mark()
+        {
+            Marked = true;
+        }
     }
     public static void Unmarked()
     {

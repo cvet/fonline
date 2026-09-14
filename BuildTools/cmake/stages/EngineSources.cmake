@@ -169,6 +169,8 @@ if(FO_MANAGED_SCRIPTING)
     AppendList(FO_COMMON_SOURCE
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.h"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedRuntime.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedRuntime.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.h"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedPInvokeTable.h"
@@ -529,6 +531,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientDataValidation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientUpdater.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLifetime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
@@ -541,6 +544,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TwoDimensionalGrid.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_UpdaterBackend.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")

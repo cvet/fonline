@@ -37,13 +37,6 @@
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
 
-#if FO_MANAGED_SCRIPTING
-#include "ManagedRuntimeIdentity.gen.h"
-#define FO_BINARY_UPDATE_RUNTIME_SUFFIX "-Managed-" FO_MANAGED_RUNTIME_ID
-#else
-#define FO_BINARY_UPDATE_RUNTIME_SUFFIX ""
-#endif
-
 FO_BEGIN_NAMESPACE
 
 static constexpr string_view StrCheckUpdates = "Check updates";
@@ -58,6 +51,7 @@ static constexpr string_view StrPlatformUnsupported = "Client outdated, please u
 static constexpr string_view StrUpdateFailed = "Client update failed. Please install the latest full client package.";
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
+static constexpr string_view StrServerUnavailable = "Can't connect to the server. It may be offline or restarting, please try again later.";
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
@@ -233,14 +227,14 @@ void Updater::AddText(string_view text)
     _messages.emplace_back(text);
 }
 
-void Updater::Abort(string_view text)
+void Updater::Abort(UpdaterResult result, string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
     _aborted = true;
 
     if (!_result.has_value()) {
-        _result = UpdaterResult::Failed;
+        _result = result;
     }
 
     AddText(text);
@@ -312,7 +306,7 @@ void Updater::GetNextFile()
         _tempFile.close();
 
         if (_tempFile.fail()) {
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -322,13 +316,13 @@ void Updater::GetNextFile()
 
         if (!IsDiskFileHashMatch(temp_path_str, prev_update_file.Size, prev_update_file.Hash)) {
             WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
             WriteLog("Client updater: failed to promote downloaded file from {} to {}", temp_path_str, prev_path_str);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -358,7 +352,7 @@ void Updater::GetNextFile()
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
                         WriteLog("Client updater: failed to promote existing temp file from {} to {}", temp_path, prev_path_str);
-                        Abort(StrFilesystemError);
+                        Abort(UpdaterResult::Failed, StrFilesystemError);
                         return;
                     }
 
@@ -379,7 +373,7 @@ void Updater::GetNextFile()
 
         if (!dir.empty()) {
             if (!fs_create_directories(dir)) {
-                Abort(StrFilesystemError);
+                Abort(UpdaterResult::Failed, StrFilesystemError);
                 return;
             }
         }
@@ -389,7 +383,7 @@ void Updater::GetNextFile()
 
         if (!_tempFile) {
             WriteLog("Client updater: failed to open temp file {}", temp_path);
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -482,13 +476,12 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         WriteLog("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
-        _result = UpdaterResult::UpdaterOutdated;
         WriteLog("Client updater: protocol is outdated, aborting");
-        Abort(StrUpdaterOutdated);
+        Abort(UpdaterResult::UpdaterOutdated, StrUpdaterOutdated);
     }
     else {
         WriteLog("Client updater: connection failed");
-        Abort(StrCantConnectToServer);
+        Abort(UpdaterResult::ConnectionFailed, StrCantConnectToServer);
     }
 }
 
@@ -497,7 +490,8 @@ void Updater::Net_OnDisconnect()
     FO_STACK_TRACE_ENTRY();
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
-        Abort(StrConnectionFailure);
+        // A drop while the transfer was still in flight is the server going away, not this client failing
+        Abort(UpdaterResult::ConnectionFailed, StrConnectionFailure);
     }
 }
 
@@ -722,7 +716,7 @@ void Updater::Net_OnUpdateFileData()
     int32_t data_size_raw = _conn.InBuf->Read<int32_t>();
 
     if (data_size_raw < 0) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -733,14 +727,14 @@ void Updater::Net_OnUpdateFileData()
     _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
     if (_filesToUpdate.empty() || !_tempFile.is_open()) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
     auto& update_file = _filesToUpdate.front();
 
     if (numeric_cast<uint64_t>(data_size) > update_file.RemaningSize) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -752,7 +746,7 @@ void Updater::Net_OnUpdateFileData()
     }
 
     if (!_tempFile) {
-        Abort(StrFilesystemError);
+        Abort(UpdaterResult::Failed, StrFilesystemError);
         return;
     }
 
@@ -760,7 +754,7 @@ void Updater::Net_OnUpdateFileData()
 
     if (update_file.RemaningSize > 0) {
         if (data_size == 0) {
-            Abort(StrFilesystemError);
+            Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
@@ -929,63 +923,63 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #if FO_WINDOWS
 
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
-    return "Windows-win64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Windows-win64";
 #elif defined(_M_IX86) || defined(__i386__)
-    return "Windows-win32" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Windows-win32";
 #elif defined(_M_ARM64) || defined(__aarch64__)
-    return "Windows-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Windows-arm64";
 #else
-    return "Windows-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Windows-unknown";
 #endif
 
 #elif FO_LINUX
 
 #if defined(__x86_64__)
-    return "Linux-x64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Linux-x64";
 #elif defined(__aarch64__)
-    return "Linux-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Linux-arm64";
 #elif defined(__i386__)
-    return "Linux-x86" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Linux-x86";
 #elif defined(__arm__)
-    return "Linux-arm" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Linux-arm";
 #else
-    return "Linux-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Linux-unknown";
 #endif
 
 #elif FO_ANDROID
 
 #if defined(__aarch64__)
-    return "Android-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Android-arm64";
 #elif defined(__i386__)
-    return "Android-x86" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Android-x86";
 #elif defined(__arm__)
-    return "Android-arm32" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Android-arm32";
 #else
-    return "Android-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Android-unknown";
 #endif
 
 #elif FO_MAC
 
 #if defined(__aarch64__)
-    return "macOS-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "macOS-arm64";
 #elif defined(__x86_64__)
-    return "macOS-x64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "macOS-x64";
 #else
-    return "macOS-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "macOS-unknown";
 #endif
 
 #elif FO_IOS
 
 #if defined(__aarch64__)
-    return "iOS-arm64" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "iOS-arm64";
 #elif defined(__x86_64__)
-    return "iOS-simulator" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "iOS-simulator";
 #else
-    return "iOS-unknown" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "iOS-unknown";
 #endif
 
 #elif FO_WEB
-    return "Web-wasm" FO_BINARY_UPDATE_RUNTIME_SUFFIX;
+    return "Web-wasm";
 #else
 #error "Unknown binary update target"
 #endif
@@ -1205,9 +1199,20 @@ static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
         return "Failed";
     case UpdaterResult::MetadataMismatch:
         return "MetadataMismatch";
+    case UpdaterResult::ConnectionFailed:
+        return "ConnectionFailed";
     default:
         return "Unknown";
     }
+}
+
+auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Client-local updater failures are reportable; transient server downtime would otherwise emit one crash
+    // per player for every restart
+    return result != UpdaterResult::ConnectionFailed;
 }
 
 // Reported, not thrown: the caller still owns the dialog and the quit that follows. Constructing the
@@ -1228,9 +1233,13 @@ void ShowUpdaterFailure(UpdaterResult result)
 
     string_view target_name = GetCurrentBinaryUpdateTargetName();
 
-    // The dialog reaches one player; this reaches us. Every terminal failure here ends the client, and
-    // without a report the only trace is a screenshot the player chooses to send
-    ReportUpdaterFailure(result, target_name);
+    WriteLog("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
+
+    // Report terminal client failures before showing the dialog. The unconditional log still records
+    // deliberately unreported failures
+    if (IsUpdaterFailureReportable(result)) {
+        ReportUpdaterFailure(result, target_name);
+    }
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:
@@ -1247,6 +1256,9 @@ void ShowUpdaterFailure(UpdaterResult result)
         break;
     case UpdaterResult::Failed:
         Application::ShowErrorMessage(StrUpdateFailed, StrErrorMessageCaption, true);
+        break;
+    case UpdaterResult::ConnectionFailed:
+        Application::ShowErrorMessage(StrServerUnavailable, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:
