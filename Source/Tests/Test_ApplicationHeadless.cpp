@@ -191,7 +191,7 @@ TEST_CASE("HeadlessApplicationAudioAndInputSurfaces")
         CHECK_THROWS(audio->UnlockDevice());
 
         vector<uint8_t> buf(16, uint8_t {0});
-        CHECK_THROWS(audio->ConvertAudio(0, 2, 44100, buf));
+        CHECK_THROWS(audio->ConvertAudio(2, 44100, buf));
 
         vector<uint8_t> output(16, uint8_t {0});
         CHECK_THROWS(audio->MixAudio(output, buf, 100));

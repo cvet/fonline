@@ -212,11 +212,11 @@ class StubAppAudio final : public IAppAudio
 public:
     [[nodiscard]] auto IsEnabled() const -> bool override { return false; }
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
+    auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
     {
         FO_STACK_TRACE_ENTRY();
 
-        ignore_unused(format, channels, rate, buf);
+        ignore_unused(channels, rate, buf);
         return false;
     }
 

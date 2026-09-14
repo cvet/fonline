@@ -421,7 +421,7 @@ public:
 
     [[nodiscard]] virtual auto IsEnabled() const -> bool = 0;
 
-    virtual auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool = 0;
+    virtual auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool = 0;
     virtual void SetSource(AudioStreamCallback stream_callback) = 0;
     virtual void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) = 0;
     virtual void LockDevice() = 0;
@@ -605,13 +605,11 @@ class AppAudio final : public IAppAudio
     friend class Application;
 
 public:
-    static const int32_t AUDIO_FORMAT_S16;
-
     using AudioStreamCallback = IAppAudio::AudioStreamCallback;
 
     [[nodiscard]] auto IsEnabled() const -> bool override;
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override;
+    auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override;
     void SetSource(AudioStreamCallback stream_callback) override;
     void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override;
     void LockDevice() override;

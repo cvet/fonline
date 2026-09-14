@@ -76,7 +76,6 @@ FO_GLOBAL_DATA(IgnoredErrorMessagesData, IgnoredErrorMessages);
 int32_t AppRender::MAX_ATLAS_WIDTH {};
 int32_t AppRender::MAX_ATLAS_HEIGHT {};
 int32_t AppRender::MAX_BONES {};
-const int32_t AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
 static constexpr float32_t GAMEPAD_STICK_DEADZONE = 0.2f;
 static constexpr float32_t GAMEPAD_TRIGGER_DEADZONE = 0.15f;
@@ -3071,14 +3070,14 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     UnlockDevice();
 }
 
-auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     SDL_AudioSpec spec;
-    spec.format = static_cast<SDL_AudioFormat>(format);
+    spec.format = SDL_AUDIO_S16;
     spec.channels = numeric_cast<Uint8>(channels);
     spec.freq = rate;
 

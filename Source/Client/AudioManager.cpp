@@ -432,7 +432,7 @@ auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 
-    if (!_audio->ConvertAudio(AppAudio::AUDIO_FORMAT_S16, sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
+    if (!_audio->ConvertAudio(sound->OriginalChannels, sound->OriginalRate, sound->ConvertedBuf)) {
         return false;
     }
 
