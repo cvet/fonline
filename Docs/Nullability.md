@@ -363,9 +363,11 @@ conventional variadic `verify(cond, message, ...)` macro programmatically in eve
 
 Embedding projects can therefore use `verify` in any `.fos` module without including or supplying a core script.
 
-The managed backend supplies the equivalent engine-owned `Game.Verify` helper in
-`Source/Scripting/Managed/CoreScripts/Verify.cs`; its condition is annotated with
-`[DoesNotReturnIf(false)]` so C# nullable flow analysis narrows a proved value. Keep using the checked `T?` local
+The managed backend supplies the equivalent engine-owned `Invariant.Verify` helper in
+`Source/Scripting/Managed/CoreScripts/Invariant.cs`; its condition is annotated with
+`[DoesNotReturnIf(false)]` so C# nullable flow analysis narrows a proved value. The managed spelling of
+`verify(false, ...)` is `Invariant.Failed(message, ...)`, marked `[DoesNotReturn]`; a tail the compiler must also see
+end is `throw Invariant.Unreachable(message, ...)`. Keep using the checked `T?` local
 after the check, as the native side does with a checked `nptr<T>`: copying it into a second `T` local adds nothing
 the flow analysis does not already know. Both forms state an **invariant**:
 a condition that holds whenever our own code - server logic *and* our client - behaves correctly. A failure means

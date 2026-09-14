@@ -3994,7 +3994,7 @@ static void AppendEntityHolderAccessors(ostringstream& out, string_view owner_ty
                 out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.CreateInnerEntity(" << entity_ptr << ", \"" << entry_literal << "\", 0UL);\n";
             }
 
-            out << CS_INDENT << "    global::FOnline.Game.Verify(__ptr != IntPtr.Zero, \"Inner entity creation failed\");\n";
+            out << CS_INDENT << "    global::FOnline.Invariant.Verify(__ptr != IntPtr.Zero, \"Inner entity creation failed\");\n";
             out << CS_INDENT << "    return global::FOnline.Native.WrapEntityNotNull<" << escaped_target_type << ">(__ptr);\n";
             out << CS_INDENT << "}\n\n";
         }
@@ -4190,7 +4190,7 @@ static void AppendCustomEntityProtoGetters(ostringstream& out, const EngineMetad
         out << CS_INDENT << "public static " << getter.ReturnType << " " << getter.MethodName << "(hstring pid)\n";
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.GetProtoEntity(\"" << getter.NativeType << "\", pid.Value);\n";
-        out << CS_INDENT << "    Verify(__ptr != IntPtr.Zero, \"Proto entity not found (check the Check-accessor first)\");\n";
+        out << CS_INDENT << "    global::FOnline.Invariant.Verify(__ptr != IntPtr.Zero, \"Proto entity not found (check the Check-accessor first)\");\n";
         out << CS_INDENT << "    return global::FOnline.Native.WrapEntityNotNull<" << getter.ReturnType << ">(__ptr);\n";
         out << CS_INDENT << "}\n\n";
 

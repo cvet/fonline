@@ -138,18 +138,18 @@ public static partial class Game
             return result;
         }
 
-        Verify(false, "Enum value is not found");
+        Invariant.Failed("Enum value is not found");
         return default;
     }
 
     public static int ParseGenericEnum(string enumName, object valueName)
     {
         Type? enumType = FindEnumType(enumName);
-        Verify(enumType != null, "Enum type is not found");
+        Invariant.Verify(enumType != null, "Enum type is not found");
         string text = valueName is hstring hvalue
                         ? hvalue.ToString()
                         : Convert.ToString(valueName, CultureInfo.InvariantCulture) ?? string.Empty;
-        Verify(TryParseEnumObject(enumType, text, out object? result), "Enum value is not found");
+        Invariant.Verify(TryParseEnumObject(enumType, text, out object? result), "Enum value is not found");
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }
 
@@ -553,7 +553,7 @@ public static partial class Game
 
         if (nonNullableTarget.IsEnum) {
             if (value is string enumText) {
-                Verify(TryParseEnumObject(nonNullableTarget, enumText, out object? enumValue), "Enum value is not found");
+                Invariant.Verify(TryParseEnumObject(nonNullableTarget, enumText, out object? enumValue), "Enum value is not found");
                 return enumValue;
             }
 

@@ -60,8 +60,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
     // The Game methods whose subject is an entity to cover. Game also carries the whole rest of the
     // script surface, so a rule about acquisitions must name these rather than take the type as a whole:
-    // a static item passed to Game.Verify as failure context or to Game.CallStaticItemFunction as its
-    // subject is an ordinary argument, not an acquisition.
+    // a static item passed to Game.CallStaticItemFunction as its subject is an ordinary argument, not an
+    // acquisition.
     private static readonly string[] GameCoverPrimitiveNames =
         { "Sync", "SyncRelease", "Lock", "Unlock", "TrySyncEntity", "IsEntityLocked" };
 

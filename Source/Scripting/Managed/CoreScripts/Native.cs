@@ -30,7 +30,7 @@ internal static class Native
         where T : Entity
     {
         T? entity = WrapEntity<T>(entityPtr);
-        Game.Verify(entity != null, "Entity pointer must not be null");
+        Invariant.Verify(entity != null, "Entity pointer must not be null");
         return entity;
     }
 
@@ -38,7 +38,7 @@ internal static class Native
     // value the callee produced; an empty one would mean the call did not run to the end
     internal static T UnboxArg<T>(object? value)
     {
-        Game.Verify(value != null, "Mutable argument must be written by the call");
+        Invariant.Verify(value != null, "Mutable argument must be written by the call");
         return (T)value;
     }
 

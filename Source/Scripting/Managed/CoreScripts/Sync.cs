@@ -1123,10 +1123,10 @@ public static partial class Sync
                 return false;
             }
 
-            Game.Verify(cr.GetPlayer() == player,
-                        "Authoritative player's controlled critter has an asymmetric player link",
-                        player.Id,
-                        cr.Id);
+            Invariant.Verify(cr.GetPlayer() == player,
+                             "Authoritative player's controlled critter has an asymmetric player link",
+                             player.Id,
+                             cr.Id);
             return true;
         }
         if (cr.MapId != new ident(0)) {
@@ -1158,10 +1158,10 @@ public static partial class Sync
             return false;
         }
 
-        Game.Verify(cr.GetPlayer() == player,
-                    "Authoritative player's controlled critter has an asymmetric player link",
-                    player.Id,
-                    cr.Id);
+        Invariant.Verify(cr.GetPlayer() == player,
+                         "Authoritative player's controlled critter has an asymmetric player link",
+                         player.Id,
+                         cr.Id);
         return true;
     }
 
