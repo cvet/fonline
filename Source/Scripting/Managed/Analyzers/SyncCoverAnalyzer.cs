@@ -32,6 +32,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     // obligation it knows nothing about.
     public const string SyncTypeFullName = "FOnline.Sync";
     public const string GameTypeFullName = "FOnline.Game";
+    public const string GameLockTypeFullName = "FOnline.GameLock";
 
     // Entities that carry their cover with them: baked map data and prototypes. They are immutable and
     // readable at any time, so an obligation for one is satisfied the moment it is stated, and acquiring
@@ -53,14 +54,16 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
     // The raw entity-cover primitives, meaning the ones a Sync helper can replace.
     //
-    // `Game.Lock` / `Game.Unlock` are absent because they lock the Game singleton's property bucket, which
-    // is a different thing from entity cover; FOSYNC006/FOSYNC007 own that pair instead.
-    //
     // `Game.TrySyncEntity` is absent for a different reason: it resolves an *id* to a live entity and
     // covers it, answering false when the entity is gone. Every Sync helper takes an entity, so none can
     // stand in for it -- a handle retained across a yield may already be dead, which is exactly when this
     // is the right call. Flagging it would report code for using the only tool that fits.
     private static readonly string[] RawSyncPrimitiveNames = { "Sync", "SyncRelease" };
+
+    // The raw pair behind the Game singleton bucket lock, which only the GameLock scope may call. The bucket guards
+    // property storage rather than entity cover, so no Sync helper replaces it; the scope does, because it releases
+    // on every path and, being a ref struct, cannot be held across an await.
+    private static readonly string[] SingletonLockPrimitiveNames = { "Lock", "Unlock" };
 
     // The Game methods whose subject is an entity to cover. Game also carries the whole rest of the
     // script surface, so a rule about acquisitions must name these rather than take the type as a whole:
@@ -130,31 +133,17 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             "test sources in the embedding project's .editorconfig rather than working around it.");
 
     internal static readonly DiagnosticDescriptor RawSyncPrimitiveRule = new DiagnosticDescriptor(
-        id: "FOSYNC005", title: "Raw synchronization primitive used outside the Sync module",
-        messageFormat: "'{0}' is a raw synchronization primitive; use the Sync helpers, which acquire atomically and re-prove after migration",
+        id: "FOSYNC005", title: "Raw synchronization primitive used outside its wrapper",
+        messageFormat: "'{0}' is a raw synchronization primitive; {1}",
         category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
         description: "The Sync helpers are not thin wrappers: they acquire multi-root packages as one step and retry " +
             "with a re-proof that nothing migrated in between. Reaching for the primitive directly gets the " +
-            "first half and silently drops the second. This does not cover the Game singleton bucket lock " +
-            "(Game.Lock / Game.Unlock), which guards property storage rather than entity cover.");
+            "first half and silently drops the second. The Game singleton bucket lock (Game.Lock / Game.Unlock) " +
+            "is taken through the GameLock scope instead: a paired call leaves the lock held when anything between " +
+            "the two throws, and only the scope, a ref struct, makes holding it across an await a compile error.");
 
-    internal static readonly DiagnosticDescriptor SingletonLockLeakRule = new DiagnosticDescriptor(
-        id: "FOSYNC006", title: "Singleton lock is not released on every path",
-        messageFormat: "'{0}' leaves the singleton lock held on this path; release it with Game.Unlock() before the scope ends",
-        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
-        description: "The singleton bucket is deliberately kept outside the entity-cover set, so it survives every " +
-            "later Sync acquisition in the same job and nothing drops it implicitly. A job that ends still " +
-            "holding one does not merely block others: SyncContext's destructor asserts the bucket is empty " +
-            "(FO_STRONG_ASSERT), which is an always-on deterministic exit.");
-
-    internal static readonly DiagnosticDescriptor SingletonLockAcrossAwaitRule = new DiagnosticDescriptor(
-        id: "FOSYNC007", title: "Singleton lock is held across an await",
-        messageFormat: "the singleton lock is held across this await; take it after the await, or release it before",
-        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
-        description: "The lock is owned by the thread that took it: UnlockSingleton throws unless the releasing thread " +
-            "is the holder. A continuation may resume on a different thread, so an await between Lock and " +
-            "Unlock turns the release into a throw rather than a slow path -- and everything the await waits " +
-            "on runs while the bucket is held.");
+    // FOSYNC006 (singleton lock left held) and FOSYNC007 (singleton lock held across an await) are retired: the
+    // GameLock scope releases on every path, and the compiler rejects a ref struct local that survives an await.
 
     internal static readonly DiagnosticDescriptor CoverLostToAwaitRule = new DiagnosticDescriptor(
         id: "FOSYNC009", title: "Cover for a value is not re-proved after an await",
@@ -168,8 +157,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics {
         get;
     } = ImmutableArray.Create(NonEntityTargetRule, UndischargedCoverRule, EntryPointCoverRule, CoverProbeRule,
-                              RawSyncPrimitiveRule, SingletonLockLeakRule, SingletonLockAcrossAwaitRule,
-                              CoverLostToAwaitRule);
+                              RawSyncPrimitiveRule, CoverLostToAwaitRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -196,6 +184,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
                 INamedTypeSymbol? syncType = compilation.GetTypeByMetadataName(SyncTypeFullName);
                 INamedTypeSymbol? gameType = compilation.GetTypeByMetadataName(GameTypeFullName);
+                INamedTypeSymbol? gameLockType = compilation.GetTypeByMetadataName(GameLockTypeFullName);
 
                 var entryMarkers = new List<INamedTypeSymbol>();
 
@@ -217,6 +206,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                                            entityType,
                                            syncType,
                                            gameType,
+                                           gameLockType,
                                            entryMarkers);
 
                 compilationStart.RegisterSymbolAction(symbolContext => AnalyzeDeclaration(symbolContext, model),
@@ -226,9 +216,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                                                           SyntaxKind.InvocationExpression);
 
                 compilationStart.RegisterSyntaxNodeAction(nodeContext => AnalyzeSyncSurfaceUse(nodeContext, model),
-                                                          SyntaxKind.InvocationExpression);
-
-                compilationStart.RegisterSyntaxNodeAction(nodeContext => AnalyzeSingletonLock(nodeContext, model),
                                                           SyntaxKind.InvocationExpression);
 
                 compilationStart.RegisterSyntaxNodeAction(nodeContext =>
@@ -278,9 +265,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        INamedTypeSymbol? callerType = (context.ContainingSymbol as IMethodSymbol)?.ContainingType;
+
         // Inside Sync itself both are the implementation, not a smell.
-        if (model.SyncType != null && context.ContainingSymbol is IMethodSymbol caller &&
-            SymbolEqualityComparer.Default.Equals(caller.ContainingType, model.SyncType)) {
+        if (model.SyncType != null && SymbolEqualityComparer.Default.Equals(callerType, model.SyncType)) {
             return;
         }
 
@@ -299,74 +287,24 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         if (onGame && System.Array.IndexOf(RawSyncPrimitiveNames, callee.Name) >= 0) {
-            context.ReportDiagnostic(
-                Diagnostic.Create(RawSyncPrimitiveRule, invocation.GetLocation(), "Game." + callee.Name));
-        }
-    }
-
-    // The singleton bucket lock is a plain paired resource, so it is checked structurally rather than
-    // through the cover model: from the Lock statement, walk the statements that follow it in the same
-    // block until the matching Unlock.
-    private static void AnalyzeSingletonLock(SyntaxNodeAnalysisContext context, CoverModel model)
-    {
-        var invocation = (InvocationExpressionSyntax)context.Node;
-
-        if (model.GameType == null || invocation.ArgumentList.Arguments.Count != 0) {
+            context.ReportDiagnostic(Diagnostic.Create(RawSyncPrimitiveRule,
+                                                       invocation.GetLocation(),
+                                                       "Game." + callee.Name,
+                                                       "use the Sync helpers, which acquire atomically and re-prove after migration"));
             return;
         }
 
-        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken)
-                .Symbol is not IMethodSymbol callee ||
-            callee.Name != "Lock" || !SymbolEqualityComparer.Default.Equals(callee.ContainingType, model.GameType)) {
-            return;
+        // The arity check keeps an unrelated Game overload of the same name out of the rule.
+        bool isSingletonPair = onGame && callee.Parameters.Length == 0 &&
+                               System.Array.IndexOf(SingletonLockPrimitiveNames, callee.Name) >= 0;
+
+        if (isSingletonPair && !SymbolEqualityComparer.Default.Equals(callerType, model.GameLockType)) {
+            context.ReportDiagnostic(Diagnostic.Create(RawSyncPrimitiveRule,
+                                                       invocation.GetLocation(),
+                                                       "Game." + callee.Name,
+                                                       "take the singleton lock with 'using GameLock scope = GameLock.Acquire();', " +
+                                                           "which releases it on every path and cannot be held across an await"));
         }
-
-        var statement = invocation.FirstAncestorOrSelf<StatementSyntax>();
-
-        if (statement?.Parent is not BlockSyntax block) {
-            return;
-        }
-
-        var following = block.Statements.SkipWhile(s => s != statement).Skip(1).ToList();
-
-        foreach (StatementSyntax next in following) {
-            if (ContainsSingletonUnlock(next, context.SemanticModel, model, context.CancellationToken)) {
-                return;
-            }
-
-            // An await before the release: the continuation may resume on another thread, and only the
-            // holder may release.
-            foreach (AwaitExpressionSyntax await in next.DescendantNodesAndSelf().OfType<AwaitExpressionSyntax>()) {
-                context.ReportDiagnostic(Diagnostic.Create(SingletonLockAcrossAwaitRule, await.GetLocation()));
-                return;
-            }
-
-            // A path that leaves the scope without releasing.
-            foreach (SyntaxNode exit in next.DescendantNodesAndSelf()) {
-                if (exit is ReturnStatementSyntax or ThrowStatementSyntax) {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(SingletonLockLeakRule, exit.GetLocation(), "Game.Lock()"));
-                    return;
-                }
-            }
-        }
-
-        context.ReportDiagnostic(Diagnostic.Create(SingletonLockLeakRule, invocation.GetLocation(), "Game.Lock()"));
-    }
-
-    private static bool ContainsSingletonUnlock(SyntaxNode node, SemanticModel semantics, CoverModel model,
-                                                CancellationToken cancellationToken)
-    {
-        foreach (InvocationExpressionSyntax candidate in node.DescendantNodesAndSelf()
-                     .OfType<InvocationExpressionSyntax>()) {
-            if (semantics.GetSymbolInfo(candidate, cancellationToken).Symbol is IMethodSymbol symbol &&
-                symbol.Name == "Unlock" && candidate.ArgumentList.Arguments.Count == 0 && model.GameType != null &&
-                SymbolEqualityComparer.Default.Equals(symbol.ContainingType, model.GameType)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context, CoverModel model)
@@ -920,7 +858,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                           INamedTypeSymbol? preservesCover, INamedTypeSymbol? returnsParent,
                           INamedTypeSymbol? returnsAncestor, INamedTypeSymbol? acquiresCover,
                           INamedTypeSymbol? passesCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType,
-                          INamedTypeSymbol? gameType, List<INamedTypeSymbol> entryMarkers)
+                          INamedTypeSymbol? gameType, INamedTypeSymbol? gameLockType,
+                          List<INamedTypeSymbol> entryMarkers)
         {
             _requiresCover = requiresCover;
             _providesCover = providesCover;
@@ -932,6 +871,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             _entityType = entityType;
             SyncType = syncType;
             GameType = gameType;
+            GameLockType = gameLockType;
             _entryMarkers = entryMarkers;
         }
 
@@ -954,6 +894,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                                                                method => IsAcquisitionName(method.Name));
 
         public INamedTypeSymbol? GameType { get; }
+
+        public INamedTypeSymbol? GameLockType { get; }
 
         public bool HasRequiresCover(IParameterSymbol parameter)
         {

@@ -260,7 +260,7 @@ different settings can coexist in one process.
 The point of the mode is the script contract: with it on, a script may read and mutate any entity it can reach
 without covering it first. `Game.Sync` and `Game.SyncRelease` become inert, `[[Async]]` markers carry no
 synchronization requirement, and scripts written for the multithreaded mode keep working unchanged because
-their acquisition calls simply do nothing. `Game.Lock` / `Game.Unlock` still take the engine singleton bucket,
+their acquisition calls simply do nothing. A `GameLock` scope still takes the engine singleton bucket,
 which is uncontended and therefore always immediate.
 
 What the mode removes is the **cover** requirement, not entity liveness. Jobs still run one after another, so
@@ -332,7 +332,7 @@ It owns:
 - custom entity creation/loading/view enumeration;
 - entity document storage through `StoreEntityDoc()` and `LoadEntityDoc()`.
 
-Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside `Game.Lock()`, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. A balanced `Game.Unlock()` therefore releases the lock completely after the operation.
+Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside a `GameLock` scope, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. Leaving the scope therefore releases the lock completely after the operation.
 
 Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializer`. The database facade and backends are documented in [Persistence.md](Persistence.md).
 Creating a custom inner entity is a holder mutation, so `EntityManager::CreateCustomInnerEntity()` retains the own lock of an already-covered `ServerEntity` holder with `EnsureEntitySynced()` before constructing or publishing the child. This matters when the script scope covers a critter through an exclusively held map: ordinary reads are valid through the ancestor cover, but publication needs the critter's own lock so the parent edge and holder collection remain stable. The promotion does not discover missing cover; an uncovered holder still throws before the first mutation. Global-game holders keep using the singleton-lock path above.

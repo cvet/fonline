@@ -100,37 +100,61 @@ reach up to its map. Sibling-to-parent escalation and parent-cover reduction wer
 | `FOSYNC002` | An argument for a `[RequiresCover]` parameter that is neither covered by the caller, received from a `[ProvidesCover]` source, nor re-declared. A provided value is one returned by a provider, handed to a `[ProvidesCover]` parameter earlier in the body (with that parameter's reach), passed through a `[PassesCover]` parameter, taken out of a provided collection, deconstructed from a provided tuple, or chosen by `?:` between provided values and `null`. A body calling `Sync` or an `[AcquiresCover]` helper discharges it. Nothing is owed for a `null` or `default` argument or an omitted optional parameter, nor in a compilation whose `Sync` has no acquisition helpers (a client or mapper target, whose scripts run on one thread). |
 | `FOSYNC003` | An execution-context entry point that does not declare `[RequiresCover]` on the entity the engine already synchronized for it. |
 | `FOSYNC004` | Cover state is probed (`Sync.IsCovered`, `Game.IsEntityLocked`) instead of acquired. |
-| `FOSYNC005` | A raw entity-cover primitive (`Game.Sync`, `Game.SyncRelease`) is used outside `Sync`. |
-| `FOSYNC006` | A singleton bucket lock (`Game.Lock`) is not released on every path out of its scope. |
-| `FOSYNC007` | A singleton bucket lock is held across an `await`. |
+| `FOSYNC005` | A raw synchronization primitive is used outside its wrapper: `Game.Sync` / `Game.SyncRelease` outside `Sync`, `Game.Lock` / `Game.Unlock` outside `GameLock`. |
 | `FOSYNC009` | Cover for a value is not re-proved after an await that released it. |
 
-FOSYNC004 and FOSYNC005 come from the retired external sync-flow audit, which owned them as
+FOSYNC004 and the entity half of FOSYNC005 come from the retired external sync-flow audit, which owned them as
 `forbidden-is-covered-probe` / `forbidden-is-entity-locked-probe` and `direct-game-sync`. Neither needs
 dataflow: they are about which surface a call reaches for. A probe answers what was true a moment ago, so
 code branching on it either works unprotected on one path or silently skips the work on the other; and the
 `Sync` helpers are not thin wrappers, they acquire multi-root packages atomically and retry with a re-proof
 that nothing migrated, which reaching for the primitive directly drops.
 
-**`Game.Lock` / `Game.Unlock` are deliberately not raw cover primitives.** They lock the `Game` singleton's
-property bucket, which is a different thing from entity cover and is used in over a hundred places. They get
-their own pair of rules instead, because the bucket is a plain paired resource whose two failure modes are
-both hard rather than gradual:
+### The singleton bucket lock: `GameLock`
 
-- **Left held (FOSYNC006).** The bucket is deliberately kept outside the entity-cover set — `SyncEntities`
-  replaces `_heldLocks` wholesale, while a singleton acquired through `Game.Lock()` survives every later
-  `Sync::Lock` in the same job — so nothing drops it implicitly. `SyncContext`'s destructor then asserts the
-  bucket is empty with `FO_STRONG_ASSERT`, which is an always-on deterministic exit.
-- **Held across an `await` (FOSYNC007).** `UnlockSingleton` verifies `IsLockedByCurrentThread()` and throws
-  otherwise. A continuation may resume on a different thread, so the release becomes a throw rather than a
-  slow path — and whatever the `await` waits on runs with the bucket held.
+`Game.Lock` / `Game.Unlock` lock the `Game` singleton's property bucket, which is a different thing from entity
+cover. Scripts take it through one scope and nothing else:
 
-Both are checked structurally rather than through the cover model, since this is ownership of one resource
-rather than a claim about entities. Both gate the build: all 97 call sites are balanced and none awaits
-between, so there is no backlog to phase in. The single deliberate violation is a negative test proving the
-engine rejects a `Sync` acquisition while the bucket is held; the throw comes from inside `Sync.Lock`, so the
-`await` cannot leave the held region without losing what the test proves, and it carries a local
-`#pragma warning disable` that says so.
+```csharp
+using GameLock scope = GameLock.Acquire();
+Dictionary<int, int> counters = Game.Counters;
+
+if (!counters.TryGetValue(key, out int current)) {
+    return 0;
+}
+
+counters[key] = current + 1;
+Game.Counters = counters;
+return current + 1;
+```
+
+`GameLock` (`Source/Scripting/Managed/CoreScripts/GameLock.cs`, server only) is a `ref struct` whose `Dispose`
+releases the lock, and each half of that shape answers one of the bucket's two failure modes, both of which are
+hard rather than gradual:
+
+- **Left held.** The bucket is kept outside the entity-cover set — `SyncEntities` replaces `_heldLocks`
+  wholesale, while a singleton acquisition survives every later `Sync::Lock` in the same job — so nothing
+  drops it implicitly until the job ends and `SyncContext::Release` drains it. Until then every other thread
+  waits for the bucket, and the next `Sync` acquisition in the job throws because the singleton is held, which
+  reads as a different defect than the one that caused it. A `using` scope releases on every path out of its
+  block, an exception included; the paired calls released only where the author remembered to, and a region
+  that anything inside could throw from was left held unless it carried a hand-written `try/finally`.
+- **Held across an `await`.** `UnlockSingleton` verifies `IsLockedByCurrentThread()` and throws otherwise. A
+  continuation may resume on a different thread, so the release becomes a throw rather than a slow path — and
+  whatever the `await` waits on runs with the bucket held. A `ref struct` local cannot survive an `await` or a
+  `yield`, so the compiler reports `CS4007` for any scope that would, in nested blocks and iterators too.
+
+That is why the scope replaced the two structural rules that used to guard the pair. `FOSYNC006` (lock left
+held) walked the statements after `Lock` until the first one that contained *any* `Unlock`, so a region whose
+first early exit released could lose its final release unreported, and it did not see exceptions at all;
+`FOSYNC007` (lock held across an await) looked only at the same block. Both are retired, and FOSYNC005 reserves
+the raw pair for `GameLock` itself, so a paired call cannot come back. A copied scope disposed twice, or a
+default one, releases a lock it did not take; with nothing left held the engine throws, so that mistake is loud.
+
+The one legitimate caller of the raw pair outside `GameLock` is a test of the primitive itself — recursion, an
+unbalanced release, `SyncRelease` draining the bucket, a `Sync` acquisition rejected while the bucket is held,
+whose `await` has to sit inside the held region because the throw it proves comes from inside `Sync.Lock`.
+Such a test carries a local `#pragma warning disable FOSYNC005` that says so.
 
 ## Entities that carry their own cover
 
@@ -359,7 +383,7 @@ an `///@` list keeps each contract where a reader meets the thing it describes, 
 
 **Two markers rather than one whose meaning comes from position.** A return value can only ever *provide*
 cover, but a parameter can do either: an ordinary export requires its argument to be covered, while the
-explicit synchronization primitives (`Game.Sync`, `Game.Lock`) exist precisely to provide it. A single
+explicit synchronization primitive `Game.Sync` exists precisely to provide it. A single
 positional marker could not say the second thing, because in parameter position it would already mean the
 first. `FO_PROVIDES_COVER` is wired for the return position today, which is the case that exists; the
 parameter position is the natural extension when those primitives get declared.

@@ -133,12 +133,19 @@ namespace FOnline
         public static bool TrySyncEntity(int id) { return true; }
         public static void Sync(Entity entity) { }
 
-        // The singleton bucket lock, deliberately not part of the raw-primitive rule.
+        // The singleton bucket lock, reserved for the GameLock scope below
         public static void Lock() { }
         public static void Unlock() { }
 
         // The rest of the surface, which shares the type but takes entities as ordinary arguments.
         public static bool CallStaticItemFunction(Critter? cr, StaticItem staticItem, Item? usedItem, string param) { return true; }
+    }
+
+    // The scope that owns the raw pair; its own calls are the implementation
+    public readonly ref struct GameLock
+    {
+        public static GameLock Acquire() { Game.Lock(); return new GameLock(); }
+        public void Dispose() { Game.Unlock(); }
     }
 }
 
@@ -754,7 +761,9 @@ namespace LastFrontier
 }",
               "FOSYNC005");
 
-        Check(failures, "the Game singleton bucket lock is not a cover primitive", @"
+        Check(failures,
+              "the raw singleton lock pair outside GameLock is reported",
+              @"
 namespace LastFrontier
 {
     using FOnline;
@@ -766,7 +775,9 @@ namespace LastFrontier
             Game.Unlock();
         }
     }
-}");
+}",
+              "FOSYNC005",
+              "FOSYNC005");
 
         Check(failures, "Sync itself may probe and use the primitives", @"
 namespace FOnline
@@ -1126,72 +1137,37 @@ namespace LastFrontier
     }
 }");
 
-        Check(failures, "a balanced singleton lock is silent", @"
+        Check(failures, "the GameLock scope is silent", @"
 namespace LastFrontier
 {
     using FOnline;
     public static class Probe
     {
-        public static void Work()
+        public static int Work(bool skip)
         {
-            Game.Lock();
-            Game.Unlock();
+            using GameLock scope = GameLock.Acquire();
+
+            if (skip) {
+                return 0;
+            }
+
+            return 1;
         }
     }
 }");
 
         Check(failures,
-              "a singleton lock left held is reported",
+              "a project type named GameLock does not own the raw pair",
               @"
 namespace LastFrontier
 {
     using FOnline;
-    public static class Probe
+    public static class GameLock
     {
-        public static void Work()
-        {
-            Game.Lock();
-        }
+        public static void Take() { Game.Lock(); }
     }
 }",
-              "FOSYNC006");
-
-        Check(failures,
-              "returning before the release is reported",
-              @"
-namespace LastFrontier
-{
-    using FOnline;
-    public static class Probe
-    {
-        public static void Work(bool skip)
-        {
-            Game.Lock();
-            if (skip) { return; }
-            Game.Unlock();
-        }
-    }
-}",
-              "FOSYNC006");
-
-        Check(failures,
-              "awaiting while the singleton lock is held is reported",
-              @"
-namespace LastFrontier
-{
-    using FOnline;
-    using System.Threading.Tasks;
-    public static class Probe
-    {
-        public static async Task Work(Critter cr)
-        {
-            Game.Lock();
-            await Sync.LockAsync(cr);
-            Game.Unlock();
-        }
-    }
-}",
-              "FOSYNC007");
+              "FOSYNC005");
 
         Check(failures, "a declaring entry point is silent and discharges its callees", @"
 namespace LastFrontier
