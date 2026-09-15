@@ -96,7 +96,9 @@ Runtime overrun diagnostics use `Script.AngelScriptOverrunReportTime` as an inde
 entity-lock wait, while `Script lock wait overrun` reports the contention component itself. Both messages include
 execution, lock-wait, and total wall durations, so a compute-heavy function and a wait-heavy function remain
 separately searchable without losing the full latency picture. Non-server engines return zero lock wait. As
-before, a value of zero disables both diagnostics and an attached debugger suppresses them.
+before, a value of zero disables both diagnostics and an attached debugger suppresses them. The managed backend
+reports the same two measurements against its own threshold; see
+[Managed and native scripting roots](#managed-and-native-scripting-roots).
 
 Separate script contexts may request a registered object's type id concurrently during first use. AngelScript
 assigns that id lazily, so FOnline's vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine
@@ -290,6 +292,17 @@ handlers do. On a server this gives each invocation a nested synchronization con
 may release or replace its own entity cover, including before returning an incomplete Task,
 without changing the caller's cover for the next network message. Return and exception paths both
 restore the calling context. Deferred continuations enter their own engine context when pumped.
+
+Every such entry is measured against `Script.ManagedScriptOverrunReportTime`, the managed counterpart of
+`Script.AngelScriptOverrunReportTime`: a script-function or delegate callback, an event handler, a property getter
+or setter, and each continuation the script pump resumes. The measurements, the suppressions (a zero threshold, an
+attached debugger, engine start-up, `FO_DEBUG` builds) and the line shape are the AngelScript ones, so
+`Script execution overrun: <entry> (execution: ..., lock wait: ..., total: ...)` and `Script lock wait overrun`
+read alike from either backend. The entry is named the way dispatch by name spells a function, `Type::Method`: a
+lambda or local function carries the method that wrote it, and a continuation is named after the async method it
+resumes, with a ` (continuation)` suffix. `ScriptSynchronizationContext` keeps each posted callback with its state so
+`ScriptEntryNames` can find that method, and the name is resolved only for a run that overran, so an entry that
+stays under the threshold costs one clock read. A run that ends in an exception is reported through the exception.
 
 Every native-to-managed entry also owns a bounded Mono thread attachment. A worker that was
 not already running managed code ordinarily attaches immediately before the callback and

@@ -385,6 +385,9 @@ static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> GlobalSetti
 // Script entries, exceptions and stack traces
 static auto InvokeManagedScript(MonoMethod* method, MonoObject* obj, void** args, string_view context) -> MonoObject*;
 static void InvokeManagedScriptDelegate(MonoObject* delegate_obj, string_view context);
+static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, const function<MonoObject*()>& get_entry, const function<void()>& callback);
+static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, timespan total_duration, timespan lock_wait_duration, const function<MonoObject*()>& get_entry);
+static auto DescribeManagedScriptEntry(ptr<ManagedScriptBackend> backend, const function<MonoObject*()>& get_entry) -> string;
 static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames);
 static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*;
 static void CollectManagedScriptStackLayers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept;
@@ -722,7 +725,7 @@ struct ManagedDataAccessor final : DataAccessor
         FO_STACK_TRACE_ENTRY();
 
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        return GetManagedListCount(array->Backend.as_ptr(), array->GetObject());
+        return GetManagedListCount(array->Backend, array->GetObject());
     }
 
     [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override
@@ -735,8 +738,8 @@ struct ManagedDataAccessor final : DataAccessor
             array->Elements.resize(index + 1);
         }
 
-        MonoObject* item = GetManagedListItem(array->Backend.as_ptr(), array->GetObject(), index);
-        return ConvertManagedSimpleObjectToNative(array->Backend.as_ptr(), array->Type.BaseType, item, array->Elements[index]);
+        MonoObject* item = GetManagedListItem(array->Backend, array->GetObject(), index);
+        return ConvertManagedSimpleObjectToNative(array->Backend, array->Type.BaseType, item, array->Elements[index]);
     }
 
     void ClearArray(ptr<void> data) const override
@@ -744,7 +747,7 @@ struct ManagedDataAccessor final : DataAccessor
         FO_STACK_TRACE_ENTRY();
 
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        array->SetObject(CreateManagedList(array->Backend.as_ptr(), array->Type.BaseType));
+        array->SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
         array->Elements.clear();
     }
 
@@ -753,8 +756,8 @@ struct ManagedDataAccessor final : DataAccessor
         FO_STACK_TRACE_ENTRY();
 
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        MonoObject* item = BoxNativeSimpleValue(array->Backend.as_ptr(), array->Type.BaseType, value.get());
-        AddManagedListItem(array->Backend.as_ptr(), array->GetObject(), item);
+        MonoObject* item = BoxNativeSimpleValue(array->Backend, array->Type.BaseType, value.get());
+        AddManagedListItem(array->Backend, array->GetObject(), item);
     }
 
     [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override
@@ -762,7 +765,7 @@ struct ManagedDataAccessor final : DataAccessor
         FO_STACK_TRACE_ENTRY();
 
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
-        return GetManagedDictionaryCount(dict->Backend.as_ptr(), dict->GetObject());
+        return GetManagedDictionaryCount(dict->Backend, dict->GetObject());
     }
 
     [[nodiscard]] auto GetDictElement(ptr<void> data, size_t index) const -> pair<ptr<void>, ptr<void>> override
@@ -779,10 +782,10 @@ struct ManagedDataAccessor final : DataAccessor
             dict->Values.resize(index + 1);
         }
 
-        MonoObject* key = GetManagedDictionaryKey(dict->Backend.as_ptr(), dict->GetObject(), index);
-        ptr<void> native_key = ConvertManagedSimpleObjectToNative(dict->Backend.as_ptr(), *dict->Type.KeyType, key, dict->Keys[index]);
-        MonoObject* value = GetManagedDictionaryValue(dict->Backend.as_ptr(), dict->GetObject(), index);
-        return pair<ptr<void>, ptr<void>>(native_key, ConvertManagedSimpleObjectToNative(dict->Backend.as_ptr(), dict->Type.BaseType, value, dict->Values[index]));
+        MonoObject* key = GetManagedDictionaryKey(dict->Backend, dict->GetObject(), index);
+        ptr<void> native_key = ConvertManagedSimpleObjectToNative(dict->Backend, *dict->Type.KeyType, key, dict->Keys[index]);
+        MonoObject* value = GetManagedDictionaryValue(dict->Backend, dict->GetObject(), index);
+        return pair<ptr<void>, ptr<void>>(native_key, ConvertManagedSimpleObjectToNative(dict->Backend, dict->Type.BaseType, value, dict->Values[index]));
     }
 
     [[nodiscard]] auto GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc> override
@@ -798,7 +801,7 @@ struct ManagedDataAccessor final : DataAccessor
 
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         FO_VERIFY_AND_THROW(dict->Type.KeyType, "Dictionary bridge has no key type");
-        dict->SetObject(CreateManagedDictionary(dict->Backend.as_ptr(), *dict->Type.KeyType, dict->Type.BaseType));
+        dict->SetObject(CreateManagedDictionary(dict->Backend, *dict->Type.KeyType, dict->Type.BaseType));
         dict->Keys.clear();
         dict->Values.clear();
     }
@@ -810,9 +813,9 @@ struct ManagedDataAccessor final : DataAccessor
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         FO_VERIFY_AND_THROW(dict->Type.KeyType, "Dictionary bridge has no key type");
         ManagedObjectRoot managed_key;
-        managed_key.SetObject(BoxNativeSimpleValue(dict->Backend.as_ptr(), *dict->Type.KeyType, key.get()));
-        MonoObject* managed_value = BoxNativeSimpleValue(dict->Backend.as_ptr(), dict->Type.BaseType, value.get());
-        AddManagedDictionaryItem(dict->Backend.as_ptr(), dict->GetObject(), managed_key.GetObject(), managed_value);
+        managed_key.SetObject(BoxNativeSimpleValue(dict->Backend, *dict->Type.KeyType, key.get()));
+        MonoObject* managed_value = BoxNativeSimpleValue(dict->Backend, dict->Type.BaseType, value.get());
+        AddManagedDictionaryItem(dict->Backend, dict->GetObject(), managed_key.GetObject(), managed_value);
     }
 };
 
@@ -906,7 +909,7 @@ static auto GetActiveBackendOrThrow() -> ptr<ManagedScriptBackend>
         throw ScriptSystemException("Managed backend is not active");
     }
 
-    return ActiveBackend.as_ptr();
+    return ActiveBackend;
 }
 
 static auto GetActiveEntityManagerOrThrow() -> ptr<EntityManagerApi>
@@ -979,6 +982,57 @@ static void InvokeManagedScriptDelegate(MonoObject* delegate_obj, string_view co
     mono_runtime_delegate_invoke(delegate_obj, nullptr, &exception);
     entry.Leave();
     ThrowIfManagedException(exception, context, &entry);
+}
+
+// Every native entry into script code runs its synchronization context here, so one place measures it against
+// Script.ManagedScriptOverrunReportTime; a run that throws is reported by its exception instead
+static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, const function<MonoObject*()>& get_entry, const function<void()>& callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    time_meter run_time;
+    timespan lock_wait_duration = engine->RunScriptContext(callback);
+    ReportManagedScriptOverrun(backend, engine, run_time.get_duration(), lock_wait_duration, get_entry);
+}
+
+// The same two measurements AngelScriptContextManager::RunContext reports, so both backends read alike in a log
+static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, timespan total_duration, timespan lock_wait_duration, const function<MonoObject*()>& get_entry)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    timespan overrun_time = std::chrono::milliseconds(engine->Settings->ManagedScriptOverrunReportTime);
+
+    if (!overrun_time || is_run_in_debugger() || engine->IsStartingUp()) {
+        return;
+    }
+
+    timespan execution_duration = total_duration >= lock_wait_duration ? total_duration - lock_wait_duration : timespan::zero;
+    bool execution_overrun = execution_duration >= overrun_time;
+    bool lock_wait_overrun = lock_wait_duration >= overrun_time;
+
+    if (!execution_overrun && !lock_wait_overrun) {
+        return;
+    }
+
+    if constexpr (!FO_DEBUG) {
+        string entry_name = DescribeManagedScriptEntry(backend, get_entry);
+
+        if (execution_overrun) {
+            logging::write("Script execution overrun: {} (execution: {}, lock wait: {}, total: {})", entry_name, execution_duration, lock_wait_duration, total_duration);
+        }
+        if (lock_wait_overrun) {
+            logging::write("Script lock wait overrun: {} (lock wait: {}, execution: {}, total: {})", entry_name, lock_wait_duration, execution_duration, total_duration);
+        }
+    }
+}
+
+static auto DescribeManagedScriptEntry(ptr<ManagedScriptBackend> backend, const function<MonoObject*()>& get_entry) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ManagedThreadAttachment managed_thread {GetDomainOrThrow(backend->GetDomain())};
+    void* args[] = {get_entry()};
+    return ToStringAndFree(reinterpret_cast<MonoString*>(InvokeNativeHelper(backend, "DescribeScriptEntry", 1, args)));
 }
 
 // Script code reports an exception it caught itself; see ScriptExceptions.Record
@@ -1120,7 +1174,7 @@ static auto DescribeManagedException(MonoObject* exception, nptr<ManagedScriptEn
         return description;
     }
 
-    MonoClass* native_class = FindFOnlineClass(backend.as_ptr(), "Native");
+    MonoClass* native_class = FindFOnlineClass(backend, "Native");
     MonoMethod* describe_method = mono_class_get_method_from_name(native_class, "DescribeException", 1);
     FO_VERIFY_AND_THROW(describe_method != nullptr, "Managed Native.DescribeException method not found");
 
@@ -1415,7 +1469,7 @@ static auto NativeRunScriptContinuation(MonoObject* continuation) -> MonoString*
         FO_VERIFY_AND_THROW(engine, "Managed continuation requires an engine context");
         FO_VERIFY_AND_THROW(continuation != nullptr, "Managed continuation is null");
 
-        engine->RunScriptContext([&] {
+        RunManagedScriptEntry(backend, engine, [continuation] { return continuation; }, [&] {
             ActiveBackendScope active_backend {backend};
             InvokeManagedScriptDelegate(continuation, "Managed continuation failed");
         });
@@ -2236,6 +2290,7 @@ static void NativeSetPropertyImpl(MonoString* owner_type, MonoString* property_n
     }
 
     auto prop = nullable_prop.as_ptr();
+
     if (prop->IsDict()) {
         if (!IsManagedBridgeDictionaryProperty(prop)) {
             throw ScriptSystemException("Managed dictionary property type is not supported", prop->GetName());
@@ -2291,7 +2346,7 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
         FO_VERIFY_AND_THROW(engine, "Managed property getter requires an engine context");
 
         PropertyRawData prop_data;
-        engine->RunScriptContext([&] {
+        RunManagedScriptEntry(backend, engine, [getter_handle] { return mono_gchandle_get_target(getter_handle); }, [&] {
             ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -2340,7 +2395,7 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
-        engine->RunScriptContext([&] {
+        RunManagedScriptEntry(backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); }, [&] {
             ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -2391,7 +2446,7 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
-        engine->RunScriptContext([&] {
+        RunManagedScriptEntry(backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); }, [&] {
             ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -2446,7 +2501,7 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed deferred property setter requires an engine context");
 
-        engine->RunScriptContext([&] {
+        RunManagedScriptEntry(backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); }, [&] {
             ActiveBackendScope active_backend {backend};
 
             MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -2706,12 +2761,12 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
             for (size_t i = 0; i < call_args_count; i++) {
                 MonoObject* arg = mono_array_get(get_args(), MonoObject*, i);
 
-                if (!CanConvertManagedObjectToNative(backend.as_ptr(), func_desc->Args[i].Type, arg)) {
+                if (!CanConvertManagedObjectToNative(backend, func_desc->Args[i].Type, arg)) {
                     converted = false;
                     break;
                 }
 
-                args_data[i] = ConvertManagedObjectToNative(backend.as_ptr(), func_desc->Args[i].Type, arg, native_args[i]);
+                args_data[i] = ConvertManagedObjectToNative(backend, func_desc->Args[i].Type, arg, native_args[i]);
             }
         }
         catch (const std::exception&) {
@@ -2807,7 +2862,7 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
 
                 ret = ret_array->GetObject();
                 if (ret == nullptr) {
-                    ret = CreateManagedList(backend.as_ptr(), func_desc->Ret.BaseType);
+                    ret = CreateManagedList(backend, func_desc->Ret.BaseType);
                     ret_array->SetObject(ret);
                 }
             }
@@ -2818,12 +2873,12 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
 
                 ret = ret_dict->GetObject();
                 if (ret == nullptr) {
-                    ret = CreateManagedDictionary(backend.as_ptr(), *func_desc->Ret.KeyType, func_desc->Ret.BaseType);
+                    ret = CreateManagedDictionary(backend, *func_desc->Ret.KeyType, func_desc->Ret.BaseType);
                     ret_dict->SetObject(ret);
                 }
             }
             else {
-                ret = BoxNativeCallValue(backend.as_ptr(), func_desc->Ret, ret_data, call.Accessor.get());
+                ret = BoxNativeCallValue(backend, func_desc->Ret, ret_data, call.Accessor.get());
             }
 
             mono_array_setref(get_args(), args_count - 1, ret);
@@ -2834,7 +2889,7 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
                 continue;
             }
 
-            MonoObject* arg = BoxNativeCallValue(backend.as_ptr(), func_desc->Args[i].Type, args_data[i], call.Accessor.get());
+            MonoObject* arg = BoxNativeCallValue(backend, func_desc->Args[i].Type, args_data[i], call.Accessor.get());
             mono_array_setref(get_args(), i, arg);
         }
 
@@ -3083,11 +3138,11 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
                     auto& bridge = array_bridges.emplace_back();
                     bridge.Backend = backend;
                     bridge.Type = arg_type;
-                    bridge.SetObject(CreateManagedList(backend.as_ptr(), arg_type.BaseType));
+                    bridge.SetObject(CreateManagedList(backend, arg_type.BaseType));
 
                     for (int32_t j = 0; j < count; j++) {
                         auto element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
-                        AddManagedListItem(backend.as_ptr(), bridge.GetObject(), BoxNativeSimpleValue(backend.as_ptr(), arg_type.BaseType, element.get()));
+                        AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
                     }
 
                     data_storage[arg_index] = make_ptr(&bridge).void_cast();
@@ -3149,7 +3204,7 @@ static void NativeSendRemoteCall(MonoObject* caller, MonoString* name_str, MonoA
         caller_entity = ExtractEntityPtr(caller);
     }
     FO_VERIFY_AND_THROW(caller_entity, "Managed remote call send requires a caller", name);
-    auto data = SerializeManagedRemoteCallArgs(backend.as_ptr(), outbound_call.Args, args_array, name);
+    auto data = SerializeManagedRemoteCallArgs(backend, outbound_call.Args, args_array, name);
 
     engine->SendRemoteCall(name_hashed, caller_entity, data);
 }
@@ -3191,7 +3246,7 @@ static void NativeLoopbackRemoteCall(MonoObject* caller, MonoString* name_str, M
     if (caller != nullptr) {
         caller_entity = ExtractEntityPtr(caller);
     }
-    auto data = SerializeManagedRemoteCallArgs(backend.as_ptr(), inbound_call.Args, args_array, name);
+    auto data = SerializeManagedRemoteCallArgs(backend, inbound_call.Args, args_array, name);
 
     engine->HandleInboundRemoteCall(name_hashed, caller_entity, data);
 }
@@ -3342,6 +3397,7 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
     }
 
     auto prop = nullable_prop.as_ptr();
+
     if (require_virtual && !prop->IsVirtual()) {
         throw ScriptSystemException("Managed property getter requires a virtual property", prop->GetName());
     }
@@ -3368,7 +3424,9 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
     nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
     FO_VERIFY_AND_THROW(engine, "Managed callback dispatch requires an engine context");
 
-    engine->RunScriptContext([&] { DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call); });
+    RunManagedScriptEntry(backend, engine, [handler_handle] { return mono_gchandle_get_target(handler_handle); }, [&] {
+        DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call);
+    });
 }
 
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)
@@ -3664,7 +3722,9 @@ static auto DispatchManagedEvent(shared_ptr<ManagedEventSubscription> subscripti
     FO_VERIFY_AND_THROW(engine, "Managed event dispatch requires an engine context");
 
     Entity::EventResult result = Entity::EventResult::ContinueChain;
-    engine->RunScriptContext([&] { result = DispatchManagedEventInContext(subscription, call); });
+    RunManagedScriptEntry(subscription->Backend, engine, [handler = subscription->Handler] { return mono_gchandle_get_target(handler); }, [&] {
+        result = DispatchManagedEventInContext(subscription, call);
+    });
     return result;
 }
 
@@ -3672,7 +3732,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 {
     FO_STACK_TRACE_ENTRY();
 
-    ActiveBackendScope active_backend {subscription->Backend.as_ptr()};
+    ActiveBackendScope active_backend {subscription->Backend};
 
     MonoDomain* domain = GetDomainOrThrow(subscription->Backend->GetDomain());
 
@@ -3705,7 +3765,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
     auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
     for (size_t i = 0; i < subscription->Args.size(); i++) {
-        MonoObject* arg = BoxNativeCallValue(subscription->Backend.as_ptr(), subscription->Args[i], ptr<void>(call.ArgsData[i]).get(), call.Accessor.get());
+        MonoObject* arg = BoxNativeCallValue(subscription->Backend, subscription->Args[i], ptr<void>(call.ArgsData[i]).get(), call.Accessor.get());
         mono_array_setref(get_args_array(), i, arg);
     }
 
@@ -5415,7 +5475,7 @@ static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -
         throw ScriptSystemException("Managed entity target is destroyed", entity->GetName());
     }
 
-    return entity.as_ptr();
+    return entity;
 }
 
 static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> nptr<Entity>

@@ -431,6 +431,12 @@ internal static class Native
     }
 
     [CallableByEngine]
+    internal static string DescribeScriptEntry(object entry)
+    {
+        return ScriptEntryNames.Describe(entry);
+    }
+
+    [CallableByEngine]
     internal static string GetDelegateKey(Delegate handler)
     {
         if (handler == null) {

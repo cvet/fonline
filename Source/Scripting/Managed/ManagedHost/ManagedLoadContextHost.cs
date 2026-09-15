@@ -46,11 +46,11 @@ public static class ManagedLoadContextHost
 
     private sealed class ManagedLoadScope
     {
-        private ManagedAssemblyLoadContext? _context;
+        private ManagedAssemblyLoadContext? Context;
 
         public ManagedLoadScope(ManagedAssemblyLoadContext context, Assembly[] entryAssemblies)
         {
-            _context = context;
+            Context = context;
             EntryAssemblies = entryAssemblies;
         }
 
@@ -58,18 +58,18 @@ public static class ManagedLoadContextHost
 
         public void Release()
         {
-            if (_context == null) {
+            if (Context == null) {
                 return;
             }
 
             EntryAssemblies = Array.Empty<Assembly>();
-            _context = null;
+            Context = null;
         }
     }
 
     private sealed class ManagedAssemblyLoadContext : AssemblyLoadContext
     {
-        private readonly Dictionary<string, string> _assemblyPaths =
+        private readonly Dictionary<string, string> AssemblyPaths =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         public ManagedAssemblyLoadContext(string name, string[] assemblyPaths) : base(name, isCollectible: false)
@@ -98,7 +98,7 @@ public static class ManagedLoadContextHost
                 if (string.IsNullOrEmpty(assemblyName)) {
                     throw new InvalidOperationException("Managed assembly has no simple name: " + path);
                 }
-                if (!_assemblyPaths.TryAdd(assemblyName, path)) {
+                if (!AssemblyPaths.TryAdd(assemblyName, path)) {
                     throw new InvalidOperationException("Duplicate managed assembly name: " + assemblyName);
                 }
             }
@@ -106,7 +106,7 @@ public static class ManagedLoadContextHost
 
         protected override Assembly? Load(AssemblyName assemblyName)
         {
-            if (assemblyName.Name != null && _assemblyPaths.TryGetValue(assemblyName.Name, out string? path))
+            if (assemblyName.Name != null && AssemblyPaths.TryGetValue(assemblyName.Name, out string? path))
             {
                 return LoadFromAssemblyPath(path);
             }

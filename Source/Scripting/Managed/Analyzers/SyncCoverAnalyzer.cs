@@ -840,21 +840,21 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     // Resolved contract vocabulary for one compilation.
     private sealed class CoverModel
     {
-        private readonly INamedTypeSymbol _requiresCover;
-        private readonly INamedTypeSymbol? _providesCover;
+        private readonly INamedTypeSymbol RequiresCoverAttribute;
+        private readonly INamedTypeSymbol? ProvidesCoverAttribute;
 
-        private readonly INamedTypeSymbol? _preservesCover;
-        private readonly INamedTypeSymbol? _returnsParent;
-        private readonly INamedTypeSymbol? _returnsAncestor;
-        private readonly INamedTypeSymbol? _acquiresCover;
-        private readonly INamedTypeSymbol? _passesCover;
+        private readonly INamedTypeSymbol? PreservesCoverAttribute;
+        private readonly INamedTypeSymbol? ReturnsParentAttribute;
+        private readonly INamedTypeSymbol? ReturnsAncestorAttribute;
+        private readonly INamedTypeSymbol? AcquiresCoverAttribute;
+        private readonly INamedTypeSymbol? PassesCoverAttribute;
 
         // CoverReach.Parent and CoverReach.Ancestors, as the attribute's constructor argument carries them
         private const int ReachParent = 1 << 0;
         private const int ReachAncestors = 1 << 1;
-        private readonly INamedTypeSymbol _entityType;
+        private readonly INamedTypeSymbol EntityType;
 
-        private readonly List<INamedTypeSymbol> _entryMarkers;
+        private readonly List<INamedTypeSymbol> EntryMarkers;
 
         public CoverModel(INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover,
                           INamedTypeSymbol? preservesCover, INamedTypeSymbol? returnsParent,
@@ -863,23 +863,23 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                           INamedTypeSymbol? gameType, INamedTypeSymbol? gameLockType,
                           List<INamedTypeSymbol> entryMarkers)
         {
-            _requiresCover = requiresCover;
-            _providesCover = providesCover;
-            _preservesCover = preservesCover;
-            _returnsParent = returnsParent;
-            _returnsAncestor = returnsAncestor;
-            _acquiresCover = acquiresCover;
-            _passesCover = passesCover;
-            _entityType = entityType;
+            RequiresCoverAttribute = requiresCover;
+            ProvidesCoverAttribute = providesCover;
+            PreservesCoverAttribute = preservesCover;
+            ReturnsParentAttribute = returnsParent;
+            ReturnsAncestorAttribute = returnsAncestor;
+            AcquiresCoverAttribute = acquiresCover;
+            PassesCoverAttribute = passesCover;
+            EntityType = entityType;
             SyncType = syncType;
             GameType = gameType;
             GameLockType = gameLockType;
-            _entryMarkers = entryMarkers;
+            EntryMarkers = entryMarkers;
         }
 
         public bool IsEntryPoint(IMethodSymbol method)
         {
-            foreach (INamedTypeSymbol marker in _entryMarkers) {
+            foreach (INamedTypeSymbol marker in EntryMarkers) {
                 if (HasAttribute(method.GetAttributes(), marker)) {
                     return true;
                 }
@@ -901,23 +901,23 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         public bool HasRequiresCover(IParameterSymbol parameter)
         {
-            return HasAttribute(parameter.GetAttributes(), _requiresCover);
+            return HasAttribute(parameter.GetAttributes(), RequiresCoverAttribute);
         }
 
         // On a method the attribute names the receiver, which no parameter can express.
         public bool HasRequiresCoverOnMethod(IMethodSymbol method)
         {
-            return HasAttribute(method.GetAttributes(), _requiresCover);
+            return HasAttribute(method.GetAttributes(), RequiresCoverAttribute);
         }
 
         public bool HasProvidesCover(IParameterSymbol parameter)
         {
-            return _providesCover != null && HasAttribute(parameter.GetAttributes(), _providesCover);
+            return ProvidesCoverAttribute != null && HasAttribute(parameter.GetAttributes(), ProvidesCoverAttribute);
         }
 
         public bool HasProvidesCoverOnReturn(IMethodSymbol method)
         {
-            return _providesCover != null && HasAttribute(method.GetReturnTypeAttributes(), _providesCover);
+            return ProvidesCoverAttribute != null && HasAttribute(method.GetReturnTypeAttributes(), ProvidesCoverAttribute);
         }
 
         // Baked map data and prototypes carry their own cover, so an obligation for one is already met.
@@ -958,15 +958,15 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         // A script helper declared as an acquisition: it establishes cover through Sync for entities it names itself
         public bool AcquiresCover(IMethodSymbol method)
         {
-            return _acquiresCover != null && HasAttribute(method.GetAttributes(), _acquiresCover);
+            return AcquiresCoverAttribute != null && HasAttribute(method.GetAttributes(), AcquiresCoverAttribute);
         }
 
         // Does awaiting this call give the caller back the cover it had?
         public bool PreservesCover(IMethodSymbol method)
         {
-            return _preservesCover != null &&
+            return PreservesCoverAttribute != null &&
                    method.GetAttributes().Any(
-                       a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, _preservesCover));
+                       a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, PreservesCoverAttribute));
         }
 
         public bool ComesFromProvidedCover(ExpressionSyntax expression, SemanticModel semantics,
@@ -981,7 +981,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? ProvidedReach(ExpressionSyntax expression, SemanticModel semantics,
                                    CancellationToken cancellationToken)
         {
-            if (_providesCover == null) {
+            if (ProvidesCoverAttribute == null) {
                 return null;
             }
 
@@ -1012,9 +1012,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 }
 
                 // A pass-through hands back the very argument it was given, cover and reach included
-                if (expression is InvocationExpressionSyntax passThrough && _passesCover != null) {
+                if (expression is InvocationExpressionSyntax passThrough && PassesCoverAttribute != null) {
                     foreach (IParameterSymbol passed in direct.Parameters) {
-                        ExpressionSyntax? argument = HasAttribute(passed.GetAttributes(), _passesCover)
+                        ExpressionSyntax? argument = HasAttribute(passed.GetAttributes(), PassesCoverAttribute)
                                                        ? ArgumentFor(passThrough, direct, passed)
                                                        : null;
 
@@ -1109,9 +1109,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                                  CancellationToken cancellationToken)
         {
             bool returnsParent =
-                _returnsParent != null && HasAttribute(accessor.GetReturnTypeAttributes(), _returnsParent);
+                ReturnsParentAttribute != null && HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsParentAttribute);
             bool returnsAncestor =
-                _returnsAncestor != null && HasAttribute(accessor.GetReturnTypeAttributes(), _returnsAncestor);
+                ReturnsAncestorAttribute != null && HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsAncestorAttribute);
 
             if (!returnsParent && !returnsAncestor) {
                 return null;
@@ -1141,7 +1141,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? DeclaredReach(ImmutableArray<AttributeData> attributes)
         {
             foreach (AttributeData attribute in attributes) {
-                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, _providesCover)) {
+                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, ProvidesCoverAttribute)) {
                     continue;
                 }
 
@@ -1182,7 +1182,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? HandedOverReach(SyntaxNode body, ISymbol wanted, SemanticModel semantics,
                                      CancellationToken cancellationToken)
         {
-            if (_providesCover == null) {
+            if (ProvidesCoverAttribute == null) {
                 return null;
             }
 
@@ -1217,7 +1217,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private bool IsEntity(ITypeSymbol type)
         {
             for (ITypeSymbol? current = type; current != null; current = current.BaseType) {
-                if (SymbolEqualityComparer.Default.Equals(current, _entityType)) {
+                if (SymbolEqualityComparer.Default.Equals(current, EntityType)) {
                     return true;
                 }
             }

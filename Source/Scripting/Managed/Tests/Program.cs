@@ -216,6 +216,31 @@ internal static class Program
                  }
                  throw new CheckFailedException("An enum from a foreign assembly was accepted");
              }),
+            ("script entries are named the way dispatch by name spells them",
+             () =>
+             {
+                 Check(ScriptEntryNames.Describe((Action)ExampleGame.DispatchProbe.NoArgs) == "DispatchProbe::NoArgs",
+                       "A static script method is not named Type::Method");
+                 Check(ScriptEntryNames.Describe((Action)ExampleGame.DispatchProbe.Inner.Mark) == "Inner::Mark",
+                       "A method of a nested script type is not named after that type");
+                 Check(ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeLambda()) == "DispatchProbe::MakeLambda",
+                       "A lambda is not named after the script method that wrote it");
+             }),
+            ("a resumed await is named after its async method",
+             () =>
+             {
+                 Task task;
+
+                 using (ScriptSynchronizationContext.Enter()) {
+                     task = ExampleGame.DispatchProbe.YieldOnce();
+                 }
+
+                 Native.LastContinuationName = "";
+                 ScriptSynchronizationContext.Pump();
+                 Check(task.IsCompleted, "The pumped continuation did not resume the async method");
+                 Check(Native.LastContinuationName == "DispatchProbe::YieldOnce (continuation)",
+                       "A resumed await is not named after its async method: " + Native.LastContinuationName);
+             }),
             ("duration formatting across signs and extremes",
              () =>
              {
@@ -354,6 +379,14 @@ public static class DispatchProbe
     public static void Overload(Second value)
     {
         OverloadValue = 2;
+    }
+    public static Action MakeLambda()
+    {
+        return () => NoArgs();
+    }
+    public static async Task YieldOnce()
+    {
+        await Task.Yield();
     }
     [CallableByName]
     public static async Task AsyncCall()

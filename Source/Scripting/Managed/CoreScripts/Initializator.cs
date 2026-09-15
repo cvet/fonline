@@ -9,17 +9,17 @@ using System.Threading.Tasks;
 
 public static class Initializator
 {
-    private static bool _initializedEarly;
+    private static bool InitializedEarly;
 
     [CallableByEngine]
     static void InitializeEarly()
     {
-        if (_initializedEarly) {
+        if (InitializedEarly) {
             throw new InvalidOperationException(
                 "Managed entry assembly was initialized more than once in one load context");
         }
 
-        _initializedEarly = true;
+        InitializedEarly = true;
         ValidateAsyncMethods();
         ScriptFuncRegistration.RegisterEngineAttributeFuncs();
         RemoteCallScriptFuncs.RegisterRemoteCalls();
