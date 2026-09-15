@@ -231,7 +231,8 @@ internal static class Program
              {
                  Task task;
 
-                 using (ScriptSynchronizationContext.Enter()) {
+                 using (ScriptSynchronizationContext.Enter())
+                 {
                      task = ExampleGame.DispatchProbe.YieldOnce();
                  }
 

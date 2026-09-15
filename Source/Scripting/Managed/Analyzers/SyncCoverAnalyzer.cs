@@ -917,7 +917,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         public bool HasProvidesCoverOnReturn(IMethodSymbol method)
         {
-            return ProvidesCoverAttribute != null && HasAttribute(method.GetReturnTypeAttributes(), ProvidesCoverAttribute);
+            return ProvidesCoverAttribute != null &&
+                   HasAttribute(method.GetReturnTypeAttributes(), ProvidesCoverAttribute);
         }
 
         // Baked map data and prototypes carry their own cover, so an obligation for one is already met.
@@ -1108,10 +1109,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? UpwardReach(IMethodSymbol accessor, ExpressionSyntax receiver, SemanticModel semantics,
                                  CancellationToken cancellationToken)
         {
-            bool returnsParent =
-                ReturnsParentAttribute != null && HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsParentAttribute);
-            bool returnsAncestor =
-                ReturnsAncestorAttribute != null && HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsAncestorAttribute);
+            bool returnsParent = ReturnsParentAttribute != null &&
+                                 HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsParentAttribute);
+            bool returnsAncestor = ReturnsAncestorAttribute != null &&
+                                   HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsAncestorAttribute);
 
             if (!returnsParent && !returnsAncestor) {
                 return null;

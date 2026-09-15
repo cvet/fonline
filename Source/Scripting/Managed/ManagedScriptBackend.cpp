@@ -1469,10 +1469,12 @@ static auto NativeRunScriptContinuation(MonoObject* continuation) -> MonoString*
         FO_VERIFY_AND_THROW(engine, "Managed continuation requires an engine context");
         FO_VERIFY_AND_THROW(continuation != nullptr, "Managed continuation is null");
 
-        RunManagedScriptEntry(backend, engine, [continuation] { return continuation; }, [&] {
-            ActiveBackendScope active_backend {backend};
-            InvokeManagedScriptDelegate(continuation, "Managed continuation failed");
-        });
+        RunManagedScriptEntry(
+            backend, engine, [continuation] { return continuation; },
+            [&] {
+                ActiveBackendScope active_backend {backend};
+                InvokeManagedScriptDelegate(continuation, "Managed continuation failed");
+            });
         return nullptr;
     }
     catch (const std::exception& ex) {
@@ -2346,28 +2348,30 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
         FO_VERIFY_AND_THROW(engine, "Managed property getter requires an engine context");
 
         PropertyRawData prop_data;
-        RunManagedScriptEntry(backend, engine, [getter_handle] { return mono_gchandle_get_target(getter_handle); }, [&] {
-            ActiveBackendScope active_backend {backend};
+        RunManagedScriptEntry(
+            backend, engine, [getter_handle] { return mono_gchandle_get_target(getter_handle); },
+            [&] {
+                ActiveBackendScope active_backend {backend};
 
-            MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            ManagedThreadAttachment managed_thread {domain};
+                ManagedThreadAttachment managed_thread {domain};
 
-            if (mono_gchandle_get_target(getter_handle) == nullptr) {
-                throw ScriptSystemException("Managed property getter delegate was collected", prop->GetName());
-            }
+                if (mono_gchandle_get_target(getter_handle) == nullptr) {
+                    throw ScriptSystemException("Managed property getter delegate was collected", prop->GetName());
+                }
 
-            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 1)), 0);
-            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
-            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
+                uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 1)), 0);
+                auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+                auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
-            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-            mono_array_setref(get_args_array(), 0, entity_obj);
+                MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+                mono_array_setref(get_args_array(), 0, entity_obj);
 
-            ManagedObjectRoot result;
-            result.SetObject(InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(getter_handle), get_args_array()));
-            prop_data = ConvertManagedObjectToPropertyData(backend, prop, result.GetObject());
-        });
+                ManagedObjectRoot result;
+                result.SetObject(InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(getter_handle), get_args_array()));
+                prop_data = ConvertManagedObjectToPropertyData(backend, prop, result.GetObject());
+            });
         return prop_data;
     });
 }
@@ -2395,31 +2399,33 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
-        RunManagedScriptEntry(backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); }, [&] {
-            ActiveBackendScope active_backend {backend};
+        RunManagedScriptEntry(
+            backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); },
+            [&] {
+                ActiveBackendScope active_backend {backend};
 
-            MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            ManagedThreadAttachment managed_thread {domain};
+                ManagedThreadAttachment managed_thread {domain};
 
-            if (mono_gchandle_get_target(setter_handle) == nullptr) {
-                throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
-            }
+                if (mono_gchandle_get_target(setter_handle) == nullptr) {
+                    throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
+                }
 
-            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 2)), 0);
-            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
-            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
+                uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 2)), 0);
+                auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+                auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
-            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-            mono_array_setref(get_args_array(), 0, entity_obj);
-            MonoObject* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-            mono_array_setref(get_args_array(), 1, value_obj);
+                MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+                mono_array_setref(get_args_array(), 0, entity_obj);
+                MonoObject* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+                mono_array_setref(get_args_array(), 1, value_obj);
 
-            (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
+                (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
 
-            MonoObject* modified_value = mono_array_get(get_args_array(), MonoObject*, 1);
-            prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
-        });
+                MonoObject* modified_value = mono_array_get(get_args_array(), MonoObject*, 1);
+                prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
+            });
     });
 }
 
@@ -2446,33 +2452,35 @@ static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoStri
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
-        RunManagedScriptEntry(backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); }, [&] {
-            ActiveBackendScope active_backend {backend};
+        RunManagedScriptEntry(
+            backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); },
+            [&] {
+                ActiveBackendScope active_backend {backend};
 
-            MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            ManagedThreadAttachment managed_thread {domain};
+                ManagedThreadAttachment managed_thread {domain};
 
-            if (mono_gchandle_get_target(setter_handle) == nullptr) {
-                throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
-            }
+                if (mono_gchandle_get_target(setter_handle) == nullptr) {
+                    throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
+                }
 
-            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 3)), 0);
-            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
-            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
+                uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 3)), 0);
+                auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+                auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
-            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-            mono_array_setref(get_args_array(), 0, entity_obj);
-            MonoObject* property_obj = CreatePropertyEnumObject(backend, owner_type_name, prop);
-            mono_array_setref(get_args_array(), 1, property_obj);
-            MonoObject* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-            mono_array_setref(get_args_array(), 2, value_obj);
+                MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+                mono_array_setref(get_args_array(), 0, entity_obj);
+                MonoObject* property_obj = CreatePropertyEnumObject(backend, owner_type_name, prop);
+                mono_array_setref(get_args_array(), 1, property_obj);
+                MonoObject* value_obj = BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+                mono_array_setref(get_args_array(), 2, value_obj);
 
-            (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
+                (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
 
-            MonoObject* modified_value = mono_array_get(get_args_array(), MonoObject*, 2);
-            prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
-        });
+                MonoObject* modified_value = mono_array_get(get_args_array(), MonoObject*, 2);
+                prop_data = ConvertManagedObjectToPropertyData(backend, prop, modified_value);
+            });
     });
 }
 
@@ -2501,26 +2509,28 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed deferred property setter requires an engine context");
 
-        RunManagedScriptEntry(backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); }, [&] {
-            ActiveBackendScope active_backend {backend};
+        RunManagedScriptEntry(
+            backend, engine, [setter_handle] { return mono_gchandle_get_target(setter_handle); },
+            [&] {
+                ActiveBackendScope active_backend {backend};
 
-            MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
-            ManagedThreadAttachment managed_thread {domain};
+                ManagedThreadAttachment managed_thread {domain};
 
-            if (mono_gchandle_get_target(setter_handle) == nullptr) {
-                throw ScriptSystemException("Managed deferred property setter delegate was collected", prop->GetName());
-            }
+                if (mono_gchandle_get_target(setter_handle) == nullptr) {
+                    throw ScriptSystemException("Managed deferred property setter delegate was collected", prop->GetName());
+                }
 
-            uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 1)), 0);
-            auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
-            auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
+                uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 1)), 0);
+                auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
+                auto get_args_array = [args_array_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_array_handle)); };
 
-            MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
-            mono_array_setref(get_args_array(), 0, entity_obj);
+                MonoObject* entity_obj = CreateEntityObject(backend, owner_type_name, entity);
+                mono_array_setref(get_args_array(), 0, entity_obj);
 
-            (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
-        });
+                (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
+            });
     });
 }
 
@@ -3424,9 +3434,7 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
     nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
     FO_VERIFY_AND_THROW(engine, "Managed callback dispatch requires an engine context");
 
-    RunManagedScriptEntry(backend, engine, [handler_handle] { return mono_gchandle_get_target(handler_handle); }, [&] {
-        DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call);
-    });
+    RunManagedScriptEntry(backend, engine, [handler_handle] { return mono_gchandle_get_target(handler_handle); }, [&] { DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call); });
 }
 
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)
@@ -3722,9 +3730,7 @@ static auto DispatchManagedEvent(shared_ptr<ManagedEventSubscription> subscripti
     FO_VERIFY_AND_THROW(engine, "Managed event dispatch requires an engine context");
 
     Entity::EventResult result = Entity::EventResult::ContinueChain;
-    RunManagedScriptEntry(subscription->Backend, engine, [handler = subscription->Handler] { return mono_gchandle_get_target(handler); }, [&] {
-        result = DispatchManagedEventInContext(subscription, call);
-    });
+    RunManagedScriptEntry(subscription->Backend, engine, [handler = subscription->Handler] { return mono_gchandle_get_target(handler); }, [&] { result = DispatchManagedEventInContext(subscription, call); });
     return result;
 }
 
