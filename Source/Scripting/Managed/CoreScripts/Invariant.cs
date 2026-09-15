@@ -104,7 +104,7 @@ public static class Invariant
     // analysis treats it as live afterward (honoring the repo's zero-warning rule on nullable references).
     // `[NotNull]` narrows the *argument* too, so a caller that ignores the return value still gets the
     // narrowing -- otherwise only the returned copy would be known non-null
-    public static T VerifyNotNull<T>([System.Diagnostics.CodeAnalysis.NotNull] T? value, string message)
+    public static T VerifyNotNull<T>([System.Diagnostics.CodeAnalysis.NotNull][PassesCover] T? value, string message)
         where T : class
     {
         if (value == null) {

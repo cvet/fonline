@@ -215,6 +215,39 @@ public sealed class ProvidesCoverAttribute : Attribute
     public CoverReach Reach { get; private set; }
 }
 
+// On the return value of an UPWARD accessor: the entity returned is the receiver's immediate sync-hierarchy parent (a
+// critter's map, a map's location). The receiver's own cover does not reach it, since acquisition takes the requested
+// entities and nothing above them; cover declared with CoverReach.Parent or CoverReach.Ancestors does. The direction is
+// declared rather than inferred from the types, because an entity of the parent's type is not necessarily the parent
+[AttributeUsage(AttributeTargets.ReturnValue, AllowMultiple = false)]
+public sealed class ReturnsParentAttribute : Attribute
+{
+}
+
+// Like [ReturnsParent], for an accessor whose result may sit further up the chain: an item's map or its carrying
+// critter, reached through any number of containers. Only cover declared with CoverReach.Ancestors reaches it
+[AttributeUsage(AttributeTargets.ReturnValue, AllowMultiple = false)]
+public sealed class ReturnsAncestorAttribute : Attribute
+{
+}
+
+// For a helper that ACQUIRES cover through Sync for entities it does not take as parameters -- a global-map group's
+// members, the carrier and map an item resolves to -- and answers whether it succeeded, possibly with a record naming
+// what it covered. A body calling it counts as acquiring, the same as a body calling Sync directly; a helper that
+// covers an entity it returns or takes says so with [ProvidesCover] instead, the more precise statement whenever there
+// is such a value
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class AcquiresCoverAttribute : Attribute
+{
+}
+
+// For a parameter a method RETURNS unchanged -- a checking pass-through such as Game.VerifyNotNull. The result is the
+// argument itself, so it is covered exactly when the argument was, with the same reach
+[AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
+public sealed class PassesCoverAttribute : Attribute
+{
+}
+
 // For an awaitable method that GIVES THE CALLER BACK the cover it had. An await ordinarily releases the
 // caller cover, so a value covered before one is not covered after it -- except when the callee restores
 // what it found. That distinction already existed as prose ("preserves the caller cover" versus "replace

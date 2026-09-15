@@ -183,7 +183,10 @@ ASan/MSan/UBSan/TSan are blocking legs. The `unit-tests-san-memory` validator pr
 `Workspace/msan-libcxx` by building LLVM's `libc++`, `libc++abi`, and `libunwind`
 with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROOT`.
 The runtime build applies a narrow libunwind ignorelist so C++ exception and
-sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
+sanitizer-report unwinding do not self-report on ABI register snapshots. `San_Memory`
+also configures libbson without `strlcpy`: MSan does not intercept the glibc function, so
+every string libbson copies with it (MongoDB URI option keys among them) would read as
+uninitialized, while its `strncpy` fallback is intercepted. Engine
 native stack capture and the backward-cpp signal handler are disabled under MSan and
 TSan so the sanitizer runtimes own their reports; backward-cpp/libbfd symbolization
 under TSan also produces prohibitive shadow-memory growth. The embedded Mono archive and
@@ -674,6 +677,7 @@ Current count: **108** `Test_*.cpp` suites.
 ### Bakers and tools
 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_BakerSetup.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`

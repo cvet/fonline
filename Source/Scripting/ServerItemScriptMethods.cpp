@@ -104,7 +104,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item>
 }
 
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
+FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
     auto map = ResolveItemMap(self);
 
@@ -112,7 +112,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
 }
 
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
+FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 {
     auto map = ResolveItemMapPosition(self, hex);
 
@@ -120,7 +120,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 }
 
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
+FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 {
     auto cr = ResolveItemCritter(self);
 

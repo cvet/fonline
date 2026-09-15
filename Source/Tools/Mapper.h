@@ -37,6 +37,7 @@
 
 #include "AnimationViewer.h"
 #include "AnyData.h"
+#include "AudioManager.h"
 #include "CacheStorage.h"
 #include "Client.h"
 #include "CritterHexView.h"
@@ -59,7 +60,6 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 #include "SettingsStorage.h"
-#include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
 

@@ -45,8 +45,6 @@ struct Application::Context
 int32_t AppRender::MAX_ATLAS_WIDTH {8192};
 int32_t AppRender::MAX_ATLAS_HEIGHT {8192};
 int32_t AppRender::MAX_BONES {32};
-const int32_t AppAudio::AUDIO_FORMAT_U8 = 0;
-const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
@@ -881,11 +879,10 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
-auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(format);
     ignore_unused(channels);
     ignore_unused(rate);
     ignore_unused(buf);

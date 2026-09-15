@@ -41,7 +41,7 @@ EXCLUDED_SOURCE_FRAGMENTS = (
 # would both hide that work and remove its covered lines from the numerator. Re-check this table
 # against the report when adding to it
 ENVIRONMENT_EXCLUDED_SOURCES = (
-    ("Client/SoundManager.cpp", "audio mixing and playback: needs an audio device"),
+    ("Client/AudioManager.cpp", "audio mixing and playback: needs an audio device"),
     ("Client/VideoClip.cpp", "video decoding and presentation: needs a video decoder"),
     ("Server/DataBase-Mongo.cpp", "Mongo backend: needs a running Mongo instance"),
     ("Server/UpdaterBackend.cpp", "updater backend: needs packaged resources and a live endpoint"),

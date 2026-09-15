@@ -91,7 +91,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Player> Server_Critter_GetPlayer(ptr<Critte
 }
 
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
+FO_SCRIPT_API FO_RETURNS_PARENT nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
 {
     auto map = self->GetParent<Map>();
 
