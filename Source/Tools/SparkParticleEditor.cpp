@@ -572,7 +572,7 @@ void SparkParticleEditor::DrawContent()
     float32_t frame_width = numeric_cast<float32_t>(draw_width);
     float32_t frame_height = numeric_cast<float32_t>(draw_height);
     float32_t frame_ratio = frame_width / frame_height;
-    float32_t proj_height = frame_height * (1.0f / _impl->Settings->ModelProjFactor);
+    float32_t proj_height = frame_height * (1.0f / _impl->Settings->Render.ModelProjFactor);
     float32_t proj_width = proj_height * frame_ratio;
 
     mat44 proj = GetApp()->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);

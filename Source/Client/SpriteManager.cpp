@@ -191,8 +191,8 @@ void SpriteManager::SetScreenSize(isize32 size)
     }
 
     if (_window->IsVirtual()) {
-        _settings->ScreenWidth = size.width;
-        _settings->ScreenHeight = size.height;
+        _settings->View.ScreenWidth = size.width;
+        _settings->View.ScreenHeight = size.height;
     }
 
     _window->SetScreenSize(size);
@@ -408,8 +408,8 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
     const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
     int32_t width_from_i = tex->Size.width;
     int32_t height_from_i = tex->Size.height;
-    int32_t width_to_i = rt_stack.empty() ? _settings->ScreenWidth : rt_stack.back()->GetTexture()->Size.width;
-    int32_t height_to_i = rt_stack.empty() ? _settings->ScreenHeight : rt_stack.back()->GetTexture()->Size.height;
+    int32_t width_to_i = rt_stack.empty() ? _settings->View.ScreenWidth : rt_stack.back()->GetTexture()->Size.width;
+    int32_t height_to_i = rt_stack.empty() ? _settings->View.ScreenHeight : rt_stack.back()->GetTexture()->Size.height;
     float32_t width_from_f = numeric_cast<float32_t>(width_from_i);
     float32_t height_from_f = numeric_cast<float32_t>(height_from_i);
     float32_t width_to_f = numeric_cast<float32_t>(width_to_i);
@@ -753,7 +753,7 @@ void SpriteManager::Flush()
                 egg_buf->EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
             }
 
-            egg_buf->EggData[8] = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
+            egg_buf->EggData[8] = std::clamp(_settings->Render.EggTransparencyTransitionFactor, 0.0f, 0.9999f);
         }
 
         dip.SourceEffect->DrawBuffer(_spritesDrawBuf, ipos, dip.IndicesCount, dip.MainTexture);
@@ -763,7 +763,7 @@ void SpriteManager::Flush()
 
     DisableScissor();
 
-    if (_settings->DrawWireframe) {
+    if (_settings->Render.DrawWireframe) {
         DrawSpriteWireframe();
     }
 
@@ -857,7 +857,7 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
     size_t ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
-        if (_settings->DrawWireframe) {
+        if (_settings->Render.DrawWireframe) {
             QueueSpriteWireframe(start_index, ind_count);
         }
 
@@ -924,7 +924,7 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
     size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
-        if (_settings->DrawWireframe) {
+        if (_settings->Render.DrawWireframe) {
             QueueSpriteWireframe(start_index, ind_count);
         }
 
@@ -1100,8 +1100,8 @@ void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSpri
     float32_t rect_width = std::max(numeric_cast<float32_t>(rect.width), 1.0f);
     float32_t rect_height = std::max(numeric_cast<float32_t>(rect.height), 1.0f);
     auto& egg = _eggSlots[slot_index];
-    float32_t egg_width = std::max(rect_width + numeric_cast<float32_t>(_settings->EggEllipseWidthExt), 1.0f);
-    float32_t egg_height = std::max(rect_height + numeric_cast<float32_t>(_settings->EggEllipseHeightExt), 1.0f);
+    float32_t egg_width = std::max(rect_width + numeric_cast<float32_t>(_settings->Render.EggEllipseWidthExt), 1.0f);
+    float32_t egg_height = std::max(rect_height + numeric_cast<float32_t>(_settings->Render.EggEllipseHeightExt), 1.0f);
 
     egg.Center.x = numeric_cast<float32_t>(rect.x) + rect_width * 0.5f;
     egg.Center.y = numeric_cast<float32_t>(rect.y) + rect_height * 0.5f;
@@ -1191,7 +1191,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
     const auto [range_begin, range_end] = mspr_list.GetDrawOrderRange(draw_oder_from, draw_oder_to);
     const_span<unique_ptr<MapSprite>> sprites = mspr_list.GetActiveSprites();
-    bool apply_brightness = _settings->Brightness != 0;
+    bool apply_brightness = _settings->Render.Brightness != 0;
 
     auto get_map_sprite_proj = [](const MapSprite* mspr) -> vec3 {
         float32_t elevation = numeric_cast<float32_t>(mspr->GetElevation());
@@ -1318,7 +1318,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
             float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
             float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
-            float32_t y_scale = use_map_projected ? std::cos(_settings->MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
+            float32_t y_scale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
             float32_t cx = xf + wf * 0.5f;
             float32_t cy = yf + hf * 0.5f;
 
@@ -1355,7 +1355,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         if (ind_count != 0) {
-            if (_settings->DrawWireframe) {
+            if (_settings->Render.DrawWireframe) {
                 QueueSpriteWireframe(start_ipos, ind_count);
             }
 
@@ -1417,7 +1417,7 @@ auto SpriteManager::IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearen
         float32_t dx = (numeric_cast<float32_t>(pos.x) - egg.Center.x) / egg.Radius.width;
         float32_t dy = (numeric_cast<float32_t>(pos.y) - egg.Center.y) / egg.Radius.height;
         float32_t egg_alpha_raw = std::clamp(dx * dx + dy * dy, 0.0f, 1.0f);
-        float32_t transition_start = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
+        float32_t transition_start = std::clamp(_settings->Render.EggTransparencyTransitionFactor, 0.0f, 0.9999f);
         float32_t egg_alpha = egg_alpha_raw <= transition_start ? 0.0f : (egg_alpha_raw - transition_start) / (1.0f - transition_start);
 
         if (!CheckHitTest(iround<int32_t>(egg_alpha * 255.0f))) {
@@ -1607,10 +1607,10 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_settings->Brightness != 0) {
-        int32_t r = std::clamp(numeric_cast<int32_t>(color.comp.r) + _settings->Brightness, 0, 255);
-        int32_t g = std::clamp(numeric_cast<int32_t>(color.comp.g) + _settings->Brightness, 0, 255);
-        int32_t b = std::clamp(numeric_cast<int32_t>(color.comp.b) + _settings->Brightness, 0, 255);
+    if (_settings->Render.Brightness != 0) {
+        int32_t r = std::clamp(numeric_cast<int32_t>(color.comp.r) + _settings->Render.Brightness, 0, 255);
+        int32_t g = std::clamp(numeric_cast<int32_t>(color.comp.g) + _settings->Render.Brightness, 0, 255);
+        int32_t b = std::clamp(numeric_cast<int32_t>(color.comp.b) + _settings->Render.Brightness, 0, 255);
         return ucolor {numeric_cast<uint8_t>(r), numeric_cast<uint8_t>(g), numeric_cast<uint8_t>(b), color.comp.a};
     }
     else {

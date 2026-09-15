@@ -76,7 +76,7 @@ void MapManager::LoadFromResources()
             MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
 
             auto map_size = map_proto->GetSize();
-            auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
+            auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->Server.ProtoMapStaticGrid);
 
             // Read hashes
             {
@@ -221,7 +221,7 @@ void MapManager::LoadFromResources()
 
             // Scroll blocks
             irect32 scroll_area = map_proto->GetScrollAxialArea();
-            int32_t scroll_block_size = _engine->Settings->ScrollBlockSize;
+            int32_t scroll_block_size = _engine->Settings->Hex.ScrollBlockSize;
 
             if (!scroll_area.is_zero()) {
                 for (int16_t hx = 0; hx < map_size.width; hx++) {
@@ -767,10 +767,10 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
     settings.ToHex = to_hex;
     settings.ToHexOffset = to_hex_offset;
     settings.MapSize = map->GetSize();
-    settings.MaxLength = _engine->Settings->MaxPathFindLength;
+    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
     settings.Cut = cut;
     settings.Multihex = multihex;
-    settings.FreeMovement = _engine->Settings->MapFreeMovement;
+    settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
 
     settings.CheckHex = [&](mpos hex) -> HexBlockResult {
         if (!map->IsHexMovable(hex)) {
@@ -817,9 +817,9 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
     settings.FromHex = from_hex;
     settings.FromHexOffset = from_cr ? from_cr->GetHexOffset() : ipos16 {};
     settings.MapSize = map_size;
-    settings.MaxLength = _engine->Settings->MaxPathFindLength;
+    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
     settings.Multihex = multihex;
-    settings.FreeMovement = _engine->Settings->MapFreeMovement;
+    settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
     settings.CheckTarget = [&target_hex_set](mpos hex) { return target_hex_set.contains(hex); };
     settings.CheckHex = [&](mpos hex) -> HexBlockResult {
         if (!map->IsHexMovable(hex)) {

@@ -361,11 +361,11 @@ extern "C"
 
         auto& settings = FO_NAMESPACE GetApp() -> Settings;
 
-        if (settings.AutoResize) {
+        if (settings.Web.AutoResize) {
             FO_NAMESPACE WebRelated::ApplyWindowSettings(settings);
 
-            const auto screen_width = settings.ScreenWidth;
-            const auto screen_height = settings.ScreenHeight;
+            const auto screen_width = settings.View.ScreenWidth;
+            const auto screen_height = settings.View.ScreenHeight;
             const auto screen_size = FO_NAMESPACE GetApp() -> MainWindow.GetScreenSize();
 
             if (screen_size.width != screen_width || screen_size.height != screen_height) {
@@ -426,16 +426,16 @@ namespace WebRelated
         const auto safe_page_width = std::max(page_width, 1);
         const auto safe_page_height = std::max(page_height, 1);
 
-        const auto min_width = std::max(settings.MinWidth, 1);
-        const auto min_height = std::max(settings.MinHeight, 1);
-        const auto max_width = std::max(settings.MaxWidth, min_width);
-        const auto max_height = std::max(settings.MaxHeight, min_height);
+        const auto min_width = std::max(settings.Web.MinWidth, 1);
+        const auto min_height = std::max(settings.Web.MinHeight, 1);
+        const auto max_width = std::max(settings.Web.MaxWidth, min_width);
+        const auto max_height = std::max(settings.Web.MaxHeight, min_height);
 
-        const auto height_percent = fullscreen ? 100 : std::clamp(settings.ScreenHeightPercent, 1, 100);
+        const auto height_percent = fullscreen ? 100 : std::clamp(settings.Web.ScreenHeightPercent, 1, 100);
         auto screen_height = numeric_cast<int32_t>(std::clamp((numeric_cast<int64_t>(safe_page_height) * height_percent + 50) / 100, numeric_cast<int64_t>(min_height), numeric_cast<int64_t>(max_height)));
         screen_height = std::min(screen_height, safe_page_height);
 
-        const auto aspect_factor = std::max(settings.AspectFactor, 0.001f);
+        const auto aspect_factor = std::max(settings.Web.AspectFactor, 0.001f);
         auto screen_width = iround<int32_t>(std::clamp(numeric_cast<float32_t>(screen_height) / aspect_factor, numeric_cast<float32_t>(min_width), numeric_cast<float32_t>(max_width)));
 
         if (screen_width > safe_page_width) {
@@ -464,18 +464,18 @@ namespace WebRelated
         const auto window_h = WebGetWindowHeight();
         const auto fullscreen = WebIsFullscreenImpl() != 0;
         const auto adaptive_size = CalcAdaptiveScreenSize(window_w, window_h, fullscreen, settings);
-        settings.ScreenWidth = adaptive_size.width;
-        settings.ScreenHeight = adaptive_size.height;
-        settings.Fullscreen = fullscreen;
+        settings.View.ScreenWidth = adaptive_size.width;
+        settings.View.ScreenHeight = adaptive_size.height;
+        settings.Render.Fullscreen = fullscreen;
 
         const auto fixed_w = WebGetFixedWidth();
         const auto fixed_h = WebGetFixedHeight();
 
         if (fixed_w != 0) {
-            settings.ScreenWidth = fixed_w;
+            settings.View.ScreenWidth = fixed_w;
         }
         if (fixed_h != 0) {
-            settings.ScreenHeight = fixed_h;
+            settings.View.ScreenHeight = fixed_h;
         }
 
         ApplyCanvasLayout(settings);
@@ -487,9 +487,9 @@ namespace WebRelated
     void ApplyCanvasLayout(WebSettings& settings) noexcept
     {
 #if FO_WEB
-        const auto horizontal_pos_factor = settings.Fullscreen ? 0.5f : settings.HorizontalPosFactor;
-        const auto vertical_pos_factor = settings.Fullscreen ? 0.5f : settings.VerticalPosFactor;
-        WebApplyCanvasLayoutImpl(settings.ScreenWidth, settings.ScreenHeight, horizontal_pos_factor, vertical_pos_factor);
+        const auto horizontal_pos_factor = settings.Render.Fullscreen ? 0.5f : settings.Web.HorizontalPosFactor;
+        const auto vertical_pos_factor = settings.Render.Fullscreen ? 0.5f : settings.Web.VerticalPosFactor;
+        WebApplyCanvasLayoutImpl(settings.View.ScreenWidth, settings.View.ScreenHeight, horizontal_pos_factor, vertical_pos_factor);
 #else
         ignore_unused(settings);
 #endif

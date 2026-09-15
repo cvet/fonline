@@ -316,7 +316,7 @@ severity, not all at once.
 - Rule changelog: `AnalyzerReleases.{Shipped,Unshipped}.md` — required by Roslyn's own RS2008.
 - Self-tests: `Source/Scripting/Managed/Analyzers/Tests/`, a plain console runner (compile a snippet, assert
   the reported ids). `dotnet run` exits 0 when every case passes.
-- Wiring: the embedding project points `Script.ManagedScriptAnalyzers` at the analyzer project;
+- Wiring: the embedding project points `ManagedScript.Analyzers` at the analyzer project;
   `ManagedScriptBaker` emits it as `<ProjectReference OutputItemType="Analyzer"
   ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;Configuration;Platform" />`. The
   `GlobalPropertiesToRemove` is load-bearing: without it the analyzer inherits the script project's

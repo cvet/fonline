@@ -75,7 +75,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
+    uint16_t port = numeric_cast<uint16_t>(_settings->Network.ServerPort);
 
     optional<InterthreadListener> listener = FindInterthreadListener(port);
 

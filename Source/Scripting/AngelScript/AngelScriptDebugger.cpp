@@ -171,7 +171,7 @@ DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
     _bindHost = "0.0.0.0";
 
     if (backend->HasGameEngine()) {
-        string host = backend->GetGameEngine()->Settings->AngelScriptDebuggerBindHost;
+        string host = backend->GetGameEngine()->Settings->AngelScript.DebuggerBindHost;
 
         if (!host.empty()) {
             _bindHost = host;

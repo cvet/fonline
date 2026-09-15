@@ -348,7 +348,7 @@ void CritterHexView::RefreshView(bool no_smooth)
                 auto moving = GetMoving();
                 FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
 
-                if (moving->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings->RunAnimStartSpeed)) {
+                if (moving->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings->Render.RunAnimStartSpeed)) {
                     action_anim = CritterActionAnim::Walk;
                 }
                 else {
@@ -935,7 +935,7 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
     if (IsMapSpriteValid()) {
         irect32 rect = GetViewRect();
         pos = _map->MapToScreenPos({rect.x + rect.width / 2, rect.y});
-        pos.y += _engine->Settings->NameOffset + GetNameOffset();
+        pos.y += _engine->Settings->CritterView.NameOffset + GetNameOffset();
         return true;
     }
 

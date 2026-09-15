@@ -151,7 +151,7 @@ namespace VerifyMacro
             source->AddFile("ContainerTest.fos-bin-server", malformed);
             FileSystem resources;
             resources.AddCustomSource(std::move(source));
-            ScriptSettings settings;
+            AngelScriptSettings settings;
             AngelScriptBackend backend(&settings);
             backend.RegisterMetadata(&compiler_engine);
             CHECK_THROWS(backend.LoadBinaryScripts(resources));
@@ -226,7 +226,7 @@ TEST_CASE("AngelScript mutable globals are disallowed")
 #if FO_ANGELSCRIPT_SCRIPTING
     using namespace BakerTests;
 
-    // Defaults: ScriptSettings::AngelScriptMutableGlobalsAllowedSourcePaths is empty, so no path is exempt.
+    // Defaults: AngelScriptSettings::MutableGlobalsAllowedNamespaces is empty, so no namespace is exempt.
     // The gate must fire for any non-const module-level global
     TestRig rig;
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());

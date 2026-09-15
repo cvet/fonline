@@ -59,7 +59,7 @@ int main(int argc, char** argv)
     try {
         InitApp(args, AppInitFlags::DisableLogTags);
 
-        FO_VERIFY_AND_THROW(!GetApp()->Settings.BakeOutput.empty(), "AngelScript compiler cannot prepare metadata without a bake output directory", GetApp()->Settings.GetResourcePacks().size());
+        FO_VERIFY_AND_THROW(!GetApp()->Settings.Baking.BakeOutput.empty(), "AngelScript compiler cannot prepare metadata without a bake output directory", GetApp()->Settings.GetResourcePacks().size());
 
         logging::write("Prepare metadata");
         FileSystem metadata_files;
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
             }
 
             auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
-                string output_path = strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                string output_path = strex(GetApp()->Settings.Baking.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 string dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 
             try {
                 metadata_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
-                metadata_files.AddDirSource(strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name), false);
+                metadata_files.AddDirSource(strex(GetApp()->Settings.Baking.BakeOutput).combine_path(res_pack.Name), false);
             }
             catch (const MetadataBakerException& ex) {
                 const_span<string> params = ex.params();
@@ -138,7 +138,7 @@ int main(int argc, char** argv)
             }
 
             auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
-                string output_path = strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                string output_path = strex(GetApp()->Settings.Baking.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 string dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {

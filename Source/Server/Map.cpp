@@ -49,7 +49,7 @@ Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<L
     _protoMap {proto},
     _staticMap {static_map},
     _mapSize {GetSize()},
-    _hexField {CreateHexField(_mapSize, engine->Settings->MapInstanceStaticGrid)},
+    _hexField {CreateHexField(_mapSize, engine->Settings->Server.MapInstanceStaticGrid)},
     _mapLocation {location}
 {
     FO_STACK_TRACE_ENTRY();

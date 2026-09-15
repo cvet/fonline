@@ -173,7 +173,7 @@ int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -207,10 +207,10 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (settings.Packaged) {
+    if (settings.Common.Packaged) {
         FileSystem resources;
-        resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
-        resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.Baking.ClientResourceEntries);
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.Baking.MapperResourceEntries);
         return resources;
     }
     else {

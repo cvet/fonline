@@ -266,7 +266,7 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
     try {
         logging::write("Client runtime embedded: starting InitApp, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
         InitApp(args, combine_enum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
-        logging::write("Compatibility version: {}", GetApp()->Settings.CompatibilityVersion);
+        logging::write("Compatibility version: {}", GetApp()->Settings.Network.CompatibilityVersion);
         logging::write("Client runtime: embedded client build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
 #if FO_IOS
@@ -283,7 +283,7 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -378,7 +378,7 @@ static void MainEntry([[maybe_unused]] void* data)
         if (!Data->Client) {
             try {
                 if (!Data->ResourcesSynced) {
-                    if (!GetApp()->Settings.Packaged) {
+                    if (!GetApp()->Settings.Common.Packaged) {
                         Data->ResourcesSynced = true;
                         return;
                     }
@@ -446,7 +446,7 @@ static void MainEntry([[maybe_unused]] void* data)
         catch (const std::exception& ex) {
             exceptions::report_and_continue(ex);
 
-            if (GetApp()->Settings.RecreateClientOnError) {
+            if (GetApp()->Settings.Render.RecreateClientOnError) {
                 auto client = GetClient();
                 client->Shutdown();
                 Data->Client.reset();
@@ -591,7 +591,7 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
             requested_runtime.CheckCompatibilityVersion = true;
         }
 
-        if (arg == "--ForceEmbeddedRuntime" || arg == "-ForceEmbeddedRuntime") {
+        if (arg == "--Client.ForceEmbeddedRuntime" || arg == "-Client.ForceEmbeddedRuntime") {
             string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? next_arg : string_view("1");
             requested_runtime.ForceEmbedded = value != "0" && value != "false" && value != "False";
         }

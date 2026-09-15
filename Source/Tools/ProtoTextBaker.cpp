@@ -45,7 +45,7 @@ ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_context->Settings->BakeLanguages.empty()) {
+    if (_context->Settings->Baking.BakeLanguages.empty()) {
         throw ProtoTextBakerException("No bake languages specified");
     }
 }
@@ -69,9 +69,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
-        auto it = std::ranges::find(_context->Settings->ProtoFileExtensions, ext);
+        auto it = std::ranges::find(_context->Settings->Baking.ProtoFileExtensions, ext);
 
-        if (it == _context->Settings->ProtoFileExtensions.end()) {
+        if (it == _context->Settings->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -83,11 +83,11 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    if (_context->Settings->BakeLanguages.empty()) {
+    if (_context->Settings->Baking.BakeLanguages.empty()) {
         throw ProtoTextBakerException("Prototype text baker cannot choose a default language because BakeLanguages is empty", _context->PackName);
     }
 
-    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->BakeLanguages);
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);
 
     // Process files
     if (_context->BakeChecker) {
@@ -185,7 +185,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     };
 
-    bool allow_repeated_parents = _context->Settings->AllowRepeatedProtoParents;
+    bool allow_repeated_parents = _context->Settings->Baking.AllowRepeatedProtoParents;
 
     for (const auto& file_protos : all_file_protos) {
         const auto& type_name = file_protos.first;

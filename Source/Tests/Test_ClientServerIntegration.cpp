@@ -762,7 +762,7 @@ namespace ClientServerIntegrationClient
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
         return settings;
     }
@@ -775,7 +775,7 @@ namespace ClientServerIntegrationClient
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedClientSettings(settings);
-        BakerTests::OverrideSetting(settings.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
         return settings;
     }
@@ -1596,7 +1596,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
         auto map_proto = client->GetProtoMap(client->Hashes.to_hashed_string("UnitTestSharedMap"));
         REQUIRE(map_proto);
 
-        isize32 screen_size {client->Settings->ScreenWidth, client->Settings->ScreenHeight};
+        isize32 screen_size {client->Settings->View.ScreenWidth, client->Settings->View.ScreenHeight};
 
         auto load_view = [&](bool with_removal) {
             auto map_view = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), screen_size);
@@ -1807,8 +1807,8 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.InactivityDisconnectTime, 0);
-    BakerTests::OverrideSetting(server_settings.LoginTimeout, 25);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, 0);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, 25);
     auto server = MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1847,7 +1847,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
 
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
     auto server = MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1879,7 +1879,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     REQUIRE_FALSE(server->GetMetadataVersion().empty());
     auto handshake = NetOutBuffer(128);
     handshake.StartMsg(NetMessage::Handshake);
-    handshake.Write(server_settings.CompatibilityVersion);
+    handshake.Write(server_settings.Network.CompatibilityVersion);
     handshake.Write<string_view>("0123456789abcdef");
     handshake.Write<uint32_t>(FO_UPDATER_VERSION);
     handshake.Write<string_view>("Linux-x64");
@@ -1928,7 +1928,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
     auto server = MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1958,7 +1958,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     static_assert(FO_UPDATER_VERSION > 1);
     auto handshake = NetOutBuffer(128);
     handshake.StartMsg(NetMessage::Handshake);
-    handshake.Write(server_settings.CompatibilityVersion);
+    handshake.Write(server_settings.Network.CompatibilityVersion);
     handshake.Write(server->GetMetadataVersion());
     handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
     handshake.Write<string_view>("Linux-x64");
@@ -2170,11 +2170,11 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     auto client_settings = MakeClientTestSettings(port);
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
     auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
-    BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
+    BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
 
     // The rig has no resource packs to read a version back from, and this case is about the hash list rather
     // than about pack reading, so the client reports the version the test metadata carries
-    BakerTests::OverrideSetting(client_settings.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
+    BakerTests::OverrideSetting(client_settings.Network.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
 
     auto server = MakeServerEngine(server_settings);
     auto client = MakeClientEngine(client_settings);
@@ -2233,8 +2233,8 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
     outdated_writer.write<uint16_t>(uint16_t {0});
 
     REQUIRE(fs::write_file(metadata_path, outdated_metadata));
-    BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
-    BakerTests::OverrideSetting(client_settings.ClientResourceEntries, vector<string> {pack_name});
+    BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
+    BakerTests::OverrideSetting(client_settings.Baking.ClientResourceEntries, vector<string> {pack_name});
 
     CHECK_NOTHROW([&client_settings] {
         Updater updater {&client_settings, &GetApp()->MainWindow};
@@ -2250,7 +2250,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
 
     auto server_settings = MakeServerTestSettings(port);
     // Linux debug stack traces for the expected script exception below can outlive the default ping window
-    BakerTests::OverrideSetting(server_settings.ClientPingTime, 120000);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.ClientPingTime, 120000);
     auto client_settings = MakeClientTestSettings(port);
 
     auto server = MakeServerEngine(server_settings);

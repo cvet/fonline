@@ -1269,7 +1269,7 @@ void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();
 
-    GameTime.FrameAdvance(is_run_in_debugger() || Settings->DisableNetworking);
+    GameTime.FrameAdvance(is_run_in_debugger() || Settings->ServerNetwork.DisableNetworking);
 
     {
         LockForPropertyAccess();

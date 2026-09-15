@@ -87,7 +87,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    float32_t quality = _context->Settings->AudioVorbisQuality;
+    float32_t quality = _context->Settings->Baking.AudioVorbisQuality;
     FO_VERIFY_AND_THROW(quality >= -0.1f && quality <= 1.0f, "Vorbis quality must stay within the encoder range -0.1..1.0", quality);
 
     vector<File> files_to_bake;
@@ -306,7 +306,7 @@ auto AudioBaker::EncodeVorbis(string_view fname, const PcmAudio& pcm) const -> v
     size_t channels = numeric_cast<size_t>(pcm.Channels);
     FO_VERIFY_AND_THROW(pcm.Samples.size() % channels == 0, "Interleaved sample count is not a whole number of frames", fname, pcm.Samples.size(), pcm.Channels);
 
-    float32_t quality = _context->Settings->AudioVorbisQuality;
+    float32_t quality = _context->Settings->Baking.AudioVorbisQuality;
 
     vorbis_info info;
     vorbis_info_init(&info);

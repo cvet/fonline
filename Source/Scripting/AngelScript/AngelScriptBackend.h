@@ -45,12 +45,12 @@ class ScriptArray;
 
 FO_BEGIN_NAMESPACE
 
-struct ScriptSettings;
+struct AngelScriptSettings;
 
 class AngelScriptBackend : public ScriptSystemBackend
 {
 public:
-    explicit AngelScriptBackend(ptr<const ScriptSettings> settings);
+    explicit AngelScriptBackend(ptr<const AngelScriptSettings> settings);
     AngelScriptBackend(const AngelScriptBackend&) noexcept = delete;
     auto operator=(const AngelScriptBackend&) noexcept -> AngelScriptBackend& = delete;
     AngelScriptBackend(AngelScriptBackend&&) noexcept = delete;
@@ -81,7 +81,7 @@ public:
 private:
     static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool;
 
-    ptr<const ScriptSettings> _settings;
+    ptr<const AngelScriptSettings> _settings;
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {}; // Maybe null
     nptr<BaseEngine> _engine {}; // Maybe null

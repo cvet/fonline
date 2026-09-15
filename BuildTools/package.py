@@ -978,7 +978,7 @@ class Packager:
 				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
 				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
 				if platform == 'Windows':
-					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'ForceOpenGL=1', default_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'Render.ForceOpenGL=1', default_runtime_variant))
 				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
 				if os.path.isfile(headless_runtime_path):
 					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
@@ -1588,7 +1588,7 @@ class Packager:
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
 
-				additional_config_data = 'ForceOpenGL=1' if variant.graphics == 'OGL' else None
+				additional_config_data = 'Render.ForceOpenGL=1' if variant.graphics == 'OGL' else None
 				excluded_companions = set(client_runtime_companions)
 
 				if self.args.target == 'Client' and not is_lib:

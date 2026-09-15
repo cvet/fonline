@@ -609,7 +609,7 @@ auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return entity && entity->GetEngine()->Settings->SingleThreadedLogic;
+    return entity && entity->GetEngine()->Settings->Server.SingleThreadedLogic;
 }
 
 // One pass is authoritative because a reparent holds the entity's own lock, so a cover cannot flap mid-walk.

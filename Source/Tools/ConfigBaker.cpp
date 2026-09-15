@@ -102,7 +102,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
         // baseline, so the delta form would leave them unreadable at the moment they are needed
         unordered_set<string> bootstrap_settings;
 
-        for (const auto& name : _context->Settings->BootstrapGameSettings) {
+        for (const auto& name : _context->Settings->Baking.BootstrapGameSettings) {
             FO_VERIFY_AND_THROW(server_game_settings.contains(name) || client_game_settings.contains(name), "Bootstrap game setting is not a declared game setting", name);
             bootstrap_settings.emplace(name);
         }

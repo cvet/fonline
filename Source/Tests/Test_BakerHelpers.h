@@ -66,12 +66,12 @@ namespace BakerTests
 
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
-        settings.ScreenWidth = 320;
-        settings.ScreenHeight = 200;
-        settings.DisableAudio = true;
-        OverrideSetting(settings.NullRenderer, true);
-        OverrideSetting(settings.CritterStubSpriteName, string {});
-        OverrideSetting(settings.ItemStubSpriteName, string {});
+        settings.View.ScreenWidth = 320;
+        settings.View.ScreenHeight = 200;
+        settings.Audio.DisableAudio = true;
+        OverrideSetting(settings.Render.NullRenderer, true);
+        OverrideSetting(settings.Render.CritterStubSpriteName, string {});
+        OverrideSetting(settings.Render.ItemStubSpriteName, string {});
     }
 
     // Embedded test scripts use mutable module-level globals as observation hooks, so their namespaces are listed
@@ -112,16 +112,16 @@ namespace BakerTests
 
     inline void ApplySelfContainedServerSettings(GlobalSettings& settings)
     {
-        OverrideSetting(settings.DisableNetworking, true);
-        OverrideSetting(settings.OpLogEnabled, false);
-        OverrideSetting(settings.AngelScriptMutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+        OverrideSetting(settings.ServerNetwork.DisableNetworking, true);
+        OverrideSetting(settings.DataBase.OpLogEnabled, false);
+        OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
     }
 
     inline auto MakeScriptCompilerSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
         settings.ApplyDefaultSettings();
-        OverrideSetting(settings.AngelScriptMutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+        OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
         return settings;
     }
 
@@ -466,7 +466,7 @@ namespace BakerTests
     }
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const ScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const AngelScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
@@ -500,11 +500,11 @@ namespace BakerTests
             Settings.ApplyDefaultSettings();
 
             // In-memory fixtures must not load assemblies or caches from the working directory
-            OverrideSetting(Settings.BakeOutput, string {});
-            OverrideSetting(Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+            OverrideSetting(Settings.Baking.BakeOutput, string {});
+            OverrideSetting(Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
             // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
             // as the compile-time ones; the gate-test re-overrides this on its own rig
-            OverrideSetting(Settings.AngelScriptMutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+            OverrideSetting(Settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
 
             auto source_ds = safe_alloc::make_unique<MemoryDataSource>("Tests");
             _sourceData = source_ds.get();

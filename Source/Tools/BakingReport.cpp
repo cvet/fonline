@@ -50,9 +50,9 @@ static void KeepLargestCroppedSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
 static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame);
 
 BakingReport::BakingReport(ptr<const BakingSettings> settings) :
-    _bakeOutput {settings->BakeOutput},
-    _forceRequested {settings->ForceBaking},
-    _singleThread {settings->SingleThreadBaking}
+    _bakeOutput {settings->Baking.BakeOutput},
+    _forceRequested {settings->Baking.ForceBaking},
+    _singleThread {settings->Baking.SingleThreadBaking}
 {
     FO_STACK_TRACE_ENTRY();
 }

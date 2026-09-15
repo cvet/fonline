@@ -1057,7 +1057,7 @@ Bakers = {}
     const nlohmann::json& pack_image = FindBakerSetupReportEntry(art_pack.at("bakers"), ImageBaker::NAME);
     CHECK(pack_image.at("details").at("spriteMesh").at("frames").at("unique") == unique_frames);
 
-    BakerTests::OverrideSetting(settings.ForceBaking, false);
+    BakerTests::OverrideSetting(settings.Baking.ForceBaking, false);
     MasterBaker incremental_baker {&settings};
     REQUIRE(incremental_baker.BakeAll());
     REQUIRE(fs::exists(strex(output_dir).combine_path("Art/SpriteInfo/Art.foinfo").str()));

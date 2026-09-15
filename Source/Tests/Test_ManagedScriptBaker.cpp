@@ -800,12 +800,12 @@ TEST_CASE("ManagedScriptBaker")
 
     TestRig rig;
     rig.Settings.ApplyConfigAtPath("ManagedRoot.fomain", temp_dir.Path().string());
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {"ManagedSupport/CoreScripts", "Scripts/Managed"});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, "Scripts/Managed");
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptExtraSources,
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {"ManagedSupport/CoreScripts", "Scripts/Managed"});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, "Scripts/Managed");
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ExtraSources,
         vector<string> {
             "UnitManaged,Server,Scripts/Managed/ServerOnly.cs",
             "UnitManaged,Client,Scripts/Managed/ClientOnly.cs",
@@ -813,13 +813,13 @@ TEST_CASE("ManagedScriptBaker")
             "UnitManaged,All,Scripts/Managed/Shared.cs",
             "UnitManaged,All,Scripts/Managed/Tilde~1.cs",
         });
-    OverrideSetting(rig.Settings.ManagedScriptExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core"});
-    OverrideSetting(rig.Settings.ManagedScriptAnalyzers, vector<string> {"ManagedSupport/Analyzers/ManagedAnalyzer.csproj"});
-    OverrideSetting(rig.Settings.ManagedScriptAnalyzerPackages, vector<string> {"Unit.Analyzer,1.2.3", "Unit.Banned.Analyzer,4.5.6"});
-    OverrideSetting(rig.Settings.ManagedScriptAdditionalFiles, vector<string> {"ManagedSupport/Analyzers/BannedSymbols.txt"});
-    OverrideSetting(rig.Settings.ManagedScriptAnalysisLevel, "10.0");
-    OverrideSetting(rig.Settings.ManagedScriptAnalysisMode, "All");
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.ManagedScript.ExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core"});
+    OverrideSetting(rig.Settings.ManagedScript.Analyzers, vector<string> {"ManagedSupport/Analyzers/ManagedAnalyzer.csproj"});
+    OverrideSetting(rig.Settings.ManagedScript.AnalyzerPackages, vector<string> {"Unit.Analyzer,1.2.3", "Unit.Banned.Analyzer,4.5.6"});
+    OverrideSetting(rig.Settings.ManagedScript.AdditionalFiles, vector<string> {"ManagedSupport/Analyzers/BannedSymbols.txt"});
+    OverrideSetting(rig.Settings.ManagedScript.AnalysisLevel, "10.0");
+    OverrideSetting(rig.Settings.ManagedScript.AnalysisMode, "All");
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitProject");
     rig.AddBakedFile("Metadata.fometa-server",
         MakeMetadataBlob({
             {"Entity", {{"ManagedInner", "HasProtos"}, {"ManagedGlobal"}}},
@@ -1149,12 +1149,12 @@ TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable 
     ScopedCurrentPath current_path(temp_dir.Path());
 
     TestRig rig;
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {fs::path_to_string(core_scripts_dir), fs::path_to_string(script_dir)});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, fs::path_to_string(script_dir));
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
-    OverrideSetting(rig.Settings.BakeOutput, fs::path_to_string(bake_output));
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {fs::path_to_string(core_scripts_dir), fs::path_to_string(script_dir)});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, fs::path_to_string(script_dir));
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.Baking.BakeOutput, fs::path_to_string(bake_output));
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
@@ -1194,12 +1194,12 @@ TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisi
     ScopedCurrentPath current_path(temp_dir.Path());
 
     TestRig rig;
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitCollision");
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitCollision");
     rig.AddBakedFile("Metadata.fometa-server",
         MakeMetadataBlob({
             {"RefType", {{"CollisionRoute", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "CheckpointIndex", "string", "0"}}},
@@ -1239,12 +1239,12 @@ TEST_CASE("ManagedScriptBaker rebakes when an editorconfig above the sources cha
     ScopedCurrentPath current_path(temp_dir.Path());
 
     TestRig rig;
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitEditorConfig");
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitEditorConfig");
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
@@ -1281,12 +1281,12 @@ TEST_CASE("ManagedScriptBaker rejects an analyzer package without an exact versi
     ScopedCurrentPath current_path(temp_dir.Path());
 
     TestRig rig;
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitPackages");
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitPackages");
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
@@ -1294,7 +1294,7 @@ TEST_CASE("ManagedScriptBaker rejects an analyzer package without an exact versi
     // A wildcard version, a range and a missing one each make the reported rule set depend on the day the
     // build ran, so the baker refuses them instead of emitting a project whose analysis silently drifts
     string_view rejected_entry = GENERATE("Unit.Analyzer,1.2.*", "Unit.Analyzer,[1.2.3,2.0.0)", "Unit.Analyzer,", "Unit.Analyzer", ",1.2.3");
-    OverrideSetting(rig.Settings.ManagedScriptAnalyzerPackages, vector<string> {string(rejected_entry)});
+    OverrideSetting(rig.Settings.ManagedScript.AnalyzerPackages, vector<string> {string(rejected_entry)});
 
     ManagedScriptBaker baker(rig.MakeContext());
     REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Analyzer package"));
@@ -1369,13 +1369,13 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     ScopedEnvVar managed_runtime {"FO_MANAGED_RUNTIME", managed_runtime_dir.string()};
 
     TestRig rig;
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptExtraSources, vector<string> {strex("UnitManaged,All,{}", shared_source.string()).str()});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
-    OverrideSetting(rig.Settings.ManagedScriptMsBuild, fake_msbuild.string());
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ExtraSources, vector<string> {strex("UnitManaged,All,{}", shared_source.string()).str()});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.ManagedScript.MsBuild, fake_msbuild.string());
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());

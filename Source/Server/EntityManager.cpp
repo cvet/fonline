@@ -374,7 +374,7 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
     logging::write("Load entities");
 
     int64_t last = _engine->GetLastEntityId().underlying_value();
-    int64_t start = _engine->Settings->EntityStartId;
+    int64_t start = _engine->Settings->Server.EntityStartId;
 
     // A snapshot carries the exact boundary its world stopped at and validates it against the payload
     // before this runs, so raising it to the configured floor would break the continuity it promises
@@ -1422,7 +1422,7 @@ void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
         FO_STRONG_ASSERT(_allEntities.count(id) == 0, "Generated entity id is already present in the entity registry", entity->GetTypeName(), id);
 
         if (id_num > _persistedEntityId) {
-            _persistedEntityId = id_num + _engine->Settings->EntityIdReserveBatch - 1;
+            _persistedEntityId = id_num + _engine->Settings->Server.EntityIdReserveBatch - 1;
 
             _engine->LockForPropertyAccess();
             auto unlock_prop = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });

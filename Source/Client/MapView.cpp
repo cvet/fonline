@@ -86,17 +86,17 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
 
     isize32 map_rt_size = CalculateMapRenderTargetSize();
 
-    if (!_engine->Settings->MapDirectDraw) {
+    if (!_engine->Settings->View.MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(true, map_rt_size, true);
         _rtMap->SetCustomDrawEffect(_engine->EffectMngr.Effects.FlushMap);
 
-        if (!_engine->Settings->DisableIndoorMask) {
+        if (!_engine->Settings->View.DisableIndoorMask) {
             _rtIndoorMask = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, map_rt_size, false);
         }
     }
 
-    if (!_engine->Settings->DisableLighting || !_engine->Settings->DisableFog) {
-        isize32 rt_light_size = _engine->Settings->MapDirectDraw ? GetApp()->MainWindow.GetSize() : map_rt_size;
+    if (!_engine->Settings->View.DisableLighting || !_engine->Settings->View.DisableFog) {
+        isize32 rt_light_size = _engine->Settings->View.MapDirectDraw ? GetApp()->MainWindow.GetSize() : map_rt_size;
         _rtLight = _engine->SprMngr.GetRtMngr().CreateRenderTarget(false, rt_light_size, true);
     }
 
@@ -109,7 +109,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
             {numeric_cast<int32_t>(_mapSize.width) - 1, numeric_cast<int32_t>(_mapSize.height) - 1}};
         // A realistic elevation bound rather than the full int16 domain, which would reserve most of the depth
         // buffer for elevations no sprite reaches; anything beyond the bound is depth-clipped, hence the Setting
-        float32_t elev_extent = numeric_cast<float32_t>(std::max(_engine->Settings->MapMaxElevation, 0));
+        float32_t elev_extent = numeric_cast<float32_t>(std::max(_engine->Settings->Render.MapMaxElevation, 0));
         float32_t elev_min = -elev_extent;
         float32_t elev_max = elev_extent;
         float32_t min_depth = std::numeric_limits<float32_t>::max();
@@ -416,10 +416,10 @@ void MapView::LoadStaticData()
 
             _hexField->GetCellForWriting(next_hex)->RoofNum = num;
 
-            next_raw_hexes.emplace(next_raw_hex.x + _engine->Settings->MapTileStep, next_raw_hex.y);
-            next_raw_hexes.emplace(next_raw_hex.x - _engine->Settings->MapTileStep, next_raw_hex.y);
-            next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y + _engine->Settings->MapTileStep);
-            next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y - _engine->Settings->MapTileStep);
+            next_raw_hexes.emplace(next_raw_hex.x + _engine->Settings->Geometry.MapTileStep, next_raw_hex.y);
+            next_raw_hexes.emplace(next_raw_hex.x - _engine->Settings->Geometry.MapTileStep, next_raw_hex.y);
+            next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y + _engine->Settings->Geometry.MapTileStep);
+            next_raw_hexes.emplace(next_raw_hex.x, next_raw_hex.y - _engine->Settings->Geometry.MapTileStep);
         }
     };
 
@@ -520,7 +520,7 @@ void MapView::Process()
 
     // Scroll and zoom
     {
-        timespan fixed_dt = timespan(std::chrono::milliseconds(_engine->Settings->ScrollFixedDt));
+        timespan fixed_dt = timespan(std::chrono::milliseconds(_engine->Settings->Hex.ScrollFixedDt));
         _scrollDtAccum += _engine->GameTime.GetFrameDeltaTime();
 
         if (_scrollDtAccum >= fixed_dt) {
@@ -549,7 +549,7 @@ auto MapView::CalculateMapRenderTargetSize() const noexcept -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    float32_t map_rt_scale = std::max(_engine->Settings->MapRenderTargetScale, 1.0f);
+    float32_t map_rt_scale = std::max(_engine->Settings->View.MapRenderTargetScale, 1.0f);
     isize32 requested_size = {
         iround<int32_t>(std::ceil(numeric_cast<float32_t>(_screenSize.width) * map_rt_scale)) + MAP_RENDER_TARGET_PADDING.width,
         iround<int32_t>(std::ceil(numeric_cast<float32_t>(_screenSize.height) * map_rt_scale)) + MAP_RENDER_TARGET_PADDING.height,
@@ -695,22 +695,22 @@ void MapView::DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, boo
         if (!_isShowMapperHiddenSprites && item->GetAlwaysHideSprite()) {
             return;
         }
-        if (!_engine->Settings->ShowScen && !is_fast && item->GetIsScenery()) {
+        if (!_engine->Settings->Hex.ShowScen && !is_fast && item->GetIsScenery()) {
             return;
         }
-        if (!_engine->Settings->ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
+        if (!_engine->Settings->Hex.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
             return;
         }
-        if (!_engine->Settings->ShowWall && !is_fast && item->GetIsWall()) {
+        if (!_engine->Settings->Hex.ShowWall && !is_fast && item->GetIsWall()) {
             return;
         }
-        if (!_engine->Settings->ShowTile && item->GetIsTile() && !item->GetIsRoofTile()) {
+        if (!_engine->Settings->Hex.ShowTile && item->GetIsTile() && !item->GetIsRoofTile()) {
             return;
         }
-        if (!_engine->Settings->ShowRoof && item->GetIsTile() && item->GetIsRoofTile()) {
+        if (!_engine->Settings->Hex.ShowRoof && item->GetIsTile() && item->GetIsRoofTile()) {
             return;
         }
-        if (!_engine->Settings->ShowFast && is_fast) {
+        if (!_engine->Settings->Hex.ShowFast && is_fast) {
             return;
         }
         if (_ignorePids.count(item->GetProtoId()) != 0) {
@@ -1404,7 +1404,7 @@ void MapView::ShowHex(const ViewField& vf)
                 spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
 
             if (on_roof) {
-                mspr->SetElevation(numeric_cast<int16_t>(_engine->Settings->MapRoofElevation));
+                mspr->SetElevation(numeric_cast<int16_t>(_engine->Settings->Geometry.MapRoofElevation));
             }
 
             AddSpriteToChain(field, mspr);
@@ -1455,7 +1455,7 @@ void MapView::ProcessLighting()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_engine->Settings->DisableLighting) {
+    if (_engine->Settings->View.DisableLighting) {
         return;
     }
 
@@ -1535,7 +1535,7 @@ void MapView::UpdateCritterLightSource(ptr<const CritterHexView> cr)
 
     FO_VERIFY_AND_THROW(cr->GetMap() == this, "Critter light update requested for a critter attached to a different client map", cr->GetId(), cr->GetMap()->GetId(), GetId());
 
-    if (_engine->Settings->DisableLighting) {
+    if (_engine->Settings->View.DisableLighting) {
         return;
     }
 
@@ -1553,7 +1553,7 @@ void MapView::UpdateItemLightSource(ptr<const ItemHexView> item)
 
     FO_VERIFY_AND_THROW(item->GetMap() == this, "Item light update requested for an item attached to a different client map", item->GetId(), item->GetMap()->GetId(), GetId());
 
-    if (_engine->Settings->DisableLighting) {
+    if (_engine->Settings->View.DisableLighting) {
         return;
     }
 
@@ -1569,7 +1569,7 @@ void MapView::UpdateHexLightSources(mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_engine->Settings->DisableLighting) {
+    if (_engine->Settings->View.DisableLighting) {
         return;
     }
 
@@ -2142,7 +2142,7 @@ void MapView::SetHiddenRoof(mpos hex)
 
     // The lattice may be authored on any parity, so instead of the even-snapped hex this scans the
     // MapTileStep block below-and-left, which contains the covering hex whichever parity was used
-    int32_t step = _engine->Settings->MapTileStep;
+    int32_t step = _engine->Settings->Geometry.MapTileStep;
     int32_t roof_num = 0;
 
     for (int32_t dy = 0; dy > -step && roof_num == 0; dy--) {
@@ -2270,7 +2270,7 @@ void MapView::RecacheScrollBlocks()
     FO_STACK_TRACE_ENTRY();
 
     irect32 scroll_area = GetScrollAxialArea();
-    int32_t scroll_block_size = _engine->Settings->ScrollBlockSize;
+    int32_t scroll_block_size = _engine->Settings->Hex.ScrollBlockSize;
 
     for (int16_t hx = 0; hx < _mapSize.width; hx++) {
         for (int16_t hy = 0; hy < _mapSize.height; hy++) {
@@ -2552,8 +2552,8 @@ void MapView::UpdateTransparentEgg(TransparentEggSlot slot)
     ipos32 hex_pos = GetHexMapPos(egg.Hex);
     int32_t center_x = hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2 + egg.HexOffset.x;
     int32_t center_y = hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2 + egg.HexOffset.y;
-    float32_t egg_width_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings->EggEllipseWidthExt) : 0.0f;
-    float32_t egg_height_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings->EggEllipseHeightExt) : 0.0f;
+    float32_t egg_width_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings->Render.EggEllipseWidthExt) : 0.0f;
+    float32_t egg_height_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings->Render.EggEllipseHeightExt) : 0.0f;
     float32_t radius_w = std::max((numeric_cast<float32_t>(egg.Size.width) + egg_width_ext) * 0.5f, 1.0f);
     float32_t radius_h = std::max((numeric_cast<float32_t>(egg.Size.height) + egg_height_ext) * 0.5f, 1.0f);
     _engine->SprMngr.SetEgg(slot, egg.Hex, {numeric_cast<float32_t>(center_x), numeric_cast<float32_t>(center_y)}, {radius_w, radius_h});
@@ -2588,7 +2588,7 @@ void MapView::DrawMap()
     // Draw by parts only when the visible world extent exceeds the fixed map render target
     fsize32 screen_size = fsize32(_screenSize);
     fpos32 draw_scale = {screen_size.width / _viewSize.width, screen_size.height / _viewSize.height};
-    bool direct_draw = _engine->Settings->MapDirectDraw;
+    bool direct_draw = _engine->Settings->View.MapDirectDraw;
     isize32 render_chunk_size = direct_draw ? _screenSize : _rtMap->GetSize() - MAP_RENDER_TARGET_PADDING;
     fsize32 render_chunk_size_f = fsize32(render_chunk_size);
     int32_t steps_width = direct_draw ? 1 : iround<int32_t>(std::ceil(_viewSize.width / render_chunk_size_f.width));
@@ -2640,7 +2640,7 @@ void MapView::DrawMap()
             _engine->OnRenderMap_AfterTiles.Fire(this, draw_area);
 
             // Lighting
-            if (!_engine->Settings->DisableLighting) {
+            if (!_engine->Settings->View.DisableLighting) {
                 _engine->OnRenderMap_BeforeLighting.Fire(this, draw_area);
                 FO_VERIFY_AND_THROW(_rtLight, "Lighting render target is not allocated");
                 _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight);
@@ -2690,7 +2690,7 @@ void MapView::DrawMap()
             _engine->OnRenderMap_AfterSprites.Fire(this, draw_area);
 
             // Fog layers drawn on top of all sprites (DrawOrderType::Last)
-            if (!_engine->Settings->DisableFog && !_mapperMode && HasFogLayers()) {
+            if (!_engine->Settings->View.DisableFog && !_mapperMode && HasFogLayers()) {
                 _engine->OnRenderMap_BeforeFog.Fire(this, draw_area);
                 DrawFogSlot(draw_area, DrawOrderType::Last);
                 _engine->OnRenderMap_AfterFog.Fire(this, draw_area);
@@ -2707,7 +2707,7 @@ void MapView::DrawMap()
                 _rtMap->SetCustomDrawEffect(flush_map);
 
                 if (flush_map->IsNeedIndoorMaskTex()) {
-                    if (_rtIndoorMask && !_engine->Settings->DisableIndoorMask) {
+                    if (_rtIndoorMask && !_engine->Settings->View.DisableIndoorMask) {
                         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtIndoorMask);
                         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
                         FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Roof, "Roof effect is null");
@@ -2772,7 +2772,7 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
         {DrawOrderType::Roof, DrawOrderType::Last, _engine->EffectMngr.Effects.Roof},
     };
 
-    if (_engine->Settings->DisableFog || _mapperMode || !HasFogLayers()) {
+    if (_engine->Settings->View.DisableFog || _mapperMode || !HasFogLayers()) {
         for (const SpriteDrawSegment& segment : sprite_draw_segments) {
             _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment.From, segment.To, day_color, segment.Effect);
         }
@@ -2962,7 +2962,7 @@ void MapView::PrepareFogToDraw()
         }
     }
 
-    if (_engine->Settings->DisableFog) {
+    if (_engine->Settings->View.DisableFog) {
         return;
     }
     if (_mapperMode) {
@@ -2970,8 +2970,8 @@ void MapView::PrepareFogToDraw()
     }
 
     FogShape::Input input;
-    input.MapHexWidth = _engine->Settings->MapHexWidth;
-    input.MapHexHeight = _engine->Settings->MapHexHeight;
+    input.MapHexWidth = _engine->Settings->Geometry.MapHexWidth;
+    input.MapHexHeight = _engine->Settings->Geometry.MapHexHeight;
     input.MapSize = _mapSize;
     input.FrameTime = _engine->GameTime.GetFrameTime();
     input.TraceBulletToBlock = [this](mpos start_hex, mpos target_hex, int32_t dist, bool check_shoot_blocks) {
@@ -3050,9 +3050,9 @@ auto MapView::IsManualScrolling() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _engine->Settings->ScrollMouseLeft || _engine->Settings->ScrollKeybLeft || _engine->Settings->ScrollMouseRight || //
-        _engine->Settings->ScrollKeybRight || _engine->Settings->ScrollMouseUp || _engine->Settings->ScrollKeybUp || //
-        _engine->Settings->ScrollMouseDown || _engine->Settings->ScrollKeybDown;
+    return _engine->Settings->Hex.ScrollMouseLeft || _engine->Settings->Hex.ScrollKeybLeft || _engine->Settings->Hex.ScrollMouseRight || //
+        _engine->Settings->Hex.ScrollKeybRight || _engine->Settings->Hex.ScrollMouseUp || _engine->Settings->Hex.ScrollKeybUp || //
+        _engine->Settings->Hex.ScrollMouseDown || _engine->Settings->Hex.ScrollKeybDown;
 }
 
 void MapView::ProcessScroll(float32_t dt)
@@ -3083,16 +3083,16 @@ void MapView::ProcessScroll(float32_t dt)
             return;
         }
 
-        if (_engine->Settings->ScrollMouseLeft || _engine->Settings->ScrollKeybLeft) {
+        if (_engine->Settings->Hex.ScrollMouseLeft || _engine->Settings->Hex.ScrollKeybLeft) {
             scroll.x -= 1.0f;
         }
-        if (_engine->Settings->ScrollMouseRight || _engine->Settings->ScrollKeybRight) {
+        if (_engine->Settings->Hex.ScrollMouseRight || _engine->Settings->Hex.ScrollKeybRight) {
             scroll.x += 1.0f;
         }
-        if (_engine->Settings->ScrollMouseUp || _engine->Settings->ScrollKeybUp) {
+        if (_engine->Settings->Hex.ScrollMouseUp || _engine->Settings->Hex.ScrollKeybUp) {
             scroll.y -= 1.0f;
         }
-        if (_engine->Settings->ScrollMouseDown || _engine->Settings->ScrollKeybDown) {
+        if (_engine->Settings->Hex.ScrollMouseDown || _engine->Settings->Hex.ScrollKeybDown) {
             scroll.y += 1.0f;
         }
 
@@ -3101,7 +3101,7 @@ void MapView::ProcessScroll(float32_t dt)
         }
 
         float32_t zoom = GetSpritesZoom();
-        float32_t scroll_step = numeric_cast<float32_t>(_engine->Settings->ScrollSpeed) / 1000.f / zoom * dt;
+        float32_t scroll_step = numeric_cast<float32_t>(_engine->Settings->Hex.ScrollSpeed) / 1000.f / zoom * dt;
         scroll.x *= scroll_step;
         scroll.y *= scroll_step;
     }
@@ -3113,7 +3113,7 @@ void MapView::ChangeZoom(float32_t new_zoom, fpos32 anchor)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_engine->Settings->MapZoomEnabled) {
+    if (!_engine->Settings->View.MapZoomEnabled) {
         return;
     }
 
@@ -3125,7 +3125,7 @@ void MapView::ProcessZoom(float32_t dt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_engine->Settings->MapZoomEnabled) {
+    if (!_engine->Settings->View.MapZoomEnabled) {
         return;
     }
 
@@ -3149,7 +3149,7 @@ void MapView::ProcessZoom(float32_t dt)
     }
 
     if (init_zoom >= min_zoom && init_zoom <= max_zoom) {
-        int32_t zoom_speed = _engine->Settings->ZoomSpeed;
+        int32_t zoom_speed = _engine->Settings->Hex.ZoomSpeed;
         constexpr float32_t zoom_stop_bias = 0.001f;
 
         float32_t new_zoom = lerp(init_zoom, clamped_target_zoom, dt * numeric_cast<float32_t>(zoom_speed) / 10000.0f);
@@ -3169,7 +3169,7 @@ void MapView::InstantZoom(float32_t new_zoom, fpos32 anchor)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_engine->Settings->MapZoomEnabled) {
+    if (!_engine->Settings->View.MapZoomEnabled) {
         return;
     }
 
@@ -3684,7 +3684,7 @@ void MapView::DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_mapperMode && !_engine->Settings->ShowCrit) {
+    if (_mapperMode && !_engine->Settings->Hex.ShowCrit) {
         return;
     }
 
@@ -3916,10 +3916,10 @@ auto MapView::FindPath(nptr<CritterHexView> find_cr, mpos start_hex, mpos& targe
     input.ToHex = target_hex;
     input.ToHexOffset = target_hex_offset;
     input.MapSize = _mapSize;
-    input.MaxLength = _engine->Settings->MaxPathFindLength;
+    input.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
     input.Cut = cut < 0 ? 0 : cut;
     input.Multihex = multihex;
-    input.FreeMovement = _engine->Settings->MapFreeMovement;
+    input.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
 
     input.CheckHex = [&](mpos hex) -> HexBlockResult {
         const auto& cell = _hexField->GetCellForReading(hex);
@@ -4122,7 +4122,7 @@ void MapView::OnScreenSizeChanged()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_engine->Settings->MapDirectDraw) {
+    if (_engine->Settings->View.MapDirectDraw) {
         isize32 window_size = GetApp()->MainWindow.GetSize();
 
         SetScreenSize(window_size);
@@ -4152,7 +4152,7 @@ void MapView::SetScreenSize(isize32 size)
     if (_rtMap) {
         rt_mngr.ResizeRenderTarget(_rtMap, map_rt_size);
     }
-    if (_rtLight && !_engine->Settings->MapDirectDraw) {
+    if (_rtLight && !_engine->Settings->View.MapDirectDraw) {
         rt_mngr.ResizeRenderTarget(_rtLight, map_rt_size);
     }
 

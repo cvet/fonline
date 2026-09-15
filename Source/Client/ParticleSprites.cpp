@@ -172,8 +172,8 @@ void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 
     const RenderSettings& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
-    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
-    mat44 local_to_world = glm::scale(mat44 {1.0f}, vec3 {settings.ModelProjFactor, settings.ModelProjFactor, settings.ModelProjFactor});
+    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    mat44 local_to_world = glm::scale(mat44 {1.0f}, vec3 {settings.Render.ModelProjFactor, settings.Render.ModelProjFactor, settings.Render.ModelProjFactor});
 
     mat44 proj_base = scene_ortho * cam_view * local_to_world;
     mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);

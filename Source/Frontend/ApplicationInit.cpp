@@ -130,15 +130,15 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
 
-    logging::write("Version: {}", settings.GameVersion);
+    logging::write("Version: {}", settings.Common.GameVersion);
 
     // Disable message box on exception if headless window is used
-    if (is_enum_set(flags, AppInitFlags::ShowMessageOnException) && settings.HeadlessWindow) {
+    if (is_enum_set(flags, AppInitFlags::ShowMessageOnException) && settings.Render.HeadlessWindow) {
         SetupExceptionCallback(false);
     }
 
     // Switch logging to a dedicated worker thread once the user setting is known
-    if (settings.AsyncLogWrite) {
+    if (settings.Common.AsyncLogWrite) {
         logging::set_async_writing(true);
     }
 
@@ -150,7 +150,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     ApplicationInitHook(flags, settings);
 
     // Prebake resources
-    if (!settings.Packaged && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
+    if (!settings.Common.Packaged && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
         logging::write("Prebake resources");
         PrebakeResources(settings);
     }
@@ -284,7 +284,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         }
 
         if (auto_find_config && sub_configs_to_apply.empty()) {
-            sub_configs_to_apply.emplace_back(settings.UnpackagedSubConfig);
+            sub_configs_to_apply.emplace_back(settings.Common.UnpackagedSubConfig);
         }
 
         for (const auto& sub_config_name : sub_configs_to_apply) {
@@ -302,15 +302,15 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     // cache, log and update write - lands where this process is allowed to write
     settings.ApplyWritableRoot(ResolveWritableRoot(args));
 
-    if (!settings.UserWritablePath.empty()) {
+    if (!settings.Common.UserWritablePath.empty()) {
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
         // resource writer never fail on a missing parent directory
-        fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.CacheResources));
-        fs::create_directories(fs::make_writable_path(settings.UserWritablePath, settings.ClientResources));
-        logging::write("Writable data path: {}", settings.UserWritablePath);
+        fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources));
+        fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.ClientResources));
+        logging::write("Writable data path: {}", settings.Common.UserWritablePath);
     }
 
-    string cache_dir = fs::make_writable_path(settings.UserWritablePath, settings.CacheResources);
+    string cache_dir = fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources);
 
     if (fs::is_dir(cache_dir)) {
         auto cache = CacheStorage(cache_dir);
@@ -377,7 +377,7 @@ static auto FindWritablePathArg(CommandLineArgs args) -> string
     for (size_t i = 0; i + 1 < args.size(); i++) {
         string_view arg = strex(args.Get(i)).trim().strv();
 
-        if (arg == "-UserWritablePath" || arg == "--UserWritablePath" || arg == "-Common.UserWritablePath" || arg == "--Common.UserWritablePath") {
+        if (arg == "-Common.UserWritablePath" || arg == "--Common.UserWritablePath") {
             string_view value = strex(args.Get(i + 1)).trim().strv();
 
             if (!value.empty() && !CommandLineArgs::IsOption(value)) {
@@ -419,8 +419,8 @@ static void PrebakeResources(BakingSettings& settings)
         }
     }
     else {
-        if (fs::exists(settings.BakeOutput) && fs::is_dir(settings.BakeOutput)) {
-            if (!settings.IgnoreMissingBakerWarning) {
+        if (fs::exists(settings.Baking.BakeOutput) && fs::is_dir(settings.Baking.BakeOutput)) {
+            if (!settings.Baking.IgnoreMissingBakerWarning) {
                 Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
             }
         }

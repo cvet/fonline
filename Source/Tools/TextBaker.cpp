@@ -42,7 +42,7 @@ TextBaker::TextBaker(shared_ptr<BakingContext> ctx) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_context->Settings->BakeLanguages.empty()) {
+    if (_context->Settings->Baking.BakeLanguages.empty()) {
         throw TextBakerException("No bake languages specified");
     }
 }
@@ -60,7 +60,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         return;
     }
 
-    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->BakeLanguages);
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);
 
     // Collect files
     vector<File> filtered_files;

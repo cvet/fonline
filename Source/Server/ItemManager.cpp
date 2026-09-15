@@ -188,7 +188,7 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t c
 
     // Non-stacked items
     if (!proto->GetStackable() && count > 1) {
-        int32_t fixed_count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+        int32_t fixed_count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
         for (int32_t i = 0; i < fixed_count; i++) {
             (void)add_item();
@@ -508,7 +508,7 @@ auto ItemManager::AddItemContainer(ptr<Item> cont, hstring pid, int32_t count, c
             result = item;
         }
         else {
-            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
                 auto new_item = CreateItem(pid, 0, nullptr);
@@ -522,7 +522,7 @@ auto ItemManager::AddItemContainer(ptr<Item> cont, hstring pid, int32_t count, c
             result = cont->AddItemToContainer(new_item, stack_id);
         }
         else {
-            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
                 auto new_item = CreateItem(pid, 0, nullptr);
@@ -560,7 +560,7 @@ auto ItemManager::AddItemCritter(ptr<Critter> cr, hstring pid, int32_t count) ->
             result = _engine->CrMngr.AddItemToCritter(cr, new_item, true);
         }
         else {
-            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
                 auto new_item = CreateItem(pid, 0, nullptr);

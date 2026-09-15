@@ -81,7 +81,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         return server_side || client_side;
     };
 
-    const auto& proto_file_extensions = _context->Settings->ProtoFileExtensions;
+    const auto& proto_file_extensions = _context->Settings->Baking.ProtoFileExtensions;
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
@@ -189,7 +189,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     InitAngelScriptScripting(&server_engine, *_context->Settings, *_context->BakedFiles);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(&server_engine, _context->BakedFiles, _context->Settings->CacheResources, _context->Settings->BakeOutput);
+    InitManagedScripting(&server_engine, _context->BakedFiles, _context->Settings->Baking.CacheResources, _context->Settings->Baking.BakeOutput);
 #endif
 
     // Bake maps

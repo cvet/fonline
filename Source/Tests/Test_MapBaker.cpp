@@ -229,7 +229,7 @@ static void ConfigureMapSourceExtensions(BakerTests::TestRig& rig)
 {
     FO_STACK_TRACE_ENTRY();
 
-    BakerTests::OverrideSetting(rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+    BakerTests::OverrideSetting(rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
 }
 
 TEST_CASE("MapBaker")
@@ -294,7 +294,7 @@ TEST_CASE("MapBaker")
         CHECK(local_rig.Outputs.contains("IsolatedMap.fomap-bin-client"));
 
         // The poisoned entry is observable when a disk-backed fixture deliberately opts in
-        OverrideSetting(local_rig.Settings.BakeOutput, string {"Baking"});
+        OverrideSetting(local_rig.Settings.Baking.BakeOutput, string {"Baking"});
         CHECK_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed load-context host assembly not found"));
         optional<string> foreign_data = fs::read_file(fs::path_to_string(foreign_assembly));
         REQUIRE(foreign_data.has_value());

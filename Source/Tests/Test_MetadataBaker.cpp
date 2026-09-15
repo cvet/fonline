@@ -652,16 +652,15 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("resolves setting groups and serializes their configured values")
     {
-        ConfigFile config {"Common.DebugBuild = true\nDebugFlag = false\n"};
+        ConfigFile config {"Common.DebugBuild = true\nProject.DebugFlag = false\n"};
         rig.Settings.ApplyConfigFile(config, "");
         rig.AddSourceFile("Scripts/TestSettings.fos", R"(
 namespace TestSettings
 {
 #if CLIENT
-///@ Setting Client bool DebugBuild
 ///@ Setting Client bool Common.DebugBuild
 ///@ Setting Client bool Common . DebugBuild
-///@ Setting Client bool DebugFlag
+///@ Setting Client bool Project.DebugFlag
 #endif
 }
 )");
@@ -707,11 +706,17 @@ namespace TestSettings
         reader.verify_end();
 
         auto debug_build_value = rig.Settings.FindSettingValue("Common.DebugBuild");
-        auto debug_flag_value = rig.Settings.FindSettingValue("DebugFlag");
+        auto debug_flag_value = rig.Settings.FindSettingValue("Project.DebugFlag");
         REQUIRE(debug_build_value);
         REQUIRE(debug_flag_value);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool", *debug_build_value}) == 3);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"DebugFlag", "bool", *debug_flag_value}) == 1);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool", *debug_build_value}) == 2);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugFlag", "bool", *debug_flag_value}) == 1);
+    }
+
+    SECTION("rejects a setting declaration that names no group")
+    {
+        // The group is part of the name; guessing it from a bare one is what made a short name global
+        ExpectMetadataBakerError("///@ Setting Client bool DebugBuild", "expected the Group.Name form");
     }
 
     SECTION("rejects setting declarations without a configured value")
@@ -753,7 +758,7 @@ namespace TestSettings
         GlobalSettings unconfigured_runtime_settings {false};
         unconfigured_runtime_settings.ApplyDefaultSettings();
         apply_metadata_settings(unconfigured_runtime_settings);
-        CHECK(unconfigured_runtime_settings.GameName == "MetadataGame");
+        CHECK(unconfigured_runtime_settings.Common.GameName == "MetadataGame");
         CHECK_FALSE(unconfigured_runtime_settings.FindCustomSetting("Common.GameName"));
         REQUIRE(unconfigured_runtime_settings.FindCustomSetting("Daylight.SunriseMinute"));
         CHECK(unconfigured_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "540");
@@ -766,7 +771,7 @@ namespace TestSettings
         overridden_runtime_settings.ApplyConfigFile(runtime_config, "");
         overridden_runtime_settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("600")));
         apply_metadata_settings(overridden_runtime_settings);
-        CHECK(overridden_runtime_settings.GameName == "LocalGame");
+        CHECK(overridden_runtime_settings.Common.GameName == "LocalGame");
         CHECK(overridden_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "600");
 
         auto missing_value_output = MakeMetadataBlob({{"Setting", {{"Invalid.WithoutValue", "bool"}}}});

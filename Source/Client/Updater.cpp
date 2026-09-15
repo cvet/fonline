@@ -65,8 +65,8 @@ static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings),
-    _cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
-    _binaryDir {GetClientBinaryDir(settings->UserWritablePath)},
+    _cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
+    _binaryDir {GetClientBinaryDir(settings->Common.UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
     _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
@@ -74,23 +74,23 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ServerHost, _settings->ServerPort, _settings->CompatibilityVersion, _binaryDir, _settings->ClientResources);
+    logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort, _settings->Network.CompatibilityVersion, _binaryDir, _settings->Baking.ClientResources);
 
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(settings->Packaged ? settings->ClientResources : settings->BakeOutput, "Embedded");
-    _resources.AddDirSource(_settings->ClientResources, false, true, true);
+    _resources.AddPackSource(settings->Common.Packaged ? settings->Baking.ClientResources : settings->Baking.BakeOutput, "Embedded");
+    _resources.AddDirSource(_settings->Baking.ClientResources, false, true, true);
 
-    if (!settings->UserWritablePath.empty()) {
-        _resources.AddDirSource(fs::make_writable_path(settings->UserWritablePath, settings->ClientResources), false, true, true);
+    if (!settings->Common.UserWritablePath.empty()) {
+        _resources.AddDirSource(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.ClientResources), false, true, true);
     }
-    if (!_settings->DefaultSplashPack.empty()) {
-        _resources.AddPackSource(_settings->Packaged ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
+    if (!_settings->Client.DefaultSplashPack.empty()) {
+        _resources.AddPackSource(_settings->Common.Packaged ? _settings->Baking.ClientResources : _settings->Baking.BakeOutput, _settings->Client.DefaultSplashPack, true);
 
         // The splash is drawn before this run downloads anything, so a pack an earlier run repaired
         // into the writable root has to win here as well
-        if (_settings->Packaged && !_settings->UserWritablePath.empty()) {
-            _resources.AddPackSource(fs::make_writable_path(_settings->UserWritablePath, _settings->ClientResources), _settings->DefaultSplashPack, true);
+        if (_settings->Common.Packaged && !_settings->Common.UserWritablePath.empty()) {
+            _resources.AddPackSource(fs::make_writable_path(_settings->Common.UserWritablePath, _settings->Baking.ClientResources), _settings->Client.DefaultSplashPack, true);
         }
     }
 
@@ -99,8 +99,8 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _sprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprMngr));
 
     // Wait screen
-    if (!_settings->DefaultSplash.empty()) {
-        _splashPic = _sprMngr.LoadSprite(_settings->DefaultSplash, AtlasType::OneImage);
+    if (!_settings->Client.DefaultSplash.empty()) {
+        _splashPic = _sprMngr.LoadSprite(_settings->Client.DefaultSplash, AtlasType::OneImage);
 
         if (_splashPic) {
             _splashPic->PlayDefault();
@@ -110,7 +110,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->View.ScreenWidth, _settings->View.ScreenHeight}, true, true, Color::Neutral);
     }
 
     _sprMngr.EndScene();
@@ -193,20 +193,20 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->View.ScreenWidth, _settings->View.ScreenHeight}, true, true, Color::Neutral);
     }
 
-    if (elapsed_time >= _settings->UpdaterInfoDelay) {
+    if (elapsed_time >= _settings->Client.UpdaterInfoDelay) {
         auto text_format = TextFormat {.Font = FontType::Default, .Flags = combine_enum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
 
-        if (_settings->UpdaterInfoPos < 0) {
-            _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
+        if (_settings->Client.UpdaterInfoPos < 0) {
+            _fontMngr.DrawText(irect32 {0, 0, _settings->View.ScreenWidth, _settings->View.ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
         }
-        else if (_settings->UpdaterInfoPos == 0) {
-            _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight}, update_text, Color::TextWhite, text_format);
+        else if (_settings->Client.UpdaterInfoPos == 0) {
+            _fontMngr.DrawText(irect32 {0, 0, _settings->View.ScreenWidth, _settings->View.ScreenHeight}, update_text, Color::TextWhite, text_format);
         }
         else {
-            _fontMngr.DrawText(irect32 {0, _settings->ScreenHeight / 2, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
+            _fontMngr.DrawText(irect32 {0, _settings->View.ScreenHeight / 2, _settings->View.ScreenWidth, _settings->View.ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
         }
     }
 
@@ -252,7 +252,7 @@ void Updater::FinishResourcesUpdate()
     string local_metadata_version = ReadLocalMetadataVersion();
 
     if (local_metadata_version != _serverMetadataVersion) {
-        logging::write("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Packaged ? _settings->ClientResources : _settings->BakeOutput);
+        logging::write("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Common.Packaged ? _settings->Baking.ClientResources : _settings->Baking.BakeOutput);
         _result = UpdaterResult::MetadataMismatch;
         return;
     }
@@ -267,8 +267,8 @@ auto Updater::ReadLocalMetadataVersion() const -> string
 
     // The override stands in for a client baked apart from the server, so it has to reach the updater too -
     // otherwise the updater would keep declaring resources ready while the client keeps being rejected
-    if (!_settings->ForceMetadataVersion.empty()) {
-        return string(_settings->ForceMetadataVersion);
+    if (!_settings->Network.ForceMetadataVersion.empty()) {
+        return string(_settings->Network.ForceMetadataVersion);
     }
 
     // Mounted separately from the updater resources, which carry directories rather than the game packs.
@@ -289,7 +289,7 @@ void Updater::GetNextFile()
     FO_STACK_TRACE_ENTRY();
 
     auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
-    auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : fs::make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
+    auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : fs::make_writable_path(_settings->Common.UserWritablePath, _settings->Baking.ClientResources); };
     auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
     auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
     auto make_final_path = [&](const UpdateFile& f) -> string {
@@ -450,7 +450,7 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
     }
 
     _serverMetadataVersion = string(_conn.GetServerMetadataVersion());
-    logging::write("Client updater: server answered {}, client compatibility {}, server metadata version {}", result_str, _settings->CompatibilityVersion, _serverMetadataVersion);
+    logging::write("Client updater: server answered {}, client compatibility {}, server metadata version {}", result_str, _settings->Network.CompatibilityVersion, _serverMetadataVersion);
 
     if (result == ClientConnection::ConnectResult::Success || result == ClientConnection::ConnectResult::MetadataOutdated) {
         AddText(StrConnectionEstablished);
@@ -535,10 +535,10 @@ void Updater::Net_OnInitData()
     FileSystem resources;
 
     if (!_binariesMode) {
-        resources.AddDirSource(_settings->ClientResources, false, true, true);
+        resources.AddDirSource(_settings->Baking.ClientResources, false, true, true);
 
-        if (!_settings->UserWritablePath.empty()) {
-            resources.AddDirSource(fs::make_writable_path(_settings->UserWritablePath, _settings->ClientResources), false, true, true);
+        if (!_settings->Common.UserWritablePath.empty()) {
+            resources.AddDirSource(fs::make_writable_path(_settings->Common.UserWritablePath, _settings->Baking.ClientResources), false, true, true);
         }
     }
 

@@ -95,7 +95,7 @@ $Name = PlainItem
     SECTION("BakesFomapHeaderWithDefaultProtoName")
     {
         TestRig local_rig;
-        OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+        OverrideSetting(local_rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddSourceFile("Maps/HeaderOnly.fomap", R"([ProtoMap]
 )");
         add_client_mapper_metadata(local_rig);
@@ -110,7 +110,7 @@ $Name = PlainItem
     SECTION("RejectsCollidingAnonymousMapAnchors")
     {
         TestRig local_rig;
-        OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+        OverrideSetting(local_rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddSourceFile("Maps/Collide.fomap", R"([ProtoMap]
 Outside = True
 [ProtoMap]
@@ -167,7 +167,7 @@ $Parent = )")
 
     auto bake_diamond = [&](string_view child_parents, bool allow_repeated) {
         TestRig local_rig;
-        OverrideSetting(local_rig.Settings.AllowRepeatedProtoParents, allow_repeated);
+        OverrideSetting(local_rig.Settings.Baking.AllowRepeatedProtoParents, allow_repeated);
         local_rig.AddSourceFile("Items/Diamond.fopro", make_diamond_source(child_parents));
 
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
@@ -182,7 +182,7 @@ $Parent = )")
     SECTION("RepeatedProtoParentDefaultIsPermissive")
     {
         TestRig local_rig;
-        CHECK(local_rig.Settings.AllowRepeatedProtoParents);
+        CHECK(local_rig.Settings.Baking.AllowRepeatedProtoParents);
     }
 
     SECTION("RejectsRepeatedProtoParentWhenNotAllowed")
@@ -210,7 +210,7 @@ $Parent = )")
     {
         auto bake_cycle = [&](string_view content, bool allow_repeated) {
             TestRig local_rig;
-            OverrideSetting(local_rig.Settings.AllowRepeatedProtoParents, allow_repeated);
+            OverrideSetting(local_rig.Settings.Baking.AllowRepeatedProtoParents, allow_repeated);
             local_rig.AddSourceFile("Items/Cycle.fopro", content);
 
             auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();

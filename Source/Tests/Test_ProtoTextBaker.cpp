@@ -94,8 +94,8 @@ $Text engl Name = Ignored
     SECTION("BakesProtoTextPacksByTypeLanguageAndInheritedParents")
     {
         TestRig local_rig;
-        OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
-        OverrideSetting(local_rig.Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+        OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {"engl", "russ"});
+        OverrideSetting(local_rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
         local_rig.AddSourceFile("Items/TextItems.fopro", R"([ProtoItem]
 $Name = BaseItem
@@ -159,8 +159,8 @@ $Text engl Name = Custom gizmo name
     // a display name can silently disagree with the properties beside it
     auto bake_text_diamond = [](string_view child_parents, bool allow_repeated) {
         auto local_rig = safe_alloc::make_unique<TestRig>();
-        OverrideSetting(local_rig->Settings.BakeLanguages, vector<string> {"engl"});
-        OverrideSetting(local_rig->Settings.AllowRepeatedProtoParents, allow_repeated);
+        OverrideSetting(local_rig->Settings.Baking.BakeLanguages, vector<string> {"engl"});
+        OverrideSetting(local_rig->Settings.Baking.AllowRepeatedProtoParents, allow_repeated);
         local_rig->AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
         local_rig->AddSourceFile("Items/TextDiamond.fopro",
             string(R"([ProtoItem]
@@ -211,8 +211,8 @@ $Parent = )")
     {
         auto bake_cycle = [](bool allow_repeated) {
             TestRig local_rig;
-            OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
-            OverrideSetting(local_rig.Settings.AllowRepeatedProtoParents, allow_repeated);
+            OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {"engl"});
+            OverrideSetting(local_rig.Settings.Baking.AllowRepeatedProtoParents, allow_repeated);
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
             local_rig.AddSourceFile("Items/TextCycle.fopro", R"([ProtoItem]
 $Name = TextCycleA
@@ -236,7 +236,7 @@ $Parent = TextCycleA
     SECTION("AcceptsFixedTypeSections")
     {
         TestRig local_rig;
-        OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
+        OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {"engl"});
         local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"FixedType", {{"Blueprint"}}}}));
         local_rig.AddSourceFile("Protos/Blueprint.fopro", R"([Blueprint]
 $Name = VaultDoorBlueprint
@@ -253,7 +253,7 @@ $Text engl Name = Blueprint name
     SECTION("BakeCheckerCanSkipAllProtoTextTargets")
     {
         TestRig local_rig;
-        OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
+        OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {"engl", "russ"});
         local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
         local_rig.AddSourceFile("Items/Checked.fopro", R"([ProtoItem]
 $Name = CheckedItem
@@ -350,7 +350,7 @@ $Text engl Name Extra Overflow = Too many
         }
         {
             TestRig local_rig;
-            OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {});
+            OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {});
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
             local_rig.AddSourceFile("Items/NoLanguages.fopro", R"([ProtoItem]
 $Name = NoLanguagesItem
@@ -378,7 +378,7 @@ $Text engl Name = Child
         }
         {
             TestRig local_rig;
-            OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
+            OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {"engl"});
             local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}, {"Widget", "HasProtos"}}}}));
             local_rig.AddSourceFile("Custom/Intersections.fopro", R"([ProtoGizmo]
 $Name = SharedCustomProto

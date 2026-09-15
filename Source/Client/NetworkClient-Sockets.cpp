@@ -82,16 +82,16 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_WEB
-    string_view host = _settings->ServerHost;
-    uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
+    string_view host = _settings->ClientNetwork.ServerHost;
+    uint16_t port = numeric_cast<uint16_t>(_settings->Network.ServerPort);
 
     logging::write("Connecting to server '{}:{}'", host, port);
 
 #else
-    const string_view host = _settings->WebSocketHost;
-    const uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort);
+    const string_view host = _settings->ClientNetwork.WebSocketHost;
+    const uint16_t port = numeric_cast<uint16_t>(_settings->Network.WebSocketPort);
 
-    if (!_settings->SecuredWebSockets) {
+    if (!_settings->Network.SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
         logging::write("Connecting to server 'ws://{}:{}'", host, port);
     }
@@ -106,7 +106,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     }
 
     // Direct connect path
-    if (_settings->ProxyType == 0) {
+    if (_settings->ClientNetwork.ProxyType == 0) {
         if (!_sock.connect_async(host, port)) {
             throw NetworkClientException("Can't connect to the game server", host, port, net_sockets::last_error_text());
         }
@@ -129,8 +129,8 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     _gameAddrIp = *resolved;
     _gameAddrPort = port;
 
-    if (!_sock.connect(_settings->ProxyHost, numeric_cast<uint16_t>(_settings->ProxyPort))) {
-        throw NetworkClientException("Can't connect to proxy server", _settings->ProxyHost, _settings->ProxyPort, net_sockets::last_error_text());
+    if (!_sock.connect(_settings->ClientNetwork.ProxyHost, numeric_cast<uint16_t>(_settings->ClientNetwork.ProxyPort))) {
+        throw NetworkClientException("Can't connect to proxy server", _settings->ClientNetwork.ProxyHost, _settings->ClientNetwork.ProxyPort, net_sockets::last_error_text());
     }
 
     ApplyTcpNoDelay();
@@ -167,7 +167,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     ignore_unused(b1);
 
     // Authentication
-    if (_settings->ProxyType == PROXY_SOCKS4) {
+    if (_settings->ClientNetwork.ProxyType == PROXY_SOCKS4) {
         // Connect
         auto writer = data_writer(send_buf);
         writer.write<uint8_t>(numeric_cast<uint8_t>(4)); // Socks version
@@ -195,7 +195,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
             }
         }
     }
-    else if (_settings->ProxyType == PROXY_SOCKS5) {
+    else if (_settings->ClientNetwork.ProxyType == PROXY_SOCKS5) {
         auto writer = data_writer(send_buf);
         writer.write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
         writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Count methods
@@ -213,10 +213,10 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
             {
                 auto auth_writer = data_writer(send_buf);
                 auth_writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
-                auth_writer.write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.length())); // Name length
-                auth_writer.write_string_bytes(_settings->ProxyUser); // Name
-                auth_writer.write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.length())); // Pass length
-                auth_writer.write_string_bytes(_settings->ProxyPass); // Pass
+                auth_writer.write<uint8_t>(numeric_cast<uint8_t>(_settings->ClientNetwork.ProxyUser.length())); // Name length
+                auth_writer.write_string_bytes(_settings->ClientNetwork.ProxyUser); // Name
+                auth_writer.write<uint8_t>(numeric_cast<uint8_t>(_settings->ClientNetwork.ProxyPass.length())); // Pass length
+                auth_writer.write_string_bytes(_settings->ClientNetwork.ProxyPass); // Pass
             }
 
             recv_buf = send_recv(send_buf);
@@ -275,7 +275,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
             }
         }
     }
-    else if (_settings->ProxyType == PROXY_HTTP) {
+    else if (_settings->ClientNetwork.ProxyType == PROXY_HTTP) {
         string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", net_sockets::ipv4_to_string(_gameAddrIp), _gameAddrPort);
         vector<uint8_t> result = send_recv(make_const_span(request));
         string result_str {span_to_string(result)};
@@ -285,7 +285,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         }
     }
     else {
-        throw NetworkClientException("Unknown proxy type", _settings->ProxyType);
+        throw NetworkClientException("Unknown proxy type", _settings->ClientNetwork.ProxyType);
     }
 #else
     throw NetworkClientException("Proxy connection is not supported on this platform");
@@ -336,7 +336,7 @@ void NetworkClientConnection_Sockets::ApplyTcpNoDelay()
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_WEB
-    if (!_settings->DisableTcpNagle) {
+    if (!_settings->Network.DisableTcpNagle) {
         return;
     }
 

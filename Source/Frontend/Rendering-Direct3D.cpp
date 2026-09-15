@@ -342,8 +342,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
     logging::write("Used DirectX rendering");
 
     _ctx->Settings = &settings;
-    _ctx->RenderDebug = settings.RenderDebug;
-    _ctx->VSync = settings.VSync;
+    _ctx->RenderDebug = settings.Render.RenderDebug;
+    _ctx->VSync = settings.Render.VSync;
     _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
 
     SDL_PropertiesID window_props = SDL_GetWindowProperties(_ctx->SdlWindow.get());
@@ -380,7 +380,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
         auto d3d_hardware_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
 
         if (FAILED(d3d_hardware_create_device)) {
-            if (!settings.AllowSoftwareRenderer) {
+            if (!settings.Render.AllowSoftwareRenderer) {
                 throw AppInitException("Direct3D hardware device creation failed", d3d_hardware_create_device);
             }
 
@@ -560,13 +560,13 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
     // Back buffer view
     nptr<ID3D11Texture2D> back_buf {};
     auto d3d_get_back_buf = _ctx->SwapChain->GetBuffer(0, IID_PPV_ARGS(back_buf.get_pp()));
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_get_back_buf), "Direct3D swap chain GetBuffer failed while creating the main render target", d3d_get_back_buf, settings.ScreenWidth, settings.ScreenHeight);
-    FO_VERIFY_AND_THROW(back_buf, "Direct3D swap chain GetBuffer returned a null back buffer", settings.ScreenWidth, settings.ScreenHeight);
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_get_back_buf), "Direct3D swap chain GetBuffer failed while creating the main render target", d3d_get_back_buf, settings.View.ScreenWidth, settings.View.ScreenHeight);
+    FO_VERIFY_AND_THROW(back_buf, "Direct3D swap chain GetBuffer returned a null back buffer", settings.View.ScreenWidth, settings.View.ScreenHeight);
     auto back_buf_holder = MakeComObjectHolder(back_buf);
     auto d3d_create_back_buf_rt_view = _ctx->D3DDevice->CreateRenderTargetView(back_buf.get(), nullptr, _ctx->MainRenderTarget.get_pp());
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_back_buf_rt_view), "Direct3D CreateRenderTargetView failed for the swap-chain back buffer", d3d_create_back_buf_rt_view, settings.ScreenWidth, settings.ScreenHeight);
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_back_buf_rt_view), "Direct3D CreateRenderTargetView failed for the swap-chain back buffer", d3d_create_back_buf_rt_view, settings.View.ScreenWidth, settings.View.ScreenHeight);
 
-    _ctx->BackBufSize = {settings.ScreenWidth, settings.ScreenHeight};
+    _ctx->BackBufSize = {settings.View.ScreenWidth, settings.View.ScreenHeight};
 
     // One pixel staging texture
     D3D11_TEXTURE2D_DESC one_pix_staging_desc;
@@ -748,7 +748,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
             auto vertex_shader_content_cstr = make_ptr(vertex_shader_content.c_str());
             ptr<const char> vertex_shader_entry_point = "main";
-            auto vertex_shader_profile = make_ptr(_ctx->Settings->Direct3DVertexShaderProfile.c_str());
+            auto vertex_shader_profile = make_ptr(_ctx->Settings->Render.Direct3DVertexShaderProfile.c_str());
             auto d3d_compile = ::D3DCompile(vertex_shader_content_cstr.get(), vertex_shader_content.length(), nullptr, nullptr, nullptr, vertex_shader_entry_point.get(), vertex_shader_profile.get(), 0, 0, vertex_shader_blob.get_pp(), error_blob.get_pp());
 
             if (FAILED(d3d_compile)) {
@@ -821,7 +821,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
             auto pixel_shader_content_cstr = make_ptr(pixel_shader_content.c_str());
             ptr<const char> pixel_shader_entry_point = "main";
-            auto pixel_shader_profile = make_ptr(_ctx->Settings->Direct3DPixelShaderProfile.c_str());
+            auto pixel_shader_profile = make_ptr(_ctx->Settings->Render.Direct3DPixelShaderProfile.c_str());
             auto d3d_compile = ::D3DCompile(pixel_shader_content_cstr.get(), pixel_shader_content.length(), nullptr, nullptr, nullptr, pixel_shader_entry_point.get(), pixel_shader_profile.get(), 0, 0, pixel_shader_blob.get_pp(), error_blob.get_pp());
 
             if (FAILED(d3d_compile)) {
@@ -990,7 +990,7 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     }
     else {
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->View.ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->View.ScreenHeight));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.width) / screen_aspect);
 
@@ -998,8 +998,8 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         vp_oy = (_ctx->BackBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
-        screen_width = _ctx->Settings->ScreenWidth;
-        screen_height = _ctx->Settings->ScreenHeight;
+        screen_width = _ctx->Settings->View.ScreenWidth;
+        screen_height = _ctx->Settings->View.ScreenHeight;
 
         _ctx->CurRenderTarget = _ctx->MainRenderTarget;
         _ctx->CurDepthStencil = nullptr;

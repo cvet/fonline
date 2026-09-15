@@ -289,10 +289,10 @@ void GlobalSettings::ApplyDefaultSettings()
     FO_STACK_TRACE_ENTRY();
 
     FO_DISABLE_WARNINGS_PUSH()
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
-#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = {__VA_ARGS__}
-#define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = {__VA_ARGS__}
+#define VARIABLE_SETTING(type, group, name, ...) group.name = {__VA_ARGS__}
 #include "Settings.inc"
     FO_DISABLE_WARNINGS_POP()
 }
@@ -301,7 +301,7 @@ void GlobalSettings::ApplyWritableRoot(string_view root)
 {
     FO_STACK_TRACE_ENTRY();
 
-    *FixedSettingForEdit(UserWritablePath) = string(root);
+    *FixedSettingForEdit(Common.UserWritablePath) = string(root);
     _settingValues["Common.UserWritablePath"] = string(root);
 }
 
@@ -309,57 +309,57 @@ void GlobalSettings::ApplyAutoSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    *FixedSettingForEdit(Packaged) = IsPackaged();
+    *FixedSettingForEdit(Common.Packaged) = IsPackaged();
 
 #if FO_WEB
-    *FixedSettingForEdit(WebBuild) = true;
+    *FixedSettingForEdit(Platform.WebBuild) = true;
 #else
-    *FixedSettingForEdit(WebBuild) = false;
+    *FixedSettingForEdit(Platform.WebBuild) = false;
 #endif
 #if FO_WINDOWS
-    *FixedSettingForEdit(WindowsBuild) = true;
+    *FixedSettingForEdit(Platform.WindowsBuild) = true;
 #else
-    *FixedSettingForEdit(WindowsBuild) = false;
+    *FixedSettingForEdit(Platform.WindowsBuild) = false;
 #endif
 #if FO_LINUX
-    *FixedSettingForEdit(LinuxBuild) = true;
+    *FixedSettingForEdit(Platform.LinuxBuild) = true;
 #else
-    *FixedSettingForEdit(LinuxBuild) = false;
+    *FixedSettingForEdit(Platform.LinuxBuild) = false;
 #endif
 #if FO_MAC
-    *FixedSettingForEdit(MacOsBuild) = true;
+    *FixedSettingForEdit(Platform.MacOsBuild) = true;
 #else
-    *FixedSettingForEdit(MacOsBuild) = false;
+    *FixedSettingForEdit(Platform.MacOsBuild) = false;
 #endif
 #if FO_ANDROID
-    *FixedSettingForEdit(AndroidBuild) = true;
+    *FixedSettingForEdit(Platform.AndroidBuild) = true;
 #else
-    *FixedSettingForEdit(AndroidBuild) = false;
+    *FixedSettingForEdit(Platform.AndroidBuild) = false;
 #endif
 #if FO_IOS
-    *FixedSettingForEdit(IOsBuild) = true;
+    *FixedSettingForEdit(Platform.IOsBuild) = true;
 #else
-    *FixedSettingForEdit(IOsBuild) = false;
+    *FixedSettingForEdit(Platform.IOsBuild) = false;
 #endif
-    *FixedSettingForEdit(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
-    *FixedSettingForEdit(TabletBuild) = AndroidBuild || IOsBuild;
+    *FixedSettingForEdit(Platform.DesktopBuild) = Platform.WindowsBuild || Platform.LinuxBuild || Platform.MacOsBuild;
+    *FixedSettingForEdit(Platform.TabletBuild) = Platform.AndroidBuild || Platform.IOsBuild;
 
-    *FixedSettingForEdit(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
-    *FixedSettingForEdit(MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    *FixedSettingForEdit(MapDirCount) = GameSettings::MAP_DIR_COUNT;
+    *FixedSettingForEdit(Geometry.MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
+    *FixedSettingForEdit(Geometry.MapSquare) = GameSettings::SQUARE_GEOMETRY;
+    *FixedSettingForEdit(Geometry.MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
-    *FixedSettingForEdit(DebugBuild) = true;
-    *FixedSettingForEdit(RenderDebug) = true;
+    *FixedSettingForEdit(Common.DebugBuild) = true;
+    *FixedSettingForEdit(Render.RenderDebug) = true;
 #endif
 
-    if (MapDirectDraw) {
-        *FixedSettingForEdit(MapZoomEnabled) = false;
+    if (View.MapDirectDraw) {
+        *FixedSettingForEdit(View.MapZoomEnabled) = false;
     }
 
-    *FixedSettingForEdit(GitBranch) = FO_GIT_BRANCH;
-    *FixedSettingForEdit(GitCommit) = FO_BUILD_HASH;
-    *FixedSettingForEdit(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
+    *FixedSettingForEdit(Common.GitBranch) = FO_GIT_BRANCH;
+    *FixedSettingForEdit(Common.GitCommit) = FO_BUILD_HASH;
+    *FixedSettingForEdit(Network.CompatibilityVersion) = !Network.ForceCompatibilityVersion.empty() ? Network.ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
 void GlobalSettings::CopyFrom(const GlobalSettings& other)
@@ -375,10 +375,10 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
     _customSettings = other._customSettings;
     _emptySetting = other._emptySetting;
 
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
-#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = other.name
-#define VARIABLE_SETTING(type, group, name, ...) name = other.name
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = other.group.name
+#define VARIABLE_SETTING(type, group, name, ...) group.name = other.group.name
 #include "Settings.inc"
 }
 
@@ -457,15 +457,14 @@ auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
     FO_STACK_TRACE_ENTRY();
 
 #define FIXED_SETTING(type, group, setting_name, ...) \
-    case const_hash(#setting_name): \
     case const_hash(#group "." #setting_name): \
-        if (name == #setting_name || name == #group "." #setting_name) { \
-            return strex("{}", setting_name).str(); \
+        if (name == #group "." #setting_name) { \
+            return strex("{}", group.setting_name).str(); \
         } \
         break
 #define VARIABLE_SETTING(type, group, setting_name, ...) FIXED_SETTING(type, group, setting_name, __VA_ARGS__)
-#define SETTING_GROUP(setting_name, ...)
-#define SETTING_GROUP_END()
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
 
     switch (const_hash(name.c_str())) {
 #include "Settings.inc"
@@ -486,22 +485,20 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
     FO_STACK_TRACE_ENTRY();
 
 #define FIXED_SETTING(type, group, setting_name, ...) \
-    case const_hash(#setting_name): \
     case const_hash(#group "." #setting_name): \
-        if (name == #setting_name || name == #group "." #setting_name) { \
+        if (name == #group "." #setting_name) { \
             throw SettingsException("Fixed setting is read-only", name); \
         } \
         break
 #define VARIABLE_SETTING(type, group, setting_name, ...) \
-    case const_hash(#setting_name): \
     case const_hash(#group "." #setting_name): \
-        if (name == #setting_name || name == #group "." #setting_name) { \
-            SetEntry(setting_name, value, false); \
+        if (name == #group "." #setting_name) { \
+            SetEntry(group.setting_name, value, false); \
             return; \
         } \
         break
-#define SETTING_GROUP(setting_name, ...)
-#define SETTING_GROUP_END()
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
 
     switch (const_hash(name.c_str())) {
 #include "Settings.inc"
@@ -594,15 +591,13 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     _settingValues[full_name] = strex("{}", sett).str(); \
     break
 #define FIXED_SETTING(type, group, name, ...) \
-    case const_hash(#name): \
     case const_hash(#group "." #name): \
-        SET_SETTING(*FixedSettingForEdit(name), #group "." #name)
+        SET_SETTING(*FixedSettingForEdit(group.name), #group "." #name)
 #define VARIABLE_SETTING(type, group, name, ...) \
-    case const_hash(#name): \
     case const_hash(#group "." #name): \
-        SET_SETTING(name, #group "." #name)
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
+        SET_SETTING(group.name, #group "." #name)
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
 
     switch (const_hash(setting_name.c_str())) {
 #include "Settings.inc"
@@ -671,17 +666,17 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
         }
 
         if (pack_info.ServerOnly) {
-            FixedSettingForEdit(ServerResourceEntries)->emplace_back(pack_info.Name);
+            FixedSettingForEdit(Baking.ServerResourceEntries)->emplace_back(pack_info.Name);
         }
         else if (pack_info.ClientOnly) {
-            FixedSettingForEdit(ClientResourceEntries)->emplace_back(pack_info.Name);
+            FixedSettingForEdit(Baking.ClientResourceEntries)->emplace_back(pack_info.Name);
         }
         else if (pack_info.MapperOnly) {
-            FixedSettingForEdit(MapperResourceEntries)->emplace_back(pack_info.Name);
+            FixedSettingForEdit(Baking.MapperResourceEntries)->emplace_back(pack_info.Name);
         }
         else {
-            FixedSettingForEdit(ServerResourceEntries)->emplace_back(pack_info.Name);
-            FixedSettingForEdit(ClientResourceEntries)->emplace_back(pack_info.Name);
+            FixedSettingForEdit(Baking.ServerResourceEntries)->emplace_back(pack_info.Name);
+            FixedSettingForEdit(Baking.ClientResourceEntries)->emplace_back(pack_info.Name);
         }
 
         if (string bakers = get_map_value("Bakers"); !bakers.empty()) {
@@ -761,10 +756,10 @@ auto GlobalSettings::Save() const -> map<string, string>
         }
     };
 
-#define FIXED_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
-#define VARIABLE_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
+#define FIXED_SETTING(type, group, name, ...) add_setting(#group "." #name, group.name)
+#define VARIABLE_SETTING(type, group, name, ...) add_setting(#group "." #name, group.name)
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
 #include "Settings.inc"
 
     return result;
@@ -776,20 +771,20 @@ void GlobalSettings::Draw(bool editable)
 
 #define FIXED_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#group "." #name, *FixedSettingForEdit(name)); \
+        DrawEditableEntry(#group "." #name, *FixedSettingForEdit(group.name)); \
     } \
     else { \
-        DrawEntry(#group "." #name, name); \
+        DrawEntry(#group "." #name, group.name); \
     }
 #define VARIABLE_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#group "." #name, name); \
+        DrawEditableEntry(#group "." #name, group.name); \
     } \
     else { \
-        DrawEntry(#group "." #name, name); \
+        DrawEntry(#group "." #name, group.name); \
     }
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
 #include "Settings.inc"
 }
 
@@ -810,7 +805,7 @@ bool GlobalSettings::IsSecretSettingName(string_view name) const
 
     string lower_name = strex(name).lower().str();
 
-    for (const auto& token : SecretSettingTokens) {
+    for (const auto& token : Common.SecretSettingTokens) {
         if (!token.empty() && lower_name.find(strex(token).lower().str()) != string::npos) {
             return true;
         }

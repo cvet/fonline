@@ -854,7 +854,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
         baker.BakeFiles(source_files.GetAllFiles(), "");
 
@@ -880,7 +880,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
         baker.BakeFiles(source_files.GetAllFiles(), "");
 
@@ -920,7 +920,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
 
         CHECK_THROWS_WITH(baker.BakeFiles(source_files.GetAllFiles(), ""), Catch::Matchers::ContainsSubstring("resolves outside its directory resource source"));
@@ -938,7 +938,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
         baker.BakeFiles(source_files.GetAllFiles(), "");
 
@@ -972,7 +972,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
         baker.BakeFiles(source_files.GetAllFiles(), "Particles/Second.efk");
 
@@ -1012,7 +1012,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         REQUIRE(fs::write_file(source_path, project));
 
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, output_dir);
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, output_dir);
         vector<pair<string, uint64_t>> checks;
 
         auto run_bake = [&](bool record_checks = false) {
@@ -1098,7 +1098,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
 
         CHECK_THROWS_AS(baker.BakeFiles(source_files.GetAllFiles(), ""), ParticleBakerException);
@@ -1122,7 +1122,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
 
         CHECK_THROWS_AS(baker.BakeFiles(source_files.GetAllFiles(), ""), ParticleBakerException);
@@ -1142,7 +1142,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
         TestRig rig;
-        BakerTests::OverrideSetting(rig.Settings.BakeOutput, strex(temp_dir).combine_path("output").str());
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
         ParticleBaker baker(rig.MakeContext());
 
         CHECK_THROWS_AS(baker.BakeFiles(source_files.GetAllFiles(), ""), ParticleBakerException);

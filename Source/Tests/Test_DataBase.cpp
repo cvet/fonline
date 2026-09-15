@@ -508,11 +508,11 @@ namespace
 
     void ConfigureRecoverySettings(GlobalSettings& settings, string_view oplog_path)
     {
-        *FixedSettingForOverride(settings.OpLogEnabled) = true;
-        *FixedSettingForOverride(settings.OpLogPath) = string(oplog_path);
-        *FixedSettingForOverride(settings.ReconnectRetryPeriod) = 20;
-        *FixedSettingForOverride(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
-        *FixedSettingForOverride(settings.PanicShutdownTimeout) = 1;
+        *FixedSettingForOverride(settings.DataBase.OpLogEnabled) = true;
+        *FixedSettingForOverride(settings.DataBase.OpLogPath) = string(oplog_path);
+        *FixedSettingForOverride(settings.DataBase.ReconnectRetryPeriod) = 20;
+        *FixedSettingForOverride(settings.DataBase.PanicOpLogSizeThreshold) = 1024 * 1024;
+        *FixedSettingForOverride(settings.DataBase.PanicShutdownTimeout) = 1;
     }
 
     void WriteRecoveryLogs(const ScopedRecoveryLogs& recovery_logs, string_view pending_content, string_view committed_content = {})
@@ -1676,7 +1676,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     ident_t first_id = ident_t {1001};
     ident_t second_id = ident_t {1002};
     ident_t complex_id = ident_t {1003};
-    *FixedSettingForOverride(settings.JsonIndent) = 2;
+    *FixedSettingForOverride(settings.DataBase.JsonIndent) = 2;
     auto db = ConnectToDataBase(&settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
 
     db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));

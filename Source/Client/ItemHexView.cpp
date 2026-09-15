@@ -82,7 +82,7 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->MapRoofElevation) : GetElevation());
+    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->Geometry.MapRoofElevation) : GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 

@@ -985,7 +985,7 @@ static void InvokeManagedScriptDelegate(MonoObject* delegate_obj, string_view co
 }
 
 // Every native entry into script code runs its synchronization context here, so one place measures it against
-// Script.ManagedScriptOverrunReportTime; a run that throws is reported by its exception instead
+// ManagedScript.OverrunReportTime; a run that throws is reported by its exception instead
 static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, const function<MonoObject*()>& get_entry, const function<void()>& callback)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1000,7 +1000,7 @@ static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<Ba
 {
     FO_STACK_TRACE_ENTRY();
 
-    timespan overrun_time = std::chrono::milliseconds(engine->Settings->ManagedScriptOverrunReportTime);
+    timespan overrun_time = std::chrono::milliseconds(engine->Settings->ManagedScript.OverrunReportTime);
 
     if (!overrun_time || is_run_in_debugger() || engine->IsStartingUp()) {
         return;

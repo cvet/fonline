@@ -79,7 +79,7 @@ AudioManager::AudioManager(ptr<AudioSettings> settings, ptr<FileSystem> resource
     if (!_audio->IsEnabled()) {
         return;
     }
-    if (_settings->DisableAudio) {
+    if (_settings->Audio.DisableAudio) {
         return;
     }
 
@@ -119,7 +119,7 @@ void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
         span<uint8_t> mix_buffer = span<uint8_t> {_outputBuf.data(), output.size()};
 
         if (ProcessSound(sound, silence, mix_buffer)) {
-            int32_t volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
+            int32_t volume = sound->IsMusic ? _settings->Audio.MusicVolume : _settings->Audio.SoundVolume;
             volume = numeric_cast<int32_t>(std::lround(numeric_cast<float32_t>(volume) * sound->Attenuation));
             _audio->MixAudio(output, mix_buffer, volume);
             ++it;
@@ -475,7 +475,7 @@ void AudioManager::IndexFiles()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const string& sound_ext : _settings->SoundFileExtensions) {
+    for (const string& sound_ext : _settings->Audio.SoundFileExtensions) {
         for (const auto& file_header : _resources->FilterFiles(sound_ext)) {
             _soundNames.emplace_back(file_header.GetPath());
         }
@@ -493,7 +493,7 @@ auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_isActive || _settings->SoundVolume == 0) {
+    if (!_isActive || _settings->Audio.SoundVolume == 0) {
         return true;
     }
 

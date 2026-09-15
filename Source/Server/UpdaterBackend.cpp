@@ -70,7 +70,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
         size_t file_size = fs::stream_get_size(file);
 
-        if (settings.UpdateFilesInMemory) {
+        if (settings.ServerNetwork.UpdateFilesInMemory) {
             data.InMemory = true;
             data.MemoryData.resize(file_size);
 
@@ -102,9 +102,9 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         return info;
     };
 
-    auto client_resources_dir = std::filesystem::path {fs::make_path(settings.ClientResources)};
+    auto client_resources_dir = std::filesystem::path {fs::make_path(settings.Baking.ClientResources)};
 
-    for (const auto& resource_entry : settings.ClientResourceEntries) {
+    for (const auto& resource_entry : settings.Baking.ClientResourceEntries) {
         if (resource_entry != "Embedded") {
             string pack_name = strex("{}.zip", resource_entry).str();
             client_resource_pack_names.emplace(pack_name);
@@ -116,7 +116,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     VerifyClientResourcesMetadata(settings, server_metadata_version);
 
-    auto platform_binaries_dir = std::filesystem::path {fs::make_path(settings.PlatformBinaries)};
+    auto platform_binaries_dir = std::filesystem::path {fs::make_path(settings.Baking.PlatformBinaries)};
     string platform_binaries_path = fs::path_to_string(platform_binaries_dir);
 
     if (std::filesystem::exists(platform_binaries_dir)) {
@@ -194,13 +194,13 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
     // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
     // one of them would hand every synced client a property layout this server cannot talk to
     FileSystem client_resources;
-    client_resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
+    client_resources.AddPacksSource(settings.Baking.ClientResources, settings.Baking.ClientResourceEntries);
 
     vector<uint8_t> metadata_bin = ReadMetadataBin(&client_resources, "Client");
     string client_metadata_version = ReadMetadataVersion(metadata_bin);
 
     if (client_metadata_version != server_metadata_version) {
-        throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.ClientResources, client_metadata_version, settings.ServerResources, server_metadata_version);
+        throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.Baking.ClientResources, client_metadata_version, settings.Baking.ServerResources, server_metadata_version);
     }
 
     logging::write("Client data packs match the server metadata version {}", client_metadata_version);

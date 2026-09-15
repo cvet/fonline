@@ -248,7 +248,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        _state.Size = {settings->ScreenWidth, settings->ScreenHeight};
+        _state.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
     }
 
     [[nodiscard]] auto GetSize() const -> isize32 override { return _state.Size; }

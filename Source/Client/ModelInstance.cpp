@@ -64,7 +64,7 @@ ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation>
     _moveDirAngle = _lookDirAngle;
     _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
-    _matRot = glm::rotate(mat44 {1.0f}, _modelMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    _matRot = glm::rotate(mat44 {1.0f}, _modelMngr->_settings->Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _worldMatrices.assign(_modelInfo->_poseJointRuntimeNames.size(), mat44 {1.0f});
 
     for (auto& joint_mask : _animationBodyJointMasks) {
@@ -804,13 +804,13 @@ void ModelInstance::SetMovementState(bool staying_pose, bool moving, int32_t mov
     _isMoving = staying_pose && moving;
 
     if (_isMoving) {
-        if (moving_speed < _modelMngr->_settings->RunAnimStartSpeed) {
+        if (moving_speed < _modelMngr->_settings->Render.RunAnimStartSpeed) {
             _isRunning = false;
-            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->WalkAnimBaseSpeed);
+            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->Render.WalkAnimBaseSpeed);
         }
         else {
             _isRunning = true;
-            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->RunAnimBaseSpeed);
+            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->Render.RunAnimBaseSpeed);
         }
     }
 
@@ -881,7 +881,7 @@ void ModelInstance::RefreshMoveAnimation()
 
         float32_t angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
 
-        if (std::abs(angle_diff) > _modelMngr->_settings->CritterTurnAngle) {
+        if (std::abs(angle_diff) > _modelMngr->_settings->Render.CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
 
             if (_turnAnimPlaying) {
@@ -1435,10 +1435,10 @@ auto ModelInstance::GetProceduralJointRotationAngle(uint32_t joint_index) const 
         return std::nullopt;
     }
     if (_modelInfo->_bodyRotationJointIndex && joint_index == *_modelInfo->_bodyRotationJointIndex) {
-        return (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT;
+        return (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->Render.CritterBodyTurnFactor) * DEG_TO_RAD_FLOAT;
     }
     if (_modelInfo->_headRotationJointIndex && joint_index == *_modelInfo->_headRotationJointIndex) {
-        return (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT;
+        return (GeometryHelper::GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr->_settings->Render.CritterHeadTurnFactor) * DEG_TO_RAD_FLOAT;
     }
 
     return std::nullopt;
@@ -2309,7 +2309,7 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
 
     // Projection
     float32_t frame_ratio = numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height);
-    float32_t proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->ModelProjFactor);
+    float32_t proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->Render.ModelProjFactor);
     float32_t proj_width = proj_height * frame_ratio;
 
     _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
@@ -2354,9 +2354,9 @@ void ModelInstance::RefreshFrameLayout()
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
-    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->ModelSpriteMaxTextureWidth, _modelMngr->_settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->Render.ModelSpriteMaxTextureWidth, _modelMngr->_settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     ModelBounds3D draw_bounds = CollectActiveAnimationBounds();
-    optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame);
+    optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame);
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
     _layoutDrawSize = draw_layout->DrawSize;
     _drawRect = draw_layout->DrawRect;
@@ -2364,7 +2364,7 @@ void ModelInstance::RefreshFrameLayout()
     // Lighting uses the aggregate envelope, not the current clip. A zoom that misses the texture cap is cropped to
     // that cap rather than terminating, so what is left here is bounds the bake gate already rejects
     const ModelBounds3D& lighting_bounds = _modelInfo->_modelBounds;
-    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(lighting_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
+    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(lighting_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, false, true, max_logical_frame);
     FO_STRONG_ASSERT(lighting_layout, "Model sprite lighting layout could not be calculated", _modelInfo->_fileName, lighting_bounds.Min.x, lighting_bounds.Min.y, lighting_bounds.Min.z, lighting_bounds.Max.x, lighting_bounds.Max.y, lighting_bounds.Max.z);
     _lightingDrawSize = lighting_layout->DrawSize;
 
@@ -2408,10 +2408,10 @@ void ModelInstance::RefreshConfigurationLayout()
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
-    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->ModelSpriteMaxTextureWidth, _modelMngr->_settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
-    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
-    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, current_model_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, max_logical_frame);
-    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false, true, max_logical_frame);
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->Render.ModelSpriteMaxTextureWidth, _modelMngr->_settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+    optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, false, true, max_logical_frame);
+    ModelBounds3D view_bounds = SelectModelViewBounds(_modelInfo->_viewBounds, current_model_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, max_logical_frame);
+    optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(view_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, false, true, max_logical_frame);
 
     if (!lighting_layout || !view_layout) {
         return;

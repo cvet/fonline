@@ -45,7 +45,7 @@ TEST_CASE("TextBaker")
     SECTION("RejectsEmptyBakeLanguages")
     {
         TestRig rig;
-        OverrideSetting(rig.Settings.BakeLanguages, vector<string> {});
+        OverrideSetting(rig.Settings.Baking.BakeLanguages, vector<string> {});
 
         CHECK_THROWS_AS(TextBaker(rig.MakeContext("CorePack")), TextBakerException);
     }
@@ -119,7 +119,7 @@ TEST_CASE("TextBaker")
     SECTION("BakeCheckerCompletesChangedPackLanguages")
     {
         TestRig rig;
-        OverrideSetting(rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
+        OverrideSetting(rig.Settings.Baking.BakeLanguages, vector<string> {"engl", "russ"});
         rig.AddSourceFile("Readme.txt", "not a text pack", 7);
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
         rig.AddSourceFile("Game.russ.fotxt", "# Test pack\n\n{1}{}{Privet}\n", 9);

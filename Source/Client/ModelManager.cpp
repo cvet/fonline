@@ -86,20 +86,20 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _sceneBackgroundProvider {std::move(scene_background_provider)},
-    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->ModelDirectDraw, _sceneBackgroundProvider); })
+    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
 {
     FO_STACK_TRACE_ENTRY();
 
-    _moveTransitionTime = numeric_cast<float32_t>(_settings->Animation3dSmoothTime) / 1000.0f;
+    _moveTransitionTime = numeric_cast<float32_t>(_settings->Render.Animation3dSmoothTime) / 1000.0f;
     _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
 
-    if (_settings->Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
+    if (_settings->Render.Animation3dFPS != 0) {
+        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
     }
 
-    _headBone = GetBoneHashedString(settings->HeadBone);
+    _headBone = GetBoneHashedString(settings->Render.HeadBone);
 
-    for (const auto& bone_name : settings->LegBones) {
+    for (const auto& bone_name : settings->Render.LegBones) {
         _legBones.emplace(GetBoneHashedString(bone_name));
     }
 }

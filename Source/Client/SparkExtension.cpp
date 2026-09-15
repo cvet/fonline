@@ -799,7 +799,7 @@ namespace SPK::FO
 
         spark_render_buffer->Render(group.getNbParticles() << 2, _effect);
 
-        if (_runtime->_impl->Services.Settings->DrawWireframe) {
+        if (_runtime->_impl->Services.Settings->Render.DrawWireframe) {
             DrawParticleBufferWireframe(_runtime->_impl->Services.EffectMngr, _runtime->_impl->Services.Render, _runtime->_impl->WireframeBuf, spark_render_buffer->GetDrawBuffer(), numeric_cast<size_t>(group.getNbParticles()) * 6, _runtime->_impl->ViewProjectionMatrix);
         }
     }

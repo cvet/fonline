@@ -636,11 +636,11 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(ptr<Critter> self, ident_t item
         return;
     }
 
-    if (static_cast<size_t>(slot) >= self->GetEngine()->Settings->CritterSlotEnabled.size() || !self->GetEngine()->Settings->CritterSlotEnabled[static_cast<size_t>(slot)]) {
+    if (static_cast<size_t>(slot) >= self->GetEngine()->Settings->Critter.CritterSlotEnabled.size() || !self->GetEngine()->Settings->Critter.CritterSlotEnabled[static_cast<size_t>(slot)]) {
         throw ScriptException("Slot is not allowed");
     }
 
-    bool is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings->CritterSlotMultiItem.size() && self->GetEngine()->Settings->CritterSlotMultiItem[static_cast<size_t>(slot)];
+    bool is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings->Critter.CritterSlotMultiItem.size() && self->GetEngine()->Settings->Critter.CritterSlotMultiItem[static_cast<size_t>(slot)];
 
     if (is_multi_item_allowed) {
         auto from_slot = item->GetCritterSlot();

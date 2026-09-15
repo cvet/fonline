@@ -1999,9 +1999,9 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
     CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
 
     GlobalSettings settings = MakeClientTestSettings();
-    BakerTests::OverrideSetting(settings.Packaged, true);
-    BakerTests::OverrideSetting(settings.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {pack_name});
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {pack_name});
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
@@ -2040,9 +2040,9 @@ TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
     REQUIRE(fs::write_file(strex(writable_resources).combine_path("Main/overlay-only.txt").str(), string_view {"overlay-only"}));
 
     GlobalSettings settings = MakeClientTestSettings();
-    BakerTests::OverrideSetting(settings.Packaged, true);
-    BakerTests::OverrideSetting(settings.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {"Main", "Fallback"});
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Main", "Fallback"});
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
@@ -2407,7 +2407,7 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
     // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already
     // inside the frame and the check below would pass without proving anything
     isize32 layout_size = model->GetDrawSize();
-    int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->ModelProjFactor);
+    int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->Render.ModelProjFactor);
     REQUIRE(layout_size.width <= bounds_span_limit);
     REQUIRE(layout_size.height <= bounds_span_limit);
 
@@ -3719,7 +3719,7 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 {
     auto settings = MakeClientTestSettings();
-    settings.DrawWireframe = true;
+    settings.Render.DrawWireframe = true;
     auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });

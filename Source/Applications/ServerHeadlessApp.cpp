@@ -67,7 +67,7 @@ int main(int argc, char** argv)
             vector<unique_ptr<GlobalSettings>> client_settings;
             vector<refcount_ptr<ClientEngine>> clients;
 
-            if (GetApp()->Settings.AutoStartClientOnServer != 0) {
+            if (GetApp()->Settings.Server.AutoStartClientOnServer != 0) {
                 ServerWithClientsLoop(server, client_settings, clients);
             }
             else {
@@ -103,7 +103,7 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
 {
     FO_STACK_TRACE_ENTRY();
 
-    logging::write("Auto start embedded headless client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
+    logging::write("Auto start embedded headless client(s): {}", GetApp()->Settings.Server.AutoStartClientOnServer);
 
     FrameBalancer balancer {false, 0, 100}; // 100 fps
 
@@ -111,7 +111,7 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
         balancer.StartLoop();
         GetApp()->BeginFrame();
 
-        int32_t target_client_count = std::max(GetApp()->Settings.AutoStartClientOnServer, 0);
+        int32_t target_client_count = std::max(GetApp()->Settings.Server.AutoStartClientOnServer, 0);
 
         while (server->IsStarted() && clients.size() < numeric_cast<size_t>(target_client_count)) {
             int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;

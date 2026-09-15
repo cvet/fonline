@@ -207,7 +207,7 @@ public:
 
     explicit DbSQLite(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _storageDir {fs::make_writable_path(db_settings->UserWritablePath, storage_dir)}
+        _storageDir {fs::make_writable_path(db_settings->Common.UserWritablePath, storage_dir)}
     {
         FO_STACK_TRACE_ENTRY();
 

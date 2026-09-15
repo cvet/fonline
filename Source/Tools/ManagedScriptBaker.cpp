@@ -202,26 +202,26 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
 
     auto settings = _context->Settings.as_ptr();
     auto managed_config_dir = GetManagedConfigDir(*settings);
-    auto managed_generated_dir = GetManagedGeneratedDir(settings->ManagedScriptGeneratedDir, managed_config_dir);
+    auto managed_generated_dir = GetManagedGeneratedDir(settings->ManagedScript.GeneratedDir, managed_config_dir);
     auto managed_assemblies_output_dir = GetManagedAssembliesOutputDir(*_context);
-    auto dir_source_files = CollectManagedDirSources(settings->ManagedScriptDirs, managed_config_dir);
-    auto managed_host_source = FindManagedHostSource(settings->ManagedScriptDirs, managed_config_dir);
+    auto dir_source_files = CollectManagedDirSources(settings->ManagedScript.Dirs, managed_config_dir);
+    auto managed_host_source = FindManagedHostSource(settings->ManagedScript.Dirs, managed_config_dir);
 
-    auto assemblies = settings->ManagedScriptAssemblies;
+    auto assemblies = settings->ManagedScript.Assemblies;
 
     if (assemblies.empty()) {
-        throw ManagedScriptBakerException("ManagedScriptAssemblies setting is empty");
+        throw ManagedScriptBakerException("ManagedScript.Assemblies setting is empty");
     }
 
     string managed_pack_name = _context->PackName;
-    string project_name = settings->ManagedScriptProjectName;
+    string project_name = settings->ManagedScript.ProjectName;
 
     if (project_name.empty()) {
-        throw ManagedScriptBakerException("ManagedScriptProjectName setting is empty");
+        throw ManagedScriptBakerException("ManagedScript.ProjectName setting is empty");
     }
 
     array<string_view, 5> generated_file_suffixes {"Enums", "Types", "Entities", "Events", "Settings"};
-    bool dry_run = settings->ManagedScriptBakerDryRun;
+    bool dry_run = settings->ManagedScript.BakerDryRun;
 
     struct TargetBakeTask
     {
@@ -278,10 +278,10 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         };
 
         for (const string& assembly : assemblies) {
-            for (const std::filesystem::path& source_file : CollectSourceFiles(files, dir_source_files, settings->ManagedScriptExtraSources, assembly, target, managed_config_dir)) {
+            for (const std::filesystem::path& source_file : CollectSourceFiles(files, dir_source_files, settings->ManagedScript.ExtraSources, assembly, target, managed_config_dir)) {
                 append_source_file(source_file);
             }
-            for (const string& reference : CollectReferences(settings->ManagedScriptExtraReferences, assembly, target, managed_config_dir)) {
+            for (const string& reference : CollectReferences(settings->ManagedScript.ExtraReferences, assembly, target, managed_config_dir)) {
                 append_reference(reference);
             }
         }
@@ -318,8 +318,8 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         });
     }
 
-    GenerateManagedHostProjectFile(managed_generated_dir, settings->ManagedScriptTargetFramework, managed_host_source);
-    GenerateUnifiedProjectFile(managed_generated_dir, strex("{}/{}/Assemblies", settings->BakeOutput, managed_pack_name).str(), managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references, analysis);
+    GenerateManagedHostProjectFile(managed_generated_dir, settings->ManagedScript.TargetFramework, managed_host_source);
+    GenerateUnifiedProjectFile(managed_generated_dir, strex("{}/{}/Assemblies", settings->Baking.BakeOutput, managed_pack_name).str(), managed_pack_name, project_name, settings->ManagedScript.TargetFramework, project_sources, project_references, analysis);
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
     for (string_view target : MANAGED_TARGETS) {
@@ -358,7 +358,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
             _context->WriteData(task.ResourcePath, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(marker.data()), marker.size()});
         }
         else {
-            string msbuild_command = MakeManagedMsBuildCommand(settings->ManagedScriptMsBuild);
+            string msbuild_command = MakeManagedMsBuildCommand(settings->ManagedScript.MsBuild);
             string output_path = MakeAbsoluteProjectOutputPath(managed_assemblies_output_dir, target);
             string command = strex("{} -noLogo -verbosity:quiet -nodeReuse:false -m -restore -target:Build -p:Configuration={} -p:Platform=AnyCPU -p:OutputPath=\"{}\" \"{}\"", msbuild_command, target, output_path, project_path.generic_string()).str();
             RemoveManagedOutputAssemblies(managed_assemblies_output_dir, target);
@@ -974,7 +974,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     FO_STACK_TRACE_ENTRY();
 
     if (target_framework.empty()) {
-        throw ManagedScriptBakerException("ManagedScriptTargetFramework setting is empty");
+        throw ManagedScriptBakerException("ManagedScript.TargetFramework setting is empty");
     }
 
     auto project_path = project_dir / fs::make_path(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME));
@@ -1022,7 +1022,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     auto proj_path = project_dir / fs::make_path(proj_name);
 
     if (target_framework.empty()) {
-        throw ManagedScriptBakerException("ManagedScriptTargetFramework setting is empty");
+        throw ManagedScriptBakerException("ManagedScript.TargetFramework setting is empty");
     }
 
     ostringstream file;
@@ -1718,7 +1718,7 @@ static auto MakeManagedMsBuildCommand(string_view msbuild_path) -> string
     FO_STACK_TRACE_ENTRY();
 
     if (msbuild_path.empty()) {
-        throw ManagedScriptBakerException("ManagedScriptMsBuild setting is empty");
+        throw ManagedScriptBakerException("ManagedScript.MsBuild setting is empty");
     }
 
     // A value with spaces is a ready command line (e.g. the default 'dotnet msbuild') and is used verbatim;
@@ -1924,11 +1924,11 @@ static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std
     FO_STACK_TRACE_ENTRY();
 
     return ManagedProjectAnalysis {
-        .Level = TrimString(settings.ManagedScriptAnalysisLevel),
-        .Mode = TrimString(settings.ManagedScriptAnalysisMode),
-        .AnalyzerProjects = ResolveManagedPaths(config_dir, settings.ManagedScriptAnalyzers),
-        .AnalyzerPackages = ParseManagedAnalyzerPackages(settings.ManagedScriptAnalyzerPackages),
-        .AdditionalFiles = ResolveManagedPaths(config_dir, settings.ManagedScriptAdditionalFiles),
+        .Level = TrimString(settings.ManagedScript.AnalysisLevel),
+        .Mode = TrimString(settings.ManagedScript.AnalysisMode),
+        .AnalyzerProjects = ResolveManagedPaths(config_dir, settings.ManagedScript.Analyzers),
+        .AnalyzerPackages = ParseManagedAnalyzerPackages(settings.ManagedScript.AnalyzerPackages),
+        .AdditionalFiles = ResolveManagedPaths(config_dir, settings.ManagedScript.AdditionalFiles),
     };
 }
 
@@ -1982,7 +1982,7 @@ static auto CollectManagedDirSources(const vector<string>& source_dirs, const st
     FO_STACK_TRACE_ENTRY();
 
     if (source_dirs.empty()) {
-        throw ManagedScriptBakerException("ManagedScriptDirs setting is empty");
+        throw ManagedScriptBakerException("ManagedScript.Dirs setting is empty");
     }
 
     vector<std::filesystem::path> source_files;
@@ -2141,8 +2141,8 @@ static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::
     FO_VERIFY_AND_THROW(context.Settings, "Baking context has no settings");
 
     std::error_code ec;
-    auto output_dir = std::filesystem::absolute(std::filesystem::current_path() / fs::make_path(context.Settings->BakeOutput) / fs::make_path(context.PackName) / "Assemblies", ec).lexically_normal();
-    return ec ? (std::filesystem::current_path() / fs::make_path(context.Settings->BakeOutput) / fs::make_path(context.PackName) / "Assemblies").lexically_normal() : output_dir;
+    auto output_dir = std::filesystem::absolute(std::filesystem::current_path() / fs::make_path(context.Settings->Baking.BakeOutput) / fs::make_path(context.PackName) / "Assemblies", ec).lexically_normal();
+    return ec ? (std::filesystem::current_path() / fs::make_path(context.Settings->Baking.BakeOutput) / fs::make_path(context.PackName) / "Assemblies").lexically_normal() : output_dir;
 }
 
 static auto MakeCsTypeToken(string_view name) -> string

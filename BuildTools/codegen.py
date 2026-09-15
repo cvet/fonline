@@ -985,9 +985,9 @@ def parse_export_event_signature(tag_context: str, valid_types: set[str]) -> tup
 
 def parse_settings_group_name(first_line: str) -> str:
     assert first_line.startswith('SETTING_GROUP'), 'Invalid start macro'
-    group_name = first_line[first_line.find('(') + 1:first_line.find(',')]
-    assert group_name.endswith('Settings'), 'Invalid group ending ' + group_name
-    return group_name[:-len('Settings')]
+    group_name = first_line[first_line.find('(') + 1:first_line.find(',')].strip()
+    assert group_name.isidentifier(), 'Invalid group name ' + group_name
+    return group_name
 
 
 def parse_settings_entry(line: str, valid_types: set[str]) -> SettingsEntry:

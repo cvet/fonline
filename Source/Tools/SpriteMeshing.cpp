@@ -114,15 +114,15 @@ auto ResolveSpriteMeshBakeConfig(ptr<const BakingSettings> settings) -> SpriteMe
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(settings->AlphaThreshold >= 0 && settings->AlphaThreshold <= 254, "Sprite mesh alpha threshold must be in range 0..254", settings->AlphaThreshold);
-    FO_VERIFY_AND_THROW(settings->MaxTriangles >= 1, "Sprite mesh maximum triangle count must be positive", settings->MaxTriangles);
-    FO_VERIFY_AND_THROW(std::isfinite(settings->AreaSavingsWeight) && settings->AreaSavingsWeight >= 0.0f, "Sprite mesh area savings weight must be finite and non-negative", settings->AreaSavingsWeight);
+    FO_VERIFY_AND_THROW(settings->SpriteMesh.AlphaThreshold >= 0 && settings->SpriteMesh.AlphaThreshold <= 254, "Sprite mesh alpha threshold must be in range 0..254", settings->SpriteMesh.AlphaThreshold);
+    FO_VERIFY_AND_THROW(settings->SpriteMesh.MaxTriangles >= 1, "Sprite mesh maximum triangle count must be positive", settings->SpriteMesh.MaxTriangles);
+    FO_VERIFY_AND_THROW(std::isfinite(settings->SpriteMesh.AreaSavingsWeight) && settings->SpriteMesh.AreaSavingsWeight >= 0.0f, "Sprite mesh area savings weight must be finite and non-negative", settings->SpriteMesh.AreaSavingsWeight);
 
     return SpriteMeshBakeConfig {
-        .Enabled = settings->Enabled,
-        .AlphaThreshold = settings->AlphaThreshold,
-        .MaxTriangles = numeric_cast<size_t>(settings->MaxTriangles),
-        .AreaSavingsWeight = settings->AreaSavingsWeight,
+        .Enabled = settings->SpriteMesh.Enabled,
+        .AlphaThreshold = settings->SpriteMesh.AlphaThreshold,
+        .MaxTriangles = numeric_cast<size_t>(settings->SpriteMesh.MaxTriangles),
+        .AreaSavingsWeight = settings->SpriteMesh.AreaSavingsWeight,
     };
 }
 

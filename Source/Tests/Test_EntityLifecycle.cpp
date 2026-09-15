@@ -147,7 +147,7 @@ namespace
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
 
                 const_span<uint8_t> data = encoded_data;
-                if (!_settings->DisableZlibCompression) {
+                if (!_settings->Network.DisableZlibCompression) {
                     _decompressor.decompress(encoded_data, _unpackedData);
                     data = _unpackedData;
                 }
@@ -701,7 +701,7 @@ namespace EntityLifecycle
     {
         FO_STACK_TRACE_ENTRY();
 
-        NetOutBuffer packet {numeric_cast<size_t>(server->Settings->NetBufferSize)};
+        NetOutBuffer packet {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
         packet.StartMsg(NetMessage::SendStopCritterMove);
         packet.Write(map_id);
         packet.Write(cr_id);
