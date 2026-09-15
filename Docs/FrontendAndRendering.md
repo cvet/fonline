@@ -137,9 +137,13 @@ Audio responsibilities include:
 
 - reporting whether audio is enabled;
 - setting an audio stream callback;
-- converting audio formats;
+- converting decoded samples to the device's channel count and rate;
 - mixing audio;
 - locking and unlocking the audio device around critical sections.
+
+`ConvertAudio` takes signed 16-bit samples and no format argument, because every
+audio resource is baked to Ogg Vorbis and decodes to signed 16-bit; see
+[BakingPipeline.md](BakingPipeline.md).
 
 ## Headless and stub modes
 

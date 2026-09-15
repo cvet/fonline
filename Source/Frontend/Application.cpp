@@ -76,8 +76,6 @@ FO_GLOBAL_DATA(IgnoredErrorMessagesData, IgnoredErrorMessages);
 int32_t AppRender::MAX_ATLAS_WIDTH {};
 int32_t AppRender::MAX_ATLAS_HEIGHT {};
 int32_t AppRender::MAX_BONES {};
-const int32_t AppAudio::AUDIO_FORMAT_U8 {SDL_AUDIO_U8};
-const int32_t AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
 static constexpr float32_t GAMEPAD_STICK_DEADZONE = 0.2f;
 static constexpr float32_t GAMEPAD_TRIGGER_DEADZONE = 0.15f;
@@ -419,7 +417,13 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                 }
             };
 
-            auto opened_audio_stream = make_nptr(SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, make_nptr(this).void_cast()));
+            // The stream carries our own format rather than the device's, so everything above the device mixes in
+            // one known layout and per-channel work such as panning needs no format dispatch; SDL converts on output
+            _ctx->AudioSpec.format = SDL_AUDIO_S16;
+            _ctx->AudioSpec.channels = 2;
+            _ctx->AudioSpec.freq = Settings.MixRate;
+
+            auto opened_audio_stream = make_nptr(SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &_ctx->AudioSpec, stream_callback, make_nptr(this).void_cast()));
 
             if (opened_audio_stream) {
                 auto audio_stream = make_unique_del_ptr(opened_audio_stream, [](SDL_AudioStream* raw_audio_stream) {
@@ -429,16 +433,11 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                     }
                 });
 
-                if (SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(audio_stream.get()), &_ctx->AudioSpec, nullptr)) {
-                    if (SDL_ResumeAudioStreamDevice(audio_stream.get())) {
-                        _ctx->AudioStream = std::move(audio_stream);
-                    }
-                    else {
-                        WriteLog("SDL resume audio device failed, error {}", SDL_GetError());
-                    }
+                if (SDL_ResumeAudioStreamDevice(audio_stream.get())) {
+                    _ctx->AudioStream = std::move(audio_stream);
                 }
                 else {
-                    WriteLog("SDL get audio device format failed, error {}", SDL_GetError());
+                    WriteLog("SDL resume audio device failed, error {}", SDL_GetError());
                 }
             }
             else {
@@ -3071,14 +3070,14 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     UnlockDevice();
 }
 
-auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     SDL_AudioSpec spec;
-    spec.format = static_cast<SDL_AudioFormat>(format);
+    spec.format = SDL_AUDIO_S16;
     spec.channels = numeric_cast<Uint8>(channels);
     spec.freq = rate;
 

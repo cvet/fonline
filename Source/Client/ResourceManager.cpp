@@ -90,16 +90,6 @@ void ResourceManager::IndexFiles()
 {
     FO_STACK_TRACE_ENTRY();
 
-    constexpr array<string_view, 3> sound_extensions = {"wav", "acm", "ogg"};
-
-    for (string_view sound_ext : sound_extensions) {
-        auto sound_files = _resources->FilterFiles(sound_ext);
-
-        for (const auto& file_header : sound_files) {
-            _soundNames.emplace(strex(file_header.GetPath()).erase_file_extension().lower(), string(file_header.GetPath()));
-        }
-    }
-
     auto any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName, AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
 
     if (!any_spr) {
@@ -667,12 +657,5 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
     return _critterModels.emplace(model_name, std::move(model_spr)).first->second;
 }
 #endif
-
-auto ResourceManager::GetSoundNames() const -> const map<string, string>&
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return _soundNames;
-}
 
 FO_END_NAMESPACE
