@@ -1353,8 +1353,18 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     CHECK(client->IsConnected());
     REQUIRE(static_cast<bool>(client->GetCurPlayer()));
 
+    // The login reply leaves the server before the remote call reaches SwitchCritter, so the client can see success first
     int32_t switched_critters = 0;
-    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetSwitchedCritters"), switched_critters));
+
+    for (int32_t i = 0; i < 2000 && switched_critters == 0; i++) {
+        REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetSwitchedCritters"), switched_critters));
+
+        if (switched_critters == 0) {
+            client->MainLoop();
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
     CHECK(switched_critters == 1);
 
     // The controlled critter arrives over the wire, so the client ends up with a chosen critter of its own

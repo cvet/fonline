@@ -125,13 +125,13 @@ auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cac
         if (!fs_create_directories(disk_dir)) {
             throw ScriptSystemException("Can't create Managed runtime cache directory", disk_dir);
         }
-        if (!fs_write_file(disk_path.string(), resource.Data)) {
+        if (!fs_write_file(fs_path_to_string(disk_path), resource.Data)) {
             throw ScriptSystemException("Can't restore Managed runtime resource", resource.ResourcePath);
         }
     }
 
     if (!IsSameManagedRuntimeCache(staged_root, runtime_resources)) {
-        throw ScriptSystemException("Staged Managed runtime cache validation failed", staged_root.string());
+        throw ScriptSystemException("Staged Managed runtime cache validation failed", staged_root_str);
     }
 
     // Prefer another process's byte-identical completed cache without touching files Mono may hold open
@@ -159,8 +159,8 @@ static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::error_code ec;
-    return std::filesystem::is_regular_file(dir / fs_make_path(MANAGED_RUNTIME_MANIFEST_FILE), ec) && std::filesystem::is_regular_file(dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll", ec);
+    // The engine helpers take the extended-length path, which a cache staged under a deep profile directory needs
+    return fs_file_size(fs_path_to_string(dir / fs_make_path(MANAGED_RUNTIME_MANIFEST_FILE))).has_value() && fs_file_size(fs_path_to_string(dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll")).has_value();
 }
 
 static auto CollectManagedRuntimeResources(const FileSystem& resources) -> vector<ManagedRuntimeResource>
@@ -232,19 +232,7 @@ static auto IsSameManagedRuntimeCacheFile(const std::filesystem::path& disk_path
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto existing_data = fs_read_file(disk_path.string());
-
-    if (!existing_data.has_value() || existing_data->size() != data.size()) {
-        return false;
-    }
-
-    for (size_t i = 0; i != data.size(); i++) {
-        if (static_cast<uint8_t>((*existing_data)[i]) != data[i]) {
-            return false;
-        }
-    }
-
-    return true;
+    return fs_compare_file_content(fs_path_to_string(disk_path), data);
 }
 
 static auto IsSameManagedRuntimeCache(const std::filesystem::path& cache_root, const vector<ManagedRuntimeResource>& runtime_resources) -> bool
