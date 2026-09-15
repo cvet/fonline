@@ -172,7 +172,7 @@ runtime is linked into `LF_Client.wasm` and the assemblies are copied beside it.
 link are specific to the browser and easy to break by "simplifying" them:
 
 - **The browser subset carries an extra piece.** `setup_mono` builds the runtime with
-  `mono.runtime+mono.corelib+libs.native`, and for `browser` it appends `mono.wasmruntime`. That last
+  `mono.runtime+mono.corelib+libs.native+libs.sfx`, and for `browser` it appends `mono.wasmruntime`. That last
   subset builds the TypeScript glue (`src/mono/browser/runtime/`) that supplies the imports Mono expects
   JavaScript to provide - the scheduler, the entropy source and the startup helpers. Without it the link
   fails on `mono_wasm_schedule_timer`, `mono_wasm_browser_entropy` and their neighbours. The glue is

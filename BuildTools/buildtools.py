@@ -2499,13 +2499,13 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
 
 
-# CoreLib reaches the OS through the interop shims on every non-Windows platform (Interop.Sys is
-# libSystem.Native), so the runtime alone is not a working runtime and libs.native must be built with it
-MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
+# CoreLib reaches the OS through libs.native on every non-Windows platform, and libs.sfx builds the class libraries
+# for the target from CoreLib's revision: the SDK's own shared framework matches the build host and another release
+MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native+libs.sfx'
 
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
 # subset or source patches change: an unchanged marker leaves a prepared host on the old runtime
-MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
@@ -3129,14 +3129,10 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / runtime_triplet / 'out'
 		if not input_dir.is_dir():
 			raise SystemExit(f'Files not found: {input_dir}')
-		shared_framework_root = runtime_root / '.dotnet' / 'shared' / 'Microsoft.NETCore.App'
-		if not shared_framework_root.is_dir():
-			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
-		shared_framework_dirs = sorted((path for path in shared_framework_root.iterdir() if path.is_dir()), key=lambda path: runtime_framework_version_key(path.name))
-		if not shared_framework_dirs:
-			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
-
-		shared_framework_dir = shared_framework_dirs[-1]
+		class_library_dir = resolve_runtime_pack_class_library_dir(runtime_root, os_name, dotnet_runtime_arch, config)
+		class_libraries = sorted(path for path in class_library_dir.glob('*.dll') if path.name != 'System.Private.CoreLib.dll')
+		if not class_libraries:
+			raise SystemExit(f'Target class libraries not found: {class_library_dir}')
 		corelib_path = runtime_root / 'artifacts' / 'bin' / 'mono' / runtime_triplet / 'IL' / 'System.Private.CoreLib.dll'
 		if not corelib_path.is_file():
 			raise SystemExit(f'Mono System.Private.CoreLib not found: {corelib_path}')
@@ -3147,7 +3143,8 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		netcoreapp_dir = output_dir / 'lib' / 'netcoreapp'
 		ensure_empty_dir(netcoreapp_dir)
-		for assembly_path in shared_framework_dir.glob('*.dll'):
+		log('Copy class libraries from', class_library_dir)
+		for assembly_path in class_libraries:
 			shutil.copy2(assembly_path, netcoreapp_dir / assembly_path.name)
 		shutil.copy2(corelib_path, netcoreapp_dir / corelib_path.name)
 
@@ -3161,13 +3158,15 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	log(f'Runtime {publish_triplet} is ready!')
 
 
-def runtime_framework_version_key(version: str) -> tuple[int, int, int, bool, tuple[tuple[bool, int | str], ...]]:
-	match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?', version)
-	if not match:
-		raise SystemExit(f'Invalid shared framework version: {version}')
-	suffix = match.group(4)
-	parts = tuple((not part.isdigit(), int(part) if part.isdigit() else part) for part in suffix.split('.')) if suffix else ()
-	return int(match.group(1)), int(match.group(2)), int(match.group(3)), suffix is None, parts
+def resolve_runtime_pack_class_library_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
+	# libs.sfx places the target's class libraries in its runtime pack, named by dotnet's portable RID
+	# (eng/RuntimeIdentifier.props spells the Windows OS 'win'); the target framework folder is the only one
+	rid = f'{"win" if os_name == "windows" else os_name}-{arch}'
+	lib_root = runtime_root / 'artifacts' / 'bin' / f'microsoft.netcore.app.runtime.{rid}' / config / 'runtimes' / rid / 'lib'
+	framework_dirs = sorted(path for path in lib_root.glob('net*') if path.is_dir()) if lib_root.is_dir() else []
+	if len(framework_dirs) != 1:
+		raise SystemExit(f'Expected one target framework folder of the {rid} runtime pack, found {len(framework_dirs)}: {lib_root}')
+	return framework_dirs[0]
 
 
 def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: str, ready_marker: Path) -> None:

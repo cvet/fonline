@@ -35,8 +35,8 @@ def write_runtime_file(runtime: Path, name: str, content: bytes) -> Path:
 
 def test_payload_contains_only_managed_class_library_assemblies(tmp_path: Path) -> None:
     runtime = tmp_path / 'published-runtime'
-    write_runtime_file(runtime, 'System.Private.CoreLib.dll', make_pe(managed=True))
-    write_runtime_file(runtime, 'System.Collections.dll', make_pe(managed=True) + b'collections')
+    write_runtime_file(runtime, 'System.Private.CoreLib.dll', make_assembly('System.Private.CoreLib', informational_version='10.0.10-dev'))
+    write_runtime_file(runtime, 'System.Collections.dll', make_assembly('System.Collections', informational_version='10.0.10-dev'))
     write_runtime_file(runtime, 'coreclr.dll', make_pe(managed=False))
     write_runtime_file(runtime, 'clrjit.dll', b'native jit')
     (runtime / 'include').mkdir()
@@ -80,6 +80,34 @@ def test_assembly_references_are_read_from_metadata_tables(pe32_plus: bool, larg
 
     assert payload.read_assembly_identity(image) == payload.AssemblyIdentity('Unit.Scripts', references)
     assert payload.read_assembly_identity(make_assembly('Leaf')).references == ()
+
+
+@pytest.mark.parametrize('large_heaps', [False, True])
+# 0x4000 type references widen every coded index that can name a TypeRef, attribute parent included
+@pytest.mark.parametrize('type_ref_rows', [0, 3, 0x4000])
+def test_informational_version_is_read_from_the_assembly_attribute(large_heaps: bool, type_ref_rows: int) -> None:
+    image = make_assembly(
+        'System.Runtime', ['System.Private.CoreLib'], large_heaps=large_heaps, type_ref_rows=type_ref_rows,
+        informational_version='10.0.10-dev')
+
+    assert payload.read_informational_version(image) == '10.0.10-dev'
+    assert payload.read_assembly_identity(image) == payload.AssemblyIdentity('System.Runtime', ('System.Private.CoreLib',))
+    assert payload.read_informational_version(make_assembly('System.Runtime')) is None
+
+
+def test_class_libraries_from_another_build_are_rejected(tmp_path: Path) -> None:
+    # The host SDK's shared framework reports its own release, which is how a payload copied from it is recognised
+    runtime = tmp_path / 'published-runtime'
+    write_runtime_file(runtime, 'System.Private.CoreLib.dll', make_assembly('System.Private.CoreLib', informational_version='10.0.10-dev'))
+    write_runtime_file(runtime, 'System.Runtime.dll', make_assembly('System.Runtime', informational_version='10.0.10-dev'))
+    write_runtime_file(runtime, 'System.Net.Http.dll', make_assembly('System.Net.Http', informational_version='10.0.9+901ca94'))
+    write_runtime_file(runtime, 'System.Linq.dll', make_assembly('System.Linq'))
+
+    with pytest.raises(ValueError, match=r'2 managed class libraries were not built with System.Private.CoreLib 10.0.10-dev, '
+                                         r'e.g. System.Linq.dll \(None\), System.Net.Http.dll \(10.0.9\+901ca94\)'):
+        payload.stage_payload(runtime, tmp_path / 'payload', tmp_path / 'payload.ready')
+
+    assert not (tmp_path / 'payload').exists()
 
 
 @pytest.mark.parametrize('length', [0, 0x40, 0x100, 0x248, -8])

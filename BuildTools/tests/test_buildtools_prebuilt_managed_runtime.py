@@ -146,7 +146,8 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         out = runtime / "artifacts/obj/mono" / triplet / "out/lib"
         out.mkdir(parents=True)
         (out / "libmonosgen-2.0.a").write_text("patched runtime", encoding="utf-8")
-        framework = runtime / ".dotnet/shared/Microsoft.NETCore.App/10.0.11"
+        rid = f"{'win' if target == 'windows' else target}-x64"
+        framework = runtime / "artifacts/bin" / f"microsoft.netcore.app.runtime.{rid}" / "Release/runtimes" / rid / "lib/net10.0"
         framework.mkdir(parents=True)
         (framework / "System.Runtime.dll").write_text("framework", encoding="utf-8")
         corelib = runtime / "artifacts/bin/mono" / triplet / "IL/System.Private.CoreLib.dll"
@@ -490,13 +491,6 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
     assert len(calls) == 1
 
 
-def test_framework_versions_sort_numerically_with_release_after_preview() -> None:
-    versions = ["9.0.0", "10.0.0-preview.10", "10.0.0-preview.2", "10.0.0", "10.0.11"]
-    assert sorted(versions, key=_buildtools.runtime_framework_version_key) == [
-        "9.0.0", "10.0.0-preview.2", "10.0.0-preview.10", "10.0.0", "10.0.11"
-    ]
-
-
 def test_runtime_revision_uses_a_distinct_ready_marker(tmp_path: Path) -> None:
     tree = make_published_tree(tmp_path / "prebuilt", "windows.x64.Release")
     env = setup_mono_env(tmp_path, tree)
@@ -508,25 +502,33 @@ def test_runtime_revision_uses_a_distinct_ready_marker(tmp_path: Path) -> None:
     assert markers == [f"READY_v10.0.11_windows.x64.Release{suffix}", f"READY_v10.0.12_windows.x64.Release{suffix}"]
 
 
-@pytest.mark.parametrize("missing_corelib", [False, True])
-def test_publish_replaces_old_files_only_after_input_validation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing_corelib: bool) -> None:
+@pytest.mark.parametrize("missing", [None, "corelib", "class_libraries"])
+@pytest.mark.parametrize("target,rid", [("linux", "linux-x64"), ("browser", "browser-wasm"), ("android", "android-arm64")])
+def test_publish_takes_target_class_libraries_and_replaces_old_files_only_after_input_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: str | None, target: str, rid: str,
+) -> None:
     env = setup_mono_env(tmp_path, "")
     workspace = Path(env["FO_WORKSPACE"])
     runtime = workspace / "runtime"
-    triplet = "linux.x64.Release"
+    arch = rid.split("-", 1)[1]
+    triplet = f"{target}.{arch}.Release"
     output = workspace / "output" / "mono" / triplet
     output.mkdir(parents=True)
     (output / "removed-library.so").write_text("stale", encoding="utf-8")
     inputs = runtime / "artifacts" / "obj" / "mono" / triplet / "out"
     inputs.mkdir(parents=True)
     (inputs / "current-library.so").write_text("current", encoding="utf-8")
-    frameworks = runtime / ".dotnet" / "shared" / "Microsoft.NETCore.App"
-    for version in ("9.0.0", "10.0.0-preview.2", "10.0.0"):
-        folder = frameworks / version
-        folder.mkdir(parents=True)
-        (folder / "System.Runtime.dll").write_text(version, encoding="utf-8")
+    # The SDK dotnet/runtime builds itself with carries a host-OS shared framework that must never be published
+    sdk_framework = runtime / ".dotnet" / "shared" / "Microsoft.NETCore.App" / "10.0.9"
+    sdk_framework.mkdir(parents=True)
+    (sdk_framework / "System.Runtime.dll").write_text("host sdk", encoding="utf-8")
+    (sdk_framework / "System.Net.Http.dll").write_text("host sdk", encoding="utf-8")
+    if missing != "class_libraries":
+        pack = runtime / "artifacts" / "bin" / f"microsoft.netcore.app.runtime.{rid}" / "Release" / "runtimes" / rid / "lib" / "net10.0"
+        pack.mkdir(parents=True)
+        (pack / "System.Runtime.dll").write_text("target", encoding="utf-8")
     corelib = runtime / "artifacts" / "bin" / "mono" / triplet / "IL" / "System.Private.CoreLib.dll"
-    if not missing_corelib:
+    if missing != "corelib":
         corelib.parent.mkdir(parents=True)
         corelib.write_text("mono corelib", encoding="utf-8")
 
@@ -536,13 +538,17 @@ def test_publish_replaces_old_files_only_after_input_validation(tmp_path: Path, 
 
     monkeypatch.setattr(_buildtools, "run_marker_step", run_publish_only)
     monkeypatch.setattr(_buildtools, "copy_interop_shim_libraries", lambda *args: None)
-    if missing_corelib:
-        with pytest.raises(SystemExit, match="System.Private.CoreLib not found"):
-            _buildtools.setup_mono("linux", "x64", "Release", env)
+    monkeypatch.setattr(_buildtools, "copy_browser_runtime_glue", lambda *args: None)
+    if missing is not None:
+        match = "System.Private.CoreLib not found" if missing == "corelib" else f"{rid} runtime pack"
+        with pytest.raises(SystemExit, match=match):
+            _buildtools.setup_mono(target, arch, "Release", env)
         assert (output / "removed-library.so").is_file()
     else:
-        _buildtools.setup_mono("linux", "x64", "Release", env)
+        _buildtools.setup_mono(target, arch, "Release", env)
+        netcoreapp = output / "lib" / "netcoreapp"
         assert not (output / "removed-library.so").exists()
         assert (output / "current-library.so").is_file()
-        assert (output / "lib" / "netcoreapp" / "System.Runtime.dll").read_text() == "10.0.0"
-        assert (output / "lib" / "netcoreapp" / "System.Private.CoreLib.dll").read_text() == "mono corelib"
+        assert sorted(path.name for path in netcoreapp.iterdir()) == ["System.Private.CoreLib.dll", "System.Runtime.dll"]
+        assert (netcoreapp / "System.Runtime.dll").read_text() == "target"
+        assert (netcoreapp / "System.Private.CoreLib.dll").read_text() == "mono corelib"

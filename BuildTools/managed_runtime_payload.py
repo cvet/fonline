@@ -58,6 +58,11 @@ TABLE_GENERIC_PARAM = 0x2A
 TABLE_METHOD_SPEC = 0x2B
 TABLE_GENERIC_PARAM_CONSTRAINT = 0x2C
 METADATA_TABLE_COUNT = 64
+HAS_CUSTOM_ATTRIBUTE_ASSEMBLY_TAG = 14
+CUSTOM_ATTRIBUTE_TYPE_METHOD_DEF_TAG = 2
+CUSTOM_ATTRIBUTE_TYPE_MEMBER_REF_TAG = 3
+MEMBER_REF_PARENT_TYPE_DEF_TAG = 0
+MEMBER_REF_PARENT_TYPE_REF_TAG = 1
 
 
 class ManagedAssemblyError(ValueError):
@@ -115,7 +120,23 @@ def collect_payload_assemblies(runtime_dir: Path) -> list[Path]:
 		raise ValueError(f'No managed class-library assemblies found: {netcoreapp_dir}')
 	if not any(path.name == 'System.Private.CoreLib.dll' for path in assemblies):
 		raise ValueError(f'Managed System.Private.CoreLib.dll not found: {netcoreapp_dir}')
+	verify_one_build(netcoreapp_dir, assemblies)
 	return assemblies
+
+
+def verify_one_build(netcoreapp_dir: Path, assemblies: list[Path]) -> None:
+	# Class libraries built apart from CoreLib, such as the build host's SDK shared framework, carry another
+	# platform's implementations and another release's internals, so the whole set must share CoreLib's build
+	versions = {path.name: read_informational_version(path.read_bytes()) for path in assemblies}
+	corelib_version = versions[f'{CORELIB_ASSEMBLY_NAME}.dll']
+	if corelib_version is None:
+		raise ValueError(f'Managed {CORELIB_ASSEMBLY_NAME}.dll declares no informational version: {netcoreapp_dir}')
+	mismatched = sorted((name, version) for name, version in versions.items() if version != corelib_version)
+	if mismatched:
+		listed = ', '.join(f'{name} ({version})' for name, version in mismatched[:5])
+		raise ValueError(
+			f'{len(mismatched)} managed class libraries were not built with {CORELIB_ASSEMBLY_NAME} {corelib_version}, '
+			f'e.g. {listed}: {netcoreapp_dir}')
 
 
 def file_sha256(path: Path) -> str:
@@ -242,6 +263,87 @@ def read_assembly_identity_file(path: Path) -> AssemblyIdentity:
 
 def read_assembly_identity(image: bytes) -> AssemblyIdentity:
 	"""Read the assembly's own name and the names in its AssemblyRef table from a PE image."""
+	metadata = read_metadata(image)
+	# Assembly row: HashAlgId, four version parts, Flags, PublicKey blob, then Name
+	name = metadata.string_at(metadata.row_offset(TABLE_ASSEMBLY, 1) + 16 + metadata.blob_size)
+	# AssemblyRef row: four version parts, Flags, PublicKeyOrToken blob, then Name
+	references = tuple(
+		metadata.string_at(metadata.row_offset(TABLE_ASSEMBLY_REF, row) + 12 + metadata.blob_size)
+		for row in range(1, metadata.rows[TABLE_ASSEMBLY_REF] + 1)
+	)
+	return AssemblyIdentity(name, references)
+
+
+def read_informational_version(image: bytes) -> str | None:
+	"""Read the assembly's AssemblyInformationalVersionAttribute, which names the build it came from."""
+	metadata = read_metadata(image)
+	parent_size = metadata.coded_sizes['has_custom_attribute']
+	type_size = metadata.coded_sizes['custom_attribute_type']
+	for row in range(1, metadata.rows[TABLE_CUSTOM_ATTRIBUTE] + 1):
+		offset = metadata.row_offset(TABLE_CUSTOM_ATTRIBUTE, row)
+		parent = read_index(image, offset, parent_size)
+		if parent & 0x1F != HAS_CUSTOM_ATTRIBUTE_ASSEMBLY_TAG:
+			continue
+		constructor = read_index(image, offset + parent_size, type_size)
+		if metadata.attribute_type_name(constructor) != ('System.Reflection', 'AssemblyInformationalVersionAttribute'):
+			continue
+		if '#Blob' not in metadata.streams:
+			raise ManagedAssemblyError('Managed assembly metadata has attribute values but no blob stream')
+		value = read_blob(image, metadata.streams['#Blob'], read_index(image, offset + parent_size + type_size, metadata.blob_size))
+		# Prolog 0x0001, then the constructor's one string argument as a SerString
+		if len(value) < 3 or value[0:2] != b'\x01\x00' or value[2] == 0xFF:
+			raise ManagedAssemblyError('Managed assembly informational version attribute has no string value')
+		length, length_size = read_compressed_integer(value, 2)
+		return value[2 + length_size:2 + length_size + length].decode('utf-8')
+	return None
+
+
+class Metadata(NamedTuple):
+	image: bytes
+	streams: dict[str, tuple[int, int]]
+	rows: list[int]
+	table_offsets: list[int]
+	row_sizes: list[int]
+	string_size: int
+	blob_size: int
+	coded_sizes: dict[str, int]
+
+	def row_offset(self, table: int, row: int) -> int:
+		if not 1 <= row <= self.rows[table]:
+			raise ManagedAssemblyError(f'Managed assembly metadata row {row} is out of table {table:#x}')
+		return self.table_offsets[table] + (row - 1) * self.row_sizes[table]
+
+	def string_at(self, offset: int) -> str:
+		return read_heap_string(self.image, self.streams['#Strings'], read_index(self.image, offset, self.string_size))
+
+	def attribute_type_name(self, constructor: int) -> tuple[str, str] | None:
+		"""Name the type declaring an attribute constructor, a CustomAttributeType coded index."""
+		if constructor & 0x7 == CUSTOM_ATTRIBUTE_TYPE_MEMBER_REF_TAG:
+			member_parent = read_index(self.image, self.row_offset(TABLE_MEMBER_REF, constructor >> 3), self.coded_sizes['member_ref_parent'])
+			if member_parent & 0x7 == MEMBER_REF_PARENT_TYPE_REF_TAG:
+				type_ref = self.row_offset(TABLE_TYPE_REF, member_parent >> 3) + self.coded_sizes['resolution_scope']
+				return self.string_at(type_ref + self.string_size), self.string_at(type_ref)
+			if member_parent & 0x7 == MEMBER_REF_PARENT_TYPE_DEF_TAG:
+				return self.type_def_name(member_parent >> 3)
+			return None
+		if constructor & 0x7 == CUSTOM_ATTRIBUTE_TYPE_METHOD_DEF_TAG:
+			# CoreLib defines the attribute itself: the declaring type is the last TypeDef whose method list starts at or before it
+			method = constructor >> 3
+			method_list_offset = 4 + self.string_size * 2 + self.coded_sizes['type_def_or_ref'] + self.coded_sizes['field_index']
+			owner = None
+			for type_def in range(1, self.rows[TABLE_TYPE_DEF] + 1):
+				if read_index(self.image, self.row_offset(TABLE_TYPE_DEF, type_def) + method_list_offset, self.coded_sizes['method_def_index']) > method:
+					break
+				owner = type_def
+			return self.type_def_name(owner) if owner is not None else None
+		return None
+
+	def type_def_name(self, type_def: int) -> tuple[str, str]:
+		offset = self.row_offset(TABLE_TYPE_DEF, type_def) + 4
+		return self.string_at(offset + self.string_size), self.string_at(offset)
+
+
+def read_metadata(image: bytes) -> Metadata:
 	metadata_offset = find_metadata_root(image)
 	streams = read_metadata_streams(image, metadata_offset)
 	if '#~' not in streams or '#Strings' not in streams:
@@ -260,7 +362,7 @@ def read_assembly_identity(image: bytes) -> AssemblyIdentity:
 	string_size = 4 if heap_sizes & 0x01 else 2
 	guid_size = 4 if heap_sizes & 0x02 else 2
 	blob_size = 4 if heap_sizes & 0x04 else 2
-	row_sizes = make_table_row_sizes(rows, string_size, guid_size, blob_size)
+	row_sizes, coded_sizes = make_table_row_sizes(rows, string_size, guid_size, blob_size)
 	table_offsets = [rows_offset]
 	for table in range(TABLE_ASSEMBLY_REF + 1):
 		table_offsets.append(table_offsets[-1] + rows[table] * row_sizes[table])
@@ -268,18 +370,7 @@ def read_assembly_identity(image: bytes) -> AssemblyIdentity:
 		raise ManagedAssemblyError('Managed assembly metadata tables overrun their stream')
 	if rows[TABLE_ASSEMBLY] != 1:
 		raise ManagedAssemblyError(f'Managed assembly image must define exactly one assembly, found {rows[TABLE_ASSEMBLY]}')
-
-	def read_string(offset: int) -> str:
-		return read_heap_string(image, streams['#Strings'], read_index(image, offset, string_size))
-
-	# Assembly row: HashAlgId, four version parts, Flags, PublicKey blob, then Name
-	name = read_string(table_offsets[TABLE_ASSEMBLY] + 16 + blob_size)
-	# AssemblyRef row: four version parts, Flags, PublicKeyOrToken blob, then Name
-	references = tuple(
-		read_string(table_offsets[TABLE_ASSEMBLY_REF] + row * row_sizes[TABLE_ASSEMBLY_REF] + 12 + blob_size)
-		for row in range(rows[TABLE_ASSEMBLY_REF])
-	)
-	return AssemblyIdentity(name, references)
+	return Metadata(image, streams, rows, table_offsets, row_sizes, string_size, blob_size, coded_sizes)
 
 
 def find_metadata_root(image: bytes) -> int:
@@ -332,7 +423,7 @@ def read_metadata_streams(image: bytes, metadata_offset: int) -> dict[str, tuple
 	return streams
 
 
-def make_table_row_sizes(rows: list[int], string_size: int, guid_size: int, blob_size: int) -> list[int]:
+def make_table_row_sizes(rows: list[int], string_size: int, guid_size: int, blob_size: int) -> tuple[list[int], dict[str, int]]:
 	def simple_index(table: int) -> int:
 		return 2 if rows[table] < 0x10000 else 4
 
@@ -394,7 +485,16 @@ def make_table_row_sizes(rows: list[int], string_size: int, guid_size: int, blob
 	sizes[TABLE_ASSEMBLY_PROCESSOR] = 4
 	sizes[TABLE_ASSEMBLY_OS] = 4 * 3
 	sizes[TABLE_ASSEMBLY_REF] = 2 * 4 + 4 + blob + string * 2 + blob
-	return sizes
+	coded_sizes = {
+		'has_custom_attribute': has_custom_attribute,
+		'custom_attribute_type': custom_attribute_type,
+		'member_ref_parent': member_ref_parent,
+		'resolution_scope': resolution_scope,
+		'type_def_or_ref': type_def_or_ref,
+		'field_index': simple_index(TABLE_FIELD),
+		'method_def_index': simple_index(TABLE_METHOD_DEF),
+	}
+	return sizes, coded_sizes
 
 
 def rva_to_offset(image: bytes, sections_offset: int, section_count: int, rva: int) -> int:
@@ -420,6 +520,31 @@ def read_heap_string(image: bytes, strings_stream: tuple[int, int], index: int) 
 	if end < 0:
 		raise ManagedAssemblyError(f'Managed assembly string {index} runs past its heap')
 	return image[heap_offset + index:end].decode('utf-8')
+
+
+def read_blob(image: bytes, blob_stream: tuple[int, int], index: int) -> bytes:
+	heap_offset, heap_size = blob_stream
+	if index >= heap_size:
+		raise ManagedAssemblyError(f'Managed assembly blob index {index} is out of its heap')
+	heap = image[heap_offset:heap_offset + heap_size]
+	length, length_size = read_compressed_integer(heap, index)
+	if index + length_size + length > heap_size:
+		raise ManagedAssemblyError(f'Managed assembly blob {index} runs past its heap')
+	return heap[index + length_size:index + length_size + length]
+
+
+def read_compressed_integer(data: bytes, offset: int) -> tuple[int, int]:
+	"""Decode an ECMA-335 compressed unsigned integer into its value and encoded size."""
+	if offset >= len(data):
+		raise ManagedAssemblyError(f'Managed assembly compressed integer at {offset} is truncated')
+	first = data[offset]
+	if first & 0x80 == 0:
+		return first, 1
+	if first & 0xC0 == 0x80 and offset + 2 <= len(data):
+		return ((first & 0x3F) << 8) | data[offset + 1], 2
+	if first & 0xE0 == 0xC0 and offset + 4 <= len(data):
+		return ((first & 0x1F) << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3], 4
+	raise ManagedAssemblyError(f'Managed assembly compressed integer at {offset} is malformed')
 
 
 def read_index(image: bytes, offset: int, size: int) -> int:
