@@ -36,6 +36,7 @@ Three smaller markers describe how a value's cover moves rather than who owes it
 | `[PreservesCover]` | method | Awaiting it gives the caller back the cover it had (see FOSYNC009). |
 | `[AcquiresCover]` | method | The helper acquires cover through `Sync` for entities it names itself -- a global-map group's members, the carrier and map a radio resolves to -- and answers whether it succeeded, possibly with a record of what it covered. A body calling it counts as acquiring, exactly as one calling `Sync` directly. Where the helper covers an entity it returns or takes, `[ProvidesCover]` is the more precise statement and wins. |
 | `[PassesCover]` | parameter | The method returns this argument unchanged (`Game.VerifyNotNull`), so the result is covered exactly when the argument was, with the same reach. |
+| `[CoverEffect(kind)]` | method | What the call does to the held cover: `Replace`, `Extend`, `Restore`, `Snapshot` or `Release`. It is what the `Sync` surface declares about itself, and every rule below reads the effect from there. |
 
 `[RequiresCover]` means two things depending on where it sits, and that split is the design rather than an
 overload:
@@ -211,6 +212,51 @@ turned into an annotation by proving the acquisition is top-level, which is per-
 says nothing about lifetime: the entity may have been destroyed while the callee ran, so a caller that keeps
 using it still owes the ordinary liveness check.
 
+### What the rule proves instead of asking
+
+Both halves of that contract are usually visible in the callee's own body, and the analyzer has the body: the
+scripts and the `Sync` helpers compile into one compilation. So it proves what the annotation would have
+asserted, and the annotation stays for what no body here shows — a helper that locks and then restores the
+caller's snapshot, and anything compiled elsewhere.
+
+The proofs rest on what the acquisition families actually do, and each one says so on its own declaration
+rather than in its name. `Sync.Lock` hands the native primitive the listed entities and it **replaces** the held
+set with exactly those — `[CoverEffect(CoverEffectKind.Replace)]`. `Sync.Widen` snapshots the held set, adds the
+extras and restores the union, so it **keeps** what it found — `Extend`. `Sync.Restore(snapshot)` puts back
+exactly the snapshot — `Restore`; `Sync.Snapshot` reports it without changing anything; `Sync.Release` drops it.
+Nothing in the analysis recognises `Widen`, `Lock` or `Restore` as words: a helper renamed keeps its meaning, a
+helper added without the attribute has none, and a project that spells its acquisitions differently is read the
+same way. From the effects:
+
+- **Preserving is provable.** A body whose every await widens — directly, through `Sync.Restore` of a snapshot
+  it took itself, or through another method the same proof covers — cannot take the caller's cover away. A body
+  that never awaits proves nothing (awaiting at all is what the rule counts as the loss) and one that calls
+  `Sync.Release` is out.
+- **Providing is provable.** Handing a value to a parameter leaves it covered when the callee's own acquisition
+  names that parameter, runs on every path that returns past it, and nothing the body awaits afterwards takes
+  the cover away again. "Names it" includes the list idiom — `List<Entity> roots = new List<Entity> { cr, map };
+  await Sync.Widen(roots);` names both. "Runs on every path" is a statement of the body itself, or the
+  condition of a guard whose branch never falls through (`if (!await Sync.Lock(cr)) { return false; }`); an
+  acquisition inside a loop, an `else` or a switch section proves nothing, which is the conditional-acquisition
+  trap below, resolved by refusing to guess.
+- **A re-proof may be a restore.** At the use site, the re-proof is an acquisition naming the value — through a
+  list of roots as well — or a `Sync.Restore` of a snapshot taken **before** the await that lost the cover: the
+  snapshot is the cover, so it names the value without mentioning it.
+
+Two more shapes are proved the same way. A body that takes its own snapshot, runs re-entrant work and puts the
+snapshot back **in the very next statement** loses nothing across the whole body — that is the hand-written form
+of preservation, and it is what a helper does when it knows its callee replaces the cover. And a local the body
+**re-reads after the await** — `map = cr.GetMap();` once the attacker has been locked again — is as fresh as one
+declared there: what the use sees is what that assignment put there. The re-read has to sit in the use's own
+block, since one inside a branch leaves the stale value on the other path.
+
+Cycles answer "no" on the recursive edge, and a "no" reached that way is not cached, so the result does not
+depend on which method the walk started from. Every step is conservative in one direction: an await the
+analyzer cannot resolve, or a body outside this compilation, reports rather than hides.
+
+In the embedding project these proofs took the backlog from 3 933 sites to 779 without a line of game code
+changing.
+
 ### What the rule approximates
 
 It is not a full control flow graph. It walks source order, with two corrections that the position-only
@@ -230,16 +276,29 @@ is what decides, not the designation's own position.
 What remains unmodelled is a loop whose re-proof sits at the top of the next iteration, and any path shape a
 source walk cannot see. The rule under-reports there rather than guessing.
 
-### Backlog
+### Closing the backlog
 
-410 sites in the embedding project's production code and 2096 in its tests, so it ships at `suggestion`. The
-count is not noise: the awaits it names most often are `Sync.Widen` (37), `Sync.Lock` (17), and `Sync.Restore`
-(15) — that is, values *left out of the acquisition list*, which is exactly what the embedding project's own
-guidance warns about when it says to pass required caller entities through the `strictRoots` overload. The
-class has already crashed in production (`Managed entity target is destroyed`).
+The embedding project took it from 3 933 sites to zero and gates the rule as an error. The proofs above did
+four fifths of it; what was left was the honest remainder, where the callee really does hand the cover to
+something else. The awaits it named most often are the subject-taking helpers a whole layer is built on --
+firing a modifier event, killing a critter, granting an ability, reporting a quest objective -- each of which
+re-validates its own subject internally and promises the caller nothing.
 
-Each site needs its author's intent — add the value to the acquisition, re-prove it after, or mark the callee
-`[PreservesCover]` when it really does hand cover back — so the backlog is per-site work, not a sweep.
+The remainder split by what the caller is:
+
+- **A test re-proves and asserts in the same breath.** The fixture has to survive for the rest of the test to
+  mean anything, so a one-line `Testing.KeepCovered(cr)` — whose body is `Invariant.Verify(await Sync.Widen(cr),
+  ...)` — states that and fails loudly when it does not. The analyzer proves the helper's own contract from that
+  body, so no annotation is needed anywhere. Two shapes were worth doing at the helper instead of the call site:
+  a thin test wrapper that forwards to production work re-proves once at its end and closes every call site it
+  has (nine of them closed 305 sites).
+- **Production acts on the answer.** `if (!await Sync.Widen(x)) { return; }` after the call that could have
+  taken the cover away — the acquisition's failure means the entity is gone, which is exactly the case the old
+  code walked into. A scene fixture is the exception that verifies instead: a dev stand with a dead fixture has
+  nothing left to show.
+
+Neither pass is a sweep over the text: the insertion point is the statement that lost the cover, found through
+the syntax tree, and every site whose await sits inside a condition or an argument was read by hand.
 
 **Most of it is undeclared contract, not defective code.** A large share of the backlog is one shape: a
 `Task<bool>` helper that hands its own entity parameter to a `Sync` acquisition and returns the outcome. That
@@ -301,12 +360,12 @@ happens to be covered, and trusting the covered side's own link otherwise — do
 different answer depending on what the caller holds. When a predicate cannot acquire, judge only from the
 entities it is guaranteed to cover.
 
-FOSYNC001, FOSYNC002 and FOSYNC003 gate the build as errors: none has a backlog -- a cover annotation on a
-non-entity can never be satisfied, every entry point is annotated, and every obligation is discharged (see
-[Closing the FOSYNC002 backlog](#closing-the-fosync002-backlog)). Severities come from the embedding project's
-`.editorconfig`. Note that the generated managed project sets
-`TreatWarningsAsErrors`, so promoting a rule to `warning` makes it a hard build failure — roll out by
-severity, not all at once.
+Every rule of the family now gates the build as an error, and none carries a backlog: a cover annotation on a
+non-entity can never be satisfied, every entry point is annotated, every obligation is discharged (see
+[Closing the FOSYNC002 backlog](#closing-the-fosync002-backlog)) and every value is re-proved after the await
+that released it (see [Closing the backlog](#closing-the-backlog)). Severities come from the embedding project's
+`.editorconfig`. Note that the generated managed project sets `TreatWarningsAsErrors`, so promoting a rule to
+`warning` makes it a hard build failure — roll out by severity, not all at once.
 
 ## Where it lives
 
@@ -454,7 +513,8 @@ zero without a single suppression, in this order:
 
 Proving cover where there was none raised FOSYNC009 from 3 554 to 3 932: a value FOSYNC002 used to report as
 uncovered is now covered, and where an await releases it before use FOSYNC009 says so instead. That is the
-same defect class moving to the rule that names it, not new debt.
+same defect class moving to the rule that names it, not new debt — and that backlog was itself closed the next
+day (see [Closing the backlog](#closing-the-backlog)).
 
 What remains is the reach vocabulary. `destroy_graph`, `attachment_graph`, `transfer_global_batch`,
 `transfer_global_group` are engine-specific closures rather than parent walks, so each needs a decided

@@ -54,6 +54,23 @@ namespace FOnline
     [System.AttributeUsage(System.AttributeTargets.Parameter)]
     public sealed class PassesCoverAttribute : System.Attribute { }
 
+    public enum CoverEffectKind
+    {
+        Replace,
+        Extend,
+        Restore,
+        Snapshot,
+        Release,
+    }
+
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class CoverEffectAttribute : System.Attribute
+    {
+        public CoverEffectAttribute(CoverEffectKind effect) { Effect = effect; }
+
+        public CoverEffectKind Effect { get; }
+    }
+
     [System.AttributeUsage(System.AttributeTargets.ReturnValue)]
     public sealed class ReturnsAncestorAttribute : System.Attribute { }
 
@@ -120,11 +137,27 @@ namespace FOnline
 
     public static partial class Sync
     {
+        [CoverEffect(CoverEffectKind.Extend)]
         public static System.Threading.Tasks.Task<bool> Widen(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
+        [CoverEffect(CoverEffectKind.Extend)]
+        public static System.Threading.Tasks.Task<bool> Widen(System.Collections.Generic.List<Entity> entities) { return System.Threading.Tasks.Task.FromResult(true); }
+        [CoverEffect(CoverEffectKind.Replace)]
         public static bool Lock(Entity entity) { return true; }
+        [CoverEffect(CoverEffectKind.Extend)]
         public static bool WidenCritterWithMap(Critter cr) { return true; }
         public static bool IsCovered(Entity entity) { return true; }
+        [CoverEffect(CoverEffectKind.Replace)]
         public static System.Threading.Tasks.Task<bool> LockAsync(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
+        [CoverEffect(CoverEffectKind.Snapshot)]
+        public static System.Collections.Generic.List<Entity> Snapshot() { return new System.Collections.Generic.List<Entity>(); }
+        [CoverEffect(CoverEffectKind.Restore)]
+        public static System.Threading.Tasks.Task<bool> Restore(System.Collections.Generic.List<Entity> entities) { return System.Threading.Tasks.Task.FromResult(true); }
+        [CoverEffect(CoverEffectKind.Release)]
+        public static void Release() { }
+        // An acquisition whose name says nothing, and a name that says everything with no declaration behind it
+        [CoverEffect(CoverEffectKind.Extend)]
+        public static System.Threading.Tasks.Task<bool> Grab(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
+        public static System.Threading.Tasks.Task<bool> WidenLookalike(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
     }
 
     public static class Game
@@ -259,10 +292,9 @@ namespace LastFrontier
         // A target whose `Sync` has no acquisition helpers (the client and mapper builds) owes nothing
         CheckWithPreamble(failures,
                           "no acquisition helpers means no obligation",
-                          Preamble.Replace(" Widen(", " NoWiden(")
-                              .Replace(" Lock(Entity", " NoLock(Entity")
-                              .Replace(" WidenCritterWithMap(", " NoWidenCritterWithMap(")
-                              .Replace(" LockAsync(", " NoLockAsync("),
+                          Preamble.Replace("[CoverEffect(CoverEffectKind.Replace)]", "")
+                              .Replace("[CoverEffect(CoverEffectKind.Extend)]", "")
+                              .Replace("[CoverEffect(CoverEffectKind.Restore)]", ""),
                           @"
 namespace LastFrontier
 {
@@ -867,6 +899,309 @@ namespace LastFrontier
         static void Needs([RequiresCover] Critter cr) { }
     }
 }");
+
+        Check(failures,
+              "a callee that only widens is proved preserving without the annotation",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static async Task<bool> WidensOnly(Critter cr) { return await Sync.Widen(cr); }
+
+        static async Task<bool> WidensThroughHelper(Critter cr) { return await WidensOnly(cr); }
+
+        static async Task<bool> Locks(Critter cr) { return await Sync.LockAsync(cr); }
+
+        static async Task<bool> KeepsItsOwnSnapshot(Critter cr)
+        {
+            List<Entity> cover = Sync.Snapshot();
+            return await Sync.Restore(cover);
+        }
+
+        public static async Task Widened([RequiresCover] Critter cr, Critter other)
+        {
+            await WidensOnly(other);
+            Needs(cr);
+        }
+
+        public static async Task Chained([RequiresCover] Critter cr, Critter other)
+        {
+            await WidensThroughHelper(other);
+            Needs(cr);
+        }
+
+        public static async Task Restored([RequiresCover] Critter cr, Critter other)
+        {
+            await KeepsItsOwnSnapshot(other);
+            Needs(cr);
+        }
+
+        public static async Task Locked([RequiresCover] Critter cr, Critter other)
+        {
+            await Locks(other);
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}",
+              "FOSYNC009");
+
+        Check(failures,
+              "a callee that acquires for its parameter re-proves the value it was handed",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        static async Task<bool> Covers(Critter cr)
+        {
+            if (!await Sync.LockAsync(cr)) { return false; }
+
+            return true;
+        }
+
+        static async Task<bool> CoversThroughList(Critter cr, Map map)
+        {
+            List<Entity> roots = new List<Entity> { cr, map };
+            return await Sync.Widen(roots);
+        }
+
+        static async Task<bool> CoversOnlySometimes(Critter cr, bool transport)
+        {
+            if (transport) { return await Sync.LockAsync(cr); }
+
+            return true;
+        }
+
+        static async Task<bool> CoversThenLetsGo(Critter cr, Critter other)
+        {
+            bool covered = await Sync.LockAsync(cr);
+            return covered && await Sync.LockAsync(other);
+        }
+
+        public static async Task Reacquired([RequiresCover] Critter cr)
+        {
+            await Pause();
+            await Covers(cr);
+            Needs(cr);
+        }
+
+        public static async Task ReacquiredInList([RequiresCover] Critter cr, Map map)
+        {
+            await Pause();
+            await CoversThroughList(cr, map);
+            Needs(cr);
+        }
+
+        public static async Task Conditional([RequiresCover] Critter cr)
+        {
+            await Pause();
+            await CoversOnlySometimes(cr, true);
+            Needs(cr);
+        }
+
+        public static async Task Dropped([RequiresCover] Critter cr, Critter other)
+        {
+            await Pause();
+            await CoversThenLetsGo(cr, other);
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}",
+              "FOSYNC009",
+              "FOSYNC009");
+
+        Check(failures,
+              "a re-proof may name the value through a list, or restore the snapshot that held it",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task ThroughList([RequiresCover] Critter cr, Map map)
+        {
+            await Pause();
+            List<Entity> roots = new List<Entity> { cr };
+            roots.Add(map);
+            if (!await Sync.Widen(roots)) { return; }
+            Needs(cr);
+            NeedsMap(map);
+        }
+
+        public static async Task ThroughRestoredSnapshot([RequiresCover] Critter cr)
+        {
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+            if (!await Sync.Restore(cover)) { return; }
+            Needs(cr);
+        }
+
+        public static async Task SnapshotTakenTooLate([RequiresCover] Critter cr)
+        {
+            await Pause();
+            List<Entity> cover = Sync.Snapshot();
+            if (!await Sync.Restore(cover)) { return; }
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+
+        static void NeedsMap([RequiresCover] Map map) { }
+    }
+}",
+              "FOSYNC009");
+
+        Check(failures,
+              "restoring the snapshot in the next statement keeps the body preserving",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        static async Task<bool> RepairsRightAfter(Critter cr)
+        {
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+            if (!await Sync.Restore(cover)) { return false; }
+
+            return true;
+        }
+
+        static async Task<bool> RepairsTooLate(Critter cr)
+        {
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+            await Pause();
+            return await Sync.Restore(cover);
+        }
+
+        public static async Task Repaired([RequiresCover] Critter cr, Critter other)
+        {
+            await RepairsRightAfter(other);
+            Needs(cr);
+        }
+
+        public static async Task NotRepaired([RequiresCover] Critter cr, Critter other)
+        {
+            await RepairsTooLate(other);
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}",
+              "FOSYNC009");
+
+        Check(failures,
+              "a local the body re-reads after the await is fresh",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task Rebound([RequiresCover] Critter cr)
+        {
+            Map? map = cr.GetMap();
+            await Pause();
+            map = cr.GetMap();
+            NeedsMap(map);
+        }
+
+        public static async Task ReboundInBranch([RequiresCover] Critter cr, bool flag)
+        {
+            Map? map = cr.GetMap();
+            await Pause();
+            if (flag) { map = cr.GetMap(); }
+            NeedsMap(map);
+        }
+
+        static void NeedsMap([RequiresCover] Map? map) { }
+    }
+}",
+              "FOSYNC009");
+
+        Check(failures,
+              "what a call does to the cover is read from its declaration, not from its name",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static async Task<bool> ExtendsUnderAnyName(Critter cr) { return await Sync.Grab(cr); }
+
+        static async Task<bool> NamedLikeAWidenButUndeclared(Critter cr) { return await Sync.WidenLookalike(cr); }
+
+        public static async Task Declared([RequiresCover] Critter cr, Critter other)
+        {
+            await ExtendsUnderAnyName(other);
+            Needs(cr);
+        }
+
+        public static async Task NamedOnly([RequiresCover] Critter cr, Critter other)
+        {
+            await NamedLikeAWidenButUndeclared(other);
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}",
+              "FOSYNC009");
+
+        Check(failures,
+              "a body that releases the cover outright is not preserving",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static async Task<bool> WidensThenReleases(Critter cr)
+        {
+            bool widened = await Sync.Widen(cr);
+            Sync.Release();
+            return widened;
+        }
+
+        public static async Task Run([RequiresCover] Critter cr, Critter other)
+        {
+            await WidensThenReleases(other);
+            Needs(cr);
+        }
+
+        static void Needs([RequiresCover] Critter cr) { }
+    }
+}",
+              "FOSYNC009");
 
         // Source order is not execution order; these two are what the position-only version got wrong.
         Check(failures, "an await in a sibling branch does not reach the other branch", @"

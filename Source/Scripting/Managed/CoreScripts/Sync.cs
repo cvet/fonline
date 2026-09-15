@@ -24,6 +24,7 @@ public static partial class Sync
     //     if (!Sync::Lock(npc, map, nearbyCritters)) return;
 
     // Lifecycle: strict — a destroyed/destroying entity returns false before or after acquisition; it is never skipped
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity entity)
     {
         if (entity.IsDestroyed || entity.IsDestroying) {
@@ -42,6 +43,7 @@ public static partial class Sync
     }
 
     // Lifecycle: strict — either destroyed/destroying entity makes the call return false; neither one is skipped
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity)
     {
         // Routed through the list overload so the always-covered filtering lives in one place
@@ -49,12 +51,14 @@ public static partial class Sync
     }
 
     // Lifecycle: strict — any destroyed/destroying entity makes the call return false; no partial set is accepted
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, Entity thirdEntity)
     {
         return await Lock(new List<Entity> { firstEntity, secondEntity, thirdEntity });
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying member returns false and is not skipped
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Entity> entities)
     {
         if (entities.Count == 0) {
@@ -92,6 +96,7 @@ public static partial class Sync
     // engine's per-callback nested SyncContext: it keeps a caller's downstream entity access valid across
     // re-entrant work that internally re-Sync's.
     // Lifecycle: Snapshot does not filter handles or include Game.Lock singleton entries; Restore reports whether every captured handle survived
+    [CoverEffect(CoverEffectKind.Snapshot)]
     public static List<Entity> Snapshot()
     {
         return Game.GetHeldSyncEntities();
@@ -104,6 +109,7 @@ public static partial class Sync
     }
 
     // Lifecycle: restores every live entry and returns true only if the entire input stayed live; an empty snapshot releases all cover and succeeds
+    [CoverEffect(CoverEffectKind.Restore)]
     public static async Task<bool> Restore(List<Entity> entities)
     {
         List<Entity> candidates = new List<Entity>(entities);
@@ -142,6 +148,7 @@ public static partial class Sync
     // Destroyed/destroying extras are dropped by Restore's filtering — the caller re-checks lifecycle
     // after the call if it continues using them (yield boundary).
     // Lifecycle: strict for requested extras; stale extras fail the call, stale retained cover is pruned, and live survivors remain covered
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> Widen(List<Entity> extras)
     {
         for (int i = 0; i < extras.Count; i++) {
@@ -182,6 +189,7 @@ public static partial class Sync
     }
 
     // Lifecycle: strict for the requested extra; a stale extra fails without a native lookup, while stale retained cover is pruned for live input
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> Widen(Entity extra)
     {
         return await Widen(new List<Entity> { extra });
@@ -189,6 +197,7 @@ public static partial class Sync
 
     // Widens current cover with every live extra while intentionally skipping stale requests.
     // Lifecycle: best-effort; unlike strict Widen, this operation does not prove requested handles live
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task WidenBestEffort(List<Entity> extras)
     {
         List<Entity> cover = Snapshot();
@@ -213,6 +222,7 @@ public static partial class Sync
 
     // Single-entity best-effort widening overload.
     // Lifecycle: best-effort — a destroyed/destroying extra is intentionally omitted; an explicitly held live extra is a no-op
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task WidenBestEffort(Entity extra)
     {
         if (extra.IsDestroyed || extra.IsDestroying) {
@@ -241,10 +251,12 @@ public static partial class Sync
 
     // Widens cover with cr and its current map when mapped; retries if cr migrates during acquisition.
     // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr-to-map link
+    [CoverEffect(CoverEffectKind.Extend)]
     public static Task<bool> WidenCritterWithMap(Critter cr) => WidenCritterWithMap(new List<Entity>(), cr);
 
     // Widens cover with strictRoots + cr + its current map when mapped; every retry explicitly re-proves all roots.
     // Lifecycle: a stale explicit root/cr/current map returns false; a changed cr-to-map link is retried
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterWithMap(List<Entity> strictRoots, Critter cr)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
@@ -287,6 +299,7 @@ public static partial class Sync
 
     // Widens cover with both critters and their distinct current maps; retries if either critter migrates.
     // Lifecycle: a stale critter or initially resolved map returns false; acquisition races retry against both current map links
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCrittersWithMap(Critter first, Critter second)
     {
         while (true) {
@@ -327,6 +340,7 @@ public static partial class Sync
 
     // Widens cover with cr, its current map, and that map's current location.
     // Lifecycle: a stale cr or resolved map/location returns false; acquisition races retry against the current parent chain
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterWithMapAndLocation(Critter cr)
     {
         while (true) {
@@ -379,6 +393,7 @@ public static partial class Sync
     // caller ran in the unrestricted (empty-context) mode — release back to it instead of leaving a
     // partial lock set that would reject the caller's follow-up accesses.
     // Lifecycle: an empty snapshot releases (also drains Game.Lock) without adding first/second; otherwise stale snapshot/fixed entries are dropped best-effort
+    [CoverEffect(CoverEffectKind.Restore)]
     public static async Task RestoreCallerCover(List<Entity> snapshot, Entity first, Entity second)
     {
         if (snapshot.Count == 0) {
@@ -392,6 +407,7 @@ public static partial class Sync
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying critter returns false and is not skipped
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Critter> critters)
     {
         if (critters.Count == 0) {
@@ -410,6 +426,7 @@ public static partial class Sync
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying item returns false and is not skipped
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Item> items)
     {
         if (items.Count == 0) {
@@ -428,6 +445,7 @@ public static partial class Sync
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying map returns false and is not skipped
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Map> maps)
     {
         if (maps.Count == 0) {
@@ -446,6 +464,7 @@ public static partial class Sync
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying location returns false and is not skipped
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Location> locations)
     {
         if (locations.Count == 0) {
@@ -470,6 +489,7 @@ public static partial class Sync
     // the union
 
     // Lifecycle: strict — a stale fixed entity or critter returns false; an empty critter array locks only the fixed entity
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity entity, List<Critter> critters)
     {
         if (entity.IsDestroyed) {
@@ -489,6 +509,7 @@ public static partial class Sync
     }
 
     // Lifecycle: strict — a stale fixed entity or critter returns false; an empty array locks the two fixed entities
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, List<Critter> critters)
     {
         if (firstEntity.IsDestroyed || secondEntity.IsDestroyed) {
@@ -509,6 +530,7 @@ public static partial class Sync
     }
 
     // Lifecycle: strict — a stale fixed entity or item returns false; an empty item array locks only the fixed entity
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity entity, List<Item> items)
     {
         if (entity.IsDestroyed) {
@@ -528,6 +550,7 @@ public static partial class Sync
     }
 
     // Lifecycle: strict — a stale fixed entity or item returns false; an empty array locks the two fixed entities
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, List<Item> items)
     {
         if (firstEntity.IsDestroyed || secondEntity.IsDestroyed) {
@@ -548,12 +571,14 @@ public static partial class Sync
     }
 
     // Lifecycle: performs no entity checks and reports no status; an empty cover is not unrestricted, so later entity access must sync again
+    [CoverEffect(CoverEffectKind.Release)]
     public static void Release()
     {
         Game.SyncRelease();
     }
 
     // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr->map link
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCritterWithMap(Critter cr)
     {
         while (true) {
@@ -591,6 +616,7 @@ public static partial class Sync
     }
 
     // Lifecycle: a stale critter or initially resolved map returns false; acquisition races retry against both current map links
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCrittersWithMap(Critter first, Critter second)
     {
         while (true) {
@@ -636,6 +662,7 @@ public static partial class Sync
     }
 
     // Lifecycle: a stale cr or resolved map/location returns false; acquisition races retry against the current parent chain
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCritterWithMapAndLocation(Critter cr)
     {
         while (true) {
@@ -694,6 +721,7 @@ public static partial class Sync
     }
 
     // Lifecycle: a stale cr/member/destination chain returns false; a changed source graph is retried because cr may have migrated or changed groups
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockForTransferToMap(Critter cr, Map destMap)
     {
         while (true) {
@@ -765,6 +793,7 @@ public static partial class Sync
     // Retry yields may drop incidental caller cover; every acquisition re-proves strictRoots + cr,
     // and success also covers every member from the stable native global-group snapshot.
     // Lifecycle: strict - a stale explicit root/member, mapped cr, or exhausted retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterWithGlobalMapGroup(List<Entity> strictRoots, Critter cr)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
@@ -837,6 +866,7 @@ public static partial class Sync
 
     // Monotonic counterpart of LockForTransferToMap for helpers that must retain caller-owned roots.
     // Lifecycle: a stale cr/member/destination chain returns false; a changed source graph is retried against the current parent/group links
+    [CoverEffect(CoverEffectKind.Extend)]
     public static Task<bool> WidenForTransferToMap(Critter cr, Map destMap) => WidenForTransferToMap(new List<Entity>(),
                                                                                                      cr, destMap);
 
@@ -845,6 +875,7 @@ public static partial class Sync
     // Lifecycle: a stale explicit root/source member/destination chain returns false; changed source
     // or parent graphs are retried.
     // Lifecycle: a stale explicit root/source member/destination chain returns false; changed source or parent graphs are retried
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenForTransferToMap(List<Entity> strictRoots, Critter cr, Map destMap)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
@@ -988,6 +1019,7 @@ public static partial class Sync
     }
 
     // Lifecycle: a stale player/map or resolved location returns false; final acquisition/relink races retry the map->location chain
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockForViewMap(Player player, Map map)
     {
         while (true) {
@@ -1014,6 +1046,7 @@ public static partial class Sync
     }
 
     // Lifecycle: a stale player/cr or resolved map/location returns false; acquisition races retry against the current cr parent chain
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockPlayerAndCritterWithMapAndLocation(Player player, Critter cr)
     {
         while (true) {
@@ -1059,6 +1092,7 @@ public static partial class Sync
 
     // Replaces cover with player + cr and the stable initial-info dependency graph: map/location when mapped, or every current global-map group member.
     // Lifecycle: strict - any stale dependency returns false; parent/group changes during acquisition are retried before returning success
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockPlayerCritterInitialInfoGraph(Player player, Critter cr)
     {
         return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, new List<Critter> { cr });
@@ -1066,6 +1100,7 @@ public static partial class Sync
 
     // Replaces cover with player + every critter and the union of all stable mapped or global initial-info graphs.
     // Lifecycle: strict - every root, map/location, and global-group member is requested by the final exact acquisition; graph changes are retried
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockPlayerCrittersInitialInfoGraphs(Player player, List<Critter> critters)
     {
         return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, critters);
@@ -1074,6 +1109,7 @@ public static partial class Sync
     // Replaces cover with both sessions, the stable controlled-critter initial-info graph,
     // and the spectator view target. A graph race returns false to the caller's retry budget.
     // Lifecycle: strict — a stale dependency or concurrent player graph change returns false to the caller's single retry budget; a stable asymmetric player/cr link is an invariant failure
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockPlayerReconnectGraph(Player notLoggedInPlayer, Player player)
     {
         if (!await Lock(notLoggedInPlayer, player)) {
@@ -1167,6 +1203,7 @@ public static partial class Sync
 
     // Replaces cover with strictRoots plus every critter and the union of all stable mapped or global initial-info graphs.
     // Lifecycle: strict - every explicit root, critter, map/location, and global-group member must be live in the final exact acquisition
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCrittersInitialInfoGraphs(List<Entity> strictRoots, List<Critter> critters)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
@@ -1350,6 +1387,7 @@ public static partial class Sync
     }
 
     // Lifecycle: a stale item/direct holder or missing holder returns false; direct reparent races retry against the current holder
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockItemWithHolder(Item item)
     {
         while (true) {
@@ -1411,6 +1449,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers cr's complete stable transitive attachment component and every component node's map or global-map group.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterAttachmentGraph(Critter cr)
     {
         return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { cr });
@@ -1418,6 +1457,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus cr's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterAttachmentGraphWithRoots(List<Entity> strictRoots, Critter cr)
     {
         return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> { cr });
@@ -1425,6 +1465,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers the union of both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterAttachmentGraphs(Critter first, Critter second)
     {
         return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { first, second });
@@ -1432,6 +1473,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterAttachmentGraphsWithRoots(List<Entity> strictRoots, Critter first,
                                                                          Critter second)
     {
@@ -1440,6 +1482,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers the leader plus every group member's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenForTransferToGlobalBatch(Critter leader, List<Critter> group)
     {
         return await WidenForTransferToGlobalBatch(new List<Entity>(), leader, group);
@@ -1447,6 +1490,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus the leader and every group member's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenForTransferToGlobalBatch(List<Entity> strictRoots, Critter leader,
                                                                  List<Critter> group)
     {
@@ -1461,6 +1505,7 @@ public static partial class Sync
 
     // Internal union builder for stable transitive attachment components and each node's current map or complete global-map group.
     // Lifecycle: strict — all explicit roots, discovered component nodes, and placement members must remain live through the final snapshot check
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterAttachmentGraphsImpl(List<Entity> strictRoots,
                                                                     List<Critter> attachmentRoots)
     {
@@ -1735,6 +1780,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers cr plus its source map, complete stable global group, or only cr while still parentless.
     // Lifecycle: strict — a stale critter/placement dependency or exhausted global-group retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterForDestroy(Critter cr)
     {
         return await WidenCritterAttachmentGraphWithRoots(new List<Entity>(), cr);
@@ -1742,6 +1788,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and its source map, complete stable global group, or parentless own lock.
     // Lifecycle: strict — a stale explicit root/cr/placement dependency or exhausted global-group retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterForDestroy(List<Entity> strictRoots, Critter cr)
     {
         return await WidenCritterAttachmentGraphWithRoots(strictRoots, cr);
@@ -1749,11 +1796,13 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers cr + its stable source map or global group and globalCr + every stable target-group member.
     // Lifecycle: strict — a stale dependency or exhausted retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static Task<bool> WidenForTransferToGlobalGroup(Critter cr, Critter globalCr) =>
         WidenForTransferToGlobalGroup(new List<Entity>(), cr, globalCr);
 
     // Retry yields may drop incidental caller cover; snapshots both graphs under strictRoots + cr + globalCr and returns only after one final union acquisition still matches them.
     // Lifecycle: strict — every explicit root, source dependency, target-group member, and final union member must be live
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenForTransferToGlobalGroup(List<Entity> strictRoots, Critter cr, Critter globalCr)
     {
         List<Entity> roots = new List<Entity>(strictRoots);
@@ -1882,6 +1931,7 @@ public static partial class Sync
 
     // Replaces the caller cover with map's complete stable destroy graph: map + parent location + every independent spectator Player.
     // Lifecycle: strict — a stale dependency or exhausted map/location/spectator membership retry budget returns false
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockMapForDestroy(Map map)
     {
         if (!await Lock(map)) {
@@ -1893,6 +1943,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers map + current location + every independent spectator Player, while map ancestry covers its descendants.
     // Lifecycle: strict — a stale dependency or exhausted map/location/spectator membership retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenMapForDestroy(Map map)
     {
         List<Entity> roots = new List<Entity> { map };
@@ -1956,6 +2007,7 @@ public static partial class Sync
 
     // Replaces the caller cover with location's complete stable destroy graph: the location tree + every independent spectator Player on its maps.
     // Lifecycle: strict — a stale dependency or exhausted map/spectator membership retry budget returns false
+    [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockLocationForDestroy(Location location)
     {
         if (!await Lock(location)) {
@@ -1967,6 +2019,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers location + every independent spectator Player from current child maps, while location ancestry covers descendants.
     // Lifecycle: strict — a stale dependency or exhausted map/spectator membership retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenLocationForDestroy(Location location)
     {
         List<Entity> roots = new List<Entity> { location };
@@ -2077,6 +2130,7 @@ public static partial class Sync
     // spectator viewing the map with no critter at all
     // Widens cover with map + its current location + every Player observing it; every retry explicitly re-proves all roots.
     // Lifecycle: strict — a stale dependency or exhausted map/location/observer membership retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenMapForCritterAdd(Map map)
     {
         List<Entity> roots = new List<Entity> { map };
@@ -2151,6 +2205,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers item + stable immediate holder, while the root lock covers its nested subtree by ancestry.
     // Lifecycle: strict — a stale root or owned item with a stale/unresolvable direct holder returns false; a parentless root succeeds and direct reparent races are retried
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenItemForDestroy(Item item)
     {
         return await WidenItemsForDestroy(new List<Entity>(), new List<Item> { item });
@@ -2158,6 +2213,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus item and its stable immediate holder.
     // Lifecycle: strict — every explicit root, item, and current direct holder must remain live through the final relationship read
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenItemForDestroy(List<Entity> strictRoots, Item item)
     {
         return await WidenItemsForDestroy(strictRoots, new List<Item> { item });
@@ -2165,6 +2221,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers every root item + the union of stable immediate holders, with each nested subtree covered by ancestry.
     // Lifecycle: strict — any stale root or owned item with a stale/unresolvable direct holder returns false; parentless roots succeed, duplicates are deduplicated, and direct reparent races are retried
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenItemsForDestroy(List<Item> items)
     {
         return await WidenItemsForDestroy(new List<Entity>(), items);
@@ -2172,6 +2229,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; every attempt re-proves strictRoots, and success also covers every root item + stable immediate holder.
     // Lifecycle: strict — every explicit root and current direct holder of an owned item must remain live through the final relationship read; parentless roots need no holder
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenItemsForDestroy(List<Entity> strictRoots, List<Item> items)
     {
         if (items.Count == 0) {
@@ -2248,6 +2306,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success covers cr plus every current matching direct inventory-item destroy graph and verifies membership stability.
     // Lifecycle: strict — a stale critter/item graph or exhausted retry budget returns false; an empty matching set succeeds with cr explicitly covered
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, hstring protoId)
     {
         return await WidenCritterItemsForDestroy(new List<Entity>(), cr, new List<hstring> { protoId });
@@ -2255,6 +2314,7 @@ public static partial class Sync
 
     // Multi-proto convenience overload; leaves cr and every current matching stable inventory-item destroy graph covered.
     // Lifecycle: strict — identical to the strict-root multi-proto overload
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, List<hstring> protoIds)
     {
         return await WidenCritterItemsForDestroy(new List<Entity>(), cr, protoIds);
@@ -2262,6 +2322,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current matching direct inventory-item destroy graph.
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, hstring protoId)
     {
         return await WidenCritterItemsForDestroy(strictRoots, cr, new List<hstring> { protoId });
@@ -2269,6 +2330,7 @@ public static partial class Sync
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current inventory-item destroy graph matching any requested proto.
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr,
                                                                List<hstring> protoIds)
     {
@@ -2303,6 +2365,7 @@ public static partial class Sync
 
     // ProtoItem convenience overload for WidenCritterItemsForDestroy; leaves cr and every matching stable item destroy graph covered.
     // Lifecycle: strict — identical to the hstring overload
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, ProtoItem proto)
     {
         return await WidenCritterItemsForDestroy(cr, proto.ProtoId);
@@ -2310,6 +2373,7 @@ public static partial class Sync
 
     // Strict-root ProtoItem convenience overload; leaves every explicit root, cr and each matching stable item destroy graph covered.
     // Lifecycle: strict — identical to the strict-root hstring overload
+    [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, ProtoItem proto)
     {
         return await WidenCritterItemsForDestroy(strictRoots, cr, proto.ProtoId);
