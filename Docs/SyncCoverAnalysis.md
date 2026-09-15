@@ -294,10 +294,12 @@ cover is exactly how the sync contract is pinned — so the embedding project lo
 sources through a per-path `.editorconfig` section rather than the analyzer knowing about test folders.
 
 Beyond that the remaining sites are few and deliberate, so both rules gate the build and each exception says
-why at the site rather than in a list somewhere else. Two shapes recur: a **synchronous predicate** where
-cover *is* the classification — an uncovered counterpart is judged from the covered side's persistent link and
-only a covered one has its fields read — and a project's own **fixture-side cover helper**, which reaches for
-the primitive by construction and probes afterwards to prove the acquisition landed.
+why at the site rather than in a list somewhere else. The shape that holds up is a project's own **fixture-side
+cover helper**, which reaches for the primitive by construction and probes afterwards to prove the acquisition
+landed. A **synchronous predicate that branches on the probe** — reading a counterpart's fields only when it
+happens to be covered, and trusting the covered side's own link otherwise — does not: the same data then gets a
+different answer depending on what the caller holds. When a predicate cannot acquire, judge only from the
+entities it is guaranteed to cover.
 
 FOSYNC001, FOSYNC002 and FOSYNC003 gate the build as errors: none has a backlog -- a cover annotation on a
 non-entity can never be satisfied, every entry point is annotated, and every obligation is discharged (see
