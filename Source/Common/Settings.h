@@ -83,9 +83,8 @@ protected:
     map<string, string> _settingValues {};
 };
 
-// A group owns its settings as a nested aggregate named after the group, so a setting is always
-// addressed as Settings.Group.Name - the spelling configs and managed scripts already use. Two groups
-// may therefore declare the same short name without either one answering for the other
+// A group owns its settings as a nested aggregate named after it, so a setting is addressed as Settings.Group.Name
+// and two groups may share a short name
 #define SETTING_GROUP(group, ...) \
     struct group##Settings : __VA_ARGS__ \
     { \
