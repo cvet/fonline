@@ -262,7 +262,7 @@ public:
 private:
     std::atomic_bool _started {false};
     std::atomic_bool _startingError {false};
-    shared_ptr<std::atomic_bool> _shutdownInProgress {SafeAlloc::MakeShared<std::atomic_bool>(false)};
+    shared_ptr<std::atomic_bool> _shutdownInProgress {safe_alloc::make_shared<std::atomic_bool>(false)};
 
 public:
     EntityManager EntityMngr;
@@ -271,11 +271,11 @@ public:
     ItemManager ItemMngr;
 
     DataBase DbStorage {};
-    const hstring GameCollectionName = Hashes.ToHashedString("Game");
-    const hstring HistoryCollectionName = Hashes.ToHashedString("History");
-    const hstring PlayersCollectionName = Hashes.ToHashedString("Players");
-    const hstring CrittersCollectionName = Hashes.ToHashedString("Critters");
-    const hstring HashReportsCollectionName = Hashes.ToHashedString("HashReports");
+    const hstring GameCollectionName = Hashes.to_hashed_string("Game");
+    const hstring HistoryCollectionName = Hashes.to_hashed_string("History");
+    const hstring PlayersCollectionName = Hashes.to_hashed_string("Players");
+    const hstring CrittersCollectionName = Hashes.to_hashed_string("Critters");
+    const hstring HashReportsCollectionName = Hashes.to_hashed_string("HashReports");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -307,7 +307,7 @@ private:
         uint64_t JobCounterBeginTotal {};
         deque<pair<nanotime, uint64_t>> JobTimeStamps {};
 
-        optional<Platform::CpuUsageSnapshot> LastCpuUsageSnapshot {};
+        optional<platform::cpu_usage_snapshot> LastCpuUsageSnapshot {};
         nanotime LastCpuUsageSampleTime {};
         bool CpuUsageAvailable {};
         float32_t CpuSystemLoad {};
@@ -396,12 +396,12 @@ private:
     void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
     auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
-    auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
+    auto WrapJobWithSync(work_thread::job body) -> work_thread::job;
     void CountServerStatsJob() noexcept;
 
-    WorkThread _starter {"ServerStarter"};
-    WorkThread _mainWorker {"ServerWorker"};
-    WorkThread _healthWriter {"ServerHealthWriter"};
+    work_thread _starter {"ServerStarter"};
+    work_thread _mainWorker {"ServerWorker"};
+    work_thread _healthWriter {"ServerHealthWriter"};
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};

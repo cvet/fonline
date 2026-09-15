@@ -59,17 +59,17 @@ struct PreviousClientSession
     string StartedAt {};
 };
 
-extern auto GetClientShutdownStageName(ClientShutdownStage stage) noexcept -> string_view;
+auto GetClientShutdownStageName(ClientShutdownStage stage) noexcept -> string_view;
 // Built from the writable root the client actually uses, so the host records its own shutdown stages
 // in the same place - it never loads settings and cannot resolve that root itself
-extern auto MakeClientSessionMarkerPath(string_view writable_root) -> string;
+auto MakeClientSessionMarkerPath(string_view writable_root) -> string;
 
 // Reads and deletes the marker of the run before this one. A value means that run never reached its
 // clean exit, and the stage says how far it got
-extern auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<PreviousClientSession>;
+auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<PreviousClientSession>;
 
-extern void BeginClientSession(string_view marker_path) noexcept;
-extern void SetClientShutdownStage(string_view marker_path, ClientShutdownStage stage) noexcept;
-extern void EndClientSession(string_view marker_path) noexcept;
+void BeginClientSession(string_view marker_path) noexcept;
+void SetClientShutdownStage(string_view marker_path, ClientShutdownStage stage) noexcept;
+void EndClientSession(string_view marker_path) noexcept;
 
 FO_END_NAMESPACE

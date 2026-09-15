@@ -448,7 +448,7 @@ namespace ParticleTests
         };
         const auto write_float = [&result](float32_t value) {
             array<uint8_t, sizeof(float32_t)> bytes {};
-            MemCopy(bytes.data(), &value, sizeof(float32_t));
+            memory::copy(bytes.data(), &value, sizeof(float32_t));
 
             for (uint8_t byte : bytes) {
                 result.emplace_back(byte);

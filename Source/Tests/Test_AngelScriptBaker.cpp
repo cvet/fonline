@@ -144,10 +144,10 @@ namespace VerifyMacro
             }
             else {
                 uint32_t oversized = std::numeric_limits<uint32_t>::max();
-                MemCopy(malformed.data() + sizeof(uint32_t) + 3 * sizeof(uint8_t), &oversized, sizeof(oversized));
+                memory::copy(malformed.data() + sizeof(uint32_t) + 3 * sizeof(uint8_t), &oversized, sizeof(oversized));
             }
 
-            auto source = SafeAlloc::MakeUnique<MemoryDataSource>("MalformedBytecode");
+            auto source = safe_alloc::make_unique<MemoryDataSource>("MalformedBytecode");
             source->AddFile("ContainerTest.fos-bin-server", malformed);
             FileSystem resources;
             resources.AddCustomSource(std::move(source));

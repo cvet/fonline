@@ -118,7 +118,7 @@ public:
         auto& layout = _structLayouts.at(string(name));
         layout.NativeSize = sizeof(T);
         layout.CreateNative = []() -> unique_del_ptr<void> {
-            auto value = SafeAlloc::MakeUnique<T>();
+            auto value = safe_alloc::make_unique<T>();
             return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
         };
         layout.CopyNative = [](ptr<void> dst, ptr<const void> src) { *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>(); };
@@ -143,7 +143,7 @@ public:
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void FinalizeRegistration();
 
-    mutable HashStorage Hashes {};
+    mutable hash_storage Hashes {};
 
 private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;

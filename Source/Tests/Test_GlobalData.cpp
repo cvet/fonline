@@ -72,27 +72,27 @@ namespace
 
     struct GlobalDataCallbacksGuard final
     {
-        std::array<global_data_callback, MAX_GLOBAL_DATA_CALLBACKS> SavedCreate {};
-        std::array<global_data_callback, MAX_GLOBAL_DATA_CALLBACKS> SavedDelete {};
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedCreate {};
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedDelete {};
         int32_t SavedCount {};
 
         GlobalDataCallbacksGuard()
         {
-            std::copy(std::begin(create_global_data_callbacks), std::end(create_global_data_callbacks), SavedCreate.begin());
-            std::copy(std::begin(delete_global_data_callbacks), std::end(delete_global_data_callbacks), SavedDelete.begin());
-            SavedCount = global_data_callbacks_count;
+            std::copy(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), SavedCreate.begin());
+            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), SavedDelete.begin());
+            SavedCount = global_data::callbacks_count;
         }
 
         ~GlobalDataCallbacksGuard()
         {
             // Hand the set back as created without running anything: this test never touched the real
             // globals of the process, and building them a second time would end the run
-            global_data_callbacks_count = 0;
-            (void)create_global_data();
+            global_data::callbacks_count = 0;
+            (void)global_data::create();
 
-            std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(create_global_data_callbacks));
-            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(delete_global_data_callbacks));
-            global_data_callbacks_count = SavedCount;
+            std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(global_data::create_callbacks));
+            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
+            global_data::callbacks_count = SavedCount;
         }
     };
 }
@@ -105,28 +105,28 @@ TEST_CASE("GlobalData")
     DeleteCallCount = 0;
     DeleteCallOrder.clear();
 
-    std::fill(std::begin(create_global_data_callbacks), std::end(create_global_data_callbacks), nullptr);
-    std::fill(std::begin(delete_global_data_callbacks), std::end(delete_global_data_callbacks), nullptr);
+    std::fill(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), nullptr);
+    std::fill(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), nullptr);
 
     SECTION("DeleteGlobalDataCallsRegisteredCallbacksInOrder")
     {
-        global_data_callbacks_count = 3;
-        delete_global_data_callbacks[0] = &DeleteCallbackA;
-        delete_global_data_callbacks[1] = &DeleteCallbackB;
-        delete_global_data_callbacks[2] = &DeleteCallbackC;
+        global_data::callbacks_count = 3;
+        global_data::delete_callbacks[0] = &DeleteCallbackA;
+        global_data::delete_callbacks[1] = &DeleteCallbackB;
+        global_data::delete_callbacks[2] = &DeleteCallbackC;
 
-        delete_global_data();
+        global_data::destroy();
 
         CHECK(DeleteCallCount == 3);
         CHECK(DeleteCallOrder == vector<int32_t> {1, 2, 3});
-        CHECK(global_data_callbacks_count == 3);
+        CHECK(global_data::callbacks_count == 3);
     }
 
     SECTION("DeleteGlobalDataWithNoCallbacksIsNoop")
     {
-        global_data_callbacks_count = 0;
+        global_data::callbacks_count = 0;
 
-        delete_global_data();
+        global_data::destroy();
 
         CHECK(DeleteCallCount == 0);
         CHECK(DeleteCallOrder.empty());
@@ -136,13 +136,13 @@ TEST_CASE("GlobalData")
     {
         // The baker library entry also runs inside an application whose set exists: a second sweep must not build
         // every global twice, and the answer tells that caller the set is not its own to tear down
-        global_data_callbacks_count = 1;
-        create_global_data_callbacks[0] = &CreateCallback;
-        delete_global_data_callbacks[0] = &DeleteNoop;
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteNoop;
 
-        delete_global_data();
-        CHECK(create_global_data());
-        CHECK_FALSE(create_global_data());
+        global_data::destroy();
+        CHECK(global_data::create());
+        CHECK_FALSE(global_data::create());
 
         CHECK(CreateCallCount.load(std::memory_order_relaxed) == 1);
     }
@@ -151,14 +151,14 @@ TEST_CASE("GlobalData")
     {
         // Teardown is not the end of the process any more: the runtime library tears its set down as it
         // returns to the host, and a library loaded again has to get a working set
-        global_data_callbacks_count = 1;
-        create_global_data_callbacks[0] = &CreateCallback;
-        delete_global_data_callbacks[0] = &DeleteCallbackA;
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteCallbackA;
 
-        delete_global_data();
-        (void)create_global_data();
-        delete_global_data();
-        (void)create_global_data();
+        global_data::destroy();
+        (void)global_data::create();
+        global_data::destroy();
+        (void)global_data::create();
 
         CHECK(CreateCallCount.load(std::memory_order_relaxed) == 2);
         CHECK(DeleteCallCount == 2);
@@ -168,27 +168,27 @@ TEST_CASE("GlobalData")
     {
         // A second thread must see a finished set, not a half-built one: it blocks until the sweep that
         // started first is done
-        global_data_callbacks_count = 1;
-        create_global_data_callbacks[0] = &CreateCallback;
-        delete_global_data_callbacks[0] = &DeleteNoop;
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteNoop;
 
-        delete_global_data();
+        global_data::destroy();
 
-        std::thread creator {[] { (void)create_global_data(); }};
+        std::thread creator {[] { (void)global_data::create(); }};
         creator.join();
 
-        (void)create_global_data();
+        (void)global_data::create();
 
         CHECK(CreateCallCount.load(std::memory_order_relaxed) == 1);
     }
 
     SECTION("RacingCreateBuildsTheSetOnce")
     {
-        global_data_callbacks_count = 1;
-        create_global_data_callbacks[0] = &CreateCallback;
-        delete_global_data_callbacks[0] = &DeleteNoop;
+        global_data::callbacks_count = 1;
+        global_data::create_callbacks[0] = &CreateCallback;
+        global_data::delete_callbacks[0] = &DeleteNoop;
 
-        delete_global_data();
+        global_data::destroy();
 
         vector<std::thread> racers;
         racers.reserve(8);
@@ -196,7 +196,7 @@ TEST_CASE("GlobalData")
 
         for (size_t i = 0; i < 8; i++) {
             racers.emplace_back([&builders] {
-                if (create_global_data()) {
+                if (global_data::create()) {
                     builders.fetch_add(1, std::memory_order_relaxed);
                 }
             });

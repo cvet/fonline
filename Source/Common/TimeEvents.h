@@ -44,7 +44,7 @@ FO_DECLARE_EXCEPTION(TimeEventException);
 class BaseEngine;
 
 ///@ ExportRefType Common RefCounted Export = GetId, GetData, GetDataArray, HasData, IsStopped, GetRepeat, Stop, Repeat, SetData, SetDataArray
-class TimeEventContext final : public RefCounted<TimeEventContext>
+class TimeEventContext final : public refcounted<TimeEventContext>
 {
 public:
     explicit TimeEventContext(uint32_t id, timespan repeat, vector<any_t> data);

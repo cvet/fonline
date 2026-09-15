@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(NetworkServerException);
 
 #if FO_HAVE_ASIO
-extern auto GetAsioErrorText(const std::error_code& error) noexcept -> string;
+auto GetAsioErrorText(const std::error_code& error) noexcept -> string;
 #endif
 
 class NetworkServerConnection : public enable_shared_from_this<NetworkServerConnection>

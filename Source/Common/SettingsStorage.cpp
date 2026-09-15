@@ -72,12 +72,12 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 #else
     // The one place that names the product without settings, because this layer has none: tool preferences
     // follow the user rather than one game install, so they never move into a client's writable root
-    string base = Platform::GetUserDataBase();
+    string base = platform::get_user_data_base();
 
     // No user data base (unusual sandbox): keep the tool running without persistence rather than write next to the binary
     if (!base.empty()) {
         string dir = strex(base).combine_path(FO_NICE_NAME).combine_path(app_name).str();
-        _cache = SafeAlloc::MakeUnique<CacheStorage>(dir);
+        _cache = safe_alloc::make_unique<CacheStorage>(dir);
     }
 #endif
 }
@@ -111,7 +111,7 @@ void SettingsStorageImpl::SetEntry(string_view key, string_view value)
 
 #if FO_WINDOWS
     if (!winapi::registry_write_value(_subKey, string(key), string(value))) {
-        WriteLog("Settings: failed to write registry value - {}\\{}", _subKey, key);
+        logging::write("Settings: failed to write registry value - {}\\{}", _subKey, key);
     }
 
 #else
@@ -136,7 +136,7 @@ void SettingsStorageImpl::RemoveEntry(string_view key)
 }
 
 SettingsStorage::SettingsStorage(string_view app_name) :
-    _impl {SafeAlloc::MakeUnique<SettingsStorageImpl>(app_name)}
+    _impl {safe_alloc::make_unique<SettingsStorageImpl>(app_name)}
 {
     FO_STACK_TRACE_ENTRY();
 }

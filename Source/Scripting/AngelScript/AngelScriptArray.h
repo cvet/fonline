@@ -53,7 +53,7 @@ class ScriptDict;
 
 class ScriptArray final
 {
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
     template<typename T>
     static constexpr bool IsHandleAtType = std::is_void_v<std::remove_cv_t<T>> || std::is_same_v<std::remove_cv_t<T>, Entity> || //

@@ -60,24 +60,24 @@ static auto MakeServerEntityLifetimeResources() -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
-    auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEntityLifetimeCompiler");
+    auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEntityLifetimeCompiler");
     compiler_source->AddFile("Metadata.fometa-server", metadata);
 
     FileSystem compiler_resources;
     compiler_resources.AddCustomSource(std::move(compiler_source));
     BakerServerEngine proto_engine {compiler_resources};
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEntityLifetimeRuntime");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEntityLifetimeRuntime");
     source->AddFile("Metadata.fometa-server", metadata);
 #if FO_ANGELSCRIPT_SCRIPTING
     source->AddFile("ServerEntityLifetime.fos-bin-server", BakerTests::CompileInlineScripts(&proto_engine, "ServerEntityLifetimeScripts", {{"Scripts/ServerEntityLifetime.fos", "void LifetimeFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
 #endif
-    source->AddFile("LifetimeCritter.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, proto_engine.Hashes.ToHashedString("Critter"), "LifetimeCritter"));
-    source->AddFile("LifetimeItem.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.ToHashedString("Item"), "LifetimeItem"));
-    source->AddFile("LifetimeLocation.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, proto_engine.Hashes.ToHashedString("Location"), "LifetimeLocation"));
+    source->AddFile("LifetimeCritter.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, proto_engine.Hashes.to_hashed_string("Critter"), "LifetimeCritter"));
+    source->AddFile("LifetimeItem.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.to_hashed_string("Item"), "LifetimeItem"));
+    source->AddFile("LifetimeLocation.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, proto_engine.Hashes.to_hashed_string("Location"), "LifetimeLocation"));
     vector<pair<string, function<void(ProtoMap&)>>> map_protos;
     map_protos.emplace_back("LifetimeMap", [](ProtoMap& proto) { proto.SetSize(msize {2, 2}); });
-    source->AddFile("LifetimeMap.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.ToHashedString("Map"), map_protos));
+    source->AddFile("LifetimeMap.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), map_protos));
 
     FileSystem resources;
     resources.AddCustomSource(std::move(source));
@@ -109,24 +109,24 @@ static auto MakeServerEntityLifetimeOwners(ptr<ServerEngine> server, ptr<StaticM
     FO_STACK_TRACE_ENTRY();
 
     // The caller quiesces the server after complete startup; registrar setup and hash interning cannot race it
-    auto critter_proto = server->GetProtoCritter(server->Hashes.ToHashedString("LifetimeCritter"));
-    auto item_proto = server->GetProtoItem(server->Hashes.ToHashedString("LifetimeItem"));
-    auto map_proto = server->GetProtoMap(server->Hashes.ToHashedString("LifetimeMap"));
-    auto location_proto = server->GetProtoLocation(server->Hashes.ToHashedString("LifetimeLocation"));
+    auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
+    auto item_proto = server->GetProtoItem(server->Hashes.to_hashed_string("LifetimeItem"));
+    auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+    auto location_proto = server->GetProtoLocation(server->Hashes.to_hashed_string("LifetimeLocation"));
     REQUIRE(critter_proto);
     REQUIRE(item_proto);
     REQUIRE(map_proto);
     REQUIRE(location_proto);
 
     vector<refcount_ptr<ServerEntity>> entities;
-    entities.emplace_back(SafeAlloc::MakeRefCounted<Critter>(server, ident_t {1}, critter_proto));
-    entities.emplace_back(SafeAlloc::MakeRefCounted<Item>(server, ident_t {2}, item_proto));
-    entities.emplace_back(SafeAlloc::MakeRefCounted<Map>(server, ident_t {3}, map_proto, nullptr, static_map));
-    entities.emplace_back(SafeAlloc::MakeRefCounted<Location>(server, ident_t {4}, location_proto));
+    entities.emplace_back(safe_alloc::make_refcounted<Critter>(server, ident_t {1}, critter_proto));
+    entities.emplace_back(safe_alloc::make_refcounted<Item>(server, ident_t {2}, item_proto));
+    entities.emplace_back(safe_alloc::make_refcounted<Map>(server, ident_t {3}, map_proto, nullptr, static_map));
+    entities.emplace_back(safe_alloc::make_refcounted<Location>(server, ident_t {4}, location_proto));
 
     auto network = NetworkServer::CreateDummyConnection(server->Settings);
-    auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(network));
-    entities.emplace_back(SafeAlloc::MakeRefCounted<Player>(server, ident_t {5}, std::move(connection)));
+    auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network));
+    entities.emplace_back(safe_alloc::make_refcounted<Player>(server, ident_t {5}, std::move(connection)));
     return entities;
 }
 
@@ -137,7 +137,7 @@ TEST_CASE("ServerEntityOwnersOutliveServer", "[server][entity][lifetime]")
     vector<refcount_ptr<ServerEntity>> retained;
 
     {
-        auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
         bool shutdown_done = false;
         auto shutdown_guard = scope_exit([&]() noexcept {
             if (!shutdown_done) {
@@ -183,7 +183,7 @@ TEST_CASE("ServerEntityOwnersReleaseBeforeShutdown", "[server][entity][lifetime]
 {
     GlobalSettings settings = MakeServerEntityLifetimeSettings();
     StaticMap static_map {msize {2, 2}, false};
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
     bool shutdown_done = false;
     auto shutdown_guard = scope_exit([&]() noexcept {
         if (!shutdown_done) {

@@ -49,7 +49,7 @@ namespace
 
     static auto MakeMovingContext() -> refcount_ptr<MovingContext>
     {
-        return SafeAlloc::MakeRefCounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan {}, TEST_START_HEX, ipos16 {}, ipos16 {});
+        return safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan {}, TEST_START_HEX, ipos16 {}, ipos16 {});
     }
 
     static auto MakeTimePoint(int32_t milliseconds) -> nanotime

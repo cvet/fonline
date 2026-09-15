@@ -67,7 +67,7 @@ auto NetworkClientConnection::CreateInterthreadConnection(ptr<ClientNetworkSetti
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<NetworkClientConnection_Interthread>(settings);
+    return safe_alloc::make_unique<NetworkClientConnection_Interthread>(settings);
 }
 
 NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings) :
@@ -83,7 +83,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
         throw NetworkClientException("Interthread listener is not available", port);
     }
 
-    _interthreadState = SafeAlloc::MakeShared<NetworkClientInterthreadState>();
+    _interthreadState = safe_alloc::make_shared<NetworkClientInterthreadState>();
     auto state = _interthreadState;
 
     _interthreadSend = (*listener)([state](const_span<uint8_t> buf) mutable FO_DEFERRED {
@@ -101,7 +101,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
         }
     });
 
-    WriteLog("Connected to server via interthread communication");
+    logging::write("Connected to server via interthread communication");
 
     _isConnecting = false;
     _isConnected = true;
@@ -154,7 +154,7 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
         buf.resize(buf.size() * 2);
     }
 
-    MemCopy(buf.data(), state->Received.data(), recv_size);
+    memory::copy(buf.data(), state->Received.data(), recv_size);
     state->Received.clear();
 
     return recv_size;

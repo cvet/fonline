@@ -81,7 +81,7 @@ class Entity;
 using AbstractItem = Entity;
 using ScriptSelfEntity = Entity;
 
-class DynamicRefTypeInstance final : public RefCounted<DynamicRefTypeInstance>
+class DynamicRefTypeInstance final : public refcounted<DynamicRefTypeInstance>
 {
 public:
     explicit DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept;
@@ -439,7 +439,7 @@ public:
                 return true;
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
         else {
@@ -456,7 +456,7 @@ public:
                 return true;
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
 
@@ -566,7 +566,7 @@ namespace NativeDataProvider
 }
 
 // Defined where Entity is complete: this header only forward-declares it
-[[noreturn]] extern void ThrowScriptEntityTypeMismatch(ptr<Entity> entity);
+[[noreturn]] void ThrowScriptEntityTypeMismatch(ptr<Entity> entity);
 
 namespace NativeDataCaller
 {
@@ -1006,23 +1006,20 @@ private:
     std::atomic_bool _globalVarsFrozen {};
 };
 
-class ScriptHelpers final
+namespace ScriptHelpers
 {
-public:
-    ScriptHelpers() = delete;
+    [[nodiscard]] auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
 
     template<typename T, typename U>
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, U prop_index) -> ptr<const Property>
+    [[nodiscard]] auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, U prop_index) -> ptr<const Property>
     {
         return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32_t>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
-
     // Returns false only when the init function itself threw; that exception is already reported by ScriptFunc::Call.
     // An unresolvable init function is a hard error and throws, so it can never degrade into a silent no-op
     template<typename T>
-    static auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
+    auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
             auto init_func = script_sys->FindFunc<void, ptr<T>, bool>(init_script);
@@ -1038,7 +1035,7 @@ public:
 
         return true;
     }
-};
+}
 
 template<typename T, typename TContainer, typename TResolver>
 [[nodiscard]] auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)

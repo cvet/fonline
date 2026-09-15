@@ -161,7 +161,7 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
         RecordDisconnectReason(DisconnectReason::ClientClosed);
-        WriteLog("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
+        logging::write("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
         AsyncReceiveData({});
     };
 
@@ -172,7 +172,7 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
         _inBuf.SetMaxBufLen(numeric_cast<size_t>(_settings->MaxBufferedInputSize));
     }
 
-    WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+    logging::write("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
 
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 }
@@ -402,7 +402,7 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
     vector<uint8_t> send_buf;
 
     if (!_settings->DisableZlibCompression) {
-        _compressor.Compress(raw_buf, send_buf);
+        _compressor.compress(raw_buf, send_buf);
     }
     else {
         send_buf.assign(raw_buf.begin(), raw_buf.end());
@@ -431,7 +431,7 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
             }
             catch (const NetBufferException& ex) {
                 if (!_inputOverflowed.exchange(true, std::memory_order_relaxed)) {
-                    ReportExceptionAndContinue(ex);
+                    exceptions::report_and_continue(ex);
                 }
             }
         }

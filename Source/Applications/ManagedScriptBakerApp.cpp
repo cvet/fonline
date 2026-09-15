@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 
         FO_VERIFY_AND_THROW(!GetApp()->Settings.BakeOutput.empty(), "Bake output directory is not configured");
 
-        WriteLog("Prepare metadata");
+        logging::write("Prepare metadata");
         FileSystem metadata_files;
 
         for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
@@ -80,11 +80,11 @@ int main(int argc, char** argv)
                 string dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
-                    bool dir_ok = fs_create_directories(dir);
+                    bool dir_ok = fs::create_directories(dir);
                     FO_VERIFY_AND_THROW(dir_ok, "Failed to create managed metadata output directory", dir, output_path, res_pack.Name);
                 }
 
-                std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
+                std::ofstream file {std::filesystem::path {fs::make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_VERIFY_AND_THROW(file, "Failed to open managed metadata output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
             };
 
             auto settings_ptr = make_nptr(&GetApp()->Settings);
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
+            auto baking_ctx = safe_alloc::make_shared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
@@ -108,23 +108,23 @@ int main(int argc, char** argv)
                 const_span<string> params = ex.params();
 
                 if (params.size() >= 2 && !params.front().empty()) {
-                    WriteLog("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
+                    logging::write("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
                 }
                 else {
-                    WriteLog("{}", ex.what());
+                    logging::write("{}", ex.what());
                 }
 
-                WriteLog("Metadata preparing failed!");
-                ExitApp(false);
+                logging::write("Metadata preparing failed!");
+                exit_app(false);
             }
             catch (const std::exception& ex) {
-                WriteLog("{}", ex.what());
-                WriteLog("Metadata preparing failed!");
-                ExitApp(false);
+                logging::write("{}", ex.what());
+                logging::write("Metadata preparing failed!");
+                exit_app(false);
             }
         }
 
-        WriteLog("Generate and bake Managed scripts");
+        logging::write("Generate and bake Managed scripts");
 
         for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
             if (!vec_exists(res_pack.Bakers, ManagedScriptBaker::NAME)) {
@@ -142,11 +142,11 @@ int main(int argc, char** argv)
                 string dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
-                    bool dir_ok = fs_create_directories(dir);
+                    bool dir_ok = fs::create_directories(dir);
                     FO_VERIFY_AND_THROW(dir_ok, "Failed to create managed script output directory", dir, output_path, res_pack.Name);
                 }
 
-                std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
+                std::ofstream file {std::filesystem::path {fs::make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_VERIFY_AND_THROW(file, "Failed to open managed script output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
@@ -160,29 +160,29 @@ int main(int argc, char** argv)
 
             auto settings_ptr = make_nptr(&GetApp()->Settings);
             auto metadata_files_ptr = make_nptr(&metadata_files);
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
+            auto baking_ctx = safe_alloc::make_shared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
             auto managed_baker = ManagedScriptBaker(std::move(baking_ctx));
 
             try {
                 managed_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
             }
             catch (const ManagedScriptBakerException& ex) {
-                WriteLog("{}", ex.what());
-                WriteLog("Managed scripts generation failed!");
-                ExitApp(false);
+                logging::write("{}", ex.what());
+                logging::write("Managed scripts generation failed!");
+                exit_app(false);
             }
             catch (const std::exception& ex) {
-                WriteLog("{}", ex.what());
-                WriteLog("Managed scripts generation failed!");
-                ExitApp(false);
+                logging::write("{}", ex.what());
+                logging::write("Managed scripts generation failed!");
+                exit_app(false);
             }
         }
 
-        WriteLog("Managed scripts generation succeeded!");
-        ExitApp(true);
+        logging::write("Managed scripts generation succeeded!");
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

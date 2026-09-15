@@ -68,11 +68,11 @@ namespace TestClientUpdater
 
         std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         string dir_name = strex("fo_client_updater_offline_{}", suffix).str();
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name)};
-        string bake_dir = fs_path_to_string(base);
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
+        string bake_dir = fs::path_to_string(base);
         string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
 
-        REQUIRE(fs_create_directories(fonts_dir));
+        REQUIRE(fs::create_directories(fonts_dir));
 
         constexpr string_view default_font = R"(Version 2
 Image Default.png
@@ -88,10 +88,10 @@ Letter ' '
 End
 )";
 
-        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
+        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
 
         vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
-        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
+        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
 
         return bake_dir;
     }
@@ -119,7 +119,7 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
     uint16_t port = OfflineServerPort.fetch_add(1);
     GlobalSettings client_settings = MakeUpdaterClientSettings(port);
     string bake_output = PrepareUpdaterBakeOutput();
-    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs_remove_dir_tree(bake_output); });
+    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
     BakerTests::OverrideSetting(client_settings.BakeOutput, bake_output);
 
     // Nothing is listening on this port: the player starts the client while the server is down

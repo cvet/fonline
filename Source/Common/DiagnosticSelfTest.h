@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE
 namespace DiagnosticSelfTest
 {
     // Induces the FO_SELFTEST_CRASH mode; unset or unknown modes are no-ops
-    extern void RunIfRequested();
+    void RunIfRequested();
 }
 
 FO_END_NAMESPACE

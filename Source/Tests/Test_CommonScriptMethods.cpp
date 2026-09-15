@@ -1740,16 +1740,16 @@ namespace CommonMethods
     {
         auto metadata_blob = MakeCommonMethodsMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
 
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
@@ -1757,7 +1757,7 @@ namespace CommonMethods
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("CommonMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("CommonMethodsItem.fopro-bin-server", item_blob);
@@ -1818,7 +1818,7 @@ BoundsMaxZ = 3.5
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 
     static void CheckHstringStringConvBinding(ptr<ServerEngine> server)
@@ -1842,7 +1842,7 @@ BoundsMaxZ = 3.5
         nptr<AngelScript::asIScriptFunction> conv_method = hstring_type->GetMethodByDecl("string opImplConv() const");
         REQUIRE(conv_method != nullptr);
 
-        hstring key = server->Hashes.ToHashedString("AlphaKey");
+        hstring key = server->Hashes.to_hashed_string("AlphaKey");
         REQUIRE(ctx->Prepare(conv_method.get()) >= 0);
         REQUIRE(ctx->SetObject(&key) >= 0);
         REQUIRE(context_mngr->RunContext(ctx, false));
@@ -1868,7 +1868,7 @@ BoundsMaxZ = 3.5
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
 
 #define RUN_CM_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("CommonMethods::" func_name)); \
@@ -1879,10 +1879,10 @@ BoundsMaxZ = 3.5
 #define RUN_CM_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("CommonMethods::" func_name)); \
     REQUIRE(func); \
-    auto prev_callback = GetExceptionCallback(); \
+    auto prev_callback = exceptions::get_callback(); \
     string message; \
-    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
-    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
+    exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); }); \
+    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); }); \
     CHECK_FALSE(func.Call()); \
     INFO(message); \
     CHECK(message.find(expected_message) != string::npos)
@@ -1929,7 +1929,7 @@ TEST_CASE("ModelAnimationInfoLookup")
 {
     MAKE_CM_SERVER();
 
-    CHECK(server->Hashes.CheckHashedString("Critters/Test.fo3d"));
+    CHECK(server->Hashes.check_hashed_string("Critters/Test.fo3d"));
     RUN_CM_FUNC("TestGetModelAnimDuration");
 }
 #endif

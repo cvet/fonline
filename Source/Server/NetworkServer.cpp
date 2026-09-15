@@ -36,7 +36,7 @@
 FO_BEGIN_NAMESPACE
 
 NetworkServer::NetworkServer() :
-    _connectionRegistry {SafeAlloc::MakeShared<ConnectionRegistry>()}
+    _connectionRegistry {safe_alloc::make_shared<ConnectionRegistry>()}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -261,7 +261,7 @@ auto NetworkServer::CreateDummyConnection(ptr<ServerNetworkSettings> settings, D
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeShared<DummyNetConnection>(settings, state);
+    return safe_alloc::make_shared<DummyNetConnection>(settings, state);
 }
 
 FO_END_NAMESPACE

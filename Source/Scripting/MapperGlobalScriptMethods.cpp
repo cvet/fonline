@@ -893,14 +893,14 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
                 auto row = make_ptr(row_buf.data());
                 auto top_row = make_ptr(pixels.data() + top);
                 auto bottom_row = make_ptr(pixels.data() + bottom);
-                MemCopy(row, top_row, row_bytes);
-                MemCopy(top_row, bottom_row, row_bytes);
-                MemCopy(bottom_row, row, row_bytes);
+                memory::copy(row, top_row, row_bytes);
+                memory::copy(top_row, bottom_row, row_bytes);
+                memory::copy(bottom_row, row, row_bytes);
             }
         }
     }
 
-    string path = fs_make_writable_path(mapper->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(mapper->Settings->UserWritablePath, strex(filePath).format_path());
     ImageWriter::WriteSimplePng(path, size, pixels);
 }
 

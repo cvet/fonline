@@ -197,7 +197,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     }
 
     // Create critter
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto, props);
+    auto cr = safe_alloc::make_refcounted<Critter>(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterCritter(cr);
 
@@ -294,7 +294,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
                 }
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
 
             // A pass that does not strictly reduce the remaining dependencies can never converge, so this exits

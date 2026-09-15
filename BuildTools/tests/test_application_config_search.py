@@ -50,9 +50,11 @@ private:
     string value;
 };
 StringFormat strex(const char*, string value) { return StringFormat(value); }
-string fs_path_to_string(const std::filesystem::path& path) { return path.string(); }
-bool fs_exists(const string& path) { return std::filesystem::exists(path); }
-bool fs_is_dir(const string& path) { return std::filesystem::is_directory(path); }
+namespace fs {
+string path_to_string(const std::filesystem::path& path) { return path.string(); }
+bool exists(const string& path) { return std::filesystem::exists(path); }
+bool is_dir(const string& path) { return std::filesystem::is_directory(path); }
+}
 int main() {
     try {
         string config_to_apply, config_to_apply_dir;

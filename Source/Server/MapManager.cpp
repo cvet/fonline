@@ -44,7 +44,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>);
+CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>);
 
 MapManager::MapManager(ptr<ServerEngine> engine) :
     _engine {engine}
@@ -60,7 +60,7 @@ void MapManager::LoadFromResources()
     vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
     for (const auto& map_file_header : map_files) {
-        hstring map_pid = _engine->Hashes.ToHashedString(map_file_header.GetNameNoExt());
+        hstring map_pid = _engine->Hashes.to_hashed_string(map_file_header.GetNameNoExt());
         auto map_proto = _engine->GetProtoMap(map_pid);
 
         if (!map_proto) {
@@ -71,24 +71,24 @@ void MapManager::LoadFromResources()
             ScopedSyncContext sync_ctx;
 
             auto map_file = File::Load(map_file_header_copy);
-            auto reader = DataReader(map_file.GetDataSpan());
+            auto reader = data_reader(map_file.GetDataSpan());
 
             MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
 
             auto map_size = map_proto->GetSize();
-            auto static_map = SafeAlloc::MakeUnique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
+            auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
 
             // Read hashes
             {
-                auto hashes_count = reader.Read<uint32_t>();
+                auto hashes_count = reader.read<uint32_t>();
 
                 // Counts and sizes come from a resource file that may be stale or damaged, so every one of them
                 // is preflighted against the buffer before it drives an allocation or a loop
-                reader.VerifyPayloadCount(hashes_count, sizeof(uint32_t));
+                reader.verify_payload_count(hashes_count, sizeof(uint32_t));
 
                 for (uint32_t i = 0; i < hashes_count; i++) {
-                    string str = reader.ReadString();
-                    hstring hstr = _engine->Hashes.ToHashedString(str);
+                    string str = reader.read_string();
+                    hstring hstr = _engine->Hashes.to_hashed_string(str);
                     ignore_unused(hstr);
                 }
             }
@@ -99,17 +99,17 @@ void MapManager::LoadFromResources()
 
                 // Read critters
                 {
-                    auto cr_count = reader.Read<uint32_t>();
+                    auto cr_count = reader.read<uint32_t>();
 
-                    reader.VerifyPayloadCount(cr_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
+                    reader.verify_payload_count(cr_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
                     static_map->ReserveCritters(cr_count);
 
                     for (uint32_t i = 0; i < cr_count; i++) {
-                        ident_t cr_id = ident_t {reader.Read<ident_t::underlying_type>()};
+                        ident_t cr_id = ident_t {reader.read<ident_t::underlying_type>()};
 
-                        auto cr_pid_hash = reader.Read<hstring::hash_t>();
-                        hstring cr_pid = _engine->Hashes.ResolveHash(cr_pid_hash);
+                        auto cr_pid_hash = reader.read<hstring::hash_t>();
+                        hstring cr_pid = _engine->Hashes.resolve_hash(cr_pid_hash);
                         auto cr_proto = _engine->GetProtoCritter(cr_pid);
 
                         if (!cr_proto) {
@@ -117,15 +117,15 @@ void MapManager::LoadFromResources()
                         }
 
                         auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrar());
-                        auto props_data_size = reader.Read<uint32_t>();
-                        reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
+                        auto props_data_size = reader.read<uint32_t>();
+                        reader.verify_payload_count(props_data_size, sizeof(uint8_t));
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
-                        reader.ReadBytes(props_data_span);
+                        reader.read_bytes(props_data_span);
                         cr_props.RestoreAllData(props_data);
 
                         auto cr_props_ptr = make_nptr(&cr_props);
-                        auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, cr_proto, cr_props_ptr);
+                        auto cr = safe_alloc::make_refcounted<Critter>(_engine, ident_t {}, cr_proto, cr_props_ptr);
                         cr->SetEntityLock(nullptr);
 
                         static_map->AddCritterBillet(cr_id, cr);
@@ -139,17 +139,17 @@ void MapManager::LoadFromResources()
 
                 // Read items
                 {
-                    auto item_count = reader.Read<uint32_t>();
+                    auto item_count = reader.read<uint32_t>();
 
-                    reader.VerifyPayloadCount(item_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
+                    reader.verify_payload_count(item_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
                     static_map->ReserveItems(item_count);
 
                     for (uint32_t i = 0; i < item_count; i++) {
-                        ident_t item_id = ident_t {reader.Read<ident_t::underlying_type>()};
+                        ident_t item_id = ident_t {reader.read<ident_t::underlying_type>()};
 
-                        auto item_pid_hash = reader.Read<hstring::hash_t>();
-                        hstring item_pid = _engine->Hashes.ResolveHash(item_pid_hash);
+                        auto item_pid_hash = reader.read<hstring::hash_t>();
+                        hstring item_pid = _engine->Hashes.resolve_hash(item_pid_hash);
                         auto item_proto = _engine->GetProtoItem(item_pid);
 
                         if (!item_proto) {
@@ -157,15 +157,15 @@ void MapManager::LoadFromResources()
                         }
 
                         auto item_props = Properties(item_proto->GetProperties()->GetRegistrar());
-                        auto props_data_size = reader.Read<uint32_t>();
-                        reader.VerifyPayloadCount(props_data_size, sizeof(uint8_t));
+                        auto props_data_size = reader.read<uint32_t>();
+                        reader.verify_payload_count(props_data_size, sizeof(uint8_t));
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
-                        reader.ReadBytes(props_data_span);
+                        reader.read_bytes(props_data_span);
                         item_props.RestoreAllData(props_data);
 
                         auto item_props_ptr = make_nptr(&item_props);
-                        auto item = SafeAlloc::MakeRefCounted<StaticItem>(_engine, item_id, item_proto, item_props_ptr);
+                        auto item = safe_alloc::make_refcounted<StaticItem>(_engine, item_id, item_proto, item_props_ptr);
                         item->SetEntityLock(nullptr);
                         static_map->AddOwnedItemBillet(item_id, item);
 
@@ -217,7 +217,7 @@ void MapManager::LoadFromResources()
                 }
             }
 
-            reader.VerifyEnd();
+            reader.verify_end();
 
             // Scroll blocks
             irect32 scroll_area = map_proto->GetScrollAxialArea();
@@ -254,8 +254,8 @@ void MapManager::LoadFromResources()
             _staticMaps.emplace(static_map_loading.first, std::move(static_map));
         }
         catch (const std::exception& ex) {
-            WriteLog("Failed to load map {}", static_map_loading.first->GetProtoId());
-            ReportExceptionAndContinue(ex);
+            logging::write("Failed to load map {}", static_map_loading.first->GetProtoId());
+            exceptions::report_and_continue(ex);
             errors++;
         }
     }
@@ -399,7 +399,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
         throw GenericException("Location proto not found", proto_id);
     }
 
-    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, ident_t {}, proto, props);
+    auto loc = safe_alloc::make_refcounted<Location>(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterLocation(loc);
 
@@ -414,7 +414,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
             }
 
             auto static_map = GetStaticMap(map_proto);
-            auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
+            auto map = safe_alloc::make_refcounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
             _engine->EntityMngr.RegisterMap(map);
             loc->AddMap(map);
             GenerateMapContent(map);
@@ -451,7 +451,7 @@ auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
     }
 
     auto static_map = GetStaticMap(map_proto);
-    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
+    auto map = safe_alloc::make_refcounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
 
     _engine->EntityMngr.RegisterMap(map);
     loc->AddMap(map);
@@ -579,7 +579,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         // Each pass must strictly reduce the location's remaining inner entities; non-convergence is corruption
@@ -649,7 +649,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         // Each pass must strictly reduce the map's remaining content; non-convergence is corruption
@@ -1161,7 +1161,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
             cr->SetGlobalMapTripId(trip_id);
 
-            cr_group = SafeAlloc::MakeShared<GlobalMapGroup>();
+            cr_group = safe_alloc::make_shared<GlobalMapGroup>();
         }
 
         cr_group->AddMember(cr);

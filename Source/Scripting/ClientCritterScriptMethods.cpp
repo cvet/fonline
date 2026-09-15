@@ -408,7 +408,7 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, Critter
         anim_callback.StateAnim = stateAnim;
         anim_callback.ActionAnim = actionAnim;
         anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
-        anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
+        anim_callback.Callback = [self, animCallback = safe_alloc::make_shared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
             if (!self->IsDestroyed()) {
                 animCallback->Call(self);
             }

@@ -138,7 +138,7 @@ public:
 
         for (uint32_t attempt = 0; attempt < 100; attempt++) {
             std::error_code ec;
-            std::filesystem::path candidate = base_dir / fs_make_path(strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt));
+            std::filesystem::path candidate = base_dir / fs::make_path(strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt));
 
             if (std::filesystem::create_directory(candidate, ec) && !ec) {
                 _path = candidate;
@@ -720,7 +720,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {
-        string types = ReadTextFile(script_dir / fs_make_path(strex("{}Types.gen.cs", target).str()));
+        string types = ReadTextFile(script_dir / fs::make_path(strex("{}Types.gen.cs", target).str()));
         CHECK(types.find("public partial struct hdir") != string::npos);
         CHECK(types.find("public sbyte value;") != string::npos);
         CHECK(types.find("public hdir(") == string::npos);
@@ -788,7 +788,7 @@ TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable 
     std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
     std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
     std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
-    std::filesystem::path bake_output = absolute_output ? temp_dir.Path() / fs_make_path("External Bake & Данные") : std::filesystem::path {fs_make_path("Relocated Bake & Данные")};
+    std::filesystem::path bake_output = absolute_output ? temp_dir.Path() / fs::make_path("External Bake & Данные") : std::filesystem::path {fs::make_path("Relocated Bake & Данные")};
 
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
@@ -799,11 +799,11 @@ TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable 
 
     TestRig rig;
     OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {fs_path_to_string(core_scripts_dir), fs_path_to_string(script_dir)});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, fs_path_to_string(script_dir));
+    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {fs::path_to_string(core_scripts_dir), fs::path_to_string(script_dir)});
+    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, fs::path_to_string(script_dir));
     OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
     OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
-    OverrideSetting(rig.Settings.BakeOutput, fs_path_to_string(bake_output));
+    OverrideSetting(rig.Settings.BakeOutput, fs::path_to_string(bake_output));
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
@@ -812,7 +812,7 @@ TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     string project = ReadTextFile(script_dir / "UnitProject.gen.csproj");
-    string expected_root = absolute_output ? strex("{}/External Bake &amp; Данные", fs_path_to_string(temp_dir.Path())).str() : "$(FOnlineBakeRoot)/Relocated Bake &amp; Данные";
+    string expected_root = absolute_output ? strex("{}/External Bake &amp; Данные", fs::path_to_string(temp_dir.Path())).str() : "$(FOnlineBakeRoot)/Relocated Bake &amp; Данные";
 
     for (string_view target : array<string_view, 3> {"Server", "Client", "Mapper"}) {
         string expected_output = strex("<OutputPath>{}/TestPack/Assemblies/{}Assemblies/</OutputPath>", expected_root, target).str();
@@ -907,7 +907,7 @@ TEST_CASE("ManagedScriptBaker rebakes when an editorconfig above the sources cha
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     REQUIRE(!stamps.empty());
-    CHECK(std::ranges::max(stamps) == fs_last_write_time(strex("{}", editor_config.string()).str()));
+    CHECK(std::ranges::max(stamps) == fs::last_write_time(strex("{}", editor_config.string()).str()));
 #endif
 }
 
@@ -992,8 +992,8 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
 
     vector<string> log_messages;
-    SetLogCallback("managed-script-baker-compiler-output-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { log_messages.emplace_back(message); });
-    auto remove_log_callback = scope_exit([]() noexcept { SetLogCallback("managed-script-baker-compiler-output-test", {}); });
+    logging::set_callback("managed-script-baker-compiler-output-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { log_messages.emplace_back(message); });
+    auto remove_log_callback = scope_exit([]() noexcept { logging::set_callback("managed-script-baker-compiler-output-test", {}); });
 
     auto logged = [&log_messages](string_view text) { return std::ranges::any_of(log_messages, [text](const string& message) { return message.find(text) != string::npos; }); };
 

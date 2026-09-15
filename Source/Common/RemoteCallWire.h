@@ -78,10 +78,10 @@ private:
 
 // Serialize one simple (non-collection) remote-call value to the wire. Mirrors the format the AngelScript
 // backend has always written; keep byte-compatible
-void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks);
+void WriteRemoteCallSimple(data_writer& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks);
 
 // Deserialize one simple (non-collection) remote-call value from the wire; returns the FuncCallData argument
 // pointer (into `storage` for scalars, or — for ref types — a backend object via the hook).
-auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>;
+auto ReadRemoteCallSimple(data_reader& reader, const BaseTypeDesc& type, const hash_resolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>;
 
 FO_END_NAMESPACE

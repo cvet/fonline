@@ -76,14 +76,14 @@ set_property(TARGET file_io_dynamic PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedD
 
 ENGINE_SOURCE = Path(__file__).resolve().parents[1] / "Source/Essentials/DiskFileSystem.cpp"
 ENGINE_SIGNATURES = (
-    "auto fs_make_path(string_view path)",
+    "auto fs::make_path(string_view path)",
     "static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended)",
-    "auto fs_create_directories(string_view dir)",
-    "auto fs_write_file(string_view path, string_view content)",
-    "auto fs_open_ifstream(string_view path, std::ios::openmode mode)",
-    "auto fs_rename(string_view from_path, string_view to_path)",
-    "auto fs_remove_file(string_view path)",
-    "auto fs_remove_dir_tree(string_view dir)",
+    "auto fs::create_directories(string_view dir)",
+    "auto fs::write_file(string_view path, string_view content)",
+    "auto fs::open_ifstream(string_view path, std::ios::openmode mode)",
+    "auto fs::rename(string_view from_path, string_view to_path)",
+    "auto fs::remove_file(string_view path)",
+    "auto fs::remove_dir_tree(string_view dir)",
 )
 ENGINE_HARNESS = r"""
 #include <filesystem>
@@ -114,15 +114,15 @@ int wmain(int argc, wchar_t** argv)
     if (std::wstring_view{argv[1]} == L"remove_tree") {
         if (argc != 4 || ec) return 6;
         const std::string child = utf8(std::filesystem::path{argv[3]});
-        const bool created_before = fs_write_file(child, "descendant");
+        const bool created_before = fs::write_file(child, "descendant");
         if (!created_before) return 7;
         const auto removed_before = std::filesystem::remove_all(resolved, ec);
         const int before_error = ec.value();
         std::error_code exists_error;
         const bool root_remained = std::filesystem::exists(resolved, exists_error);
         const bool negative_reproduced = before_error != 0 && root_remained && !exists_error;
-        const bool created_after = fs_write_file(child, "descendant");
-        const bool removed_after = fs_remove_dir_tree(input);
+        const bool created_after = fs::write_file(child, "descendant");
+        const bool removed_after = fs::remove_dir_tree(input);
         const bool root_gone = !std::filesystem::exists(resolved, exists_error) && !exists_error;
         const auto resolved_child = fs_make_io_path(child, exists_error);
         const bool child_gone = !exists_error && !std::filesystem::exists(resolved_child, exists_error) && !exists_error;
@@ -140,29 +140,29 @@ int wmain(int argc, wchar_t** argv)
     }
     if (std::wstring_view{argv[1]} == L"directory_names") {
         const std::string literal = utf8(fs_make_io_path(input, ec, true)) + ". ";
-        const bool written = !ec && fs_write_file(input + "\\child.bin", "ordinary") && fs_write_file(literal + "\\child.bin", "literal");
-        const bool ordinary_removed = fs_remove_dir_tree(input + ". ");
+        const bool written = !ec && fs::write_file(input + "\\child.bin", "ordinary") && fs::write_file(literal + "\\child.bin", "literal");
+        const bool ordinary_removed = fs::remove_dir_tree(input + ". ");
         const bool ordinary_gone = !std::filesystem::exists(resolved, ec) && !ec;
         bool literal_retained = false;
         {
-            auto stream = fs_open_ifstream(literal + "\\child.bin", std::ios::binary);
+            auto stream = fs::open_ifstream(literal + "\\child.bin", std::ios::binary);
             const std::string payload{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
             literal_retained = stream.is_open() && payload == "literal";
         }
-        const bool literal_removed = fs_remove_dir_tree(literal);
+        const bool literal_removed = fs::remove_dir_tree(literal);
         const bool passed = written && ordinary_removed && ordinary_gone && literal_retained && literal_removed;
         std::cout << (passed ? "true" : "false");
         return passed ? 0 : 9;
     }
     if (std::wstring_view{argv[1]} == L"names") {
         const std::string literal = utf8(resolved) + ". ";
-        const bool written = fs_write_file(input, "ordinary") && fs_write_file(literal, "literal");
+        const bool written = fs::write_file(input, "ordinary") && fs::write_file(literal, "literal");
         const auto read = [](const std::string& name) {
-            auto stream = fs_open_ifstream(name, std::ios::binary);
+            auto stream = fs::open_ifstream(name, std::ios::binary);
             return std::string{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
         };
         const bool matched = written && read(input + ". ") == "ordinary" && read(literal) == "literal";
-        const bool removed = fs_remove_file(input) && fs_remove_file(literal);
+        const bool removed = fs::remove_file(input) && fs::remove_file(literal);
         std::cout << (matched && removed ? "true" : "false");
         return matched && removed ? 0 : 5;
     }
@@ -173,15 +173,15 @@ int wmain(int argc, wchar_t** argv)
         std::cout << utf8(output);
         return 0;
     }
-    const bool written = fs_write_file(input, "FOnline native long-path probe\n");
+    const bool written = fs::write_file(input, "FOnline native long-path probe\n");
     bool read = false;
     {
-        auto stream = fs_open_ifstream(input, std::ios::binary);
+        auto stream = fs::open_ifstream(input, std::ios::binary);
         const std::string payload{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
         read = stream.is_open() && payload == "FOnline native long-path probe\n";
     }
     const std::string renamed = input + ".renamed";
-    const bool moved = fs_rename(input, renamed);
+    const bool moved = fs::rename(input, renamed);
     const auto resolved_renamed = fs_make_io_path(renamed, ec);
     std::filesystem::directory_iterator entry{resolved_renamed.parent_path(), ec};
     bool found = false;
@@ -189,7 +189,7 @@ int wmain(int argc, wchar_t** argv)
         if (entry->path().filename() == resolved_renamed.filename()) found = true;
         entry.increment(ec);
     }
-    const bool removed = fs_remove_file(renamed);
+    const bool removed = fs::remove_file(renamed);
     std::cout << "{\"written\":" << (written ? "true" : "false")
               << ",\"read_matches\":" << (read ? "true" : "false")
               << ",\"renamed\":" << (moved ? "true" : "false")
@@ -211,7 +211,13 @@ def engine_probe_source() -> tuple[str, dict[str, object]]:
         if "\n{" not in function or ";" in function.split("\n", 1)[0]:
             raise ValueError(f"Expected an out-of-line canonical definition: {signature}")
         functions.append(function)
-    native = ENGINE_HARNESS + declaration + "\n" + "\n".join(functions) + ENGINE_MAIN
+    public_declarations = [
+        function.split("\n", 1)[0].replace("fs::", "", 1) + ";"
+        for signature, function in zip(ENGINE_SIGNATURES, functions)
+        if signature.startswith("auto fs::")
+    ]
+    namespace = "namespace fs {\n" + "\n".join(public_declarations) + "\n}\n"
+    native = ENGINE_HARNESS + namespace + declaration + "\n" + "\n".join(functions) + ENGINE_MAIN
     return native, {
         "source_file": "Source/Essentials/DiskFileSystem.cpp",
         "source_sha256": hashlib.sha256(ENGINE_SOURCE.read_bytes()).hexdigest(),

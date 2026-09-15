@@ -186,7 +186,7 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
     if (move_len != 0) {
         auto target = make_ptr(_bufData.data());
         auto source = make_ptr(_bufData.data()).offset(len);
-        MemMove(target, source, move_len);
+        memory::move(target, source, move_len);
     }
 
     _bufEndPos -= len;
@@ -349,7 +349,7 @@ void NetInBuffer::ShrinkReadBuf()
 
         auto target = make_ptr(_bufData.data());
         auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
-        MemMove(target, source, move_len);
+        memory::move(target, source, move_len);
 
         _bufEndPos -= _bufReadPos;
         _bufReadPos = 0;
@@ -430,14 +430,14 @@ auto NetInBuffer::ReadMsg() -> NetMessage
     return msg;
 }
 
-auto NetInBuffer::ReadHashedString(const HashResolver& hash_resolver) -> hstring
+auto NetInBuffer::ReadHashedString(const hash_resolver& hashes) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
     auto hash = Read<hstring::hash_t>();
 
     bool failed = false;
-    hstring result = hash_resolver.ResolveHash(hash, &failed);
+    hstring result = hashes.resolve_hash(hash, &failed);
 
     if (failed) {
         ResetBuf();

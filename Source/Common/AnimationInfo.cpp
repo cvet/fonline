@@ -226,12 +226,12 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
 
 constexpr string_view MODEL_ANIMATION_INFO_FILE_NAME = "ModelAnimationInfo.foinfo";
 
-auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, ModelAnimationInfo>
+auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> unordered_map<hstring, ModelAnimationInfo>
 {
     FO_STACK_TRACE_ENTRY();
 
     if (!resources.IsFileExists(MODEL_ANIMATION_INFO_FILE_NAME)) {
-        WriteLog(LogType::Info, "Model animation info document '{}' is not present", MODEL_ANIMATION_INFO_FILE_NAME);
+        logging::write(logging::type::info, "Model animation info document '{}' is not present", MODEL_ANIMATION_INFO_FILE_NAME);
         return {};
     }
 
@@ -405,7 +405,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
             }
         }
 
-        hstring resource_name = hash_resolver.ToHashedString(section_name);
+        hstring resource_name = hashes.to_hashed_string(section_name);
         bool inserted = model_anim_infos.emplace(resource_name, std::move(section_info)).second;
         FO_VERIFY_AND_THROW(inserted, "Model animation info resource contains a duplicate section", MODEL_ANIMATION_INFO_FILE_NAME, section_name);
     }
@@ -417,7 +417,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_reso
 
 #endif
 
-auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimationInfo>
+auto ReadAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> unordered_map<hstring, AnimationInfo>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -430,7 +430,7 @@ auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver)
         vector<SpriteInfoFileEntry> sprite_entries = ReadSpriteInfoFile(info_file.GetPath(), info_file.GetStr());
 
         for (SpriteInfoFileEntry& sprite_entry : sprite_entries) {
-            hstring resource_name = hash_resolver.ToHashedString(sprite_entry.ResourcePath);
+            hstring resource_name = hashes.to_hashed_string(sprite_entry.ResourcePath);
             AnimationInfo& anim_info = anim_infos[resource_name];
 
             if (!anim_info.Sprite.has_value()) {
@@ -440,7 +440,7 @@ auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver)
     }
 
 #if FO_ENABLE_3D
-    auto model_anim_infos = ReadModelAnimationInfo(resources, hash_resolver);
+    auto model_anim_infos = ReadModelAnimationInfo(resources, hashes);
     anim_infos.reserve(anim_infos.size() + model_anim_infos.size());
 
     for (auto& [resource_name, model_info] : model_anim_infos) {

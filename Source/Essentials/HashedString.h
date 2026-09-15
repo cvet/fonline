@@ -47,8 +47,8 @@ struct hstring
 
     struct entry
     {
-        hash_t Hash {};
-        string Str {};
+        hash_t hash {};
+        string str {};
     };
 
     constexpr hstring() noexcept = default;
@@ -77,21 +77,21 @@ struct hstring
     ~hstring() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    [[nodiscard]] operator string_view() const noexcept { return _entry->Str; }
-    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry->Hash != 0; }
-    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return _entry->Hash == other._entry->Hash; }
-    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept -> bool { return _entry->Hash < other._entry->Hash; }
-    [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
-    [[nodiscard]] constexpr auto as_int64() const noexcept -> int64_t { return std::bit_cast<int64_t>(_entry->Hash); }
-    [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64_t { return _entry->Hash; }
-    [[nodiscard]] auto as_str() const noexcept -> string_view { return _entry->Str; }
-    [[nodiscard]] auto as_str_ptr() const noexcept -> ptr<const string> { return &_entry->Str; }
-    [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->Str.c_str(); }
+    [[nodiscard]] operator string_view() const noexcept { return _entry->str; }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry->hash != 0; }
+    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return _entry->hash == other._entry->hash; }
+    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept -> bool { return _entry->hash < other._entry->hash; }
+    [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->hash; }
+    [[nodiscard]] constexpr auto as_int64() const noexcept -> int64_t { return std::bit_cast<int64_t>(_entry->hash); }
+    [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64_t { return _entry->hash; }
+    [[nodiscard]] auto as_str() const noexcept -> string_view { return _entry->str; }
+    [[nodiscard]] auto as_str_ptr() const noexcept -> ptr<const string> { return &_entry->str; }
+    [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->str.c_str(); }
 
 private:
-    static entry _zeroEntry;
+    static entry _zero_entry;
 
-    ptr<const entry> _entry {&_zeroEntry};
+    ptr<const entry> _entry {&_zero_entry};
 #if UINTPTR_MAX == UINT32_MAX
     // hstring participates in fixed value-type layouts whose slots are hash-sized
     [[maybe_unused]] uint32_t _padding {};
@@ -117,37 +117,37 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(HashResolveException);
 FO_DECLARE_EXCEPTION(HashCollisionException);
 
-class HashResolver
+class hash_resolver
 {
 public:
-    [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring = 0;
-    virtual ~HashResolver() = default;
+    [[nodiscard]] virtual auto to_hashed_string(string_view s) -> hstring = 0;
+    [[nodiscard]] virtual auto resolve_hash(hstring::hash_t h) const -> hstring = 0;
+    [[nodiscard]] virtual auto resolve_hash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring = 0;
+    virtual ~hash_resolver() = default;
 };
 
-class HashStorage : public HashResolver
+class hash_storage : public hash_resolver
 {
 public:
-    using HashFunc = uint64_t (*)(const_span<uint8_t> data);
-    using ResolveHashFailureHandler = function<void(hstring::hash_t hash)>;
+    using hash_func = uint64_t (*)(const_span<uint8_t> data);
+    using resolve_hash_failure_handler = function<void(hstring::hash_t hash)>;
 
-    static auto DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t;
-    explicit HashStorage(HashFunc hash_func = DefaultHash);
-    auto CheckHashedString(string_view s) const noexcept -> bool;
-    auto ToHashedString(string_view s) -> hstring override;
-    auto ResolveHash(hstring::hash_t h) const -> hstring override;
-    auto ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring override;
-    void SetResolveHashFailureHandler(ResolveHashFailureHandler handler);
+    static auto default_hash(const_span<uint8_t> data) noexcept -> uint64_t;
+    explicit hash_storage(hash_func func = default_hash);
+    auto check_hashed_string(string_view s) const noexcept -> bool;
+    auto to_hashed_string(string_view s) -> hstring override;
+    auto resolve_hash(hstring::hash_t h) const -> hstring override;
+    auto resolve_hash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring override;
+    void set_resolve_hash_failure_handler(resolve_hash_failure_handler handler);
 
 private:
-    void HandleResolveHashFailure(hstring::hash_t h) const noexcept;
+    void handle_resolve_hash_failure(hstring::hash_t h) const noexcept;
 
-    HashFunc _hashFunc;
-    mutable shared_mutex _hashStorageLocker {};
-    unordered_map<hstring::hash_t, unique_ptr<hstring::entry>> _hashStorage FO_TSA_GUARDED_BY(_hashStorageLocker) {};
-    mutable shared_mutex _resolveHashFailureHandlerLocker {};
-    ResolveHashFailureHandler _resolveHashFailureHandler FO_TSA_GUARDED_BY(_resolveHashFailureHandlerLocker) {};
+    hash_func _hash_func;
+    mutable shared_mutex _hash_storage_locker {};
+    unordered_map<hstring::hash_t, unique_ptr<hstring::entry>> _hash_storage FO_TSA_GUARDED_BY(_hash_storage_locker) {};
+    mutable shared_mutex _resolve_hash_failure_handler_locker {};
+    resolve_hash_failure_handler _resolve_hash_failure_handler FO_TSA_GUARDED_BY(_resolve_hash_failure_handler_locker) {};
 };
 
 FO_END_NAMESPACE

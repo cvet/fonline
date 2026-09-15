@@ -53,20 +53,20 @@ FO_EXPORT_FUNC auto FO_BakeResources(void* baking_settings) noexcept -> bool
 
     // The caller carries on in this process, so a set built here has the log writer and pools it started
     // joined before control goes back. A set that already existed belongs to the application around us
-    bool owns_global_data = create_global_data();
+    bool owns_global_data = global_data::create();
 
     auto join_before_return = scope_exit([owns_global_data]() noexcept {
         if (owns_global_data) {
-            delete_global_data();
+            global_data::destroy();
         }
     });
 
-    LogToFile(strex("{}_BakerLib.log", FO_DEV_NAME));
+    logging::to_file(strex("{}_BakerLib.log", FO_DEV_NAME));
 
     auto settings = cast_from_void<BakingSettings*>(baking_settings);
 
     if (!settings) {
-        WriteLog("Baker DLL: baking rejected, settings pointer is null");
+        logging::write("Baker DLL: baking rejected, settings pointer is null");
         return false;
     }
 

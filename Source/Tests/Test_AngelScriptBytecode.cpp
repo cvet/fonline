@@ -98,7 +98,7 @@ namespace
 
             auto target = make_ptr(raw_data);
             auto source = make_ptr(&_buf->at(_readPos));
-            MemCopy(target, source, size);
+            memory::copy(target, source, size);
             _readPos += size;
             return 0;
         }
@@ -116,7 +116,7 @@ namespace
             _buf->resize(_writePos + size);
             auto target = make_ptr(&_buf->at(_writePos));
             auto source = make_ptr(raw_data);
-            MemCopy(target, source, size);
+            memory::copy(target, source, size);
             _writePos += size;
             return 0;
         }

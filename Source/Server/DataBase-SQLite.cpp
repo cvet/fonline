@@ -82,7 +82,7 @@ static auto SqliteMemMalloc(int32_t size) -> void*
     }
 
     size_t total = numeric_cast<size_t>(size) + sizeof(SqliteAllocHeader);
-    auto block = SafeAlloc::MallocRaw(total).reinterpret_as<uint8_t>();
+    auto block = safe_alloc::malloc_raw(total).reinterpret_as<uint8_t>();
     auto header = block.reinterpret_as<SqliteAllocHeader>();
     header->Size = numeric_cast<uint64_t>(size);
     return block.get() + sizeof(SqliteAllocHeader);
@@ -98,7 +98,7 @@ static void SqliteMemFree(void* mem)
         return;
     }
 
-    SafeAlloc::FreeRaw(header.void_cast());
+    safe_alloc::free_raw(header.void_cast());
 }
 
 static auto SqliteMemRealloc(void* mem, int32_t size) -> void*
@@ -115,7 +115,7 @@ static auto SqliteMemRealloc(void* mem, int32_t size) -> void*
 
     auto base = SqliteAllocHeaderOf(mem);
     size_t total = numeric_cast<size_t>(size) + sizeof(SqliteAllocHeader);
-    auto moved = SafeAlloc::ReallocRaw(base.void_cast(), total).reinterpret_as<uint8_t>();
+    auto moved = safe_alloc::realloc_raw(base.void_cast(), total).reinterpret_as<uint8_t>();
     auto header = moved.reinterpret_as<SqliteAllocHeader>();
     header->Size = numeric_cast<uint64_t>(size);
     return moved.get() + sizeof(SqliteAllocHeader);
@@ -207,12 +207,12 @@ public:
 
     explicit DbSQLite(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _storageDir {fs_make_writable_path(db_settings->UserWritablePath, storage_dir)}
+        _storageDir {fs::make_writable_path(db_settings->UserWritablePath, storage_dir)}
     {
         FO_STACK_TRACE_ENTRY();
 
         InitializeSQLiteRuntime();
-        fs_create_directories(_storageDir);
+        fs::create_directories(_storageDir);
         OpenDataBase();
         StartCommitThread();
     }
@@ -376,9 +376,9 @@ protected:
         // source's own file, and a memory source has none, which SQLite answers with SQLITE_CANTOPEN
         string source_path = strex("{}/Storage.snapshot-restore", _storageDir);
 
-        FO_VERIFY_AND_THROW(fs_write_file(source_path, snapshot_data), "Cannot write the snapshot restore scratch database", source_path);
+        FO_VERIFY_AND_THROW(fs::write_file(source_path, snapshot_data), "Cannot write the snapshot restore scratch database", source_path);
 
-        auto remove_source_file = scope_exit([&source_path]() noexcept { (void)fs_remove_file(source_path); });
+        auto remove_source_file = scope_exit([&source_path]() noexcept { (void)fs::remove_file(source_path); });
 
         auto source_path_ptr = make_ptr(source_path.c_str());
         nptr<sqlite3> source_db;
@@ -435,7 +435,7 @@ protected:
             return true;
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             return false;
         }
     }
@@ -722,7 +722,7 @@ private:
 
             vector<uint8_t> result(sizeof(int64_t));
             int64_t value = numeric_key->underlying_value();
-            MemCopy(result.data(), &value, sizeof(value));
+            memory::copy(result.data(), &value, sizeof(value));
             return result;
         }
 
@@ -740,7 +740,7 @@ private:
             }
 
             int64_t value {};
-            MemCopy(&value, key_data.data(), sizeof(value));
+            memory::copy(&value, key_data.data(), sizeof(value));
 
             if (value <= 0) {
                 throw DataBaseException("DbSQLite invalid numeric key", value);
@@ -783,7 +783,7 @@ private:
 auto CreateSQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     InitializeBsonMemory();
-    return SafeAlloc::MakeUnique<DbSQLite>(db_settings, storage_dir, std::move(panic_callback));
+    return safe_alloc::make_unique<DbSQLite>(db_settings, storage_dir, std::move(panic_callback));
 }
 
 #endif

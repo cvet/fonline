@@ -141,7 +141,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
             auto target = make_ptr(output.data());
             auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-            MemCopy(target, source, offset);
+            memory::copy(target, source, offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
@@ -154,7 +154,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
                 auto stream_target = make_ptr(output.data()).offset(offset);
                 auto stream_source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-                MemCopy(stream_target, stream_source, write);
+                memory::copy(stream_target, stream_source, write);
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
@@ -162,7 +162,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             // Cut off end
             if (offset < output.size()) {
                 auto silence_target = make_ptr(output.data()).offset(offset);
-                MemFill(silence_target, silence, output.size() - offset);
+                memory::fill(silence_target, silence, output.size() - offset);
             }
         }
         else {
@@ -170,7 +170,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             if (!output.empty()) {
                 auto target = make_ptr(output.data());
                 auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
-                MemCopy(target, source, output.size());
+                memory::copy(target, source, output.size());
             }
             sound->ConvertedBufCur += output.size();
         }
@@ -209,7 +209,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
         // Give silent
         if (!output.empty()) {
             auto silence_target = make_ptr(output.data());
-            MemFill(silence_target, silence, output.size());
+            memory::fill(silence_target, silence, output.size());
         }
         return true;
     }
@@ -217,7 +217,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     // Give silent
     if (!output.empty()) {
         auto silence_target = make_ptr(output.data());
-        MemFill(silence_target, silence, output.size());
+        memory::fill(silence_target, silence, output.size());
     }
 
     return false;
@@ -234,7 +234,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
         return false;
     }
 
-    auto sound_owner = SafeAlloc::MakeUnique<Sound>();
+    auto sound_owner = safe_alloc::make_unique<Sound>();
     auto sound = sound_owner.as_ptr();
     sound->Attenuation = attenuation;
     sound->Pan = pan;
@@ -294,7 +294,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
-    auto ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
+    auto ogg_stream_owner = safe_alloc::make_unique<OggVorbis_File>();
     auto released_ogg_stream = ogg_stream_owner.release();
     sound->OggStream = make_unique_del_ptr(released_ogg_stream, [](OggVorbis_File* raw_vf) noexcept {
         auto vf = make_ptr(raw_vf);
@@ -305,31 +305,33 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
 
     FileReader reader = file.GetReader();
-    auto file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
+    auto file_context = safe_alloc::make_unique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
     int32_t error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
-        WriteLog("Open OGG file '{}' fail, error:", fname);
+        logging::write("Open OGG file '{}' fail, error:", fname);
+
         switch (error) {
         case OV_EREAD:
-            WriteLog("A read from media returned an error");
+            logging::write("A read from media returned an error");
             break;
         case OV_ENOTVORBIS:
-            WriteLog("Bitstream does not contain any Vorbis data");
+            logging::write("Bitstream does not contain any Vorbis data");
             break;
         case OV_EVERSION:
-            WriteLog("Vorbis version mismatch");
+            logging::write("Vorbis version mismatch");
             break;
         case OV_EBADHEADER:
-            WriteLog("Invalid Vorbis bitstream header");
+            logging::write("Invalid Vorbis bitstream header");
             break;
         case OV_EFAULT:
-            WriteLog("Internal logic fault; indicates a bug or heap/stack corruption");
+            logging::write("Internal logic fault; indicates a bug or heap/stack corruption");
             break;
         default:
-            WriteLog("Unknown error code {}", error);
+            logging::write("Unknown error code {}", error);
             break;
         }
+
         return false;
     }
 

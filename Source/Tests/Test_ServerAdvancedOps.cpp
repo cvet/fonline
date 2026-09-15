@@ -994,22 +994,22 @@ namespace AdvOps
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("AdvOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("AdvOpsItem.fopro-bin-server", item_blob);
@@ -1040,7 +1040,7 @@ namespace AdvOps
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -1059,7 +1059,7 @@ namespace AdvOps
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
 
 #define RUN_SCRIPT_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("AdvOps::" func_name)); \

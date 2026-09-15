@@ -64,6 +64,13 @@ Its `windows-file-io` artifact retains the factual JSON, compiler logs, executab
 and available embedded manifests even when a probe fails. See the
 [filesystem diagnostic contract](Essentials.md#filesystem-compression-sockets-and-work-threads).
 
+The probe compiles the selected `fs::` definitions from `DiskFileSystem.cpp` unchanged;
+it derives their namespace declarations from those definitions. Keep the probe's
+signature list and the config-search fixture's `fs` stubs aligned with API renames.
+`BuildTools/tests/test_windows_file_io_probe.py` checks extraction on every host;
+`test_application_config_search.py` compiles the config-search loop when a C++20
+compiler is available.
+
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
 ```bash
@@ -252,7 +259,7 @@ masked. Notable cases:
 - backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
   binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
   never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
-  (`GetNativeTraceResolver`, serialized by `StackTraceState::NativeResolverLocker`): it is created
+  (`get_native_trace_resolver`, serialized by `stack_trace_state::native_resolver_locker`): it is created
   once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
@@ -287,7 +294,7 @@ Coverage-only configurations also provide the ordinary `<DevName>_ServerHeadless
 `<DevName>_CodeCoverage`; no second configuration or production runtime rebuild is required.
 They do not enable the windowed applications or the baker plugin. Clang/GCC companion
 applications, including the managed script baker, register a `quick_exit` coverage flush on
-platforms where `ExitApp` uses it (Linux/Windows; Apple, Android, and Web retain `exit`),
+platforms where `exit_app` uses it (Linux/Windows; Apple, Android, and Web retain `exit`),
 because the engine's ordinary shutdown bypasses the compiler runtime's `atexit` writer.
 
 For native LLVM coverage of script-driven integration tests, first run `RunCodeCoverage`,
@@ -438,13 +445,13 @@ failed - drive only what is reachable.
 `backward.hpp` only — they carry no engine namespace and appear in no engine
 header, so a test declares them exactly as that header does. The report is
 emitted through the base log on the first write to the crash stream, so point
-`LogToFile` at a private file, write one line into `GetCrashStream()` and read
+`logging::to_file` at a private file, write one line into `GetCrashStream()` and read
 the report back instead of letting "FATAL ERROR!" leak into the test console.
-Restore the log with `LogToFile("/dev/null")` (`"NUL"` on Windows); there is no
+Restore the log with `logging::to_file("/dev/null")` (`"NUL"` on Windows); there is no
 "stop logging to a file" call. Terminating reporters are covered out of process
-through `DiagnosticSelfTest`: `main_strong_assert` covers `ReportExceptionAndExit`,
+through `DiagnosticSelfTest`: `main_strong_assert` covers `exceptions::report_and_exit`,
 `main_basic_strong_assert` and `main_fatal_exit` cover the early `FatalError`
-layer, and `main_failure_exit` pins the raw status-only `ExitApp(false)` contract.
+layer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
 The embedding project's
 `Tools/PipelineTests/test_crash_diagnostics_linux.py` asserts their log and exit
 contracts without killing the unit-test process.

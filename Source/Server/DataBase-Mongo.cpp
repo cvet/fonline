@@ -452,7 +452,7 @@ protected:
             bson_destroy(&reply);
         }
         else {
-            WriteLog("Mongo reconnect probe failed: {}", error.message);
+            logging::write("Mongo reconnect probe failed: {}", error.message);
         }
 
         return ok;
@@ -535,7 +535,7 @@ private:
 auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     InitializeBsonMemory();
-    return SafeAlloc::MakeUnique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
+    return safe_alloc::make_unique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
 }
 
 // Once per process and never undone. mongoc_init and mongoc_cleanup are each one-shot: a cleanup frees the
@@ -566,14 +566,14 @@ static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain
         switch (log_level) {
         case MONGOC_LOG_LEVEL_ERROR:
         case MONGOC_LOG_LEVEL_CRITICAL:
-            WriteLog(LogType::Error, "Mongo driver [{}]: {}", domain, text);
+            logging::write(logging::type::error, "Mongo driver [{}]: {}", domain, text);
             break;
         case MONGOC_LOG_LEVEL_WARNING:
-            WriteLog(LogType::Warning, "Mongo driver [{}]: {}", domain, text);
+            logging::write(logging::type::warning, "Mongo driver [{}]: {}", domain, text);
             break;
         case MONGOC_LOG_LEVEL_MESSAGE:
         case MONGOC_LOG_LEVEL_INFO:
-            WriteLog("Mongo driver [{}]: {}", domain, text);
+            logging::write("Mongo driver [{}]: {}", domain, text);
             break;
         default:
             break;

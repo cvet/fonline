@@ -152,7 +152,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
             output_bytes += info.OutputBytes;
         }
         catch (const std::exception& ex) {
-            WriteLog("Audio baking error: {}", ex.what());
+            logging::write("Audio baking error: {}", ex.what());
             errors++;
         }
     }

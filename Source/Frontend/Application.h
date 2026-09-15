@@ -471,7 +471,7 @@ class AppWindow final : public IAppWindow
 {
     friend class Application;
     friend class AppInput;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     [[nodiscard]] auto GetSize() const -> isize32 override;
@@ -637,7 +637,7 @@ enum class AppInitFlags : uint8_t
 class Application final
 {
     friend void InitApp(CommandLineArgs args, AppInitFlags flags);
-    friend class SafeAlloc;
+    friend class safe_alloc;
     friend class AppWindow;
     friend class AppRender;
     friend class AppInput;
@@ -830,17 +830,17 @@ inline auto AppWindow::GetWindowHandleForInput() const -> nptr<WindowInternalHan
     return _windowHandle;
 }
 
-extern auto IsAppInitialized() noexcept -> bool;
-extern auto GetApp() noexcept -> ptr<Application>;
-extern void ResetApp() noexcept;
-extern auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
-extern void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
-extern void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
-extern auto GetExeLogFileName() -> string;
+auto IsAppInitialized() noexcept -> bool;
+auto GetApp() noexcept -> ptr<Application>;
+void ResetApp() noexcept;
+auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
+void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
+void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
+auto GetExeLogFileName() -> string;
 // The one answer to "where may this process write": the command line, else the installer marker beside
 // the executable, else the working directory - settings-free, so it holds before anything is read
-extern auto ResolveWritableRoot(CommandLineArgs args) -> string;
-extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
-extern auto IsQuitSignalReceived() noexcept -> bool;
+auto ResolveWritableRoot(CommandLineArgs args) -> string;
+auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
+auto IsQuitSignalReceived() noexcept -> bool;
 
 FO_END_NAMESPACE

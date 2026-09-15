@@ -151,7 +151,7 @@ private:
     thread _discovery {};
     shared_mutex _clientIoLocker {};
     mutable mutex _stackTraceLocker {};
-    StackTraceData _lastStackTrace FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    stack_trace::data _lastStackTrace FO_TSA_GUARDED_BY(_stackTraceLocker) {};
     vector<vector<LocalVariableInfo>> _lastLocalsByFrame FO_TSA_GUARDED_BY(_stackTraceLocker) {};
     string _lastStoppedSourcePath FO_TSA_GUARDED_BY(_stackTraceLocker) {};
     uint32_t _lastStoppedSourceLine FO_TSA_GUARDED_BY(_stackTraceLocker) {};
@@ -201,7 +201,7 @@ DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
 
     constexpr uint16_t base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
     constexpr uint16_t span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
-    int32_t pid_num = strvex(Platform::GetCurrentProcessIdStr()).to_int32();
+    int32_t pid_num = strvex(platform::get_current_process_id_str()).to_int32();
     uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % span) : uint16_t {0};
 
     bool listen_ok = false;
@@ -213,7 +213,7 @@ DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
         if (_tcpServer.listen(_bindHost, candidate_port, 1)) {
             _port = candidate_port;
             _endpoint = strex("tcp://{}:{}", _host, _port).str();
-            _instanceId = strex("{}:{}", Platform::GetCurrentProcessIdStr(), _port).str();
+            _instanceId = strex("{}:{}", platform::get_current_process_id_str(), _port).str();
             listen_ok = true;
             break;
         }
@@ -306,7 +306,7 @@ void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContex
     if (reason == AngelScriptContextSetupReason::Create) {
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), make_nptr(this).void_cast(), AngelScript::asCALL_CDECL));
-        ctx_ext->StepState = SafeAlloc::MakeShared<DebuggerStepState>();
+        ctx_ext->StepState = safe_alloc::make_shared<DebuggerStepState>();
     }
     else if (reason == AngelScriptContextSetupReason::Request) {
         if (ctx_ext->Parent) {
@@ -387,7 +387,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
     auto capture_stack_trace = [&](string_view source_path, uint32_t source_line, string_view function_name) {
         scoped_lock locker {_stackTraceLocker};
 
-        _lastStackTrace = GetStackTrace();
+        _lastStackTrace = stack_trace::get();
         _lastStoppedSourcePath = string {source_path};
         _lastStoppedSourceLine = source_line;
         _lastStoppedFunction = string {function_name};
@@ -624,7 +624,7 @@ auto DebuggerEndpointServer::Impl::MakeAttachHandshakeMessage() const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return strex("{{\"type\":\"attachAccepted\",\"protocolVersion\":1,\"enginePid\":{}}}\n", Platform::GetCurrentProcessIdStr()).str();
+    return strex("{{\"type\":\"attachAccepted\",\"protocolVersion\":1,\"enginePid\":{}}}\n", platform::get_current_process_id_str()).str();
 }
 
 auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -> optional<int32_t>
@@ -639,7 +639,7 @@ auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 
     return std::nullopt;
@@ -657,7 +657,7 @@ auto DebuggerEndpointServer::Impl::ExtractRequestCommand(string_view message) co
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 
     return {};
@@ -782,7 +782,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             };
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
 
             return {
                 .Response = MakeDebuggerResponse(request_id, command, false, R"({"error":"Invalid setBreakpoints payload"})"),
@@ -796,7 +796,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             auto payload = msg_json.contains("payload") ? msg_json["payload"] : nlohmann::json::object();
 
             int32_t start_frame = 0;
-            int32_t levels = numeric_cast<int32_t>(STACK_TRACE_MAX_NATIVE_FRAMES);
+            int32_t levels = numeric_cast<int32_t>(stack_trace::MAX_NATIVE_FRAMES);
 
             if (payload.contains("startFrame") && payload["startFrame"].is_number_integer()) {
                 start_frame = std::max(0, payload["startFrame"].get<int32_t>());
@@ -806,7 +806,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                 levels = std::max(0, payload["levels"].get<int32_t>());
             }
 
-            StackTraceData frames;
+            stack_trace::data frames;
             bool has_stopped_location = false;
             string stopped_source;
             string stopped_function;
@@ -822,12 +822,12 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                 stopped_function = _lastStoppedFunction;
             }
 
-            auto resolved_frames = ResolveStackTrace(frames);
-            vector<StackTraceFrame> script_frames;
+            auto resolved_frames = stack_trace::resolve(frames);
+            vector<stack_trace::frame> script_frames;
             script_frames.reserve(resolved_frames.size());
 
             for (const auto& fr : resolved_frames) {
-                if (fr.Type == StackTraceFrame::FrameType::Script) {
+                if (fr.type == stack_trace::frame::frame_type::script) {
                     script_frames.push_back(fr);
                 }
             }
@@ -862,9 +862,9 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
 
                 nlohmann::json frame;
                 frame["id"] = i + 1;
-                frame["name"] = !entry->Function.empty() ? entry->Function : std::string {"frame"};
-                frame["source"] = entry->File;
-                frame["line"] = entry->Line > 0 ? entry->Line - 1 : 0u;
+                frame["name"] = !entry->function.empty() ? entry->function : std::string {"frame"};
+                frame["source"] = entry->file;
+                frame["line"] = entry->line > 0 ? entry->line - 1 : 0u;
                 body["stackFrames"].push_back(std::move(frame));
             }
 
@@ -873,7 +873,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             };
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
 
             return {
                 .Response = MakeDebuggerResponse(request_id, command, false, R"({"error":"Invalid stackTrace payload"})"),
@@ -930,7 +930,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             };
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
 
             return {
                 .Response = MakeDebuggerResponse(request_id, command, false, R"({"error":"Invalid variables payload"})"),
@@ -961,7 +961,7 @@ void DebuggerEndpointServer::Impl::RunTcp()
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("AngelScript debugger TCP endpoint: {}", _endpoint);
+    logging::write("AngelScript debugger TCP endpoint: {}", _endpoint);
 
     while (!_stopped) {
         if (!_tcpServer.can_accept(ANGELSCRIPT_DEBUGGER_IO_POLL_TIMEOUT)) {
@@ -1050,7 +1050,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
                 string hello = MakeAttachHandshakeMessage();
 
                 if (!SendToActiveClient(hello)) {
-                    WriteLog("Can't write debugger handshake to tcp '{}:{}'", _host, _port);
+                    logging::write("Can't write debugger handshake to tcp '{}:{}'", _host, _port);
                     return;
                 }
 
@@ -1061,13 +1061,13 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
             auto result = HandleRequestLine(line);
 
             if (!SendToActiveClient(result.Response)) {
-                WriteLog("Can't write debugger response to tcp '{}:{}'", _host, _port);
+                logging::write("Can't write debugger response to tcp '{}:{}'", _host, _port);
                 return;
             }
 
             if (result.Event.has_value()) {
                 if (!SendToActiveClient(result.Event.value())) {
-                    WriteLog("Can't write debugger event to tcp '{}:{}'", _host, _port);
+                    logging::write("Can't write debugger event to tcp '{}:{}'", _host, _port);
                     return;
                 }
             }
@@ -1086,10 +1086,10 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
     constexpr size_t buffer_size = 1024;
     array<uint8_t, buffer_size> read_buf {};
 
-    WriteLog("AngelScript debugger UDP discovery port: {}", _discoveryPort);
+    logging::write("AngelScript debugger UDP discovery port: {}", _discoveryPort);
 
     if (!_discoverySocket.bind(_bindHost, _discoveryPort, true) || !_discoverySocket.set_broadcast(true)) {
-        WriteLog("Can't bind debugger discovery udp socket on port {}", _discoveryPort);
+        logging::write("Can't bind debugger discovery udp socket on port {}", _discoveryPort);
         return;
     }
 
@@ -1118,7 +1118,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
 }
 
 DebuggerEndpointServer::DebuggerEndpointServer(ptr<const AngelScriptBackend> backend) :
-    _impl {SafeAlloc::MakeUnique<Impl>(backend)}
+    _impl {safe_alloc::make_unique<Impl>(backend)}
 {
     FO_STACK_TRACE_ENTRY();
 }

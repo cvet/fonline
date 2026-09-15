@@ -45,8 +45,8 @@ FO_BEGIN_NAMESPACE
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 54
 
-extern auto IsPackaged() -> bool;
-extern auto GetPackagedRuntimeName() -> string;
+auto IsPackaged() -> bool;
+auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
@@ -233,7 +233,7 @@ public:
                 cb._unsubscribeCallback();
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -266,7 +266,7 @@ public:
                 throw GenericException("Some of subscriber still subscribed", _subscriberCallbacks.size());
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -899,10 +899,10 @@ using InterthreadListener = copyable_function<InterthreadDataCallback(Interthrea
 
 // One table for the process, keyed by virtual port, so an embedded client finds the server running beside it.
 // Listeners are handed out by copy and called outside the table's lock
-extern auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool;
-extern auto RemoveInterthreadListener(uint16_t port) -> bool;
-extern auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
-extern auto HasInterthreadListener(uint16_t port) -> bool;
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool;
+auto RemoveInterthreadListener(uint16_t port) -> bool;
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
+auto HasInterthreadListener(uint16_t port) -> bool;
 
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t

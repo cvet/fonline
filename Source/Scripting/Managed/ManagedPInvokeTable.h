@@ -52,7 +52,7 @@ extern const ManagedPInvokeEntry ManagedPInvokeEntries[];
 extern const size_t ManagedPInvokeEntryCount;
 
 // Must run before the runtime is initialized: the very first managed call already needs a shim
-extern void RegisterManagedInteropShims();
+void RegisterManagedInteropShims();
 
 FO_END_NAMESPACE
 

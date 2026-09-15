@@ -181,7 +181,7 @@ struct ModelPoseJointLink
 class ModelAnimationRuntimeClip final
 {
     friend class ModelAnimationRuntimeAccess;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ModelAnimationRuntimeClip() = delete;
@@ -207,7 +207,7 @@ private:
 class ModelAnimationRuntimeRig final
 {
     friend class ModelAnimationRuntimeAccess;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ModelAnimationRuntimeRig() = delete;

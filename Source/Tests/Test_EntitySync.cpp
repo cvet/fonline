@@ -1043,9 +1043,9 @@ TEST_CASE("SyncContext")
         });
         auto join_releaser = scope_exit([&releaser]() noexcept { releaser.join(); });
 
-        TimeMeter wait_only_time;
+        time_meter wait_only_time;
         inner.LockSingleton(make_ptr(&singleton));
-        timespan wait_only_total = wait_only_time.GetDuration();
+        timespan wait_only_total = wait_only_time.get_duration();
         inner.UnlockSingleton(make_ptr(&singleton));
 
         releaser.join();
@@ -1060,10 +1060,10 @@ TEST_CASE("SyncContext")
         CHECK(inner_lock_wait.div<float64_t>(wait_only_total) >= 0.75);
         CHECK(outer_lock_wait == inner_lock_wait);
 
-        TimeMeter compute_only_time;
+        time_meter compute_only_time;
         uint64_t checksum = 1;
 
-        while (compute_only_time.GetDuration() < timespan {std::chrono::milliseconds {25}}) {
+        while (compute_only_time.get_duration() < timespan {std::chrono::milliseconds {25}}) {
             checksum = checksum * 6364136223846793005ULL + 1442695040888963407ULL;
         }
 

@@ -41,8 +41,8 @@ TEST_CASE("Compressor")
 {
     SECTION("MaxCompressedSize")
     {
-        CHECK(Compressor::CalculateMaxCompressedBufSize(0) >= 12);
-        CHECK(Compressor::CalculateMaxCompressedBufSize(100) >= 100);
+        CHECK(compressor::calculate_max_compressed_buf_size(0) >= 12);
+        CHECK(compressor::calculate_max_compressed_buf_size(100) >= 100);
     }
 
     SECTION("CompressDecompressRoundtrip")
@@ -53,27 +53,27 @@ TEST_CASE("Compressor")
             src.emplace_back(static_cast<uint8_t>(i % 251));
         }
 
-        auto compressed = Compressor::Compress(src);
+        auto compressed = compressor::compress(src);
         CHECK_FALSE(compressed.empty());
 
-        auto restored = Compressor::Decompress(compressed, 2);
+        auto restored = compressor::decompress(compressed, 2);
         CHECK(restored == src);
     }
 
     SECTION("DecompressInvalidData")
     {
         vector<uint8_t> invalid = {0x01, 0x02, 0x03, 0x04, 0x05};
-        CHECK_THROWS_AS((Compressor::Decompress(invalid, 2)), DecompressException);
+        CHECK_THROWS_AS((compressor::decompress(invalid, 2)), DecompressException);
     }
 
     SECTION("DecompressExpandsBufferWhenApproximationIsTooSmall")
     {
         vector<uint8_t> src(4096, 0x2A);
 
-        auto compressed = Compressor::Compress(src);
+        auto compressed = compressor::compress(src);
         REQUIRE(compressed.size() < src.size());
 
-        auto restored = Compressor::Decompress(compressed, 1);
+        auto restored = compressor::decompress(compressed, 1);
         CHECK(restored == src);
     }
 
@@ -86,47 +86,47 @@ TEST_CASE("Compressor")
             part2.emplace_back(static_cast<uint8_t>(255 - i));
         }
 
-        StreamCompressor compressor;
+        stream_compressor stream;
         vector<uint8_t> comp1;
         vector<uint8_t> comp2;
-        compressor.Compress(part1, comp1);
-        compressor.Compress(part2, comp2);
+        stream.compress(part1, comp1);
+        stream.compress(part2, comp2);
 
-        StreamDecompressor decompressor;
+        stream_decompressor decompressor;
         vector<uint8_t> dec1;
         vector<uint8_t> dec2;
-        decompressor.Decompress(comp1, dec1);
-        decompressor.Decompress(comp2, dec2);
+        decompressor.decompress(comp1, dec1);
+        decompressor.decompress(comp2, dec2);
 
         CHECK(dec1 == part1);
         CHECK(dec2 == part2);
 
-        compressor.Reset();
-        decompressor.Reset();
+        stream.reset();
+        decompressor.reset();
     }
 
     SECTION("StreamRejectsMalformedInitialInputWithTypedException")
     {
-        StreamDecompressor decompressor;
+        stream_decompressor decompressor;
         vector<uint8_t> result;
         vector<uint8_t> invalid = {0x00, 0x00};
 
-        CHECK_THROWS_AS(decompressor.Decompress(invalid, result), DecompressException);
+        CHECK_THROWS_AS(decompressor.decompress(invalid, result), DecompressException);
     }
 
     SECTION("StreamRejectsMalformedContinuationInputWithTypedException")
     {
         vector<uint8_t> source(4096, 0x2A);
-        StreamCompressor compressor;
+        stream_compressor stream;
         vector<uint8_t> compressed;
-        compressor.Compress(source, compressed);
+        stream.compress(source, compressed);
         REQUIRE(compressed.size() * 2 < source.size());
 
         compressed.emplace_back(0x06);
 
-        StreamDecompressor decompressor;
+        stream_decompressor decompressor;
         vector<uint8_t> result;
-        CHECK_THROWS_AS(decompressor.Decompress(compressed, result), DecompressException);
+        CHECK_THROWS_AS(decompressor.decompress(compressed, result), DecompressException);
     }
 }
 
