@@ -43,7 +43,6 @@ FO_BEGIN_NAMESPACE
 namespace logging
 {
     void to_file(string_view path, bool append = false);
-    // std::string because this module sits above StringObject in the Essentials order
     auto get_file_path() -> std::string;
     void set_async_writing(bool enabled);
     void suspend_async_writing() noexcept;

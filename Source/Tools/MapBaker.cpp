@@ -203,9 +203,9 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         vector<uint8_t> map_cr_data;
         vector<uint8_t> map_item_data;
         vector<uint8_t> map_client_item_data;
-        auto map_cr_data_writer = data_writer(map_cr_data);
-        auto map_item_data_writer = data_writer(map_item_data);
-        auto map_client_item_data_writer = data_writer(map_client_item_data);
+        data_writer map_cr_data_writer {map_cr_data};
+        data_writer map_item_data_writer {map_item_data};
+        data_writer map_client_item_data_writer {map_client_item_data};
         set<hstring> str_hashes;
         set<hstring> client_str_hashes;
 
@@ -272,7 +272,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         // Server side
         {
             vector<uint8_t> map_data;
-            auto final_writer = data_writer(map_data);
+            data_writer final_writer {map_data};
 
             final_writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
             final_writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
@@ -294,7 +294,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         // Client side
         {
             vector<uint8_t> map_data;
-            auto final_writer = data_writer(map_data);
+            data_writer final_writer {map_data};
 
             final_writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
             final_writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
