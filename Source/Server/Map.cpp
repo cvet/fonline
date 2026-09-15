@@ -175,6 +175,35 @@ auto Map::GetCritters() const noexcept -> const_span<ptr<Critter>>
     return _critters;
 }
 
+auto Map::GetCritters(CritterFindType find_type) -> vector<ptr<Critter>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    bool find_players = is_enum_set(find_type, CritterFindType::Players);
+    bool find_npc = is_enum_set(find_type, CritterFindType::Npc);
+    span<ptr<Critter>> source = _critters;
+
+    if (find_players && !find_npc) {
+        source = _playerCritters;
+    }
+    else if (find_npc && !find_players) {
+        source = _nonPlayerCritters;
+    }
+
+    vector<ptr<Critter>> critters;
+    critters.reserve(source.size());
+
+    for (ptr<Critter> cr : source) {
+        if (cr->CheckFind(find_type)) {
+            critters.emplace_back(cr);
+        }
+    }
+
+    return critters;
+}
+
 auto Map::GetPlayerCritters() noexcept -> span<ptr<Critter>>
 {
     FO_NO_STACK_TRACE_ENTRY();

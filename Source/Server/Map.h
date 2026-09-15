@@ -92,6 +92,7 @@ public:
     [[nodiscard]] auto HasCritters() const noexcept -> bool;
     [[nodiscard]] auto GetCritters() noexcept -> span<ptr<Critter>>;
     [[nodiscard]] auto GetCritters() const noexcept -> const_span<ptr<Critter>>;
+    [[nodiscard]] auto GetCritters(CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<ptr<const Critter>>;
     [[nodiscard]] auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<ptr<Critter>>;

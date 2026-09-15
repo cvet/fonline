@@ -1753,6 +1753,57 @@ TEST_CASE("LocationCppApi")
 
         server->MapMngr.DestroyLocation(loc);
     }
+
+    // The find type is honoured as a whole: the player/NPC half picks the map partition, the dead/alive half still filters it
+    SECTION("MapCrittersByFindTypeHonourWholeFindType")
+    {
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto player_cr = server->CreateCritter(fn("TestCritter"), true);
+        auto npc = server->CreateCritter(fn("TestCritter"), false);
+        auto dead_npc = server->CreateCritter(fn("TestCritter"), false);
+        server->MapMngr.TransferToMap(player_cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(npc, map, mpos {24, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(dead_npc, map, mpos {28, 20}, mdir {}, std::nullopt);
+        dead_npc->SetCondition(CritterCondition::Dead);
+
+        auto contains = [](const vector<ptr<Critter>>& critters, ptr<Critter> cr) { return std::ranges::find(critters, cr) != critters.end(); };
+
+        CHECK(contains(map->GetCritters(CritterFindType::Players), player_cr.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::Players), npc.get()));
+        CHECK(contains(map->GetCritters(CritterFindType::NonDeadNpc), npc.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::NonDeadNpc), dead_npc.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::NonDeadNpc), player_cr.get()));
+        CHECK(contains(map->GetCritters(CritterFindType::DeadNpc), dead_npc.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::DeadNpc), npc.get()));
+        CHECK(map->GetCritters(CritterFindType::DeadPlayers).empty());
+        CHECK(map->GetCritters(CritterFindType::Any).size() == map->GetCritters().size());
+        CHECK(map->GetCritters(CritterFindType::NonDead).size() + 1 == map->GetCritters().size());
+        CHECK(map->GetCritters(CritterFindType::Dead).size() == 1);
+        CHECK(contains(map->GetCritters(CritterFindType::Dead), dead_npc.get()));
+
+        CritterFindType players_and_npc = combine_enum(CritterFindType::Players, CritterFindType::Npc);
+        size_t expected_players_and_npc = 0;
+
+        for (ptr<Critter> cr : map->GetCritters()) {
+            if (cr->CheckFind(players_and_npc)) {
+                expected_players_and_npc++;
+            }
+        }
+
+        CHECK(map->GetCritters(players_and_npc).size() == expected_players_and_npc);
+
+        player_cr->UnmarkIsForPlayer();
+        CHECK(contains(map->GetCritters(CritterFindType::NonDeadNpc), player_cr.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::Players), player_cr.get()));
+
+        server->CrMngr.DestroyCritter(dead_npc);
+        server->CrMngr.DestroyCritter(player_cr);
+        server->CrMngr.DestroyCritter(npc);
+        server->MapMngr.DestroyLocation(loc);
+    }
 }
 
 // ========== Health Info C++ API Tests ==========
