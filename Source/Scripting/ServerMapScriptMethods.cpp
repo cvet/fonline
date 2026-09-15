@@ -63,7 +63,7 @@ FO_SCRIPT_API void Server_Map_SetupScriptEx(ptr<Map> self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Map_GetLocation(ptr<Map> self)
+FO_SCRIPT_API FO_RETURNS_PARENT ptr<Location> Server_Map_GetLocation(ptr<Map> self)
 {
     auto loc = self->GetLocation();
     return loc;

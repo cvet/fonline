@@ -550,10 +550,12 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
-// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them, codegen
+// Synchronization-cover markers for script exports. All expand to nothing: the compiler never sees them, codegen
 // does
 #define FO_REQUIRES_COVER
 #define FO_PROVIDES_COVER
+#define FO_RETURNS_PARENT
+#define FO_RETURNS_ANCESTOR
 
 struct ArgDesc
 {
@@ -593,6 +595,11 @@ struct MethodDesc
     // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
     // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
     bool ReturnProvidesCover {};
+
+    // An upward accessor: it returns the receiver's sync-hierarchy parent (FO_RETURNS_PARENT) or some ancestor
+    // (FO_RETURNS_ANCESTOR). The receiver's own cover does not reach it; cover declared with that reach does
+    bool ReturnIsParent {};
+    bool ReturnIsAncestor {};
 };
 
 struct StructLayoutDesc

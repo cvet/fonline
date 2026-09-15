@@ -29,6 +29,14 @@ and there is no name to get wrong.
 **Neither attribute locks anything.** Both are purely static; they exist so the compiler can prove an
 obligation is met. Cover is established by ordinary `Sync.*` calls, written where they are needed.
 
+Three smaller markers describe how a value's cover moves rather than who owes it:
+
+| Attribute | Where | Meaning |
+|-----------|-------|---------|
+| `[PreservesCover]` | method | Awaiting it gives the caller back the cover it had (see FOSYNC009). |
+| `[AcquiresCover]` | method | The helper acquires cover through `Sync` for entities it names itself -- a global-map group's members, the carrier and map a radio resolves to -- and answers whether it succeeded, possibly with a record of what it covered. A body calling it counts as acquiring, exactly as one calling `Sync` directly. Where the helper covers an entity it returns or takes, `[ProvidesCover]` is the more precise statement and wins. |
+| `[PassesCover]` | parameter | The method returns this argument unchanged (`Game.VerifyNotNull`), so the result is covered exactly when the argument was, with the same reach. |
+
 `[RequiresCover]` means two things depending on where it sits, and that split is the design rather than an
 overload:
 
@@ -89,7 +97,7 @@ reach up to its map. Sibling-to-parent escalation and parent-cover reduction wer
 | Id | Reports |
 |----|---------|
 | `FOSYNC001` | A cover annotation on a value that is neither an entity nor a collection of entities. |
-| `FOSYNC002` | An argument for a `[RequiresCover]` parameter that is neither covered by the caller, received from a `[ProvidesCover]` source, nor re-declared. |
+| `FOSYNC002` | An argument for a `[RequiresCover]` parameter that is neither covered by the caller, received from a `[ProvidesCover]` source, nor re-declared. A provided value is one returned by a provider, handed to a `[ProvidesCover]` parameter earlier in the body (with that parameter's reach), passed through a `[PassesCover]` parameter, taken out of a provided collection, deconstructed from a provided tuple, or chosen by `?:` between provided values and `null`. A body calling `Sync` or an `[AcquiresCover]` helper discharges it. Nothing is owed for a `null` or `default` argument or an omitted optional parameter, nor in a compilation whose `Sync` has no acquisition helpers (a client or mapper target, whose scripts run on one thread). |
 | `FOSYNC003` | An execution-context entry point that does not declare `[RequiresCover]` on the entity the engine already synchronized for it. |
 | `FOSYNC004` | Cover state is probed (`Sync.IsCovered`, `Game.IsEntityLocked`) instead of acquired. |
 | `FOSYNC005` | A raw entity-cover primitive (`Game.Sync`, `Game.SyncRelease`) is used outside `Sync`. |
@@ -267,9 +275,10 @@ cover *is* the classification — an uncovered counterpart is judged from the co
 only a covered one has its fields read — and a project's own **fixture-side cover helper**, which reaches for
 the primitive by construction and probes afterwards to prove the acquisition landed.
 
-FOSYNC001 and FOSYNC003 gate the build as errors: neither has a backlog -- a cover annotation on a non-entity
-can never be satisfied, and every entry point is annotated. FOSYNC002 is held lower while annotation coverage
-grows. Severities come from the embedding project's `.editorconfig`. Note that the generated managed project sets
+FOSYNC001, FOSYNC002 and FOSYNC003 gate the build as errors: none has a backlog -- a cover annotation on a
+non-entity can never be satisfied, every entry point is annotated, and every obligation is discharged (see
+[Closing the FOSYNC002 backlog](#closing-the-fosync002-backlog)). Severities come from the embedding project's
+`.editorconfig`. Note that the generated managed project sets
 `TreatWarningsAsErrors`, so promoting a rule to `warning` makes it a hard build failure — roll out by
 severity, not all at once.
 
@@ -360,7 +369,19 @@ the receiver's cover already covers them, and the value discharges the obligatio
 it. The direction has to be declared rather than inferred: `Map.GetCritters` provides cover for what it
 returns, while `Critter.GetMap` returns a *parent* and provides nothing (acquisition takes the requested
 entities plus their sync-widen partners and nothing else). 44 accessors on `Map`, `Location`, `Critter` and
-`Item` are declared; the upward ones are deliberately left bare.
+`Item` are declared.
+
+The upward accessors carry the other half of the direction. `FO_RETURNS_PARENT` marks an export returning the
+receiver's immediate sync-hierarchy parent (`Critter.GetMap`, `Map.GetLocation`), and `FO_RETURNS_ANCESTOR` one
+whose result may sit further up the chain (`Item.GetMap`, `Item.GetMapPosition` and `Item.GetCritter`, which walk
+out through any number of containers). Codegen carries them as `MethodDesc::ReturnIsParent` /
+`ReturnIsAncestor`, and the baker emits `[return: ReturnsParent]` / `[return: ReturnsAncestor]`. Neither provides
+cover by itself -- the receiver's own cover does not reach up -- but a receiver that arrived with declared reach
+does: a value from a `[ProvidesCover(CoverReach.Parent)]` source covers its `[ReturnsParent]` result, and one with
+`CoverReach.Ancestors` covers every upward accessor on the chain (`cr.GetMap().GetLocation()`). One step of
+`Parent` is spent getting the parent, so the parent's own parent is not covered by it. This is what makes the reach
+a provider already declares worth declaring: `Testing.SpawnNpc` has said `CoverReach.Parent` since it was written,
+and until the accessors stated their direction nothing could use it.
 
 Declared so far: `Map.VerifyTrigger`, `Player.SwitchCritter`, `Game.LoginPlayerToNewRecord`. Each reports at
 real call sites, independently of the receiver default.
@@ -383,6 +404,31 @@ double.
 
 FOSYNC001 and FOSYNC003 stayed at 0 across the change, and the managed build stayed clean — so the default is
 carried entirely by FOSYNC002's backlog, not by the gates.
+
+### Closing the FOSYNC002 backlog
+
+Measured again before the work started, the backlog was 1 943 sites (320 production, 1 623 tests), and the
+"mechanical pass" the paragraph above promises closes little of it: only about 10 % of the bare identifiers are
+parameters of the enclosing method. The rest are locals obtained on the spot. The embedding project took it to
+zero without a single suppression, in this order:
+
+1. **Nothing owed.** A `null` / `default` / omitted argument, and a compilation whose `Sync` has no acquisition
+   helpers (client and mapper), stopped reporting.
+2. **Providers that code proves.** `[return: ProvidesCover]` on helpers that create the entity or return it only
+   after a top-level acquisition, and on helpers whose result is a descendant of a `[RequiresCover]` parameter
+   (a container found on a covered map). The gameplay-test runner locks every context slot and tracked entity
+   with their maps and locations before each callback, so the context accessors state that.
+3. **Reach.** `FO_RETURNS_PARENT` / `FO_RETURNS_ANCESTOR` let a provider's declared reach cover an upward accessor.
+4. **Parameters to a fixed point.** `[RequiresCover]` where the obligation belongs to the caller, iterated until
+   nothing new rose.
+5. **The remainder per site.** Five more analyzer precision steps -- reach handed over through a
+   `[ProvidesCover]` parameter, tuple deconstruction, `?:` choices, `[PassesCover]`, `[AcquiresCover]` -- and a
+   real `Sync` acquisition wherever the cover was genuinely unproved (a quest owner resolved from a companion
+   link, a modifier context's target, the participants of a caravan record).
+
+Proving cover where there was none raised FOSYNC009 from 3 554 to 3 932: a value FOSYNC002 used to report as
+uncovered is now covered, and where an await releases it before use FOSYNC009 says so instead. That is the
+same defect class moving to the rule that names it, not new debt.
 
 What remains is the reach vocabulary. `destroy_graph`, `attachment_graph`, `transfer_global_batch`,
 `transfer_global_group` are engine-specific closures rather than parent walks, so each needs a decided
@@ -422,5 +468,6 @@ an entity reference is taken, an `await` follows, and the reference is used afte
 cover the value at the point of use, because the `await` released and reacquired in between. A value-aware
 discharge (does *this* value have cover *here*) is what turns this class from a runtime crash into a
 diagnostic, and it is the strongest argument for the next increment. That direction is deliberate — it under-reports rather than blocking a build on a
-branch the analyzer cannot yet follow. Cover established through a *parameter* of a called method is not followed yet. Elements taken from a
-`[ProvidesCover]` collection are tracked as described above; this does not make acquisition path-sensitive.
+branch the analyzer cannot yet follow. Cover handed over through a `[ProvidesCover]` parameter is followed with the
+same body scope: the call may sit anywhere in the body. Elements taken from a `[ProvidesCover]` collection are
+tracked as described above; neither makes acquisition path-sensitive.

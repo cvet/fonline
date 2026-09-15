@@ -21,6 +21,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     public const string RequiresCoverAttributeFullName = "FOnline.RequiresCoverAttribute";
     public const string ProvidesCoverAttributeFullName = "FOnline.ProvidesCoverAttribute";
     public const string PreservesCoverAttributeFullName = "FOnline.PreservesCoverAttribute";
+    public const string ReturnsParentAttributeFullName = "FOnline.ReturnsParentAttribute";
+    public const string ReturnsAncestorAttributeFullName = "FOnline.ReturnsAncestorAttribute";
+    public const string AcquiresCoverAttributeFullName = "FOnline.AcquiresCoverAttribute";
+    public const string PassesCoverAttributeFullName = "FOnline.PassesCoverAttribute";
     public const string EntityTypeFullName = "FOnline.Entity";
 
     // The cover primitives are engine-owned, so they are matched by their symbol's full metadata name.
@@ -180,6 +184,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 INamedTypeSymbol? requiresCover = compilation.GetTypeByMetadataName(RequiresCoverAttributeFullName);
                 INamedTypeSymbol? providesCover = compilation.GetTypeByMetadataName(ProvidesCoverAttributeFullName);
                 INamedTypeSymbol? preservesCover = compilation.GetTypeByMetadataName(PreservesCoverAttributeFullName);
+                INamedTypeSymbol? returnsParent = compilation.GetTypeByMetadataName(ReturnsParentAttributeFullName);
+                INamedTypeSymbol? returnsAncestor = compilation.GetTypeByMetadataName(ReturnsAncestorAttributeFullName);
+                INamedTypeSymbol? acquiresCover = compilation.GetTypeByMetadataName(AcquiresCoverAttributeFullName);
+                INamedTypeSymbol? passesCover = compilation.GetTypeByMetadataName(PassesCoverAttributeFullName);
                 INamedTypeSymbol? entityType = compilation.GetTypeByMetadataName(EntityTypeFullName);
 
                 if (requiresCover == null || entityType == null) {
@@ -202,6 +210,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 var model = new CoverModel(requiresCover,
                                            providesCover,
                                            preservesCover,
+                                           returnsParent,
+                                           returnsAncestor,
+                                           acquiresCover,
+                                           passesCover,
                                            entityType,
                                            syncType,
                                            gameType,
@@ -374,6 +386,13 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        // Cover exists only where `Sync` can acquire it. A target whose scripts run on one thread compiles the
+        // helpers out (the client and the mapper see an empty `Sync`), so nothing there could satisfy an
+        // obligation and nothing is owed: a shared helper's [RequiresCover] names the server contract
+        if (!model.CanAcquireCover) {
+            return;
+        }
+
         SyntaxNode? body = EnclosingBody(invocation);
 
         if (body == null) {
@@ -436,6 +455,12 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         foreach (IParameterSymbol parameter in demanding) {
             ExpressionSyntax? argument = ArgumentFor(invocation, callee, parameter);
+
+            // No entity, nothing to cover: an omitted optional parameter takes its default, which for an entity
+            // is null, and a `null` or `default` argument says the same thing explicitly
+            if (argument == null || IsNullValue(argument, semantics, cancellationToken)) {
+                continue;
+            }
 
             // A parameter typed as the mutable half accepts the always-covered half too, since both derive
             // from the same base. Such a value satisfies the obligation on its own.
@@ -675,7 +700,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             // A deconstruction `(T x, bool y) = await ...` declares through a designation that ends before the
             // await, so the assignment it sits on the left of is what answers the same question
             if (declaration is SingleVariableDesignationSyntax designation &&
-                designation.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault() is { } deconstruction &&
+                designation.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault() is {} deconstruction &&
                 deconstruction.Left.Span.Contains(designation.Span) && deconstruction.Span.End >= position) {
                 return true;
             }
@@ -792,13 +817,15 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
+            if (model.AcquiresCover(symbol)) {
+                return true;
+            }
+
             if (!SymbolEqualityComparer.Default.Equals(symbol.ContainingType, model.SyncType)) {
                 continue;
             }
 
-            if (symbol.Name.StartsWith("Lock", System.StringComparison.Ordinal) ||
-                symbol.Name.StartsWith("Widen", System.StringComparison.Ordinal) ||
-                symbol.Name.StartsWith("Restore", System.StringComparison.Ordinal)) {
+            if (IsAcquisitionName(symbol.Name)) {
                 return true;
             }
         }
@@ -818,6 +845,13 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         return parameter.Locations.FirstOrDefault() ?? method.Locations.FirstOrDefault() ?? Location.None;
+    }
+
+    private static bool IsNullValue(ExpressionSyntax expression, SemanticModel semantics,
+                                    CancellationToken cancellationToken)
+    {
+        Optional < object ? > constant = semantics.GetConstantValue(expression, cancellationToken);
+        return constant.HasValue && constant.Value == null;
     }
 
     private static ExpressionSyntax? ArgumentFor(InvocationExpressionSyntax invocation, IMethodSymbol callee,
@@ -845,6 +879,13 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         return null;
     }
 
+    private static bool IsAcquisitionName(string name)
+    {
+        return name.StartsWith("Lock", System.StringComparison.Ordinal) ||
+               name.StartsWith("Widen", System.StringComparison.Ordinal) ||
+               name.StartsWith("Restore", System.StringComparison.Ordinal);
+    }
+
     private static SyntaxNode? EnclosingBody(SyntaxNode node)
     {
         for (SyntaxNode? current = node; current != null; current = current.Parent) {
@@ -863,17 +904,31 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private readonly INamedTypeSymbol? _providesCover;
 
         private readonly INamedTypeSymbol? _preservesCover;
+        private readonly INamedTypeSymbol? _returnsParent;
+        private readonly INamedTypeSymbol? _returnsAncestor;
+        private readonly INamedTypeSymbol? _acquiresCover;
+        private readonly INamedTypeSymbol? _passesCover;
+
+        // CoverReach.Parent and CoverReach.Ancestors, as the attribute's constructor argument carries them
+        private const int ReachParent = 1 << 0;
+        private const int ReachAncestors = 1 << 1;
         private readonly INamedTypeSymbol _entityType;
 
         private readonly List<INamedTypeSymbol> _entryMarkers;
 
         public CoverModel(INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover,
-                          INamedTypeSymbol? preservesCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType,
+                          INamedTypeSymbol? preservesCover, INamedTypeSymbol? returnsParent,
+                          INamedTypeSymbol? returnsAncestor, INamedTypeSymbol? acquiresCover,
+                          INamedTypeSymbol? passesCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType,
                           INamedTypeSymbol? gameType, List<INamedTypeSymbol> entryMarkers)
         {
             _requiresCover = requiresCover;
             _providesCover = providesCover;
             _preservesCover = preservesCover;
+            _returnsParent = returnsParent;
+            _returnsAncestor = returnsAncestor;
+            _acquiresCover = acquiresCover;
+            _passesCover = passesCover;
             _entityType = entityType;
             SyncType = syncType;
             GameType = gameType;
@@ -892,6 +947,11 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         public INamedTypeSymbol? SyncType { get; }
+
+        // Whether this compilation has any acquisition at all. `Sync` is declared on every target, but its
+        // helpers exist only where entities are synchronized
+        public bool CanAcquireCover => SyncType != null && SyncType.GetMembers().OfType<IMethodSymbol>().Any(
+                                                               method => IsAcquisitionName(method.Name));
 
         public INamedTypeSymbol? GameType { get; }
 
@@ -916,8 +976,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return _providesCover != null && HasAttribute(method.GetReturnTypeAttributes(), _providesCover);
         }
 
-        // An entity, or a collection of them: `List<Critter>` carries the contract element-wise, which is
-        // why the old string grammar needed a `[*]` marker and this one does not.
         // Baked map data and prototypes carry their own cover, so an obligation for one is already met.
         // The generated class says so itself by overriding the base property.
         public bool IsAlwaysCovered(ITypeSymbol? type)
@@ -933,6 +991,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
+        // An entity, or a collection of them: `List<Critter>` carries the contract element-wise, which is
+        // why the old string grammar needed a `[*]` marker and this one does not. The same holds through nesting,
+        // so a `Task<(Critter?, bool)>` names the critter it resolves
         public bool IsEntityish(ITypeSymbol type)
         {
             if (IsEntity(type)) {
@@ -940,17 +1001,22 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             }
 
             if (type is IArrayTypeSymbol array) {
-                return IsEntity(array.ElementType);
+                return IsEntityish(array.ElementType);
             }
 
             if (type is INamedTypeSymbol named && named.IsGenericType) {
-                return named.TypeArguments.Any(IsEntity);
+                return named.TypeArguments.Any(IsEntityish);
             }
 
             return false;
         }
 
-        // The value flows straight out of a call whose return value declares [ProvidesCover].
+        // A script helper declared as an acquisition: it establishes cover through Sync for entities it names itself
+        public bool AcquiresCover(IMethodSymbol method)
+        {
+            return _acquiresCover != null && HasAttribute(method.GetAttributes(), _acquiresCover);
+        }
+
         // Does awaiting this call give the caller back the cover it had?
         public bool PreservesCover(IMethodSymbol method)
         {
@@ -962,66 +1028,188 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         public bool ComesFromProvidedCover(ExpressionSyntax expression, SemanticModel semantics,
                                            CancellationToken cancellationToken)
         {
+            return ProvidedReach(expression, semantics, cancellationToken) != null;
+        }
+
+        // The reach with which the value arrives covered -- the CoverReach flags its provider declared -- or null
+        // when nothing provides it. The reach is what lets an upward accessor's result count as covered: a critter
+        // provided with CoverReach.Parent comes with its map, so `cr.GetMap()` is covered too
+        private int? ProvidedReach(ExpressionSyntax expression, SemanticModel semantics,
+                                   CancellationToken cancellationToken)
+        {
             if (_providesCover == null) {
-                return false;
+                return null;
             }
 
-            if (semantics.GetSymbolInfo(expression, cancellationToken).Symbol is IMethodSymbol direct) {
-                return HasProvidesCoverOnReturn(direct);
+            if (expression is ParenthesizedExpressionSyntax parenthesized) {
+                return ProvidedReach(parenthesized.Expression, semantics, cancellationToken);
+            }
+
+            if (expression is AwaitExpressionSyntax awaited) {
+                return ProvidedReach(awaited.Expression, semantics, cancellationToken);
+            }
+
+            // `ok ? Provide() : null` -- a choice arrives covered when every branch does, with the reach they share;
+            // a branch that yields nothing owes nothing, so it narrows no reach
+            if (expression is ConditionalExpressionSyntax choice) {
+                int? whenTrue = ChoiceBranchReach(choice.WhenTrue, semantics, cancellationToken);
+                int? whenFalse = ChoiceBranchReach(choice.WhenFalse, semantics, cancellationToken);
+
+                return whenTrue != null && whenFalse != null ? whenTrue.Value & whenFalse.Value : null;
+            }
+
+            ISymbol? symbol = semantics.GetSymbolInfo(expression, cancellationToken).Symbol;
+
+            if (symbol is IMethodSymbol direct) {
+                int? returned = DeclaredReach(direct.GetReturnTypeAttributes());
+
+                if (returned != null) {
+                    return returned;
+                }
+
+                // A pass-through hands back the very argument it was given, cover and reach included
+                if (expression is InvocationExpressionSyntax passThrough && _passesCover != null) {
+                    foreach (IParameterSymbol passed in direct.Parameters) {
+                        ExpressionSyntax? argument = HasAttribute(passed.GetAttributes(), _passesCover)
+                                                       ? ArgumentFor(passThrough, direct, passed)
+                                                       : null;
+
+                        if (argument != null) {
+                            return ProvidedReach(argument, semantics, cancellationToken);
+                        }
+                    }
+                }
+
+                // An upward accessor hands back the receiver's parent or an ancestor, which is covered exactly
+                // when the receiver arrived with the reach that includes it
+                if (expression is InvocationExpressionSyntax { Expression : MemberAccessExpressionSyntax access }) {
+                    return UpwardReach(direct, access.Expression, semantics, cancellationToken);
+                }
+
+                return null;
             }
 
             // An entity taken out of a covered collection is covered: the annotation is on the collection
             // because that is what the acquisition covered -- `map.GetCrittersInRadius(...)` returns
             // critters the map's own cover reaches. Both ways of taking one out count.
-            if (expression is ElementAccessExpressionSyntax element &&
-                ComesFromProvidedCover(element.Expression, semantics, cancellationToken)) {
-                return true;
+            if (expression is ElementAccessExpressionSyntax element) {
+                return ProvidedReach(element.Expression, semantics, cancellationToken);
             }
 
-            if (semantics.GetSymbolInfo(expression, cancellationToken).Symbol is IParameterSymbol parameter) {
-                return HasProvidesCover(parameter);
+            if (symbol is IParameterSymbol parameter) {
+                return DeclaredReach(parameter.GetAttributes()) ??
+                       HandedOverReach(expression, symbol, semantics, cancellationToken);
             }
 
             // The usual shape is a local initialized from such a call, then passed on.
-            if (semantics.GetSymbolInfo(expression, cancellationToken).Symbol is not ILocalSymbol local) {
-                return false;
-            }
-
-            // `foreach (Critter other in covered)` binds the loop variable to an element of the collection.
-            foreach (SyntaxReference loopRef in local.DeclaringSyntaxReferences) {
-                if (loopRef.GetSyntax(cancellationToken) is ForEachStatementSyntax loop &&
-                    ComesFromProvidedCover(loop.Expression, semantics, cancellationToken)) {
-                    return true;
-                }
+            if (symbol is not ILocalSymbol local) {
+                return null;
             }
 
             foreach (SyntaxReference reference in local.DeclaringSyntaxReferences) {
-                if (reference.GetSyntax(cancellationToken) is not VariableDeclaratorSyntax declarator) {
+                SyntaxNode declaration = reference.GetSyntax(cancellationToken);
+
+                // `foreach (Critter other in covered)` binds the loop variable to an element of the collection
+                if (declaration is ForEachStatementSyntax loop) {
+                    int? looped = ProvidedReach(loop.Expression, semantics, cancellationToken);
+
+                    if (looped != null) {
+                        return looped;
+                    }
+
                     continue;
                 }
 
-                ExpressionSyntax? initializer = declarator.Initializer?.Value;
+                // `(Critter? cr, bool loaded) = await Resolve(id);` -- a deconstructed local carries the cover the
+                // call provides for the entity half of what it returns
+                if (declaration is SingleVariableDesignationSyntax designation) {
+                    AssignmentExpressionSyntax? deconstruction =
+                        designation.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
 
-                if (initializer == null) {
+                    if (deconstruction == null || !deconstruction.Left.Span.Contains(designation.Span)) {
+                        continue;
+                    }
+
+                    int? deconstructed = ProvidedReach(deconstruction.Right, semantics, cancellationToken);
+
+                    if (deconstructed != null) {
+                        return deconstructed;
+                    }
+
                     continue;
                 }
 
-                if (initializer is AwaitExpressionSyntax awaited) {
-                    initializer = awaited.Expression;
-                }
+                ExpressionSyntax? initializer = (declaration as VariableDeclaratorSyntax)?.Initializer?.Value;
 
-                if (semantics.GetSymbolInfo(initializer, cancellationToken).Symbol is IMethodSymbol source &&
-                    HasProvidesCoverOnReturn(source)) {
-                    return true;
-                }
+                // `Critter other = critters[i];` -- the element carries the collection's cover
+                int? initialized =
+                    initializer != null ? ProvidedReach(initializer, semantics, cancellationToken) : null;
 
-                // `Critter other = critters[i];` -- the element carries the collection's cover.
-                if (ComesFromProvidedCover(initializer, semantics, cancellationToken)) {
-                    return true;
+                if (initialized != null) {
+                    return initialized;
                 }
             }
 
-            return false;
+            return HandedOverReach(expression, symbol, semantics, cancellationToken);
+        }
+
+        private int? ChoiceBranchReach(ExpressionSyntax branch, SemanticModel semantics,
+                                       CancellationToken cancellationToken)
+        {
+            return IsNullValue(branch, semantics, cancellationToken)
+                     ? ~0
+                     : ProvidedReach(branch, semantics, cancellationToken);
+        }
+
+        private int? UpwardReach(IMethodSymbol accessor, ExpressionSyntax receiver, SemanticModel semantics,
+                                 CancellationToken cancellationToken)
+        {
+            bool returnsParent =
+                _returnsParent != null && HasAttribute(accessor.GetReturnTypeAttributes(), _returnsParent);
+            bool returnsAncestor =
+                _returnsAncestor != null && HasAttribute(accessor.GetReturnTypeAttributes(), _returnsAncestor);
+
+            if (!returnsParent && !returnsAncestor) {
+                return null;
+            }
+
+            int? receiverReach = ProvidedReach(receiver, semantics, cancellationToken);
+
+            if (receiverReach == null) {
+                return null;
+            }
+
+            bool ancestors = (receiverReach.Value & ReachAncestors) != 0;
+
+            // The whole chain stays covered above the parent, so the result carries Ancestors on; one step of
+            // Parent is spent getting here and leaves the result with no reach of its own
+            if (ancestors) {
+                return ReachAncestors;
+            }
+
+            if (returnsParent && (receiverReach.Value & ReachParent) != 0) {
+                return 0;
+            }
+
+            return null;
+        }
+
+        private int? DeclaredReach(ImmutableArray<AttributeData> attributes)
+        {
+            foreach (AttributeData attribute in attributes) {
+                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, _providesCover)) {
+                    continue;
+                }
+
+                if (attribute.ConstructorArguments.Length != 0 &&
+                    attribute.ConstructorArguments[0].Value is int reach) {
+                    return reach;
+                }
+
+                return 0;
+            }
+
+            return null;
         }
 
         // Some earlier call in this body handed the same value to a [ProvidesCover] parameter, which is
@@ -1031,15 +1219,30 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         public bool CoveredByEarlierCall(SyntaxNode body, ExpressionSyntax expression, SemanticModel semantics,
                                          CancellationToken cancellationToken)
         {
-            if (_providesCover == null) {
-                return false;
-            }
-
             ISymbol? wanted = semantics.GetSymbolInfo(expression, cancellationToken).Symbol;
 
-            if (wanted == null) {
-                return false;
+            return wanted != null && HandedOverReach(body, wanted, semantics, cancellationToken) != null;
+        }
+
+        // The same rule asked of a local or a parameter met as a receiver: the reach its [ProvidesCover] parameter
+        // declares is what lets `cr.GetMap()` count after `WidenWithMap(cr)`
+        private int? HandedOverReach(ExpressionSyntax expression, ISymbol wanted, SemanticModel semantics,
+                                     CancellationToken cancellationToken)
+        {
+            SyntaxNode? body = EnclosingBody(expression);
+
+            return body != null ? HandedOverReach(body, wanted, semantics, cancellationToken) : null;
+        }
+
+        // The union of the reaches every such call declares, or null when no call hands the value over
+        private int? HandedOverReach(SyntaxNode body, ISymbol wanted, SemanticModel semantics,
+                                     CancellationToken cancellationToken)
+        {
+            if (_providesCover == null) {
+                return null;
             }
+
+            int? handedOver = null;
 
             foreach (InvocationExpressionSyntax candidate in body.DescendantNodes()
                          .OfType<InvocationExpressionSyntax>()) {
@@ -1050,19 +1253,21 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 SeparatedSyntaxList<ArgumentSyntax> arguments = candidate.ArgumentList.Arguments;
 
                 for (int i = 0; i < arguments.Count && i < callee.Parameters.Length; i++) {
-                    if (!HasProvidesCover(callee.Parameters[i])) {
+                    int? reach = DeclaredReach(callee.Parameters[i].GetAttributes());
+
+                    if (reach == null) {
                         continue;
                     }
 
                     ISymbol? passed = semantics.GetSymbolInfo(arguments[i].Expression, cancellationToken).Symbol;
 
                     if (passed != null && SymbolEqualityComparer.Default.Equals(passed, wanted)) {
-                        return true;
+                        handedOver = (handedOver ?? 0) | reach.Value;
                     }
                 }
             }
 
-            return false;
+            return handedOver;
         }
 
         private bool IsEntity(ITypeSymbol type)

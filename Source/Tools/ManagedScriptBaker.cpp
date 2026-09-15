@@ -3457,6 +3457,15 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
         out << CS_INDENT << "[return: ProvidesCover]\n";
     }
 
+    // An upward accessor hands back the receiver's parent or an ancestor, which only cover declared with that
+    // reach already covers
+    if (method.ReturnIsParent) {
+        out << CS_INDENT << "[return: ReturnsParent]\n";
+    }
+    if (method.ReturnIsAncestor) {
+        out << CS_INDENT << "[return: ReturnsAncestor]\n";
+    }
+
     AppendCsCallableDeclaration(out, CS_INDENT, declaration_prefix, method_name, arg_declarations, "");
 
     if (is_method_static && method.Name == "Log" && method.Args.size() == 1 && ret == "void" && MakeCsTypeName(method.Args.front().Type) == "string") {

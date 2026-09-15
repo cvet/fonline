@@ -45,14 +45,34 @@ namespace FOnline
     {
         public virtual bool IsAlwaysCovered { get { return false; } }
     }
+    [System.AttributeUsage(System.AttributeTargets.ReturnValue)]
+    public sealed class ReturnsParentAttribute : System.Attribute { }
+
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class AcquiresCoverAttribute : System.Attribute { }
+
+    [System.AttributeUsage(System.AttributeTargets.Parameter)]
+    public sealed class PassesCoverAttribute : System.Attribute { }
+
+    [System.AttributeUsage(System.AttributeTargets.ReturnValue)]
+    public sealed class ReturnsAncestorAttribute : System.Attribute { }
+
     public class Critter : Entity
     {
         [RequiresCover]
         public void SendGroupInfo() { }
 
         public void Untracked() { }
+
+        [return: ReturnsParent]
+        public Map? GetMap() { return null; }
     }
-    public class Map : Entity { }
+    public class Map : Entity
+    {
+        [return: ReturnsParent]
+        public Location GetLocation() { return null; }
+    }
+    public class Location : Entity { }
 
     // Item methods are declared once on the shared base and inherited by both, which is what makes the
     // static side worth modelling explicitly.
@@ -71,7 +91,11 @@ namespace FOnline
         public static void Compare([RequiresCover] AbstractItem other) { }
     }
 
-    public class Item : AbstractItem { }
+    public class Item : AbstractItem
+    {
+        [return: ReturnsAncestor]
+        public Map? GetMap() { return null; }
+    }
     public class StaticItem : AbstractItem
     {
         public override bool IsAlwaysCovered { get { return true; } }
@@ -203,6 +227,251 @@ namespace LastFrontier
         public static void Reads([RequiresCover] Critter cr) { }
 
         public static void Caller(Critter cr) { Reads(cr); }
+    }
+}",
+              "FOSYNC002");
+
+        // Nothing to cover: an explicit null, a default, and an omitted optional entity parameter
+        Check(failures, "a null or omitted entity argument owes no cover", @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads(int value, [RequiresCover] Critter? cr = null) { }
+
+        public static void Caller()
+        {
+            Reads(1, null);
+            Reads(2, default);
+            Reads(3);
+        }
+    }
+}");
+
+        // A target whose `Sync` has no acquisition helpers (the client and mapper builds) owes nothing
+        CheckWithPreamble(failures,
+                          "no acquisition helpers means no obligation",
+                          Preamble.Replace(" Widen(", " NoWiden(")
+                              .Replace(" Lock(Entity", " NoLock(Entity")
+                              .Replace(" WidenCritterWithMap(", " NoWidenCritterWithMap(")
+                              .Replace(" LockAsync(", " NoLockAsync("),
+                          @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Reads([RequiresCover] Critter cr) { }
+
+        public static void Caller(Critter cr) { Reads(cr); }
+    }
+}");
+
+        // Upward accessors: the receiver's own cover does not reach its parent, declared reach does
+        Check(failures,
+              "a parent reached through declared reach is covered, one step past it is not",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [return: ProvidesCover(CoverReach.Parent)]
+        public static Critter WithMap() { return null; }
+
+        [return: ProvidesCover]
+        public static Critter Alone() { return null; }
+
+        public static void NeedsMap([RequiresCover] Map? map) { }
+        public static void NeedsLocation([RequiresCover] Location loc) { }
+
+        public static void Caller()
+        {
+            Critter cr = WithMap();
+            NeedsMap(cr.GetMap());
+            Map? map = cr.GetMap();
+            NeedsMap(map);
+            NeedsLocation(map.GetLocation());
+            NeedsMap(Alone().GetMap());
+        }
+    }
+}",
+              "FOSYNC002",
+              "FOSYNC002");
+
+        Check(failures,
+              "ancestors reach covers the whole chain, including an ancestor accessor",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [return: ProvidesCover(CoverReach.Ancestors)]
+        public static Critter WithChain() { return null; }
+
+        [return: ProvidesCover(CoverReach.Parent)]
+        public static Item HeldItem() { return null; }
+
+        [return: ProvidesCover(CoverReach.Ancestors)]
+        public static Item HeldItemWithChain() { return null; }
+
+        public static void NeedsMap([RequiresCover] Map? map) { }
+        public static void NeedsLocation([RequiresCover] Location loc) { }
+
+        public static void Caller()
+        {
+            Critter cr = WithChain();
+            NeedsLocation(cr.GetMap().GetLocation());
+            NeedsMap(HeldItemWithChain().GetMap());
+            NeedsMap(HeldItem().GetMap());
+        }
+    }
+}",
+              "FOSYNC002");
+
+        Check(failures,
+              "a value handed to a providing parameter carries that parameter's reach",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static bool WidenWithMap([ProvidesCover(CoverReach.Parent)] Critter cr) { return true; }
+        public static bool Widen([ProvidesCover] Critter cr) { return true; }
+
+        public static void NeedsMap([RequiresCover] Map? map) { }
+
+        public static void Reached(Critter cr)
+        {
+            if (WidenWithMap(cr)) { NeedsMap(cr.GetMap()); }
+        }
+
+        public static void NotReached(Critter cr)
+        {
+            Critter other = cr;
+            if (Widen(other)) { NeedsMap(other.GetMap()); }
+        }
+    }
+}",
+              "FOSYNC002");
+
+        Check(failures,
+              "a deconstructed entity carries the cover its provider declares",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [return: ProvidesCover]
+        public static (Critter? Found, bool Loaded) Resolve() { return (null, false); }
+
+        public static (Critter? Found, bool Loaded) Guess() { return (null, false); }
+
+        public static void Reads([RequiresCover] Critter? cr) { }
+
+        public static void Caller()
+        {
+            (Critter? resolved, bool loaded) = Resolve();
+            Reads(resolved);
+            var (guessed, _) = Guess();
+            Reads(guessed);
+        }
+    }
+}",
+              "FOSYNC002");
+
+        Check(failures,
+              "a choice between provided values keeps the reach every branch shares",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [return: ProvidesCover(CoverReach.Parent)]
+        public static Critter WithMap() { return null; }
+
+        [return: ProvidesCover]
+        public static Critter Alone() { return null; }
+
+        public static Critter Unknown() { return null; }
+
+        public static void NeedsCritter([RequiresCover] Critter? cr) { }
+        public static void NeedsMap([RequiresCover] Map? map) { }
+
+        public static void Caller(bool ok)
+        {
+            Critter? maybe = ok ? (WithMap()) : null;
+            NeedsMap(maybe.GetMap());
+            Critter either = ok ? WithMap() : Alone();
+            NeedsCritter(either);
+            NeedsMap(either.GetMap());
+            NeedsCritter(ok ? Unknown() : null);
+        }
+    }
+}",
+              "FOSYNC002",
+              "FOSYNC002");
+
+        Check(failures,
+              "a pass-through returns its argument's cover and reach",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [return: ProvidesCover(CoverReach.Parent)]
+        public static Critter? WithMap() { return null; }
+
+        public static Critter? Unknown() { return null; }
+
+        public static T Check<T>([PassesCover] T? value, string message) where T : class { return value; }
+        public static T Plain<T>(T? value, string message) where T : class { return value; }
+
+        public static void NeedsCritter([RequiresCover] Critter? cr) { }
+        public static void NeedsMap([RequiresCover] Map? map) { }
+
+        public static void Caller()
+        {
+            Critter cr = Check(WithMap(), ""covered"");
+            NeedsMap(cr.GetMap());
+            NeedsCritter(Check(Unknown(), ""uncovered""));
+            NeedsCritter(Plain(WithMap(), ""no pass-through""));
+        }
+    }
+}",
+              "FOSYNC002",
+              "FOSYNC002");
+
+        Check(failures,
+              "a helper declared as an acquisition discharges the obligation like Sync itself",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        [AcquiresCover]
+        public static bool CoverMembers() { return true; }
+
+        public static bool NotAnAcquisition() { return true; }
+
+        public static void Reads([RequiresCover] Critter cr) { }
+
+        public static void Declared(Critter cr)
+        {
+            if (CoverMembers()) { Reads(cr); }
+        }
+
+        public static void Undeclared(Critter cr)
+        {
+            if (NotAnAcquisition()) { Reads(cr); }
+        }
     }
 }",
               "FOSYNC002");
@@ -1020,7 +1289,13 @@ namespace LastFrontier
 
     private static void Check(List<string> failures, string name, string snippet, params string[] expected)
     {
-        ImmutableArray<Diagnostic> reported = Run(Preamble + snippet);
+        CheckWithPreamble(failures, name, Preamble, snippet, expected);
+    }
+
+    private static void CheckWithPreamble(List<string> failures, string name, string preamble, string snippet,
+                                          params string[] expected)
+    {
+        ImmutableArray<Diagnostic> reported = Run(preamble + snippet);
         string[] actual = reported.Select(d => d.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
         string[] wanted = expected.OrderBy(id => id, StringComparer.Ordinal).ToArray();
 
