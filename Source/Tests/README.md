@@ -151,6 +151,10 @@ staged ahead of the atomic sampler/matrix cutover.
 
 ### Rendering/frontend smoke tests
 
+- `Source/Tests/Test_AudioManager.cpp` — pins the panning law sample by sample, and runs a real
+  baked Ogg through the mixer against a fake audio device to prove a placed sound is mixed where it
+  was placed, that `UpdateSound` moves one that is already playing, and that its handle stops
+  answering once the sound has finished.
 - `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget activation and
   window-state harness used by diagnostic-panel coverage.
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer

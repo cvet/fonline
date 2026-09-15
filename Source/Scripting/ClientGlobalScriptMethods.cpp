@@ -610,15 +610,21 @@ FO_SCRIPT_API vector<string> Client_Game_GetSoundNames(ptr<ClientEngine> client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
+FO_SCRIPT_API uint32_t Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
 {
     return client->AudioMngr.PlaySound(soundName);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)
+FO_SCRIPT_API uint32_t Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)
 {
     return client->AudioMngr.PlaySound(soundName, attenuation, pan);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_UpdateSound(ptr<ClientEngine> client, uint32_t soundId, float32_t attenuation, float32_t pan)
+{
+    return client->AudioMngr.UpdateSound(soundId, attenuation, pan);
 }
 
 ///@ ExportMethod

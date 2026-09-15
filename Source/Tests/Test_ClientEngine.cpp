@@ -3106,8 +3106,8 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
 
     int32_t rejection_count = 0;
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool, queueing
-    // nothing, or accepting a pack that resolves to no entries
+    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
+    // sound handle, queueing nothing, or accepting a pack that resolves to no entries
     CHECK(rejection_count == 8 + 16 + 128 + 256);
 }
 
