@@ -2154,7 +2154,8 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
     body_lines: list[str] = []
 
     for value_type_tag in codegen_tags['ExportValueType']:
-        body_lines.append('meta->RegisterValueType<' + value_type_tag.native_type + '>("' + value_type_tag.name + '");')
+        native_type = value_type_tag.native_type
+        body_lines.append('meta->RegisterValueType("' + value_type_tag.name + '", sizeof(' + native_type + '), &CreateNativeValue<' + native_type + '>, &CopyNativeValue<' + native_type + '>);')
 
     body_lines.append('')
 

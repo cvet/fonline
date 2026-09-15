@@ -604,12 +604,28 @@ struct MethodDesc
 
 struct StructLayoutDesc
 {
-    unique_del_ptr<void> (*CreateNative)() {};
-    void (*CopyNative)(ptr<void>, ptr<const void>) {};
+    using CreateNativeFunc = unique_del_ptr<void> (*)();
+    using CopyNativeFunc = void (*)(ptr<void>, ptr<const void>);
+
+    CreateNativeFunc CreateNative {};
+    CopyNativeFunc CopyNative {};
     size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };
+
+template<typename T>
+auto CreateNativeValue() -> unique_del_ptr<void>
+{
+    auto value = safe_alloc::make_unique<T>();
+    return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
+}
+
+template<typename T>
+void CopyNativeValue(ptr<void> dst, ptr<const void> src)
+{
+    *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>();
+}
 
 struct RefTypeDesc
 {

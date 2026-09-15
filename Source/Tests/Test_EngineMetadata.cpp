@@ -210,7 +210,7 @@ TEST_CASE("EngineMetadata")
     SECTION("NativeValueSizeMismatchDoesNotPublishLayout")
     {
         EngineMetadata meta {[] { }};
-        meta.RegisterValueType<int64_t>("NativeValue");
+        meta.RegisterValueType("NativeValue", sizeof(int64_t), &CreateNativeValue<int64_t>, &CopyNativeValue<int64_t>);
         CHECK_THROWS(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int32"}}));
         CHECK_NOTHROW(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int64"}}));
     }
@@ -235,8 +235,8 @@ TEST_CASE("EngineMetadata")
     SECTION("ValueTypeLayoutMatchesNativeTextPackKey")
     {
         EngineMetadata meta {[] { }};
-        meta.RegisterValueType<TextPackName>("TextPackName");
-        meta.RegisterValueType<TextPackKey>("TextPackKey");
+        meta.RegisterValueType("TextPackName", sizeof(TextPackName), &CreateNativeValue<TextPackName>, &CopyNativeValue<TextPackName>);
+        meta.RegisterValueType("TextPackKey", sizeof(TextPackKey), &CreateNativeValue<TextPackKey>, &CopyNativeValue<TextPackKey>);
         meta.RegisterValueTypeLayout("TextPackName", {{"Name", "hstring"}});
         meta.RegisterValueTypeLayout("TextPackKey", {{"Collection", "TextPackName"}, {"Key1", "hstring"}, {"Key2", "hstring"}, {"Key3", "hstring"}});
 

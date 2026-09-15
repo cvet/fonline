@@ -358,6 +358,22 @@ void EngineMetadata::RegisterValueType(string_view name)
     RegisterBaseType(name);
 }
 
+void EngineMetadata::RegisterValueType(string_view name, size_t native_size, StructLayoutDesc::CreateNativeFunc create_native, StructLayoutDesc::CopyNativeFunc copy_native)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(native_size != 0, "Native value type has zero size", name);
+    FO_VERIFY_AND_THROW(create_native != nullptr, "Native value constructor is missing", name);
+    FO_VERIFY_AND_THROW(copy_native != nullptr, "Native value assignment is missing", name);
+
+    RegisterValueType(name);
+
+    StructLayoutDesc& layout_desc = _structLayouts.at(string(name));
+    layout_desc.NativeSize = native_size;
+    layout_desc.CreateNative = create_native;
+    layout_desc.CopyNative = copy_native;
+}
+
 void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
 {
     FO_STACK_TRACE_ENTRY();
