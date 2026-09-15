@@ -8,7 +8,37 @@ import zipfile
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import package
+from managed_assembly_images import make_assembly, write_runtime_payload
+
+# Scripts reach System.Runtime and through it CoreLib; nothing reaches System.Xml, so no package may carry it
+TARGET_RUNTIME = {
+    'System.Private.CoreLib': [],
+    'System.Runtime': ['System.Private.CoreLib'],
+    'System.Xml': ['System.Private.CoreLib'],
+}
+SHIPPED_RUNTIME_FILES = {
+    'ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll',
+    'ManagedRuntime/lib/netcoreapp/System.Runtime.dll',
+}
+
+
+def script_assembly(target: str) -> bytes:
+    return make_assembly(f'Scripts.{target}', ['System.Runtime', 'FOnline.ManagedHost'])
+
+
+def host_assembly() -> bytes:
+    return make_assembly('FOnline.ManagedHost', ['System.Private.CoreLib'])
+
+
+def runtime_entries(archive: zipfile.ZipFile) -> set[str]:
+    return {entry for entry in archive.namelist() if entry.startswith('ManagedRuntime/')}
+
+
+def shipped_manifest(runtime_dir: Path) -> bytes:
+    lines = (runtime_dir / 'runtime.manifest').read_text(encoding='utf-8').splitlines()
+    return ''.join(line + '\n' for line in lines if 'System.Xml' not in line).encode()
 
 
 def make_packager(tmp_path: Path):
@@ -46,19 +76,23 @@ def add_managed_runtime_pack(
     for managed_target in ('Server', 'Client', 'Mapper'):
         target_dir = scripts_dir / 'Assemblies' / f'Assemblies-{managed_target.lower()}'
         target_dir.mkdir(parents=True)
-        (target_dir / f'Scripts.{managed_target}.dll').write_bytes(managed_target.encode())
-        (target_dir / 'FOnline.ManagedHost.dll').write_bytes(f'host {managed_target}'.encode())
+        (target_dir / f'Scripts.{managed_target}.dll').write_bytes(script_assembly(managed_target))
+        (target_dir / 'FOnline.ManagedHost.dll').write_bytes(host_assembly())
     (baked_runtime / 'runtime.manifest').write_bytes(b'baker manifest')
     (baked_runtime / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').write_bytes(baked_corelib)
     packager.get_target_resource_packs = lambda requested_target: ['Scripts'] if requested_target == target else []
     return scripts_dir
 
 
-def add_binary_managed_runtime(binary_dir: Path, identity: bytes, corelib: bytes) -> None:
+def add_binary_managed_runtime(binary_dir: Path, marker: bytes) -> Path:
+    # The marker trails each image, so an archive shows which platform's class libraries it took
     runtime_dir = binary_dir / 'ManagedRuntime'
-    (runtime_dir / 'lib' / 'netcoreapp').mkdir(parents=True)
-    (runtime_dir / 'runtime.manifest').write_bytes(identity)
-    (runtime_dir / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').write_bytes(corelib)
+    write_runtime_payload(runtime_dir, TARGET_RUNTIME, marker)
+    return runtime_dir
+
+
+def read_corelib(archive: zipfile.ZipFile) -> bytes:
+    return archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll')
 
 
 def test_native_package_does_not_copy_managed_runtime_companions(tmp_path: Path) -> None:
@@ -191,7 +225,7 @@ def test_client_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
     binary_dir = tmp_path / 'Binaries' / 'Client-Windows-win64'
     binary_dir.mkdir(parents=True)
     (binary_dir / 'LF_Client.build-hash').write_text('build')
-    add_binary_managed_runtime(binary_dir, b'windows manifest', b'windows corelib')
+    runtime_dir = add_binary_managed_runtime(binary_dir, b'windows corelib')
     packager.args.arch = 'win64'
     packager.args.platform = 'Windows'
     packager.args.target = 'Client'
@@ -204,12 +238,32 @@ def test_client_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
     with zipfile.ZipFile(output_resources / 'Scripts.zip') as archive:
         entries = set(archive.namelist())
         assert archive.read('Game.dll') == b'game scripts'
-        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
-        assert archive.read('Assemblies/Assemblies-client/FOnline.ManagedHost.dll') == b'host Client'
+        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == script_assembly('Client')
+        assert archive.read('Assemblies/Assemblies-client/FOnline.ManagedHost.dll') == host_assembly()
         assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
         assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
-        assert archive.read('ManagedRuntime/runtime.manifest') == b'windows manifest'
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'windows corelib'
+        assert runtime_entries(archive) == SHIPPED_RUNTIME_FILES | {'ManagedRuntime/runtime.manifest'}
+        assert archive.read('ManagedRuntime/runtime.manifest') == shipped_manifest(runtime_dir)
+        assert read_corelib(archive).endswith(b'windows corelib')
+
+
+def test_package_rejects_a_script_reference_the_target_runtime_lacks(tmp_path: Path) -> None:
+    packager = make_packager(tmp_path)
+    scripts_dir = add_managed_runtime_pack(packager, tmp_path, target='Server')
+    (scripts_dir / 'Assemblies' / 'Assemblies-server' / 'Scripts.Server.dll').write_bytes(
+        make_assembly('Scripts.Server', ['System.Runtime', 'System.Windows.Forms']))
+    binary_dir = tmp_path / 'Binaries' / 'Server-Linux-x64'
+    binary_dir.mkdir(parents=True)
+    (binary_dir / 'LF_Server.build-hash').write_text('build')
+    add_binary_managed_runtime(binary_dir, b'linux server corelib')
+    packager.args.arch = 'x64'
+    packager.args.platform = 'Linux'
+    packager.args.target = 'Server'
+    packager.args.binary_output_postfix = ''
+    (Path(packager.target_output_path) / packager.server_res_dir).mkdir(parents=True)
+
+    with pytest.raises(ValueError, match='System.Windows.Forms of Scripts.Server'):
+        packager.package_target_managed_runtime_resources('Server')
 
 
 def test_server_package_replaces_baker_runtime_with_target_runtime(tmp_path: Path) -> None:
@@ -218,7 +272,7 @@ def test_server_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
     binary_dir = tmp_path / 'Binaries' / 'Server-Linux-x64'
     binary_dir.mkdir(parents=True)
     (binary_dir / 'LF_Server.build-hash').write_text('build')
-    add_binary_managed_runtime(binary_dir, b'linux server manifest', b'linux server corelib')
+    runtime_dir = add_binary_managed_runtime(binary_dir, b'linux server corelib')
     packager.args.arch = 'x64'
     packager.args.platform = 'Linux'
     packager.args.target = 'Server'
@@ -230,8 +284,9 @@ def test_server_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
 
     with zipfile.ZipFile(output_resources / 'Scripts.zip') as archive:
         assert archive.read('Game.dll') == b'game scripts'
-        assert archive.read('ManagedRuntime/runtime.manifest') == b'linux server manifest'
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'linux server corelib'
+        assert runtime_entries(archive) == SHIPPED_RUNTIME_FILES | {'ManagedRuntime/runtime.manifest'}
+        assert archive.read('ManagedRuntime/runtime.manifest') == shipped_manifest(runtime_dir)
+        assert read_corelib(archive).endswith(b'linux server corelib')
 
 
 def test_server_stages_target_specific_scripts_for_web_and_windows(tmp_path: Path, monkeypatch) -> None:
@@ -246,28 +301,30 @@ def test_server_stages_target_specific_scripts_for_web_and_windows(tmp_path: Pat
     (windows_dir / 'LF_ClientLib.build-hash').write_text('build')
     (windows_dir / 'LF_ClientLib.dll').write_bytes(b'native runtime')
     (windows_dir / 'LF_ClientLib.pdb').write_bytes(b'symbols')
-    add_binary_managed_runtime(windows_dir, b'windows manifest', b'windows corelib')
+    add_binary_managed_runtime(windows_dir, b'windows corelib')
 
     web_dir = tmp_path / 'Binaries' / 'Client-Web-wasm'
     web_dir.mkdir(parents=True)
     (web_dir / 'LF_Client.build-hash').write_text('build')
-    add_binary_managed_runtime(web_dir, b'web manifest', b'web corelib')
+    add_binary_managed_runtime(web_dir, b'web corelib')
 
     packager.package_all_client_runtime_update_payloads()
 
     platform_root = Path(packager.target_output_path) / 'PlatformBinaries'
     with zipfile.ZipFile(platform_root / 'Windows-win64' / 'Scripts.zip') as archive:
         entries = set(archive.namelist())
-        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
+        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == script_assembly('Client')
         assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
         assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'windows corelib'
+        assert runtime_entries(archive) == SHIPPED_RUNTIME_FILES | {'ManagedRuntime/runtime.manifest'}
+        assert read_corelib(archive).endswith(b'windows corelib')
     with zipfile.ZipFile(platform_root / 'Web-wasm' / 'Scripts.zip') as archive:
         entries = set(archive.namelist())
-        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == b'Client'
+        assert archive.read('Assemblies/Assemblies-client/Scripts.Client.dll') == script_assembly('Client')
         assert not any(entry.startswith('Assemblies/Assemblies-server/') for entry in entries)
         assert not any(entry.startswith('Assemblies/Assemblies-mapper/') for entry in entries)
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'web corelib'
+        assert runtime_entries(archive) == SHIPPED_RUNTIME_FILES | {'ManagedRuntime/runtime.manifest'}
+        assert read_corelib(archive).endswith(b'web corelib')
     assert (platform_root / 'Windows-win64' / 'Game.dll').is_file()
     assert list((platform_root / 'Web-wasm').glob('*')) == [platform_root / 'Web-wasm' / 'Scripts.zip']
 
@@ -278,14 +335,15 @@ def test_shared_update_target_prefers_unqualified_managed_runtime(tmp_path: Path
 
     # Create the qualified variant first: filesystem enumeration order must not decide
     # the single managed-resource payload shared by this platform/architecture target
-    for suffix, identity in (('-Steam', b'steam manifest'), ('', b'default manifest')):
+    runtime_dirs = {}
+    for suffix, marker in (('-Steam', b'steam corelib'), ('', b'default corelib')):
         binary_dir = tmp_path / 'Binaries' / ('Client-Linux-x64' + suffix)
         binary_dir.mkdir(parents=True)
         (binary_dir / 'LF_Client.build-hash').write_text('build')
-        add_binary_managed_runtime(binary_dir, identity, identity)
+        runtime_dirs[suffix] = add_binary_managed_runtime(binary_dir, marker)
 
     packager.package_all_client_runtime_update_payloads()
 
     with zipfile.ZipFile(Path(packager.target_output_path) / 'PlatformBinaries' / 'Linux-x64' / 'Scripts.zip') as archive:
-        assert archive.read('ManagedRuntime/runtime.manifest') == b'default manifest'
-        assert archive.read('ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll') == b'default manifest'
+        assert archive.read('ManagedRuntime/runtime.manifest') == shipped_manifest(runtime_dirs[''])
+        assert read_corelib(archive).endswith(b'default corelib')

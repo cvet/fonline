@@ -36,6 +36,7 @@
 #if FO_MANAGED_SCRIPTING
 
 #include "EngineBase.h"
+#include "ManagedAssemblyReferences.h"
 #include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
@@ -87,6 +88,7 @@ static auto MakeGeneratedManagedSolutionFileName(string_view solution_name) -> s
 static auto MakeManagedAssemblyFileName(string_view pack_name, string_view target_name) -> string;
 static auto MakeManagedEntryAssemblyResourcePath(string_view pack_name, string_view target_name) -> string;
 static auto MakeManagedOutputAssemblyResourcePath(string_view target_name, string_view assembly_file_name) -> string;
+static auto MakeManagedOutputAssemblyResourceDir(string_view target_name) -> string;
 static auto IsGeneratedManagedArtifactFileName(string_view file_name) noexcept -> bool;
 static void RemoveStaleGeneratedManagedArtifacts(const std::filesystem::path& project_dir, const unordered_set<string>& expected_files);
 static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesystem::path;
@@ -167,8 +169,10 @@ static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> 
 static void WriteTextFileIfChanged(const std::filesystem::path& file_path, string_view content, string_view error_message);
 static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_view target_name, string_view suffix, string_view content);
 static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>;
-static void BakeManagedRuntimePayload(const BakingContext& context);
+static void BakeManagedRuntimePayload(const BakingContext& context, const vector<ManagedAssemblyIdentity>& pack_assemblies);
+static auto ReadManagedAssemblyIdentityFrom(string_view assembly_path, const_span<uint8_t> image) -> ManagedAssemblyIdentity;
 static auto CollectManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> vector<std::filesystem::path>;
+static auto CollectManagedAssemblyFiles(const std::filesystem::path& dir) -> vector<std::filesystem::path>;
 static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name);
 static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_output_dir, string_view target_name, string_view assembly_file_name);
 static void AppendProjectReferences(std::ostream& file, const std::filesystem::path& project_dir, const vector<string>& references, optional<string_view> condition);
@@ -339,6 +343,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     auto project_path = managed_generated_dir / fs::make_path(MakeGeneratedManagedUnifiedProjectFileName(project_name));
+    vector<ManagedAssemblyIdentity> pack_assemblies;
 
     for (const TargetBakeTask& task : target_tasks) {
         if (!task.ShouldBake) {
@@ -368,6 +373,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
                 string resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
                 auto assembly_data = ReadFileBytes(assembly_disk_path);
                 _context->WriteData(resource_path, assembly_data);
+                pack_assemblies.emplace_back(ReadManagedAssemblyIdentityFrom(resource_path, assembly_data));
 
                 if (output_file_name == assembly_file_name) {
                     entry_assembly_written = true;
@@ -381,7 +387,18 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     }
 
     if (!dry_run) {
-        BakeManagedRuntimePayload(*_context);
+        for (const TargetBakeTask& task : target_tasks) {
+            if (task.ShouldBake) {
+                continue;
+            }
+
+            // A target found up to date still ships the assemblies its previous bake left in the pack
+            for (const std::filesystem::path& assembly_disk_path : CollectManagedAssemblyFiles(managed_assemblies_output_dir.parent_path() / fs::make_path(MakeManagedOutputAssemblyResourceDir(task.Target)))) {
+                pack_assemblies.emplace_back(ReadManagedAssemblyIdentityFrom(assembly_disk_path.string(), ReadFileBytes(assembly_disk_path)));
+            }
+        }
+
+        BakeManagedRuntimePayload(*_context, pack_assemblies);
     }
 }
 
@@ -1784,8 +1801,15 @@ static auto MakeManagedOutputAssemblyResourcePath(string_view target_name, strin
 {
     FO_STACK_TRACE_ENTRY();
 
+    return strex("{}/{}", MakeManagedOutputAssemblyResourceDir(target_name), assembly_file_name).str();
+}
+
+static auto MakeManagedOutputAssemblyResourceDir(string_view target_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
     string target_suffix = strex(target_name).lower().str();
-    return strex("Assemblies/Assemblies-{}/{}", target_suffix, assembly_file_name).str();
+    return strex("Assemblies/Assemblies-{}", target_suffix).str();
 }
 
 static auto IsGeneratedManagedArtifactFileName(string_view file_name) noexcept -> bool
@@ -4512,7 +4536,9 @@ static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>
     return vector<uint8_t>(data->begin(), data->end());
 }
 
-static void BakeManagedRuntimePayload(const BakingContext& context)
+// The pack ships CoreLib plus the class libraries its assemblies reach by reference: Mono opens a class library
+// only when a reference names it, so the rest of the published runtime is dead weight (Docs/BakingPipeline.md)
+static void BakeManagedRuntimePayload(const BakingContext& context, const vector<ManagedAssemblyIdentity>& pack_assemblies)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4525,7 +4551,8 @@ static void BakeManagedRuntimePayload(const BakingContext& context)
     auto manifest_path = *runtime_dir / fs::make_path(MANAGED_RUNTIME_MANIFEST_FILE);
     auto manifest_data = ReadFileBytes(manifest_path);
     string manifest_text {manifest_data.begin(), manifest_data.end()};
-    vector<std::filesystem::path> payload_paths {manifest_path};
+    auto class_library_dir = *runtime_dir / "lib" / "netcoreapp";
+    map<string, string> manifest_lines;
 
     for (string_view manifest_line : strex(manifest_text).normalize_line_endings().split('\n')) {
         string line = strex(manifest_line).trim().str();
@@ -4545,17 +4572,49 @@ static void BakeManagedRuntimePayload(const BakingContext& context)
         if (relative_path.empty() || relative_path.is_absolute() || std::ranges::any_of(relative_path, [](const std::filesystem::path& component) { return component == ".."; })) {
             throw ManagedScriptBakerException("Unsafe Managed runtime payload path", relative_path.string());
         }
-
-        auto disk_path = *runtime_dir / relative_path;
-
-        if (!std::filesystem::is_regular_file(disk_path)) {
-            throw ManagedScriptBakerException("Managed runtime payload file not found", disk_path.string());
+        if (relative_path.parent_path().generic_string() != "lib/netcoreapp" || relative_path.extension() != ".dll") {
+            throw ManagedScriptBakerException("Managed runtime payload entry is not a class-library assembly", relative_path.string());
+        }
+        if (!std::filesystem::is_regular_file(*runtime_dir / relative_path)) {
+            throw ManagedScriptBakerException("Managed runtime payload file not found", (*runtime_dir / relative_path).string());
         }
 
-        payload_paths.emplace_back(std::move(disk_path));
+        string digest = line.substr(0, separator);
+
+        if (!std::ranges::all_of(digest, [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); })) {
+            throw ManagedScriptBakerException("Invalid Managed runtime payload digest", digest);
+        }
+
+        string assembly_name = strex("{}", relative_path.stem().string()).str();
+
+        if (!manifest_lines.emplace(assembly_name, std::move(line)).second) {
+            throw ManagedScriptBakerException("Duplicate Managed runtime payload assembly", assembly_name);
+        }
     }
 
-    std::ranges::sort(payload_paths, {}, [&](const std::filesystem::path& path) { return path.lexically_relative(*runtime_dir).generic_string(); });
+    auto find_runtime_assembly = [&](string_view name) -> optional<ManagedAssemblyIdentity> {
+        if (!manifest_lines.contains(name)) {
+            return std::nullopt;
+        }
+
+        auto assembly_path = class_library_dir / fs::make_path(strex("{}.dll", name));
+        return ReadManagedAssemblyIdentityFrom(assembly_path.string(), ReadFileBytes(assembly_path));
+    };
+
+    string selected_manifest;
+    vector<std::filesystem::path> payload_paths;
+
+    for (const string& assembly_name : CollectReferencedRuntimeAssemblies(pack_assemblies, find_runtime_assembly)) {
+        auto manifest_it = manifest_lines.find(assembly_name);
+
+        if (manifest_it == manifest_lines.end()) {
+            throw ManagedScriptBakerException("Managed runtime payload manifest lacks a selected assembly", assembly_name);
+        }
+
+        selected_manifest += manifest_it->second;
+        selected_manifest += '\n';
+        payload_paths.emplace_back(class_library_dir / fs::make_path(strex("{}.dll", assembly_name)));
+    }
 
     for (const std::filesystem::path& disk_path : payload_paths) {
         string relative_path = strex("{}", disk_path.lexically_relative(*runtime_dir).generic_string()).str();
@@ -4567,26 +4626,62 @@ static void BakeManagedRuntimePayload(const BakingContext& context)
             context.WriteData(resource_path, ReadFileBytes(disk_path));
         }
     }
+
+    // The selection follows the compiled assemblies rather than any one input's write time, so the manifest is only
+    // registered with the checker and then rewritten from its content, which the writer leaves untouched when equal
+    string manifest_resource_path = strex(MANAGED_RUNTIME_RESOURCE_DIR).combine_path(MANAGED_RUNTIME_MANIFEST_FILE).str();
+
+    if (context.BakeChecker) {
+        (void)context.BakeChecker(manifest_resource_path, std::max<uint64_t>(fs::last_write_time(manifest_path.string()), 1));
+    }
+    if (!context.OutputDiscovery) {
+        context.WriteData(manifest_resource_path, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(selected_manifest.data()), selected_manifest.size()});
+    }
+}
+
+static auto ReadManagedAssemblyIdentityFrom(string_view assembly_path, const_span<uint8_t> image) -> ManagedAssemblyIdentity
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        ManagedAssemblyIdentity identity = ReadManagedAssemblyIdentity(image);
+        string file_name = fs::path_to_string(std::filesystem::path {fs::make_path(assembly_path)}.stem());
+
+        if (identity.Name != file_name) {
+            throw ManagedScriptBakerException("Managed assembly file defines another assembly", assembly_path, file_name, identity.Name);
+        }
+
+        return identity;
+    }
+    catch (const ManagedAssemblyReferencesException& ex) {
+        throw ManagedScriptBakerException("Can't read Managed assembly references", assembly_path, ex.what());
+    }
 }
 
 static auto CollectManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> vector<std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto output_dir = assemblies_output_dir / fs::make_path(strex("{}Assemblies", target_name));
+    return CollectManagedAssemblyFiles(assemblies_output_dir / fs::make_path(strex("{}Assemblies", target_name)));
+}
+
+static auto CollectManagedAssemblyFiles(const std::filesystem::path& dir) -> vector<std::filesystem::path>
+{
+    FO_STACK_TRACE_ENTRY();
+
     vector<std::filesystem::path> result;
 
     std::error_code ec;
 
-    if (!std::filesystem::exists(output_dir, ec)) {
+    if (!std::filesystem::exists(dir, ec)) {
         if (ec) {
-            throw ManagedScriptBakerException("Can't inspect Managed output assemblies", output_dir.string());
+            throw ManagedScriptBakerException("Can't inspect Managed assemblies directory", dir.string());
         }
 
         return result;
     }
 
-    for (std::filesystem::directory_iterator it(output_dir, ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
+    for (std::filesystem::directory_iterator it(dir, ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
         if (!it->is_regular_file()) {
             continue;
         }
@@ -4598,7 +4693,7 @@ static auto CollectManagedOutputAssemblies(const std::filesystem::path& assembli
     }
 
     if (ec) {
-        throw ManagedScriptBakerException("Can't enumerate Managed output assemblies", output_dir.string());
+        throw ManagedScriptBakerException("Can't enumerate Managed assemblies directory", dir.string());
     }
 
     std::ranges::sort(result, {}, [](const std::filesystem::path& path) { return path.filename().string(); });
