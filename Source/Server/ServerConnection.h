@@ -189,7 +189,7 @@ private:
     NetInBuffer _inBuf;
     mutex _outBufLocker {};
     NetOutBuffer _outBuf;
-    StreamCompressor _compressor {};
+    stream_compressor _compressor {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};
     DataArrivedCallback _dataArrivedCallback {};

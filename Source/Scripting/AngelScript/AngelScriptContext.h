@@ -70,7 +70,7 @@ struct AngelScriptContextExtendedData
     int32_t ExceptionCount {};
     shared_ptr<DebuggerStepState> StepState {};
     std::exception_ptr Exception {};
-    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
+    std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
     std::atomic_bool ExecutionActive {};

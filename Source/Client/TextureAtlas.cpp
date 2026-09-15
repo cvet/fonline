@@ -221,7 +221,7 @@ auto TextureAtlasLayout::AcquireAllocation() -> ptr<Allocation>
         return allocation;
     }
 
-    _allocations.emplace_back(SafeAlloc::MakeUnique<Allocation>(this));
+    _allocations.emplace_back(safe_alloc::make_unique<Allocation>(this));
     return _allocations.back();
 }
 
@@ -543,7 +543,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     FO_VERIFY_AND_THROW(result_size.height >= request_size.height, "Texture atlas height cannot satisfy requested image height", atlas_type, result_size.height, request_size.height);
 
     auto rt = _rtMngr->CreateRenderTarget(false, result_size, _settings->AtlasLinearFiltration);
-    auto created_atlas = SafeAlloc::MakeUnique<TextureAtlas>(atlas_type, rt);
+    auto created_atlas = safe_alloc::make_unique<TextureAtlas>(atlas_type, rt);
 
     _allAtlases.push_back(std::move(created_atlas));
     return _allAtlases.back();
@@ -627,7 +627,7 @@ void TextureAtlasManager::DumpAtlases(string_view writable_root) const
     }
 
     time_desc_t time = nanotime::now().desc(true);
-    string dir = fs_make_writable_path(writable_root,
+    string dir = fs::make_writable_path(writable_root,
         strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
             time.year, time.month, time.day, time.hour, time.minute, time.second, //
             atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000));

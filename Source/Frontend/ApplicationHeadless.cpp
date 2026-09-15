@@ -45,8 +45,6 @@ struct Application::Context
 int32_t AppRender::MAX_ATLAS_WIDTH {8192};
 int32_t AppRender::MAX_ATLAS_HEIGHT {8192};
 int32_t AppRender::MAX_BONES {32};
-const int32_t AppAudio::AUDIO_FORMAT_U8 = 0;
-const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
@@ -54,7 +52,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Render {make_ptr(this)},
     Input {make_ptr(this)},
     Audio {make_ptr(this)},
-    _ctx {SafeAlloc::MakeUnique<Context>()}
+    _ctx {safe_alloc::make_unique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -125,7 +123,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
     }
 
-    auto window = SafeAlloc::MakeUnique<AppWindow>(this);
+    auto window = safe_alloc::make_unique<AppWindow>(this);
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
@@ -326,7 +324,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+    auto handle = safe_alloc::make_unique<HeadlessWindowStub>();
     handle->Size = size;
 
     auto headless_window = handle.as_ptr();
@@ -495,7 +493,7 @@ void Application::RequestQuit(bool success) noexcept
     }
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
-        WriteLog("Quit requested");
+        logging::write("Quit requested");
 
         _quitEvent.notify_all();
     }
@@ -881,11 +879,10 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
-auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(format);
     ignore_unused(channels);
     ignore_unused(rate);
     ignore_unused(buf);

@@ -60,10 +60,10 @@ int main(int argc, char** argv)
             baking_result = baker.BakeAll();
         }
 
-        ExitApp(baking_result);
+        exit_app(baking_result);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 static auto MakeTempSettingsDir(string_view name) -> string
 {
     auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    return fs::path_to_string(base);
 }
 
 TEST_CASE("Settings")
@@ -168,8 +168,8 @@ TEST_CASE("Settings")
     {
         // Capture the "Set <name> to <value>" lines emitted by the logging pass
         string captured;
-        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured += message; });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+        logging::set_callback("settings_secret_redaction_test", [&captured](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured += message; });
+        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
@@ -217,11 +217,11 @@ TEST_CASE("Settings")
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
         string temp_dir = MakeTempSettingsDir("settings_config");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("main.fomain").str(), string_view {"ExternalValue = $FILE{payload.txt}\n"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("main.fomain").str(), string_view {"ExternalValue = $FILE{payload.txt}\n"}));
 
         GlobalSettings settings {false};
         settings.ApplyConfigAtPath("main.fomain", temp_dir);
@@ -229,7 +229,7 @@ TEST_CASE("Settings")
         CHECK(settings.GetAppliedConfigs().size() == 1);
         CHECK(settings.GetCustomSetting("ExternalValue") == "loaded value");
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("ApplyConfigAtPathThrowsForMissingConfig")
@@ -337,16 +337,16 @@ TEST_CASE("Settings")
         // An explicit path on the command line is the one source that outranks everything, because it is
         // the only one available before any file has been read
         string root = MakeTempSettingsDir("settings_writable_root");
-        ignore_unused(fs_remove_dir_tree(root));
+        ignore_unused(fs::remove_dir_tree(root));
 
         string root_arg = root;
         std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--UserWritablePath"), root_arg.data()};
         string resolved = ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()});
 
-        CHECK(resolved == fs_resolve_path(root));
-        CHECK(fs_is_dir(resolved));
+        CHECK(resolved == fs::resolve_path(root));
+        CHECK(fs::is_dir(resolved));
 
-        ignore_unused(fs_remove_dir_tree(root));
+        ignore_unused(fs::remove_dir_tree(root));
     }
 
     SECTION("WritableRootWithoutMarkerStaysInTheWorkingDirectory")
@@ -362,16 +362,16 @@ TEST_CASE("Settings")
         // A root whose parent is a regular file can't be created: the resolver must fail safe rather than
         // brick startup
         string temp_dir = MakeTempSettingsDir("settings_writable_blocker");
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
         string blocker = strex(temp_dir).combine_path("blocker").str();
-        REQUIRE(fs_write_file(blocker, string_view {"x"}));
+        REQUIRE(fs::write_file(blocker, string_view {"x"}));
 
         string blocked_root = strex(blocker).combine_path("sub").str();
         std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--UserWritablePath"), blocked_root.data()};
 
         CHECK(ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()}).empty());
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
     }
 }
 

@@ -188,7 +188,7 @@ static auto MakeTempParticleBakerDir() -> string
     FO_STACK_TRACE_ENTRY();
 
     std::filesystem::path path = std::filesystem::temp_directory_path() / std::format("fo_particle_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(path);
+    return fs::path_to_string(path);
 }
 #endif
 
@@ -847,9 +847,9 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         string temp_dir = MakeTempParticleBakerDir();
         string source_dir = strex(temp_dir).combine_path("source").str();
         string source_path = strex(source_dir).combine_path("Particles/Simple.efkproj").str();
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(source_path, ParticleTests::SimpleGeneratingPositionProject));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(source_path, ParticleTests::SimpleGeneratingPositionProject));
 
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
@@ -872,10 +872,10 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         string source_dir = strex(temp_dir).combine_path("source").str();
         string project_path = strex(source_dir).combine_path("Particles/Mesh.efkproj").str();
         string model_path = strex(source_dir).combine_path("Particles/Model/Fixture.efkmodel").str();
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(project_path, ParticleTests::MakeModelProject(2)));
-        REQUIRE(fs_write_file(model_path, ParticleTests::MakeFixtureModelPayload()));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(project_path, ParticleTests::MakeModelProject(2)));
+        REQUIRE(fs::write_file(model_path, ParticleTests::MakeFixtureModelPayload()));
 
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
@@ -905,13 +905,13 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         string outside_dir = strex(temp_dir).combine_path("outside").str();
         string outside_model_path = strex(outside_dir).combine_path("Fixture.efkmodel").str();
         string linked_model_dir = strex(source_dir).combine_path("Particles/Model").str();
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(project_path, ParticleTests::MakeModelProject(2)));
-        REQUIRE(fs_write_file(outside_model_path, ParticleTests::MakeFixtureModelPayload()));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(project_path, ParticleTests::MakeModelProject(2)));
+        REQUIRE(fs::write_file(outside_model_path, ParticleTests::MakeFixtureModelPayload()));
 
         std::error_code link_error;
-        std::filesystem::create_directory_symlink(std::filesystem::path {fs_make_path(outside_dir)}, std::filesystem::path {fs_make_path(linked_model_dir)}, link_error);
+        std::filesystem::create_directory_symlink(std::filesystem::path {fs::make_path(outside_dir)}, std::filesystem::path {fs::make_path(linked_model_dir)}, link_error);
 
         if (link_error) {
             SKIP(strex("Directory symlinks are unavailable: {}", link_error.message()).str());
@@ -930,10 +930,10 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
     {
         string temp_dir = MakeTempParticleBakerDir();
         string source_dir = strex(temp_dir).combine_path("source").str();
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/First/Effect.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
-        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/Second/Effect.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(strex(source_dir).combine_path("Particles/First/Effect.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+        REQUIRE(fs::write_file(strex(source_dir).combine_path("Particles/Second/Effect.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
 
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
@@ -947,9 +947,9 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         CHECK(rig.Outputs.contains("Particles/Second/Effect.efk"));
 
         string dependency_path = strex(source_dir).combine_path("Particles/First/Texture/Splash01.png").str();
-        REQUIRE(fs_write_file(dependency_path, "first texture"));
-        std::filesystem::last_write_time(std::filesystem::path {fs_make_path(dependency_path)}, std::filesystem::file_time_type::clock::now() + std::chrono::minutes {5});
-        uint64_t dependency_write_time = fs_last_write_time(dependency_path);
+        REQUIRE(fs::write_file(dependency_path, "first texture"));
+        std::filesystem::last_write_time(std::filesystem::path {fs::make_path(dependency_path)}, std::filesystem::file_time_type::clock::now() + std::chrono::minutes {5});
+        uint64_t dependency_write_time = fs::last_write_time(dependency_path);
         FileSystem changed_source_files;
         changed_source_files.AddDirSource(source_dir, true, true);
         ParticleBaker changed_baker(rig.MakeContext("TestPack", [dependency_write_time](string_view, uint64_t write_time) { return write_time == dependency_write_time; }));
@@ -964,10 +964,10 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
     {
         string temp_dir = MakeTempParticleBakerDir();
         string source_dir = strex(temp_dir).combine_path("source").str();
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/First.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
-        REQUIRE(fs_write_file(strex(source_dir).combine_path("Particles/Second.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(strex(source_dir).combine_path("Particles/First.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
+        REQUIRE(fs::write_file(strex(source_dir).combine_path("Particles/Second.efkproj"), ParticleTests::SimpleGeneratingPositionProject));
 
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
@@ -1007,9 +1007,9 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         REQUIRE(dependency_pos != string::npos);
         project.replace(dependency_pos, original_dependency.size(), "../Texture/Splash01.png");
 
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(source_path, project));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(source_path, project));
 
         TestRig rig;
         BakerTests::OverrideSetting(rig.Settings.BakeOutput, output_dir);
@@ -1023,12 +1023,12 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
                     checks.emplace_back(string(path), write_time);
                 }
 
-                return write_time > fs_last_write_time(baked_output_path);
+                return write_time > fs::last_write_time(baked_output_path);
             }));
             baker.BakeFiles(source_files.GetAllFiles(), "");
 
             if (rig.Outputs.contains("Particles/Nested/Simple.efk")) {
-                REQUIRE(fs_write_file(baked_output_path, rig.Outputs.at("Particles/Nested/Simple.efk")));
+                REQUIRE(fs::write_file(baked_output_path, rig.Outputs.at("Particles/Nested/Simple.efk")));
             }
         };
 
@@ -1036,15 +1036,15 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         REQUIRE(rig.Outputs.contains("Particles/Nested/Simple.efk"));
 
         string cache_path = strex(output_dir).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer/TestPack/Particles/Nested/Simple.efk.deps").str();
-        optional<string> missing_snapshot = fs_read_file(cache_path);
+        optional<string> missing_snapshot = fs::read_file(cache_path);
         REQUIRE(missing_snapshot);
-        CHECK(missing_snapshot->find(strex("{}\t-\t-", fs_resolve_path(dependency_path))) != string::npos);
+        CHECK(missing_snapshot->find(strex("{}\t-\t-", fs::resolve_path(dependency_path))) != string::npos);
 
         run_bake();
         CHECK(rig.Outputs.empty());
 
-        REQUIRE(fs_write_file(dependency_path, "texture"));
-        uint64_t dependency_write_time = fs_last_write_time(dependency_path);
+        REQUIRE(fs::write_file(dependency_path, "texture"));
+        uint64_t dependency_write_time = fs::last_write_time(dependency_path);
         REQUIRE(dependency_write_time != 0);
         checks.clear();
 
@@ -1059,10 +1059,10 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         }
 
         CHECK(rig.Outputs.empty());
-        CHECK_FALSE(fs_exists(baked_output_path));
+        CHECK_FALSE(fs::exists(baked_output_path));
         REQUIRE(checks.size() == 1);
         CHECK(checks.front().first == "Particles/Nested/Simple.efk");
-        CHECK(checks.front().second == std::max(fs_last_write_time(source_path), dependency_write_time));
+        CHECK(checks.front().second == std::max(fs::last_write_time(source_path), dependency_write_time));
 
         run_bake();
         REQUIRE(rig.Outputs.contains("Particles/Nested/Simple.efk"));
@@ -1072,13 +1072,13 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         CHECK(rig.Outputs.empty());
         REQUIRE(checks.size() == 1);
         CHECK(checks.front().first == "Particles/Nested/Simple.efk");
-        CHECK(checks.front().second == std::max(fs_last_write_time(source_path), dependency_write_time));
+        CHECK(checks.front().second == std::max(fs::last_write_time(source_path), dependency_write_time));
 
-        REQUIRE(fs_write_file(dependency_path, "changed texture payload"));
+        REQUIRE(fs::write_file(dependency_path, "changed texture payload"));
         run_bake();
         CHECK(rig.Outputs.contains("Particles/Nested/Simple.efk"));
 
-        std::filesystem::rename(std::filesystem::path {fs_make_path(dependency_path)}, std::filesystem::path {fs_make_path(renamed_dependency_path)});
+        std::filesystem::rename(std::filesystem::path {fs::make_path(dependency_path)}, std::filesystem::path {fs::make_path(renamed_dependency_path)});
         run_bake();
         CHECK(rig.Outputs.contains("Particles/Nested/Simple.efk"));
 
@@ -1091,9 +1091,9 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         string temp_dir = MakeTempParticleBakerDir();
         string source_dir = strex(temp_dir).combine_path("source").str();
         string source_path = strex(source_dir).combine_path("Particles/Broken.efkproj").str();
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(source_path, "<EffekseerProject><Root>"));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(source_path, "<EffekseerProject><Root>"));
 
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
@@ -1115,9 +1115,9 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         REQUIRE(version_pos != string::npos);
         project.replace(version_pos, string_view {"<ToolVersion>1.80.5</ToolVersion>"}.size(), "<ToolVersion>1.80.4</ToolVersion>");
 
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
-        REQUIRE(fs_write_file(source_path, project));
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(source_path, project));
 
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
@@ -1134,10 +1134,10 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         string temp_dir = MakeTempParticleBakerDir();
         string source_dir = strex(temp_dir).combine_path("source").str();
         string source_path = strex(source_dir).combine_path("Particles/Disguised.efkproj").str();
-        (void)fs_remove_dir_tree(temp_dir);
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs_remove_dir_tree(temp_dir); });
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
         vector<uint8_t> container {'E', 'F', 'K', 'E', 0, 0, 0, 0};
-        REQUIRE(fs_write_file(source_path, container));
+        REQUIRE(fs::write_file(source_path, container));
 
         FileSystem source_files;
         source_files.AddDirSource(source_dir, true, true);
@@ -1274,8 +1274,8 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         string late_source_path = strex(input_dir).combine_path("Particles/LateRuntime.spark").str();
         string late_output_path = strex(output_dir).combine_path("Visual/Particles/LateRuntime.spk").str();
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
-        REQUIRE(fs_write_file(source_path, ValidParticle));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
+        REQUIRE(fs::write_file(source_path, ValidParticle));
 
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
@@ -1296,7 +1296,7 @@ Bakers = Particle
         size_t size = 0;
         uint64_t write_time = 0;
 
-        CHECK_FALSE(fs_exists(output_path));
+        CHECK_FALSE(fs::exists(output_path));
 
         auto first_data = data_source.OpenFile("Particles/Runtime.spk", size, write_time);
         REQUIRE(first_data);
@@ -1304,7 +1304,7 @@ Bakers = Particle
         CHECK(first_data.as_ptr()[0] == uint8_t {'S'});
         CHECK(first_data.as_ptr()[1] == uint8_t {'P'});
         CHECK(first_data.as_ptr()[2] == uint8_t {'K'});
-        CHECK(fs_exists(output_path));
+        CHECK(fs::exists(output_path));
 
         SPK::Ref<SPK::System> first_system = spark_io.loadFromBuffer("spk", first_data.as_ptr().reinterpret_as<const char>().get(), numeric_cast<unsigned>(size));
         REQUIRE(first_system);
@@ -1315,7 +1315,7 @@ Bakers = Particle
         CHECK(second_data.as_ptr()[0] == uint8_t {'S'});
 
         CHECK_FALSE(data_source.Reindex());
-        REQUIRE(fs_write_file(late_source_path, ValidParticle));
+        REQUIRE(fs::write_file(late_source_path, ValidParticle));
         CHECK_FALSE(data_source.IsFileExists("Particles/LateRuntime.spk"));
         CHECK(data_source.Reindex());
         CHECK(data_source.IsFileExists("Particles/LateRuntime.spk"));
@@ -1324,9 +1324,9 @@ Bakers = Particle
         auto late_data = data_source.OpenFile("Particles/LateRuntime.spk", size, write_time);
         REQUIRE(late_data);
         CHECK(late_data.as_ptr()[0] == uint8_t {'S'});
-        CHECK(fs_exists(late_output_path));
+        CHECK(fs::exists(late_output_path));
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 #endif
 
@@ -1340,8 +1340,8 @@ Bakers = Particle
         string dependency_path = strex(input_dir).combine_path("Particles/Texture/Splash01.png").str();
         string output_path = strex(output_dir).combine_path("Visual/Particles/Runtime.efk").str();
 
-        (void)fs_remove_dir_tree(temp_dir);
-        REQUIRE(fs_write_file(source_path, ParticleTests::SimpleGeneratingPositionProject));
+        (void)fs::remove_dir_tree(temp_dir);
+        REQUIRE(fs::write_file(source_path, ParticleTests::SimpleGeneratingPositionProject));
 
         GlobalSettings settings {true};
         settings.ApplyDefaultSettings();
@@ -1362,30 +1362,30 @@ Bakers = Particle
         size_t size = 0;
         uint64_t write_time = 0;
 
-        CHECK_FALSE(fs_exists(output_path));
+        CHECK_FALSE(fs::exists(output_path));
 
         auto runtime_data = data_source.OpenFile("Particles/Runtime.efk", size, write_time);
         REQUIRE(runtime_data);
         REQUIRE(size > 4);
         CHECK(string_view {runtime_data.as_ptr().reinterpret_as<const char>().get(), 4} == "SKFE");
-        CHECK(fs_exists(output_path));
+        CHECK(fs::exists(output_path));
         CHECK_FALSE(data_source.Reindex());
 
-        REQUIRE(fs_write_file(dependency_path, "texture"));
+        REQUIRE(fs::write_file(dependency_path, "texture"));
         CHECK(data_source.Reindex());
         auto runtime_data_after_add = data_source.OpenFile("Particles/Runtime.efk", size, write_time);
         REQUIRE(runtime_data_after_add);
         CHECK(string_view {runtime_data_after_add.as_ptr().reinterpret_as<const char>().get(), 4} == "SKFE");
         CHECK_FALSE(data_source.Reindex());
 
-        REQUIRE(fs_remove_file(dependency_path));
+        REQUIRE(fs::remove_file(dependency_path));
         CHECK(data_source.Reindex());
         auto runtime_data_after_remove = data_source.OpenFile("Particles/Runtime.efk", size, write_time);
         REQUIRE(runtime_data_after_remove);
         CHECK(string_view {runtime_data_after_remove.as_ptr().reinterpret_as<const char>().get(), 4} == "SKFE");
         CHECK_FALSE(data_source.Reindex());
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 #endif
 }

@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
+auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
 
 Critter::Critter(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
@@ -318,16 +318,16 @@ auto Critter::CheckFind(CritterFindType find_type) const noexcept -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::NonDead) && IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::NonDead) && IsDead()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::Dead) && !IsDead()) {
         return false;
     }
 
@@ -570,7 +570,7 @@ void Critter::MoveAttachedCritters()
     }
 
     // Callbacks time
-    auto this_ref_holder = refcount_ptr<Critter>::from_add_ref(this);
+    auto this_ref_holder = refcount_ptr<Critter>::from_addref(this);
     auto map_ref_holder = map;
     auto dir = GetDir();
 

@@ -787,8 +787,8 @@ namespace ClientServerIntegrationClient
 
         std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name)};
-        return fs_path_to_string(base);
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
+        return fs::path_to_string(base);
     }
 
     static auto PrepareClientUpdaterBakeOutput() -> string
@@ -798,7 +798,7 @@ namespace ClientServerIntegrationClient
         string bake_dir = MakeTempClientUpdaterBakeDir("resources");
         string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
 
-        REQUIRE(fs_create_directories(fonts_dir));
+        REQUIRE(fs::create_directories(fonts_dir));
 
         constexpr string_view default_font = R"(Version 2
 Image Default.png
@@ -814,10 +814,10 @@ Letter ' '
 End
 )";
 
-        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
+        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
 
         vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
-        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
+        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
 
         return bake_dir;
     }
@@ -827,7 +827,7 @@ End
     template<typename TEngine>
     static auto MakeStaticItemPropsBlob(TEngine& engine) -> vector<uint8_t>
     {
-        auto registrar = engine.GetPropertyRegistrar(engine.Hashes.ToHashedString("Item"));
+        auto registrar = engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string("Item"));
         REQUIRE(static_cast<bool>(registrar));
 
         auto static_prop = registrar->FindProperty("Static");
@@ -853,13 +853,13 @@ End
     template<typename TEngine>
     static auto MakeStaticServerMapBlob(TEngine& engine) -> vector<uint8_t>
     {
-        hstring critter_pid = engine.Hashes.ToHashedString("UnitTestSharedCritter");
-        hstring item_pid = engine.Hashes.ToHashedString("UnitTestSharedItem");
+        hstring critter_pid = engine.Hashes.to_hashed_string("UnitTestSharedCritter");
+        hstring item_pid = engine.Hashes.to_hashed_string("UnitTestSharedItem");
 
         // A default-constructed property set still serializes to a non-empty blob, so it is produced here
         // rather than writing a zero size the reader cannot restore from
         auto make_default_props_blob = [&engine](string_view type_name) {
-            auto registrar = engine.GetPropertyRegistrar(engine.Hashes.ToHashedString(type_name));
+            auto registrar = engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string(type_name));
             REQUIRE(static_cast<bool>(registrar));
 
             Properties props {registrar};
@@ -873,43 +873,43 @@ End
         vector<uint8_t> item_props = make_default_props_blob("Item");
 
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
+        auto writer = data_writer(map_data);
 
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
 
         vector<string> hashed_strings {string {critter_pid.as_str()}, string {item_pid.as_str()}};
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(hashed_strings.size()));
+        writer.write<uint32_t>(numeric_cast<uint32_t>(hashed_strings.size()));
 
         for (const string& hashed_string : hashed_strings) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(hashed_string.length()));
-            writer.WriteStringBytes(hashed_string);
+            writer.write<uint32_t>(numeric_cast<uint32_t>(hashed_string.length()));
+            writer.write_string_bytes(hashed_string);
         }
 
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<ident_t::underlying_type>(ident_t::underlying_type {5001});
-        writer.Write<hstring::hash_t>(critter_pid.as_hash());
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(critter_props.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<ident_t::underlying_type>(ident_t::underlying_type {5001});
+        writer.write<hstring::hash_t>(critter_pid.as_hash());
+        writer.write<uint32_t>(numeric_cast<uint32_t>(critter_props.size()));
 
         if (!critter_props.empty()) {
-            writer.WriteBytes({critter_props.data(), critter_props.size()});
+            writer.write_bytes({critter_props.data(), critter_props.size()});
         }
 
         vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
 
-        writer.Write<uint32_t>(uint32_t {2});
-        writer.Write<ident_t::underlying_type>(ident_t::underlying_type {5002});
-        writer.Write<hstring::hash_t>(item_pid.as_hash());
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(item_props.size()));
+        writer.write<uint32_t>(uint32_t {2});
+        writer.write<ident_t::underlying_type>(ident_t::underlying_type {5002});
+        writer.write<hstring::hash_t>(item_pid.as_hash());
+        writer.write<uint32_t>(numeric_cast<uint32_t>(item_props.size()));
 
         if (!item_props.empty()) {
-            writer.WriteBytes({item_props.data(), item_props.size()});
+            writer.write_bytes({item_props.data(), item_props.size()});
         }
 
-        writer.Write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
-        writer.Write<hstring::hash_t>(item_pid.as_hash());
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
-        writer.WriteBytes({static_item_props.data(), static_item_props.size()});
+        writer.write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
+        writer.write<hstring::hash_t>(item_pid.as_hash());
+        writer.write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
+        writer.write_bytes({static_item_props.data(), static_item_props.size()});
 
         return map_data;
     }
@@ -917,23 +917,23 @@ End
     template<typename TEngine>
     static auto MakeStaticClientMapBlob(TEngine& engine) -> vector<uint8_t>
     {
-        hstring item_pid = engine.Hashes.ToHashedString("UnitTestSharedItem");
+        hstring item_pid = engine.Hashes.to_hashed_string("UnitTestSharedItem");
         vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
 
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        auto writer = data_writer(map_data);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
 
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(item_pid.as_str().length()));
-        writer.WriteStringBytes(item_pid.as_str());
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(item_pid.as_str().length()));
+        writer.write_string_bytes(item_pid.as_str());
 
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
-        writer.Write<hstring::hash_t>(item_pid.as_hash());
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
-        writer.WriteBytes({static_item_props.data(), static_item_props.size()});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
+        writer.write<hstring::hash_t>(item_pid.as_hash());
+        writer.write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
+        writer.write_bytes({static_item_props.data(), static_item_props.size()});
 
         return map_data;
     }
@@ -947,25 +947,25 @@ End
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
 
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -998,21 +998,21 @@ End
                 }},
         });
 
-        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources");
+        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources");
         compiler_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
 
         // A location plus its map lets the logged-in critter enter the world, which is what drives the
         // client through the load-map / add-critter / property-sync protocol
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
@@ -1020,7 +1020,7 @@ End
 
         auto script_blob = MakeServerScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-server", proto_blob);
         runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-server", location_blob);
@@ -1057,19 +1057,19 @@ End
                 }},
         });
 
-        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources");
+        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerClientEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
 
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
@@ -1077,7 +1077,7 @@ End
 
         auto script_blob = MakeClientScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-client", proto_blob);
         runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-client", location_blob);
@@ -1093,12 +1093,12 @@ End
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
     }
 
     static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
     {
-        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
+        return safe_alloc::make_refcounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
     }
 
     static auto WaitForServerStart(ptr<ServerEngine> server) -> string
@@ -1190,7 +1190,7 @@ End
             client->MainLoop();
 
             bool failed = false;
-            hstring resolved = client->Hashes.ResolveHash(hash, &failed);
+            hstring resolved = client->Hashes.resolve_hash(hash, &failed);
 
             if (!failed && string_view {resolved.as_str()} == expected_string) {
                 return true;
@@ -1247,7 +1247,7 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     CHECK_FALSE(client->IsConnected());
     CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
 
-    auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_client_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
 
     int connecting_calls = 0;
     int connected_calls = 0;
@@ -1328,7 +1328,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     REQUIRE(WaitForConnected(client, server));
 
     // The connected-but-not-logged-in session only accepts a remote call, which is how a real client logs in
-    REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendLogin")));
+    REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendLogin")));
 
     int32_t login_success_calls = 0;
     bool logged_in = false;
@@ -1336,7 +1336,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     for (int32_t i = 0; i < 2000 && !logged_in; i++) {
         client->MainLoop();
 
-        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetLoginSuccessCalls"), login_success_calls));
+        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetLoginSuccessCalls"), login_success_calls));
         logged_in = login_success_calls >= 1;
 
         if (!logged_in) {
@@ -1348,14 +1348,24 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     CHECK(login_success_calls >= 1);
 
     int32_t server_login_calls = 0;
-    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetLoginCalls"), server_login_calls));
+    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetLoginCalls"), server_login_calls));
     CHECK(server_login_calls == 1);
 
     CHECK(client->IsConnected());
     REQUIRE(static_cast<bool>(client->GetCurPlayer()));
 
+    // The login reply leaves the server before the remote call reaches SwitchCritter, so the client can see success first
     int32_t switched_critters = 0;
-    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetSwitchedCritters"), switched_critters));
+
+    for (int32_t i = 0; i < 2000 && switched_critters == 0; i++) {
+        REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetSwitchedCritters"), switched_critters));
+
+        if (switched_critters == 0) {
+            client->MainLoop();
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
     CHECK(switched_critters == 1);
 
     // The controlled critter arrives over the wire, so the client ends up with a chosen critter of its own
@@ -1377,7 +1387,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
 
     for (int32_t i = 0; i < 2000 && drive_result != 0; i++) {
         client->MainLoop();
-        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestDriveChosen"), drive_result));
+        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestDriveChosen"), drive_result));
 
         if (drive_result != 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds {2});
@@ -1392,11 +1402,11 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     }
 
     int32_t npc_critters = 0;
-    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetNpcCritters"), npc_critters));
+    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetNpcCritters"), npc_critters));
     CHECK(npc_critters == 1);
 
     int32_t write_result = -1;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestWriteChosenProperty"), write_result));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestWriteChosenProperty"), write_result));
     CHECK(write_result == 0);
 
     for (int32_t i = 0; i < 100; i++) {
@@ -1406,7 +1416,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
 
     // Drive the server-side world steps through the second remote call, so each one runs with proper cover
     for (int32_t step = 0; step < 6; step++) {
-        REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
+        REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
 
         for (int32_t i = 0; i < 100; i++) {
             client->MainLoop();
@@ -1415,29 +1425,29 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     }
 
     int32_t client_pings = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetClientPings"), client_pings));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetClientPings"), client_pings));
     CHECK(client_pings == 42);
 
     // The login handler pushes the controlled critter's inventory down as a separate item payload, and
     // those views must not present themselves as items lying on a map hex
     int32_t received_items = 0;
     int32_t received_map_owned_items = -1;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetReceivedItemCount"), received_items));
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetReceivedMapOwnedItemCount"), received_map_owned_items));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetReceivedItemCount"), received_items));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetReceivedMapOwnedItemCount"), received_map_owned_items));
     CHECK(received_items > 0);
     CHECK(received_map_owned_items == 0);
 
     int32_t action_context_items = 0;
     int32_t action_map_owned_context_items = -1;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionContextItemCount"), action_context_items));
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetActionMapOwnedContextItemCount"), action_map_owned_context_items));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetActionContextItemCount"), action_context_items));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetActionMapOwnedContextItemCount"), action_map_owned_context_items));
     CHECK(action_context_items > 0);
     CHECK(action_map_owned_context_items == 0);
 
     // Movement and property writes from the client side enter the server through their own message
     // handlers, which nothing else in the suite reaches
     int32_t movement_result = -1;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestDriveChosenMovement"), movement_result));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestDriveChosenMovement"), movement_result));
     CHECK(movement_result == 0);
 
     for (int32_t i = 0; i < 200; i++) {
@@ -1447,14 +1457,14 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
 
     // Every wire-representable argument shape, sent to the server and echoed back
     int32_t every_arg_result = -1;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendEveryArg"), every_arg_result));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendEveryArg"), every_arg_result));
     CHECK(every_arg_result == 0);
 
     int32_t every_arg_echoes = 0;
 
     for (int32_t i = 0; i < 500 && every_arg_echoes == 0; i++) {
         client->MainLoop();
-        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetEveryArgEchoes"), every_arg_echoes));
+        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetEveryArgEchoes"), every_arg_echoes));
 
         if (every_arg_echoes == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds {2});
@@ -1464,19 +1474,19 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     CHECK(every_arg_echoes == 1);
 
     int32_t every_arg_echo_mismatch = -1;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestGetEveryArgEchoMismatch"), every_arg_echo_mismatch));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetEveryArgEchoMismatch"), every_arg_echo_mismatch));
     CHECK(every_arg_echo_mismatch == 0);
 
     int32_t every_arg_calls = 0;
-    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetEveryArgCalls"), every_arg_calls));
+    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetEveryArgCalls"), every_arg_calls));
     CHECK(every_arg_calls == 1);
 
     int32_t every_arg_mismatch = -1;
-    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetEveryArgMismatch"), every_arg_mismatch));
+    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetEveryArgMismatch"), every_arg_mismatch));
     CHECK(every_arg_mismatch == 0);
 
     int32_t world_steps = 0;
-    REQUIRE(server->CallFunc(server->Hashes.ToHashedString("ClientServerIntegrationServer::UnitTestGetWorldSteps"), world_steps));
+    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetWorldSteps"), world_steps));
     CHECK(world_steps == 6);
 
     // The world arrives asynchronously and the instrumented build is much slower, so the inspection polls
@@ -1485,7 +1495,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
 
     for (int32_t i = 0; i < 1000 && inspect_result != 0; i++) {
         client->MainLoop();
-        REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), inspect_result));
+        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), inspect_result));
 
         if (inspect_result != 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds {2});
@@ -1563,7 +1573,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
         REQUIRE(static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID)));
 
         auto drive_world_step = [&client](int32_t step) {
-            REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
+            REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
 
             for (int32_t i = 0; i < 200; i++) {
                 client->MainLoop();
@@ -1584,13 +1594,13 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
     // The other half of the contract: a client that loads the map while the item is already removed must
     // never build it into the view, rather than building it and taking it out again
     {
-        auto map_proto = client->GetProtoMap(client->Hashes.ToHashedString("UnitTestSharedMap"));
+        auto map_proto = client->GetProtoMap(client->Hashes.to_hashed_string("UnitTestSharedMap"));
         REQUIRE(map_proto);
 
         isize32 screen_size {client->Settings->ScreenWidth, client->Settings->ScreenHeight};
 
         auto load_view = [&](bool with_removal) {
-            auto map_view = SafeAlloc::MakeRefCounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), screen_size);
+            auto map_view = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), screen_size);
             auto destroy_view = scope_exit([&map_view]() noexcept { safe_call([&map_view] { map_view->DestroySelf(); }); });
 
             if (with_removal) {
@@ -1686,7 +1696,7 @@ TEST_CASE("TwoClientsShareOneMapSession")
     auto login = [&server](ptr<ClientEngine> client, size_t expected_connections) {
         client->Connect();
         REQUIRE(WaitForConnected(client, server, expected_connections));
-        REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestSendLogin")));
+        REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendLogin")));
 
         for (int32_t i = 0; i < 2000; i++) {
             client->MainLoop();
@@ -1718,8 +1728,8 @@ TEST_CASE("TwoClientsShareOneMapSession")
     for (int32_t i = 0; i < 1000 && (first_result != 0 || second_result != 0); i++) {
         first->MainLoop();
         second->MainLoop();
-        REQUIRE(first->CallFunc(first->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), first_result));
-        REQUIRE(second->CallFunc(second->Hashes.ToHashedString("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), second_result));
+        REQUIRE(first->CallFunc(first->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), first_result));
+        REQUIRE(second->CallFunc(second->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), second_result));
 
         if (first_result != 0 || second_result != 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds {2});
@@ -1764,15 +1774,15 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
-    auto previous_exception_callback = GetExceptionCallback();
+    auto previous_exception_callback = exceptions::get_callback();
     std::atomic_int exception_reports {};
-    SetExceptionCallback([&exception_reports](string_view, const CatchedStackTraceData&, bool) { exception_reports.fetch_add(1); });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { SetExceptionCallback(std::move(previous)); });
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     std::atomic_bool disconnected {};
-    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
         if (data.empty()) {
             disconnected.store(true);
         }
@@ -1782,8 +1792,8 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
 
     auto malformed_handshake = NetOutBuffer(64);
     malformed_handshake.StartMsg(NetMessage::Handshake);
-    malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
-    malformed_handshake.Write<uint16_t>(uint16_t {0});
+    malformed_handshake.write<uint32_t>(std::numeric_limits<uint32_t>::max());
+    malformed_handshake.write<uint16_t>(uint16_t {0});
     malformed_handshake.EndMsg();
     send_to_server(malformed_handshake.GetData());
 
@@ -1813,10 +1823,10 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
     std::atomic_bool disconnected {};
-    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
         if (data.empty()) {
             disconnected.store(true);
         }
@@ -1852,11 +1862,11 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
     mutex received_data_lock;
     vector<uint8_t> received_data;
-    auto send_to_server = InterthreadListeners[port]([&received_data_lock, &received_data](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
         if (!data.empty()) {
             scoped_lock locker {received_data_lock};
             received_data.insert(received_data.end(), data.begin(), data.end());
@@ -1870,11 +1880,11 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     REQUIRE_FALSE(server->GetMetadataVersion().empty());
     auto handshake = NetOutBuffer(128);
     handshake.StartMsg(NetMessage::Handshake);
-    handshake.Write(server_settings.CompatibilityVersion);
-    handshake.Write<string_view>("0123456789abcdef");
-    handshake.Write<uint32_t>(FO_UPDATER_VERSION);
-    handshake.Write<string_view>("Linux-x64");
-    handshake.Write<uint32_t>(0x12345678);
+    handshake.write(server_settings.CompatibilityVersion);
+    handshake.write<string_view>("0123456789abcdef");
+    handshake.write<uint32_t>(FO_UPDATER_VERSION);
+    handshake.write<string_view>("Linux-x64");
+    handshake.write<uint32_t>(0x12345678);
     handshake.EndMsg();
     send_to_server(handshake.GetData());
 
@@ -1893,11 +1903,11 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
 
             if (response.NeedProcess()) {
                 REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
-                CHECK_FALSE(response.Read<bool>());
-                CHECK_FALSE(response.Read<bool>());
-                CHECK(response.Read<bool>());
-                CHECK(response.Read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.Read<uint32_t>();
+                CHECK_FALSE(response.read<bool>());
+                CHECK_FALSE(response.read<bool>());
+                CHECK(response.read<bool>());
+                CHECK(response.read<string>() == server->GetMetadataVersion());
+                uint32_t response_encrypt_key = response.read<uint32_t>();
                 CHECK(response_encrypt_key != 0);
                 received_answer = true;
             }
@@ -1933,11 +1943,11 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     string startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
 
     mutex received_data_lock;
     vector<uint8_t> received_data;
-    auto send_to_server = InterthreadListeners[port]([&received_data_lock, &received_data](const_span<uint8_t> data) {
+    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
         if (!data.empty()) {
             scoped_lock locker {received_data_lock};
             received_data.insert(received_data.end(), data.begin(), data.end());
@@ -1949,11 +1959,11 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     static_assert(FO_UPDATER_VERSION > 1);
     auto handshake = NetOutBuffer(128);
     handshake.StartMsg(NetMessage::Handshake);
-    handshake.Write(server_settings.CompatibilityVersion);
-    handshake.Write(server->GetMetadataVersion());
-    handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
-    handshake.Write<string_view>("Linux-x64");
-    handshake.Write<uint32_t>(0x12345678);
+    handshake.write(server_settings.CompatibilityVersion);
+    handshake.write(server->GetMetadataVersion());
+    handshake.write<uint32_t>(FO_UPDATER_VERSION - 1);
+    handshake.write<string_view>("Linux-x64");
+    handshake.write<uint32_t>(0x12345678);
     handshake.EndMsg();
     send_to_server(handshake.GetData());
 
@@ -1971,11 +1981,11 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 
             if (response.NeedProcess()) {
                 REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
-                CHECK_FALSE(response.Read<bool>());
-                CHECK(response.Read<bool>());
-                CHECK_FALSE(response.Read<bool>());
-                CHECK(response.Read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.Read<uint32_t>();
+                CHECK_FALSE(response.read<bool>());
+                CHECK(response.read<bool>());
+                CHECK_FALSE(response.read<bool>());
+                CHECK(response.read<string>() == server->GetMetadataVersion());
+                uint32_t response_encrypt_key = response.read<uint32_t>();
                 CHECK(response_encrypt_key != 0);
                 response.SetEncryptKey(response_encrypt_key);
 
@@ -2131,7 +2141,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(client, server));
 
     // A string the server knows but the client doesn't РІР‚вЂќ mimics a runtime hstring the client can't resolve
-    hstring reported = server->Hashes.ToHashedString("integration_test_only_hash");
+    hstring reported = server->Hashes.to_hashed_string("integration_test_only_hash");
 
     // Send the exact wire message ClientEngine emits when it hits an unresolved hash
     client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
@@ -2159,12 +2169,12 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     string published = MakeTempClientUpdaterBakeDir("published");
     string writable = MakeTempClientUpdaterBakeDir("writable");
     auto cleanup = scope_exit([&]() noexcept {
-        (void)fs_remove_dir_tree(install);
-        (void)fs_remove_dir_tree(published);
-        (void)fs_remove_dir_tree(writable);
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
     });
-    REQUIRE(fs_create_directories(published));
-    REQUIRE(fs_create_directories(writable));
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
     vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
 
     for (const string& directory : {install, published}) {
@@ -2186,7 +2196,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     write_art(install, {{"Keep.bin", unchanged}, {"Change.txt", "old"}, {"Removed.txt", "removed"}});
     write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "first update"}});
     string installed_base = strex(install).combine_path("Art.fores").str();
-    auto original = fs_read_file(installed_base);
+    auto original = fs::read_file(installed_base);
     REQUIRE(original);
     string writable_resources = strex(writable).combine_path("Resources").str();
     string patch = strex(writable_resources).combine_path("Art.patch.fores").str();
@@ -2208,7 +2218,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 
 #if !FO_WINDOWS
         if (replace_published) {
-            REQUIRE(fs_rename_durable(strex(published).combine_path("Art.fores").str(), strex(published).combine_path("Pinned.fores").str()));
+            REQUIRE(fs::rename_durable(strex(published).combine_path("Art.fores").str(), strex(published).combine_path("Pinned.fores").str()));
             write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "replaced after server start"}});
         }
 #else
@@ -2230,10 +2240,10 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     };
 
     synchronize(false);
-    REQUIRE(fs_exists(patch));
-    CHECK_FALSE(fs_exists(replacement));
-    CHECK(fs_read_file(installed_base) == original);
-    auto first = fs_read_file(patch);
+    REQUIRE(fs::exists(patch));
+    CHECK_FALSE(fs::exists(replacement));
+    CHECK(fs::read_file(installed_base) == original);
+    auto first = fs::read_file(patch);
     REQUIRE(first);
     CHECK(first->size() < 1024);
 
@@ -2241,7 +2251,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     {
         write_art(published, {{"Keep.bin", unchanged}, {"Renamed.txt", "first update"}, {"Added.txt", "second update"}});
         synchronize(true);
-        auto second = fs_read_file(patch);
+        auto second = fs::read_file(patch);
         REQUIRE(second);
         CHECK(second->size() > first->size());
         CHECK(second->starts_with(*first));
@@ -2275,17 +2285,17 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
             writer.Finish();
         }
 
-        uint64_t size_before = fs_file_size(patch).value();
+        uint64_t size_before = fs::file_size(patch).value();
         REQUIRE(size_before > large_size);
         synchronize(false);
-        CHECK_FALSE(fs_exists(replacement));
-        uint64_t size_after = fs_file_size(patch).value();
+        CHECK_FALSE(fs::exists(replacement));
+        uint64_t size_after = fs::file_size(patch).value();
         CHECK(size_after > size_before);
         CHECK(size_after - size_before < 1024);
         synchronize(true);
-        CHECK(fs_file_size(patch).value() == size_after);
-        CHECK_FALSE(fs_exists(replacement));
-        CHECK(fs_read_file(installed_base) == original);
+        CHECK(fs::file_size(patch).value() == size_after);
+        CHECK_FALSE(fs::exists(replacement));
+        CHECK(fs::read_file(installed_base) == original);
     }
 
 #if !FO_WINDOWS
@@ -2311,7 +2321,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs_remove_dir_tree(updater_bake_output); });
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
     BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
 
     // The rig has no resource packs to read a version back from, and this case is about the hash list rather
@@ -2338,7 +2348,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    hstring reported = server->Hashes.ToHashedString("integration_test_updater_hash");
+    hstring reported = server->Hashes.to_hashed_string("integration_test_updater_hash");
 
     client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
     client->GetConnection()->OutBuf->Write<hstring::hash_t>(reported.as_hash());
@@ -2360,21 +2370,21 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
     uint16_t port = IntegrationTestPort.fetch_add(1);
     GlobalSettings client_settings = MakeClientTestSettings(port);
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs_remove_dir_tree(updater_bake_output); });
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
     string pack_name = "OutdatedClientPack";
     string metadata_path = strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
 
     STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
     constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
     vector<uint8_t> outdated_metadata;
-    DataWriter outdated_writer {outdated_metadata};
-    outdated_writer.Write<uint32_t>(METADATA_FILE_MAGIC);
-    outdated_writer.Write<uint16_t>(outdated_file_version);
-    outdated_writer.Write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
-    outdated_writer.WriteStringBytes(BakerTests::TEST_METADATA_VERSION);
-    outdated_writer.Write<uint16_t>(uint16_t {0});
+    data_writer outdated_writer {outdated_metadata};
+    outdated_writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    outdated_writer.write<uint16_t>(outdated_file_version);
+    outdated_writer.write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
+    outdated_writer.write_string_bytes(BakerTests::TEST_METADATA_VERSION);
+    outdated_writer.write<uint16_t>(uint16_t {0});
 
-    REQUIRE(fs_write_file(metadata_path, outdated_metadata));
+    REQUIRE(fs::write_file(metadata_path, outdated_metadata));
     BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
     BakerTests::OverrideSetting(client_settings.ClientResourceEntries, vector<string> {pack_name});
 
@@ -2416,7 +2426,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(client, server));
 
     // A server-only runtime hstring that is not read through NetInBuffer, matching lazy property/script resolves
-    hstring reported = server->Hashes.ToHashedString("integration_test_lazy_hash");
+    hstring reported = server->Hashes.to_hashed_string("integration_test_lazy_hash");
 
     auto critter_registrar = client->GetPropertyRegistrar(CritterView::ENTITY_TYPE_NAME);
     REQUIRE(static_cast<bool>(critter_registrar));
@@ -2428,16 +2438,16 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     hstring::hash_t unresolved_hash = reported.as_hash();
     critter_props.SetRawData(model_name_prop, {reinterpret_cast<const uint8_t*>(&unresolved_hash), sizeof(unresolved_hash)});
 
-    auto proto = client->GetProtoCritter(client->Hashes.ToHashedString("UnitTestSharedCritter"));
+    auto proto = client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestSharedCritter"));
     REQUIRE(static_cast<bool>(proto));
 
     auto critter_props_ptr = make_nptr(&critter_props);
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {}, proto, critter_props_ptr);
-    auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {}, proto, critter_props_ptr);
+    auto get_client_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
 
     // Trigger the same client unresolved-hash reporter without forcing a slow script exception
     bool failed = false;
-    hstring unresolved = client->Hashes.ResolveHash(reported.as_hash(), &failed);
+    hstring unresolved = client->Hashes.resolve_hash(reported.as_hash(), &failed);
     CHECK(failed);
     CHECK_FALSE(static_cast<bool>(unresolved));
 

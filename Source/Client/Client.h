@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "AudioManager.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
 #include "CritterHexView.h"
@@ -58,7 +59,6 @@
 #include "ResourceManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
 #include "VideoClip.h"
@@ -74,7 +74,7 @@ struct VideoPlaybackResources
 };
 
 ///@ ExportRefType Client RefCounted Export = Stopped
-class VideoPlayback : public RefCounted<VideoPlayback>
+class VideoPlayback : public refcounted<VideoPlayback>
 {
 public:
     optional<VideoPlaybackResources> PlaybackResources {};
@@ -274,7 +274,7 @@ public:
     SpriteManager SprMngr;
     FontManager FontMngr;
     ResourceManager ResMngr;
-    SoundManager SndMngr;
+    AudioManager AudioMngr;
     CacheStorage Cache;
 
     ipos32 MousePos {};

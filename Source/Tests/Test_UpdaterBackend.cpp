@@ -48,7 +48,7 @@ namespace UpdaterBackendTests
     static auto MakeTempDir(string_view name) -> string
     {
         auto base = std::filesystem::temp_directory_path() / std::format("lf_updater_backend_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs_path_to_string(base);
+        return fs::path_to_string(base);
     }
 
     struct DescriptorEntry
@@ -63,10 +63,10 @@ namespace UpdaterBackendTests
     static auto ReadDescriptor(const_span<uint8_t> data) -> vector<DescriptorEntry>
     {
         vector<DescriptorEntry> entries;
-        DataReader reader {data};
+        data_reader reader {data};
 
         while (true) {
-            int16_t name_size = reader.Read<int16_t>();
+            int16_t name_size = reader.read<int16_t>();
             if (name_size == -1) {
                 break;
             }
@@ -74,23 +74,23 @@ namespace UpdaterBackendTests
             REQUIRE(name_size > 0);
             DescriptorEntry entry;
             entry.Name.resize(numeric_cast<size_t>(name_size));
-            reader.ReadStringBytes(entry.Name);
-            entry.Size = reader.Read<uint64_t>();
-            entry.Hash = reader.Read<uint64_t>();
-            entry.Target = reader.Read<UpdateFileTarget>();
-            ignore_unused(reader.Read<uint32_t>());
-            entry.PackHeaderSize = reader.Read<uint32_t>();
-            ignore_unused(reader.ReadBytes(entry.PackHeaderSize));
+            reader.read_string_bytes(entry.Name);
+            entry.Size = reader.read<uint64_t>();
+            entry.Hash = reader.read<uint64_t>();
+            entry.Target = reader.read<UpdateFileTarget>();
+            ignore_unused(reader.read<uint32_t>());
+            entry.PackHeaderSize = reader.read<uint32_t>();
+            ignore_unused(reader.read_bytes(entry.PackHeaderSize));
             entries.emplace_back(std::move(entry));
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
         return entries;
     }
 
     static auto HashString(string_view value) noexcept -> uint64_t
     {
-        return fs_hash_data({reinterpret_cast<const uint8_t*>(value.data()), value.size()});
+        return fs::hash_data({reinterpret_cast<const uint8_t*>(value.data()), value.size()});
     }
 }
 
@@ -102,10 +102,10 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
     string client_resources_dir = strex(root_dir).combine_path("ClientResources").str();
     string platform_binaries_dir = strex(root_dir).combine_path("PlatformBinaries").str();
     string windows_target_dir = strex(platform_binaries_dir).combine_path("Windows-win64").str();
-    auto cleanup = scope_exit([&root_dir]() noexcept { (void)fs_remove_dir_tree(root_dir); });
+    auto cleanup = scope_exit([&root_dir]() noexcept { (void)fs::remove_dir_tree(root_dir); });
 
-    REQUIRE(fs_create_directories(client_resources_dir));
-    REQUIRE(fs_create_directories(windows_target_dir));
+    REQUIRE(fs::create_directories(client_resources_dir));
+    REQUIRE(fs::create_directories(windows_target_dir));
 
     vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
     constexpr string_view common_scripts = "common-scripts-pack";
@@ -125,7 +125,7 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
         writer.AddFile("Windows.txt", {reinterpret_cast<const uint8_t*>(windows_scripts.data()), windows_scripts.size()});
         writer.Finish();
     }
-    REQUIRE(fs_write_file(strex(windows_target_dir).combine_path("Game.dll").str(), windows_runtime));
+    REQUIRE(fs::write_file(strex(windows_target_dir).combine_path("Game.dll").str(), windows_runtime));
 
     ResourcePackHeader common_header;
     ResourcePackHeader windows_header;
@@ -153,7 +153,7 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
     auto scripts_entries = windows_entries | std::views::filter([](const DescriptorEntry& entry) { return entry.Name == "Scripts.fores"; });
     REQUIRE(std::ranges::distance(scripts_entries) == 1);
     const DescriptorEntry& scripts_entry = *scripts_entries.begin();
-    CHECK(scripts_entry.Size == *fs_file_size(windows_pack_path));
+    CHECK(scripts_entry.Size == *fs::file_size(windows_pack_path));
     CHECK(scripts_entry.Hash == windows_header.PackHash);
     CHECK(scripts_entry.Target == UpdateFileTarget::ClientResources);
     CHECK(scripts_entry.PackHeaderSize == RESOURCE_PACK_HEADER_SIZE);

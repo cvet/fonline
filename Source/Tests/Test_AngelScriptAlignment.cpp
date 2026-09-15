@@ -249,7 +249,7 @@ namespace AlignTest
         {
             auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-            auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
+            auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
             FileSystem compiler_resources;
@@ -257,7 +257,7 @@ namespace AlignTest
 
             auto script_blob = MakeScriptBinary(compiler_resources);
 
-            auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
+            auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
             runtime_source->AddFile("AlignTest.fos-bin-server", script_blob);
 
@@ -283,7 +283,7 @@ namespace AlignTest
             return "ServerEngine startup timed out";
         }
 
-        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources()); }
+        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
     };
 
     // Mirrors AddPropertyToClass: anything stored as a reference aligns like a pointer, while inline value types
@@ -361,7 +361,7 @@ TEST_CASE("AngelScriptValueAlignment")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // Script-class member layout: every member must sit on a correctly aligned byte offset across
     // the base class, both inheritance levels and the mixin-including class

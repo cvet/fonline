@@ -163,8 +163,8 @@ namespace
 
     template<typename T>
     concept has_refcount_ptr_named_factories = requires(T* raw) {
-        { refcount_ptr<T>::from_add_ref(raw) } -> std::same_as<refcount_ptr<T>>;
-        { refcount_ptr<T>::try_from_add_ref(raw) } -> std::same_as<refcount_nptr<T>>;
+        { refcount_ptr<T>::from_addref(raw) } -> std::same_as<refcount_ptr<T>>;
+        { refcount_ptr<T>::try_from_addref(raw) } -> std::same_as<refcount_nptr<T>>;
         { refcount_ptr<T>::from_adopted_ref(raw) } -> std::same_as<refcount_ptr<T>>;
     };
 }
@@ -411,11 +411,11 @@ TEST_CASE("SmartPointers")
         CHECK(maybe_borrowed.void_cast() == static_cast<void*>(base_value));
         CHECK(empty_borrowed.void_cast() == nullptr);
 
-        auto unique_owner = SafeAlloc::MakeUnique<PtrDerived>(64);
+        auto unique_owner = safe_alloc::make_unique<PtrDerived>(64);
         ptr<PtrDerived> borrowed_unique_owner = unique_owner;
         CHECK(unique_owner.void_cast() == borrowed_unique_owner.void_cast());
 
-        auto array_owner = SafeAlloc::MakeUniqueArr<int32_t>(2);
+        auto array_owner = safe_alloc::make_unique_arr<int32_t>(2);
         unique_arr_ptr<int32_t> empty_array_owner;
         CHECK(array_owner.void_cast() != nullptr);
         CHECK(empty_array_owner.void_cast() == nullptr);
@@ -424,7 +424,7 @@ TEST_CASE("SmartPointers")
         auto raw_ref = MakeUnreferencedRefCountedValue(66, &destroy_count);
 
         {
-            refcount_ptr<RefCountedValue> ref_owner = refcount_ptr<RefCountedValue>::from_add_ref(raw_ref.get());
+            refcount_ptr<RefCountedValue> ref_owner = refcount_ptr<RefCountedValue>::from_addref(raw_ref.get());
             refcount_nptr<RefCountedValue> maybe_ref_owner = ref_owner;
             refcount_nptr<RefCountedValue> empty_ref_owner;
 
@@ -435,7 +435,7 @@ TEST_CASE("SmartPointers")
 
         CHECK(destroy_count == 1);
 
-        auto shared_owner = SafeAlloc::MakeShared<PtrDerived>(67);
+        auto shared_owner = safe_alloc::make_shared<PtrDerived>(67);
         shared_ptr<PtrDerived> empty_shared_owner;
         weak_ptr<PtrDerived> weak_owner = shared_owner;
         weak_ptr<PtrDerived> empty_weak_owner;
@@ -446,11 +446,11 @@ TEST_CASE("SmartPointers")
         CHECK(weak_owner.void_cast() == shared_owner.void_cast());
         CHECK(empty_weak_owner.void_cast() == nullptr);
 
-        auto custom_owner = make_unique_del_ptr(SafeAlloc::MakeRaw<int32_t>(68), [](int32_t* raw_value) noexcept { delete raw_value; });
+        auto custom_owner = make_unique_del_ptr(safe_alloc::make_raw<int32_t>(68), [](int32_t* raw_value) noexcept { delete raw_value; });
         ptr<int32_t> borrowed_custom_owner = custom_owner;
         CHECK(custom_owner.void_cast() == borrowed_custom_owner.void_cast());
 
-        auto maybe_custom_value = SafeAlloc::MakeRaw<int32_t>(69);
+        auto maybe_custom_value = safe_alloc::make_raw<int32_t>(69);
         auto maybe_custom_owner = make_unique_del_ptr(maybe_custom_value, [](int32_t* raw_value) noexcept { delete raw_value; });
         nptr<int32_t> borrowed_maybe_custom_owner = maybe_custom_owner;
         CHECK(maybe_custom_owner.void_cast() == borrowed_maybe_custom_owner.void_cast());
@@ -460,7 +460,7 @@ TEST_CASE("SmartPointers")
 
         int32_t deleted_opaque_value = 0;
         {
-            auto raw_opaque_value = SafeAlloc::MakeRaw<int32_t>(70);
+            auto raw_opaque_value = safe_alloc::make_raw<int32_t>(70);
             auto opaque_owner = make_unique_del_ptr(raw_opaque_value.reinterpret_as<void>(), [&](void* raw_value) noexcept {
                 auto value = cast_from_void<int32_t*>(raw_value);
                 auto owned_value = adopt_unique_ptr(value);
@@ -487,7 +487,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniquePtrReleaseTransfersOwnership")
     {
-        auto unique_value = SafeAlloc::MakeUnique<PtrDerived>(77);
+        auto unique_value = safe_alloc::make_unique<PtrDerived>(77);
 
         REQUIRE(unique_value.get() != nullptr);
         CHECK(unique_value->Value == 77);
@@ -503,7 +503,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniqueOwningPointersBorrowImplicitly")
     {
-        auto owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(81);
+        auto owned_ptr = safe_alloc::make_unique<PtrDerived>(81);
 
         ptr<PtrBase> borrowed = owned_ptr;
         nptr<PtrBase> maybe_borrowed = owned_ptr;
@@ -514,7 +514,7 @@ TEST_CASE("SmartPointers")
         CHECK(maybe_borrowed.get() == owned_ptr.get());
         CHECK(borrowed->Value == 81);
 
-        unique_nptr<PtrDerived> maybe_owned {SafeAlloc::MakeUnique<PtrDerived>(82)};
+        unique_nptr<PtrDerived> maybe_owned {safe_alloc::make_unique<PtrDerived>(82)};
         REQUIRE(maybe_owned);
         ptr<PtrBase> borrowed_from_maybe_owner = maybe_owned;
         nptr<PtrBase> maybe_borrowed_from_owner = maybe_owned;
@@ -529,7 +529,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("ExplicitBorrowSurvivesOwnerMove")
     {
-        auto source_owner = SafeAlloc::MakeUnique<PtrDerived>(83);
+        auto source_owner = safe_alloc::make_unique<PtrDerived>(83);
         auto borrowed = source_owner.as_ptr();
 
         auto destination_owner = std::move(source_owner);
@@ -540,7 +540,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniqueOwningPointersDynCastToBorrowDirectly")
     {
-        unique_ptr<PtrBase> owned_ptr = SafeAlloc::MakeUnique<PtrCrossDerived>(83, 84);
+        unique_ptr<PtrBase> owned_ptr = safe_alloc::make_unique<PtrCrossDerived>(83, 84);
 
         auto mixin = owned_ptr.dyn_cast<PtrMixin>();
         STATIC_REQUIRE(std::is_same_v<decltype(mixin), nptr<PtrMixin>>);
@@ -569,7 +569,7 @@ TEST_CASE("SmartPointers")
         CHECK(deduced_nptr.get() == &value);
         CHECK(deduced_const_nptr.get() == &value);
 
-        auto owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(83);
+        auto owned_ptr = safe_alloc::make_unique<PtrDerived>(83);
         const auto& const_owned_ptr = owned_ptr;
         auto owner_ptr = owned_ptr.as_ptr();
         auto owner_const_ptr = const_owned_ptr.as_ptr();
@@ -597,7 +597,7 @@ TEST_CASE("SmartPointers")
         CHECK_FALSE(empty_ptr);
         CHECK(empty_ptr.void_cast() == nullptr);
 
-        auto owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(88);
+        auto owned_ptr = safe_alloc::make_unique<PtrDerived>(88);
         unique_nptr<PtrBase> ptr {std::move(owned_ptr)};
 
         CHECK(owned_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from owner contract
@@ -625,7 +625,7 @@ TEST_CASE("SmartPointers")
         int32_t deleted_value = 0;
 
         {
-            auto ptr = make_unique_del_ptr(SafeAlloc::MakeRaw<int32_t>(15), [&](int32_t* value) {
+            auto ptr = make_unique_del_ptr(safe_alloc::make_raw<int32_t>(15), [&](int32_t* value) {
                 deleted_value = *value;
                 delete value;
             });
@@ -644,7 +644,7 @@ TEST_CASE("SmartPointers")
         auto raw = MakeUnreferencedRefCountedValue(33, &destroy_count);
 
         {
-            refcount_ptr<RefCountedValue> ptr = refcount_ptr<RefCountedValue>::from_add_ref(raw.get());
+            refcount_ptr<RefCountedValue> ptr = refcount_ptr<RefCountedValue>::from_addref(raw.get());
             REQUIRE(ptr.get() != nullptr);
             CHECK(raw->RefCount == 1);
 
@@ -680,7 +680,7 @@ TEST_CASE("SmartPointers")
         CHECK_FALSE(maybe_ref);
 
         auto raw = MakeUnreferencedRefCountedValue(44, &destroy_count);
-        refcount_ptr<RefCountedValue> non_null_ptr = refcount_ptr<RefCountedValue>::from_add_ref(raw.get());
+        refcount_ptr<RefCountedValue> non_null_ptr = refcount_ptr<RefCountedValue>::from_addref(raw.get());
         maybe_ref = std::move(non_null_ptr);
 
         CHECK(non_null_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from refcount contract
@@ -752,7 +752,7 @@ TEST_CASE("SmartPointers")
         auto raw = MakeUnreferencedRefCountedPolyValue(61, 62);
 
         {
-            refcount_ptr<RefCountedPolyBase> owner = refcount_ptr<RefCountedPolyBase>::from_add_ref(raw.get());
+            refcount_ptr<RefCountedPolyBase> owner = refcount_ptr<RefCountedPolyBase>::from_addref(raw.get());
             CHECK(raw->RefCount == 1);
 
             {
@@ -785,7 +785,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("SharedAndWeakAliasesPropagateConstCorrectly")
     {
-        auto shared = SafeAlloc::MakeShared<PtrDerived>(91);
+        auto shared = safe_alloc::make_shared<PtrDerived>(91);
         weak_ptr<PtrDerived> weak = shared;
 
         REQUIRE(shared);
@@ -820,7 +820,7 @@ TEST_CASE("SmartPointers")
         constexpr size_t THREADS_COUNT = 8;
         constexpr size_t ITERATIONS_COUNT = 20000;
 
-        auto shared = SafeAlloc::MakeShared<PtrDerived>(7);
+        auto shared = safe_alloc::make_shared<PtrDerived>(7);
         weak_ptr<PtrDerived> weak = shared;
         std::atomic<size_t> locked_count = 0;
 
@@ -880,7 +880,7 @@ TEST_CASE("SmartPointers")
             ptr<std::atomic<size_t>> Counter;
         };
 
-        auto shared = SafeAlloc::MakeShared<RaceValue>(destroyed_count);
+        auto shared = safe_alloc::make_shared<RaceValue>(destroyed_count);
         weak_ptr<RaceValue> weak = shared;
 
         {
@@ -918,11 +918,11 @@ TEST_CASE("SmartPointers")
             int32_t Value {};
         };
 
-        auto head = SafeAlloc::MakeShared<ChainNode>();
+        auto head = safe_alloc::make_shared<ChainNode>();
         head->Value = 1;
-        head->Next = SafeAlloc::MakeShared<ChainNode>();
+        head->Next = safe_alloc::make_shared<ChainNode>();
         head->Next->Value = 2;
-        head->Next->Next = SafeAlloc::MakeShared<ChainNode>();
+        head->Next->Next = safe_alloc::make_shared<ChainNode>();
         head->Next->Next->Value = 3;
 
         head = head->Next; // copy-assign from a member of the pointee released by the assignment
@@ -946,7 +946,7 @@ TEST_CASE("SmartPointers")
         size_t deleted_count = 0;
 
         auto make_node = [&deleted_count](int32_t value) -> unique_del_nptr<DelNode> {
-            auto owner = SafeAlloc::MakeUnique<DelNode>();
+            auto owner = safe_alloc::make_unique<DelNode>();
             auto released = owner.release();
             released->Value = value;
             return make_unique_del_ptr(released, [&deleted_count](ptr<DelNode> node) noexcept {

@@ -70,7 +70,7 @@ Owning wrappers borrow the same way: `refcount_ptr<T>` / `refcount_nptr<T>`, `un
 
 When a dynamic cast is the only reason for a temporary borrow, call `dyn_cast<T>()` on the owner directly: write `_views[i].dyn_cast<EditorAssetView>()`, not `_views[i].as_ptr().dyn_cast<EditorAssetView>()`. `unique_ptr<T>` / `unique_nptr<T>` owner casts return a borrowed `nptr<U>`. `refcount_ptr<T>` / `refcount_nptr<T>` keep the existing owning result (`refcount_nptr<U>`) when `U` is itself intrusive-refcountable, and return borrowed `nptr<U>` for non-refcountable mixin/interface targets such as view interfaces. If ownership is intentionally acquired from a borrow, keep spelling that explicitly with `hold_ref()` / `try_hold_ref()` or `require_refcount_ptr(...)`.
 
-Reverse transitions from borrowed wrappers to owners remain explicit and reviewed: use `hold_ref()` / `try_hold_ref()` for intrusive refs, `adopt_unique_ptr(ptr<T>)` for scalar unique adoption, `make_unique_del_ptr(...)` for custom-deleter adoption, `take_not_null()` for nullable-owner ownership narrowing, and `SafeAlloc::MakeShared(...)` / domain factories for shared ownership. There is no implicit `ptr<T>` / `nptr<T>` → owner conversion.
+Reverse transitions from borrowed wrappers to owners remain explicit and reviewed: use `hold_ref()` / `try_hold_ref()` for intrusive refs, `adopt_unique_ptr(ptr<T>)` for scalar unique adoption, `make_unique_del_ptr(...)` for custom-deleter adoption, `take_not_null()` for nullable-owner ownership narrowing, and `safe_alloc::make_shared(...)` / domain factories for shared ownership. There is no implicit `ptr<T>` / `nptr<T>` → owner conversion.
 
 When a narrowed `ptr<T>` genuinely coexists with the nullable in one scope, name them by role so the two never collide — the clean domain name goes to the value the body works with, and boundary values exist only to be checked or narrowed:
 
@@ -101,7 +101,7 @@ ptr<const char> storage_end = storage_begin.get() + _s.size();
 if (view_begin < storage_begin || !(view_begin < storage_end)) { ... }
 ```
 
-One exception: an **exported/ABI parameter whose name is fixed by an external contract** (or pinned in the smart-pointer-audit allowlist) keeps its name; narrow it to a `<name>_ptr` local rather than renaming the parameter.
+One exception: an **exported/ABI parameter whose name is fixed by an external contract** (or named as a boundary in the smart-pointer audit's patterns) keeps its name; narrow it to a `<name>_ptr` local rather than renaming the parameter.
 
 The same naming applies to every narrowing form (`unique_nptr<T>::take_not_null()`, `refcount_nptr<T>::take_not_null()`, custom-deleter `take_not_null(...)`, …).
 
@@ -127,7 +127,7 @@ Borrow `refcount_ptr<T>` and `refcount_nptr<T>` through the implicit owner→`pt
 
 Do not wrap ordinary nullable intrusive ownership in `optional<refcount_ptr<T>>`; keep normal absence in `refcount_nptr<T>`. A load-result contract that must distinguish "absent" from "error" returns `refcount_nptr<T>` **plus a separate error flag** (e.g. a `bool& is_error` out-parameter), not `optional<refcount_ptr<T>>`. The same rule applies to other wrappers: avoid `optional<ptr<T>>`, `optional<nptr<T>>`, `optional<unique_ptr<T>>`, `optional<unique_nptr<T>>`, and `optional<refcount_nptr<T>>`; use the direct wrapper vocabulary or a named domain result type.
 
-`shared_ptr<T>` and `weak_ptr<T>` are engine-own shared-ownership types (no `std::shared_ptr` inside): an atomic control block owns the object through the strong count and the block itself through the weak count, the object is embedded in the same allocation by `SafeAlloc::MakeShared()` (which also honors the OOM backup pool), and destruction goes through a virtual hook so holders never need the complete pointee type. Types that need `shared_from_this()` / `weak_from_this()` derive from the engine-own `enable_shared_from_this<T>`; the factory wires the embedded weak reference right after construction, so like `std::enable_shared_from_this` it is not usable inside the constructor. Casts are member methods: `shared_ptr<U>::dyn_cast<T>()` (dynamic cast sharing the same control block, empty on failure) and `shared_ptr<const T>::cast_no_const()` (const-stripping escape hatch, the shared-owner sibling of `get_no_const()`). A present `shared_ptr<T>` borrows implicitly to `ptr<T>`; a possibly-empty one borrows implicitly to `nptr<T>`. These borrows do not change shared ownership; keep a shared owner alive for the full borrowed use. `unique_arr_ptr<T>` and `unique_del_nptr<T>` are likewise engine-own owners (array `delete[]` and type-erased `function<void(T*)>` deleter respectively); `unique_del_nptr<T>::get_deleter()` exposes the stored deleter for reviewed ownership handoffs such as `take_not_null()`.
+`shared_ptr<T>` and `weak_ptr<T>` are engine-own shared-ownership types (no `std::shared_ptr` inside): an atomic control block owns the object through the strong count and the block itself through the weak count, the object is embedded in the same allocation by `safe_alloc::make_shared()` (which also honors the OOM backup pool), and destruction goes through a virtual hook so holders never need the complete pointee type. Types that need `shared_from_this()` / `weak_from_this()` derive from the engine-own `enable_shared_from_this<T>`; the factory wires the embedded weak reference right after construction, so like `std::enable_shared_from_this` it is not usable inside the constructor. Casts are member methods: `shared_ptr<U>::dyn_cast<T>()` (dynamic cast sharing the same control block, empty on failure) and `shared_ptr<const T>::cast_no_const()` (const-stripping escape hatch, the shared-owner sibling of `get_no_const()`). A present `shared_ptr<T>` borrows implicitly to `ptr<T>`; a possibly-empty one borrows implicitly to `nptr<T>`. These borrows do not change shared ownership; keep a shared owner alive for the full borrowed use. `unique_arr_ptr<T>` and `unique_del_nptr<T>` are likewise engine-own owners (array `delete[]` and type-erased `function<void(T*)>` deleter respectively); `unique_del_nptr<T>::get_deleter()` exposes the stored deleter for reviewed ownership handoffs such as `take_not_null()`.
 
 Class and struct state must not store C++ reference members (`T& _member` or `const T& _member`). Constructor parameters and short local aliases may still use references when that is the clearest borrow, but stored required borrowed dependencies must be reviewed non-null `ptr<T>` members. Stored optional dependencies should use the matching nullable wrapper (`nptr<T>`, `unique_nptr<T>`, or `refcount_nptr<T>`). Use value members only for data the object actually owns by value, not as a workaround for a borrowed dependency.
 
@@ -166,8 +166,8 @@ nptr<Entity> maybe_borrowed = maybe_held;
 When a raw pointer is unavoidable at an ABI, atomic, or allocator boundary, use the named refcount factories instead of direct construction:
 
 ```cpp
-refcount_ptr<Entity> held_from_raw = refcount_ptr<Entity>::from_add_ref(raw_entity);
-refcount_nptr<Entity> maybe_held_from_raw = refcount_ptr<Entity>::try_from_add_ref(raw_entity);
+refcount_ptr<Entity> held_from_raw = refcount_ptr<Entity>::from_addref(raw_entity);
+refcount_nptr<Entity> maybe_held_from_raw = refcount_ptr<Entity>::try_from_addref(raw_entity);
 refcount_ptr<Entity> adopted = refcount_ptr<Entity>::from_adopted_ref(raw_entity_with_existing_ref);
 ```
 
@@ -248,14 +248,10 @@ Embedding projects can keep lightweight migration guards in source control. The 
 
 ```bash
 python3 Tools/SmartPointerAudit/smart_pointer_audit.py \
-  --fail-on error \
-  --raw-pointer-low-level-allowlist Tools/SmartPointerAudit/raw_pointer_low_level_allowlist.tsv \
-  --raw-pointer-abi-allowlist Tools/SmartPointerAudit/raw_pointer_abi_allowlist.tsv \
-  --raw-pointer-container-abi-allowlist Tools/SmartPointerAudit/raw_pointer_container_abi_allowlist.tsv \
-  --raw-pointer-header-abi-allowlist Tools/SmartPointerAudit/raw_pointer_header_abi_allowlist.tsv
+  --fail-on error
 python3 Tools/SmartPointerAudit/smart_pointer_clang_query.py --diff-base origin/main --require-tooling
 ```
 
-The first command is the regular textual non-regression audit. Exact line-level allowlists keep reviewed raw ABI and low-level raw rows from drifting; count budgets are not used, and class reference members fail directly without an allowlist. Nullable owners such as `unique_nptr<T>` and `unique_del_nptr<T>` are counted for inventory only, not quarantined. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
+The first command is the regular textual non-regression audit. It keeps no baselines or allowlists: raw-pointer boundaries are recognized by named shapes in the audit itself, so moving code never breaks the gate, and a new kind of boundary is named there in the change that introduces it. A raw ABI signature in a header fails unless it is one of the named header C ABI shapes, and class reference members fail directly. Nullable owners such as `unique_nptr<T>` and `unique_del_nptr<T>` are counted for inventory only, not quarantined. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
 
 As an embedding-project example, Last Frontier runs the full audit invocation in CI on every push and exposes the same command locally as the `Analyze :: Smart Pointer Audit` VS Code task (bundled into its `Analyze All` and pre-commit validation tasks).

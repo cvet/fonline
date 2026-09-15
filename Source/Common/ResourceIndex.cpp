@@ -178,7 +178,7 @@ auto ReadResourceIndexHeader(string_view path, ResourceIndexHeader& header) noex
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    disk_read_file file {path};
+    fs::disk_read_file file {path};
 
     if (!file) {
         return false;
@@ -226,7 +226,7 @@ auto ResolveResourceIndexPacks(const vector<string>& pack_dirs, const vector<str
 
     try {
         for (const string& name : pack_names) {
-            FO_VERIFY_AND_THROW(fs_is_contained_relative_path(name), "Invalid indexed pack name", name);
+            FO_VERIFY_AND_THROW(fs::is_contained_relative_path(name), "Invalid indexed pack name", name);
             string resolved_path = ResolveResourcePackPath(pack_dirs, name);
             ResourcePackHeader header;
 
@@ -343,10 +343,10 @@ void BuildResourceIndex(string_view path, const vector<string>& pack_paths, cons
     string temp_path = strex("{}.tmp", path).str();
 
     // A full disk throws mid-write and nothing revisits this name, so the partial file goes out with the throw
-    auto remove_on_fail = scope_fail([&temp_path]() noexcept { (void)fs_remove_file(temp_path); });
+    auto remove_on_fail = scope_fail([&temp_path]() noexcept { (void)fs::remove_file(temp_path); });
 
     {
-        disk_write_file file {temp_path};
+        fs::disk_write_file file {temp_path};
         FO_VERIFY_AND_THROW(!!file, "Can't create resource index file", temp_path);
         bool header_written = file.write(header_bytes);
         FO_VERIFY_AND_THROW(header_written, "Can't write resource index header", temp_path);
@@ -359,8 +359,8 @@ void BuildResourceIndex(string_view path, const vector<string>& pack_paths, cons
         file.close();
     }
 
-    (void)fs_remove_file(path);
-    bool renamed = fs_rename(temp_path, path);
+    (void)fs::remove_file(path);
+    bool renamed = fs::rename(temp_path, path);
     FO_VERIFY_AND_THROW(renamed, "Can't put the resource index in place", temp_path, path);
 }
 
@@ -386,7 +386,7 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 {
     FO_STACK_TRACE_ENTRY();
 
-    optional<uint64_t> file_size = fs_file_size(_fileName);
+    optional<uint64_t> file_size = fs::file_size(_fileName);
     FO_VERIFY_AND_THROW(file_size.has_value(), "Can't size the resource index", _fileName);
 
     auto fits_in_file = [&](uint64_t offset, uint64_t size) { return offset >= RESOURCE_INDEX_HEADER_SIZE && size <= *file_size && offset <= *file_size - size; };
@@ -404,7 +404,7 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
     FO_VERIFY_AND_THROW(index_read, "Can't read the resource index", _fileName);
 
     if (_header.IndexCodec == static_cast<uint32_t>(ResourcePackCodec::Deflate)) {
-        _index = Compressor::DecompressExact(stored_index, numeric_cast<size_t>(_header.IndexDecodedSize));
+        _index = compressor::decompress_exact(stored_index, numeric_cast<size_t>(_header.IndexDecodedSize));
     }
     else {
         FO_VERIFY_AND_THROW(_header.IndexStoredSize == _header.IndexDecodedSize, "Stored resource index declares two sizes", _fileName);
@@ -439,11 +439,11 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
         vector<string> paths;
         FO_VERIFY_AND_THROW(ResolveResourceIndexPacks(pack_dirs, {pack_name}, resolved, paths) && resolved.front().PackHash == pack_hash && resolved.front().PatchHash == patch_hash && resolved.front().PatchEnd == patch_end, "Resource index names a different resource pair", pack_name);
         ResourcePackHeader resolved_header;
-        disk_read_file pack_file = OpenResourcePackFile(paths.front());
+        fs::disk_read_file pack_file = OpenResourcePackFile(paths.front());
         FO_VERIFY_AND_THROW(ReadResourcePackHeader(pack_file, resolved_header) && resolved_header.PackHash == pack_hash, "Indexed base changed before opening", pack_name);
         pack_headers.emplace_back(resolved_header);
         _packFiles.emplace_back(std::move(pack_file));
-        disk_read_file patch_file {resolved.front().PatchPath};
+        fs::disk_read_file patch_file {resolved.front().PatchPath};
         auto patch = ReadResourcePatchInfo(patch_file, resolved_header);
         FO_VERIFY_AND_THROW((patch ? patch->IndexHash : 0) == patch_hash && (patch ? patch->CommittedSize : 0) == patch_end, "Indexed patch changed before opening", pack_name);
 
@@ -526,12 +526,12 @@ auto ResourceIndexSource::ReadEntryData(const FileEntry& entry) const -> vector<
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));
-    const disk_read_file& pack_file = entry.Source == 0 ? _packFiles[entry.PackIndex] : _patchFiles[entry.PackIndex];
+    const fs::disk_read_file& pack_file = entry.Source == 0 ? _packFiles[entry.PackIndex] : _patchFiles[entry.PackIndex];
     bool payload_read = pack_file.read_at(entry.DataOffset, stored);
     FO_VERIFY_AND_THROW(payload_read, "Can't read a resource through the index", _fileName, entry.Path);
 
     if (entry.Codec == static_cast<uint32_t>(ResourcePackCodec::Deflate)) {
-        vector<uint8_t> decoded = Compressor::DecompressExact(stored, numeric_cast<size_t>(entry.DecodedSize));
+        vector<uint8_t> decoded = compressor::decompress_exact(stored, numeric_cast<size_t>(entry.DecodedSize));
         FO_VERIFY_AND_THROW(decoded.size() == entry.DecodedSize && HashResourceBytes(RESOURCE_PACK_HASH_SEED, decoded) == entry.FileContentHash, "Resource did not decode to its declared size", _fileName, entry.Path);
         return decoded;
     }
@@ -577,7 +577,7 @@ auto ResourceIndexSource::OpenFile(string_view path, size_t& size, uint64_t& wri
     size = numeric_cast<size_t>(entry->DecodedSize);
     write_time = _packWriteTimes[entry->PackIndex];
 
-    auto buf = unique_arr_ptr<uint8_t> {SafeAlloc::MakeUniqueArr<uint8_t>(data.size())};
+    auto buf = unique_arr_ptr<uint8_t> {safe_alloc::make_unique_arr<uint8_t>(data.size())};
     std::copy(data.begin(), data.end(), buf.get());
 
     return MakeFileBufferHolder(std::move(buf));

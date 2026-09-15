@@ -3265,21 +3265,21 @@ namespace ScriptBuiltins
     {
         auto metadata_blob = MakeMetadataWithGenderEnum();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
         auto script_blob = MakeScriptBinary(compiler_resources);
 
         string_view config_text = "[TestSection]\nFirstKey=FirstValue\nSecondKey=SecondValue\n";
         vector<uint8_t> config_blob(config_text.begin(), config_text.end());
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
         runtime_source->AddFile("ScriptBuiltinsTest.focfg", config_blob);
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptBuiltins.fopro-bin-server", critter_blob);
@@ -3309,7 +3309,7 @@ namespace ScriptBuiltins
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -3334,7 +3334,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // StringLength
     {
@@ -3526,16 +3526,16 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         auto func = server->FindFunc<void>(fn("ScriptBuiltins::InvalidIntConversionFromAny"));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
         string traceback;
         bool fatal = true;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data& st, bool is_fatal) {
             message = string(msg);
-            traceback = FormatStackTrace(st);
+            traceback = stack_trace::format(st);
             fatal = is_fatal;
         });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         CHECK(message.find("Invalid int value for any conversion") != string::npos);
@@ -3771,15 +3771,15 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4039,7 +4039,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         int_arr->SetValue(0, &first_int_value);
         int_arr->SetValue(1, &second_int_value);
         {
-            auto copied_int_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*int_arr);
+            auto copied_int_arr = safe_alloc::make_refcounted<ScriptArray>(*int_arr);
             CHECK(copied_int_arr->GetSize() == int_arr->GetSize());
             CHECK(*copied_int_arr->AtAs<int32_t>(0) == first_int_value);
             CHECK(*copied_int_arr->AtAs<int32_t>(1) == second_int_value);
@@ -4065,7 +4065,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         dummy_ref_arr->SetValue(0, &first_dummy_ref_handle);
         CHECK(first_dummy_ref.RefCount == 1);
         {
-            auto copied_dummy_ref_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*dummy_ref_arr);
+            auto copied_dummy_ref_arr = safe_alloc::make_refcounted<ScriptArray>(*dummy_ref_arr);
             CHECK(copied_dummy_ref_arr->GetSize() == dummy_ref_arr->GetSize());
             CHECK(first_dummy_ref.RefCount == 2);
             CHECK(copied_dummy_ref_arr->FindByRef(&first_dummy_ref_handle) == 0);
@@ -4088,7 +4088,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         {
             auto defaulted_gc_handle_arr = ScriptArray::Create(gc_node_handle_type.get(), 1, &gc_node_handle);
 
-            auto copied_gc_handle_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*defaulted_gc_handle_arr);
+            auto copied_gc_handle_arr = safe_alloc::make_refcounted<ScriptArray>(*defaulted_gc_handle_arr);
             CHECK(copied_gc_handle_arr->GetSize() == defaulted_gc_handle_arr->GetSize());
             CHECK(copied_gc_handle_arr->FindByRef(&gc_node_handle) == 0);
         }
@@ -4253,7 +4253,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // DictLength
     {
@@ -4322,10 +4322,10 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4435,7 +4435,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         CHECK(*values->AtAs<int32_t>(0) == replacement_value);
         CHECK(*values->AtAs<int32_t>(1) == second_value);
 
-        auto copy = SafeAlloc::MakeRefCounted<ScriptDict>(*dict);
+        auto copy = safe_alloc::make_refcounted<ScriptDict>(*dict);
         CHECK(copy->GetSize() == 2);
         CHECK(*copy == *dict);
         CHECK(*dict == *dict);
@@ -4580,7 +4580,7 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_success_func = [&server, &fn](string_view func_name) {
         auto func = server->FindFunc<int32_t>(fn(func_name));
         REQUIRE(func);
@@ -4592,10 +4592,10 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4702,7 +4702,7 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_success_func = [&server, &fn](string_view func_name) {
         auto func = server->FindFunc<int32_t>(fn(func_name));
         REQUIRE(func);
@@ -4714,10 +4714,10 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4762,7 +4762,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // ComprehensiveMathTest
     {

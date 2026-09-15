@@ -279,16 +279,6 @@ AddStaticThirdPartyLibrary(Theora
     APPEND_TO FO_CLIENT_LIBS
     INCLUDE_DIRS "${FO_THEORA_DIR}/include")
 
-# Acm
-SetValue(FO_ACM_DIR "${FO_ENGINE_ROOT}/ThirdParty/Acm")
-SetValue(FO_ACM_SOURCE
-    "${FO_ACM_DIR}/acmstrm.cpp"
-    "${FO_ACM_DIR}/acmstrm.h")
-AddStaticThirdPartyLibrary(AcmDecoder
-    SOURCE_LIST FO_ACM_SOURCE
-    APPEND_TO FO_CLIENT_LIBS
-    INCLUDE_DIRS "${FO_ACM_DIR}")
-
 # GLM
 StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
@@ -476,6 +466,12 @@ if(FO_BUILD_SERVER_LIB)
         ENABLE_UNINSTALL OFF
         ENABLE_EXAMPLES OFF
         USE_BUNDLED_UTF8PROC ON)
+
+    # MemorySanitizer does not intercept glibc strlcpy, so every string libbson copies with it reads as uninitialized;
+    # the strncpy fallback is intercepted
+    if(CMAKE_BUILD_TYPE MATCHES "^San_Memory")
+        SetCacheValues(BSON_HAVE_STRLCPY 0)
+    endif()
 
     if(NOT FO_DISABLE_MONGO)
         StatusMessage("+ MongoDB")
@@ -767,6 +763,8 @@ if(FO_MANAGED_SCRIPTING)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_apple_sources_v2)
     elseif(FO_LINUX)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_linux_signal_actions)
+    elseif(FO_WINDOWS)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_embedded_debug_info)
     else()
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
     endif()

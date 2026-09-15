@@ -135,13 +135,13 @@ private:
     auto ReadEntryData(const FileEntry& entry) const -> vector<uint8_t>;
 
     string _fileName;
-    disk_read_file _file;
+    fs::disk_read_file _file;
     ResourceIndexHeader _header {};
     vector<uint8_t> _index {};
     vector<FileEntry> _entries {};
     unordered_map<string_view, size_t> _entryLookup {};
-    vector<disk_read_file> _packFiles {};
-    vector<disk_read_file> _patchFiles {};
+    vector<fs::disk_read_file> _packFiles {};
+    vector<fs::disk_read_file> _patchFiles {};
     // Per pack, so an entry reports the mtime of the `.fores` its bytes live in - the same answer a direct
     // pack mount gives, which is what keeps the two views of one file indistinguishable
     vector<uint64_t> _packWriteTimes {};

@@ -64,6 +64,13 @@ Its `windows-file-io` artifact retains the factual JSON, compiler logs, executab
 and available embedded manifests even when a probe fails. See the
 [filesystem diagnostic contract](Essentials.md#filesystem-compression-sockets-and-work-threads).
 
+The probe compiles the selected `fs::` definitions from `DiskFileSystem.cpp` unchanged;
+it derives their namespace declarations from those definitions. Keep the probe's
+signature list and the config-search fixture's `fs` stubs aligned with API renames.
+`BuildTools/tests/test_windows_file_io_probe.py` checks extraction on every host;
+`test_application_config_search.py` compiles the config-search loop when a C++20
+compiler is available.
+
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
 ```bash
@@ -127,6 +134,13 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
+`python -m pytest BuildTools/tests/test_managed_stack_traces.py BuildTools/tests/test_managed_async_callbacks.py`
+checks the canonical managed exception descriptions and callback failure accounting. The stack-trace probes
+cover transparent versus semantic wrappers, all aggregate causes, and message identity. A CMake-built native
+fixture compiles the canonical `ManagedScriptEntryScope` against a GC-handle fixture to verify independent
+errors with identical messages, nested lookup, repeated reporting, moving handle targets and scope cleanup.
+The fixture models handle ownership; it does not replace a real Mono GC/runtime check.
+
 The native callback GC probe uses an existing Linux Mono embedding runtime (its `include/mono-2.0`
 and `lib` directories), Clang, and the .NET 10 SDK on `PATH`:
 
@@ -176,7 +190,10 @@ ASan/MSan/UBSan/TSan are blocking legs. The `unit-tests-san-memory` validator pr
 `Workspace/msan-libcxx` by building LLVM's `libc++`, `libc++abi`, and `libunwind`
 with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROOT`.
 The runtime build applies a narrow libunwind ignorelist so C++ exception and
-sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
+sanitizer-report unwinding do not self-report on ABI register snapshots. `San_Memory`
+also configures libbson without `strlcpy`: MSan does not intercept the glibc function, so
+every string libbson copies with it (MongoDB URI option keys among them) would read as
+uninitialized, while its `strncpy` fallback is intercepted. Engine
 native stack capture and the backward-cpp signal handler are disabled under MSan and
 TSan so the sanitizer runtimes own their reports; backward-cpp/libbfd symbolization
 under TSan also produces prohibitive shadow-memory growth. The embedded Mono archive and
@@ -190,6 +207,13 @@ Changing the SGen clear or collector mode only moves those reports between Mono'
 bytes for bounded MSan diagnostics, but does not qualify the whole runtime for either sanitizer.
 Use the managed-disabled engine unit validators for native MSan/TSan coverage and ASan/UBSan
 for managed runtime execution.
+Managed-script Clang builds compile `San_Address` and `San_Address_Undefined` with
+`-fsanitize-address-use-after-return=never`. Mono SGen pins objects by conservatively scanning the real
+thread stacks, while ASan's stack-use-after-return mode (on by default on Linux) moves every address-taken
+native local, such as the `void* args[]` handed to `mono_runtime_invoke`, into a heap fake frame the collector
+never scans. A managed reference held only there is moved or collected underneath the native code, and the
+damage surfaces later as SGen faults (`copy_object_no_checks`, `no object of size`) rather than as an ASan
+report. MSVC AddressSanitizer does not enable fake stacks unless asked, so it needs no counterpart.
 `unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
@@ -235,7 +259,7 @@ masked. Notable cases:
 - backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
   binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
   never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
-  (`GetNativeTraceResolver`, serialized by `StackTraceState::NativeResolverLocker`): it is created
+  (`get_native_trace_resolver`, serialized by `stack_trace_state::native_resolver_locker`): it is created
   once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
   and those libbfd caches remain reachable — LSan does not report them.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
@@ -270,7 +294,7 @@ Coverage-only configurations also provide the ordinary `<DevName>_ServerHeadless
 `<DevName>_CodeCoverage`; no second configuration or production runtime rebuild is required.
 They do not enable the windowed applications or the baker plugin. Clang/GCC companion
 applications, including the managed script baker, register a `quick_exit` coverage flush on
-platforms where `ExitApp` uses it (Linux/Windows; Apple, Android, and Web retain `exit`),
+platforms where `exit_app` uses it (Linux/Windows; Apple, Android, and Web retain `exit`),
 because the engine's ordinary shutdown bypasses the compiler runtime's `atexit` writer.
 
 For native LLVM coverage of script-driven integration tests, first run `RunCodeCoverage`,
@@ -421,13 +445,13 @@ failed - drive only what is reachable.
 `backward.hpp` only — they carry no engine namespace and appear in no engine
 header, so a test declares them exactly as that header does. The report is
 emitted through the base log on the first write to the crash stream, so point
-`LogToFile` at a private file, write one line into `GetCrashStream()` and read
+`logging::to_file` at a private file, write one line into `GetCrashStream()` and read
 the report back instead of letting "FATAL ERROR!" leak into the test console.
-Restore the log with `LogToFile("/dev/null")` (`"NUL"` on Windows); there is no
+Restore the log with `logging::to_file("/dev/null")` (`"NUL"` on Windows); there is no
 "stop logging to a file" call. Terminating reporters are covered out of process
-through `DiagnosticSelfTest`: `main_strong_assert` covers `ReportExceptionAndExit`,
+through `DiagnosticSelfTest`: `main_strong_assert` covers `exceptions::report_and_exit`,
 `main_basic_strong_assert` and `main_fatal_exit` cover the early `FatalError`
-layer, and `main_failure_exit` pins the raw status-only `ExitApp(false)` contract.
+layer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
 The embedding project's
 `Tools/PipelineTests/test_crash_diagnostics_linux.py` asserts their log and exit
 contracts without killing the unit-test process.
@@ -660,6 +684,7 @@ Current count: **108** `Test_*.cpp` suites.
 ### Bakers and tools
 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_BakerSetup.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`

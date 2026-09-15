@@ -43,8 +43,8 @@ FO_BEGIN_NAMESPACE
 static auto MakeTempIndexDir(string_view name) -> string
 {
     auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    string dir = fs_path_to_string(base);
-    REQUIRE(fs_create_directories(dir));
+    string dir = fs::path_to_string(base);
+    REQUIRE(fs::create_directories(dir));
     return dir;
 }
 
@@ -159,24 +159,24 @@ static void WriteStoredZip(string_view path, const vector<std::pair<string, stri
     put32(out, central_offset);
     put16(out, 0);
 
-    REQUIRE(fs_write_file(path, const_span<uint8_t> {out.data(), out.size()}));
+    REQUIRE(fs::write_file(path, const_span<uint8_t> {out.data(), out.size()}));
 }
 
 TEST_CASE("ResourcePackInApkRegion")
 {
     string dir = MakeTempIndexDir("apk_region");
-    auto cleanup = scope_exit([&]() noexcept { (void)fs_remove_dir_tree(dir); });
+    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); });
     WritePack(dir, "Art", {{"Old.txt", "same content"}, {"Deleted.txt", "gone"}});
     WritePack(dir, "Target", {{"Renamed.txt", "same content"}, {"Added.txt", "new content"}});
     string base_path = strex(dir).combine_path("Art.fores").str();
     string apk_path = strex(dir).combine_path("client.apk").str();
-    auto bytes = fs_read_file(base_path);
+    auto bytes = fs::read_file(base_path);
     REQUIRE(bytes);
     WriteStoredZip(apk_path, {{"unrelated", string(4096, 'x')}, {"assets/Resources/Art.fores", *bytes}, {"after", "outside the pack"}});
-    REQUIRE(fs_remove_file(base_path));
+    REQUIRE(fs::remove_file(base_path));
     string apk_dir = strex("{}!/assets/Resources", apk_path).str();
     string installed = strex(apk_dir).combine_path("Art.fores").str();
-    disk_read_file region = OpenResourcePackFile(installed);
+    fs::disk_read_file region = OpenResourcePackFile(installed);
     REQUIRE(region);
     CHECK(region.get_size() == bytes->size());
     array<uint8_t, 1> outside {};
@@ -188,7 +188,7 @@ TEST_CASE("ResourcePackInApkRegion")
     ResourcePatchWriter writer {installed, patch_path, target.GetEntryRefs(), target.GetContentHash()};
     REQUIRE(writer.GetDownloads().size() == 1);
     writer.Begin();
-    disk_read_file remote {strex(dir).combine_path("Target.fores").str()};
+    fs::disk_read_file remote {strex(dir).combine_path("Target.fores").str()};
 
     for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
         vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
@@ -216,7 +216,7 @@ TEST_CASE("ResourceIndex")
     SECTION("PatchedPairsMatchDirectEnumerationAndInvalidateOnEveryCommit")
     {
         string dir = MakeTempIndexDir("index_patch_pair");
-        auto cleanup = scope_exit([&]() noexcept { (void)fs_remove_dir_tree(dir); });
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); });
         WritePack(dir, "Base", {{"Shared.txt", "earlier"}, {"Base.txt", "base"}});
         WritePack(dir, "Over", {{"Shared.txt", "later"}, {"Deleted.txt", "gone"}, {"Keep.txt", "keep"}});
         string base_path = strex(dir).combine_path("Over.fores").str();
@@ -230,7 +230,7 @@ TEST_CASE("ResourceIndex")
             WritePack(dir, "Target", files);
             ResourcePackSource target {target_path};
             ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
-            disk_read_file remote {target_path};
+            fs::disk_read_file remote {target_path};
             writer.Begin();
 
             for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
@@ -251,8 +251,8 @@ TEST_CASE("ResourceIndex")
 
         {
             FileSystem direct;
-            direct.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(strex(dir).combine_path("Base.fores").str()));
-            direct.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(base_path, patch_path));
+            direct.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(dir).combine_path("Base.fores").str()));
+            direct.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, patch_path));
             ResourceIndexSource cached {index_path, dirs};
             vector<string> direct_names;
 
@@ -286,23 +286,23 @@ TEST_CASE("ResourceIndex")
         BuildResourceIndex(index_path, paths, packs);
         CHECK(IsResourceIndexCurrent(index_path, dirs, names));
 
-        REQUIRE(fs_remove_file(patch_path));
+        REQUIRE(fs::remove_file(patch_path));
         CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, names));
     }
 
     SECTION("RestoresWritableBaseBackupBeforeSelectingTheInstalledBase")
     {
         string dir = MakeTempIndexDir("resource_base_recovery");
-        auto cleanup = scope_exit([&]() noexcept { (void)fs_remove_dir_tree(dir); });
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); });
         string writable = strex(dir).combine_path("Writable").str();
-        REQUIRE(fs_create_directories(writable));
+        REQUIRE(fs::create_directories(writable));
         WritePack(dir, "Core", {{"File.txt", "installed"}});
         WritePack(writable, "Core", {{"File.txt", "updated"}});
         string base = strex(writable).combine_path("Core.fores").str();
         string backup = strex("{}{}", base, REPLACED_FILE_BACKUP_SUFFIX).str();
-        REQUIRE(fs_rename_durable(base, backup));
+        REQUIRE(fs::rename_durable(base, backup));
         CHECK(ResolveResourcePackPath({dir, writable}, "Core") == base);
-        CHECK_FALSE(fs_exists(backup));
+        CHECK_FALSE(fs::exists(backup));
         ResourcePackSource restored {base};
         size_t size = 0;
         uint64_t write_time = 0;
@@ -322,7 +322,7 @@ TEST_CASE("ResourceIndex")
     SECTION("RejectsMalformedIndexRecordsBeforeUsingTheirOffsets")
     {
         string dir = MakeTempIndexDir("index_record_bounds");
-        auto cleanup = scope_exit([&dir]() noexcept { (void)fs_remove_dir_tree(dir); });
+        auto cleanup = scope_exit([&dir]() noexcept { (void)fs::remove_dir_tree(dir); });
         string index_path = strex(dir).combine_path("Merged.foindex").str();
         vector<string> dirs {dir};
         WritePack(dir, "Data", {{"File.txt", "payload"}});
@@ -331,7 +331,7 @@ TEST_CASE("ResourceIndex")
         vector<string> pack_paths;
         REQUIRE(ResolveResourceIndexPacks(dirs, {"Data"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs, ResourcePackWriteSettings {0, 100});
-        auto original = fs_read_file(index_path);
+        auto original = fs::read_file(index_path);
         REQUIRE(original.has_value());
         vector<uint8_t> bytes(original->begin(), original->end());
 
@@ -357,7 +357,7 @@ TEST_CASE("ResourceIndex")
             span_write_uint64(bytes, 64, HashResourceBytes(RESOURCE_PACK_HASH_SEED, {bytes.data(), 64}));
         }
 
-        REQUIRE(fs_write_file(index_path, bytes));
+        REQUIRE(fs::write_file(index_path, bytes));
         CHECK_THROWS_AS(ResourceIndexSource(index_path, dirs), VerificationException);
     }
 
@@ -390,7 +390,7 @@ TEST_CASE("ResourceIndex")
             CHECK_FALSE(index.IsFileExists("Missing.txt"));
         }
 
-        CHECK(fs_remove_dir_tree(dir));
+        CHECK(fs::remove_dir_tree(dir));
     }
 
     SECTION("ListsNamesFromTheEntriesItAlreadyHolds")
@@ -433,7 +433,7 @@ TEST_CASE("ResourceIndex")
         CHECK(index.GetFileNames("Dir", false, "txt").size() == 2);
         CHECK(index.GetFileNames("", false, "bin").size() == 1);
 
-        CHECK(fs_remove_dir_tree(dir));
+        CHECK(fs::remove_dir_tree(dir));
     }
 
     SECTION("ReportsTheOwningPackWriteTime")
@@ -471,7 +471,7 @@ TEST_CASE("ResourceIndex")
         CHECK(index_write_time("A.txt") == pack_write_time("Base", "A.txt"));
         CHECK(index_write_time("B.txt") == pack_write_time("Over", "B.txt"));
 
-        CHECK(fs_remove_dir_tree(dir));
+        CHECK(fs::remove_dir_tree(dir));
     }
 
     SECTION("ReportsWhetherTheIndexStillDescribesTheDisk")
@@ -500,7 +500,7 @@ TEST_CASE("ResourceIndex")
         WritePack(dir, "Over", {{"B.txt", "changed"}});
         CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, names));
 
-        CHECK(fs_remove_dir_tree(dir));
+        CHECK(fs::remove_dir_tree(dir));
     }
 
     SECTION("RefusesAnIndexWhosePackMovedOn")
@@ -537,7 +537,7 @@ TEST_CASE("ResourceIndex")
             CHECK(ReadThroughIndex(index, "File.txt") == BytesOf("second"));
         }
 
-        CHECK(fs_remove_dir_tree(dir));
+        CHECK(fs::remove_dir_tree(dir));
     }
 
     SECTION("MountsAnIndexTooLargeForAnApproximateDecode")
@@ -576,7 +576,7 @@ TEST_CASE("ResourceIndex")
             CHECK(index.GetIndexSnapshot()->size() == ENTRY_COUNT);
         }
 
-        CHECK(fs_remove_dir_tree(dir));
+        CHECK(fs::remove_dir_tree(dir));
     }
 
     SECTION("RejectsMalformedIndexes")
@@ -592,11 +592,11 @@ TEST_CASE("ResourceIndex")
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Data"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
-        auto original = fs_read_file(index_path);
+        auto original = fs::read_file(index_path);
         REQUIRE(original.has_value());
 
         string not_an_index = strex(dir).combine_path("NotAnIndex.foindex").str();
-        REQUIRE(fs_write_file(not_an_index, string(RESOURCE_INDEX_HEADER_SIZE + 16, '\0')));
+        REQUIRE(fs::write_file(not_an_index, string(RESOURCE_INDEX_HEADER_SIZE + 16, '\0')));
         CHECK_THROWS(ResourceIndexSource {not_an_index, dirs});
 
         ResourceIndexHeader ignored;
@@ -606,15 +606,15 @@ TEST_CASE("ResourceIndex")
         string bad_header = strex(dir).combine_path("BadHeader.foindex").str();
         string bad_header_data = *original;
         bad_header_data[20] = static_cast<char>(bad_header_data[20] ^ 0xFF);
-        REQUIRE(fs_write_file(bad_header, bad_header_data));
+        REQUIRE(fs::write_file(bad_header, bad_header_data));
         CHECK_THROWS(ResourceIndexSource {bad_header, dirs});
 
         string truncated = strex(dir).combine_path("Truncated.foindex").str();
-        REQUIRE(fs_write_file(truncated, original->substr(0, original->size() - 4)));
+        REQUIRE(fs::write_file(truncated, original->substr(0, original->size() - 4)));
         CHECK_THROWS(ResourceIndexSource {truncated, dirs});
         CHECK_FALSE(IsResourceIndexCurrent(truncated, dirs, {"Data"}));
 
-        CHECK(fs_remove_dir_tree(dir));
+        CHECK(fs::remove_dir_tree(dir));
     }
 }
 
@@ -720,7 +720,7 @@ TEST_CASE("ResourceIndexCost", "[.]")
         PACK_COUNT, header.EntryCount, write_ms, resolve_ms, PACK_COUNT, build_ms, mount_ms, lookup_ms, lookup_ms * 1000.0 / static_cast<double>(entry_count), read_ms, read_ms * 1000.0 / static_cast<double>(entry_count), header.IndexStoredSize, header.IndexDecodedSize)
             .str());
 
-    CHECK(fs_remove_dir_tree(dir));
+    CHECK(fs::remove_dir_tree(dir));
 }
 
 // Hidden, like the case above: the ZIP half, through the engine's own readers so both numbers share a code
@@ -750,7 +750,7 @@ TEST_CASE("ResourcePackVersusZipCost", "[.]")
     }
 
     string zip_dir = strex(dir).combine_path("zip").str();
-    REQUIRE(fs_create_directories(zip_dir));
+    REQUIRE(fs::create_directories(zip_dir));
     WriteStoredZip(strex(zip_dir).combine_path("Bulk.zip").str(), files);
 
     double pack_mount_ms = 0.0;
@@ -798,7 +798,7 @@ TEST_CASE("ResourcePackVersusZipCost", "[.]")
         ENTRY_COUNT, pack_mount_ms, zip_mount_ms, pack_read_ms, pack_read_ms * 1000.0 / ENTRY_COUNT, zip_read_ms, zip_read_ms * 1000.0 / ENTRY_COUNT)
             .str());
 
-    CHECK(fs_remove_dir_tree(dir));
+    CHECK(fs::remove_dir_tree(dir));
 }
 
 FO_END_NAMESPACE

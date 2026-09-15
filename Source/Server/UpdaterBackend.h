@@ -68,7 +68,7 @@ private:
         uint64_t Size {};
         uint64_t Hash {};
         vector<uint8_t> PackHeader {};
-        disk_read_file File {};
+        fs::disk_read_file File {};
     };
 
     struct UpdateFileInfo

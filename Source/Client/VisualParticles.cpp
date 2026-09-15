@@ -101,7 +101,7 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
 }
 
 ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider) :
-    _impl {SafeAlloc::MakeUnique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings})},
+    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings})},
     _settings {settings},
     _gameTime {game_time}
 {
@@ -148,7 +148,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     auto backend = _impl->FindBackend(ext);
 
     if (!backend) {
-        WriteLog("Particle resource '{}' has an unsupported extension", name);
+        logging::write("Particle resource '{}' has an unsupported extension", name);
         return {};
     }
 

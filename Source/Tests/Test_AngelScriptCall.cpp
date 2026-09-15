@@ -288,7 +288,7 @@ namespace CallTest
                 {"RefType", {{"CallReturnProbe", "Value", "int32", "0"}}},
             });
 
-            auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CallTestCompilerResources");
+            auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CallTestCompilerResources");
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
             FileSystem compiler_resources;
@@ -296,7 +296,7 @@ namespace CallTest
 
             auto script_blob = MakeScriptBinary(compiler_resources);
 
-            auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CallTestRuntimeResources");
+            auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CallTestRuntimeResources");
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
             runtime_source->AddFile("CallTest.fos-bin-server", script_blob);
 
@@ -322,7 +322,7 @@ namespace CallTest
             return "ServerEngine startup timed out";
         }
 
-        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources()); }
+        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
     };
 }
 
@@ -347,7 +347,7 @@ TEST_CASE("AngelScriptCallShapes")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     auto call_and_check = [&](string_view func_name, int64_t expected) {
         INFO(func_name);
@@ -382,12 +382,12 @@ TEST_CASE("AngelScriptCallShapes")
 
             nptr<DynamicRefTypeInstance> returned = return_handle;
             REQUIRE(returned);
-            retained = refcount_nptr<DynamicRefTypeInstance>::from_add_ref(returned.get_no_const());
-            CHECK(returned->GetRefCount() == 2);
+            retained = refcount_nptr<DynamicRefTypeInstance>::from_addref(returned.get_no_const());
+            CHECK(returned->get_refcount() == 2);
         }
 
         REQUIRE(retained);
-        CHECK(retained->GetRefCount() == 1);
+        CHECK(retained->get_refcount() == 1);
     }
 
     {
@@ -541,7 +541,7 @@ TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
 
     int32_t call_count = 0;
     int32_t failed_call_count = 0;
-    auto cleanup_token = SafeAlloc::MakeShared<int32_t>(1);
+    auto cleanup_token = safe_alloc::make_shared<int32_t>(1);
     weak_ptr<int32_t> cleanup_token_weak = cleanup_token;
 
     ScriptFuncDesc func_desc;
@@ -561,7 +561,7 @@ TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
         ScriptFunc<void> callback_func;
         callback_func = ScriptFunc<void> {&func_desc};
 
-        auto stored_func = SafeAlloc::MakeShared<ScriptFunc<void>>(std::move(callback_func));
+        auto stored_func = safe_alloc::make_shared<ScriptFunc<void>>(std::move(callback_func));
         deferred_callbacks.emplace_back([stored_func, &failed_call_count]() mutable {
             if (!stored_func->Call()) {
                 failed_call_count++;

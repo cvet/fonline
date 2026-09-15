@@ -324,7 +324,7 @@ void MapSpriteList::GrowPool() noexcept
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
     for (int32_t i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
-        _spritesPool.emplace_back(SafeAlloc::MakeUnique<MapSprite>());
+        _spritesPool.emplace_back(safe_alloc::make_unique<MapSprite>());
     }
 }
 

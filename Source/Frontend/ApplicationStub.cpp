@@ -212,11 +212,11 @@ class StubAppAudio final : public IAppAudio
 public:
     [[nodiscard]] auto IsEnabled() const -> bool override { return false; }
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
+    auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
     {
         FO_STACK_TRACE_ENTRY();
 
-        ignore_unused(format, channels, rate, buf);
+        ignore_unused(channels, rate, buf);
         return false;
     }
 
@@ -345,7 +345,7 @@ auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<StubAppWindow>(&settings);
+    return safe_alloc::make_unique<StubAppWindow>(&settings);
 }
 
 FO_END_NAMESPACE

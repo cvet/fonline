@@ -14,7 +14,7 @@ public partial struct hdir
 
     public hdir(int value)
     {
-        int directionCount = Settings.Geometry_MapDirCount;
+        int directionCount = Settings.Geometry.MapDirCount;
         int mod = value % directionCount;
         this.value = (sbyte)(mod < 0 ? mod + directionCount : mod);
     }

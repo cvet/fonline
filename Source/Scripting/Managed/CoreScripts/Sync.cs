@@ -805,21 +805,21 @@ public static partial class Sync
                     return false;
                 }
                 if (cr.MapId.value != 0 || cr.GlobalMapTripId != tripId) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
 
                 ulong currentRevision = 0;
                 List<ident> currentMemberIds = cr.GetGlobalMapCritterIds(ref currentRevision);
                 if (currentRevision != revision || !HasSameIdentMembership(memberIds, currentMemberIds)) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
                 return false;
             }
 
             if (cr.MapId.value != 0 || cr.GlobalMapTripId != tripId) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -829,7 +829,7 @@ public static partial class Sync
                 return true;
             }
 
-            await Game.YieldAsync(0);
+            await ScriptTask.Delay(0);
         }
 
         return false;
@@ -878,7 +878,7 @@ public static partial class Sync
             }
             else {
                 if (cr.MapId.value != 0) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
 
@@ -904,7 +904,7 @@ public static partial class Sync
                         return false;
                     }
                     if (!IsGlobalMapGroupSnapshotCurrent(cr, srcTripId, srcRevision, srcMemberIds)) {
-                        await Game.YieldAsync(0);
+                        await ScriptTask.Delay(0);
                         continue;
                     }
                     return false;
@@ -916,23 +916,23 @@ public static partial class Sync
                     return false;
                 }
                 if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
                 if (srcMap == null && !IsGlobalMapGroupSnapshotCurrent(cr, srcTripId, srcRevision, srcMemberIds)) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
                 return false;
             }
 
             if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
             if (srcMap == null && (!IsGlobalMapGroupSnapshotCurrent(cr, srcTripId, srcRevision, srcMemberIds) ||
                                    !IsIdentMembershipCovered(srcMemberIds))) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -967,7 +967,7 @@ public static partial class Sync
                         }
                         if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId ||
                             srcMap.GetLocation().Id != srcLocId) {
-                            await Game.YieldAsync(0);
+                            await ScriptTask.Delay(0);
                             continue;
                         }
                         return false;
@@ -975,7 +975,7 @@ public static partial class Sync
 
                     if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId ||
                         srcMap.GetLocation().Id != srcLocId) {
-                        await Game.YieldAsync(0);
+                        await ScriptTask.Delay(0);
                         continue;
                     }
                 }
@@ -1123,10 +1123,10 @@ public static partial class Sync
                 return false;
             }
 
-            Game.Verify(cr.GetPlayer() == player,
-                        "Authoritative player's controlled critter has an asymmetric player link",
-                        player.Id,
-                        cr.Id);
+            Invariant.Verify(cr.GetPlayer() == player,
+                             "Authoritative player's controlled critter has an asymmetric player link",
+                             player.Id,
+                             cr.Id);
             return true;
         }
         if (cr.MapId != new ident(0)) {
@@ -1158,10 +1158,10 @@ public static partial class Sync
             return false;
         }
 
-        Game.Verify(cr.GetPlayer() == player,
-                    "Authoritative player's controlled critter has an asymmetric player link",
-                    player.Id,
-                    cr.Id);
+        Invariant.Verify(cr.GetPlayer() == player,
+                         "Authoritative player's controlled critter has an asymmetric player link",
+                         player.Id,
+                         cr.Id);
         return true;
     }
 
@@ -1206,7 +1206,7 @@ public static partial class Sync
             }
 
             if (!graphResolved) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1217,7 +1217,7 @@ public static partial class Sync
             }
 
             if (!await Lock(mapScope)) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1232,7 +1232,7 @@ public static partial class Sync
             }
 
             if (!graphResolved) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1292,7 +1292,7 @@ public static partial class Sync
             }
 
             if (!graphResolved) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1305,7 +1305,7 @@ public static partial class Sync
             }
 
             if (!await Lock(scope)) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1343,7 +1343,7 @@ public static partial class Sync
                 return true;
             }
 
-            await Game.YieldAsync(0);
+            await ScriptTask.Delay(0);
         }
 
         return false;
@@ -1532,7 +1532,7 @@ public static partial class Sync
             }
 
             if (retry) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1617,7 +1617,7 @@ public static partial class Sync
             }
 
             if (retry || !await Widen(scope)) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1670,7 +1670,7 @@ public static partial class Sync
                 return true;
             }
 
-            await Game.YieldAsync(0);
+            await ScriptTask.Delay(0);
         }
 
         return false;
@@ -1820,7 +1820,7 @@ public static partial class Sync
 
             if (!allMembersResolved) {
                 if (targetChanged || sourceChanged) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
                 return false;
@@ -1855,7 +1855,7 @@ public static partial class Sync
                                   ? cr.MapId != sourceMapId
                                   : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
                 if (targetChanged || sourceChanged) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
                 return false;
@@ -1866,7 +1866,7 @@ public static partial class Sync
                               ? cr.MapId != sourceMapId
                               : !IsGlobalMapGroupSnapshotCurrent(cr, sourceTripId, sourceRevision, sourceMemberIds);
             if (targetChanged || sourceChanged) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
             if (!IsIdentMembershipCovered(targetMemberIds) ||
@@ -1911,14 +1911,14 @@ public static partial class Sync
                     return false;
                 }
                 if (map.GetLocation().Id != locationId) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
 
                 return false;
             }
             if (map.GetLocation().Id != locationId) {
-                await Game.YieldAsync(0);
+                await ScriptTask.Delay(0);
                 continue;
             }
 
@@ -1937,7 +1937,7 @@ public static partial class Sync
                 }
                 if (map.GetLocation().Id != locationId ||
                     !HasSamePlayerMembership(spectators, map.GetSpectatorPlayers())) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
 
@@ -1948,7 +1948,7 @@ public static partial class Sync
                 return true;
             }
 
-            await Game.YieldAsync(0);
+            await ScriptTask.Delay(0);
         }
 
         return false;
@@ -1996,7 +1996,7 @@ public static partial class Sync
                     return false;
                 }
                 if (!IsLocationDestroySnapshotCurrent(location, maps, spectatorSnapshots)) {
-                    await Game.YieldAsync(0);
+                    await ScriptTask.Delay(0);
                     continue;
                 }
 
@@ -2007,7 +2007,7 @@ public static partial class Sync
                 return true;
             }
 
-            await Game.YieldAsync(0);
+            await ScriptTask.Delay(0);
         }
 
         return false;
@@ -2230,7 +2230,7 @@ public static partial class Sync
 
             if (needsWiden) {
                 scope = currentScope;
-                // Managed void callbacks cannot synchronously wait for YieldAsync without blocking the
+                // Managed void callbacks cannot synchronously wait for ScriptTask.Delay without blocking the
                 // script pump that completes it. The next Widen performs the required lock transition,
                 // so retry immediately after expanding the requested scope
                 continue;
@@ -2295,7 +2295,7 @@ public static partial class Sync
                 return true;
             }
 
-            await Game.YieldAsync(0);
+            await ScriptTask.Delay(0);
         }
 
         return false;

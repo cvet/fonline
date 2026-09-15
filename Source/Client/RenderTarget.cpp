@@ -94,7 +94,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
 
     _flush();
 
-    auto rt = SafeAlloc::MakeUnique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth));
+    auto rt = safe_alloc::make_unique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth));
     rt->_lastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
 
     _rtAll.push_back(std::move(rt));
@@ -253,7 +253,7 @@ void RenderTargetManager::DumpTextures(string_view writable_root) const
     }
 
     time_desc_t time = nanotime::now().desc(true);
-    string dir = fs_make_writable_path(writable_root,
+    string dir = fs::make_writable_path(writable_root,
         strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
             time.year, time.month, time.day, time.hour, time.minute, time.second, //
             atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000));

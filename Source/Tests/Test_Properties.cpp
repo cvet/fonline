@@ -306,10 +306,10 @@ namespace
             _types.emplace("RouteSnapshot", make_route_snapshot());
             _types.emplace("RouteEnvelope", make_route_envelope());
 
-            _types.at("ProtoItem").HashedName = _proto_hashes.ToHashedString("ProtoItem");
-            _types.at("ProtoCritter").HashedName = _proto_hashes.ToHashedString("ProtoCritter");
-            _types.at("ProtoMap").HashedName = _proto_hashes.ToHashedString("ProtoMap");
-            _types.at("ProtoLocation").HashedName = _proto_hashes.ToHashedString("ProtoLocation");
+            _types.at("ProtoItem").HashedName = _proto_hashes.to_hashed_string("ProtoItem");
+            _types.at("ProtoCritter").HashedName = _proto_hashes.to_hashed_string("ProtoCritter");
+            _types.at("ProtoMap").HashedName = _proto_hashes.to_hashed_string("ProtoMap");
+            _types.at("ProtoLocation").HashedName = _proto_hashes.to_hashed_string("ProtoLocation");
 
             _enum_values.emplace("ModeA", 1);
             _enum_values.emplace("ModeB", 2);
@@ -401,13 +401,6 @@ namespace
             throw EnumResolveException("Enum name is not supported in test resolver");
         }
 
-        void RegisterRetypedSnapshotFields()
-        {
-            PropertyRegistrar& registrar = _ref_type_registrars.at("RouteSnapshot");
-            (void)registrar.RegisterProperty({"Common", "int32", "LegacyFlag"});
-            (void)registrar.RegisterProperty({"Common", "bool", "Flag"});
-        }
-
         void AddMigrationRule(hstring rule_name, hstring extra_info, hstring target, hstring replacement) { _migration_rules[rule_name][extra_info][target] = replacement; }
 
         [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override
@@ -440,12 +433,12 @@ namespace
 
         void AddProto(string_view type_name, string_view proto_id)
         {
-            hstring type_hname = _proto_hashes.ToHashedString(type_name);
-            hstring proto_hname = _proto_hashes.ToHashedString(proto_id);
+            hstring type_hname = _proto_hashes.to_hashed_string(type_name);
+            hstring proto_hname = _proto_hashes.to_hashed_string(proto_id);
             FO_VERIFY_AND_THROW(_proto_registrar.has_value(), "Proto registrar not initialized");
             auto proto_registrar = make_ptr(&*_proto_registrar);
 
-            _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), SafeAlloc::MakeRefCounted<ProtoCustomEntity>(proto_hname, proto_registrar, nullptr));
+            _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), safe_alloc::make_refcounted<ProtoCustomEntity>(proto_hname, proto_registrar, nullptr));
         }
 
     private:
@@ -455,7 +448,7 @@ namespace
         unordered_map<string, int32_t> _enum_values {};
         unordered_map<int32_t, string> _enum_names {};
         unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migration_rules {};
-        HashStorage _proto_hashes {};
+        hash_storage _proto_hashes {};
         optional<PropertyRegistrar> _proto_registrar {};
         unordered_map<string, PropertyRegistrar> _ref_type_registrars {};
         unordered_map<hstring::hash_t, unordered_map<hstring::hash_t, refcount_ptr<ProtoCustomEntity>>> _protos {};
@@ -490,14 +483,14 @@ namespace
     [[nodiscard]] auto MakeRawUInt16(uint16_t value) -> vector<uint8_t>
     {
         vector<uint8_t> result(sizeof(value));
-        MemCopy(result.data(), &value, sizeof(value));
+        memory::copy(result.data(), &value, sizeof(value));
         return result;
     }
 
     [[nodiscard]] auto MakeRawInt32(int32_t value) -> vector<uint8_t>
     {
         vector<uint8_t> result(sizeof(value));
-        MemCopy(result.data(), &value, sizeof(value));
+        memory::copy(result.data(), &value, sizeof(value));
         return result;
     }
 
@@ -519,7 +512,7 @@ namespace
 
     struct PropertiesStorageStrategyPerfFixture
     {
-        HashStorage Hashes {};
+        hash_storage Hashes {};
         TestNameResolver Resolver {};
         PropertyRegistrar Registrar;
         vector<PerfPropertySpec> Props {};
@@ -752,7 +745,7 @@ namespace
 
     struct PropertiesComplexStrategyPerfFixture
     {
-        HashStorage Hashes {};
+        hash_storage Hashes {};
         TestNameResolver Resolver {};
         PropertyRegistrar Registrar;
         nptr<const Property> PatrolWaypointsProp {};
@@ -857,7 +850,7 @@ namespace
 
     struct PropertiesPerfFixture
     {
-        HashStorage Hashes {};
+        hash_storage Hashes {};
         TestNameResolver Resolver {};
         PropertyRegistrar Registrar;
         vector<ptr<const Property>> PublicIntProps {};
@@ -971,7 +964,7 @@ namespace
 
     struct PropertiesDictPerfFixture
     {
-        HashStorage Hashes {};
+        hash_storage Hashes {};
         TestNameResolver Resolver {};
         PropertyRegistrar Registrar;
         nptr<const Property> FloatLabelsProp {};
@@ -1086,7 +1079,7 @@ namespace
 
 TEST_CASE("PropertiesOverlay")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("TestEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -1178,10 +1171,10 @@ TEST_CASE("PropertiesOverlay")
         set<hstring> str_hashes;
         derived.StoreAllData(all_data, str_hashes);
 
-        DataReader reader(all_data);
-        CHECK(reader.Read<uint32_t>() == registrar.GetWholeDataSize());
-        CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32_t>() == 2);
+        data_reader reader(all_data);
+        CHECK(reader.read<uint32_t>() == registrar.GetWholeDataSize());
+        CHECK(reader.read<bool>());
+        CHECK(reader.read<uint32_t>() == 2);
     }
 
     SECTION("StoreAllDataUsesOverlayBaseBackedData")
@@ -1195,11 +1188,11 @@ TEST_CASE("PropertiesOverlay")
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
-        DataReader reader(all_data);
-        CHECK(reader.Read<uint32_t>() == registrar.GetWholeDataSize());
-        CHECK(reader.Read<bool>());
+        data_reader reader(all_data);
+        CHECK(reader.read<uint32_t>() == registrar.GetWholeDataSize());
+        CHECK(reader.read<bool>());
 
-        CHECK(reader.Read<uint32_t>() == 3);
+        CHECK(reader.read<uint32_t>() == 3);
 
         auto expected_size = sizeof(uint32_t) + sizeof(bool) + sizeof(uint32_t) + 3 * (sizeof(uint16_t) + sizeof(uint32_t)) + props.GetRawData(value_prop).size() + props.GetRawData(flag_prop).size() + props.GetRawData(name_prop).size();
         CHECK(all_data.size() == expected_size);
@@ -1225,10 +1218,10 @@ TEST_CASE("PropertiesOverlay")
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
-        DataReader reader(all_data);
-        CHECK(reader.Read<uint32_t>() == registrar.GetWholeDataSize());
-        CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32_t>() == 2);
+        data_reader reader(all_data);
+        CHECK(reader.read<uint32_t>() == registrar.GetWholeDataSize());
+        CHECK(reader.read<bool>());
+        CHECK(reader.read<uint32_t>() == 2);
 
         props.SetValue<bool>(flag_prop, true);
         props.SetValue<bool>(flag_prop, true);
@@ -1237,11 +1230,11 @@ TEST_CASE("PropertiesOverlay")
 
         props.StoreAllData(all_data, str_hashes);
 
-        DataReader empty_reader(all_data);
-        CHECK(empty_reader.Read<uint32_t>() == registrar.GetWholeDataSize());
-        CHECK(empty_reader.Read<bool>());
-        CHECK(empty_reader.Read<uint32_t>() == 0);
-        empty_reader.VerifyEnd();
+        data_reader empty_reader(all_data);
+        CHECK(empty_reader.read<uint32_t>() == registrar.GetWholeDataSize());
+        CHECK(empty_reader.read<bool>());
+        CHECK(empty_reader.read<uint32_t>() == 0);
+        empty_reader.verify_end();
     }
 
     SECTION("RestoreAllDataRejectsMismatchedStorageMode")
@@ -1265,7 +1258,7 @@ TEST_CASE("PropertiesOverlay")
 
 TEST_CASE("PropertiesRawDataCopy")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("RawCopyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -1419,7 +1412,7 @@ TEST_CASE("PropertiesRawDataCopy")
 
 TEST_CASE("PropertiesRestoreRejectsForeignMetadata")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("MetadataEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -1460,14 +1453,14 @@ TEST_CASE("PropertiesRestoreRejectsForeignMetadata")
         props.SetValue<int32_t>(value_prop, 42);
 
         vector<uint8_t> all_data;
-        DataWriter writer(all_data);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(registrar.GetWholeDataSize()));
-        writer.Write<bool>(true);
-        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1));
-        writer.Write<uint16_t>(value_prop->GetRegIndex());
-        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1292));
+        data_writer writer(all_data);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(registrar.GetWholeDataSize()));
+        writer.write<bool>(true);
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(1));
+        writer.write<uint16_t>(value_prop->GetRegIndex());
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(1292));
         vector<uint8_t> foreign_payload(1292, uint8_t {0x5A});
-        writer.WriteBytes(foreign_payload);
+        writer.write_bytes(foreign_payload);
 
         Properties restored(&registrar, &proto);
         CHECK_THROWS_AS(restored.RestoreAllData(all_data), VerificationException);
@@ -1477,14 +1470,14 @@ TEST_CASE("PropertiesRestoreRejectsForeignMetadata")
     SECTION("PayloadForPropertyDisabledOnThisSide")
     {
         vector<uint8_t> all_data;
-        DataWriter writer(all_data);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(registrar.GetWholeDataSize()));
-        writer.Write<bool>(true);
-        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(1));
-        writer.Write<uint16_t>(client_prop->GetRegIndex());
-        writer.Write<uint32_t>(const_numeric_cast<uint32_t>(sizeof(int32_t)));
+        data_writer writer(all_data);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(registrar.GetWholeDataSize()));
+        writer.write<bool>(true);
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(1));
+        writer.write<uint16_t>(client_prop->GetRegIndex());
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(sizeof(int32_t)));
         int32_t payload_value = 7;
-        writer.WriteBytes(make_const_span(&payload_value, sizeof(payload_value)));
+        writer.write_bytes(make_const_span(&payload_value, sizeof(payload_value)));
 
         Properties restored(&registrar, &proto);
         CHECK_THROWS_AS(restored.RestoreAllData(all_data), VerificationException);
@@ -1493,7 +1486,7 @@ TEST_CASE("PropertiesRestoreRejectsForeignMetadata")
 
 TEST_CASE("PropertiesOverlayFiltersAndCopies")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("SyncEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -1526,7 +1519,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0);
         FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
-        MemCopy(&store_type, store_type_data, sizeof(store_type));
+        memory::copy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -1567,7 +1560,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0);
         FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
-        MemCopy(&store_type, store_type_data, sizeof(store_type));
+        memory::copy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -1607,7 +1600,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0);
         FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
-        MemCopy(&store_type, store_type_data, sizeof(store_type));
+        memory::copy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -1754,11 +1747,11 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         set<hstring> str_hashes;
         props.StoreAllData(all_data, str_hashes);
 
-        DataReader reader(all_data);
-        CHECK(reader.Read<uint32_t>() == registrar.GetWholeDataSize());
-        CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32_t>() == 0);
-        reader.VerifyEnd();
+        data_reader reader(all_data);
+        CHECK(reader.read<uint32_t>() == registrar.GetWholeDataSize());
+        CHECK(reader.read<bool>());
+        CHECK(reader.read<uint32_t>() == 0);
+        reader.verify_end();
 
         Properties restored(&registrar, &proto);
         restored.RestoreAllData(all_data);
@@ -1795,10 +1788,10 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         set<hstring> str_hashes;
         target_props.StoreAllData(all_data, str_hashes);
 
-        DataReader reader(all_data);
-        CHECK(reader.Read<uint32_t>() == registrar.GetWholeDataSize());
-        CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32_t>() == 3);
+        data_reader reader(all_data);
+        CHECK(reader.read<uint32_t>() == registrar.GetWholeDataSize());
+        CHECK(reader.read<bool>());
+        CHECK(reader.read<uint32_t>() == 3);
     }
 
     SECTION("CopyFromRebasesDerivedValuesToAnotherBase")
@@ -1830,16 +1823,16 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         set<hstring> str_hashes;
         target_props.StoreAllData(all_data, str_hashes);
 
-        DataReader reader(all_data);
-        CHECK(reader.Read<uint32_t>() == registrar.GetWholeDataSize());
-        CHECK(reader.Read<bool>());
-        CHECK(reader.Read<uint32_t>() == 2);
+        data_reader reader(all_data);
+        CHECK(reader.read<uint32_t>() == registrar.GetWholeDataSize());
+        CHECK(reader.read<bool>());
+        CHECK(reader.read<uint32_t>() == 2);
     }
 }
 
 TEST_CASE("PropertiesFullStorageRoundTrip")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("FullEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -1893,7 +1886,7 @@ TEST_CASE("PropertiesFullStorageRoundTrip")
 
 TEST_CASE("PropertiesFullStorageCopyFrom")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("FullCopyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -1923,7 +1916,7 @@ TEST_CASE("PropertiesFullStorageCopyFrom")
 
 TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("ClientLocalEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2013,7 +2006,7 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
 
 TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("MalformedRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2132,7 +2125,7 @@ TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
 {
     // The record offsets come straight from the blob, so a hostile snapshot whose size header still matches must
     // not drive an out-of-bounds copy: they are validated against the POD layout
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OobPodRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
     registrar.RegisterProperty({"Common", "int32", "A", "Mutable", "Persistent", "PublicSync"});
@@ -2161,7 +2154,7 @@ TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
 
 TEST_CASE("PropertiesCompareData")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("CompareEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2263,7 +2256,7 @@ TEST_CASE("PropertiesCompareData")
 
 TEST_CASE("PropertiesCustomAccessors")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("AccessorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2383,7 +2376,7 @@ TEST_CASE("PropertyRawDataStorageModes")
 
 TEST_CASE("PropertiesOverlayIndexMaintenance")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OverlayIndexEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2424,7 +2417,7 @@ TEST_CASE("PropertiesOverlayIndexMaintenance")
 
 TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OverlayAlignedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2444,8 +2437,8 @@ TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
     CHECK(ref_arr_prop->GetDataAlignment() == MAX_SERIALIZED_ALIGNMENT);
     CHECK(dict_prop->GetDataAlignment() == sizeof(int32_t));
 
-    hstring base_hash = hashes.ToHashedString("base-hash");
-    hstring overlay_hash = hashes.ToHashedString("overlay-hash");
+    hstring base_hash = hashes.to_hashed_string("base-hash");
+    hstring overlay_hash = hashes.to_hashed_string("overlay-hash");
     constexpr int64_t base_wide_value = 0x1111111111111111;
     constexpr int64_t overlay_wide_value = 0x2222222222222222;
     vector<int32_t> overlay_arr_value = {1, 2, 3};
@@ -2516,7 +2509,7 @@ TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
 
 TEST_CASE("PropertiesOverlayGrowthAccountsForRepackAlignment")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OverlayGrowthEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2545,7 +2538,7 @@ TEST_CASE("PropertiesOverlayGrowthAccountsForRepackAlignment")
 
 TEST_CASE("PropertiesOverlayDataReusesAlignmentPaddings")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OverlayPaddingEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2601,7 +2594,7 @@ TEST_CASE("PropertiesOverlayDataReusesAlignmentPaddings")
 
 TEST_CASE("PropertiesOverlayDataPrefersBestFitHole")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OverlayBestFitEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2647,7 +2640,7 @@ TEST_CASE("PropertiesOverlayDataPrefersBestFitHole")
 
 TEST_CASE("PropertiesOverlayDataStaysAlignedThroughRepack")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OverlayRepackEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2680,7 +2673,7 @@ TEST_CASE("PropertiesOverlayDataStaysAlignedThroughRepack")
 
 TEST_CASE("PropertiesFullRestoreAndStoreDataEdges")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("FullRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2715,7 +2708,7 @@ TEST_CASE("PropertiesFullRestoreAndStoreDataEdges")
 
 TEST_CASE("PropertiesTextRoundTrip")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("TextEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2739,7 +2732,7 @@ TEST_CASE("PropertiesTextRoundTrip")
 
 TEST_CASE("PropertiesApplyFromTextErrorsAndSkips")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("ApplyTextEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2763,7 +2756,7 @@ TEST_CASE("PropertiesApplyFromTextErrorsAndSkips")
 
 TEST_CASE("PropertiesHashAndEnumConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("TypedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2771,10 +2764,10 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     auto enum_prop = registrar.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrar);
-    props.SetValue<hstring>(hash_prop, hashes.ToHashedString("alpha"));
+    props.SetValue<hstring>(hash_prop, hashes.to_hashed_string("alpha"));
     props.SetValueAsInt(enum_prop->GetRegIndex(), 2);
 
-    CHECK(props.GetValue<hstring>(hash_prop) == hashes.ToHashedString("alpha"));
+    CHECK(props.GetValue<hstring>(hash_prop) == hashes.to_hashed_string("alpha"));
     CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 2);
 
     auto text_data = props.SaveToText(nullptr);
@@ -2785,19 +2778,19 @@ TEST_CASE("PropertiesHashAndEnumConversions")
 
     Properties restored(&registrar);
     restored.ApplyFromText(text_data);
-    CHECK(restored.GetValue<hstring>(hash_prop) == hashes.ToHashedString("alpha"));
+    CHECK(restored.GetValue<hstring>(hash_prop) == hashes.to_hashed_string("alpha"));
     CHECK(restored.GetValueAsInt(enum_prop->GetRegIndex()) == 2);
 
     Properties from_any(&registrar);
     from_any.SetValueAsAnyProps(hash_prop->GetRegIndex(), any_t {string {"beta"}});
     from_any.SetValueAsAnyProps(enum_prop->GetRegIndex(), any_t {string {"ModeA"}});
-    CHECK(from_any.GetValue<hstring>(hash_prop) == hashes.ToHashedString("beta"));
+    CHECK(from_any.GetValue<hstring>(hash_prop) == hashes.to_hashed_string("beta"));
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 }
 
 TEST_CASE("PropertiesRejectNonFiniteFloatValues")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("FiniteFloatEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -2821,21 +2814,21 @@ TEST_CASE("PropertiesRejectNonFiniteFloatValues")
 
     array<uint8_t, sizeof(int32_t) + sizeof(float32_t) + sizeof(bool)> raw_waypoint {};
     float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
-    MemCopy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+    memory::copy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_waypoint_data;
     raw_waypoint_data.Set(raw_waypoint.data(), raw_waypoint.size());
     CHECK_THROWS(props.SetValue(waypoint_prop, raw_waypoint_data));
 
     array<uint8_t, sizeof(float32_t) + sizeof(int32_t)> raw_float_key_dict {};
-    MemCopy(raw_float_key_dict.data(), &raw_distance, sizeof(raw_distance));
+    memory::copy(raw_float_key_dict.data(), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_float_key_dict_data;
     raw_float_key_dict_data.Set(raw_float_key_dict.data(), raw_float_key_dict.size());
     CHECK_THROWS(props.SetValue(float_dict_key_prop, raw_float_key_dict_data));
 
     array<uint8_t, sizeof(int32_t) + sizeof(float32_t)> raw_float_value_dict {};
-    MemCopy(raw_float_value_dict.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+    memory::copy(raw_float_value_dict.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
 
     PropertyRawData raw_float_value_dict_data;
     raw_float_value_dict_data.Set(raw_float_value_dict.data(), raw_float_value_dict.size());
@@ -2844,11 +2837,11 @@ TEST_CASE("PropertiesRejectNonFiniteFloatValues")
 
 TEST_CASE("PropertiesEnumValueMigration")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
 
     // A removed/renamed enum value "ModeLegacy" should migrate to "ModeA" on load instead of failing resolution
-    resolver.AddMigrationRule(hashes.ToHashedString("Enum"), hashes.ToHashedString("Mode"), hashes.ToHashedString("ModeLegacy"), hashes.ToHashedString("ModeA"));
+    resolver.AddMigrationRule(hashes.to_hashed_string("Enum"), hashes.to_hashed_string("Mode"), hashes.to_hashed_string("ModeLegacy"), hashes.to_hashed_string("ModeA"));
 
     PropertyRegistrar registrar("EnumMigrationEntity", EngineSideKind::ServerSide, &hashes, &resolver);
     auto enum_prop = registrar.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
@@ -2869,136 +2862,90 @@ TEST_CASE("PropertiesEnumValueMigration")
 
 TEST_CASE("PropertiesNameMigrationAppliesOnlyToStoredNames")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
-
-    // The old persisted name "Flag" migrates onto "LegacyFlag", while "Flag" is also re-registered live
-    // with a new type - the shape every re-typed quest flag has
-    resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("PropMigrationEntity"), hashes.ToHashedString("Flag"), hashes.ToHashedString("LegacyFlag"));
+    resolver.AddMigrationRule(hashes.to_hashed_string("Property"), hashes.to_hashed_string("PropMigrationEntity"), hashes.to_hashed_string("OldFlag"), hashes.to_hashed_string("Flag"));
 
     PropertyRegistrar registrar("PropMigrationEntity", EngineSideKind::ServerSide, &hashes, &resolver);
-    auto legacy_prop = registrar.RegisterProperty({"Common", "int32", "LegacyFlag", "Mutable", "Persistent", "PublicSync"});
-    auto live_prop = registrar.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    auto flag_prop = registrar.RegisterProperty({"Common", "int32", "Flag", "Mutable", "Persistent", "PublicSync"});
 
-    // Live access resolves a name to the property that currently carries it, never through the rule
-    CHECK(registrar.FindProperty("Flag") == live_prop);
-    CHECK(registrar.FindProperty("LegacyFlag") == legacy_prop);
+    // Live access resolves only the names registered now, never through the rule
+    CHECK(registrar.FindProperty("Flag") == flag_prop);
+    CHECK_FALSE(static_cast<bool>(registrar.FindProperty("OldFlag")));
 
-    // Load access still rewrites the obsolete stored name onto its replacement
-    CHECK(registrar.FindPersistedProperty("Flag") == legacy_prop);
-    CHECK(registrar.FindPersistedProperty("LegacyFlag") == legacy_prop);
+    // Load access rewrites the retired stored name onto its replacement
+    CHECK(registrar.FindPersistedProperty("OldFlag") == flag_prop);
+    CHECK(registrar.FindPersistedProperty("Flag") == flag_prop);
 
     // Neither lookup invents a property that was never registered
     CHECK_FALSE(static_cast<bool>(registrar.FindProperty("MissingFlag")));
     CHECK_FALSE(static_cast<bool>(registrar.FindPersistedProperty("MissingFlag")));
 
-    // End to end: a document carrying the old name lands in the legacy slot and leaves the live property alone
-    AnyData::Document doc;
-    doc.Emplace("Flag", int64_t {7});
-
-    Properties props(&registrar);
-    CHECK(PropertiesSerializer::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
-    CHECK(props.GetValue<int32_t>(legacy_prop) == 7);
-    CHECK_FALSE(props.GetValue<bool>(live_prop));
-
-    // ApplyFromText is the other stored-document path and migrates the same way
-    Properties text_props(&registrar);
-    CHECK_NOTHROW(text_props.ApplyFromText(map<string, string> {{"Flag", "9"}}));
-    CHECK(text_props.GetValue<int32_t>(legacy_prop) == 9);
-    CHECK_FALSE(text_props.GetValue<bool>(live_prop));
-
-    doc.Emplace("LegacyFlag", int64_t {8});
-    CHECK_FALSE(PropertiesSerializer::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
-    CHECK_THROWS(text_props.ApplyFromText(map<string, string> {{"Flag", "9"}, {"LegacyFlag", "10"}}));
-}
-
-TEST_CASE("PropertiesRetypedNamesPreserveCurrentRoundTrips")
-{
-    HashStorage hashes {};
-    TestNameResolver resolver;
-    resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("RetypedRoundTripEntity"), hashes.ToHashedString("Flag"), hashes.ToHashedString("LegacyFlag"));
-    PropertyRegistrar registrar("RetypedRoundTripEntity", EngineSideKind::ServerSide, &hashes, &resolver);
-    auto legacy_prop = registrar.RegisterProperty({"Common", "int32", "LegacyFlag", "Mutable", "Persistent", "PublicSync"});
-    auto live_prop = registrar.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
-
-    SECTION("Current boolean without legacy value must retain its slot")
-    {
-        Properties original(&registrar);
-        original.SetValue<bool>(live_prop, true);
-        AnyData::Document doc = PropertiesSerializer::SaveToDocument(&original, nullptr, hashes, resolver);
-        Properties restored(&registrar);
-        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, hashes, resolver));
-        CHECK(restored.GetValue<bool>(live_prop));
-        CHECK(restored.GetValue<int32_t>(legacy_prop) == 0);
-    }
-
-    SECTION("Current boolean and explicit legacy integer must not collide")
-    {
-        Properties original(&registrar);
-        original.SetValue<bool>(live_prop, true);
-        original.SetValue<int32_t>(legacy_prop, 7);
-        AnyData::Document doc = PropertiesSerializer::SaveToDocument(&original, nullptr, hashes, resolver);
-        Properties restored(&registrar);
-        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, hashes, resolver));
-        CHECK(restored.GetValue<bool>(live_prop));
-        CHECK(restored.GetValue<int32_t>(legacy_prop) == 7);
-    }
-
-    SECTION("Explicit false and zero writes retain distinct current slots")
+    SECTION("A document carrying only the retired name loads into the replacement")
     {
         AnyData::Document doc;
-        doc.Emplace("Flag", false);
-        doc.Emplace("LegacyFlag", int64_t {0});
-        Properties restored(&registrar);
-        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, hashes, resolver));
-        CHECK_FALSE(restored.GetValue<bool>(live_prop));
-        CHECK(restored.GetValue<int32_t>(legacy_prop) == 0);
+        doc.Emplace("OldFlag", int64_t {7});
+        Properties props(&registrar);
+        CHECK(PropertiesSerializer::LoadFromDocument(&props, doc, hashes, resolver));
+        CHECK(props.GetValue<int32_t>(flag_prop) == 7);
     }
 
-    SECTION("Current text serialization must round trip both distinct slots")
+    SECTION("A stale retired key kept beside the current key loses to the current value")
     {
-        Properties original(&registrar);
-        original.SetValue<bool>(live_prop, true);
-        original.SetValue<int32_t>(legacy_prop, 7);
-        map<string, string> saved = original.SaveToText(nullptr);
-        Properties restored(&registrar);
-        REQUIRE_NOTHROW(restored.ApplyFromText(saved));
-        CHECK(restored.GetValue<bool>(live_prop));
-        CHECK(restored.GetValue<int32_t>(legacy_prop) == 7);
+        AnyData::Document doc;
+        doc.Emplace("OldFlag", int64_t {7});
+        doc.Emplace("Flag", int64_t {9});
+        Properties props(&registrar);
+        CHECK(PropertiesSerializer::LoadFromDocument(&props, doc, hashes, resolver));
+        CHECK(props.GetValue<int32_t>(flag_prop) == 9);
+    }
+
+    SECTION("Two retired names of one property without the current name are ambiguous")
+    {
+        resolver.AddMigrationRule(hashes.to_hashed_string("Property"), hashes.to_hashed_string("PropMigrationEntity"), hashes.to_hashed_string("OlderFlag"), hashes.to_hashed_string("Flag"));
+        AnyData::Document doc;
+        doc.Emplace("OlderFlag", int64_t {5});
+        doc.Emplace("OldFlag", int64_t {7});
+        Properties props(&registrar);
+        CHECK_FALSE(PropertiesSerializer::LoadFromDocument(&props, doc, hashes, resolver));
+    }
+
+    SECTION("Property text migrates the retired name and rejects naming one property twice")
+    {
+        Properties props(&registrar);
+        CHECK_NOTHROW(props.ApplyFromText(map<string, string> {{"OldFlag", "9"}}));
+        CHECK(props.GetValue<int32_t>(flag_prop) == 9);
+        CHECK_THROWS(props.ApplyFromText(map<string, string> {{"OldFlag", "9"}, {"Flag", "10"}}));
     }
 }
 
-TEST_CASE("PropertiesRetypedRefTypeNamesPreserveCurrentRoundTrips")
+TEST_CASE("PropertiesRetypedPropertyLoadsValuesStoredUnderItsFormerType")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
-    resolver.RegisterRetypedSnapshotFields();
-    resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("RouteSnapshotRefType"), hashes.ToHashedString("Flag"), hashes.ToHashedString("LegacyFlag"));
-    PropertyRegistrar registrar("RetypedRefRoundTripEntity", EngineSideKind::ServerSide, &hashes, &resolver);
-    auto snapshot_prop = registrar.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
-    AnyData::Dict fields;
-    fields.Emplace("Flag", true);
-    fields.Emplace("LegacyFlag", int64_t {7});
-    AnyData::Value input {std::move(fields)};
+    PropertyRegistrar registrar("RetypedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto flag_prop = registrar.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    auto step_prop = registrar.RegisterProperty({"Common", "int16", "Step", "Mutable", "Persistent", "PublicSync"});
+
+    // A property keeps its name when its type changes, so a value saved under the former integer type loads in place
+    AnyData::Document doc;
+    doc.Emplace("Flag", int64_t {7});
+    doc.Emplace("Step", int64_t {12});
     Properties props(&registrar);
-    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, input, hashes, resolver));
-    CHECK(PropertiesSerializer::SavePropertyToValue(&props, snapshot_prop, hashes, resolver) == input);
+    REQUIRE(PropertiesSerializer::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(props.GetValue<bool>(flag_prop));
+    CHECK(props.GetValue<int16_t>(step_prop) == 12);
 
-    map<string, string> text = props.SaveToText(nullptr);
-    Properties restored(&registrar);
-    REQUIRE_NOTHROW(restored.ApplyFromText(text));
-    CHECK(PropertiesSerializer::SavePropertyToValue(&restored, snapshot_prop, hashes, resolver) == input);
-
-    AnyData::Dict duplicate;
-    duplicate.Emplace("Flag", int64_t {4});
-    duplicate.Emplace("LegacyFlag", int64_t {7});
-    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&restored, snapshot_prop, AnyData::Value {std::move(duplicate)}, hashes, resolver));
-    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&restored, snapshot_prop, "Flag 4 LegacyFlag 7", hashes, resolver));
+    // A stored value the narrower type cannot hold fails the load instead of being truncated
+    AnyData::Document out_of_range;
+    out_of_range.Emplace("Step", int64_t {100000});
+    Properties rejected(&registrar);
+    CHECK_FALSE(PropertiesSerializer::LoadFromDocument(&rejected, out_of_range, hashes, resolver));
 }
 
 TEST_CASE("PropertiesNumericWidthConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("NumericWidthsEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3047,7 +2994,7 @@ TEST_CASE("PropertiesNumericWidthConversions")
 
 TEST_CASE("PropertiesPlainDataValueAccessors")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("PlainAccessorsEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3118,7 +3065,7 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
     CHECK(props.GetValueAsInt(bool_prop->GetRegIndex()) == 1);
     CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(13.5f));
     CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(-42.25));
-    CHECK(props.GetValue<hstring>(fixed_hash_prop) == hashes.ToHashedString("knife"));
+    CHECK(props.GetValue<hstring>(fixed_hash_prop) == hashes.to_hashed_string("knife"));
 
     CHECK(!props.GetValueAsAny(int8_prop->GetRegIndex()).empty());
     CHECK(props.GetValueAsAny(int16_prop->GetRegIndex()) == any_t {string {"-1234"}});
@@ -3157,14 +3104,14 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
     CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(15.0f));
     CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(-17.0));
 
-    HashStorage small_hashes {[](const_span<uint8_t> data) -> uint64_t {
+    hash_storage small_hashes {[](const_span<uint8_t> data) -> uint64_t {
         string_view text {reinterpret_cast<const char*>(data.data()), data.size()};
-        return text == "SmallHash" ? uint64_t {7} : HashStorage::DefaultHash(data);
+        return text == "SmallHash" ? uint64_t {7} : hash_storage::default_hash(data);
     }};
     TestNameResolver small_resolver;
     PropertyRegistrar small_registrar("PlainAccessorsHashEntity", EngineSideKind::ServerSide, &small_hashes, &small_resolver);
     auto hash_prop = small_registrar.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
-    hstring small_hash = small_hashes.ToHashedString("SmallHash");
+    hstring small_hash = small_hashes.to_hashed_string("SmallHash");
     Properties small_props(&small_registrar);
 
     small_props.SetValueAsIntProps(hash_prop->GetRegIndex(), 7);
@@ -3198,7 +3145,7 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
 
 TEST_CASE("PropertiesNumericRangeValidation")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("NumericRangeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3239,7 +3186,7 @@ TEST_CASE("PropertiesNumericRangeValidation")
 
 TEST_CASE("PropertiesValueRangeClamping")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("ValueRangeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3311,7 +3258,7 @@ TEST_CASE("PropertiesValueRangeClamping")
 
 TEST_CASE("PropertiesValueRangeClampingWithCallbacks")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("ValueRangeCallbackEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3347,7 +3294,7 @@ TEST_CASE("PropertiesValueRangeClampingWithCallbacks")
 
 TEST_CASE("PropertiesValueRangeRegistrationRejectsInvalidTags")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("ValueRangeRejectEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3377,7 +3324,7 @@ TEST_CASE("PropertiesValueRangeRegistrationRejectsInvalidTags")
 
 TEST_CASE("PropertiesTextScalarWidthConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("NumericTextWidthsEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3440,7 +3387,7 @@ TEST_CASE("PropertiesTextScalarWidthConversions")
 
 TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("PrimitiveDictKeyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3509,7 +3456,7 @@ TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
 
 TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("ProtoTypedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3568,21 +3515,21 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
     set<hstring> str_hashes;
     restored.StoreAllData(all_data, str_hashes);
 
-    CHECK(str_hashes.contains(hashes.ToHashedString("knife")));
-    CHECK(str_hashes.contains(hashes.ToHashedString("pistol")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("knife")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("pistol")));
 }
 
 TEST_CASE("PropertiesNullableProtoReferenceAcceptsRemovedMigrationTarget")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("RemovedProtoReferenceEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
     auto respawn_map_prop = registrar.RegisterProperty({"Common", "ProtoMap", "RespawnMap", "Mutable", "Persistent", "PublicSync", "Nullable"});
     auto required_map_prop = registrar.RegisterProperty({"Common", "ProtoMap", "RequiredMap", "Mutable", "Persistent", "PublicSync"});
-    hstring proto_rule = hashes.ToHashedString("Proto");
-    hstring map_type = hashes.ToHashedString("Map");
-    hstring removed_map = hashes.ToHashedString("removed_map");
+    hstring proto_rule = hashes.to_hashed_string("Proto");
+    hstring map_type = hashes.to_hashed_string("Map");
+    hstring removed_map = hashes.to_hashed_string("removed_map");
     resolver.AddMigrationRule(proto_rule, map_type, removed_map, hstring {});
 
     Properties props(&registrar);
@@ -3598,7 +3545,7 @@ TEST_CASE("PropertiesNullableProtoReferenceAcceptsRemovedMigrationTarget")
 
 TEST_CASE("PropertiesSerializerRejectsInvalidTypedInputs")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("InvalidTypedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3658,7 +3605,7 @@ TEST_CASE("PropertiesSerializerRejectsInvalidTypedInputs")
 
 TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("AccumulatedHashesEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3667,17 +3614,17 @@ TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
     auto hash_dict_prop = registrar.RegisterProperty({"Common", "hstring=>hstring", "HashLookup", "Mutable", "Persistent", "PublicSync"});
 
     Properties first(&registrar);
-    first.SetValue<hstring>(hash_prop, hashes.ToHashedString("alpha"));
+    first.SetValue<hstring>(hash_prop, hashes.to_hashed_string("alpha"));
 
     Properties second(&registrar);
-    second.SetValue<hstring>(hash_prop, hashes.ToHashedString("beta"));
+    second.SetValue<hstring>(hash_prop, hashes.to_hashed_string("beta"));
 
     vector<uint8_t> all_data;
     set<hstring> str_hashes;
 
     first.StoreAllData(all_data, str_hashes);
-    CHECK(str_hashes.contains(hashes.ToHashedString("alpha")));
-    CHECK_FALSE(str_hashes.contains(hashes.ToHashedString("beta")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("alpha")));
+    CHECK_FALSE(str_hashes.contains(hashes.to_hashed_string("beta")));
 
     AnyData::Array hash_values;
     hash_values.EmplaceBack(string {"gamma"});
@@ -3690,19 +3637,19 @@ TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
     CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&first, hash_dict_prop, AnyData::Value {std::move(hash_lookup)}, hashes, resolver));
 
     first.StoreAllData(all_data, str_hashes);
-    CHECK(str_hashes.contains(hashes.ToHashedString("gamma")));
-    CHECK(str_hashes.contains(hashes.ToHashedString("delta")));
-    CHECK(str_hashes.contains(hashes.ToHashedString("route_alpha")));
-    CHECK(str_hashes.contains(hashes.ToHashedString("marker_beta")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("gamma")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("delta")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("route_alpha")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("marker_beta")));
 
     second.StoreAllData(all_data, str_hashes);
-    CHECK(str_hashes.contains(hashes.ToHashedString("alpha")));
-    CHECK(str_hashes.contains(hashes.ToHashedString("beta")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("alpha")));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("beta")));
 }
 
 TEST_CASE("PropertyRegistrarMetadataBranches")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("MetadataEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3740,7 +3687,7 @@ TEST_CASE("PropertyRegistrarMetadataBranches")
 
 TEST_CASE("PropertiesDictConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3807,7 +3754,7 @@ TEST_CASE("PropertiesDictConversions")
 
 TEST_CASE("PropertiesComplexDataInteriorAlignment")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("ComplexAlignedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -3974,7 +3921,7 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
 
     CHECK(PropertiesSerializer::SavePropertyToValue(&props, ref_prop, hashes, resolver) == note_only_snapshot);
 
-    hstring tag_hash = hashes.ToHashedString("tag-one");
+    hstring tag_hash = hashes.to_hashed_string("tag-one");
     auto tags_only_snapshot = [&tag_hash]() {
         AnyData::Array tags;
         tags.EmplaceBack(string {tag_hash.as_str()});
@@ -4000,7 +3947,7 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
 
 TEST_CASE("PropertiesOverlayRepackHandlesUnevenComplexSizes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("OverlayUnevenEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4036,7 +3983,7 @@ TEST_CASE("PropertiesOverlayRepackHandlesUnevenComplexSizes")
 
 TEST_CASE("PropertiesNumericDictConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("NumericDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4092,7 +4039,7 @@ TEST_CASE("PropertiesNumericDictConversions")
 
 TEST_CASE("PropertiesSpecialValueDictArrays")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("SpecialDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4154,7 +4101,7 @@ TEST_CASE("PropertiesSpecialValueDictArrays")
 
 TEST_CASE("PropertiesFloatDictConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("FloatDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4209,7 +4156,7 @@ TEST_CASE("PropertiesFloatDictConversions")
 
 TEST_CASE("PropertiesStructDictConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("StructDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4291,7 +4238,7 @@ TEST_CASE("PropertiesStructDictConversions")
 
 TEST_CASE("PropertiesSerializerRejectsInvalidStructShapes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("InvalidStructEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4324,7 +4271,7 @@ TEST_CASE("PropertiesSerializerRejectsInvalidStructShapes")
 
 TEST_CASE("PropertiesRefTypeConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("RefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4378,7 +4325,7 @@ TEST_CASE("PropertiesRefTypeConversions")
 
 TEST_CASE("PropertiesNestedRefTypeConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("NestedRefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4437,7 +4384,7 @@ TEST_CASE("PropertiesNestedRefTypeConversions")
 
 TEST_CASE("PropertiesRefTypeCollectionConversions")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("RefTypeCollectionEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4529,7 +4476,7 @@ TEST_CASE("PropertiesRefTypeCollectionConversions")
 
 TEST_CASE("PropertiesRefTypeSerializationSkipsDefaultFields")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("SparseRefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4556,7 +4503,7 @@ TEST_CASE("PropertiesRefTypeSerializationSkipsDefaultFields")
 
 TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeShapes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("InvalidRefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4578,7 +4525,7 @@ TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeShapes")
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "Unknown 1", hashes, resolver));
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "Note", hashes, resolver));
 
-    resolver.AddMigrationRule(hashes.ToHashedString("Property"), hashes.ToHashedString("RouteSnapshotRefType"), hashes.ToHashedString("OldNote"), hashes.ToHashedString("Note"));
+    resolver.AddMigrationRule(hashes.to_hashed_string("Property"), hashes.to_hashed_string("RouteSnapshotRefType"), hashes.to_hashed_string("OldNote"), hashes.to_hashed_string("Note"));
     CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "OldNote old", hashes, resolver));
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "OldNote old Note current", hashes, resolver));
 
@@ -4590,7 +4537,7 @@ TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeShapes")
 
 TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeCollectionShapes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("InvalidRefTypeCollectionEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4621,7 +4568,7 @@ TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeCollectionShapes")
 
 TEST_CASE("PropertiesSerializerRejectsInvalidTextStructShapes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("InvalidTextStructEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4638,7 +4585,7 @@ TEST_CASE("PropertiesSerializerRejectsInvalidTextStructShapes")
 
 TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4669,7 +4616,7 @@ TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
 
 TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentLoadEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4691,7 +4638,7 @@ TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
 
 TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4710,7 +4657,7 @@ TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4732,7 +4679,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentHashTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4754,7 +4701,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentCollectionTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4776,7 +4723,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentDictArrayTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4798,7 +4745,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerStringCollectionValues")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentStringCollectionInnerTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -4826,7 +4773,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerStringCollectionValues")
 
 TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerDictArrayStringValues")
 {
-    HashStorage hashes {};
+    hash_storage hashes {};
     TestNameResolver resolver;
     PropertyRegistrar registrar("DocumentDictArrayStringInnerTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
@@ -5283,152 +5230,6 @@ TEST_CASE("PropertiesStorageStrategyMetrics", "[properties]")
         CHECK(static_cast<bool>(fixture.ProbeIntProp));
         CHECK(static_cast<bool>(fixture.ProbeStringProp));
     }
-}
-
-TEST_CASE("PropertiesVersionQualifiedNamesPreserveExistingSavedDocuments")
-{
-    EngineMetadata meta {[] { }};
-    meta.RegisterSide(EngineSideKind::ServerSide);
-    auto registrar = meta.RegisterEntityType("VersionedQuest", true, false, false, false, false);
-    auto version_prop = registrar->RegisterProperty({"Common", "int32", "DataVersion", "Mutable", "Persistent", "PublicSync"});
-    auto legacy_prop = registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
-    auto live_prop = registrar->RegisterProperty({"Common", "int16", "Step", "Mutable", "Persistent", "PublicSync"});
-    meta.RegisterMigrationRule("Property", "VersionedQuest", "Step", "LegacyStep");
-    meta.RegisterPropertyMigrationBeforeVersion("VersionedQuest", "Step", "DataVersion", "3270");
-
-    SECTION("Cutover and current documents retain both numeric slots without a new save marker")
-    {
-        for (int64_t version : {int64_t {3270}, int64_t {3963}}) {
-            AnyData::Document doc;
-            doc.Emplace("DataVersion", version);
-            doc.Emplace("Step", int64_t {7});
-            doc.Emplace("LegacyStep", int64_t {4});
-            Properties restored(registrar);
-            REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
-            CHECK(restored.GetValue<int16_t>(live_prop) == 7);
-            CHECK(restored.GetValue<int32_t>(legacy_prop) == 4);
-            CHECK(restored.GetValue<int32_t>(version_prop) == version);
-            auto saved = PropertiesSerializer::SaveToDocument(&restored, nullptr, meta.Hashes, meta);
-            Properties again(registrar);
-            REQUIRE(PropertiesSerializer::LoadFromDocument(&again, saved, meta.Hashes, meta));
-            CHECK(again.GetValue<int16_t>(live_prop) == 7);
-            CHECK(again.GetValue<int32_t>(legacy_prop) == 4);
-            auto text = restored.SaveToText(nullptr);
-            Properties from_text(registrar);
-            REQUIRE_NOTHROW(from_text.ApplyFromText(text));
-            CHECK(from_text.GetValue<int16_t>(live_prop) == 7);
-            CHECK(from_text.GetValue<int32_t>(legacy_prop) == 4);
-        }
-    }
-
-    SECTION("Unversioned authored text and its text round trip retain current slots")
-    {
-        Properties authored(registrar);
-        REQUIRE_NOTHROW(authored.ApplyFromText(map<string, string> {{"Step", "7"}, {"LegacyStep", "4"}}));
-        CHECK(authored.GetValue<int16_t>(live_prop) == 7);
-        CHECK(authored.GetValue<int32_t>(legacy_prop) == 4);
-        auto text = authored.SaveToText(nullptr);
-        CHECK_FALSE(text.contains("DataVersion"));
-        Properties round_trip(registrar);
-        REQUIRE_NOTHROW(round_trip.ApplyFromText(text));
-        CHECK(round_trip.GetValue<int16_t>(live_prop) == 7);
-        CHECK(round_trip.GetValue<int32_t>(legacy_prop) == 4);
-        auto legacy_flag = registrar->RegisterProperty({"Common", "int32", "LegacyFlag", "Mutable", "Persistent", "PublicSync"});
-        auto live_flag = registrar->RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
-        meta.RegisterMigrationRule("Property", "VersionedQuest", "Flag", "LegacyFlag");
-        meta.RegisterPropertyMigrationBeforeVersion("VersionedQuest", "Flag", "DataVersion", "3270");
-        Properties flag_props(registrar);
-        REQUIRE_NOTHROW(flag_props.ApplyFromText(map<string, string> {{"Flag", "True"}}));
-        CHECK(flag_props.GetValue<bool>(live_flag));
-        CHECK(flag_props.GetValue<int32_t>(legacy_flag) == 0);
-    }
-
-    SECTION("Old and missing versions still migrate wider integer values")
-    {
-        for (bool has_version : {false, true}) {
-            AnyData::Document doc;
-            if (has_version) {
-                doc.Emplace("DataVersion", int64_t {3269});
-            }
-            doc.Emplace("Step", int64_t {100000});
-            Properties restored(registrar);
-            REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
-            CHECK(restored.GetValue<int16_t>(live_prop) == 0);
-            CHECK(restored.GetValue<int32_t>(legacy_prop) == 100000);
-            doc.Emplace("LegacyStep", int64_t {4});
-            CHECK_FALSE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
-            CHECK_THROWS(restored.ApplyFromText(map<string, string> {{"DataVersion", "3269"}, {"Step", "7"}, {"LegacyStep", "4"}}));
-        }
-    }
-
-    SECTION("Version input is strict and is consulted only by the matching conditional rule")
-    {
-        AnyData::Document doc;
-        doc.Emplace("DataVersion", string {"3963"});
-        AnyData::Value value {int64_t {7}};
-        CHECK_THROWS(PropertiesSerializer::ResolvePropertyFromValue(registrar, "Step", value, &doc));
-        CHECK(PropertiesSerializer::ResolvePropertyFromValue(registrar, "LegacyStep", value, &doc) == legacy_prop);
-        auto read_bad_version = [](string_view) -> optional<string_view> { return "3270.0"; };
-        CHECK_THROWS(PropertiesSerializer::ResolvePropertyFromText(registrar, "Step", "7", read_bad_version));
-        CHECK(PropertiesSerializer::ResolvePropertyFromText(registrar, "LegacyStep", "7", read_bad_version) == legacy_prop);
-    }
-
-    SECTION("An older unconditional alias remains old after the reused name cutover")
-    {
-        meta.RegisterMigrationRule("Property", "VersionedQuest", "OriginalStep", "Step");
-        AnyData::Document doc;
-        doc.Emplace("DataVersion", int64_t {3963});
-        doc.Emplace("OriginalStep", int64_t {100000});
-        Properties restored(registrar);
-        REQUIRE(PropertiesSerializer::LoadFromDocument(&restored, doc, meta.Hashes, meta));
-        CHECK(restored.GetValue<int16_t>(live_prop) == 0);
-        CHECK(restored.GetValue<int32_t>(legacy_prop) == 100000);
-    }
-
-    SECTION("A retired stored name is ignored at its version cutover")
-    {
-        meta.RegisterMigrationRule("Property", "VersionedQuest", "RetiredStep", "LegacyStep");
-        meta.RegisterPropertyMigrationBeforeVersion("VersionedQuest", "RetiredStep", "DataVersion", "3270");
-
-        AnyData::Document current_doc;
-        current_doc.Emplace("DataVersion", int64_t {3270});
-        current_doc.Emplace("RetiredStep", int64_t {7});
-        current_doc.Emplace("LegacyStep", int64_t {4});
-        Properties current(registrar);
-        REQUIRE(PropertiesSerializer::LoadFromDocument(&current, current_doc, meta.Hashes, meta));
-        CHECK(current.GetValue<int32_t>(legacy_prop) == 4);
-
-        AnyData::Document old_doc;
-        old_doc.Emplace("DataVersion", int64_t {3269});
-        old_doc.Emplace("RetiredStep", int64_t {7});
-        Properties old(registrar);
-        REQUIRE(PropertiesSerializer::LoadFromDocument(&old, old_doc, meta.Hashes, meta));
-        CHECK(old.GetValue<int32_t>(legacy_prop) == 7);
-    }
-}
-
-TEST_CASE("PropertiesVersionQualifiedRefTypeNamesUseSiblingVersion")
-{
-    EngineMetadata meta {[] { }};
-    meta.RegisterSide(EngineSideKind::ServerSide);
-    meta.RegisterRefType("QuestSnapshot");
-    meta.RegisterRefTypeLayout("QuestSnapshot", {{"DataVersion", "int32"}, {"LegacyStep", "int32"}, {"Step", "int16"}});
-    meta.RegisterMigrationRule("Property", "QuestSnapshotRefType", "Step", "LegacyStep");
-    meta.RegisterPropertyMigrationBeforeVersion("QuestSnapshotRefType", "Step", "DataVersion", "3270");
-    auto registrar = meta.RegisterEntityType("VersionedRefOwner", true, false, false, false, false);
-    auto prop = registrar->RegisterProperty({"Common", "QuestSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
-    Properties props(registrar);
-    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, prop, "Step 7 LegacyStep 4 DataVersion 3270", meta.Hashes, meta));
-    auto value = PropertiesSerializer::SavePropertyToValue(&props, prop, meta.Hashes, meta);
-    CHECK(value.AsDict()["Step"].AsInt64() == 7);
-    CHECK(value.AsDict()["LegacyStep"].AsInt64() == 4);
-    Properties from_value(registrar);
-    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&from_value, prop, value, meta.Hashes, meta));
-    CHECK(PropertiesSerializer::SavePropertyToValue(&from_value, prop, meta.Hashes, meta) == value);
-    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, prop, "Step 7 LegacyStep 4 DataVersion 3269", meta.Hashes, meta));
-    REQUIRE_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, prop, "Step 100000 DataVersion 3269", meta.Hashes, meta));
-    auto old_value = PropertiesSerializer::SavePropertyToValue(&props, prop, meta.Hashes, meta);
-    CHECK(old_value.AsDict()["LegacyStep"].AsInt64() == 100000);
 }
 
 FO_END_NAMESPACE

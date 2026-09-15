@@ -10,6 +10,7 @@ using System.Runtime.Loader;
 
 public static class ManagedLoadContextHost
 {
+    [CallableByEngine]
     public static object CreateLoadScope(string contextName, string[] assemblyPaths, string[] entryAssemblyPaths)
     {
         ManagedAssemblyLoadContext context = new ManagedAssemblyLoadContext(contextName, assemblyPaths);
@@ -22,11 +23,13 @@ public static class ManagedLoadContextHost
         return new ManagedLoadScope(context, entryAssemblies);
     }
 
+    [CallableByEngine]
     public static Assembly[] GetEntryAssemblies(object scope)
     {
         return GetScope(scope).EntryAssemblies;
     }
 
+    [CallableByEngine]
     public static void ReleaseLoadScope(object scope)
     {
         GetScope(scope).Release();
@@ -111,4 +114,12 @@ public static class ManagedLoadContextHost
             return null;
         }
     }
+}
+
+// The host is built from this file alone and loads before any script assembly, so it cannot see the CoreScripts
+// marker and carries its own copy with the same meaning: native code resolves the method through Mono metadata,
+// so its name and parameter count are part of the native ABI
+[AttributeUsage(AttributeTargets.Method)]
+internal sealed class CallableByEngineAttribute : Attribute
+{
 }

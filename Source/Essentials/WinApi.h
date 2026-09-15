@@ -68,6 +68,9 @@ namespace winapi
     auto get_system_cpu_times() noexcept -> optional<cpu_core_times>;
 
     auto load_library(const string& path) noexcept -> nptr<void>;
+    // Loaded and pinned: FreeLibrary no longer unmaps it, and it stays until the process exits
+    auto load_pinned_library(const string& path) noexcept -> nptr<void>;
+    auto is_library_loaded(const string& name) noexcept -> bool;
     void free_library(nptr<void> module_handle) noexcept;
     // A null module handle means the running executable, which is where the loader search starts
     auto get_proc_address(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>;

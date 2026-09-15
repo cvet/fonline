@@ -64,7 +64,7 @@ public:
 
     class Allocation final
     {
-        friend class SafeAlloc;
+        friend class safe_alloc;
         friend class TextureAtlasLayout;
 
     public:

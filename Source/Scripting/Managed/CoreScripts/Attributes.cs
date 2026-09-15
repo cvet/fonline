@@ -18,8 +18,28 @@ public sealed class EventAttribute : Attribute
 {
 }
 
+// Admits a static method to managed ScriptFunc.Invoke / ScriptFunc.InvokeAsync, which find it by reflection. It is not published
+// in the native global function map: native code reaches a script method through [CallableFromNative]
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class CallableByNameAttribute : Attribute
+{
+}
+
+// Publishes a script method in the cross-backend global function map under its `Module::Func` name, so native code
+// - the engine, embedding C++, Native.InvokeScriptFunc - resolves it through ScriptSystem::FindFunc. Independent of
+// [CallableByName]: a method called both ways carries both markers
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class CallableFromNativeAttribute : Attribute
+{
+}
+
+// Engine-internal hint for a method the managed backend resolves itself through Mono metadata of its declaring
+// class (mono_class_get_method_from_name): the Native helpers, Initializator and the load-context host entries.
+// Nothing in managed code calls such a method, so the marker is what says its name and parameter count are relied
+// on natively. Native code never checks for it and nothing is registered by it; script code reached from native
+// code uses [CallableFromNative]
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class CallableByEngineAttribute : Attribute
 {
 }
 
@@ -193,6 +213,39 @@ public sealed class ProvidesCoverAttribute : Attribute
     }
 
     public CoverReach Reach { get; private set; }
+}
+
+// On the return value of an UPWARD accessor: the entity returned is the receiver's immediate sync-hierarchy parent (a
+// critter's map, a map's location). The receiver's own cover does not reach it, since acquisition takes the requested
+// entities and nothing above them; cover declared with CoverReach.Parent or CoverReach.Ancestors does. The direction is
+// declared rather than inferred from the types, because an entity of the parent's type is not necessarily the parent
+[AttributeUsage(AttributeTargets.ReturnValue, AllowMultiple = false)]
+public sealed class ReturnsParentAttribute : Attribute
+{
+}
+
+// Like [ReturnsParent], for an accessor whose result may sit further up the chain: an item's map or its carrying
+// critter, reached through any number of containers. Only cover declared with CoverReach.Ancestors reaches it
+[AttributeUsage(AttributeTargets.ReturnValue, AllowMultiple = false)]
+public sealed class ReturnsAncestorAttribute : Attribute
+{
+}
+
+// For a helper that ACQUIRES cover through Sync for entities it does not take as parameters -- a global-map group's
+// members, the carrier and map an item resolves to -- and answers whether it succeeded, possibly with a record naming
+// what it covered. A body calling it counts as acquiring, the same as a body calling Sync directly; a helper that
+// covers an entity it returns or takes says so with [ProvidesCover] instead, the more precise statement whenever there
+// is such a value
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class AcquiresCoverAttribute : Attribute
+{
+}
+
+// For a parameter a method RETURNS unchanged -- a checking pass-through such as Game.VerifyNotNull. The result is the
+// argument itself, so it is covered exactly when the argument was, with the same reach
+[AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
+public sealed class PassesCoverAttribute : Attribute
+{
 }
 
 // For an awaitable method that GIVES THE CALLER BACK the cover it had. An await ordinarily releases the

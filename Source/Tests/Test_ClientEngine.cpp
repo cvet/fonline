@@ -135,7 +135,7 @@ namespace
     static auto MakeTempClientResourceDir(string_view name) -> string
     {
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs_path_to_string(base);
+        return fs::path_to_string(base);
     }
 
     static auto CanUseDirectoryBackedClientResourceFixtures() noexcept -> bool
@@ -147,7 +147,7 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        REQUIRE(fs_create_directories(directory));
+        REQUIRE(fs::create_directories(directory));
         ResourcePackWriter writer {strex(directory).combine_path(strex("{}.fores", name)).str()};
 
         for (const auto& [path, contents] : files) {
@@ -1445,75 +1445,75 @@ namespace ClientEngineTest
     static auto MakeUnitTestBmfFont(string_view image_name) -> vector<uint8_t>
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
 
-        writer.Write<uint8_t>(uint8_t {'B'});
-        writer.Write<uint8_t>(uint8_t {'M'});
-        writer.Write<uint8_t>(uint8_t {'F'});
-        writer.Write<uint8_t>(uint8_t {3});
+        writer.write<uint8_t>(uint8_t {'B'});
+        writer.write<uint8_t>(uint8_t {'M'});
+        writer.write<uint8_t>(uint8_t {'F'});
+        writer.write<uint8_t>(uint8_t {3});
 
         // Info block: everything up to the padding quad is skipped, the padding itself must read as 1/1/1/1
         string font_name = "UnitTest";
-        writer.Write<uint8_t>(uint8_t {1});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(14 + font_name.size() + 1));
-        writer.Write<uint16_t>(uint16_t {8}); // Font size
-        writer.Write<uint8_t>(uint8_t {0}); // Bit field
-        writer.Write<uint8_t>(uint8_t {0}); // Char set
-        writer.Write<uint16_t>(uint16_t {100}); // Stretch height
-        writer.Write<uint8_t>(uint8_t {0}); // Anti-aliasing
-        writer.Write<uint8_t>(uint8_t {1}); // Padding up
-        writer.Write<uint8_t>(uint8_t {1}); // Padding right
-        writer.Write<uint8_t>(uint8_t {1}); // Padding down
-        writer.Write<uint8_t>(uint8_t {1}); // Padding left
-        writer.Write<uint8_t>(uint8_t {0}); // Spacing horizontal
-        writer.Write<uint8_t>(uint8_t {0}); // Spacing vertical
-        writer.Write<uint8_t>(uint8_t {0}); // Outline
+        writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(14 + font_name.size() + 1));
+        writer.write<uint16_t>(uint16_t {8}); // Font size
+        writer.write<uint8_t>(uint8_t {0}); // Bit field
+        writer.write<uint8_t>(uint8_t {0}); // Char set
+        writer.write<uint16_t>(uint16_t {100}); // Stretch height
+        writer.write<uint8_t>(uint8_t {0}); // Anti-aliasing
+        writer.write<uint8_t>(uint8_t {1}); // Padding up
+        writer.write<uint8_t>(uint8_t {1}); // Padding right
+        writer.write<uint8_t>(uint8_t {1}); // Padding down
+        writer.write<uint8_t>(uint8_t {1}); // Padding left
+        writer.write<uint8_t>(uint8_t {0}); // Spacing horizontal
+        writer.write<uint8_t>(uint8_t {0}); // Spacing vertical
+        writer.write<uint8_t>(uint8_t {0}); // Outline
 
         for (char ch : font_name) {
-            writer.Write<uint8_t>(numeric_cast<uint8_t>(ch));
+            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
         }
 
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
 
         // Common block
-        writer.Write<uint8_t>(uint8_t {2});
-        writer.Write<uint32_t>(uint32_t {15});
-        writer.Write<uint16_t>(uint16_t {10}); // Line height
-        writer.Write<uint16_t>(uint16_t {8}); // Base height
-        writer.Write<uint16_t>(uint16_t {16}); // Texture width
-        writer.Write<uint16_t>(uint16_t {16}); // Texture height
-        writer.Write<uint16_t>(uint16_t {1}); // Pages
-        writer.Write<uint8_t>(uint8_t {0}); // Bit field
-        writer.Write<uint8_t>(uint8_t {0}); // Alpha channel
-        writer.Write<uint8_t>(uint8_t {0}); // Red channel
-        writer.Write<uint8_t>(uint8_t {0}); // Green channel
-        writer.Write<uint8_t>(uint8_t {0}); // Blue channel
+        writer.write<uint8_t>(uint8_t {2});
+        writer.write<uint32_t>(uint32_t {15});
+        writer.write<uint16_t>(uint16_t {10}); // Line height
+        writer.write<uint16_t>(uint16_t {8}); // Base height
+        writer.write<uint16_t>(uint16_t {16}); // Texture width
+        writer.write<uint16_t>(uint16_t {16}); // Texture height
+        writer.write<uint16_t>(uint16_t {1}); // Pages
+        writer.write<uint8_t>(uint8_t {0}); // Bit field
+        writer.write<uint8_t>(uint8_t {0}); // Alpha channel
+        writer.write<uint8_t>(uint8_t {0}); // Red channel
+        writer.write<uint8_t>(uint8_t {0}); // Green channel
+        writer.write<uint8_t>(uint8_t {0}); // Blue channel
 
         // Pages block
-        writer.Write<uint8_t>(uint8_t {3});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(image_name.size() + 1));
+        writer.write<uint8_t>(uint8_t {3});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(image_name.size() + 1));
 
         for (char ch : image_name) {
-            writer.Write<uint8_t>(numeric_cast<uint8_t>(ch));
+            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
         }
 
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
 
         // Chars block: 20 bytes per glyph
         string glyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-";
-        writer.Write<uint8_t>(uint8_t {4});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(glyphs.size() * 20));
+        writer.write<uint8_t>(uint8_t {4});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(glyphs.size() * 20));
 
         for (char ch : glyphs) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(numeric_cast<uint8_t>(ch)));
-            writer.Write<uint16_t>(uint16_t {0}); // X
-            writer.Write<uint16_t>(uint16_t {0}); // Y
-            writer.Write<uint16_t>(uint16_t {6}); // Width
-            writer.Write<uint16_t>(uint16_t {8}); // Height
-            writer.Write<uint16_t>(uint16_t {0}); // X offset
-            writer.Write<uint16_t>(uint16_t {0}); // Y offset
-            writer.Write<uint16_t>(uint16_t {4}); // X advance
-            writer.Write<uint16_t>(uint16_t {0}); // Page and channel
+            writer.write<uint32_t>(numeric_cast<uint32_t>(numeric_cast<uint8_t>(ch)));
+            writer.write<uint16_t>(uint16_t {0}); // X
+            writer.write<uint16_t>(uint16_t {0}); // Y
+            writer.write<uint16_t>(uint16_t {6}); // Width
+            writer.write<uint16_t>(uint16_t {8}); // Height
+            writer.write<uint16_t>(uint16_t {0}); // X offset
+            writer.write<uint16_t>(uint16_t {0}); // Y offset
+            writer.write<uint16_t>(uint16_t {4}); // X advance
+            writer.write<uint16_t>(uint16_t {0}); // Page and channel
         }
 
         return data;
@@ -1547,23 +1547,23 @@ namespace ClientEngineTest
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
+        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerClientEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         // The model-backed proto lets the animation viewer build a real preview instead of stopping at a
         // missing model
         vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
         critter_protos.emplace_back(string {"UnitTestClientCritter"}, [](ProtoCritter&) { });
-        critter_protos.emplace_back(string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.ToHashedString("Models/RuntimeInstance.fo3d")); });
+        critter_protos.emplace_back(string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.to_hashed_string("Models/RuntimeInstance.fo3d")); });
         auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         auto script_blob = MakeClientScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientEngineTest.fopro-bin-client", proto_blob);
         runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
@@ -1579,7 +1579,7 @@ namespace ClientEngineTest
 
     static auto MakeClientEngine(GlobalSettings& settings, FileSystem resources) -> refcount_ptr<ClientEngine>
     {
-        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
+        return safe_alloc::make_refcounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
     }
 
     static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
@@ -1639,22 +1639,22 @@ void main(void)
     }
 
 #if FO_ENABLE_3D
-    static void WriteRuntimeModelBoneHeader(DataWriter& writer, string_view name, bool attached_mesh)
+    static void WriteRuntimeModelBoneHeader(data_writer& writer, string_view name, bool attached_mesh)
     {
         FO_STACK_TRACE_ENTRY();
 
-        writer.WriteString(name);
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
+        writer.write_string(name);
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
     }
 
-    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
+    static auto MakeRuntimeModelMesh(const function<void(data_writer&)>& write_root) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
 
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
         WriteModelMeshHeader(writer);
         write_root(writer);
         return data;
@@ -1664,26 +1664,26 @@ void main(void)
     {
         FO_STACK_TRACE_ENTRY();
 
-        return MakeRuntimeModelMesh([&](DataWriter& writer) {
+        return MakeRuntimeModelMesh([&](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
             array<Vertex3D, 1> vertices {vertex};
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
-            writer.Write<uint32_t>(uint32_t {0});
-            writer.WriteString({});
-            writer.Write<uint32_t>(skin_bones_count);
+            writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+            writer.write_object_array(const_span<Vertex3D> {vertices});
+            writer.write<uint32_t>(uint32_t {0});
+            writer.write_string({});
+            writer.write<uint32_t>(skin_bones_count);
 
             for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.WriteString({});
+                writer.write_string({});
             }
 
-            writer.Write<uint32_t>(skin_bones_count);
+            writer.write<uint32_t>(skin_bones_count);
 
             for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.Write<mat44>(mat44 {1.0f});
+                writer.write<mat44>(mat44 {1.0f});
             }
 
-            writer.Write<uint32_t>(uint32_t {0});
+            writer.write<uint32_t>(uint32_t {0});
         });
     }
 
@@ -1693,7 +1693,7 @@ void main(void)
     {
         FO_STACK_TRACE_ENTRY();
 
-        return MakeRuntimeModelMesh([origin](DataWriter& writer) {
+        return MakeRuntimeModelMesh([origin](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
 
             array<Vertex3D, 3> vertices {};
@@ -1706,19 +1706,19 @@ void main(void)
                 vertex.BlendIndices[0] = 0.0f;
             }
 
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+            writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+            writer.write_object_array(const_span<Vertex3D> {vertices});
 
             array<ModelMeshIndexData, 3> indices {0, 1, 2};
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
-            writer.WriteObjectArray(const_span<ModelMeshIndexData> {indices});
+            writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+            writer.write_object_array(const_span<ModelMeshIndexData> {indices});
 
-            writer.WriteString({});
-            writer.Write<uint32_t>(uint32_t {1});
-            writer.WriteString({});
-            writer.Write<uint32_t>(uint32_t {1});
-            writer.Write<mat44>(mat44 {1.0f});
-            writer.Write<uint32_t>(uint32_t {0});
+            writer.write_string({});
+            writer.write<uint32_t>(uint32_t {1});
+            writer.write_string({});
+            writer.write<uint32_t>(uint32_t {1});
+            writer.write<mat44>(mat44 {1.0f});
+            writer.write<uint32_t>(uint32_t {0});
         });
     }
 
@@ -1728,12 +1728,12 @@ void main(void)
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto root_bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+        auto root_bone = safe_alloc::make_unique<ModelMeshBoneData>();
         root_bone->Name = "Root";
         root_bone->TransformationMatrix = mat44 {1.0f};
         root_bone->GlobalTransformationMatrix = mat44 {1.0f};
 
-        auto limb_bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+        auto limb_bone = safe_alloc::make_unique<ModelMeshBoneData>();
         limb_bone->Name = "Limb";
         limb_bone->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.35f, 0.7f, 0.0f});
         limb_bone->GlobalTransformationMatrix = limb_bone->TransformationMatrix;
@@ -1769,56 +1769,56 @@ void main(void)
         data.RootBone = std::move(root_bone);
 
         vector<uint8_t> blob;
-        DataWriter writer {blob};
+        data_writer writer {blob};
         WriteModelMeshData(writer, data, "SkinnedSpriteBoundsModel");
         return blob;
     }
 
-    static void WriteRuntimeModelDescriptionPrefix(DataWriter& writer, string_view base_model = "Models/UnusedBase.fbx")
+    static void WriteRuntimeModelDescriptionPrefix(data_writer& writer, string_view base_model = "Models/UnusedBase.fbx")
     {
         FO_STACK_TRACE_ENTRY();
 
-        writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
-        writer.WriteString(base_model);
-        writer.Write<uint8_t>(uint8_t {0});
-        writer.Write<uint8_t>(uint8_t {0});
-        writer.Write<uint8_t>(uint8_t {0});
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.WriteString({});
+        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        writer.write_string(base_model);
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write_string({});
     }
 
-    static void WriteRuntimeModelDescriptionLinkPrefix(DataWriter& writer)
+    static void WriteRuntimeModelDescriptionLinkPrefix(data_writer& writer)
     {
         FO_STACK_TRACE_ENTRY();
 
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.WriteString({});
-        writer.WriteString({});
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write_string({});
+        writer.write_string({});
+        writer.write<uint8_t>(uint8_t {0});
 
         for (size_t i = 0; i < 10; i++) {
-            writer.Write<float32_t>(0.0f);
+            writer.write<float32_t>(0.0f);
         }
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
     }
 
-    static void WriteRuntimeModelDescriptionLink(DataWriter& writer)
+    static void WriteRuntimeModelDescriptionLink(data_writer& writer)
     {
         FO_STACK_TRACE_ENTRY();
 
         WriteRuntimeModelDescriptionLinkPrefix(writer);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint8_t>(uint8_t {0});
     }
 
     // The runtime requires the baked animation-info document: a plain config keyed by the model resource
@@ -1976,36 +1976,36 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 {
     string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
     string writable_root = MakeTempClientResourceDir("writable_overlay");
-    bool removed_base_before = fs_remove_dir_tree(unique_name);
-    bool removed_writable_before = fs_remove_dir_tree(writable_root);
+    bool removed_base_before = fs::remove_dir_tree(unique_name);
+    bool removed_writable_before = fs::remove_dir_tree(writable_root);
     ignore_unused(removed_base_before);
     ignore_unused(removed_writable_before);
 
     auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
-        fs_remove_dir_tree(unique_name);
-        fs_remove_dir_tree(writable_root);
+        fs::remove_dir_tree(unique_name);
+        fs::remove_dir_tree(writable_root);
     });
 
     string pack_name = "ClientPack";
     string metadata_file = "Metadata.fometa-client";
-    string writable_resources = fs_make_writable_path(writable_root, unique_name);
+    string writable_resources = fs::make_writable_path(writable_root, unique_name);
 
     STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
     constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
     vector<uint8_t> outdated_metadata;
-    DataWriter outdated_writer {outdated_metadata};
-    outdated_writer.Write<uint32_t>(METADATA_FILE_MAGIC);
-    outdated_writer.Write<uint16_t>(outdated_file_version);
-    outdated_writer.Write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
-    outdated_writer.WriteStringBytes(BakerTests::TEST_METADATA_VERSION);
-    outdated_writer.Write<uint16_t>(uint16_t {0});
+    data_writer outdated_writer {outdated_metadata};
+    outdated_writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    outdated_writer.write<uint16_t>(outdated_file_version);
+    outdated_writer.write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
+    outdated_writer.write_string_bytes(BakerTests::TEST_METADATA_VERSION);
+    outdated_writer.write<uint16_t>(uint16_t {0});
 
     vector<uint8_t> current_metadata = BakerTests::MakeEmptyMetadataBlob();
     WriteClientTestPack(unique_name, pack_name, {{metadata_file, string(outdated_metadata.begin(), outdated_metadata.end())}});
     WriteClientTestPack(writable_resources, pack_name, {{metadata_file, string(current_metadata.begin(), current_metadata.end())}});
 
     FileSystem install_resources;
-    install_resources.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(strex(unique_name).combine_path(strex("{}.fores", pack_name)).str()));
+    install_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(unique_name).combine_path(strex("{}.fores", pack_name)).str()));
     vector<uint8_t> installed_metadata = ReadMetadataBin(&install_resources, "Client");
     CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
 
@@ -2034,15 +2034,15 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
     string dir = MakeTempClientResourceDir("merged_index");
     string install = strex("lf_client_index_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
     auto cleanup = scope_exit([&dir, &install]() noexcept {
-        (void)fs_remove_dir_tree(dir);
-        (void)fs_remove_dir_tree(install);
+        (void)fs::remove_dir_tree(dir);
+        (void)fs::remove_dir_tree(install);
     });
     string writable = strex(dir).combine_path("Writable").str();
-    string overlay = fs_make_writable_path(writable, install);
+    string overlay = fs::make_writable_path(writable, install);
 
     WriteClientTestPack(install, "Before", {{"Shared.txt", "before"}});
-    REQUIRE(fs_write_file(strex(install).combine_path("Embedded/Shared.txt").str(), string_view {"embedded"}));
-    REQUIRE(fs_write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"bootstrap"}));
+    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Shared.txt").str(), string_view {"embedded"}));
+    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"bootstrap"}));
     WriteClientTestPack(overlay, "Before", {{"Shared.txt", "before"}, {"Overlay.txt", "writable"}});
 
     {
@@ -2064,7 +2064,7 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
     vector<string> indexed_names = GetResourceIndexPackNames(settings.ClientResourceEntries);
     REQUIRE(ResolveResourceIndexPacks({install}, indexed_names, packs, pack_paths));
     string index_path = GetClientResourceIndexPath(settings);
-    REQUIRE(fs_create_directories(strex(index_path).extract_dir().str()));
+    REQUIRE(fs::create_directories(strex(index_path).extract_dir().str()));
     BuildResourceIndex(index_path, pack_paths, packs, ResourcePackWriteSettings {0, 100});
 
     SECTION("MountsTheIndexWithoutDroppingBootstrapOrOverlayFiles")
@@ -2078,16 +2078,16 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
 
     SECTION("DiscardsACorruptDerivedIndexAndMountsThePacks")
     {
-        auto original = fs_read_file(index_path);
+        auto original = fs::read_file(index_path);
         REQUIRE(original.has_value());
         vector<uint8_t> bytes(original->begin(), original->end());
         span_write_uint32(bytes, RESOURCE_INDEX_HEADER_SIZE + RESOURCE_INDEX_PACK_SIZE, std::numeric_limits<uint32_t>::max());
-        REQUIRE(fs_write_file(index_path, bytes));
+        REQUIRE(fs::write_file(index_path, bytes));
 
         FileSystem resources = GetClientResources(settings);
         CHECK(resources.ReadFileText("Shared.txt") == "art");
         CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
-        CHECK_FALSE(fs_exists(index_path));
+        CHECK_FALSE(fs::exists(index_path));
     }
 }
 
@@ -2095,17 +2095,17 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
 {
     string unique_name = strex("lf_client_pack_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
     string writable_root = MakeTempClientResourceDir("writable_overlay");
-    bool removed_base_before = fs_remove_dir_tree(unique_name);
-    bool removed_writable_before = fs_remove_dir_tree(writable_root);
+    bool removed_base_before = fs::remove_dir_tree(unique_name);
+    bool removed_writable_before = fs::remove_dir_tree(writable_root);
     ignore_unused(removed_base_before);
     ignore_unused(removed_writable_before);
 
     auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
-        fs_remove_dir_tree(unique_name);
-        fs_remove_dir_tree(writable_root);
+        fs::remove_dir_tree(unique_name);
+        fs::remove_dir_tree(writable_root);
     });
 
-    string writable_resources = fs_make_writable_path(writable_root, unique_name);
+    string writable_resources = fs::make_writable_path(writable_root, unique_name);
     WriteClientTestPack(unique_name, "Main", {{"shared.txt", "install-base"}, {"base-only.txt", "base-only"}});
     WriteClientTestPack(unique_name, "Fallback", {{"fallback.txt", "base-fallback"}});
     WriteClientTestPack(writable_resources, "Main", {{"shared.txt", "writable-base"}, {"overlay-only.txt", "overlay-only"}});
@@ -2125,8 +2125,8 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
     SECTION("MissingBaseDoesNotMountLooseFiles")
     {
         resources.CleanDataSources();
-        REQUIRE(fs_remove_file(strex(unique_name).combine_path("Fallback.fores").str()));
-        REQUIRE(fs_write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"loose"}));
+        REQUIRE(fs::remove_file(strex(unique_name).combine_path("Fallback.fores").str()));
+        REQUIRE(fs::write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"loose"}));
         CHECK_THROWS(GetClientResources(settings));
     }
 }
@@ -2168,49 +2168,49 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 
     vector<pair<string, vector<uint8_t>>> malformed_resources;
 
-    malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
     }));
 
-    malformed_resources.emplace_back("Models/IndexCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/IndexCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
     }));
 
-    malformed_resources.emplace_back("Models/IndexOutOfBounds.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/IndexOutOfBounds.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
         array<Vertex3D, 1> vertices {};
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-        writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+        writer.write_object_array(const_span<Vertex3D> {vertices});
         array<vindex_t, 1> indices {vindex_t {1}};
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
-        writer.WriteObjectArray(const_span<vindex_t> {indices});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+        writer.write_object_array(const_span<vindex_t> {indices});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<uint32_t>(uint32_t {0});
     }));
 
-    malformed_resources.emplace_back("Models/SkinCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/SkinCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.WriteString({});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(MODEL_MAX_BONES + 1));
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write_string({});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(MODEL_MAX_BONES + 1));
     }));
 
-    malformed_resources.emplace_back("Models/SkinOffsetMismatch.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/SkinOffsetMismatch.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {0});
     }));
 
     Vertex3D valid_skin_vertex {};
@@ -2240,78 +2240,78 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     invalid_skin_weight_sum.BlendWeights[0] = 0.5f;
     malformed_resources.emplace_back("Models/InvalidSkinWeightSum.fbx", MakeRuntimeModelMeshWithVertex(invalid_skin_weight_sum));
 
-    malformed_resources.emplace_back("Models/ChildCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/ChildCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", false);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
     }));
 
-    malformed_resources.emplace_back("Models/HierarchyDepthBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/HierarchyDepthBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         for (uint32_t depth = 0; depth <= MODEL_MESH_MAX_HIERARCHY_DEPTH; depth++) {
             WriteRuntimeModelBoneHeader(writer, "Bone", false);
-            writer.Write<uint32_t>(depth < MODEL_MESH_MAX_HIERARCHY_DEPTH ? uint32_t {1} : uint32_t {0});
+            writer.write<uint32_t>(depth < MODEL_MESH_MAX_HIERARCHY_DEPTH ? uint32_t {1} : uint32_t {0});
         }
     }));
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
-        writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.Write<uint16_t>(uint16_t {2});
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        data_writer writer {data};
+        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.write<uint16_t>(uint16_t {2});
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
         malformed_resources.emplace_back("Models/DescriptionOldSchema.fo3d", std::move(data));
     }
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
-        writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        data_writer writer {data};
+        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
         malformed_resources.emplace_back("Models/DescriptionStringBomb.fo3d", std::move(data));
     }
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLink(writer);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
         malformed_resources.emplace_back("Models/DescriptionLinksBomb.fo3d", std::move(data));
     }
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
         malformed_resources.emplace_back("Models/DescriptionNestedCountBomb.fo3d", std::move(data));
     }
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint8_t>(uint8_t {1});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint8_t>(uint8_t {1});
         malformed_resources.emplace_back("Models/DescriptionGeometryFlagMismatch.fo3d", std::move(data));
     }
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint8_t>(uint8_t {2});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint8_t>(uint8_t {2});
         malformed_resources.emplace_back("Models/DescriptionGeometryFlagOutOfRange.fo3d", std::move(data));
     }
 
@@ -2631,7 +2631,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetAnimDuration(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)));
         ignore_unused(model->IsAnimationPlaying());
 
-        hstring root_bone = client->Hashes.ToHashedString("Root");
+        hstring root_bone = client->Hashes.to_hashed_string("Root");
         ignore_unused(model->FindBone(root_bone));
         ignore_unused(model->GetBonePos(root_bone));
         ignore_unused(model->GetBoneSpritePos(root_bone));
@@ -2811,7 +2811,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
     {
         // Going through the sprite manager takes the model down the model-sprite path instead of the raw
         // instance one: atlas placement, per-frame update and the sprite-side draw
-        shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.ToHashedString(MODEL_PATH), AtlasType::MapSprites, true);
+        shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
         REQUIRE(static_cast<bool>(sprite));
 
         CHECK(sprite->GetSize().width > 0);
@@ -2860,7 +2860,7 @@ TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
 
     constexpr uint16_t DEBUGGER_BASE_PORT = 43000;
     constexpr uint16_t DEBUGGER_PORT_SPAN = 2000;
-    int32_t pid_num = strvex(Platform::GetCurrentProcessIdStr()).to_int32();
+    int32_t pid_num = strvex(platform::get_current_process_id_str()).to_int32();
     uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % DEBUGGER_PORT_SPAN) : uint16_t {0};
 
     tcp_socket client_sock;
@@ -2944,12 +2944,12 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetCurLocation()));
     CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
-    hstring critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
+    hstring critter_pid = client->Hashes.to_hashed_string("UnitTestClientCritter");
     auto critter_proto = client->GetProtoCritter(critter_pid);
     REQUIRE(static_cast<bool>(critter_proto));
 
-    auto player = SafeAlloc::MakeRefCounted<PlayerView>(client, ident_t {1001});
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto);
+    auto player = safe_alloc::make_refcounted<PlayerView>(client, ident_t {1001});
+    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto);
 
     REQUIRE(client->GetEntity(player->GetId()) == player);
     REQUIRE(client->GetEntity(critter->GetId()) == critter);
@@ -2970,7 +2970,7 @@ TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
 
     int start_calls = 0;
     int loop_calls = 0;
@@ -3024,7 +3024,7 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
 
     int32_t result = 0;
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
@@ -3053,7 +3053,7 @@ TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    hstring model_name = client->Hashes.ToHashedString(MODEL_NAME);
+    hstring model_name = client->Hashes.to_hashed_string(MODEL_NAME);
 
     SECTION("AnimationPairsResolveThroughTheLegacyLoader")
     {
@@ -3079,7 +3079,7 @@ TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
 
     SECTION("AModelWithNoSpritesAnswersEmpty")
     {
-        hstring missing = client->Hashes.ToHashedString("art/critters/nosuchxx.frm");
+        hstring missing = client->Hashes.to_hashed_string("art/critters/nosuchxx.frm");
         CHECK_FALSE(static_cast<bool>(client->ResMngr.GetCritterAnimFrames(missing, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0})));
     }
 }
@@ -3169,7 +3169,7 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     auto run_script = [&client](string_view name) {
         int32_t result = -1;
         INFO(name);
-        REQUIRE(client->CallFunc(client->Hashes.ToHashedString(name), result));
+        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string(name), result));
         CHECK(result == 0);
     };
 
@@ -3184,7 +3184,7 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     run_script("ClientEngineTest::UnitTestClientRejectsBadArguments");
 
     int32_t rejection_count = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
     // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool, queueing
     // nothing, or accepting a pack that resolves to no entries
     CHECK(rejection_count == 8 + 16 + 128 + 256);
@@ -3203,7 +3203,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto sheet = client->SprMngr.LoadSprite(client->Hashes.ToHashedString("AnimSheet.png"), AtlasType::IfaceSprites);
+    auto sheet = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string("AnimSheet.png"), AtlasType::IfaceSprites);
     REQUIRE(sheet);
     CHECK(sheet->GetSize() == isize32 {2, 2});
 
@@ -3279,7 +3279,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Absent mesh keeps the legacy quad")
     {
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
         size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
@@ -3301,7 +3301,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Explicit empty mesh emits no draw data")
     {
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
         size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
@@ -3319,7 +3319,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
         draw_buf->Vertices.resize(2);
         draw_buf->VertCount = 2;
@@ -3364,7 +3364,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {3, 10}, {6, 0}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
         CHECK(sprite->GetSize() == isize32 {10, 10});
@@ -3390,7 +3390,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
         optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
 
@@ -3427,7 +3427,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {14, 0}, {0, 13}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
         optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
 
@@ -3460,7 +3460,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.1f, 0.2f}, {0.5f, 0.6f}, draw_rect);
 
         REQUIRE(region.has_value());
@@ -3486,7 +3486,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Indices = {0, 1, 2};
 
         {
-            auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+            auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
             auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
             REQUIRE(allocation_observer->GetSpriteMesh());
@@ -3562,7 +3562,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
         data[offset + 3] = numeric_cast<uint8_t>(value >> 24);
     };
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("PolygonSpriteResources");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PolygonSpriteResources");
     source->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
     source->AddFile("Empty.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Empty));
     source->AddFile("ValidMesh.png", valid_blob);
@@ -3624,7 +3624,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
 
     client->SprMngr.GetResources()->AddCustomSource(std::move(source));
     DefaultSpriteFactory factory {&client->SprMngr};
-    auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.ToHashedString(path), AtlasType::MapSprites); };
+    auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.to_hashed_string(path), AtlasType::MapSprites); };
 
     auto valid_sprite = load("ValidMesh.png");
     REQUIRE(static_cast<bool>(valid_sprite));
@@ -3649,7 +3649,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK(cropped_draw_buf->Vertices[2].PosX == Catch::Approx(1.0f));
     CHECK(cropped_draw_buf->Vertices[2].PosY == Catch::Approx(2.0f));
 
-    auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.ToHashedString("CroppedMesh.png"), AtlasType::IfaceSprites);
+    auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.to_hashed_string("CroppedMesh.png"), AtlasType::IfaceSprites);
     REQUIRE(restored_image);
     CHECK(restored_image->GetSize() == cropped_mesh.SourceSize);
     CHECK(restored_image->GetAtlasRect().width * restored_image->GetAtlas()->GetTexture()->SizeData[0] == Catch::Approx(4.0f));
@@ -3819,7 +3819,7 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
         10.0f / numeric_cast<float32_t>(atlas->GetSize().width),
         10.0f / numeric_cast<float32_t>(atlas->GetSize().height),
     };
-    auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, std::move(atlas_allocation), sprite_atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+    auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, std::move(atlas_allocation), sprite_atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
 
     client->SprMngr.DrawSprite(sprite, {2, 3}, ucolor {255, 255, 255});
     CHECK_NOTHROW(client->SprMngr.Flush());
@@ -3829,7 +3829,7 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {
     // The ImGui sweep below writes under `Workspace/`, relative to whatever directory the binary was launched
     // from, and `ImGui::LogToFile` asserts on a file it cannot open — aborting the frame mid-sweep
-    (void)fs_create_directories("Workspace");
+    (void)fs::create_directories("Workspace");
 
     auto settings = MakeClientTestSettings();
     auto client_resources = MakeUnitTestFontResources();
@@ -3876,15 +3876,15 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
     }
 
     int32_t loop_calls = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
     CHECK(loop_calls > 0);
 
     int32_t render_calls = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetRenderCalls"), render_calls));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetRenderCalls"), render_calls));
     CHECK(render_calls > 0);
 
     // Re-run with script drawing enabled so the render-pass-only draw bindings execute
-    REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientEngineTest::UnitTestEnableRenderDrawing")));
+    REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestEnableRenderDrawing")));
 
     for (int32_t frame = 0; frame < 2; frame++) {
         ImGui::NewFrame();
@@ -3896,23 +3896,23 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
     // the render pass because the accessor exists only while a frame is open
     int32_t probe_count = 0;
     int32_t rejections = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiEmptyIdRejections"), rejections));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiEmptyIdRejections"), rejections));
     CHECK(probe_count > 0);
     CHECK(rejections > 0);
     CHECK(rejections % probe_count == 0);
 
     int32_t sprite_rejections = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
     CHECK(sprite_rejections == 4);
 
     // The surface guard keeps ImGui balanced when a probe throws, but a throw still means a binding
     // misbehaved - the engine swallows it inside the event, so it is only visible through this counter
     int32_t surface_failures = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
 
     string failed_stage;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiFailedStage"), failed_stage));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiFailedStage"), failed_stage));
     INFO("last ImGui stage entered before the throw: " << failed_stage);
     CHECK(surface_failures == 0);
 

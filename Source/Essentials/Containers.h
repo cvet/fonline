@@ -43,10 +43,10 @@ FO_BEGIN_NAMESPACE
 // Basic types with safe allocator
 using string = basic_string<char, STRING_INLINE_CAPACITY>;
 using wstring = basic_string<wchar_t, WSTRING_INLINE_CAPACITY>;
-using istringstream = std::basic_istringstream<char, std::char_traits<char>, SafeAllocator<char>>;
-using ostringstream = std::basic_ostringstream<char, std::char_traits<char>, SafeAllocator<char>>;
-using stringstream = std::basic_stringstream<char, std::char_traits<char>, SafeAllocator<char>>;
-using stream_string = std::basic_string<char, std::char_traits<char>, SafeAllocator<char>>;
+using istringstream = std::basic_istringstream<char, std::char_traits<char>, safe_allocator<char>>;
+using ostringstream = std::basic_ostringstream<char, std::char_traits<char>, safe_allocator<char>>;
+using stringstream = std::basic_stringstream<char, std::char_traits<char>, safe_allocator<char>>;
+using stream_string = std::basic_string<char, std::char_traits<char>, safe_allocator<char>>;
 
 // The standard string streams are specified on std::basic_string, so text handed to one is copied over
 [[nodiscard]] inline auto make_stream_string(string_view value) -> stream_string
@@ -55,35 +55,35 @@ using stream_string = std::basic_string<char, std::char_traits<char>, SafeAlloca
 }
 
 template<typename T>
-using list = std::list<T, SafeAllocator<T>>;
+using list = std::list<T, safe_allocator<T>>;
 template<typename T, size_t BlockBytes = DEQUE_BLOCK_BYTES>
 using deque = basic_deque<T, BlockBytes>;
 
 template<typename K, typename V, typename Cmp = std::less<>>
-using map = std::map<K, V, Cmp, SafeAllocator<pair<const K, V>>>;
+using map = std::map<K, V, Cmp, safe_allocator<pair<const K, V>>>;
 template<typename K, typename V, typename Cmp = std::less<>>
-using multimap = std::multimap<K, V, Cmp, SafeAllocator<pair<const K, V>>>;
+using multimap = std::multimap<K, V, Cmp, safe_allocator<pair<const K, V>>>;
 template<typename K, typename Cmp = std::less<>>
-using set = std::set<K, Cmp, SafeAllocator<K>>;
+using set = std::set<K, Cmp, safe_allocator<K>>;
 
 #if FO_DEBUG
 template<typename K, typename V, typename H = hashing::hash<K>>
-using unordered_map = std::unordered_map<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
+using unordered_map = std::unordered_map<K, V, H, std::equal_to<>, safe_allocator<pair<const K, V>>>;
 template<typename K, typename H = hashing::hash<K>>
-using unordered_set = std::unordered_set<K, H, std::equal_to<>, SafeAllocator<K>>;
+using unordered_set = std::unordered_set<K, H, std::equal_to<>, safe_allocator<K>>;
 #else
 template<typename K, typename V, typename H = hashing::hash<K>>
-using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, SafeAllocator<pair<K, V>>>;
+using unordered_map = ankerl::unordered_dense::segmented_map<K, V, H, std::equal_to<>, safe_allocator<pair<K, V>>>;
 template<typename K, typename H = hashing::hash<K>>
-using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<>, SafeAllocator<K>>;
+using unordered_set = ankerl::unordered_dense::segmented_set<K, H, std::equal_to<>, safe_allocator<K>>;
 #endif
 template<typename K, typename V, typename H = hashing::hash<K>>
-using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, SafeAllocator<pair<const K, V>>>;
+using unordered_multimap = std::unordered_multimap<K, V, H, std::equal_to<>, safe_allocator<pair<const K, V>>>;
 
 template<typename T, unsigned InlineCapacity>
-using small_vector = gch::small_vector<T, InlineCapacity, SafeAllocator<T>>;
+using small_vector = gch::small_vector<T, InlineCapacity, safe_allocator<T>>;
 template<typename T>
-using vector = std::vector<T, SafeAllocator<T>>;
+using vector = std::vector<T, safe_allocator<T>>;
 
 // Template helpers
 template<typename T>

@@ -127,7 +127,7 @@ struct ResourcePatchInfo
 };
 
 auto ResolveResourcePackPath(const vector<string>& directories, string_view name) -> string;
-auto OpenResourcePackFile(string_view path) noexcept -> disk_read_file;
+auto OpenResourcePackFile(string_view path) noexcept -> fs::disk_read_file;
 auto GetResourcePackWriteTime(string_view path) noexcept -> uint64_t;
 auto IsResourcePathCanonical(string_view path) noexcept -> bool;
 auto GetResourcePatchPath(string_view base_path) -> string;
@@ -136,7 +136,7 @@ auto SerializeResourcePackHeader(const ResourcePackHeader& header) -> vector<uin
 auto ParseResourcePackHeader(const_span<uint8_t> data, ResourcePackHeader& header) noexcept -> bool;
 auto DecodeResourcePackIndex(const_span<uint8_t> stored, const ResourcePackHeader& header, uint64_t patch_data_end = 0) -> vector<ResourcePackEntryRef>;
 auto ReadResourcePatchInfo(string_view path, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>;
-auto ReadResourcePatchInfo(const disk_read_file& file, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>;
+auto ReadResourcePatchInfo(const fs::disk_read_file& file, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>;
 
 // Deflates a blob and keeps the result only when it gives back the configured minimum. Both formats encode
 // through this, so an index section and a payload obey one rule
@@ -144,7 +144,7 @@ auto EncodeResourceBlob(const_span<uint8_t> data, const ResourcePackWriteSetting
 
 // Reads only the header, without touching the index or the payloads
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool;
-auto ReadResourcePackHeader(const disk_read_file& file, ResourcePackHeader& header) noexcept -> bool;
+auto ReadResourcePackHeader(const fs::disk_read_file& file, ResourcePackHeader& header) noexcept -> bool;
 // The one place a pack body is hashed: after a download, to prove the file carries the hash it was fetched
 // for. The header hash is trusted from then on, so a startup never pays this over gigabytes
 auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexcept -> bool;
@@ -170,7 +170,7 @@ private:
 
     string _path;
     ResourcePackWriteSettings _settings;
-    disk_write_file _file;
+    fs::disk_write_file _file;
     vector<ResourcePackEntryRef> _entries {};
     uint64_t _bodyHash {};
     uint64_t _bodyOffset {};
@@ -209,8 +209,8 @@ private:
     auto ReadEntryData(const ResourcePackEntryRef& entry) const -> vector<uint8_t>;
 
     string _fileName;
-    disk_read_file _file;
-    disk_read_file _patchFile;
+    fs::disk_read_file _file;
+    fs::disk_read_file _patchFile;
     optional<ResourcePatchInfo> _patchInfo {};
     ResourcePackHeader _header {};
     vector<ResourcePackEntryRef> _entries {};
@@ -238,8 +238,8 @@ public:
 private:
     string _basePath;
     string _patchPath;
-    unique_nptr<disk_directory_lock> _directoryLock {};
-    disk_write_file _file;
+    unique_nptr<fs::disk_directory_lock> _directoryLock {};
+    fs::disk_write_file _file;
     ResourcePatchInfo _info {};
     vector<ResourcePackEntryRef> _downloads {};
     vector<uint8_t> _index {};

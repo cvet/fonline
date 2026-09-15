@@ -66,7 +66,7 @@ static constexpr uint32_t PATCH_MAGIC = 0x50524F46;
 static constexpr uint32_t PATCH_FOOTER_MAGIC = 0x54524F46;
 
 static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<uint8_t>;
-static auto ReadPatchCatalog(const disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool;
+static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool;
 static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> vector<uint8_t>;
 
 // The offsets above are the format. These pin the record sizes to them, so widening a field without widening
@@ -146,12 +146,12 @@ auto ResolveResourcePackPath(const vector<string>& directories, string_view name
     string writable = strex(directories.back()).combine_path(strex("{}.fores", name)).str();
     string backup = strex("{}{}", writable, REPLACED_FILE_BACKUP_SUFFIX).str();
 
-    if (!fs_exists(writable) && fs_exists(backup)) {
-        disk_directory_lock lock {directories.back()};
+    if (!fs::exists(writable) && fs::exists(backup)) {
+        fs::disk_directory_lock lock {directories.back()};
         FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", writable);
 
-        if (!fs_exists(writable) && fs_exists(backup)) {
-            FO_VERIFY_AND_THROW(fs_rename_durable(backup, writable), "Can't restore resource base backup", writable);
+        if (!fs::exists(writable) && fs::exists(backup)) {
+            FO_VERIFY_AND_THROW(fs::rename_durable(backup, writable), "Can't restore resource base backup", writable);
         }
     }
 
@@ -166,14 +166,14 @@ auto ResolveResourcePackPath(const vector<string>& directories, string_view name
     return strex(directories.front()).combine_path(strex("{}.fores", name)).str();
 }
 
-auto OpenResourcePackFile(string_view path) noexcept -> disk_read_file
+auto OpenResourcePackFile(string_view path) noexcept -> fs::disk_read_file
 {
     FO_STACK_TRACE_ENTRY();
 
     size_t separator = path.find("!/");
 
     if (separator == string_view::npos) {
-        return disk_read_file {path};
+        return fs::disk_read_file {path};
     }
 
     string archive_path {path.substr(0, separator)};
@@ -192,7 +192,7 @@ auto OpenResourcePackFile(string_view path) noexcept -> disk_read_file
     }
 
     uint64_t offset = numeric_cast<uint64_t>(unzGetCurrentFileZStreamPos64(archive.get()));
-    return disk_read_file {archive_path, offset, numeric_cast<uint64_t>(info.uncompressed_size)};
+    return fs::disk_read_file {archive_path, offset, numeric_cast<uint64_t>(info.uncompressed_size)};
 }
 
 auto GetResourcePackWriteTime(string_view path) noexcept -> uint64_t
@@ -200,18 +200,18 @@ auto GetResourcePackWriteTime(string_view path) noexcept -> uint64_t
     FO_STACK_TRACE_ENTRY();
 
     size_t separator = path.find("!/");
-    return fs_last_write_time(path.substr(0, separator));
+    return fs::last_write_time(path.substr(0, separator));
 }
 
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    disk_read_file file = OpenResourcePackFile(path);
+    fs::disk_read_file file = OpenResourcePackFile(path);
     return ReadResourcePackHeader(file, header);
 }
 
-auto ReadResourcePackHeader(const disk_read_file& file, ResourcePackHeader& header) noexcept -> bool
+auto ReadResourcePackHeader(const fs::disk_read_file& file, ResourcePackHeader& header) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -234,7 +234,7 @@ auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexc
     FO_STACK_TRACE_ENTRY();
 
     ResourcePackHeader header;
-    disk_read_file file = OpenResourcePackFile(path);
+    fs::disk_read_file file = OpenResourcePackFile(path);
 
     if (!ReadResourcePackHeader(file, header) || header.PackHash != expected_pack_hash) {
         return false;
@@ -272,7 +272,7 @@ auto EncodeResourceBlob(const_span<uint8_t> data, const ResourcePackWriteSetting
         return {data.begin(), data.end()};
     }
 
-    vector<uint8_t> compressed = Compressor::Compress(data, settings.CompressLevel);
+    vector<uint8_t> compressed = compressor::compress(data, settings.CompressLevel);
     size_t max_kept_size = data.size() - data.size() * numeric_cast<size_t>(settings.MinCompressGainPercent) / 100;
 
     if (compressed.size() >= max_kept_size) {
@@ -293,7 +293,7 @@ ResourcePackWriter::ResourcePackWriter(string_view path, ResourcePackWriteSettin
     FO_VERIFY_AND_THROW(settings.MinCompressGainPercent >= 0 && settings.MinCompressGainPercent <= 100, "Pack minimum compression gain is not a percentage", settings.MinCompressGainPercent);
 
     // Creating the target truncates it, so it is the first thing to touch the disk and the settings go first
-    _file = disk_write_file {_path};
+    _file = fs::disk_write_file {_path};
 
     if (!_file) {
         throw ResourcePackException("Can't create pack file", _path);
@@ -303,7 +303,7 @@ ResourcePackWriter::ResourcePackWriter(string_view path, ResourcePackWriteSettin
     // here or a later mount finds a pack with no valid header and refuses to start
     auto remove_on_fail = scope_fail([this]() noexcept {
         _file.close();
-        (void)fs_remove_file(_path);
+        (void)fs::remove_file(_path);
     });
 
     // The header is patched at the end, once the index offset and the body hash are known
@@ -324,7 +324,7 @@ ResourcePackWriter::~ResourcePackWriter()
     // An abandoned writer leaves no half-written pack behind for a later mount to trip over
     if (!_finished && _file) {
         _file.close();
-        (void)fs_remove_file(_path);
+        (void)fs::remove_file(_path);
     }
 }
 
@@ -429,7 +429,7 @@ ResourcePackSource::ResourcePackSource(string_view path, string_view patch_path)
     ParseIndex();
 
     if (!patch_path.empty()) {
-        _patchFile = disk_read_file {patch_path};
+        _patchFile = fs::disk_read_file {patch_path};
 
         if (_patchFile) {
             ResourcePatchInfo info;
@@ -439,7 +439,7 @@ ResourcePackSource::ResourcePackSource(string_view path, string_view patch_path)
                 _patchInfo = info;
                 _header.ContentHash = info.ContentHash;
                 _entries = std::move(entries);
-                _writeTime = fs_last_write_time(patch_path);
+                _writeTime = fs::last_write_time(patch_path);
             }
             else {
                 _patchFile.close();
@@ -484,7 +484,7 @@ auto ResourcePackSource::ReadEntryData(const ResourcePackEntryRef& entry) const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const disk_read_file& file = entry.Source == 0 ? _file : _patchFile;
+    const fs::disk_read_file& file = entry.Source == 0 ? _file : _patchFile;
     vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));
     FO_VERIFY_AND_THROW(file.read_at(entry.DataOffset, stored), "Can't read resource pack payload", _fileName, entry.Path);
     return DecodeResourceData(stored, entry);
@@ -523,7 +523,7 @@ auto ResourcePackSource::OpenFile(string_view path, size_t& size, uint64_t& writ
     }
 
     vector<uint8_t> data = ReadEntryData(*entry);
-    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(data.size());
+    auto buf = safe_alloc::make_unique_arr<uint8_t>(data.size());
     std::memcpy(buf.get(), data.data(), data.size());
 
     size = data.size();
@@ -670,7 +670,7 @@ auto DecodeResourcePackIndex(const_span<uint8_t> stored, const ResourcePackHeade
     }
     else {
         FO_VERIFY_AND_THROW(header.IndexCodec == static_cast<uint32_t>(ResourcePackCodec::Deflate), "Unknown resource catalog codec", header.IndexCodec);
-        index = Compressor::DecompressExact(stored, numeric_cast<size_t>(header.IndexDecodedSize));
+        index = compressor::decompress_exact(stored, numeric_cast<size_t>(header.IndexDecodedSize));
     }
 
     vector<ResourcePackEntryRef> entries;
@@ -715,14 +715,14 @@ static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEnt
     }
     else {
         FO_VERIFY_AND_THROW(entry.Codec == static_cast<uint32_t>(ResourcePackCodec::Deflate), "Unknown resource payload codec", entry.Path, entry.Codec);
-        data = Compressor::DecompressExact(stored, numeric_cast<size_t>(entry.DecodedSize));
+        data = compressor::decompress_exact(stored, numeric_cast<size_t>(entry.DecodedSize));
     }
 
     FO_VERIFY_AND_THROW(data.size() == entry.DecodedSize && HashResourceBytes(RESOURCE_PACK_HASH_SEED, data) == entry.FileContentHash, "Resource payload content hash mismatch", entry.Path);
     return data;
 }
 
-static auto ReadPatchCatalog(const disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool
+static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -820,11 +820,11 @@ auto ReadResourcePatchInfo(string_view path, const ResourcePackHeader& base_head
 {
     FO_STACK_TRACE_ENTRY();
 
-    disk_read_file file = OpenResourcePackFile(path);
+    fs::disk_read_file file = OpenResourcePackFile(path);
     return ReadResourcePatchInfo(file, base_header);
 }
 
-auto ReadResourcePatchInfo(const disk_read_file& file, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>
+auto ReadResourcePatchInfo(const fs::disk_read_file& file, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -847,7 +847,7 @@ ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patc
     _info.ContentHash = content_hash;
     _startOffset = current.GetPatchInfo() ? current.GetPatchInfo()->CommittedSize : RESOURCE_PATCH_HEADER_SIZE;
     _startIndexHash = current.GetPatchInfo() ? current.GetPatchInfo()->IndexHash : 0;
-    _originalSize = fs_file_size(patch_path).value_or(0);
+    _originalSize = fs::file_size(patch_path).value_or(0);
     _reset = !current.GetPatchInfo().has_value();
     map<pair<uint64_t, uint64_t>, ResourcePackEntryRef> available;
 
@@ -875,7 +875,7 @@ ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patc
                 verified.emplace(key);
             }
             catch (const std::exception& ex) {
-                WriteLog("Resource patch: repairing damaged local content {}, {}", entry.Path, ex.what());
+                logging::write("Resource patch: repairing damaged local content {}, {}", entry.Path, ex.what());
                 available.erase(found);
                 found = available.end();
             }
@@ -913,18 +913,18 @@ void ResourcePatchWriter::Begin()
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_file && !_finished && !_failed, "Resource patch writer already started");
-    _directoryLock = SafeAlloc::MakeUnique<disk_directory_lock>(strex(_patchPath).extract_dir().str());
+    _directoryLock = safe_alloc::make_unique<fs::disk_directory_lock>(strex(_patchPath).extract_dir().str());
     FO_VERIFY_AND_THROW(*_directoryLock, "Resource directory is being updated", _patchPath);
     _failed = true;
     ResourcePackHeader base;
     FO_VERIFY_AND_THROW(ReadResourcePackHeader(_basePath, base) && base.PackHash == _info.BasePackHash, "Resource base changed during patch preparation", _basePath);
-    FO_VERIFY_AND_THROW(fs_file_size(_patchPath).value_or(0) == _originalSize, "Resource patch changed during preparation", _patchPath);
+    FO_VERIFY_AND_THROW(fs::file_size(_patchPath).value_or(0) == _originalSize, "Resource patch changed during preparation", _patchPath);
 
-    if (_reset && fs_exists(_patchPath)) {
-        FO_VERIFY_AND_THROW(fs_remove_file(_patchPath), "Can't remove an uncommitted or stale patch", _patchPath);
+    if (_reset && fs::exists(_patchPath)) {
+        FO_VERIFY_AND_THROW(fs::remove_file(_patchPath), "Can't remove an uncommitted or stale patch", _patchPath);
     }
 
-    _file = disk_write_file {_patchPath, disk_write_mode::Append};
+    _file = fs::disk_write_file {_patchPath, fs::disk_write_mode::append};
     FO_VERIFY_AND_THROW(_file, "Can't open resource patch for appending", _patchPath);
 
     if (_reset) {
@@ -979,7 +979,7 @@ void ResourcePatchWriter::Finish()
     _failed = true;
     FO_VERIFY_AND_THROW(_file.write(_index) && _file.flush(), "Can't flush resource patch catalog", _patchPath);
     FO_VERIFY_AND_THROW(_file.write(footer) && _file.flush(), "Can't commit resource patch footer", _patchPath);
-    FO_VERIFY_AND_THROW(fs_sync_parent(_patchPath), "Can't persist resource patch directory entry", _patchPath);
+    FO_VERIFY_AND_THROW(fs::sync_parent(_patchPath), "Can't persist resource patch directory entry", _patchPath);
     _file.close();
     _finished = true;
     _failed = false;

@@ -111,19 +111,7 @@ public:
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
     void RegisterValueType(string_view name);
-    template<typename T>
-    void RegisterValueType(string_view name)
-    {
-        RegisterValueType(name);
-        auto& layout = _structLayouts.at(string(name));
-        layout.NativeSize = sizeof(T);
-        layout.CreateNative = []() -> unique_del_ptr<void> {
-            auto value = SafeAlloc::MakeUnique<T>();
-            return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
-        };
-        layout.CopyNative = [](ptr<void> dst, ptr<const void> src) { *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>(); };
-    }
-
+    void RegisterValueType(string_view name, size_t native_size, StructLayoutDesc::CreateNativeFunc create_native, StructLayoutDesc::CopyNativeFunc copy_native);
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     void RegisterRefType(string_view name);
     void RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout);
@@ -138,13 +126,12 @@ public:
     void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
-    void RegisterPropertyMigrationBeforeVersion(string_view entity_type, string_view target, string_view version_property, string_view before_version);
     void RegisterProtos(const FileSystem& resources);
     void RegisterAnimationInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void FinalizeRegistration();
 
-    mutable HashStorage Hashes {};
+    mutable hash_storage Hashes {};
 
 private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;

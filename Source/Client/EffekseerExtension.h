@@ -48,7 +48,7 @@ class EffekseerParticleRuntimeBackend;
 class EffekseerParticleRuntimeSystem final : public ParticleRuntimeSystem
 {
     friend class EffekseerParticleRuntimeBackend;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     struct Impl;

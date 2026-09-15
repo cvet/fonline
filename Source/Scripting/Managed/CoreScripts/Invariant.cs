@@ -2,13 +2,12 @@ namespace FOnline;
 
 // Always-on managed invariant checks use the engine exception layout: the message followed by one
 // "\n- <arg>" line per context value. A thrown managed exception is caught by
-// Native.InvokeEvent, logged via Native.Log, and converts the event to StopChain -- mirroring AngelScript's
-// "violated verify => logged, chain stopped" behavior, so no new native binding is needed.
+// Native.InvokeEvent, reported through the engine exception reporter, and converts the event to StopChain --
+// mirroring AngelScript's "violated verify => logged, chain stopped" behavior.
 //
-// The port tool (Tools/ManagedPort) rewrites `verify(...)` -> `Game.Verify(...)`; ported modules import
-// `FOnline`, so `Game` resolves here without an extra `using`. `Game` is a partial static class (its other
-// parts are generated per target), so this file only contributes the invariant helpers.
-public static partial class Game
+// The helpers live apart from the generated `Game` API surface, because an invariant check is not part of the
+// game world. Call sites spell the class out: `Invariant.Verify(cond, "Fixed message", ctx...)`
+public static class Invariant
 {
     // `[DoesNotReturnIf(false)]` on the condition is what makes an invariant check mean something to the
     // compiler, exactly as it does for System.Diagnostics.Debug.Assert. It states that the method does not
@@ -18,9 +17,9 @@ public static partial class Game
     //
     // This only reaches conditions the null-state analysis can follow -- `Verify(x != null, ...)` narrows,
     // `Verify(IsValid(x), ...)` cannot, since nothing ties the helper's result to x's null state. Annotate
-    // such a helper with `[MemberNotNullWhen]`/`[NotNullWhen]` rather than reaching for `!` at the call.
+    // such a helper with `[MemberNotNullWhen]`/`[NotNullWhen]` rather than reaching for `!` at the call
 
-    // verify(cond, message) -- the common form. Throws when the invariant is broken.
+    // verify(cond, message) -- the common form. Throws when the invariant is broken
     public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message)
     {
         if (!condition) {
@@ -35,7 +34,7 @@ public static partial class Game
     // every value type on EVERY call, not only on the failing one -- and Verify is an always-on production
     // check. Overload resolution prefers an applicable non-params form, so the common shapes stop allocating
     // without a single call site changing. Only a caller passing an `object?[]` of its own is affected: it
-    // now lands in the single-argument form and prints as one value.
+    // now lands in the single-argument form and prints as one value
     public static void Verify<T0>([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition,
                                   string message, T0 arg0)
     {
@@ -68,15 +67,29 @@ public static partial class Game
         }
     }
 
+    // A path whose very arrival breaks the invariant: a branch that has already proved the state is wrong. It throws
+    // in place and reads as a statement; where the compiler must also see the path end, use `throw Unreachable(...)`
+    [System.Diagnostics.CodeAnalysis.DoesNotReturn]
+    public static void Failed(string message)
+    {
+        throw new System.InvalidOperationException(message);
+    }
+
+    [System.Diagnostics.CodeAnalysis.DoesNotReturn]
+    public static void Failed(string message, params object?[] args)
+    {
+        throw new System.InvalidOperationException(BuildMessage(message, args));
+    }
+
     // The end of a path that cannot be reached -- the arm after a switch that handles every enum member,
-    // the tail of a search that always returns from inside its loop. Written as `throw Game.Unreachable(...)`.
+    // the tail of a search that always returns from inside its loop. Written as `throw Invariant.Unreachable(...)`.
     //
     // It returns the exception rather than throwing it, because only a `throw` ends a path as far as the
-    // compiler is concerned: C# reachability is structural, so neither `Verify(false, ...)` nor a
+    // compiler is concerned: C# reachability is structural, so neither `Failed(...)` nor any other
     // `[DoesNotReturn]` method satisfies CS0161 -- which is why such tails previously needed a *second*,
     // messageless `throw` after the Verify purely to compile. This keeps one statement that both states
     // the invariant with a real message and ends the path, and it formats context values in the same
-    // "\n- <value>" layout as Verify.
+    // "\n- <value>" layout as Verify
     public static System.Exception Unreachable(string message)
     {
         return new System.InvalidOperationException(message);
@@ -90,8 +103,8 @@ public static partial class Game
     // verify(x != null, message) narrowing form: returns the value typed non-null so the C# nullable-flow
     // analysis treats it as live afterward (honoring the repo's zero-warning rule on nullable references).
     // `[NotNull]` narrows the *argument* too, so a caller that ignores the return value still gets the
-    // narrowing -- otherwise only the returned copy would be known non-null.
-    public static T VerifyNotNull<T>([System.Diagnostics.CodeAnalysis.NotNull] T? value, string message)
+    // narrowing -- otherwise only the returned copy would be known non-null
+    public static T VerifyNotNull<T>([System.Diagnostics.CodeAnalysis.NotNull][PassesCover] T? value, string message)
         where T : class
     {
         if (value == null) {
@@ -99,13 +112,6 @@ public static partial class Game
         }
 
         return value;
-    }
-
-    public static void RunScriptGC()
-    {
-        System.GC.Collect();
-        System.GC.WaitForPendingFinalizers();
-        System.GC.Collect();
     }
 
     private static string BuildMessage(string message, object?[] args)

@@ -8,7 +8,7 @@ internal static class Native
     public static readonly System.Collections.Generic.List<string> RegisteredFunctions = new();
     public static readonly System.Collections.Generic.List<string> RegisteredRemoteCalls = new();
     public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result,
-                                                Delegate handler) => RegisteredFunctions.Add(name);
+                                                Delegate handler) => RegisteredFunctions.Add(name + ":" + attribute);
     public static void RegisterRemoteCallHandler(string name, int parameters,
                                                  Delegate handler) => RegisteredRemoteCalls.Add(name);
     public static int FallbackCalls;
@@ -18,6 +18,9 @@ internal static class Native
         return false;
     }
     public static void Log(string text)
+    {
+    }
+    public static void ReportException(Exception exception)
     {
     }
     public static void RunScriptContinuation(Action continuation) => continuation();
@@ -38,18 +41,6 @@ public static partial class Game
     public static void Log(string text) => Native.Log(text);
 }
 
-public enum GameProperty
-{
-    Value
-}
-public enum ModifierEvent
-{
-    Value
-}
-public enum ModifierScope
-{
-    Value
-}
 public enum CritterProperty
 {
     Strength = 7
@@ -103,7 +94,10 @@ public partial struct ucolor
 }
 public static class Settings
 {
-    public static int Geometry_MapDirCount { get; set; } = 6;
+    public static class Geometry
+    {
+        public static int MapDirCount { get; set; } = 6;
+    }
 }
 public partial struct hdir
 {

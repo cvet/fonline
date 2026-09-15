@@ -43,20 +43,20 @@ TEST_CASE("BasicCore")
 
     SECTION("ItoaDecimal")
     {
-        CHECK(string(ItoA(0, buf, 10)) == "0");
-        CHECK(string(ItoA(123456789, buf, 10)) == "123456789");
-        CHECK(string(ItoA(-987654321, buf, 10)) == "-987654321");
+        CHECK(string(itoa(0, buf, 10)) == "0");
+        CHECK(string(itoa(123456789, buf, 10)) == "123456789");
+        CHECK(string(itoa(-987654321, buf, 10)) == "-987654321");
     }
 
     SECTION("ItoaDecimalMinInt64")
     {
-        CHECK(string(ItoA(std::numeric_limits<int64_t>::min(), buf, 10)) == "-9223372036854775808");
+        CHECK(string(itoa(std::numeric_limits<int64_t>::min(), buf, 10)) == "-9223372036854775808");
     }
 
     SECTION("ItoaHex")
     {
-        CHECK(string(ItoA(0x7fff, buf, 16)) == "7fff");
-        CHECK(string(ItoA(0x1234abcd, buf, 16)) == "1234abcd");
+        CHECK(string(itoa(0x7fff, buf, 16)) == "7fff");
+        CHECK(string(itoa(0x1234abcd, buf, 16)) == "1234abcd");
     }
 }
 

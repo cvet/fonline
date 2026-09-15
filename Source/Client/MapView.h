@@ -73,7 +73,7 @@ enum class LightFlag : uint16_t
 };
 
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
-class SpritePattern : public RefCounted<SpritePattern>
+class SpritePattern : public refcounted<SpritePattern>
 {
 public:
     void Finish();
@@ -88,7 +88,7 @@ public:
 };
 
 ///@ ExportRefType Client RefCounted Export = Enabled, Distance, Radius, ExtraLength, TransitionDuration, OvalRoundness, EdgeNoise, Depth, ClearRadius, TintColor, OverlayColor, CenterColor, Traced, CheckShootBlocks, OriginHex, Disposed, Dispose
-class FogLayer : public RefCounted<FogLayer>
+class FogLayer : public refcounted<FogLayer>
 {
 public:
     void Dispose() noexcept;

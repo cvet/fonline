@@ -27,6 +27,7 @@ public static class ScriptFuncRegistration
         RegisterAttributedScriptFuncs(typeof(CritterInitAttribute), "CritterInit");
         RegisterAttributedScriptFuncs(typeof(MapInitAttribute), "MapInit");
         RegisterAttributedScriptFuncs(typeof(LocationInitAttribute), "LocationInit");
+        RegisterAttributedScriptFuncs(typeof(CallableFromNativeAttribute), "CallableFromNative");
     }
 
     public static void RegisterAttributedScriptFuncs(Type attributeType, string attributeName)

@@ -953,7 +953,8 @@ def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = N
 	if branch_name is not None:
 		command.extend(['--branch', branch_name])
 	command.append(str(target_path))
-	run(command)
+	# A reset connection mid-clone leaves a partial checkout that git refuses to clone into, so drop it before retrying
+	run_with_retry(command, label=f'Clone {repo_url}', on_retry=lambda: remove_path_if_exists(target_path))
 
 
 def resolve_visual_studio_2022_dev_cmd() -> Path | None:
@@ -2509,6 +2510,7 @@ MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_i
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
+MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info'
 
 
 def resolve_mono_runtime_subset(os_name: str) -> str:
@@ -2532,6 +2534,9 @@ def resolve_mono_marker_suffix(os_name: str) -> str:
 
 	if os_name == 'linux':
 		return MONO_LINUX_SOURCE_MARKER_SUFFIX
+
+	if os_name == 'windows':
+		return MONO_WINDOWS_SOURCE_MARKER_SUFFIX
 
 	return MONO_SUBSET_MARKER_SUFFIX
 
@@ -2644,6 +2649,59 @@ def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
 	)
 	path.write_text(text.replace(anchor, anchor + patch, 1), encoding='utf-8')
 	log('Patched', path, '- preserved the zlib-ng warning level')
+
+
+MONO_WINDOWS_DEBUG_INFO_PATCH_MARKER = '(FOnline Patch) C and C++ objects embed their debug info (/Z7)'
+
+
+def patch_runtime_windows_embedded_debug_info(runtime_root: Path) -> None:
+	# /Zi leaves debug info in a compiler PDB that the published static archives do not carry, so every consumer
+	# link reports LNK4099 per object and loses the runtime's symbols. MASM keeps /Zi, which embeds it already
+	marker = MONO_WINDOWS_DEBUG_INFO_PATCH_MARKER
+	config_flags = (
+		f'  # {marker}\n'
+		'  foreach(fo_flags_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_RELWITHDEBINFO)\n'
+		'    string(REPLACE "/Zi" "/Z7" ${fo_flags_var} "${${fo_flags_var}}")\n'
+		'  endforeach()\n'
+	)
+	patches = (
+		(runtime_root / 'eng' / 'native' / 'configurecompiler.cmake', (
+			(
+				'  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX,ASM_MASM>:/Zi>) # enable debugging information\n',
+				config_flags
+				+ '  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Z7>) # enable debugging information\n'
+				'  add_compile_options($<$<COMPILE_LANGUAGE:ASM_MASM>:/Zi>)\n',
+			),
+		)),
+		(runtime_root / 'src' / 'mono' / 'CMakeLists.txt', (
+			('  if(CMAKE_BUILD_TYPE STREQUAL "Release")\n', config_flags + '  if(CMAKE_BUILD_TYPE STREQUAL "Release")\n'),
+			(
+				'    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Zi>) # enable debugging information\n',
+				'    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Z7>) # enable debugging information\n',
+			),
+		)),
+	)
+	patched_texts = []
+
+	# Every anchor is proven before any file is written, so a moved upstream source leaves both files untouched
+	for path, replacements in patches:
+		text = path.read_text(encoding='utf-8')
+
+		if marker in text:
+			log('Already patched', path)
+			continue
+
+		for needle, replacement in replacements:
+			if text.count(needle) != 1:
+				raise SystemExit(f'Cannot patch the Windows runtime debug information format, unique anchor not found in {path}: {needle.strip()}')
+
+			text = text.replace(needle, replacement, 1)
+
+		patched_texts.append((path, text))
+
+	for path, text in patched_texts:
+		path.write_text(text, encoding='utf-8')
+		log('Patched', path, '- C and C++ objects embed their debug info')
 
 
 def patch_runtime_browser_asm_compiler(runtime_root: Path) -> None:
@@ -3058,6 +3116,9 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		if os_name == 'android':
 			patch_runtime_android_sources(runtime_root)
 			patch_runtime_android_x86_atomics(runtime_root)
+
+		if os_name == 'windows':
+			patch_runtime_windows_embedded_debug_info(runtime_root)
 
 		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root, target_os=os_name)
 

@@ -66,25 +66,25 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
     return true;
 }
 
-auto TextPackKey::FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
+auto TextPackKey::FromParts(hash_resolver& hashes, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
     FO_STACK_TRACE_ENTRY();
 
-    hstring hcollection = hash_resolver.ToHashedString(collection);
-    hstring hkey1 = hash_resolver.ToHashedString(key1);
-    hstring hkey2 = hash_resolver.ToHashedString(key2);
-    hstring hkey3 = hash_resolver.ToHashedString(key3);
+    hstring hcollection = hashes.to_hashed_string(collection);
+    hstring hkey1 = hashes.to_hashed_string(key1);
+    hstring hkey2 = hashes.to_hashed_string(key2);
+    hstring hkey3 = hashes.to_hashed_string(key3);
     return TextPackKey {TextPackName {hcollection}, hkey1, hkey2, hkey3};
 }
 
-auto TextPackKey::FromPack(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
+auto TextPackKey::FromPack(hash_resolver& hashes, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
     FO_STACK_TRACE_ENTRY();
 
-    return FromParts(hash_resolver, collection, key1, key2, key3);
+    return FromParts(hashes, collection, key1, key2, key3);
 }
 
-auto TextPackKey::Parse(HashResolver& hash_resolver, string_view str, TextPackKey& result) -> bool
+auto TextPackKey::Parse(hash_resolver& hashes, string_view str, TextPackKey& result) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -98,12 +98,12 @@ auto TextPackKey::Parse(HashResolver& hash_resolver, string_view str, TextPackKe
         }
     }
 
-    result = FromParts(hash_resolver, tokens[0], tokens[1], tokens[2], tokens[3]);
+    result = FromParts(hashes, tokens[0], tokens[1], tokens[2], tokens[3]);
     return true;
 }
 
-TextPack::TextPack(ptr<HashResolver> hash_resolver) :
-    _hashResolver {hash_resolver}
+TextPack::TextPack(ptr<hash_resolver> hashes) :
+    _hashResolver {hashes}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -193,7 +193,7 @@ auto TextPack::CheckIntersections(TextPack& other) -> bool
         const_span<pair<TextPackKey, string>> other_entries = other.FindEntries(key);
 
         if (!other_entries.empty()) {
-            WriteLog("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other_entries.size(), value, other_entries.front().second);
+            logging::write("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other_entries.size(), value, other_entries.front().second);
             result = true;
         }
     }
@@ -206,21 +206,21 @@ auto TextPack::GetBinaryData() -> vector<uint8_t>
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
-    auto writer = DataWriter {data};
+    auto writer = data_writer {data};
 
     EnsureSorted();
 
     const_span<pair<TextPackKey, string>> entries = SortedEntries();
 
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
 
     for (auto&& [key, str] : entries) {
         WriteKeyPart(writer, key.Collection.underlying_value());
         WriteKeyPart(writer, key.Key1);
         WriteKeyPart(writer, key.Key2);
         WriteKeyPart(writer, key.Key3);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
-        writer.WriteStringBytes(str);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(str.length()));
+        writer.write_string_bytes(str);
     }
 
     return data;
@@ -230,10 +230,10 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto reader = DataReader {data};
+    auto reader = data_reader {data};
     auto collection_key = TextPackName {MakeKeyPart(collection)};
 
-    auto count = reader.Read<uint32_t>();
+    auto count = reader.read<uint32_t>();
 
     _strData.reserve(_strData.size() + count);
 
@@ -249,13 +249,13 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
             key.Collection = collection_key;
         }
 
-        auto str_len = reader.Read<uint32_t>();
+        auto str_len = reader.read<uint32_t>();
 
         string str;
 
         if (str_len != 0) {
             str.resize(str_len);
-            reader.ReadStringBytes(str);
+            reader.read_string_bytes(str);
         }
         else {
             str.resize(0);
@@ -588,26 +588,26 @@ auto TextPack::MakeKeyPart(string_view value) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    return !value.empty() ? _hashResolver->ToHashedString(value) : hstring {};
+    return !value.empty() ? _hashResolver->to_hashed_string(value) : hstring {};
 }
 
-void TextPack::WriteKeyPart(DataWriter& writer, hstring part) const
+void TextPack::WriteKeyPart(data_writer& writer, hstring part) const
 {
     FO_STACK_TRACE_ENTRY();
 
     string_view str = part.as_str();
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(str.length()));
 
     if (!str.empty()) {
-        writer.WriteStringBytes(str);
+        writer.write_string_bytes(str);
     }
 }
 
-auto TextPack::ReadKeyPart(DataReader& reader) -> hstring
+auto TextPack::ReadKeyPart(data_reader& reader) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto str_len = reader.Read<uint32_t>();
+    auto str_len = reader.read<uint32_t>();
 
     if (str_len == 0) {
         return {};
@@ -615,7 +615,7 @@ auto TextPack::ReadKeyPart(DataReader& reader) -> hstring
 
     string str;
     str.resize(str_len);
-    reader.ReadStringBytes(str);
+    reader.read_string_bytes(str);
     return MakeKeyPart(str);
 }
 

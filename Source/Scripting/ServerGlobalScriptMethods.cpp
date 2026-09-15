@@ -1452,7 +1452,7 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
     ignore_unused(server);
 
     auto prefix = command.substr(0, command.find(' '));
-    return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
+    return SystemCall(command, [&prefix](string_view line) { logging::write("{} : {}\n", prefix, line); });
 }
 
 ///@ ExportMethod
@@ -1603,7 +1603,7 @@ FO_SCRIPT_API int64_t Server_Game_GetProcessMemoryUsage(ptr<ServerEngine> server
 {
     ignore_unused(server);
 
-    return static_cast<int64_t>(Platform::GetProcessMemoryUsage());
+    return static_cast<int64_t>(platform::get_process_memory_usage());
 }
 
 ///@ ExportMethod
@@ -1611,7 +1611,7 @@ FO_SCRIPT_API int64_t Server_Game_GetAllocatorMemoryUsage(ptr<ServerEngine> serv
 {
     ignore_unused(server);
 
-    return static_cast<int64_t>(AllocatorGetInUseBytes());
+    return static_cast<int64_t>(memory::get_in_use_bytes());
 }
 
 ///@ ExportMethod

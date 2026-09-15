@@ -64,8 +64,8 @@ auto GetClientWritableResourceDir(const ClientSettings& settings) -> string
         return string(settings.ClientResources);
     }
 
-    string relative = fs_is_absolute_path(settings.ClientResources) ? "Resources" : string(settings.ClientResources);
-    return fs_make_writable_path(settings.UserWritablePath, relative);
+    string relative = fs::is_absolute_path(settings.ClientResources) ? "Resources" : string(settings.ClientResources);
+    return fs::make_writable_path(settings.UserWritablePath, relative);
 }
 
 auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_name) -> string
@@ -89,7 +89,7 @@ void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, 
         }
 
         string patch_path = strex(GetClientWritableResourceDir(settings)).combine_path(strex("{}.patch.fores", pack_name)).str();
-        resources.AddCustomSource(SafeAlloc::MakeUnique<ResourcePackSource>(base_path, patch_path));
+        resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, patch_path));
         return;
     }
 
@@ -226,7 +226,7 @@ auto File::GetStr() const -> string
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        MemCopy(result.data(), _fileBuf, result.size());
+        memory::copy(result.data(), _fileBuf, result.size());
     }
 
     return result;
@@ -243,7 +243,7 @@ auto File::GetData() const -> vector<uint8_t>
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        MemCopy(result.data(), _fileBuf, result.size());
+        memory::copy(result.data(), _fileBuf, result.size());
     }
 
     return result;
@@ -285,7 +285,7 @@ auto FileReader::GetStr() const -> string
 
     if (!result.empty()) {
         auto source = make_ptr(_buf.data());
-        MemCopy(result.data(), source, result.size());
+        memory::copy(result.data(), source, result.size());
     }
 
     return result;
@@ -300,7 +300,7 @@ auto FileReader::GetData() const -> vector<uint8_t>
 
     if (!result.empty()) {
         auto source = make_ptr(_buf.data());
-        MemCopy(result.data(), source, result.size());
+        memory::copy(result.data(), source, result.size());
     }
 
     return result;
@@ -413,7 +413,7 @@ void FileReader::CopyData(span<uint8_t> buf)
     }
 
     auto source = make_ptr(_buf.data()).offset(_curPos);
-    MemCopy(buf.data(), source, buf.size());
+    memory::copy(buf.data(), source, buf.size());
     _curPos += buf.size();
 }
 
@@ -458,7 +458,7 @@ auto FileReader::GetStrNT() -> string
 
     if (!str.empty()) {
         auto source = make_ptr(_buf.data()).offset(_curPos);
-        MemCopy(str.data(), source, str.size());
+        memory::copy(str.data(), source, str.size());
     }
 
     _curPos += len + 1;

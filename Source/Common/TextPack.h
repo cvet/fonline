@@ -75,9 +75,9 @@ struct TextPackKey
     [[nodiscard]] constexpr auto operator==(const TextPackKey& other) const noexcept -> bool = default;
     [[nodiscard]] constexpr auto operator<(const TextPackKey& other) const noexcept -> bool { return std::tie(Collection, Key1, Key2, Key3) < std::tie(other.Collection, other.Key1, other.Key2, other.Key3); }
 
-    static auto FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
-    static auto FromPack(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
-    static auto Parse(HashResolver& hash_resolver, string_view str, TextPackKey& result) -> bool;
+    static auto FromParts(hash_resolver& hashes, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    static auto FromPack(hash_resolver& hashes, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    static auto Parse(hash_resolver& hashes, string_view str, TextPackKey& result) -> bool;
 
     TextPackName Collection {};
     hstring Key1 {};
@@ -95,7 +95,7 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
     auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
     {
         const FO_NAMESPACE hstring::hash_t hashes[] = {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
-        return FO_NAMESPACE HashStorage::DefaultHash(FO_NAMESPACE make_span(hashes));
+        return FO_NAMESPACE hash_storage::default_hash(FO_NAMESPACE make_span(hashes));
     }
 };
 template<>
@@ -114,7 +114,7 @@ FO_BEGIN_NAMESPACE
 class TextPack final
 {
 public:
-    explicit TextPack(ptr<HashResolver> hash_resolver);
+    explicit TextPack(ptr<hash_resolver> hashes);
     TextPack(const TextPack&) = default;
     TextPack(TextPack&&) noexcept = default;
     auto operator=(const TextPack&) -> TextPack& = default;
@@ -150,14 +150,14 @@ public:
 
 private:
     auto MakeKeyPart(string_view value) -> hstring;
-    void WriteKeyPart(DataWriter& writer, hstring part) const;
-    auto ReadKeyPart(DataReader& reader) -> hstring;
+    void WriteKeyPart(data_writer& writer, hstring part) const;
+    auto ReadKeyPart(data_reader& reader) -> hstring;
     void EnsureSorted();
     auto SortedEntries() const -> const_span<pair<TextPackKey, string>>;
     auto FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey, string>>;
     auto EqualRange(TextPackKey key) const -> pair<size_t, size_t>;
 
-    ptr<HashResolver> _hashResolver;
+    ptr<hash_resolver> _hashResolver;
 
     // Kept in key order so serialization and iteration match what the node tree produced, but as one block:
     // a lookup is a binary search over contiguous memory rather than two walks down a tree of separate nodes

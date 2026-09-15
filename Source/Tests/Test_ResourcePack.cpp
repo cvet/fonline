@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 static auto MakeTempPackPath(string_view name) -> string
 {
     auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}.fores", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    return fs::path_to_string(base);
 }
 
 static auto MakeBytes(string_view text) -> const_span<uint8_t>
@@ -122,7 +122,7 @@ TEST_CASE("ResourcePack")
         }
 
         // A mounted source holds the file open, so removal only succeeds once it is gone
-        CHECK(fs_remove_file(pack_path));
+        CHECK(fs::remove_file(pack_path));
     }
 
     SECTION("StoresWhatDeflateCannotShrink")
@@ -144,16 +144,16 @@ TEST_CASE("ResourcePack")
         }
 
         // The pack that could be shrunk is far smaller on disk; the one that could not is barely over its input
-        auto compressible_size = fs_file_size(compressible_path);
-        auto incompressible_size = fs_file_size(incompressible_path);
+        auto compressible_size = fs::file_size(compressible_path);
+        auto incompressible_size = fs::file_size(incompressible_path);
         REQUIRE(compressible_size.has_value());
         REQUIRE(incompressible_size.has_value());
         CHECK(*compressible_size < compressible.size() / 2);
         CHECK(*incompressible_size >= incompressible.size());
         CHECK(*incompressible_size < incompressible.size() + 512);
 
-        CHECK(fs_remove_file(compressible_path));
-        CHECK(fs_remove_file(incompressible_path));
+        CHECK(fs::remove_file(compressible_path));
+        CHECK(fs::remove_file(incompressible_path));
     }
 
     SECTION("HeaderReadsWithoutTheIndex")
@@ -177,7 +177,7 @@ TEST_CASE("ResourcePack")
             CHECK(pack.GetPackHash() == header.PackHash);
         }
 
-        CHECK(fs_remove_file(pack_path));
+        CHECK(fs::remove_file(pack_path));
     }
     SECTION("RejectsMalformedPacks")
     {
@@ -189,38 +189,38 @@ TEST_CASE("ResourcePack")
             writer.Finish();
         }
 
-        auto original = fs_read_file(pack_path);
+        auto original = fs::read_file(pack_path);
         REQUIRE(original.has_value());
         REQUIRE(original->size() > RESOURCE_PACK_HEADER_SIZE);
 
         string not_a_pack = MakeTempPackPath("not_a_pack");
-        REQUIRE(fs_write_file(not_a_pack, string(RESOURCE_PACK_HEADER_SIZE + 16, '\0')));
+        REQUIRE(fs::write_file(not_a_pack, string(RESOURCE_PACK_HEADER_SIZE + 16, '\0')));
         CHECK_THROWS_AS(ResourcePackSource {not_a_pack}, VerificationException);
 
         ResourcePackHeader ignored_header;
         CHECK_FALSE(ReadResourcePackHeader(not_a_pack, ignored_header));
 
         string too_short = MakeTempPackPath("too_short");
-        REQUIRE(fs_write_file(too_short, original->substr(0, RESOURCE_PACK_HEADER_SIZE - 1)));
+        REQUIRE(fs::write_file(too_short, original->substr(0, RESOURCE_PACK_HEADER_SIZE - 1)));
         CHECK_THROWS_AS(ResourcePackSource {too_short}, VerificationException);
 
         // One flipped header byte breaks the header checksum, which is what stops a bad offset being believed
         string bad_header = MakeTempPackPath("bad_header");
         string bad_header_data = *original;
         bad_header_data[20] = static_cast<char>(bad_header_data[20] ^ 0xFF);
-        REQUIRE(fs_write_file(bad_header, bad_header_data));
+        REQUIRE(fs::write_file(bad_header, bad_header_data));
         CHECK_THROWS_AS(ResourcePackSource {bad_header}, VerificationException);
 
         // A truncated body leaves the header intact, so the index read is what has to fail
         string truncated = MakeTempPackPath("truncated");
-        REQUIRE(fs_write_file(truncated, original->substr(0, original->size() - 4)));
+        REQUIRE(fs::write_file(truncated, original->substr(0, original->size() - 4)));
         CHECK_THROWS_AS(ResourcePackSource {truncated}, VerificationException);
 
-        CHECK(fs_remove_file(pack_path));
-        CHECK(fs_remove_file(not_a_pack));
-        CHECK(fs_remove_file(too_short));
-        CHECK(fs_remove_file(bad_header));
-        CHECK(fs_remove_file(truncated));
+        CHECK(fs::remove_file(pack_path));
+        CHECK(fs::remove_file(not_a_pack));
+        CHECK(fs::remove_file(too_short));
+        CHECK(fs::remove_file(bad_header));
+        CHECK(fs::remove_file(truncated));
     }
 
     SECTION("RoundtripsAPackWithNoEntries")
@@ -251,7 +251,7 @@ TEST_CASE("ResourcePack")
         CHECK(header.DataSize == 0);
         CHECK(VerifyResourcePackFile(pack_path, header.PackHash));
 
-        CHECK(fs_remove_file(pack_path));
+        CHECK(fs::remove_file(pack_path));
     }
 
     SECTION("RoundtripsAUnicodePath")
@@ -281,7 +281,7 @@ TEST_CASE("ResourcePack")
             CHECK((*snapshot)[0].Path == unicode_path);
         }
 
-        CHECK(fs_remove_file(pack_path));
+        CHECK(fs::remove_file(pack_path));
     }
 
     SECTION("RejectsExtentsThatCannotFitTheFile")
@@ -294,7 +294,7 @@ TEST_CASE("ResourcePack")
             writer.Finish();
         }
 
-        auto original = fs_read_file(pack_path);
+        auto original = fs::read_file(pack_path);
         REQUIRE(original.has_value());
 
         // IndexOffset and DataOffset are the two header fields that address the file, and an offset this far
@@ -312,19 +312,19 @@ TEST_CASE("ResourcePack")
                 }
 
                 // Recomputed so the extent check is what refuses the file rather than the header checksum
-                uint64_t checksum = fs_hash_data(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(patched.data()), RESOURCE_PACK_HEADER_SIZE - 8});
+                uint64_t checksum = fs::hash_data(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(patched.data()), RESOURCE_PACK_HEADER_SIZE - 8});
 
                 for (size_t i = 0; i < 8; ++i) {
                     patched[RESOURCE_PACK_HEADER_SIZE - 8 + i] = static_cast<char>((checksum >> (i * 8)) & 0xFF);
                 }
 
-                REQUIRE(fs_write_file(patched_path, patched));
+                REQUIRE(fs::write_file(patched_path, patched));
                 CHECK_THROWS_AS(ResourcePackSource {patched_path}, VerificationException);
-                CHECK(fs_remove_file(patched_path));
+                CHECK(fs::remove_file(patched_path));
             }
         }
 
-        CHECK(fs_remove_file(pack_path));
+        CHECK(fs::remove_file(pack_path));
     }
 
     SECTION("MatchesTheGoldenLayout")
@@ -368,12 +368,12 @@ TEST_CASE("ResourcePack")
             writer.Finish();
         }
 
-        auto written = fs_read_file(pack_path);
+        auto written = fs::read_file(pack_path);
         REQUIRE(written.has_value());
         CHECK(written->size() == GOLDEN_PACK.size());
         CHECK(std::memcmp(written->data(), GOLDEN_PACK.data(), GOLDEN_PACK.size()) == 0);
 
-        CHECK(fs_remove_file(pack_path));
+        CHECK(fs::remove_file(pack_path));
     }
 
     SECTION("VerifiesADownloadedPack")
@@ -396,18 +396,18 @@ TEST_CASE("ResourcePack")
 
         // A flipped body byte leaves the header intact, so only the body hash can tell the file is not the one
         // that was published
-        auto original = fs_read_file(pack_path);
+        auto original = fs::read_file(pack_path);
         REQUIRE(original.has_value());
         string damaged = *original;
         damaged[damaged.size() - 1] = static_cast<char>(damaged[damaged.size() - 1] ^ 0xFF);
-        REQUIRE(fs_write_file(pack_path, damaged));
+        REQUIRE(fs::write_file(pack_path, damaged));
 
         ResourcePackHeader damaged_header;
         REQUIRE(ReadResourcePackHeader(pack_path, damaged_header));
         CHECK(damaged_header.PackHash == header.PackHash);
         CHECK_FALSE(VerifyResourcePackFile(pack_path, header.PackHash));
 
-        CHECK(fs_remove_file(pack_path));
+        CHECK(fs::remove_file(pack_path));
     }
 
     SECTION("RefusesADuplicatePath")
@@ -439,7 +439,7 @@ static auto ApplyPatchTestUpdate(string_view base, string_view patch, string_vie
 
     ResourcePackSource target {target_path};
     ResourcePatchWriter writer {base, patch, target.GetEntryRefs(), target.GetContentHash(), {0, 100}};
-    disk_read_file target_file {target_path};
+    fs::disk_read_file target_file {target_path};
     uint64_t downloaded = 0;
     writer.Begin();
 
@@ -451,7 +451,7 @@ static auto ApplyPatchTestUpdate(string_view base, string_view patch, string_vie
     }
 
     writer.Finish();
-    CHECK(fs_file_size(patch).value() == writer.GetFinalSize());
+    CHECK(fs::file_size(patch).value() == writer.GetFinalSize());
     return downloaded;
 }
 
@@ -462,17 +462,17 @@ TEST_CASE("ResourcePackPatch")
     string target = MakeTempPackPath("patch_target");
     string recovery = MakeTempPackPath("patch_recovery");
     auto cleanup = scope_exit([&]() noexcept {
-        (void)fs_remove_file(base);
-        (void)fs_remove_file(patch);
-        (void)fs_remove_file(target);
-        (void)fs_remove_file(recovery);
+        (void)fs::remove_file(base);
+        (void)fs::remove_file(patch);
+        (void)fs::remove_file(target);
+        (void)fs::remove_file(recovery);
     });
     WritePatchTestPack(base, {{"A.txt", "same"}, {"B.txt", "old"}, {"C.txt", "deleted"}});
-    auto original_base = fs_read_file(base);
+    auto original_base = fs::read_file(base);
     REQUIRE(original_base);
     WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "changed"}, {"D.txt", "added"}});
     CHECK(ApplyPatchTestUpdate(base, patch, target) == 12);
-    auto first_patch = fs_read_file(patch);
+    auto first_patch = fs::read_file(patch);
     REQUIRE(first_patch);
 
     SECTION("CompleteCatalogChoosesBothFilesAndDeletesBaseEntries")
@@ -494,7 +494,7 @@ TEST_CASE("ResourcePackPatch")
     {
         WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "changed"}, {"E.txt", "added"}});
         CHECK(ApplyPatchTestUpdate(base, patch, target) == 0);
-        auto updated = fs_read_file(patch);
+        auto updated = fs::read_file(patch);
         REQUIRE(updated);
         CHECK(updated->starts_with(*first_patch));
         ResourcePackSource view {base, patch};
@@ -521,10 +521,10 @@ TEST_CASE("ResourcePackPatch")
         REQUIRE(ReadResourcePackHeader(base, header));
         auto info = ReadResourcePatchInfo(patch, header);
         REQUIRE(info);
-        auto bytes = fs_read_file(patch);
+        auto bytes = fs::read_file(patch);
         REQUIRE(bytes);
         (*bytes)[numeric_cast<size_t>(info->IndexOffset)] ^= 1;
-        REQUIRE(fs_write_file(patch, *bytes));
+        REQUIRE(fs::write_file(patch, *bytes));
         ResourcePackSource view {base, patch};
         CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
         REQUIRE(view.GetPatchInfo());
@@ -535,11 +535,11 @@ TEST_CASE("ResourcePackPatch")
     {
         WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "newer"}});
         CHECK(ApplyPatchTestUpdate(base, patch, target) == 5);
-        auto complete = fs_read_file(patch);
+        auto complete = fs::read_file(patch);
         REQUIRE(complete);
 
         for (size_t cut = first_patch->size(); cut < complete->size(); ++cut) {
-            REQUIRE(fs_write_file(recovery, string_view {complete->data(), cut}));
+            REQUIRE(fs::write_file(recovery, string_view {complete->data(), cut}));
             ResourcePackSource view {base, recovery};
             CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
             CHECK(view.IsFileExists("D.txt"));
@@ -551,7 +551,7 @@ TEST_CASE("ResourcePackPatch")
     SECTION("RecoveryTrimsUncommittedTailBeforeNextAppend")
     {
         {
-            disk_write_file append {patch, disk_write_mode::Append};
+            fs::disk_write_file append {patch, fs::disk_write_mode::append};
             REQUIRE(append);
             vector<uint8_t> garbage(128 * 1024, uint8_t {'x'});
             REQUIRE(append.write(garbage));
@@ -559,7 +559,7 @@ TEST_CASE("ResourcePackPatch")
 
         WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "next"}});
         CHECK(ApplyPatchTestUpdate(base, patch, target) == 4);
-        auto updated = fs_read_file(patch);
+        auto updated = fs::read_file(patch);
         REQUIRE(updated);
         CHECK(updated->starts_with(*first_patch));
         CHECK(updated->size() < first_patch->size() + 1024);
@@ -586,15 +586,15 @@ TEST_CASE("ResourcePackPatch")
 #if !FO_WEB
         CHECK_THROWS(second.Begin());
 #endif
-        CHECK(fs_read_file(patch) == first_patch);
+        CHECK(fs::read_file(patch) == first_patch);
     }
 
     SECTION("RecompressedTargetReusesDecodedBaseContent")
     {
         string text(4096, 'A');
         WritePatchTestPack(base, {{"Long.txt", text}});
-        original_base = fs_read_file(base);
-        REQUIRE(fs_remove_file(patch));
+        original_base = fs::read_file(base);
+        REQUIRE(fs::remove_file(patch));
         WritePatchTestPack(target, {{"Long.txt", text}, {"Renamed.txt", text}}, {6, 5});
         CHECK(ApplyPatchTestUpdate(base, patch, target) == 0);
         ResourcePackSource view {base, patch};
@@ -617,7 +617,7 @@ TEST_CASE("ResourcePackPatch")
     {
         string damaged = *first_patch;
         damaged[RESOURCE_PATCH_HEADER_SIZE] ^= 1;
-        REQUIRE(fs_write_file(patch, damaged));
+        REQUIRE(fs::write_file(patch, damaged));
         WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "changed"}, {"Renamed.txt", "added"}});
         CHECK(ApplyPatchTestUpdate(base, patch, target) == 7);
         ResourcePackSource view {base, patch};
@@ -628,13 +628,13 @@ TEST_CASE("ResourcePackPatch")
     SECTION("StalePatchResetPreservesPinnedOldInodes")
     {
         ResourcePackSource old_view {base, patch};
-        disk_read_file pinned_base {base};
-        disk_read_file pinned_patch {patch};
+        fs::disk_read_file pinned_base {base};
+        fs::disk_read_file pinned_patch {patch};
         ResourcePackHeader before;
         REQUIRE(ReadResourcePackHeader(pinned_base, before));
-        REQUIRE(fs_rename(base, recovery));
+        REQUIRE(fs::rename(base, recovery));
         WritePatchTestPack(base, {{"A.txt", "fresh base"}});
-        original_base = fs_read_file(base);
+        original_base = fs::read_file(base);
         WritePatchTestPack(target, {{"A.txt", "fresh base"}, {"New.txt", "fresh patch"}});
         CHECK(ApplyPatchTestUpdate(base, patch, target) == 11);
         CHECK(ReadWholeFile(old_view, "A.txt") == vector<uint8_t> {'s', 'a', 'm', 'e'});
@@ -654,7 +654,7 @@ TEST_CASE("ResourcePackPatch")
     SECTION("ReplacementBaseExcludesLeftoverPatch")
     {
         WritePatchTestPack(base, {{"A.txt", "full reset"}});
-        original_base = fs_read_file(base);
+        original_base = fs::read_file(base);
         ResourcePackSource view {base, patch};
         CHECK_FALSE(view.GetPatchInfo());
         CHECK_FALSE(view.IsFileExists("B.txt"));
@@ -666,7 +666,7 @@ TEST_CASE("ResourcePackPatch")
         ResourcePackHeader before;
         REQUIRE(ReadResourcePackHeader(base, before));
         WritePatchTestPack(base, {{"C.txt", "deleted"}, {"B.txt", "old"}, {"A.txt", "same"}});
-        original_base = fs_read_file(base);
+        original_base = fs::read_file(base);
         ResourcePackSource view {base, patch};
         CHECK(view.GetContentHash() == before.ContentHash);
         CHECK(view.GetPackHash() != before.PackHash);
@@ -674,7 +674,7 @@ TEST_CASE("ResourcePackPatch")
         CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'o', 'l', 'd'});
     }
 
-    CHECK(fs_read_file(base) == original_base);
+    CHECK(fs::read_file(base) == original_base);
 }
 
 FO_END_NAMESPACE

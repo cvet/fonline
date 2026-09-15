@@ -603,20 +603,33 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<Client
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<string> Client_Game_GetSoundNames(ptr<ClientEngine> client)
+{
+    auto sound_names = client->AudioMngr.GetSoundNames();
+    return vector<string> {sound_names.begin(), sound_names.end()};
+}
+
+///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
 {
-    return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
+    return client->AudioMngr.PlaySound(soundName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)
+{
+    return client->AudioMngr.PlaySound(soundName, attenuation, pan);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_PlayMusic(ptr<ClientEngine> client, string_view musicName, timespan repeatTime)
 {
     if (musicName.empty()) {
-        client->SndMngr.StopMusic();
+        client->AudioMngr.StopMusic();
         return true;
     }
 
-    return client->SndMngr.PlayMusic(musicName, repeatTime);
+    return client->AudioMngr.PlayMusic(musicName, repeatTime);
 }
 
 ///@ ExportMethod
@@ -645,11 +658,11 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
 
     clip.SetLooped(looped);
 
-    auto video = SafeAlloc::MakeRefCounted<VideoPlayback>();
+    auto video = safe_alloc::make_refcounted<VideoPlayback>();
 
     video->PlaybackResources.emplace(std::move(clip), std::move(tex));
 
-    video->AddRef();
+    video->addref();
     return video;
 }
 
@@ -928,7 +941,7 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, K
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::IfaceSprites);
 }
 
 ///@ ExportMethod
@@ -940,7 +953,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, hstring 
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::MapSprites);
 }
 
 ///@ ExportMethod
@@ -952,7 +965,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, hstri
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::OneImage);
 }
 
 ///@ ExportMethod
@@ -1322,7 +1335,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
         }
     });
 
-    MemFill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
+    memory::fill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
 
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
         client->DrawCritterModelLayers[i] = layers[i];
@@ -1581,18 +1594,18 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
             for (int32_t y = 0; y < size.height / 2; y++) {
                 auto top = numeric_cast<size_t>(y) * width;
                 auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                MemCopy(row_buf_data, pixels_data.get() + top, row_bytes);
-                MemCopy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
-                MemCopy(pixels_data.get() + bottom, row_buf_data, row_bytes);
+                memory::copy(row_buf_data, pixels_data.get() + top, row_bytes);
+                memory::copy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
+                memory::copy(pixels_data.get() + bottom, row_buf_data, row_bytes);
             }
         }
     }
 
-    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw ScriptException("Can't create directory for screenshot", filePath);
         }
     }
@@ -1603,16 +1616,16 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
 {
-    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw ScriptException("Can't open file for writing", filePath);
         }
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream file {std::filesystem::path {fs::make_path(path)}, std::ios::binary | std::ios::trunc};
 
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);

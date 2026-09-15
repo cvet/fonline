@@ -88,10 +88,27 @@ extern "C" void mono_threads_assert_gc_unsafe_region();
 using ScriptSystemException = std::runtime_error;
 template<class F> void safe_call(F&& action) noexcept { try { action(); } catch (...) { } }
 template<class T> using vector = std::vector<T>;
+template<class T> class ptr;
+template<class T> class nptr
+{
+public:
+    nptr() = default;
+    nptr(std::nullptr_t) { }
+    nptr(T* value) : value_(value) { }
+    nptr(const ptr<T>& value) : value_(value.get()) { }
+    T* get() const { return value_; }
+    T* operator->() const { return value_; }
+    explicit operator bool() const { return value_ != nullptr; }
+    bool operator==(const T* other) const { return value_ == other; }
+    bool operator==(const ptr<T>& other) const { return value_ == other.get(); }
+private:
+    T* value_ {};
+};
 template<class T> class ptr
 {
 public:
     ptr(T* value) : value_(value) { }
+    ptr(const nptr<T>& value) : value_(value.get()) { }
     T* get() const { return value_; }
     T* operator->() const { return value_; }
 private:
@@ -167,6 +184,15 @@ static MonoClass* FindFOnlineClass(ptr<ManagedScriptBackend> backend, const char
 static void ThrowIfManagedException(MonoObject* exception, const char* message)
 {
     if (exception != nullptr) throw ScriptSystemException(message);
+}
+
+// Stack-trace bookkeeping is covered separately; this probe exercises callback argument and result roots
+static auto InvokeManagedScript(MonoMethod* method, MonoObject* object, void** args, const char* message) -> MonoObject*
+{
+    MonoObject* exception = nullptr;
+    MonoObject* result = mono_runtime_invoke(method, object, args, &exception);
+    ThrowIfManagedException(exception, message);
+    return result;
 }
 static MonoObject* BoxNativeCallValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, void*)
 {
@@ -421,7 +447,7 @@ def build_native_probe(output: Path, runtime: Path, compiler: str, backend_sourc
     attachment_start = backend_source.index("enum class ManagedThreadAttachmentMode\n{")
     attachment_class = backend_source.index("class ManagedThreadAttachment final\n{", attachment_start)
     attachment_end = backend_source.index("\n};", attachment_class) + len("\n};")
-    release_handle = extract_function(backend_source, "static void ReleaseManagedGcHandle(MonoDomain* domain, uint32_t& handle) noexcept")
+    release_handle = extract_function(backend_source, "static void ReleaseManagedGcHandle(nptr<MonoDomain> domain, uint32_t& handle) noexcept")
     root_start = backend_source.index("struct ManagedObjectRoot\n{")
     root_end = backend_source.index("\n};", root_start) + len("\n};")
     source = (NATIVE_PREFIX + backend_source[attachment_start:attachment_end] + "\n" + release_handle +

@@ -43,10 +43,10 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 53
+///@ MigrationRule Version 0 0 54
 
-extern auto IsPackaged() -> bool;
-extern auto GetPackagedRuntimeName() -> string;
+auto IsPackaged() -> bool;
+auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
@@ -233,7 +233,7 @@ public:
                 cb._unsubscribeCallback();
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -266,7 +266,7 @@ public:
                 throw GenericException("Some of subscriber still subscribed", _subscriberCallbacks.size());
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -550,10 +550,12 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
-// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them, codegen
+// Synchronization-cover markers for script exports. All expand to nothing: the compiler never sees them, codegen
 // does
 #define FO_REQUIRES_COVER
 #define FO_PROVIDES_COVER
+#define FO_RETURNS_PARENT
+#define FO_RETURNS_ANCESTOR
 
 struct ArgDesc
 {
@@ -593,16 +595,37 @@ struct MethodDesc
     // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
     // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
     bool ReturnProvidesCover {};
+
+    // An upward accessor: it returns the receiver's sync-hierarchy parent (FO_RETURNS_PARENT) or some ancestor
+    // (FO_RETURNS_ANCESTOR). The receiver's own cover does not reach it; cover declared with that reach does
+    bool ReturnIsParent {};
+    bool ReturnIsAncestor {};
 };
 
 struct StructLayoutDesc
 {
-    unique_del_ptr<void> (*CreateNative)() {};
-    void (*CopyNative)(ptr<void>, ptr<const void>) {};
+    using CreateNativeFunc = unique_del_ptr<void> (*)();
+    using CopyNativeFunc = void (*)(ptr<void>, ptr<const void>);
+
+    CreateNativeFunc CreateNative {};
+    CopyNativeFunc CopyNative {};
     size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };
+
+template<typename T>
+auto CreateNativeValue() -> unique_del_ptr<void>
+{
+    auto value = safe_alloc::make_unique<T>();
+    return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
+}
+
+template<typename T>
+void CopyNativeValue(ptr<void> dst, ptr<const void> src)
+{
+    *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>();
+}
 
 struct RefTypeDesc
 {
@@ -888,8 +911,14 @@ private:
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
-extern mutex InterthreadListenersLocker;
-extern map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadListener = copyable_function<InterthreadDataCallback(InterthreadDataCallback)>;
+
+// One table for the process, keyed by virtual port, so an embedded client finds the server running beside it.
+// Listeners are handed out by copy and called outside the table's lock
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool;
+auto RemoveInterthreadListener(uint16_t port) -> bool;
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
+auto HasInterthreadListener(uint16_t port) -> bool;
 
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t

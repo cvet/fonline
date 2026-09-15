@@ -75,12 +75,12 @@ static void MapperEntry([[maybe_unused]] void* data)
         if (!Data->Mapper) {
             try {
                 auto settings = make_ptr(&GetApp()->Settings);
-                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(settings, GetMapperResources(*settings), &GetApp()->MainWindow);
+                Data->Mapper = safe_alloc::make_refcounted<MapperEngine>(settings, GetMapperResources(*settings), &GetApp()->MainWindow);
                 auto mapper = GetMapper();
                 mapper->SetInputLocked(GetApp()->Settings.HeadlessWindow);
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
+                exceptions::report_and_exit(ex);
             }
         }
 
@@ -89,13 +89,13 @@ static void MapperEntry([[maybe_unused]] void* data)
             mapper->MapperMainLoop();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         GetApp()->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -146,10 +146,10 @@ int main(int argc, char** argv) // Handled by SDL
             Data->Mapper.reset();
         }
 
-        ExitApp(true);
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -168,7 +168,7 @@ static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
     }
     else {
         FileSystem resources;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(&settings));
+        resources.AddCustomSource(safe_alloc::make_unique<BakerDataSource>(&settings));
         return resources;
     }
 }

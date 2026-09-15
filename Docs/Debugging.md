@@ -2,7 +2,7 @@
 
 > Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
 
-Diagnosing a server that logged a handled invariant violation, deterministically terminated (`FO_STRONG_ASSERT` / `ReportExceptionAndExit`), or left a "stuck-destroying" / un-syncable entity? The error-tier model and the entity-lifecycle exception contracts are in [ExceptionSafety.md](ExceptionSafety.md).
+Diagnosing a server that logged a handled invariant violation, deterministically terminated (`FO_STRONG_ASSERT` / `exceptions::report_and_exit`), or left a "stuck-destroying" / un-syncable entity? The error-tier model and the entity-lifecycle exception contracts are in [ExceptionSafety.md](ExceptionSafety.md).
 
 ## Visual Studio Visualizers
 
@@ -29,6 +29,10 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `../Source/Scripting/AngelScript/AngelScriptHelpers.cpp`
 - `../Source/Scripting/AngelScript/AngelScriptContext.cpp`
+- `../Source/Scripting/Managed/ManagedScriptBackend.cpp`
+- `../Source/Scripting/Managed/CoreScripts/Native.cs`
+- `../Source/Scripting/Managed/CoreScripts/ScriptFunc.cs`
+- `../Source/Scripting/Managed/CoreScripts/ScriptExceptions.cs`
 - `../Source/Frontend/ApplicationInit.cpp`
 - `../Source/Tests/Test_StackTrace.cpp`
 - `../Source/Tests/Test_ExceptionHandling.cpp`
@@ -38,18 +42,49 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 
 ## Stack Trace Architecture
 
-The engine no longer maintains a thread-local manual call stack. The `FO_STACK_TRACE_ENTRY()` macro is now empty outside Tracy builds (under `FO_TRACY` it expands to `ZoneScoped` only), and stack traces are constructed on demand from two independent sources at the moment a `StackTraceData` is captured:
+The engine no longer maintains a thread-local manual call stack. The `FO_STACK_TRACE_ENTRY()` macro is now empty outside Tracy builds (under `FO_TRACY` it expands to `ZoneScoped` only), and stack traces are constructed on demand from two independent sources at the moment a `stack_trace::data` is captured:
 
-1. **Native frames.** [../Source/Essentials/StackTrace.cpp](../Source/Essentials/StackTrace.cpp) calls `backward::StackTrace::load_here(...)` to capture raw return addresses. Symbol resolution is deferred â€” `ResolveStackTrace`, `FormatStackTrace`, `SafeWriteStackTrace`, and `GetStackTraceEntry` resolve via `backward::TraceResolver` only when frames are actually needed. Resolved native frames are cached globally by instruction pointer in a capped process-local cache (`STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES`) so repeated exception formatting and script/native anchor matching reuse symbol data. The capture path is allocation-free aside from the storage on the `StackTraceData` itself.
-2. **Script frames.** Higher layers register a `ScriptStackTraceProvider` via `SetScriptStackTraceProvider(...)`. The provider is called synchronously during capture and pre-resolves frames eagerly because script execution state is ephemeral (the active context's call stack changes after we leave the capture site).
+1. **Native frames.** [../Source/Essentials/StackTrace.cpp](../Source/Essentials/StackTrace.cpp) calls `backward::StackTrace::load_here(...)` to capture raw return addresses. Symbol resolution is deferred â€” `stack_trace::resolve`, `stack_trace::format`, `logging::safe_write_stack_trace`, and `stack_trace::get_entry` resolve via `backward::TraceResolver` only when frames are actually needed. Resolved native frames are cached globally by instruction pointer in a capped process-local cache (`stack_trace::RESOLVE_CACHE_MAX_ENTRIES`) so repeated exception formatting and script/native anchor matching reuse symbol data. The capture path is allocation-free aside from the storage on the `stack_trace::data` itself.
+2. **Script frames.** Each scripting backend registers a `stack_trace::script_provider` under its own name via `stack_trace::set_script_provider(name, provider)`, so AngelScript and managed scripting can be enabled together. A provider is called synchronously during capture, receives the native frames already captured for the same trace, and pre-resolves its frames eagerly because script execution state is ephemeral (the call stack changes after we leave the capture site). When more than one provider contributes, their layers are ordered by birth depth: a backend entered through a deeper native call captured the longer birth stack.
 
-Pre-resolved script frames live behind a `shared_ptr<const vector<StackTraceFrame>>` so copying a `StackTraceData` (notably during `BaseEngineException` propagation) remains noexcept.
+Script frames are grouped into `stack_trace::script_layer`s, one per native entry into script code, innermost first. Each layer carries its script frames, the native stack captured when that entry was made (`BirthNativeFrames`), and optionally the native addresses of code the script runtime generated (`RuntimeNativeFrames`, the JIT output that the script frames already describe). The layers live behind a `shared_ptr<const vector<stack_trace::script_layer>>` so copying a `stack_trace::data` (notably during `BaseEngineException` propagation) remains noexcept.
 
 ### AngelScript bridge
 
-[../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) installs `CollectScriptStackLayers` through the AngelScript stack-trace installer. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `StackTraceFrame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`).
+[../Source/Scripting/AngelScript/AngelScriptContext.cpp](../Source/Scripting/AngelScript/AngelScriptContext.cpp) registers `CollectScriptStackLayers` under the name `AngelScript`. The provider walks `AngelScript::asGetActiveContext()` first, then follows `AngelScriptContextExtendedData::Parent` up the parent-context chain. For each context, it iterates `asIScriptContext::GetCallstackSize()` levels in order (deepest call first) and emits a `stack_trace::frame` per level by resolving the function declaration plus the original `.fos` file/line through `Preprocessor::ResolveOriginalFile / ResolveOriginalLine` (the line-number translator is stashed at engine user-data slot `5`). Each context records its birth native stack in `RequestContext`, which is what anchors the layer in a later trace.
 
-The provider handles the multi-context case naturally: if a script function called a native function that re-entered scripting on a fresh context, the active (child) context's frames are emitted first, then the parent context's frames are appended. The two sub-stacks read continuously in the formatted output, with native bridging frames showing up after all script frames once symbols are resolved.
+### Managed (Mono) bridge
+
+[../Source/Scripting/Managed/ManagedScriptBackend.cpp](../Source/Scripting/Managed/ManagedScriptBackend.cpp) registers `CollectManagedScriptStackLayers` under the name `Managed` when the Mono domain is created. Every native call into script code goes through `InvokeManagedScript` / `InvokeManagedScriptDelegate`, which open a `ManagedScriptEntryScope`: the scope captures the birth native stack and joins a per-thread chain of entries, innermost first. Helper invokes that run no script code (wrapper constructors, `Native.IsList` and similar) do not open an entry.
+
+The provider does nothing on a thread with no running entry. Otherwise it walks the managed stack with `mono_stack_walk`, innermost first, and cuts it into layers at the runtime-invoke wrappers (`runtime_invoke_*`) through which `mono_runtime_invoke` enters managed code. A run of frames becomes the layer of the next running entry when its outermost managed method is the method that entry invoked (a delegate entry accepts any run); a runtime invoke no entry recorded, such as a class constructor, stays part of the enclosing run. Native addresses that `mono_jit_info_table_find` attributes to JIT code, in the trace and in the entries' birth stacks, become the layers' `RuntimeNativeFrames`.
+
+Frame names come from `mono_method_full_name`, rewritten to C# member-access spelling (`Namespace.Outer.Inner.Method(args)`). File and line come from the portable PDBs embedded in the script assemblies: `ConfigureManagedRuntime` calls `mono_debug_init` before the domain exists on every platform except web, where the interpreter would pay for the line tables on every method. Without debug info the frames carry names only.
+
+Managed exceptions reach native code through the same trace:
+
+- **Unhandled at an entry.** `ThrowIfManagedException` asks `Native.DescribeException` (CoreScripts) for a summary (`Type: message`, inner causes joined by ` ---> `, reflection and single-task wrappers skipped) and the thrown frames as runtime method handle and IL offset pairs, taken from `System.Diagnostics.stack_trace_of(exception)` so rethrown and `await`-captured segments keep their order. All branches of an `AggregateException` contribute their causes and frames. The frames are resolved like live ones and added with `stack_trace::add_unwound_script_frames`, and the entry throws `ScriptException("Managed script exception", summary, context)`.
+- **Caught and handled by script.** `ScriptExceptions.Record(ex, log: true)` (event handlers that stop the chain, continuations, observed task faults, `ScriptExceptions.Report` from a script-owned dispatch boundary) calls the `Native.ReportException` internal call. The engine captures the live trace, replaces the live frames above the catching frame with the thrown frames (`stack_trace::splice_caught_script_frames`) and reports a `ScriptException` through `exceptions::report_and_continue`, so these failures reach the log and the exception callback exactly as AngelScript script exceptions did.
+- **Native failure handed to script.** Internal calls that return an error string (`CallMethod`, the property accessors, `RunScriptContinuation`) keep each native exception in the innermost running entry, keyed by the identity of its managed message string. Strong GC handles preserve those keys across moving collections and are released when the entry ends. Reporting or propagating a `NativeCallException` searches the current and enclosing entries, preserving the original native throw site even for repeated reports or several errors with identical messages. Only reflection and single-cause aggregate wrappers are transparent: a semantic managed wrapper retains its own summary and frames. If the originating entry has already ended (for example, an exception retained across an asynchronous suspension), the managed exception description remains available but the saved native exception does not.
+
+### Unified frame ordering
+
+`stack_trace::resolve` and `stack_trace::format` produce one most-recent-first list in which each script layer sits at the native frame that entered it, exactly where the script ran:
+
+```
+[Native] native code the script called (throw site)
+[Script] innermost layer, top frame
+[Script] ..., frame the native entry invoked
+[Native] runtime frames that entered the layer (mono_runtime_invoke, ...)
+[Native] entry function and its callers
+[Script] next layer out
+[Native] ...
+[Native] main
+```
+
+A layer is anchored by matching its birth stack against the bottom of the trace. The native frames above the anchor are split around the layer's `RuntimeNativeFrames`: frames above the generated code were called by script, frames below it are the runtime entering script, and the generated-code addresses themselves are never printed. A layer without birth frames cannot be anchored, so its script frames are emitted at the current position. When the trace does not reach a layer's entry at all — a native unwinder that cannot step through JIT code stops at the first such frame, which is what happens on Linux — the rest of the trace is emitted, then the layer, and resolution continues along the layer's own birth stack; frames the trace and the birth stack share are printed once.
+
+`stack_trace::add_unwound_script_frames(st, layer)` adds the frames of an exception that already unwound back to native code as the innermost layer, entered from the point where `st` was captured. `stack_trace::splice_caught_script_frames(st, layer)` handles an exception caught by script: the innermost live layer keeps only the frames below the catching frame (matched by function name), preceded by the thrown frames.
 
 `AngelScriptBackend` mutes the AngelScript message callback during final script-engine teardown. Runtime and compilation messages still go through the normal callback before teardown begins, but shutdown-only GC survivor messages are kept out of normal logs.
 
@@ -57,63 +92,50 @@ When `ServerEntity::ValidateAccess()` reports `Entity access without sync`, the 
 
 The Essentials module never depends on AngelScript directly; the bridge is one-way through the function pointer registered at runtime. This keeps the `Essentials` layer reusable and avoids forcing the whole engine to compile against AngelScript headers.
 
-### Unified frame ordering
-
-The unified ordering produced by `ResolveStackTrace` and `FormatStackTrace` is, most-recent first:
-
-```
-[Script] active context, top frame
-[Script] active context, ..., bottom frame
-[Script] parent context, top frame
-[Script] ..., bottom frame
-[Script] ..., root context, bottom frame
-[Native] caller of root context Execute()
-[Native] ...
-[Native] main
-```
-
-`FormatStackTrace` prefixes lines with `[Script]` or `[Native]` so the boundary between sub-stacks is obvious in logs. `SafeWriteStackTrace` uses the same format, with an allocation-free fallback that writes raw `0x...` addresses when symbol resolution fails (used for OOM and crash paths).
+`stack_trace::format` prefixes lines with `[Script]` or `[Native]` so the boundary between sub-stacks is obvious in logs. `logging::safe_write_stack_trace` uses the same format, with an allocation-free fallback that writes raw `0x...` addresses when symbol resolution fails (used for OOM and crash paths).
 
 ### API surface
 
 | Function | Purpose |
 |----------|---------|
-| `GetStackTrace()` | Capture native PCs + query script provider. Returns a `StackTraceData` snapshot. |
-| `GetStackTraceEntry(deep)` | Resolve a single frame at depth `deep` (0 = topmost). Script frames first, native frames after. |
-| `ResolveStackTrace(st)` | Resolve every frame into a `vector<StackTraceFrame>` (full symbol resolution). |
-| `FormatStackTrace(st)` | Human-readable multi-line string with `[Script]` / `[Native]` prefixes. |
-| `SafeWriteStackTrace(st)` | Writes the trace to the base log; tolerant of OOM (falls back to hex addresses). |
-| `ClearResolvedStackTraceCache()` | Clear the process-wide native-frame resolution cache. |
-| `GetResolvedStackTraceCacheSize()` | Return the current native-frame resolution cache size. |
-| `SetScriptStackTraceProvider(p)` | Install the script-frame provider. Pass an empty function to clear. |
-| `HasScriptStackTraceProvider()` | Test hook to confirm a provider is registered. |
+| `stack_trace::get()` | Capture native PCs + query script provider. Returns a `stack_trace::data` snapshot. |
+| `stack_trace::get_entry(deep)` | Resolve a single frame at depth `deep` (0 = topmost) of the unified order. |
+| `stack_trace::resolve(st)` | Resolve every frame into a `vector<stack_trace::frame>` (full symbol resolution). |
+| `stack_trace::format(st)` | Human-readable multi-line string with `[Script]` / `[Native]` prefixes. |
+| `logging::safe_write_stack_trace(st)` | Writes the trace to the base log; tolerant of OOM (falls back to hex addresses). |
+| `stack_trace::clear_resolved_cache()` | Clear the process-wide native-frame resolution cache. |
+| `stack_trace::get_resolved_cache_size()` | Return the current native-frame resolution cache size. |
+| `stack_trace::set_script_provider(name, p)` | Install or replace the script-frame provider registered under `name`. Pass an empty function to remove it. |
+| `stack_trace::has_script_provider(name)` | Test hook to confirm a provider is registered under `name`. |
+| `stack_trace::add_unwound_script_frames(st, layer)` | Add the frames of a script exception that already unwound to native code as the innermost layer, entered where `st` was captured. |
+| `stack_trace::splice_caught_script_frames(st, layer)` | Replace the innermost layer's frames above the catching frame with the frames of a script exception caught by script code. |
 
-`BaseEngineException` captures `GetStackTrace()` at construction so the trace stored on the exception object reflects the throw site. The crash printer in `ExceptionHandling.cpp` writes `FATAL ERROR!`, a `Crash reason:` line with the native SEH exception / signal / runtime termination code captured by `backward.hpp`, then calls `SafeWriteStackTrace` with the trace captured by `SetCrashStackTrace`.
+`BaseEngineException` captures `stack_trace::get()` at construction so the trace stored on the exception object reflects the throw site. The crash printer in `ExceptionHandling.cpp` writes `FATAL ERROR!`, a `Crash reason:` line with the native SEH exception / signal / runtime termination code captured by `backward.hpp`, then calls `logging::safe_write_stack_trace` with the trace captured by `SetCrashStackTrace`.
 
 ### Exception reporting and deferred formatting
 
-The reporters (`ReportExceptionAndExit`, `ReportExceptionAndContinue`) create a `CatchedStackTraceData` value with `MakeErrorStackTrace()`. That value contains the origin trace from `BaseEngineException::stack_trace()` when the exception type carries one, plus a fresh catch-site trace from `GetStackTrace()`. `FormatStackTrace(const CatchedStackTraceData&)` formats the origin trace when present, otherwise it prefixes the catch-site trace with `Catched at:`.
+The reporters (`exceptions::report_and_exit`, `exceptions::report_and_continue`) create a `stack_trace::catched_data` value with `make_error_stack_trace()`. That value contains the origin trace from `BaseEngineException::stack_trace()` when the exception type carries one, plus a fresh catch-site trace from `stack_trace::get()`. `stack_trace::format(const stack_trace::catched_data&)` formats the origin trace when present, otherwise it prefixes the catch-site trace with `Catched at:`.
 
-The exception callback receives the already-captured `CatchedStackTraceData` and the fatal flag directly. There is no separate context object in the current source; if callback behavior changes, update `ExceptionCallback` in [../Source/Essentials/ExceptionHandling.h](../Source/Essentials/ExceptionHandling.h), `ReportExceptionAndExit` / `ReportExceptionAndContinue` in [../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp), and the default callback in [../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp) together.
+The exception callback receives the already-captured `stack_trace::catched_data` and the fatal flag directly. There is no separate context object in the current source; if callback behavior changes, update `exceptions::callback` in [../Source/Essentials/ExceptionHandling.h](../Source/Essentials/ExceptionHandling.h), `exceptions::report_and_exit` / `exceptions::report_and_continue` in [../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp), and the default callback in [../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp) together.
 
 AngelScript `throw(...)` / `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, name, runtime id, and proto id (or `<none>` when the entity has no proto), so a production exception identifies the involved objects instead of reporting only `Critter` or `AbstractItem`. Primitive, enum, string, and null context formatting keeps its existing compact form. `Test_ScriptBuiltins.cpp` pins the entity-context representation through the real global `throw` binding.
 
 ### Logging and crash-path primitives
 
-[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `SafeWriteStackTrace(const StackTraceData&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `WriteLogMessage` with the captured `CatchedStackTraceData`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `SetAsyncLogWriting(true)` once `settings.AsyncLogWrite` is known.
+[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `logging::safe_write_stack_trace(const stack_trace::data&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `logging::write_message` with the captured `stack_trace::catched_data`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `logging::set_async_writing(true)` once `settings.AsyncLogWrite` is known.
 
 ### Crash-to-log guarantee and self-test
 
 Every abnormal death must leave usable diagnostics in the log file, not only on `stderr` (which is discarded for a headless/service process). The paths:
 
-- **Fatal signals** (`SIGSEGV`, `SIGABRT`, `SIGFPE`, `SIGBUS`, `SIGILL`, …) are caught by backward-cpp's signal handler ([../ThirdParty/backward-cpp/backward.hpp](../ThirdParty/backward-cpp/backward.hpp)), which writes `FATAL ERROR!`, a `Crash reason:` line, and a symbolised stack trace through `GetCrashStream()` → `BackwardOStreamBuffer` → `WriteBaseLog`. The header first calls `SuspendAsyncLogWriting()` and everything after is written with `WriteSync` (immediate `flush`), so the report survives even with `Common.AsyncLogWrite` on.
-- **`std::terminate`** (an exception escaping a `noexcept` function or a thread, a rethrow with no handler, a pure-virtual call) is routed through `SignalHandling::terminator()` — an **FOnline patch** that installs `std::set_terminate` on POSIX too (it was Windows-only upstream). It records the failing exception's type + `what()` via `SetCrashTerminationInfo("std::terminate")` (`FormatRuntimeCrashInfo`), prints the report, and `_Exit`s without re-entering the `SIGABRT` handler. Without it, the default POSIX terminate handler prints the exception text to `stderr` only and the log gets a bare `Signal 6 (SIGABRT)`.
-- **Stack overflow** is a `SIGSEGV` on the guard page; the handler needs an **alternate signal stack** (`SA_ONSTACK`) because the thread's own stack is exhausted. backward installs one only on the thread that constructs it (the main thread), so every long-lived worker thread calls `InstallCrashHandlerStackForThisThread()` ([../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp)) at entry (see `WorkThread::ThreadEntry`) to keep worker-thread overflows diagnosable. Threads created outside the engine (e.g. third-party Asio/SDL threads) do not get one; add the call at their entry if they run engine logic that can recurse deeply.
-- **Caught exceptions** reported through `ReportExceptionAndExit` / `ReportExceptionAndContinue` take the graceful path instead: the exception callback logs the message + `CatchedStackTraceData` via `WriteLogMessage`, plus `Shutdown!` for the fatal variant. No `FATAL ERROR!` header.
-- **Explicit low-level fatal exits** call `ReportFatalAndExit` or `ReportStrongAssertAndExit` in [../Source/Essentials/FatalError.cpp](../Source/Essentials/FatalError.cpp). This early layer suspends async logging, writes one synchronous native report, and then calls `ExitApp(false)`. It sits after `StackTrace` / `BaseLogging` and before `SmartPointers`, so low-level callers do not create a reverse dependency on `ExceptionHandling`.
-- **Raw application exit** remains status-only: `ExitApp(false)` drains the async log through the registered `at_quick_exit` handler and returns `EXIT_FAILURE`, but does not invent a fatal report. Controlled failures such as compiler input errors use the non-zero status without being mislabeled as crashes; true fatal callers must report explicitly before exiting. `ReportExceptionAndExit` and the terminate-on-OOM path already own their reports and therefore produce no generic duplicate. A successful exit (`ExitApp(true)`) likewise prints nothing.
+- **Fatal signals** (`SIGSEGV`, `SIGABRT`, `SIGFPE`, `SIGBUS`, `SIGILL`, …) are caught by backward-cpp's signal handler ([../ThirdParty/backward-cpp/backward.hpp](../ThirdParty/backward-cpp/backward.hpp)), which writes `FATAL ERROR!`, a `Crash reason:` line, and a symbolised stack trace through `GetCrashStream()` → `backward_o_stream_buffer` → `logging::write_base`. The header first calls `logging::suspend_async_writing()` and everything after is written with `write_sync` (immediate `flush`), so the report survives even with `Common.AsyncLogWrite` on.
+- **`std::terminate`** (an exception escaping a `noexcept` function or a thread, a rethrow with no handler, a pure-virtual call) is routed through `SignalHandling::terminator()` — an **FOnline patch** that installs `std::set_terminate` on POSIX too (it was Windows-only upstream). It records the failing exception's type + `what()` via `SetCrashTerminationInfo("std::terminate")` (`format_runtime_crash_info`), prints the report, and `_Exit`s without re-entering the `SIGABRT` handler. Without it, the default POSIX terminate handler prints the exception text to `stderr` only and the log gets a bare `Signal 6 (SIGABRT)`.
+- **Stack overflow** is a `SIGSEGV` on the guard page; the handler needs an **alternate signal stack** (`SA_ONSTACK`) because the thread's own stack is exhausted. backward installs one only on the thread that constructs it (the main thread), so every long-lived worker thread calls `exceptions::install_crash_handler_stack()` ([../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp)) at entry (see `work_thread::thread_entry`) to keep worker-thread overflows diagnosable. Threads created outside the engine (e.g. third-party Asio/SDL threads) do not get one; add the call at their entry if they run engine logic that can recurse deeply.
+- **Caught exceptions** reported through `exceptions::report_and_exit` / `exceptions::report_and_continue` take the graceful path instead: the exception callback logs the message + `stack_trace::catched_data` via `logging::write_message`, plus `Shutdown!` for the fatal variant. No `FATAL ERROR!` header.
+- **Explicit low-level fatal exits** call `fatal::report_and_exit` or `fatal::report_strong_assert_and_exit` in [../Source/Essentials/FatalError.cpp](../Source/Essentials/FatalError.cpp). This early layer suspends async logging, writes one synchronous native report, and then calls `exit_app(false)`. It sits after `StackTrace` / `BaseLogging` and before `SmartPointers`, so low-level callers do not create a reverse dependency on `ExceptionHandling`.
+- **Raw application exit** remains status-only: `exit_app(false)` drains the async log through the registered `at_quick_exit` handler and returns `EXIT_FAILURE`, but does not invent a fatal report. Controlled failures such as compiler input errors use the non-zero status without being mislabeled as crashes; true fatal callers must report explicitly before exiting. `exceptions::report_and_exit` and the terminate-on-OOM path already own their reports and therefore produce no generic duplicate. A successful exit (`exit_app(true)`) likewise prints nothing.
 
-`InstallCrashHandlerStackForThisThread()` allocates a per-thread 2 MiB signal stack (lazily committed; touched only during a crash) and is a no-op on non-POSIX targets and under a debugger (where backward does not install its handlers).
+`exceptions::install_crash_handler_stack()` allocates a per-thread 2 MiB signal stack (lazily committed; touched only during a crash) and is a no-op on non-POSIX targets and under a debugger (where backward does not install its handlers).
 
 **Self-test.** [../Source/Common/DiagnosticSelfTest.cpp](../Source/Common/DiagnosticSelfTest.cpp) deliberately induces a chosen crash class to verify the above end-to-end. It is driven by the `FO_SELFTEST_CRASH` environment variable (not a setting, so it is inert in production and invisible to the config/script surface) and fires once in `InitApp`, after logging + the exception callback + the async-log mode are live. Modes: `main_null_read` / `main_null_write` / `main_wild_write` (SIGSEGV), `main_fpe`, `main_abort`, `main_stack_overflow`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, `main_failure_exit`, and `thread_*` counterparts that run the same crash on a worker-style `std::thread`. The embedding project's `Tools/PipelineTests/test_crash_diagnostics_linux.py` exercises these against the Linux headless server.
 
@@ -121,18 +143,19 @@ Every abnormal death must leave usable diagnostics in the log file, not only on 
 
 `../Source/Tests/Test_StackTrace.cpp` exercises the new API:
 
-- Provider registration / unregistration is observable via `HasScriptStackTraceProvider`.
+- Named provider registration / unregistration is observable via `stack_trace::has_script_provider(name)`, a provider sees the captured native frames, and layers of several providers nest by birth depth.
 - Script frames captured by the provider preserve the most-recent-first ordering.
 - Multi-context concatenation (top-most context's frames first, then parent) renders in the expected order.
-- `[Script]` / `[Native]` prefixes are present in `FormatStackTrace`.
-- Resolved unified order places script frames before native frames.
+- `[Script]` / `[Native]` prefixes are present in `stack_trace::format`.
+- Birth-stack anchoring interleaves native frames between layers; runtime (JIT) frames split the native region above a layer and are not printed; a trace that stops inside generated code continues along the layer's birth stack, reading frames the two share once.
+- `stack_trace::add_unwound_script_frames` and `stack_trace::splice_caught_script_frames` place the frames of an unwound and a caught script exception.
 - Native frame resolution populates the global cache once per unique instruction pointer and reuses entries on repeated resolution.
-- `GetStackTraceEntry(deep)` returns the depth-th frame and `nullopt` for out-of-range depths.
-- An empty `StackTraceData` formats to header-only.
-- `SafeWriteStackTrace` writes both sections.
+- `stack_trace::get_entry(deep)` returns the depth-th frame and `nullopt` for out-of-range depths.
+- An empty `stack_trace::data` formats to header-only.
+- `logging::safe_write_stack_trace` writes both sections.
 - A throwing provider (despite the noexcept contract) does not propagate from capture.
 
-`../Source/Tests/Test_ExceptionHandling.cpp` continues to exercise `BaseEngineException` capture, `FormatStackTrace` ordering, and exception callbacks against the new layout.
+`../Source/Tests/Test_ExceptionHandling.cpp` continues to exercise `BaseEngineException` capture, `stack_trace::format` ordering, and exception callbacks against the new layout.
 
 ## Visual Studio Solution Folders
 
@@ -143,7 +166,7 @@ For the MSVC CMake generators, solution-folder grouping is only reliable when a 
 1. Regenerate or open the MSVC solution.
 2. Start a debugger session and inspect `fo::ptr`, `fo::nptr`, `fo::unique_ptr`, or `fo::refcount_ptr` values in Watch or Locals.
 3. Confirm that expanding the smart pointer opens the pointed object directly.
-4. Capture a stack trace by stepping into `fo::GetStackTrace()` and inspect the resulting `StackTraceData`. Native frames render as raw addresses until symbol resolution runs (via `FormatStackTrace` / `ResolveStackTrace`); pre-resolved script frames are reachable through `ScriptStackTraceLayer::ScriptFrames` in the `ScriptLayers` shared pointer.
+4. Capture a stack trace by stepping into `fo::stack_trace::get()` and inspect the resulting `stack_trace::data`. Native frames render as raw addresses until symbol resolution runs (via `stack_trace::format` / `stack_trace::resolve`); pre-resolved script frames are reachable through `stack_trace::script_layer::ScriptFrames` in the `ScriptLayers` shared pointer.
 5. Break on `fo::BaseEngineException` and verify that the message, parameters, and embedded stack trace are visible.
 
 ## VS Code Debug Configurations
@@ -205,7 +228,7 @@ Use the headless workflow first for script, proto, content, and scene-runtime re
 1. Reproduce the bug first, then rebake resources after any changes under `../../Scripts/`, `../../Scripts/Tests/`, `../../Scripts/Scenes/`, `Modifiers/`, `Items/`, `Critters/`, `Dialogs/`, `Maps/`, or `../../LastFrontier.fomain`.
 2. Run `Prepare :: Gameplay Tests Launch`, then the platform launch task (`Launch Tests [windows]` or `Launch Tests [linux]`). This starts `LF_ServerHeadless` with `--ApplySubConfig GameplayTests`.
 3. `GameplayTests` now uses suite-level multi-instance execution by default: matched gameplay suites run in dedicated in-process server+client worker threads, with `Testing.RunSuitesInParallel` enabling overlap and `Testing.MaxParallelInstances` capping how many worker instances may stay active at once. Worker servers are started one by one to avoid startup fan-out on busy machines, then continue running in parallel after startup succeeds. When `Testing.MaxParallelInstances = 0`, the controller uses `std::thread::hardware_concurrency()` and logs the resolved value at startup. Narrow validation with `Testing.Filter` when a bug maps to an existing gameplay suite or tag. New gameplay test files are only discovered after `Bake Resources` rebakes scripts.
-4. Watch `TEST` log lines for suite progress, per-suite completion summaries, and the final parallel aggregate, plus `SCENE` log lines for startup-scene and runtime-context issues. Engine and extension threads created through the shared thread helper now inherit the suite thread namespace in logs, for example `TestSuite-Combat::ServerWorker`, which makes parallel output easier to separate even when the code uses direct thread creation instead of `WorkThread`. The default log file for this flow is `LF_ServerHeadless.log` in the workspace root.
+4. Watch `TEST` log lines for suite progress, per-suite completion summaries, and the final parallel aggregate, plus `SCENE` log lines for startup-scene and runtime-context issues. Engine and extension threads created through the shared thread helper now inherit the suite thread namespace in logs, for example `TestSuite-Combat::ServerWorker`, which makes parallel output easier to separate even when the code uses direct thread creation instead of `work_thread`. The default log file for this flow is `LF_ServerHeadless.log` in the workspace root.
 5. Use the regular launch or scene-launch profiles only when the bug depends on the embedded client, rendering, direct input, AngelScript stepping, or startup scene UX.
 6. For engine-side regressions that may also affect gameplay, run `LF_UnitTests` first, then move to the headless gameplay pass if the failure path crosses scripting, baking, or network replication.
 

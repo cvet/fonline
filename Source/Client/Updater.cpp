@@ -67,7 +67,7 @@ static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings),
-    _cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    _cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _binaryDir {GetClientBinaryDir(settings->UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
@@ -76,7 +76,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ServerHost, _settings->ServerPort, _settings->CompatibilityVersion, _binaryDir, _settings->ClientResources);
+    logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ServerHost, _settings->ServerPort, _settings->CompatibilityVersion, _binaryDir, _settings->ClientResources);
 
     RecoverInterruptedReplacements();
     _startTime = nanotime::now();
@@ -93,7 +93,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _effectMngr.LoadMinimalEffects();
 
-    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&_sprMngr));
+    _sprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprMngr));
 
     // Wait screen
     if (!_settings->DefaultSplash.empty()) {
@@ -139,7 +139,7 @@ auto Updater::Process() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    _gameTime.FrameAdvance(IsRunInDebugger());
+    _gameTime.FrameAdvance(is_run_in_debugger());
 
     InputEvent ev;
     while (_sprMngr.GetInput()->PollEvent(ev)) {
@@ -213,7 +213,7 @@ auto Updater::Process() -> bool
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
-        auto text_format = TextFormat {.Font = FontType::Default, .Flags = CombineEnum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
+        auto text_format = TextFormat {.Font = FontType::Default, .Flags = combine_enum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
 
         if (_settings->UpdaterInfoPos < 0) {
             _fontMngr.DrawText(irect32 {0, 0, _settings->ScreenWidth, _settings->ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
@@ -231,7 +231,7 @@ auto Updater::Process() -> bool
         _conn.Process();
     }
     catch (const std::exception& ex) {
-        WriteLog("Client updater: update failed, {}", ex.what());
+        logging::write("Client updater: update failed, {}", ex.what());
         Abort(UpdaterResult::Failed, StrUpdateFailed);
     }
 
@@ -273,7 +273,7 @@ void Updater::FinishResourcesUpdate()
 
     for (const UpdateFile& file : _resourceTargets) {
         if (!IsLocalResourceCurrent(file)) {
-            WriteLog("Client updater: resource target is not installed {}", file.Name);
+            logging::write("Client updater: resource target is not installed {}", file.Name);
             Abort(UpdaterResult::Failed, StrUpdateFailed);
             return;
         }
@@ -281,14 +281,14 @@ void Updater::FinishResourcesUpdate()
 
     string directory = GetClientWritableResourceDir(*_settings);
 
-    if (!_resourceTargets.empty() && fs_is_dir(directory)) {
-        disk_directory_lock lock {directory};
+    if (!_resourceTargets.empty() && fs::is_dir(directory)) {
+        fs::disk_directory_lock lock {directory};
         FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", directory);
 
         for (const UpdateFile& file : _resourceTargets) {
             string patch = strex(directory).combine_path(GetResourcePatchPath(file.Name)).str();
 
-            if (!fs_exists(patch)) {
+            if (!fs::exists(patch)) {
                 continue;
             }
 
@@ -297,7 +297,7 @@ void Updater::FinishResourcesUpdate()
             FO_VERIFY_AND_THROW(ReadResourcePackHeader(base, header), "Resource base disappeared before readiness", base);
 
             if (!ReadResourcePatchInfo(patch, header)) {
-                FO_VERIFY_AND_THROW(fs_remove_file(patch) && fs_sync_parent(patch), "Can't remove stale resource patch", patch);
+                FO_VERIFY_AND_THROW(fs::remove_file(patch) && fs::sync_parent(patch), "Can't remove stale resource patch", patch);
             }
         }
     }
@@ -305,14 +305,14 @@ void Updater::FinishResourcesUpdate()
     string local_metadata_version = ReadLocalMetadataVersion();
 
     if (local_metadata_version != _serverMetadataVersion) {
-        WriteLog("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Packaged ? _settings->ClientResources : _settings->BakeOutput);
+        logging::write("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Packaged ? _settings->ClientResources : _settings->BakeOutput);
         _result = UpdaterResult::MetadataMismatch;
         return;
     }
 
     RebuildResourceIndex();
 
-    WriteLog("Client updater: resources ready, metadata version {}", local_metadata_version);
+    logging::write("Client updater: resources ready, metadata version {}", local_metadata_version);
     _result = UpdaterResult::ResourcesReady;
 }
 
@@ -343,20 +343,20 @@ void Updater::RebuildResourceIndex() const
         vector<string> pack_paths;
 
         if (!ResolveResourceIndexPacks(pack_dirs, indexed_packs, packs, pack_paths)) {
-            WriteLog("Client updater: can't resolve every pack, leaving the merged index to the next run");
+            logging::write("Client updater: can't resolve every pack, leaving the merged index to the next run");
             return;
         }
 
-        bool index_dir_ready = fs_create_directories(strex(index_path).extract_dir().str());
+        bool index_dir_ready = fs::create_directories(strex(index_path).extract_dir().str());
         FO_VERIFY_AND_THROW(index_dir_ready, "Can't create the resource index directory", index_path);
         BuildResourceIndex(index_path, pack_paths, packs);
-        WriteLog("Client updater: merged index rebuilt over {} packs", packs.size());
+        logging::write("Client updater: merged index rebuilt over {} packs", packs.size());
     }
     catch (const std::exception& ex) {
-        WriteLog("Client updater: can't build the merged index, {}", ex.what());
+        logging::write("Client updater: can't build the merged index, {}", ex.what());
 
         if (!index_path.empty()) {
-            (void)fs_remove_file(index_path);
+            (void)fs::remove_file(index_path);
         }
     }
 }
@@ -379,7 +379,7 @@ auto Updater::ReadLocalMetadataVersion() const -> string
         return ReadMetadataVersion(metadata_bin);
     }
     catch (const std::exception& ex) {
-        WriteLog("Client updater: can't read local metadata version, {}", ex.what());
+        logging::write("Client updater: can't read local metadata version, {}", ex.what());
         return {};
     }
 }
@@ -414,23 +414,23 @@ void Updater::GetNextFile()
         string temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDownloadedFileHashMatch(temp_path_str, prev_update_file)) {
-            WriteLog("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
+            logging::write("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
             Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
-            WriteLog("Client updater: failed to promote downloaded file from {} to {}, installed file present {}", temp_path_str, prev_path_str, fs_exists(prev_path_str));
+            logging::write("Client updater: failed to promote downloaded file from {} to {}, installed file present {}", temp_path_str, prev_path_str, fs::exists(prev_path_str));
             Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
-        WriteLog("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
+        logging::write("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
         try_promote_staged_binary(prev_update_file, prev_path_str);
 
         if (!prev_update_file.IsClientBinary) {
-            FO_VERIFY_AND_THROW(!fs_exists(GetResourcePatchPath(prev_path_str)) || fs_remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
-            FO_VERIFY_AND_THROW(fs_sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
+            FO_VERIFY_AND_THROW(!fs::exists(GetResourcePatchPath(prev_path_str)) || fs::remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
+            FO_VERIFY_AND_THROW(fs::sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
             _resourceDirectoryLock.reset();
         }
         _filesToUpdate.erase(_filesToUpdate.begin());
@@ -455,8 +455,8 @@ void Updater::GetNextFile()
 
         if (!next_update_file.IsClientBinary) {
             string directory = GetClientWritableResourceDir(*_settings);
-            FO_VERIFY_AND_THROW(fs_create_directories(directory), "Can't create writable resource directory", directory);
-            _resourceDirectoryLock = SafeAlloc::MakeUnique<disk_directory_lock>(directory);
+            FO_VERIFY_AND_THROW(fs::create_directories(directory), "Can't create writable resource directory", directory);
+            _resourceDirectoryLock = safe_alloc::make_unique<fs::disk_directory_lock>(directory);
             FO_VERIFY_AND_THROW(*_resourceDirectoryLock, "Resource directory is being updated", directory);
         }
 
@@ -466,29 +466,29 @@ void Updater::GetNextFile()
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
-                WriteLog("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
-                fs_remove_file(temp_path);
+                logging::write("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
+                fs::remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
-                    WriteLog("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
-                    fs_remove_file(temp_path);
+                    logging::write("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
+                    fs::remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
-                        WriteLog("Client updater: failed to promote existing temp file from {} to {}, installed file present {}", temp_path, prev_path_str, fs_exists(prev_path_str));
+                        logging::write("Client updater: failed to promote existing temp file from {} to {}, installed file present {}", temp_path, prev_path_str, fs::exists(prev_path_str));
                         Abort(UpdaterResult::Failed, StrFilesystemError);
                         return;
                     }
 
-                    WriteLog("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
+                    logging::write("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
                     try_promote_staged_binary(next_update_file, prev_path_str);
 
                     if (!next_update_file.IsClientBinary) {
-                        FO_VERIFY_AND_THROW(!fs_exists(GetResourcePatchPath(prev_path_str)) || fs_remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
-                        FO_VERIFY_AND_THROW(fs_sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
+                        FO_VERIFY_AND_THROW(!fs::exists(GetResourcePatchPath(prev_path_str)) || fs::remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
+                        FO_VERIFY_AND_THROW(fs::sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
                         _resourceDirectoryLock.reset();
                     }
                     _filesToUpdate.erase(_filesToUpdate.begin());
@@ -498,44 +498,44 @@ void Updater::GetNextFile()
             }
             else {
                 next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
-                WriteLog("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
+                logging::write("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
             }
         }
 
         string dir = strex(temp_path).extract_dir().str();
 
         if (!dir.empty()) {
-            if (!fs_create_directories(dir)) {
+            if (!fs::create_directories(dir)) {
                 Abort(UpdaterResult::Failed, StrFilesystemError);
                 return;
             }
 
             // Refusing a pack that will not fit leaves the installed one alone, where running the volume dry
             // mid-transfer leaves a temp file and a download to repeat. See Docs/ClientUpdater.md
-            auto available = fs_available_space(dir);
+            auto available = fs::available_space(dir);
 
             if (available.has_value() && *available < next_update_file.RemaningSize) {
-                WriteLog("Client updater: not enough free space for {}, need {}, available {}", next_update_file.Name, next_update_file.RemaningSize, *available);
+                logging::write("Client updater: not enough free space for {}, need {}, available {}", next_update_file.Name, next_update_file.RemaningSize, *available);
                 Abort(UpdaterResult::Failed, StrFilesystemError);
                 return;
             }
         }
 
-        disk_write_mode open_mode = next_update_file.RemaningSize != next_update_file.Size ? disk_write_mode::Append : disk_write_mode::Create;
-        _tempFile = disk_write_file {temp_path, open_mode};
+        fs::disk_write_mode open_mode = next_update_file.RemaningSize != next_update_file.Size ? fs::disk_write_mode::append : fs::disk_write_mode::create;
+        _tempFile = fs::disk_write_file {temp_path, open_mode};
 
         if (!_tempFile) {
-            WriteLog("Client updater: failed to open temp file {}", temp_path);
+            logging::write("Client updater: failed to open temp file {}", temp_path);
             Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
-        WriteLog("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
+        logging::write("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
         RequestUpdateFile(next_update_file);
     }
     else {
         if (_binariesMode) {
-            WriteLog("Client updater: finished binary update, binaries staged for reload");
+            logging::write("Client updater: finished binary update, binaries staged for reload");
             _result = UpdaterResult::BinariesStaged;
 
             // Headless clients have no UI / no user to dismiss it, so they finish immediately (no hold)
@@ -545,7 +545,7 @@ void Updater::GetNextFile()
             }
         }
         else {
-            WriteLog("Client updater: finished resource update");
+            logging::write("Client updater: finished resource update");
             FinishResourcesUpdate();
         }
     }
@@ -579,7 +579,7 @@ auto Updater::IsLocalResourceCurrent(const UpdateFile& file) const -> bool
         return resource.GetContentHash() == file.PackHeader.ContentHash;
     }
     catch (const std::exception& ex) {
-        WriteLog("Client updater: resource pair needs repair {}, {}", file.Name, ex.what());
+        logging::write("Client updater: resource pair needs repair {}, {}", file.Name, ex.what());
         return false;
     }
 }
@@ -608,22 +608,22 @@ void Updater::FinishResourceRange()
         vector<ResourcePackEntryRef> entries = DecodeResourcePackIndex(_rangeData, file.PackHeader);
         string base = GetClientResourcePackPath(*_settings, string_view(file.Name).substr(0, file.Name.size() - 6));
         string patch = strex(GetClientWritableResourceDir(*_settings)).combine_path(GetResourcePatchPath(file.Name)).str();
-        FO_VERIFY_AND_THROW(fs_create_directories(strex(patch).extract_dir().str()), "Can't create patch directory", patch);
+        FO_VERIFY_AND_THROW(fs::create_directories(strex(patch).extract_dir().str()), "Can't create patch directory", patch);
 
         try {
-            _patchWriter = SafeAlloc::MakeUnique<ResourcePatchWriter>(base, patch, std::move(entries), file.PackHeader.ContentHash);
+            _patchWriter = safe_alloc::make_unique<ResourcePatchWriter>(base, patch, std::move(entries), file.PackHeader.ContentHash);
         }
         catch (const std::exception& ex) {
-            WriteLog("Client updater: replacing unusable resource pair {}, {}", file.Name, ex.what());
+            logging::write("Client updater: replacing unusable resource pair {}, {}", file.Name, ex.what());
             _resourceRange = ResourceRange::None;
             _rangeData.clear();
             GetNextFile();
             return;
         }
 
-        auto available = fs_available_space(strex(patch).extract_dir().str());
+        auto available = fs::available_space(strex(patch).extract_dir().str());
         FO_VERIFY_AND_THROW(!available || *available >= _patchWriter->GetAppendSize(), "Not enough space for resource patch", patch, _patchWriter->GetAppendSize());
-        WriteLog("Client updater: appending {} missing resources to {}, bytes {}", _patchWriter->GetDownloads().size(), patch, _patchWriter->GetAppendSize());
+        logging::write("Client updater: appending {} missing resources to {}, bytes {}", _patchWriter->GetDownloads().size(), patch, _patchWriter->GetAppendSize());
         _patchWriter->Begin();
         _patchDownloadIndex = 0;
     }
@@ -654,7 +654,7 @@ void Updater::AdvanceResourcePatch()
     }
 
     _patchWriter->Finish();
-    WriteLog("Client updater: committed resource patch {}", _filesToUpdate.front().Name);
+    logging::write("Client updater: committed resource patch {}", _filesToUpdate.front().Name);
     _patchWriter.reset();
     _resourceRange = ResourceRange::None;
     _filesToUpdate.erase(_filesToUpdate.begin());
@@ -689,20 +689,20 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
     }
 
     _serverMetadataVersion = string(_conn.GetServerMetadataVersion());
-    WriteLog("Client updater: server answered {}, client compatibility {}, server metadata version {}", result_str, _settings->CompatibilityVersion, _serverMetadataVersion);
+    logging::write("Client updater: server answered {}, client compatibility {}, server metadata version {}", result_str, _settings->CompatibilityVersion, _serverMetadataVersion);
 
     if (result == ClientConnection::ConnectResult::Success || result == ClientConnection::ConnectResult::MetadataOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
         _binariesMode = false;
-        WriteLog("Client updater: client is compatible, checking resources");
+        logging::write("Client updater: client is compatible, checking resources");
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
 
         bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
-        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
+        logging::write("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
 
         if (!can_self_update_binaries) {
             _result = UpdaterResult::PlatformUnsupported;
@@ -712,14 +712,14 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         }
 
         _binariesMode = true;
-        WriteLog("Client updater: switched to native binary update mode");
+        logging::write("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
-        WriteLog("Client updater: protocol is outdated, aborting");
+        logging::write("Client updater: protocol is outdated, aborting");
         Abort(UpdaterResult::UpdaterOutdated, StrUpdaterOutdated);
     }
     else {
-        WriteLog("Client updater: connection failed");
+        logging::write("Client updater: connection failed");
         Abort(UpdaterResult::ConnectionFailed, StrCantConnectToServer);
     }
 }
@@ -757,15 +757,15 @@ void Updater::Net_OnInitData()
     _fileListReceived = true;
 
     auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
-    WriteLog("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
+    logging::write("Client updater: received update list, bytes {}, mode {}, target {}", data_size, _binariesMode ? "binaries" : "resources", _binariesMode ? "ClientBinaries" : "ClientResources");
 
     if (data.empty()) {
         if (_binariesMode) {
-            WriteLog("Client updater: native update list is empty");
+            logging::write("Client updater: native update list is empty");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
         else {
-            WriteLog("Client updater: resource update list is empty");
+            logging::write("Client updater: resource update list is empty");
             FinishResourcesUpdate();
         }
 
@@ -776,7 +776,7 @@ void Updater::Net_OnInitData()
     // replacement is put back rather than counted as missing and downloaded again
     RecoverInterruptedReplacements();
 
-    auto reader = DataReader(data);
+    auto reader = data_reader(data);
     bool accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
     string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
 
@@ -789,7 +789,7 @@ void Updater::Net_OnInitData()
             runtime_server_prefix = runtime_local_prefix;
         }
 
-        WriteLog("Client updater: binary name remap from server prefix {} to local prefix {}", runtime_server_prefix, runtime_local_prefix);
+        logging::write("Client updater: binary name remap from server prefix {} to local prefix {}", runtime_server_prefix, runtime_local_prefix);
     }
 
     auto remap_runtime_name = [&](const string& fname_basename) -> optional<string> {
@@ -807,7 +807,7 @@ void Updater::Net_OnInitData()
     };
 
     while (true) {
-        int16_t name_len = reader.Read<int16_t>();
+        int16_t name_len = reader.read<int16_t>();
 
         if (name_len == -1) {
             break;
@@ -817,22 +817,21 @@ void Updater::Net_OnInitData()
         size_t fname_size = numeric_cast<size_t>(name_len);
         string fname;
         fname.resize(fname_size);
-        reader.ReadStringBytes(fname);
-        FO_VERIFY_AND_THROW(fs_is_contained_relative_path(fname), "Invalid update file path", fname);
-        auto size = reader.Read<uint64_t>();
-        auto hash = reader.Read<uint64_t>();
-        auto target = reader.Read<UpdateFileTarget>();
+        reader.read_string_bytes(fname);
+        FO_VERIFY_AND_THROW(fs::is_contained_relative_path(fname), "Invalid update file path", fname);
+        auto size = reader.read<uint64_t>();
+        auto hash = reader.read<uint64_t>();
+        auto target = reader.read<UpdateFileTarget>();
         FO_VERIFY_AND_THROW(target == UpdateFileTarget::ClientResources || target == UpdateFileTarget::ClientBinaries, "Invalid update target", target);
-        auto data_index = reader.Read<uint32_t>();
-        uint32_t header_size = reader.Read<uint32_t>();
+        auto data_index = reader.read<uint32_t>();
+        uint32_t header_size = reader.read<uint32_t>();
         FO_VERIFY_AND_THROW(header_size == 0 || header_size == RESOURCE_PACK_HEADER_SIZE, "Invalid update resource header size", header_size);
         ResourcePackHeader pack_header;
 
         if (header_size != 0) {
-            FO_VERIFY_AND_THROW(ParseResourcePackHeader(reader.ReadBytes(header_size), pack_header), "Invalid advertised resource header", fname);
+            FO_VERIFY_AND_THROW(ParseResourcePackHeader(reader.read_bytes(header_size), pack_header), "Invalid advertised resource header", fname);
         }
 
-        FO_VERIFY_AND_THROW(fs_is_contained_relative_path(fname), "Invalid update filename", fname);
         FO_VERIFY_AND_THROW((target == UpdateFileTarget::ClientResources) == (header_size != 0), "Update target/header mismatch", fname);
 
         string local_name = fname;
@@ -857,7 +856,7 @@ void Updater::Net_OnInitData()
             string file_path = strex(_binaryDir).combine_path(local_name).str();
 
             if (remapped_basename == strex("{}.pdb", runtime_local_prefix).str()) {
-                if (fs_exists(file_path)) {
+                if (fs::exists(file_path)) {
                     continue;
                 }
             }
@@ -867,13 +866,13 @@ void Updater::Net_OnInitData()
                 }
 
                 _hasMatchingEntries = true;
-                WriteLog("Client updater: matched binary entry {}, local {}, size {}, hash {}", fname, local_name, size, hash);
+                logging::write("Client updater: matched binary entry {}, local {}, size {}, hash {}", fname, local_name, size, hash);
             }
 
             is_client_binary = true;
 
             if (IsDiskFileHashMatch(file_path, size, hash)) {
-                WriteLog("Client updater: binary already matches {}", file_path);
+                logging::write("Client updater: binary already matches {}", file_path);
                 continue;
             }
         }
@@ -898,8 +897,8 @@ void Updater::Net_OnInitData()
 
         // Everything the updater does afterwards - the promotion, the sweeps, the next run's comparison -
         // looks inside the directory it owns, so a name that resolves outside it is never seen again
-        if (!fs_is_contained_relative_path(local_name)) {
-            WriteLog("Client updater: server listed a file the client cannot place, name {}, local {}", fname, local_name);
+        if (!fs::is_contained_relative_path(local_name)) {
+            logging::write("Client updater: server listed a file the client cannot place, name {}, local {}", fname, local_name);
             Abort(UpdaterResult::Failed, StrUpdateFailed);
             return;
         }
@@ -915,26 +914,26 @@ void Updater::Net_OnInitData()
         _filesToUpdate.emplace_back(std::move(update_file));
     }
 
-    reader.VerifyEnd();
+    reader.verify_end();
 
     RemoveStaleTempPacks();
 
     if (!_filesToUpdate.empty()) {
-        WriteLog("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
+        logging::write("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
         GetNextFile();
     }
     else if (_binariesMode) {
         if (_hasMatchingEntries) {
-            WriteLog("Client updater: binaries already match, requesting reload");
+            logging::write("Client updater: binaries already match, requesting reload");
             _result = UpdaterResult::BinariesStaged;
         }
         else {
-            WriteLog("Client updater: server has no matching native update payload");
+            logging::write("Client updater: server has no matching native update payload");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
     }
     else {
-        WriteLog("Client updater: no files to update");
+        logging::write("Client updater: no files to update");
         FinishResourcesUpdate();
     }
 }
@@ -956,11 +955,11 @@ void Updater::Net_OnHashList()
     for (uint32_t i = 0; i < count; i++) {
         string str = _conn.InBuf->Read<string>();
 
-        _hashStorage.ToHashedString(str);
+        _hashStorage.to_hashed_string(str);
     }
 
     if (count != 0) {
-        WriteLog("Client updater: learned {} previously unresolved hash(es) from server", count);
+        logging::write("Client updater: learned {} previously unresolved hash(es) from server", count);
     }
 }
 
@@ -1044,7 +1043,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto local_size = fs_file_size(file_path);
+    auto local_size = fs::file_size(file_path);
 
     if (!local_size.has_value() || *local_size != expected_size) {
         return false;
@@ -1058,7 +1057,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     };
     static_assert(std::is_trivially_copyable_v<CachedHash>);
 
-    uint64_t local_mtime = fs_last_write_time(file_path);
+    uint64_t local_mtime = fs::last_write_time(file_path);
 
     // Keyed by the whole path: two same-named files in different directories would otherwise share one
     // entry, and a size plus write-time collision would answer this check with the other file's hash
@@ -1070,7 +1069,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
             auto target = make_ptr(&cached).reinterpret_as<uint8_t>();
-            MemCopy(target, data.data(), sizeof(cached));
+            memory::copy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
                 return cached.Hash == expected_hash;
@@ -1078,7 +1077,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         }
     }
 
-    auto local_hash = fs_hash_file(file_path);
+    auto local_hash = fs::hash_file(file_path);
 
     if (!local_hash.has_value()) {
         return false;
@@ -1095,11 +1094,11 @@ void Updater::RecoverInterruptedReplacements() const
     FO_STACK_TRACE_ENTRY();
 
     auto recover_in_dir = [](string_view dir) {
-        if (!fs_is_dir(dir)) {
+        if (!fs::is_dir(dir)) {
             return;
         }
 
-        for (const auto& name : fs_list_dir_file_names(dir)) {
+        for (const auto& name : fs::list_dir_file_names(dir)) {
             if (!name.ends_with(REPLACED_FILE_BACKUP_SUFFIX) || name.size() == REPLACED_FILE_BACKUP_SUFFIX.size()) {
                 continue;
             }
@@ -1111,23 +1110,23 @@ void Updater::RecoverInterruptedReplacements() const
 
             // ReplaceFileSafely moves the installed file aside before it renames the new one over it, so a
             // backup with nothing in its place is the only copy left and putting it back is the repair
-            if (fs_exists(live_path)) {
-                WriteLog("Client updater: removing obsolete backup {}", backup_path);
-                (void)fs_remove_file(backup_path);
+            if (fs::exists(live_path)) {
+                logging::write("Client updater: removing obsolete backup {}", backup_path);
+                (void)fs::remove_file(backup_path);
             }
-            else if (fs_rename_durable(backup_path, live_path)) {
-                WriteLog("Client updater: restored {} from an interrupted replacement", live_path);
+            else if (fs::rename_durable(backup_path, live_path)) {
+                logging::write("Client updater: restored {} from an interrupted replacement", live_path);
             }
             else {
-                WriteLog("Client updater: can't restore {} from {}", live_path, backup_path);
+                logging::write("Client updater: can't restore {} from {}", live_path, backup_path);
             }
         }
     };
 
     string resources_dir = GetClientWritableResourceDir(*_settings);
 
-    if (fs_is_dir(resources_dir)) {
-        disk_directory_lock lock {resources_dir};
+    if (fs::is_dir(resources_dir)) {
+        fs::disk_directory_lock lock {resources_dir};
         FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", resources_dir);
         recover_in_dir(resources_dir);
     }
@@ -1143,11 +1142,11 @@ void Updater::RemoveStaleTempPacks() const
 
     string resources_dir = GetClientWritableResourceDir(*_settings);
 
-    if (!fs_is_dir(resources_dir)) {
+    if (!fs::is_dir(resources_dir)) {
         return;
     }
 
-    disk_directory_lock lock {resources_dir};
+    fs::disk_directory_lock lock {resources_dir};
     FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", resources_dir);
 
     unordered_set<string> wanted;
@@ -1156,8 +1155,8 @@ void Updater::RemoveStaleTempPacks() const
         wanted.emplace(strex("~{}", update_file.Name).str());
     }
 
-    // fs_iterate_dir hides names starting with '~', which is exactly the set this sweep is looking for
-    for (const auto& name : fs_list_dir_file_names(resources_dir)) {
+    // fs::iterate_dir hides names starting with '~', which is exactly the set this sweep is looking for
+    for (const auto& name : fs::list_dir_file_names(resources_dir)) {
         // Only a temp pack of a pack the server no longer lists is stale; one still in the list is the resume
         // point this run is about to continue from
         if (!name.starts_with('~') || !IsResourcePackName(name) || wanted.count(name) != 0) {
@@ -1165,8 +1164,8 @@ void Updater::RemoveStaleTempPacks() const
         }
 
         string stale_path = strex(resources_dir).combine_path(name).str();
-        WriteLog("Client updater: removing stale temp pack {}", stale_path);
-        (void)fs_remove_file(stale_path);
+        logging::write("Client updater: removing stale temp pack {}", stale_path);
+        (void)fs::remove_file(stale_path);
     }
 }
 
@@ -1175,7 +1174,7 @@ auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile&
     FO_STACK_TRACE_ENTRY();
 
     if (IsResourcePackName(update_file.Name)) {
-        auto local_size = fs_file_size(file_path);
+        auto local_size = fs::file_size(file_path);
 
         if (!local_size || *local_size != update_file.Size || !VerifyResourcePackFile(file_path, update_file.Hash)) {
             return false;
@@ -1186,7 +1185,7 @@ auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile&
             return resource.GetContentHash() == update_file.PackHeader.ContentHash;
         }
         catch (const std::exception& ex) {
-            WriteLog("Client updater: invalid downloaded resource catalog {}, {}", file_path, ex.what());
+            logging::write("Client updater: invalid downloaded resource catalog {}, {}", file_path, ex.what());
             return false;
         }
     }
@@ -1205,14 +1204,14 @@ auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_siz
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data) == expected_hash;
+    return numeric_cast<uint64_t>(data.size()) == expected_size && fs::hash_data(data) == expected_hash;
 }
 
 auto Updater::GetDiskFileSize(string_view file_path) -> optional<uint64_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return fs_file_size(file_path);
+    return fs::file_size(file_path);
 }
 
 auto Updater::GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t
@@ -1227,24 +1226,24 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
     FO_STACK_TRACE_ENTRY();
 
     string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
-    bool final_exists = fs_exists(final_path);
+    bool final_exists = fs::exists(final_path);
 
-    fs_remove_file(backup_path);
+    fs::remove_file(backup_path);
 
-    if (final_exists && !fs_rename_durable(final_path, backup_path)) {
+    if (final_exists && !fs::rename_durable(final_path, backup_path)) {
         return false;
     }
 
-    if (!fs_rename_durable(temp_path, final_path)) {
+    if (!fs::rename_durable(temp_path, final_path)) {
         if (final_exists) {
-            fs_rename_durable(backup_path, final_path);
+            fs::rename_durable(backup_path, final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        fs_remove_file(backup_path);
+        fs::remove_file(backup_path);
     }
 
     return true;
@@ -1403,7 +1402,7 @@ auto GetClientBinaryDir(string_view user_writable_path) -> string
         return "/";
     }
     else {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
         FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
         return strex(exe_path.value()).extract_dir().str();
     }
@@ -1430,7 +1429,7 @@ auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<
     }
 
     string selector_name = strex("{}{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension(), ClientRuntimeBootstrapExtension).str();
-    return fs_resolve_path(fs_make_writable_path(user_writable_path, selector_name));
+    return fs::resolve_path(fs::make_writable_path(user_writable_path, selector_name));
 }
 
 auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
@@ -1451,8 +1450,8 @@ auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string
     }
 
     string staging_path = MakeClientRuntimeStagingPath(target.value());
-    bool live_exists = fs_exists(target.value()) && !fs_is_dir(target.value());
-    bool staging_exists = fs_exists(staging_path) && !fs_is_dir(staging_path);
+    bool live_exists = fs::exists(target.value()) && !fs::is_dir(target.value());
+    bool staging_exists = fs::exists(staging_path) && !fs::is_dir(staging_path);
     return live_exists || staging_exists ? target.value() : string(fallback_runtime_path);
 }
 
@@ -1460,17 +1459,17 @@ auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_vi
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!fs_is_absolute_path(bootstrap_file_path)) {
+    if (!fs::is_absolute_path(bootstrap_file_path)) {
         return std::nullopt;
     }
 
-    optional<uint64_t> file_size = fs_file_size(bootstrap_file_path);
+    optional<uint64_t> file_size = fs::file_size(bootstrap_file_path);
 
     if (!file_size.has_value() || file_size.value() == 0 || file_size.value() > ClientRuntimeBootstrapMaxSize) {
         return std::nullopt;
     }
 
-    optional<string> content = fs_read_file(bootstrap_file_path);
+    optional<string> content = fs::read_file(bootstrap_file_path);
 
     if (!content.has_value() || content->size() > ClientRuntimeBootstrapMaxSize) {
         return std::nullopt;
@@ -1483,7 +1482,7 @@ auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_v
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!fs_is_absolute_path(bootstrap_file_path)) {
+    if (!fs::is_absolute_path(bootstrap_file_path)) {
         return false;
     }
 
@@ -1496,12 +1495,12 @@ auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_v
     // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
     string temp_path = strex("{}.tmp", bootstrap_file_path).str();
 
-    if (!fs_write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
+    if (!fs::write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
         return false;
     }
 
-    if (!fs_rename(temp_path, bootstrap_file_path)) {
-        fs_remove_file(temp_path);
+    if (!fs::rename(temp_path, bootstrap_file_path)) {
+        fs::remove_file(temp_path);
         return false;
     }
 
@@ -1518,7 +1517,7 @@ void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
 
         vector<pair<string, string>> renames;
 
-        fs_iterate_dir(binary_dir, false, [&](string_view path, size_t, uint64_t) {
+        fs::iterate_dir(binary_dir, false, [&](string_view path, size_t, uint64_t) {
             string file_name = strex(path).extract_file_name().str();
 
             if (!file_name.ends_with(ClientBinaryStagingSuffix)) {
@@ -1541,12 +1540,12 @@ void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
         });
 
         for (const auto& [staged, final_path] : renames) {
-            fs_remove_file(final_path);
-            fs_rename(staged, final_path);
+            fs::remove_file(final_path);
+            fs::rename(staged, final_path);
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -1554,7 +1553,7 @@ auto GetCurrentClientRuntimeLibraryName() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto exe_path = Platform::GetExePath(); exe_path.has_value()) {
+    if (auto exe_path = platform::get_exe_path(); exe_path.has_value()) {
         string name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
 
         if (!name.empty()) {
@@ -1608,7 +1607,7 @@ static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) 
 
     safe_call([&] {
         ClientUpdateException ex("Client update did not complete", UpdaterResultToString(result), target_name, GetUpdatePlatformName(GetCurrentUpdatePlatform()), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     });
 }
 
@@ -1618,7 +1617,7 @@ void ShowUpdaterFailure(UpdaterResult result)
 
     string_view target_name = GetCurrentBinaryUpdateTargetName();
 
-    WriteLog("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
+    logging::write("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
 
     // Report terminal client failures before showing the dialog. The unconditional log still records
     // deliberately unreported failures
@@ -1673,7 +1672,7 @@ static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, stri
 
     string trimmed_path = strex(runtime_path).trim().str();
 
-    if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
+    if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs::is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
         return std::nullopt;
     }
 
@@ -1681,7 +1680,7 @@ static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, stri
         return std::nullopt;
     }
 
-    return fs_resolve_path(trimmed_path);
+    return fs::resolve_path(trimmed_path);
 }
 
 FO_END_NAMESPACE

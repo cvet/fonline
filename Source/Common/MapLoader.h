@@ -49,17 +49,14 @@ FO_DECLARE_EXCEPTION(MapLoaderException);
 
 class EngineMetadata;
 
-class MapLoader final
+namespace MapLoader
 {
-public:
     using CrLoadFunc = function<void(ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv)>;
     using ItemLoadFunc = function<void(ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv)>;
 
-    MapLoader() = delete;
-
-    static void Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, HashResolver& hash_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
-    static auto EnumerateMaps(string_view file_name, const string& buf) -> vector<string>;
-    static void ReadBakedFileHeader(DataReader& reader, string_view map_name);
-};
+    void Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, hash_resolver& hashes, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
+    auto EnumerateMaps(string_view file_name, const string& buf) -> vector<string>;
+    void ReadBakedFileHeader(data_reader& reader, string_view map_name);
+}
 
 FO_END_NAMESPACE

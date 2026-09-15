@@ -143,6 +143,8 @@ class ExportMethodTag:
     ret_container_element_wrapper: str = ''
     receiver_wrapper: bool = False
     ret_provides_cover: bool = False
+    ret_is_parent: bool = False
+    ret_is_ancestor: bool = False
 
 
 @dataclass(slots=True)
@@ -860,6 +862,9 @@ def strip_pointer_wrapper(type_text: str) -> tuple[str, bool, bool]:
 
 REQUIRES_COVER_MARKER = 'FO_REQUIRES_COVER'
 PROVIDES_COVER_MARKER = 'FO_PROVIDES_COVER'
+RETURNS_PARENT_MARKER = 'FO_RETURNS_PARENT'
+RETURNS_ANCESTOR_MARKER = 'FO_RETURNS_ANCESTOR'
+RETURN_COVER_MARKERS = (PROVIDES_COVER_MARKER, RETURNS_PARENT_MARKER, RETURNS_ANCESTOR_MARKER)
 
 
 def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: bool = False) -> list[MethodArg]:
@@ -898,7 +903,7 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
     return result_args
 
 
-def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool, bool, str, bool, bool]:
+def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool, bool, str, bool, set[str]]:
     line_tokens = tokenize(tag_context)
     brace_open_pos = tag_context.find('(')
     brace_close_pos = find_matching_cpp_paren(tag_context, brace_open_pos)
@@ -908,11 +913,13 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     assert function_token_index > 1, tag_context
     function_name = line_tokens[function_token_index - 1]
     return_tokens = line_tokens[1:function_token_index - 1]
-    # The cover marker is an empty macro in front of the return type, so it has to come off before the type
+    # The cover markers are empty macros in front of the return type, so they have to come off before the type
     # is parsed -- everything below joins the remaining tokens into one type spelling
-    ret_provides_cover = bool(return_tokens) and return_tokens[0] == PROVIDES_COVER_MARKER
-    if ret_provides_cover:
+    ret_cover_markers: set[str] = set()
+    while return_tokens and return_tokens[0] in RETURN_COVER_MARKERS:
+        ret_cover_markers.add(return_tokens[0])
         return_tokens = return_tokens[1:]
+    assert len(ret_cover_markers) <= 1, 'A return value takes at most one cover marker: ' + tag_context
     raw_ret_type_text = ''.join(return_tokens)
     ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(raw_ret_type_text)
     ret = engine_type_to_meta_type(ret_type_text, valid_types, allow_raw_handle_pointer=ret_wrapper)
@@ -938,7 +945,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
         _, receiver_wrapper, _ = strip_pointer_wrapper(first_arg)
         assert receiver_wrapper, 'Raw pointer script ABI receiver is not supported; use ptr<T> or nptr<T>: ' + receiver_args[0]
 
-    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper, ret_provides_cover
+    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper, ret_cover_markers
 
 
 def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
@@ -1492,9 +1499,10 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             method_context = require_str_context(tag_context, 'ExportMethod')
             export_flags = tokenize(tag_info)
 
-            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper, ret_provides_cover = parse_export_method_signature(method_context, valid_types, game_entities)
+            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper, ret_cover_markers = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper, ret_provides_cover=ret_provides_cover))
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper, ret_provides_cover=PROVIDES_COVER_MARKER in ret_cover_markers,
+                ret_is_parent=RETURNS_PARENT_MARKER in ret_cover_markers, ret_is_ancestor=RETURNS_ANCESTOR_MARKER in ret_cover_markers))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
             # client/server compatibility hash when a raw signature is converted to a wrapper
@@ -1589,9 +1597,9 @@ def parse_migration_rule_tags() -> None:
         comment = tag_meta.comment
 
         try:
-            rule_args = tokenize(tag_info, anySymbols=[2, 3, 5])
+            rule_args = tokenize(tag_info, anySymbols=[2, 3])
             assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
-            assert len(rule_args) == 4 or (len(rule_args) == 7 and rule_args[0] == 'Property' and rule_args[4] == 'BeforeVersion' and rule_args[6].isascii() and rule_args[6].isdecimal() and 0 < int(rule_args[6]) <= 9223372036854775807), 'Invalid migration rule args'
+            assert len(rule_args) == 4, 'Invalid migration rule args'
             assert not len([rule_tag for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0:3] == rule_args[0:3]]), 'Migration rule already added'
             assert rule_args[2] != rule_args[3], 'Migration rule same last args'
 
@@ -2007,9 +2015,9 @@ def generate_generic_code() -> None:
         for prop_tag in codegen_tags['ExportProperty']:
             if prop_tag.entity == entity:
                 if 'SharedProperty' not in prop_tag.flags:
-                    global_lines.append('uint16_t ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                    global_lines.append('const uint16_t ' + entity + 'Properties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
                 elif prop_tag.name not in common_parsed:
-                    global_lines.append('uint16_t EntityProperties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
+                    global_lines.append('const uint16_t EntityProperties::' + prop_tag.name + '_RegIndex = ' + str(index) + ';')
                     common_parsed.add(prop_tag.name)
                 index += 1
     global_lines.append('')
@@ -2146,7 +2154,8 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
     body_lines: list[str] = []
 
     for value_type_tag in codegen_tags['ExportValueType']:
-        body_lines.append('meta->RegisterValueType<' + value_type_tag.native_type + '>("' + value_type_tag.name + '");')
+        native_type = value_type_tag.native_type
+        body_lines.append('meta->RegisterValueType("' + value_type_tag.name + '", sizeof(' + native_type + '), &CreateNativeValue<' + native_type + '>, &CopyNativeValue<' + native_type + '>);')
 
     body_lines.append('')
 
@@ -2207,8 +2216,8 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
         'meta->RegisterRefTypeMethods("' + ref_type_tag.name + '", {']
 
         if 'RefCounted' in ref_type_tag.flags:
-            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->AddRef(); }', is_stub)
-            append_ref_call_registration(body_lines, '__Release', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->Release(); }', is_stub)
+            append_ref_call_registration(body_lines, '__AddRef', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->addref(); }', is_stub)
+            append_ref_call_registration(body_lines, '__Release', 'static void Call(ptr<' + ref_type_tag.name + '> self) { self->release(); }', is_stub)
 
         if 'HasFactory' in ref_type_tag.flags:
             body_lines.append('    MethodDesc{ .Name = "__Factory", ' +
@@ -2218,7 +2227,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
                 body_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
 
                 body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
-                        '{ return SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
+                        '{ return safe_alloc::make_refcounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
                 body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
                 body_lines.append('    } },')
 
@@ -2335,6 +2344,8 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     (', .ReturnNullable = true' if method_tag.ret_nullable else '') +
                     (', .Async = true' if 'Async' in method_tag.flags else '') +
                     (', .ReturnProvidesCover = true' if method_tag.ret_provides_cover else '') +
+                    (', .ReturnIsParent = true' if method_tag.ret_is_parent else '') +
+                    (', .ReturnIsAncestor = true' if method_tag.ret_is_ancestor else '') +
                     ' });')
             method_blocks.append(method_body_lines)
 
@@ -2389,7 +2400,7 @@ def append_migration_rule_registration(helper_lines: list[str], register_lines: 
     if not codegen_tags['MigrationRule']:
         return
 
-    body_lines = ['const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.ToHashedString(str); };', '', 'meta->RegisterMigrationRules({']
+    body_lines = ['const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.to_hashed_string(str); };', '', 'meta->RegisterMigrationRules({']
     for source_type in sorted(set(rule_tag.args[0] for rule_tag in codegen_tags['MigrationRule'])):
         body_lines.append('    {')
         body_lines.append('        to_hstring("' + source_type + '"), {')
@@ -2404,9 +2415,6 @@ def append_migration_rule_registration(helper_lines: list[str], register_lines: 
         body_lines.append('        },')
         body_lines.append('    },')
     body_lines.append('});')
-    for rule_tag in codegen_tags['MigrationRule']:
-        if len(rule_tag.args) == 7:
-            body_lines.append('meta->RegisterPropertyMigrationBeforeVersion("' + rule_tag.args[1] + '", "' + rule_tag.args[2] + '", "' + rule_tag.args[5] + '", "' + rule_tag.args[6] + '");')
 
     append_static_function(helper_lines, 'static void RegisterMigrationRulesSection(EngineMetadata* meta)', body_lines)
     register_lines.append('RegisterMigrationRulesSection(meta.get_no_const());')

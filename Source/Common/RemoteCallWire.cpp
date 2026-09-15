@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static void ReadRemoteCallStructFields(DataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, ptr<uint8_t> destination);
+static void ReadRemoteCallStructFields(data_reader& reader, const BaseTypeDesc& type, const hash_resolver& hashes, RemoteCallReadStorage& storage, ptr<uint8_t> destination);
 
 RemoteCallReadStorage::~RemoteCallReadStorage()
 {
@@ -51,9 +51,9 @@ auto RemoteCallReadStorage::StoreStructBytes(size_t size) -> ptr<uint8_t>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(size != 0, "Remote-call struct size is zero");
-    auto buffer = make_unique_del_ptr(SafeAlloc::MallocAlignedRaw(size, alignof(std::max_align_t)).as_ptr(), [](nptr<void> data) noexcept { SafeAlloc::FreeAlignedRaw(data); });
+    auto buffer = make_unique_del_ptr(safe_alloc::malloc_aligned_raw(size, alignof(std::max_align_t)).as_ptr(), [](nptr<void> data) noexcept { safe_alloc::free_aligned_raw(data); });
     ptr<uint8_t> bytes = make_ptr(buffer.get()).reinterpret_as<uint8_t>();
-    MemFill(bytes, 0, size);
+    memory::fill(bytes, 0, size);
     _items.emplace_back(std::move(buffer));
     return bytes;
 }
@@ -67,36 +67,36 @@ void RemoteCallReadStorage::StoreStructHash(ptr<uint8_t> address, hstring value)
     _structHashes.emplace_back(field);
 }
 
-void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks)
+void WriteRemoteCallSimple(data_writer& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (type.IsPrimitive) {
         VisitBaseTypePrimitive(value.get(), type, [&](auto&& v) {
             using t = std::decay_t<decltype(v)>;
-            writer.Write<t>(v);
+            writer.write<t>(v);
         });
     }
     else if (type.IsEnum) {
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Enum type has no underlying type to serialize");
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type must be integral to serialize");
-        writer.WriteBytes(make_const_span(value.reinterpret_as<const uint8_t>(), type.Size));
+        writer.write_bytes(make_const_span(value.reinterpret_as<const uint8_t>(), type.Size));
     }
     else if (type.IsString) {
         const auto& str = *value.reinterpret_as<const string>();
-        writer.Write<int32_t>(numeric_cast<int32_t>(str.length()));
-        writer.WriteStringBytes(str);
+        writer.write<int32_t>(numeric_cast<int32_t>(str.length()));
+        writer.write_string_bytes(str);
     }
     else if (type.IsHashedString) {
         const auto& hstr = *value.reinterpret_as<const hstring>();
-        writer.Write<hstring::hash_t>(hstr.as_hash());
+        writer.write<hstring::hash_t>(hstr.as_hash());
     }
     else if (type.IsRefType) {
         auto raw_data = hooks.RefTypeToRaw(type, value);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
+        writer.write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
         if (!raw_data.empty()) {
-            writer.WriteBytes(make_const_span(raw_data));
+            writer.write_bytes(make_const_span(raw_data));
         }
     }
     else if (type.IsStruct) {
@@ -109,7 +109,7 @@ void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDe
     }
 }
 
-auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>
+auto ReadRemoteCallSimple(data_reader& reader, const BaseTypeDesc& type, const hash_resolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -118,7 +118,7 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
     auto read_plain = [&](size_t size) -> ptr<void> {
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         ptr<uint8_t> buf = storage.StorePlainBytes();
-        reader.ReadBytes(make_span(buf, size));
+        reader.read_bytes(make_span(buf, size));
         return ptr<void> {buf};
     };
 
@@ -131,17 +131,17 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
         return read_plain(type.Size);
     }
     else if (type.IsString) {
-        int32_t str_len = reader.Read<int32_t>();
+        int32_t str_len = reader.read<int32_t>();
         FO_VERIFY_AND_THROW(str_len >= 0, "Wire string length must be non-negative");
-        return storage.StoreString(string {reader.ReadStringView(numeric_cast<size_t>(str_len))});
+        return storage.StoreString(string {reader.read_string_view(numeric_cast<size_t>(str_len))});
     }
     else if (type.IsHashedString) {
-        auto hash = reader.Read<hstring::hash_t>();
-        return storage.StoreHashed(hashes.ResolveHash(hash));
+        auto hash = reader.read<hstring::hash_t>();
+        return storage.StoreHashed(hashes.resolve_hash(hash));
     }
     else if (type.IsRefType) {
-        uint32_t raw_size = reader.Read<uint32_t>();
-        const_span<uint8_t> raw_data = reader.ReadBytes(raw_size);
+        uint32_t raw_size = reader.read<uint32_t>();
+        const_span<uint8_t> raw_data = reader.read_bytes(raw_size);
         return hooks.RawToRefType(type, raw_data);
     }
     else if (type.IsStruct) {
@@ -154,7 +154,7 @@ auto ReadRemoteCallSimple(DataReader& reader, const BaseTypeDesc& type, const Ha
     }
 }
 
-static void ReadRemoteCallStructFields(DataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, ptr<uint8_t> destination)
+static void ReadRemoteCallStructFields(data_reader& reader, const BaseTypeDesc& type, const hash_resolver& hashes, RemoteCallReadStorage& storage, ptr<uint8_t> destination)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -165,14 +165,14 @@ static void ReadRemoteCallStructFields(DataReader& reader, const BaseTypeDesc& t
         ptr<uint8_t> field_destination = destination.offset(field.Offset);
 
         if (field.Type.IsHashedString) {
-            storage.StoreStructHash(field_destination, hashes.ResolveHash(reader.Read<hstring::hash_t>()));
+            storage.StoreStructHash(field_destination, hashes.resolve_hash(reader.read<hstring::hash_t>()));
         }
         else if (field.Type.IsStruct) {
             ReadRemoteCallStructFields(reader, field.Type, hashes, storage, field_destination);
         }
         else {
             FO_VERIFY_AND_THROW(field.Type.IsPrimitive || field.Type.IsEnum, "Unsupported remote-call struct field", type.Name, field.Name);
-            reader.ReadBytes({field_destination.get(), field.Type.Size});
+            reader.read_bytes({field_destination.get(), field.Type.Size});
         }
     }
 }
