@@ -95,24 +95,26 @@ NATIVE_FIXTURE = r'''
 template<class T> using nptr = T*;
 template<class T> using vector = std::vector<T>;
 template<class A, class B> using pair = std::pair<A, B>;
-using NativeStackFrameAddress = uintptr_t;
-constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
 struct MonoObject {};
 struct MonoString : MonoObject { std::string Text; };
 struct MonoMethod {};
 struct MonoDomain {};
-struct ScriptStackTraceLayer {
-    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
-    uint32_t BirthNativeFrameCount {};
-    bool BirthNativeTruncated {};
+namespace stack_trace {
+using native_frame_address = uintptr_t;
+constexpr size_t MAX_NATIVE_FRAMES = 128;
+struct script_layer {
+    std::array<native_frame_address, MAX_NATIVE_FRAMES> birth_native_frames {};
+    uint32_t birth_native_frame_count {};
+    bool birth_native_truncated {};
 };
+void capture_native_frames(std::array<native_frame_address, MAX_NATIVE_FRAMES>&, uint32_t&, bool&, uint32_t) {}
+}
 std::map<uint32_t, MonoObject*> Roots;
 uint32_t NextRoot = 0;
 uint32_t mono_gchandle_new(MonoObject* object, int) { Roots[++NextRoot] = object; return NextRoot; }
 MonoObject* mono_gchandle_get_target(uint32_t handle) { return Roots.at(handle); }
 void mono_gchandle_free(uint32_t handle) { assert(Roots.erase(handle) == 1); }
-void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES>&, uint32_t&, bool&, uint32_t) {}
-void AppendRuntimeNativeFrames(MonoDomain*, std::span<const NativeStackFrameAddress>, ScriptStackTraceLayer&) {}
+void AppendRuntimeNativeFrames(MonoDomain*, std::span<const stack_trace::native_frame_address>, stack_trace::script_layer&) {}
 '''
 
 NATIVE_MAIN = r'''

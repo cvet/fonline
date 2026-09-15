@@ -64,6 +64,13 @@ Its `windows-file-io` artifact retains the factual JSON, compiler logs, executab
 and available embedded manifests even when a probe fails. See the
 [filesystem diagnostic contract](Essentials.md#filesystem-compression-sockets-and-work-threads).
 
+The probe compiles the selected `fs::` definitions from `DiskFileSystem.cpp` unchanged;
+it derives their namespace declarations from those definitions. Keep the probe's
+signature list and the config-search fixture's `fs` stubs aligned with API renames.
+`BuildTools/tests/test_windows_file_io_probe.py` checks extraction on every host;
+`test_application_config_search.py` compiles the config-search loop when a C++20
+compiler is available.
+
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
 ```bash

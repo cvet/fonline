@@ -134,8 +134,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
     internal static readonly DiagnosticDescriptor RawSyncPrimitiveRule = new DiagnosticDescriptor(
         id: "FOSYNC005", title: "Raw synchronization primitive used outside its wrapper",
-        messageFormat: "'{0}' is a raw synchronization primitive; {1}",
-        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        messageFormat: "'{0}' is a raw synchronization primitive; {1}", category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
         description: "The Sync helpers are not thin wrappers: they acquire multi-root packages as one step and retry " +
             "with a re-proof that nothing migrated in between. Reaching for the primitive directly gets the " +
             "first half and silently drops the second. The Game singleton bucket lock (Game.Lock / Game.Unlock) " +
@@ -287,10 +287,11 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         if (onGame && System.Array.IndexOf(RawSyncPrimitiveNames, callee.Name) >= 0) {
-            context.ReportDiagnostic(Diagnostic.Create(RawSyncPrimitiveRule,
-                                                       invocation.GetLocation(),
-                                                       "Game." + callee.Name,
-                                                       "use the Sync helpers, which acquire atomically and re-prove after migration"));
+            context.ReportDiagnostic(
+                Diagnostic.Create(RawSyncPrimitiveRule,
+                                  invocation.GetLocation(),
+                                  "Game." + callee.Name,
+                                  "use the Sync helpers, which acquire atomically and re-prove after migration"));
             return;
         }
 
@@ -299,11 +300,12 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                                System.Array.IndexOf(SingletonLockPrimitiveNames, callee.Name) >= 0;
 
         if (isSingletonPair && !SymbolEqualityComparer.Default.Equals(callerType, model.GameLockType)) {
-            context.ReportDiagnostic(Diagnostic.Create(RawSyncPrimitiveRule,
-                                                       invocation.GetLocation(),
-                                                       "Game." + callee.Name,
-                                                       "take the singleton lock with 'using GameLock scope = GameLock.Acquire();', " +
-                                                           "which releases it on every path and cannot be held across an await"));
+            context.ReportDiagnostic(
+                Diagnostic.Create(RawSyncPrimitiveRule,
+                                  invocation.GetLocation(),
+                                  "Game." + callee.Name,
+                                  "take the singleton lock with 'using GameLock scope = GameLock.Acquire();', " +
+                                      "which releases it on every path and cannot be held across an await"));
         }
     }
 
