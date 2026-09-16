@@ -312,9 +312,6 @@ FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server res
 FIXED_SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
 FIXED_SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 FIXED_SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
-FIXED_SETTING(vector<string>, Baking, ServerResourceEntries); // Server resource entries (read only)
-FIXED_SETTING(vector<string>, Baking, ClientResourceEntries); // Client resource entries (read only)
-FIXED_SETTING(vector<string>, Baking, MapperResourceEntries); // Mapper resource entries (read only)
 FIXED_SETTING(int32_t, Baking, ZipCompressLevel, 1); // Zip deflate level (0-9)
 FIXED_SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END(Baking);

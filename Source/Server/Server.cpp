@@ -57,7 +57,7 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ServerResources : settings.Baking.BakeOutput, settings.Baking.ServerResourceEntries);
+    resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ServerResources : settings.Baking.BakeOutput, settings.GetServerResourcePacks());
     return resources;
 }
 

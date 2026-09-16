@@ -48,14 +48,14 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ClientResources : settings.Baking.BakeOutput, settings.Baking.ClientResourceEntries);
+    resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ClientResources : settings.Baking.BakeOutput, settings.GetClientResourcePacks());
 
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
     if (settings.Common.Packaged && !settings.Common.UserWritablePath.empty()) {
         string writable_dir = fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.ClientResources);
 
-        for (const string& pack : settings.Baking.ClientResourceEntries) {
+        for (const string& pack : settings.GetClientResourcePacks()) {
             resources.AddPackSource(writable_dir, pack, true);
         }
     }

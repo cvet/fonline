@@ -2001,7 +2001,8 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
     BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {pack_name});
+    auto pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
@@ -2042,7 +2043,8 @@ TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
     BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Main", "Fallback"});
+    auto pack_config = ConfigFile("[ResourcePack]\nName = Main\nClientOnly = True\n[ResourcePack]\nName = Fallback\nClientOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);

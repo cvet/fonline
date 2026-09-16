@@ -104,7 +104,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     auto client_resources_dir = std::filesystem::path {fs::make_path(settings.Baking.ClientResources)};
 
-    for (const auto& resource_entry : settings.Baking.ClientResourceEntries) {
+    for (const auto& resource_entry : settings.GetClientResourcePacks()) {
         if (resource_entry != "Embedded") {
             string pack_name = strex("{}.zip", resource_entry).str();
             client_resource_pack_names.emplace(pack_name);
@@ -194,7 +194,7 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
     // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
     // one of them would hand every synced client a property layout this server cannot talk to
     FileSystem client_resources;
-    client_resources.AddPacksSource(settings.Baking.ClientResources, settings.Baking.ClientResourceEntries);
+    client_resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
 
     vector<uint8_t> metadata_bin = ReadMetadataBin(&client_resources, "Client");
     string client_metadata_version = ReadMetadataVersion(metadata_bin);

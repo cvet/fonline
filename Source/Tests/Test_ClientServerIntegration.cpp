@@ -2234,7 +2234,8 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 
     REQUIRE(fs::write_file(metadata_path, outdated_metadata));
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
-    BakerTests::OverrideSetting(client_settings.Baking.ClientResourceEntries, vector<string> {pack_name});
+    auto client_pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    client_settings.ApplyConfigFile(client_pack_config, "");
 
     CHECK_NOTHROW([&client_settings] {
         Updater updater {&client_settings, &GetApp()->MainWindow};

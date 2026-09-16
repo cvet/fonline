@@ -71,6 +71,9 @@ public:
     auto operator=(BaseSettings&&) noexcept -> BaseSettings& = delete;
 
     [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
+    [[nodiscard]] auto GetServerResourcePacks() const -> vector<string>;
+    [[nodiscard]] auto GetClientResourcePacks() const -> vector<string>;
+    [[nodiscard]] auto GetMapperResourcePacks() const -> vector<string>;
     [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
     [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
     [[nodiscard]] auto FindSettingValue(string_view name) const -> nptr<const string>;

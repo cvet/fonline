@@ -189,9 +189,6 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Render.RenderDebug");
         _appliedSettings.emplace("View.MonitorWidth");
         _appliedSettings.emplace("View.MonitorHeight");
-        _appliedSettings.emplace("Baking.ClientResourceEntries");
-        _appliedSettings.emplace("Baking.MapperResourceEntries");
-        _appliedSettings.emplace("Baking.ServerResourceEntries");
     }
 }
 
@@ -656,20 +653,6 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
             pack_info.ExcludePatterns = strex(exclude_patterns).split(' ');
         }
 
-        if (pack_info.ServerOnly) {
-            FixedSettingForEdit(Baking.ServerResourceEntries)->emplace_back(pack_info.Name);
-        }
-        else if (pack_info.ClientOnly) {
-            FixedSettingForEdit(Baking.ClientResourceEntries)->emplace_back(pack_info.Name);
-        }
-        else if (pack_info.MapperOnly) {
-            FixedSettingForEdit(Baking.MapperResourceEntries)->emplace_back(pack_info.Name);
-        }
-        else {
-            FixedSettingForEdit(Baking.ServerResourceEntries)->emplace_back(pack_info.Name);
-            FixedSettingForEdit(Baking.ClientResourceEntries)->emplace_back(pack_info.Name);
-        }
-
         if (string bakers = get_map_value("Bakers"); !bakers.empty()) {
             for (auto& baker : strex(bakers).split(' ')) {
                 pack_info.Bakers.emplace_back(std::move(baker));
@@ -777,6 +760,51 @@ void GlobalSettings::Draw(bool editable)
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"
+}
+
+auto BaseSettings::GetServerResourcePacks() const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> packs;
+
+    for (const ResourcePackInfo& pack : _resourcePacks) {
+        if (pack.ServerOnly || (!pack.ClientOnly && !pack.MapperOnly)) {
+            packs.emplace_back(pack.Name);
+        }
+    }
+
+    return packs;
+}
+
+auto BaseSettings::GetClientResourcePacks() const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> packs;
+
+    for (const ResourcePackInfo& pack : _resourcePacks) {
+        if (pack.ClientOnly || (!pack.ServerOnly && !pack.MapperOnly)) {
+            packs.emplace_back(pack.Name);
+        }
+    }
+
+    return packs;
+}
+
+auto BaseSettings::GetMapperResourcePacks() const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> packs;
+
+    for (const ResourcePackInfo& pack : _resourcePacks) {
+        if (pack.MapperOnly) {
+            packs.emplace_back(pack.Name);
+        }
+    }
+
+    return packs;
 }
 
 auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>

@@ -665,7 +665,8 @@ TEST_CASE("ServerResourcesFollowPackagedSetting")
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, baked_dir);
     BakerTests::OverrideSetting(settings.Baking.ServerResources, packaged_dir);
-    BakerTests::OverrideSetting(settings.Baking.ServerResourceEntries, vector<string> {"ServerPack"});
+    auto pack_config = ConfigFile("[ResourcePack]\nName = ServerPack\nServerOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
 
     auto resources = GetServerResources(settings);
 
