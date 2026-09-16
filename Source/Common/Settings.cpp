@@ -360,6 +360,9 @@ void GlobalSettings::ApplyIgnoreInputDirs()
 
     vector<ResourcePackInfo> res_packs = _declaredResourcePacks;
 
+    // A packaged application's baked config declares packs without their inputs, so it has nothing to check against
+    bool packs_have_inputs = std::ranges::any_of(res_packs, [](const ResourcePackInfo& res_pack) { return !res_pack.InputDirs.empty() || !res_pack.InputFiles.empty(); });
+
     for (const string& ignored_dir : Baking.IgnoreInputDirs) {
         bool is_pack_input = false;
 
@@ -370,7 +373,7 @@ void GlobalSettings::ApplyIgnoreInputDirs()
         }
 
         // A misspelled entry would otherwise leave the directory baked with nothing reporting it
-        if (!is_pack_input && !res_packs.empty()) {
+        if (!is_pack_input && packs_have_inputs) {
             throw SettingsException("Ignored input directory is not an input directory of any resource pack", ignored_dir);
         }
     }
@@ -837,6 +840,30 @@ auto BaseSettings::GetMapperResourcePacks() const -> vector<string>
     }
 
     return packs;
+}
+
+auto BaseSettings::GetResourcePackDeclarations() const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string declarations;
+
+    for (const ResourcePackInfo& pack : _resourcePacks) {
+        declarations += strex("[ResourcePack]\n");
+        declarations += strex("Name={}\n", pack.Name);
+
+        if (pack.ServerOnly) {
+            declarations += "ServerOnly=1\n";
+        }
+        if (pack.ClientOnly) {
+            declarations += "ClientOnly=1\n";
+        }
+        if (pack.MapperOnly) {
+            declarations += "MapperOnly=1\n";
+        }
+    }
+
+    return declarations;
 }
 
 auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>

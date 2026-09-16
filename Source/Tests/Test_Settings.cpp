@@ -183,6 +183,49 @@ TEST_CASE("Settings")
         CHECK(shipping.GetResourcePacks()[2].InputDirs == vector<string> {art_dir});
     }
 
+    SECTION("PackDeclarationsWrittenForAPackagedConfigRestoreEveryPackList")
+    {
+        ConfigFile authored {"[SubConfig]\n"
+                             "Name = Shipping\n"
+                             "Baking.IgnoreInputDirs = scripts/tests\n"
+                             "[ResourcePack]\n"
+                             "Name = Scripts\n"
+                             "InputDirs = scripts scripts/tests\n"
+                             "[ResourcePack]\n"
+                             "Name = ServerData\n"
+                             "InputDirs = server\n"
+                             "ServerOnly = True\n"
+                             "[ResourcePack]\n"
+                             "Name = Art\n"
+                             "InputDirs = art\n"
+                             "ClientOnly = True\n"
+                             "[ResourcePack]\n"
+                             "Name = MapperData\n"
+                             "InputDirs = mapper\n"
+                             "MapperOnly = True\n"};
+
+        GlobalSettings baking {false};
+        baking.ApplyDefaultSettings();
+        baking.ApplyConfigFile(authored, "cfg");
+        baking.ApplySubConfigSection("Shipping");
+        baking.ApplyAutoSettings();
+
+        // What a packaged application sees: the baked settings, the ignored inputs among them, then the pack sections
+        ConfigFile baked {strex("Baking.IgnoreInputDirs=scripts/tests\n{}", baking.GetResourcePackDeclarations()).str()};
+        GlobalSettings packaged {false};
+        packaged.ApplyDefaultSettings();
+        packaged.ApplyConfigFile(baked, "");
+
+        REQUIRE_NOTHROW(packaged.ApplyAutoSettings());
+        CHECK(packaged.GetServerResourcePacks() == baking.GetServerResourcePacks());
+        CHECK(packaged.GetClientResourcePacks() == baking.GetClientResourcePacks());
+        CHECK(packaged.GetMapperResourcePacks() == baking.GetMapperResourcePacks());
+        CHECK(packaged.GetServerResourcePacks() == vector<string> {"Scripts", "ServerData"});
+        CHECK(packaged.GetClientResourcePacks() == vector<string> {"Scripts", "Art"});
+        CHECK(packaged.GetMapperResourcePacks() == vector<string> {"MapperData"});
+        CHECK(std::ranges::all_of(packaged.GetResourcePacks(), [](const ResourcePackInfo& pack) { return pack.InputDirs.empty(); }));
+    }
+
     SECTION("IgnoredInputDirThatNoPackReadsIsRejected")
     {
         ConfigFile config {"[SubConfig]\n"

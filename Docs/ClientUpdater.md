@@ -405,7 +405,7 @@ void ProcessUpdateFile(ServerConnection* connection, int32_t update_file_max_por
 auto GetUpdateDescriptor(string_view binary_target_name) const -> const vector<uint8_t>&;
 ```
 
-- `LoadFromClientResources` walks `Settings.Baking.ClientResources`, picks every pack `Settings.GetClientResourcePacks()` derives from the declared resource packs (excluding `Embedded`), then enumerates `Settings.Baking.PlatformBinaries/<target>/` for per-target binaries (default `PlatformBinaries/`, sibling of `Resources/` in the package layout).
+- `LoadFromClientResources` walks `Settings.Baking.ClientResources`, picks every pack `Settings.GetClientResourcePacks()` derives from the declared resource packs (excluding `Embedded`; a packaged server reads those declarations from the `[ResourcePack]` sections its baked config closes with), then enumerates `Settings.Baking.PlatformBinaries/<target>/` for per-target binaries (default `PlatformBinaries/`, sibling of `Resources/` in the package layout).
 - Entries are stored as `UpdateFileData { InMemory, MemoryData?, DiskPath?, Size, Hash }`. Memory mode keeps the whole pack in RAM for the lifetime of the server. Disk mode keeps only `DiskPath`, `Size`, and the streamed `Hash`; portions are read on demand by `ReadUpdateFilePortion(...)`.
 - Descriptors are cached per `binary_target_name`. Common-resource entries are merged into every per-target descriptor; targets without specific binaries fall back to the common-only descriptor.
 - `VerifyClientResourcesMetadata` then mounts the client packs and compares their metadata version against the one
@@ -517,7 +517,7 @@ Both the bundled runtime library in client packages and the runtime libraries st
 
 Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, verifies the exact entry list, and streams every entry through Python's CRC-checking reader; a damaged archive fails packaging before it can become the server's updater source. The `Embedded` pack goes through the same check on its in-memory buffer before it is patched into the executable, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order and post-build validation invariants.
 
-The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data.
+The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data. The baked config ends with the pack declarations every packaged application mounts its packs from, so variant config is written in front of it; see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md#runtime-settings).
 
 Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.

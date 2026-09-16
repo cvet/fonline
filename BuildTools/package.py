@@ -1505,7 +1505,8 @@ class Packager:
 
 	def patch_config(self, file_path: str, additional_config_data: str | None = None) -> None:
 		assert self.config_data, 'Embedded config is not prepared'
-		result_data = self.config_data + (('\n' + additional_config_data).encode() if additional_config_data else b'')
+		# The baked config ends with its [ResourcePack] sections, and a line appended after them would belong to the last one
+		result_data = ((additional_config_data + '\n').encode() if additional_config_data else b'') + self.config_data
 		with open(file_path, 'rb') as file:
 			content = file.read()
 		patch_data(file_path, INTERNAL_CONFIG_MARKER, result_data, find_internal_config_capacity(content))
