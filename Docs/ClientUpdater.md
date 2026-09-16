@@ -496,7 +496,7 @@ thing `main` does — the log file opens at its final location instead of being 
    `platform::get_user_data_base()` (environment first, the OS itself as fallback): Windows
    `%LOCALAPPDATA%`, macOS/iOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or
    `~/.local/share` — plus `FO_NICE_NAME`. Android never reaches this lookup: `FOnlineActivity` always
-   passes its `getFilesDir()` through `--UserWritablePath`. The **project** name, not `Common.GameName`, because the name
+   passes its `getFilesDir()` through `--Common.UserWritablePath`. The **project** name, not `Common.GameName`, because the name
    has to be known before any config is read; the Windows MSI installs into the same directory name, so a
    default install keeps one folder rather than two.
 3. **otherwise portable**: every writable path stays relative and therefore resolves against the **working
