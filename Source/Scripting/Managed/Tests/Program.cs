@@ -27,10 +27,10 @@ internal static class Program
                                                                        (-7, 5, 1),
                                                                        (int.MinValue, 4, 0),
                                                                        (int.MaxValue, 1, 7) };
-                 int previous = Settings.Geometry.MapDirCount;
+                 int previous = Game.MapDirCount;
                  try {
                      foreach (int count in new[] { 6, 8 }) {
-                         Settings.Geometry.MapDirCount = count;
+                         Game.MapDirCount = count;
                          foreach (var sample in samples) {
                              Check(new hdir(sample.Value).value == (count == 6 ? sample.Hex : sample.Square),
                                    "Wrong normalized direction for " + sample.Value);
@@ -44,7 +44,7 @@ internal static class Program
                      }
                  }
                  finally {
-                     Settings.Geometry.MapDirCount = previous;
+                     Game.MapDirCount = previous;
                  }
                  Check(System.Runtime.InteropServices.Marshal.SizeOf<hdir>() == 1, "Direction ABI size changed");
                  Check(typeof(hdir).GetConstructor(new[] { typeof(sbyte) })?.GetParameters()[0].ParameterType ==
@@ -333,10 +333,10 @@ public sealed class ProbeFailure : Exception
 }
 public static class DispatchProbe
 {
-    public static CritterProperty EnumValue;
-    public static int OverloadValue;
-    public static int AdminCallCount;
-    public static bool AsyncFinished;
+    internal static CritterProperty EnumValue;
+    internal static int OverloadValue;
+    internal static int AdminCallCount;
+    internal static bool AsyncFinished;
     [CallableByName]
     public static void WriteInt(ref int value)
     {
@@ -402,7 +402,7 @@ public static class DispatchProbe
     }
     public static class Inner
     {
-        public static bool Marked;
+        internal static bool Marked;
         [CallableByName]
         public static void Mark()
         {

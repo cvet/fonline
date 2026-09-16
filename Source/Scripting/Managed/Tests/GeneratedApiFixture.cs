@@ -97,12 +97,9 @@ public partial struct ucolor
 {
     public uint value;
 }
-public static class Settings
+public static partial class Game
 {
-    public static class Geometry
-    {
-        public static int MapDirCount { get; set; } = 6;
-    }
+    public static int MapDirCount { get; set; } = 6;
 }
 public partial struct hdir
 {
