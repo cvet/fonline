@@ -44,6 +44,114 @@
 
 FO_BEGIN_NAMESPACE
 
+// Build, platform and geometry facts. They are read where they are produced - a build macro or a
+// GameSettings constant - instead of being copied into a setting first: nothing configures them, and a
+// setting that no config can set is a published fact wearing a knob's clothes
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WebBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WEB != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WindowsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_LinuxBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_LINUX != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MacOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_MAC != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_AndroidBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_IOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_IOS != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DesktopBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0 || FO_LINUX != 0 || FO_MAC != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_TabletBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0 || FO_IOS != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapHexagonal(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::HEXAGONAL_GEOMETRY;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapSquare(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::SQUARE_GEOMETRY;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API int32_t Common_Game_MapDirCount(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::MAP_DIR_COUNT;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitBranch(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_GIT_BRANCH);
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitCommit(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_BUILD_HASH);
+}
+
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 {

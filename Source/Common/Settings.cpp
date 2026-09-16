@@ -167,23 +167,8 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("ApplyConfig");
         _appliedSettings.emplace("ApplySubConfig");
         _appliedSettings.emplace("Common.UnpackagedSubConfig");
-        _appliedSettings.emplace("Common.CommandLine");
-        _appliedSettings.emplace("Common.CommandLineArgs");
-        _appliedSettings.emplace("Common.GitBranch");
-        _appliedSettings.emplace("Common.GitCommit");
         _appliedSettings.emplace("Common.UserWritablePath");
         _appliedSettings.emplace("Network.CompatibilityVersion");
-        _appliedSettings.emplace("Platform.WebBuild");
-        _appliedSettings.emplace("Platform.WindowsBuild");
-        _appliedSettings.emplace("Platform.LinuxBuild");
-        _appliedSettings.emplace("Platform.MacOsBuild");
-        _appliedSettings.emplace("Platform.AndroidBuild");
-        _appliedSettings.emplace("Platform.IOsBuild");
-        _appliedSettings.emplace("Platform.DesktopBuild");
-        _appliedSettings.emplace("Platform.TabletBuild");
-        _appliedSettings.emplace("Geometry.MapHexagonal");
-        _appliedSettings.emplace("Geometry.MapSquare");
-        _appliedSettings.emplace("Geometry.MapDirCount");
         _appliedSettings.emplace("Common.Packaged");
         _appliedSettings.emplace("Common.DebugBuild");
         _appliedSettings.emplace("Render.RenderDebug");
@@ -301,43 +286,6 @@ void GlobalSettings::ApplyAutoSettings()
 
     *FixedSettingForEdit(Common.Packaged) = IsPackaged();
 
-#if FO_WEB
-    *FixedSettingForEdit(Platform.WebBuild) = true;
-#else
-    *FixedSettingForEdit(Platform.WebBuild) = false;
-#endif
-#if FO_WINDOWS
-    *FixedSettingForEdit(Platform.WindowsBuild) = true;
-#else
-    *FixedSettingForEdit(Platform.WindowsBuild) = false;
-#endif
-#if FO_LINUX
-    *FixedSettingForEdit(Platform.LinuxBuild) = true;
-#else
-    *FixedSettingForEdit(Platform.LinuxBuild) = false;
-#endif
-#if FO_MAC
-    *FixedSettingForEdit(Platform.MacOsBuild) = true;
-#else
-    *FixedSettingForEdit(Platform.MacOsBuild) = false;
-#endif
-#if FO_ANDROID
-    *FixedSettingForEdit(Platform.AndroidBuild) = true;
-#else
-    *FixedSettingForEdit(Platform.AndroidBuild) = false;
-#endif
-#if FO_IOS
-    *FixedSettingForEdit(Platform.IOsBuild) = true;
-#else
-    *FixedSettingForEdit(Platform.IOsBuild) = false;
-#endif
-    *FixedSettingForEdit(Platform.DesktopBuild) = Platform.WindowsBuild || Platform.LinuxBuild || Platform.MacOsBuild;
-    *FixedSettingForEdit(Platform.TabletBuild) = Platform.AndroidBuild || Platform.IOsBuild;
-
-    *FixedSettingForEdit(Geometry.MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
-    *FixedSettingForEdit(Geometry.MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    *FixedSettingForEdit(Geometry.MapDirCount) = GameSettings::MAP_DIR_COUNT;
-
 #if FO_DEBUG
     *FixedSettingForEdit(Common.DebugBuild) = true;
     *FixedSettingForEdit(Render.RenderDebug) = true;
@@ -347,8 +295,6 @@ void GlobalSettings::ApplyAutoSettings()
         *FixedSettingForEdit(View.MapZoomEnabled) = false;
     }
 
-    *FixedSettingForEdit(Common.GitBranch) = FO_GIT_BRANCH;
-    *FixedSettingForEdit(Common.GitCommit) = FO_BUILD_HASH;
     *FixedSettingForEdit(Network.CompatibilityVersion) = !Network.ForceCompatibilityVersion.empty() ? Network.ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 

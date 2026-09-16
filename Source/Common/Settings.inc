@@ -39,12 +39,8 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(Common, virtual BaseSettings)
-FIXED_SETTING(string, Common, CommandLine); // Command line used to start the game (read only)
-FIXED_SETTING(vector<string>, Common, CommandLineArgs); // Command line arguments used to start the game (read only)
 FIXED_SETTING(string, Common, GameName, "FOnline"); // Game name, used in logs and window title
 FIXED_SETTING(string, Common, GameVersion, "0.0.0"); // Game version, used in logs and window title
-FIXED_SETTING(string, Common, GitBranch); // Git branch name (if present)
-FIXED_SETTING(string, Common, GitCommit); // Git commit hash (if present)
 FIXED_SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpackaged builds
 FIXED_SETTING(bool, Common, DebugBuild); // If true, debug build is used, otherwise release build (read only)
 FIXED_SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
@@ -173,9 +169,6 @@ SETTING_GROUP_END(View);
 
 ///@ ExportSettings Common
 SETTING_GROUP(Geometry, virtual BaseSettings)
-FIXED_SETTING(bool, Geometry, MapHexagonal); // Hexagonal map grid (read only)
-FIXED_SETTING(bool, Geometry, MapSquare); // Square map grid (read only)
-FIXED_SETTING(int32_t, Geometry, MapDirCount); // Directions count (read only)
 FIXED_SETTING(int32_t, Geometry, MapHexWidth, 32); // Hex/square width
 FIXED_SETTING(int32_t, Geometry, MapHexHeight, 16); // Hex/square height
 FIXED_SETTING(int32_t, Geometry, MapHexLineHeight, 12); // Hex/square line height
@@ -348,18 +341,6 @@ VARIABLE_SETTING(bool, Hex, ShowFast, true); // If true, fast mode is enabled
 FIXED_SETTING(int32_t, Hex, ScrollBlockSize, 1); // Blocked hexes around scroll block line
 SETTING_GROUP_END(Hex);
 
-///@ ExportSettings Common
-SETTING_GROUP(Platform, virtual BaseSettings)
-FIXED_SETTING(bool, Platform, WebBuild); // Web build (read only)
-FIXED_SETTING(bool, Platform, WindowsBuild); // Windows build (read only)
-FIXED_SETTING(bool, Platform, LinuxBuild); // Linux build (read only)
-FIXED_SETTING(bool, Platform, MacOsBuild); // macOS build (read only)
-FIXED_SETTING(bool, Platform, AndroidBuild); // Android build (read only)
-FIXED_SETTING(bool, Platform, IOsBuild); // iOS build (read only)
-FIXED_SETTING(bool, Platform, DesktopBuild); // Desktop build (read only)
-FIXED_SETTING(bool, Platform, TabletBuild); // Tablet build (read only)
-SETTING_GROUP_END(Platform);
-
 ///@ ExportSettings Server
 SETTING_GROUP(DataBase, virtual CommonSettings)
 FIXED_SETTING(bool, DataBase, OpLogEnabled, true); // If true, pending database changes are mirrored to oplog for recovery; if false, any database write failure causes immediate panic
@@ -392,7 +373,7 @@ VARIABLE_SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewa
 SETTING_GROUP_END(Mapper);
 
 ///@ ExportSettings Client
-SETTING_GROUP(Client, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings)
+SETTING_GROUP(Client, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings)
 FIXED_SETTING(int32_t, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32_t, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
@@ -406,7 +387,7 @@ VARIABLE_SETTING(bool, Client, HelpInfo, false); // If true, help information is
 SETTING_GROUP_END(Client);
 
 ///@ ExportSettings Server
-SETTING_GROUP(Server, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings, virtual PackagingSettings)
+SETTING_GROUP(Server, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings, virtual PackagingSettings)
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
