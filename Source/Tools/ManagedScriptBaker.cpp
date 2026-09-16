@@ -323,8 +323,6 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     GenerateSolutionFile(managed_generated_dir, project_name, vector<string> {project_name, string(MANAGED_HOST_PROJECT_NAME)});
 
     for (string_view target : MANAGED_TARGETS) {
-        logging::write("Generate Managed C# API for {}", target);
-
         if (target == "Server") {
             BakerServerEngine engine(*_context->BakedFiles);
             GenerateTargetApiFiles(engine, managed_generated_dir, target);
@@ -1808,8 +1806,7 @@ static auto MakeManagedOutputAssemblyResourceDir(string_view target_name) -> str
 {
     FO_STACK_TRACE_ENTRY();
 
-    string target_suffix = strex(target_name).lower().str();
-    return strex("Assemblies/Assemblies-{}", target_suffix).str();
+    return MakeManagedAssemblyResourceDir(target_name);
 }
 
 static auto IsGeneratedManagedArtifactFileName(string_view file_name) noexcept -> bool

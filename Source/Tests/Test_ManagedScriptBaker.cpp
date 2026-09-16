@@ -1395,6 +1395,26 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
         CHECK(logged("error CS0000: fake compile failure"));
     }
 
+    SECTION("AssemblyDirectoryIsOneSpelling")
+    {
+        // The runtime reads the assemblies the baker writes, and its bake-output fallback used to look
+        // for `<Target>Assemblies` while the baker wrote `Assemblies-<target>`. The fallback then found
+        // nothing, so an incremental bake that skipped the up-to-date script pack reported every
+        // annotated script function as unverified - dialog demands, results and StaticScript alike
+        for (string_view target : {"Server", "Client", "Mapper"}) {
+            INFO(target);
+            CHECK(MakeManagedAssemblyResourceDir(target) == strex("Assemblies/Assemblies-{}", strex(target).lower()).str());
+        }
+
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        for (string_view target : {"Server", "Client", "Mapper"}) {
+            INFO(target);
+            CHECK(rig.Outputs.contains(strex("{}/{}.dll", MakeManagedAssemblyResourceDir(target), strex("TestPack.{}", target)).str()));
+        }
+    }
+
     SECTION("CompiledAssembliesArePacked")
     {
         ManagedScriptBaker baker(rig.MakeContext());

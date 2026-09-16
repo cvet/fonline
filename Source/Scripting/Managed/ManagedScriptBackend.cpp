@@ -5693,8 +5693,7 @@ static auto CollectAssemblyResources(const FileSystem& resources, string_view ta
 {
     FO_STACK_TRACE_ENTRY();
 
-    string target_suffix = strex(target_name).lower().str();
-    string assembly_dir = strex("Assemblies/Assemblies-{}", target_suffix).str();
+    string assembly_dir = MakeManagedAssemblyResourceDir(target_name);
     vector<ManagedAssemblyResource> result;
 
     for (const FileHeader& file : resources.FilterFiles("dll", assembly_dir, false)) {
@@ -5931,14 +5930,14 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
         return {};
     }
 
-    string target_subdir = strex("{}Assemblies", target_name).str();
+    string target_subdir = MakeManagedAssemblyResourceDir(target_name);
 
     for (auto pack_it = std::filesystem::directory_iterator(bake_root); pack_it != std::filesystem::directory_iterator(); ++pack_it) {
         if (!pack_it->is_directory()) {
             continue;
         }
 
-        auto target_dir = pack_it->path() / "Assemblies" / fs::make_path(target_subdir);
+        auto target_dir = pack_it->path() / fs::make_path(target_subdir);
 
         if (!std::filesystem::exists(target_dir)) {
             continue;

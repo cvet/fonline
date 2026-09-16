@@ -43,6 +43,12 @@ FO_BEGIN_NAMESPACE
 inline constexpr string_view MANAGED_RUNTIME_RESOURCE_DIR = "ManagedRuntime";
 inline constexpr string_view MANAGED_RUNTIME_MANIFEST_FILE = "runtime.manifest";
 
+// Directory the baker writes compiled assemblies into, relative to a resource pack root. Both readers
+// ask here - the mounted resources and the bake-output fallback - because they used to spell it apart:
+// the fallback looked for `<Target>Assemblies`, matched nothing, and left every annotated script
+// function unverified whenever the script pack itself was already up to date
+auto MakeManagedAssemblyResourceDir(string_view target_name) -> string;
+
 auto FindManagedRuntimeDirectory() -> optional<std::filesystem::path>;
 auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cache_dir) -> optional<std::filesystem::path>;
 
