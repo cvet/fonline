@@ -405,7 +405,7 @@ void ProcessUpdateFile(ServerConnection* connection, int32_t update_file_max_por
 auto GetUpdateDescriptor(string_view binary_target_name) const -> const vector<uint8_t>&;
 ```
 
-- `LoadFromClientResources` walks `Settings.Baking.ClientResources`, picks every pack listed in `Settings.Baking.ClientResourceEntries` (excluding `Embedded`), then enumerates `Settings.Baking.PlatformBinaries/<target>/` for per-target binaries (default `PlatformBinaries/`, sibling of `Resources/` in the package layout).
+- `LoadFromClientResources` walks `Settings.Baking.ClientResources`, picks every pack `Settings.GetClientResourcePacks()` derives from the declared resource packs (excluding `Embedded`), then enumerates `Settings.Baking.PlatformBinaries/<target>/` for per-target binaries (default `PlatformBinaries/`, sibling of `Resources/` in the package layout).
 - Entries are stored as `UpdateFileData { InMemory, MemoryData?, DiskPath?, Size, Hash }`. Memory mode keeps the whole pack in RAM for the lifetime of the server. Disk mode keeps only `DiskPath`, `Size`, and the streamed `Hash`; portions are read on demand by `ReadUpdateFilePortion(...)`.
 - Descriptors are cached per `binary_target_name`. Common-resource entries are merged into every per-target descriptor; targets without specific binaries fall back to the common-only descriptor.
 - `VerifyClientResourcesMetadata` then mounts the client packs and compares their metadata version against the one

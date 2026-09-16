@@ -280,6 +280,8 @@ TEST_CASE("MapBaker")
             std::filesystem::remove_all(temp_dir, error);
         });
 
+        // The fixture asks for the directory the backend will scan instead of spelling it: the naming moved
+        // to MakeManagedAssemblyResourceDir once already, and a hand-written path went quietly stale
         std::filesystem::path foreign_assembly = temp_dir / "Baking" / "ForeignPack" / fs::make_path(MakeManagedAssemblyResourceDir("Server")) / "Foreign.Server.dll";
         std::filesystem::create_directories(foreign_assembly.parent_path());
         REQUIRE(fs::write_file(fs::path_to_string(foreign_assembly), string_view {"unrelated managed output"}));
