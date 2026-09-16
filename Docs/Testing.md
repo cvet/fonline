@@ -234,11 +234,12 @@ depths that fit every production configuration, so sanitizer runs get the same 8
 reserve that Linux runs already have from the default rlimit. Production configs keep the
 1 MiB default.
 
-Vendored third-party libraries are excluded from UBSan's `-fsanitize=function` and
-`-fsanitize=alignment` checks (the rest of `-fsanitize=undefined` still applies to them).
-`DisableLibWarnings` adds `-fno-sanitize=function,alignment` on the
+Vendored third-party libraries are excluded from UBSan's `-fsanitize=function`,
+`-fsanitize=alignment`, `-fsanitize=pointer-overflow` and `-fsanitize=shift-base` checks (the rest
+of `-fsanitize=undefined` still applies to them). `DisableLibWarnings` adds
+`-fno-sanitize=function,alignment,pointer-overflow,shift-base` on the
 `San_Undefined`/`San_Address_Undefined` configs because several vendored libraries trip
-those two checks by design:
+those checks by design:
 
 - `function`: AngelScript's script-call dispatch invokes registered C functions through
   `bool(*)(void*,void*)` and similar signatures, and C callback APIs do the same.
@@ -247,8 +248,11 @@ those two checks by design:
   (`*(asPWORD*)(bc+1) = ...` in `GenerateFactoryStubForTemplateObjectInstance`), which UBSan
   reports as a misaligned store even though it is correct on every architecture the engine
   targets.
+- `shift-base`: libvorbis packs a pair of bark-band indices into one int as `((lo-1)<<16)+(hi-1)`
+  (`psy.c`), so the first band shifts `-1` left and reads back with an arithmetic `>>16`. The
+  encoder reaches it on the first Ogg bake.
 
-Both are third-party idioms, not undefined behaviour in engine code, so they must not fail
+These are third-party idioms, not undefined behaviour in engine code, so they must not fail
 the UBSan leg (which CI runs with `halt_on_error=1`). First-party engine code keeps both
 checks fully active.
 
