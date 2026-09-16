@@ -22,7 +22,7 @@ public static class Invariant
     // verify(cond, message) -- the common form. Throws when the invariant is broken.
     //
     // `condition` is a predicate. Write it as if this call were stripped like an assert: work the rest of the
-    // method depends on happens first, and Verify only reads the answer.
+    // method depends on happens first, and Verify only reads the answer
     public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message)
     {
         if (!condition) {
