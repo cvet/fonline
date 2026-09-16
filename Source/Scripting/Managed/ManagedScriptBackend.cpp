@@ -5781,16 +5781,14 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
     SetEnvironmentVariableDefault("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
 
     // Force preemptive GC thread suspension. Under the multithreaded game-logic model the process hosts several
-    // in-process engines (e.g
+    // in-process engines
 #if !FO_WEB
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 #endif
 
-#if !FO_WEB
     // Script frames in stack traces carry file and line only with the portable PDBs embedded in the assemblies loaded,
     // which has to be requested before the domain exists
     mono_debug_init(MONO_DEBUG_FORMAT_MONO);
-#endif
 
     auto lib_dir = runtime_dir / "lib";
     auto etc_dir = runtime_dir / "etc";

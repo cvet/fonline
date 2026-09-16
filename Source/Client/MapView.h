@@ -199,7 +199,8 @@ public:
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
     [[nodiscard]] auto GetHiddenRoofNum() const noexcept -> int32_t { return _hiddenRoofNum; }
     [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
-    [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
+    [[nodiscard]] auto IsManualScrolling() const noexcept -> bool { return _manualScroll != ScrollDirection::None; }
+    [[nodiscard]] auto GetManualScroll() const noexcept -> ScrollDirection { return _manualScroll; }
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
@@ -248,6 +249,7 @@ public:
     void ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_stop);
     void ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop);
     void SetExtraScrollOffset(fpos32 offset);
+    void SetManualScroll(ScrollDirection dirs) noexcept { _manualScroll = dirs; }
     void InstantScroll(fpos32 scroll);
     void InstantScrollTo(mpos center_hex);
 
@@ -412,6 +414,7 @@ private:
     fpos32 _extraScrollOffset {};
     timespan _scrollDtAccum {};
 
+    ScrollDirection _manualScroll {};
     bool _autoScrollActive {};
     bool _autoScrollCanStop {};
     fpos32 _autoScrollOffset {};

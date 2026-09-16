@@ -106,7 +106,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     auto client_resources_dir = std::filesystem::path {fs::make_path(settings.Baking.ClientResources)};
 
-    for (const auto& resource_entry : settings.Baking.ClientResourceEntries) {
+    for (const auto& resource_entry : settings.GetClientResourcePacks()) {
         if (resource_entry != EMBEDDED_PACK_NAME) {
             string pack_name = strex("{}.fores", resource_entry).str();
             client_resource_pack_names.emplace(pack_name);
@@ -199,7 +199,7 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
     // one of them would hand every synced client a property layout this server cannot talk to
     FileSystem client_resources;
 
-    for (const string& name : settings.Baking.ClientResourceEntries) {
+    for (const string& name : settings.GetClientResourcePacks()) {
         if (name != EMBEDDED_PACK_NAME) {
             client_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(settings.Baking.ClientResources).combine_path(strex("{}.fores", name)).str()));
         }

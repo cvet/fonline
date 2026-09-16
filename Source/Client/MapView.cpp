@@ -3046,15 +3046,6 @@ auto MapView::IsOutsideArea(mpos hex) const -> bool
     return false;
 }
 
-auto MapView::IsManualScrolling() const noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return _engine->Settings->Hex.ScrollMouseLeft || _engine->Settings->Hex.ScrollKeybLeft || _engine->Settings->Hex.ScrollMouseRight || //
-        _engine->Settings->Hex.ScrollKeybRight || _engine->Settings->Hex.ScrollMouseUp || _engine->Settings->Hex.ScrollKeybUp || //
-        _engine->Settings->Hex.ScrollMouseDown || _engine->Settings->Hex.ScrollKeybDown;
-}
-
 void MapView::ProcessScroll(float32_t dt)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3083,16 +3074,16 @@ void MapView::ProcessScroll(float32_t dt)
             return;
         }
 
-        if (_engine->Settings->Hex.ScrollMouseLeft || _engine->Settings->Hex.ScrollKeybLeft) {
+        if (is_enum_set(_manualScroll, ScrollDirection::Left)) {
             scroll.x -= 1.0f;
         }
-        if (_engine->Settings->Hex.ScrollMouseRight || _engine->Settings->Hex.ScrollKeybRight) {
+        if (is_enum_set(_manualScroll, ScrollDirection::Right)) {
             scroll.x += 1.0f;
         }
-        if (_engine->Settings->Hex.ScrollMouseUp || _engine->Settings->Hex.ScrollKeybUp) {
+        if (is_enum_set(_manualScroll, ScrollDirection::Up)) {
             scroll.y -= 1.0f;
         }
-        if (_engine->Settings->Hex.ScrollMouseDown || _engine->Settings->Hex.ScrollKeybDown) {
+        if (is_enum_set(_manualScroll, ScrollDirection::Down)) {
             scroll.y += 1.0f;
         }
 

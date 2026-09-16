@@ -2012,7 +2012,8 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
     BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {pack_name});
+    auto pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
@@ -2056,12 +2057,13 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
     BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
-    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Before", "Embedded", "Art"});
+    auto pack_config = ConfigFile("[ResourcePack]\nName = Before\nClientOnly = True\n[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable);
 
     vector<ResourceIndexPack> packs;
     vector<string> pack_paths;
-    vector<string> indexed_names = GetResourceIndexPackNames(settings.Baking.ClientResourceEntries);
+    vector<string> indexed_names = GetResourceIndexPackNames(settings.GetClientResourcePacks());
     REQUIRE(ResolveResourceIndexPacks({install}, indexed_names, packs, pack_paths));
     string index_path = GetClientResourceIndexPath(settings);
     REQUIRE(fs::create_directories(strex(index_path).extract_dir().str()));
@@ -2113,7 +2115,8 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
     BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Main", "Fallback"});
+    auto pack_config = ConfigFile("[ResourcePack]\nName = Main\nClientOnly = True\n[ResourcePack]\nName = Fallback\nClientOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);

@@ -276,6 +276,26 @@ public sealed class CoverEffectAttribute : Attribute
     public CoverEffectKind Effect { get; }
 }
 
+// The raw synchronization surface, declared by the export itself. Script code reaches for none of these
+// directly: the primitive replaces the held set without the atomic multi-root acquisition and the migration
+// re-proof the Sync helpers add, the probe answers what was true a moment ago, and the singleton bucket lock
+// is taken through the GameLock scope. The markers exist so the rules can say which method is which without
+// holding its name, because a name in an analyzer turns a rename into a silently disarmed rule
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class CoverPrimitiveAttribute : Attribute
+{
+}
+
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class CoverProbeAttribute : Attribute
+{
+}
+
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class SingletonLockAttribute : Attribute
+{
+}
+
 // For a parameter a method RETURNS unchanged -- a checking pass-through such as Game.VerifyNotNull. The result is the
 // argument itself, so it is covered exactly when the argument was, with the same reach
 [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]

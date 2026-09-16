@@ -141,7 +141,6 @@ VARIABLE_SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
 VARIABLE_SETTING(string, ClientNetwork, ProxyUser, ""); // Proxy username
 VARIABLE_SETTING(string, ClientNetwork, ProxyPass, ""); // Proxy password
-VARIABLE_SETTING(int32_t, ClientNetwork, Ping); // Network ping (read only)
 VARIABLE_SETTING(bool, ClientNetwork, DebugNet, false); // If true, network debugging is enabled
 SETTING_GROUP_END(ClientNetwork);
 
@@ -300,6 +299,7 @@ SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
+FIXED_SETTING(vector<string>, Baking, IgnoreInputDirs); // Resource pack input directories left out of every pack, relative to the config declaring the pack; each must be an input of some pack
 FIXED_SETTING(bool, Baking, PreciseModelBounds, false); // If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster
 FIXED_SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world extent a directly attached model may reach; below it the export sits in a smaller unit space than the engine
 FIXED_SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
@@ -313,9 +313,6 @@ FIXED_SETTING(string, Baking, ServerResources, "ServerResources"); // Server res
 FIXED_SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
 FIXED_SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 FIXED_SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
-FIXED_SETTING(vector<string>, Baking, ServerResourceEntries); // Server resource entries (read only)
-FIXED_SETTING(vector<string>, Baking, ClientResourceEntries); // Client resource entries (read only)
-FIXED_SETTING(vector<string>, Baking, MapperResourceEntries); // Mapper resource entries (read only)
 FIXED_SETTING(int32_t, Baking, CompressLevel, 1); // Deflate level baking compresses with (0-9)
 FIXED_SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
 FIXED_SETTING(int32_t, Baking, ZipCompressLevel, 1); // Deflate level for distribution zip archives and the executable's Embedded resource pack (0-9)
@@ -342,14 +339,6 @@ FIXED_SETTING(int32_t, Hex, ScrollSpeed, 1200); // Scroll speed in pixels per se
 FIXED_SETTING(int32_t, Hex, ZoomSpeed, 100); // Speed of zooming
 VARIABLE_SETTING(bool, Hex, FullscreenMouseScroll, true); // If true, fullscreen mouse scroll is enabled
 VARIABLE_SETTING(bool, Hex, WindowedMouseScroll, false); // If true, windowed mouse scroll is enabled
-VARIABLE_SETTING(bool, Hex, ScrollKeybLeft, false); // Keyboard map scroll left (read only)
-VARIABLE_SETTING(bool, Hex, ScrollKeybRight, false); // Keyboard map scroll right (read only)
-VARIABLE_SETTING(bool, Hex, ScrollKeybUp, false); // Keyboard map scroll up (read only)
-VARIABLE_SETTING(bool, Hex, ScrollKeybDown, false); // Keyboard map scroll down (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseLeft, false); // Mouse map scroll left (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseRight, false); // Mouse map scroll right (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseUp, false); // Mouse map scroll up (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseDown, false); // Mouse map scroll down (read only)
 VARIABLE_SETTING(uint8_t, Hex, RoofAlpha, 200); // Roof alpha value
 VARIABLE_SETTING(bool, Hex, ShowTile, true); // If true, tiles are shown
 VARIABLE_SETTING(bool, Hex, ShowRoof, true); // If true, roofs are shown

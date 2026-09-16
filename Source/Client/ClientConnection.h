@@ -71,6 +71,7 @@ public:
     [[nodiscard]] auto IsConnected() const noexcept -> bool { return _netConnection && _wasHandshake; }
     [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
     [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
+    [[nodiscard]] auto GetPing() const noexcept -> int32_t { return _ping; }
     [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
     [[nodiscard]] auto GetServerMetadataVersion() const noexcept -> string_view { return _serverMetadataVersion; }
 
@@ -121,6 +122,7 @@ private:
     optional<nanotime> _artificalInboundLagTime {};
     optional<nanotime> _artificalOutboundLagTime {};
     random_generator _randomGenerator {};
+    int32_t _ping {};
     nanotime _pingTime {};
     nanotime _pingCallTime {};
     size_t _msgCount {};

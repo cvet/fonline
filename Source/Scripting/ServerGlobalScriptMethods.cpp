@@ -1487,7 +1487,7 @@ FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t e
 }
 
 ///@ ExportMethod Async
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
     small_vector<ptr<ServerEntity>, 3> syncable;
@@ -1500,7 +1500,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 }
 
 ///@ ExportMethod Async AllowDestroyedEntityArgs
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
 {
     auto ctx = server->RequireCurrentSyncContext();
     small_vector<ptr<ServerEntity>, 3> syncable;
@@ -1517,7 +1517,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 }
 
 ///@ ExportMethod Async AllowDestroyedEntityArgs
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
 {
     auto ctx = server->RequireCurrentSyncContext();
     small_vector<ptr<ServerEntity>, 3> syncable;
@@ -1538,7 +1538,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 }
 
 ///@ ExportMethod Async AllowDestroyedEntityArgs
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
     vector<ptr<ServerEntity>> syncable;
     syncable.reserve(entities.size());
@@ -1562,7 +1562,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<np
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_SyncRelease(ptr<ServerEngine> server)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncRelease(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ctx->Release();
@@ -1577,7 +1577,7 @@ FO_SCRIPT_API vector<ptr<ServerEntity>> Server_Game_GetHeldSyncEntities(ptr<Serv
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
+FO_SCRIPT_API FO_COVER_PROBE bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ignore_unused(ctx);
@@ -1585,14 +1585,14 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<Ser
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
+FO_SCRIPT_API FO_SINGLETON_LOCK void Server_Game_Lock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ctx->LockSingleton(server->GetEntityLock());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_Unlock(ptr<ServerEngine> server)
+FO_SCRIPT_API FO_SINGLETON_LOCK void Server_Game_Unlock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ctx->UnlockSingleton(server->GetEntityLock());

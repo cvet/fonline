@@ -162,8 +162,8 @@ static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
 
     if (settings.Common.Packaged) {
         FileSystem resources;
-        resources.AddPacksSource(settings.Baking.ClientResources, settings.Baking.ClientResourceEntries);
-        resources.AddPacksSource(settings.Baking.ClientResources, settings.Baking.MapperResourceEntries);
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetMapperResourcePacks());
         return resources;
     }
     else {

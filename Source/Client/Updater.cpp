@@ -333,7 +333,7 @@ void Updater::RebuildResourceIndex() const
     try {
         vector<string> pack_dirs = GetClientPackDirs(*_settings);
         index_path = GetClientResourceIndexPath(*_settings);
-        vector<string> indexed_packs = GetResourceIndexPackNames(_settings->Baking.ClientResourceEntries);
+        vector<string> indexed_packs = GetResourceIndexPackNames(_settings->GetClientResourcePacks());
 
         if (indexed_packs.empty() || IsResourceIndexCurrent(index_path, pack_dirs, indexed_packs)) {
             return;

@@ -59,9 +59,10 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
+    vector<string> client_packs = settings.GetClientResourcePacks();
     vector<string> pack_dirs = GetClientPackDirs(settings);
     string index_path = GetClientResourceIndexPath(settings);
-    vector<string> indexed_packs = GetResourceIndexPackNames(settings.Baking.ClientResourceEntries);
+    vector<string> indexed_packs = GetResourceIndexPackNames(client_packs);
     bool index_mounted = false;
 
     // Embedded keeps its configured position
@@ -77,10 +78,10 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
         }
 
         if (index) {
-            size_t prefix_size = settings.Baking.ClientResourceEntries.size() - indexed_packs.size();
+            size_t prefix_size = client_packs.size() - indexed_packs.size();
 
             for (size_t i = 0; i < prefix_size; ++i) {
-                AddClientPackSource(resources, settings, settings.Baking.ClientResourceEntries[i]);
+                AddClientPackSource(resources, settings, client_packs[i]);
             }
 
             resources.AddCustomSource(index.take_not_null());
@@ -89,7 +90,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     }
 
     if (!index_mounted) {
-        for (const string& pack : settings.Baking.ClientResourceEntries) {
+        for (const string& pack : client_packs) {
             AddClientPackSource(resources, settings, pack);
         }
     }
@@ -2626,11 +2627,6 @@ void ClientEngine::UnloadMap()
     FO_STACK_TRACE_ENTRY();
 
     OnMapUnload.Fire();
-
-    Settings->Hex.ScrollMouseRight = false;
-    Settings->Hex.ScrollMouseLeft = false;
-    Settings->Hex.ScrollMouseDown = false;
-    Settings->Hex.ScrollMouseUp = false;
 
     if (_curMap) {
         auto map = GetCurMap();

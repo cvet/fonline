@@ -2207,7 +2207,8 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         GlobalSettings server_settings = MakeServerTestSettings(port);
         BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
         BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
-        BakerTests::OverrideSetting(server_settings.Baking.ClientResourceEntries, vector<string> {"Metadata", "Art"});
+        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        server_settings.ApplyConfigFile(server_pack_config, "");
         BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
         auto server = MakeServerEngine(server_settings);
@@ -2228,7 +2229,8 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         GlobalSettings client_settings = MakeClientTestSettings(port);
         BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
         BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
-        BakerTests::OverrideSetting(client_settings.Baking.ClientResourceEntries, vector<string> {"Embedded", "Metadata", "Art"});
+        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);
         Updater updater {&client_settings, &GetApp()->MainWindow};
         REQUIRE(WaitForUpdaterResult(updater));
@@ -2386,7 +2388,8 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 
     REQUIRE(fs::write_file(metadata_path, outdated_metadata));
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
-    BakerTests::OverrideSetting(client_settings.Baking.ClientResourceEntries, vector<string> {pack_name});
+    auto client_pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    client_settings.ApplyConfigFile(client_pack_config, "");
 
     CHECK_NOTHROW([&client_settings] {
         Updater updater {&client_settings, &GetApp()->MainWindow};

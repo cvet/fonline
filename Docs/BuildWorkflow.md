@@ -76,7 +76,7 @@ the environment:
 | variable | what it configures |
 |---|---|
 | `FO_DOWNLOAD_MIRROR` | Base URL of a pull-through mirror. `https://host/path` is fetched as `<mirror>/host/path` instead. |
-| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The Emscripten SDK is keyed by version, host OS, and architecture; the MSVC SDK tree is keyed by xwin version and contained architectures. Each complete tree is built once and downloaded whole afterwards. |
+| `FO_WORKSPACE_CACHE` | Base URL for prepared workspaces. The Emscripten SDK is keyed by version, host OS, and architecture; the MSVC SDK tree is keyed by xwin version and contained architectures; the published managed runtime tree (`setup-mono`) is keyed by everything that shapes it, see [BuildToolsPipeline.md](BuildToolsPipeline.md#managed-runtime-workspace-cache). Each complete tree is built once and downloaded whole afterwards. |
 | `FO_CI_TOKEN` | Bearer token for the two addresses above. It is sent **only** to their own scheme and host, never to an upstream one. |
 | `FO_CI_CA` | Extra trust anchors, added to the system store rather than replacing it, for a machine whose root store cannot be repaired. |
 

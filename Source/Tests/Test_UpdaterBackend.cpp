@@ -136,7 +136,8 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
     settings.ApplyDefaultSettings();
     BakerTests::OverrideSetting(settings.Baking.ClientResources, client_resources_dir);
     BakerTests::OverrideSetting(settings.Baking.PlatformBinaries, platform_binaries_dir);
-    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Scripts"});
+    auto pack_config = ConfigFile("[ResourcePack]\nName = Scripts\nClientOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
     BakerTests::OverrideSetting(settings.ServerNetwork.UpdateFilesInMemory, true);
 
     UpdaterBackend updater_backend;

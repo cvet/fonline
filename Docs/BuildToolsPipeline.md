@@ -283,6 +283,33 @@ changes `PATH`, as Xcode does for script phases. `Python3_EXECUTABLE` can select
 an explicit interpreter at configure time; the standalone `setup-mono` wrappers
 remain convenience entry points for an interactive shell.
 
+#### Managed runtime workspace cache
+
+With `FO_WORKSPACE_CACHE` set, `setup-mono` takes the published `output/mono/<triplet>` tree from the cache
+before building anything, and a build that had to run publishes its tree there afterwards. The source build
+is most of a CI build job's time, and its output depends on nothing the cache name leaves out:
+
+- the pinned `ThirdParty/dotnet-runtime` revision, the triplet, the subset and the marker suffix;
+- the code that clones, patches, builds and publishes the runtime: every module-level function, class and
+  constant `build_mono` reaches by name in `buildtools.py`, comments excluded. A patch edit therefore changes
+  the key even when nobody changes the marker suffix, while an unrelated edit to `buildtools.py` does not;
+- the target toolchain pins the archives are compiled with (Emscripten for browser; NDK, SDK and API level for
+  Android; the iOS SDK for iOS);
+- the host toolchain, because the archives are linked by another toolchain on another machine: on Windows the
+  default MSVC toolset of every Visual Studio installation with C++ tools and the newest Windows SDK (MSVC's
+  linker must be at least as new as the compiler); elsewhere the distribution, the C library, `CC`/`CXX`/
+  `CLR_CC`/`CLR_CXX` and the version of every `clang`/`clang-<N>` on `PATH`.
+
+Every key part is printed on the job log, so two jobs that unexpectedly miss each other's tree can be compared.
+A part that might matter goes in: a spurious miss costs one runtime build, a stale hit ships a runtime built some
+other way. A restored tree is extracted in isolation and adopted only if it holds `include/mono-2.0` and
+`lib/netcoreapp/System.Private.CoreLib.dll`; anything else is a miss. On a miss the clone and build markers are
+reset first, so a tree published to the cache always comes from a fresh clone rather than from source or objects
+a persistent workspace kept under markers that do not record the current build code. An already ready workspace
+does not consult the cache, and `FO_DOTNET_RUNTIME_ROOT` (a local source tree, not the pinned revision) disables
+it. Concurrent jobs that miss together each build and publish, as they would without the cache; the host's idle
+retention removes a tree nobody has read for its retention period.
+
 ### `EngineSources.cmake`
 
 Builds source lists and generated resource files used by later stages. It appends source lists for engine layers such as Essentials, Common, Frontend, Client, Server, Tools, Scripting, and tests. It also prepares app icon/resource data such as the generated Windows `.rc` file.

@@ -254,6 +254,7 @@ public:
     auto CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>;
     auto CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<ItemView>;
     auto CloneEntity(ptr<Entity> entity) -> nptr<Entity>;
+    void PushManualScroll();
     void CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<const ItemView> from_item);
 
     auto MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t;
@@ -341,6 +342,16 @@ public:
     shared_ptr<Sprite> CurPHand {};
     int32_t ActivePanelMode {};
     int32_t MouseHoldMode {};
+    // The editor's own scroll input, kept as two halves because the mouse one is recomputed from the
+    // cursor every frame while the keyboard one is toggled on key down and up
+    bool ScrollKeybLeft {};
+    bool ScrollKeybRight {};
+    bool ScrollKeybUp {};
+    bool ScrollKeybDown {};
+    bool ScrollMouseLeft {};
+    bool ScrollMouseRight {};
+    bool ScrollMouseUp {};
+    bool ScrollMouseDown {};
     ipos32 MainPanelPos {};
     mpos SelectHex1 {};
     mpos SelectHex2 {};

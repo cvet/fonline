@@ -346,14 +346,14 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
     MapperWindowFocused = window_focused;
 
     if (InputLocked) {
-        Settings->Hex.ScrollMouseRight = false;
-        Settings->Hex.ScrollMouseLeft = false;
-        Settings->Hex.ScrollMouseDown = false;
-        Settings->Hex.ScrollMouseUp = false;
-        Settings->Hex.ScrollKeybRight = false;
-        Settings->Hex.ScrollKeybLeft = false;
-        Settings->Hex.ScrollKeybDown = false;
-        Settings->Hex.ScrollKeybUp = false;
+        ScrollMouseRight = false;
+        ScrollMouseLeft = false;
+        ScrollMouseDown = false;
+        ScrollMouseUp = false;
+        ScrollKeybRight = false;
+        ScrollKeybLeft = false;
+        ScrollKeybDown = false;
+        ScrollKeybUp = false;
         MouseHoldMode = INT_NONE;
         RightMouseDragged = false;
         RightMouseInertia = {};
@@ -363,12 +363,14 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
 
     if (bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings->Hex.FullscreenMouseScroll) || (!is_fullscreen && Settings->Hex.WindowedMouseScroll)) {
         if (!InputLocked) {
-            Settings->Hex.ScrollMouseRight = MousePos.x >= Settings->View.ScreenWidth - 1;
-            Settings->Hex.ScrollMouseLeft = MousePos.x <= 0;
-            Settings->Hex.ScrollMouseDown = MousePos.y >= Settings->View.ScreenHeight - 1;
-            Settings->Hex.ScrollMouseUp = MousePos.y <= 0;
+            ScrollMouseRight = MousePos.x >= Settings->View.ScreenWidth - 1;
+            ScrollMouseLeft = MousePos.x <= 0;
+            ScrollMouseDown = MousePos.y >= Settings->View.ScreenHeight - 1;
+            ScrollMouseUp = MousePos.y <= 0;
         }
     }
+
+    PushManualScroll();
 
     if (!window_focused) {
         OnInputLost.Fire();
@@ -818,6 +820,34 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
     }
 }
 
+void MapperEngine::PushManualScroll()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto cur_map = GetCurMap();
+
+    if (!cur_map) {
+        return;
+    }
+
+    auto dirs = ScrollDirection::None;
+
+    if (ScrollMouseLeft || ScrollKeybLeft) {
+        dirs = combine_enum(dirs, ScrollDirection::Left);
+    }
+    if (ScrollMouseRight || ScrollKeybRight) {
+        dirs = combine_enum(dirs, ScrollDirection::Right);
+    }
+    if (ScrollMouseUp || ScrollKeybUp) {
+        dirs = combine_enum(dirs, ScrollDirection::Up);
+    }
+    if (ScrollMouseDown || ScrollKeybDown) {
+        dirs = combine_enum(dirs, ScrollDirection::Down);
+    }
+
+    cur_map->SetManualScroll(dirs);
+}
+
 void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
 {
     FO_STACK_TRACE_ENTRY();
@@ -825,16 +855,16 @@ void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
     if (dikdw != KeyCode::None && !ConsoleEdit) {
         switch (dikdw) {
         case KeyCode::Left:
-            Settings->Hex.ScrollKeybLeft = true;
+            ScrollKeybLeft = true;
             break;
         case KeyCode::Right:
-            Settings->Hex.ScrollKeybRight = true;
+            ScrollKeybRight = true;
             break;
         case KeyCode::Up:
-            Settings->Hex.ScrollKeybUp = true;
+            ScrollKeybUp = true;
             break;
         case KeyCode::Down:
-            Settings->Hex.ScrollKeybDown = true;
+            ScrollKeybDown = true;
             break;
         default:
             break;
@@ -844,16 +874,16 @@ void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
     if (dikup != KeyCode::None) {
         switch (dikup) {
         case KeyCode::Left:
-            Settings->Hex.ScrollKeybLeft = false;
+            ScrollKeybLeft = false;
             break;
         case KeyCode::Right:
-            Settings->Hex.ScrollKeybRight = false;
+            ScrollKeybRight = false;
             break;
         case KeyCode::Up:
-            Settings->Hex.ScrollKeybUp = false;
+            ScrollKeybUp = false;
             break;
         case KeyCode::Down:
-            Settings->Hex.ScrollKeybDown = false;
+            ScrollKeybDown = false;
             break;
         default:
             break;

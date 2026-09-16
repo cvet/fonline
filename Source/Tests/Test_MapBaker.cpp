@@ -33,6 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "ManagedRuntime.h"
 #include "MapBaker.h"
 #include "MapLoader.h"
 #include "Test_BakerHelpers.h"
@@ -279,7 +280,7 @@ TEST_CASE("MapBaker")
             std::filesystem::remove_all(temp_dir, error);
         });
 
-        std::filesystem::path foreign_assembly = temp_dir / "Baking" / "ForeignPack" / "Assemblies" / "ServerAssemblies" / "Foreign.Server.dll";
+        std::filesystem::path foreign_assembly = temp_dir / "Baking" / "ForeignPack" / fs::make_path(MakeManagedAssemblyResourceDir("Server")) / "Foreign.Server.dll";
         std::filesystem::create_directories(foreign_assembly.parent_path());
         REQUIRE(fs::write_file(fs::path_to_string(foreign_assembly), string_view {"unrelated managed output"}));
         std::filesystem::current_path(temp_dir);

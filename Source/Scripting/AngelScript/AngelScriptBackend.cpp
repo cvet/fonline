@@ -63,17 +63,6 @@ static constexpr uint32_t AS_BYTECODE_CONTAINER_MAGIC = 0x464F4132; // 'FOA2'
 
 // Configuration the bytecode was compiled under
 static constexpr uint8_t AS_BYTECODE_CONFIG_MANAGED = 0x01;
-
-[[nodiscard]] static constexpr auto GetScriptBytecodeConfigFlags() noexcept -> uint8_t
-{
-    uint8_t flags = 0;
-
-#if FO_MANAGED_SCRIPTING
-    flags |= AS_BYTECODE_CONFIG_MANAGED;
-#endif
-
-    return flags;
-}
 static constexpr uint8_t AS_BYTECODE_POINTER_SIZE = sizeof(void*);
 static constexpr uint8_t AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
 static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
@@ -373,7 +362,9 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     uint8_t source_endian_tag = reader.read<uint8_t>();
     uint8_t source_config_flags = reader.read<uint8_t>();
 
-    FO_VERIFY_AND_THROW(source_config_flags == GetScriptBytecodeConfigFlags(), "Script bytecode was compiled for a different build configuration", source_config_flags, GetScriptBytecodeConfigFlags());
+    uint8_t flags = 0;
+    flags |= build_condition<FO_MANAGED_SCRIPTING> ? AS_BYTECODE_CONFIG_MANAGED : 0;
+    FO_VERIFY_AND_THROW(source_config_flags == flags, "Script bytecode was compiled for a different build configuration", source_config_flags, flags);
 
     if (source_pointer_size != AS_BYTECODE_POINTER_SIZE) {
         logging::write("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
@@ -688,7 +679,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     writer.write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
     writer.write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
     writer.write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
-    writer.write<uint8_t>(GetScriptBytecodeConfigFlags());
+    writer.write<uint8_t>(build_condition<FO_MANAGED_SCRIPTING> ? AS_BYTECODE_CONFIG_MANAGED : 0);
     writer.write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
     if (!buf.empty()) {
         writer.write_object_array(const_span<AngelScript::asBYTE> {buf.data(), buf.size()});
