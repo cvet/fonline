@@ -56,9 +56,8 @@ public:
     void IndexFiles();
     // The resource paths of every indexed sound, for a caller that resolves its own naming conventions
     [[nodiscard]] auto GetSoundNames() const noexcept -> const_span<string> { return _soundNames; }
-    // The handle names the sound while it plays, and zero means there is nothing playing to name: the device
-    // is silent, the sound was out of earshot, or the resource could not be played. A caller that only starts
-    // a sound ignores it
+    // The handle names the sound while it plays; zero means nothing is playing to name: the device is silent, the sound was out
+    // of earshot, or the resource could not be played. A caller that only starts a sound ignores it
     auto PlaySound(string_view name) -> uint32_t;
     // Attenuation scales the mixed volume, pan runs from -1 at the left ear to 1 at the right one; how far a
     // sound carries and how hard it leans is game policy, so the caller decides both
