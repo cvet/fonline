@@ -1344,6 +1344,17 @@ namespace ScriptMethodsTest
         if (clone.Ownership != ItemOwnership::CritterInventory) return -7;
         if (receiver.CountItem("TestStackableItem".hstr()) != 2 || owner.CountItem("TestStackableItem".hstr()) != 3) return -8;
 
+        Item created = Game.CreateItem("TestStackableItem".hstr());
+        if (created is null || created.Ownership != ItemOwnership::Nowhere || created.Count != 1) return -10;
+
+        Critter stock = Game.CreateCritter("TestCritter".hstr(), false);
+        if (stock is null) return -13;
+
+        created.Count = 4;
+        Item? placed = Game.MoveItem(created, stock);
+        if (placed is null || placed.Id != created.Id) return -11;
+        if (stock.CountItem("TestStackableItem".hstr()) != 4) return -12;
+
         Item abandoned = Game.CloneItem(source);
         ident abandonedId = abandoned.Id;
         Game.DestroyItem(abandoned);
@@ -1351,6 +1362,7 @@ namespace ScriptMethodsTest
 
         Game.DestroyCritter(owner);
         Game.DestroyCritter(receiver);
+        Game.DestroyCritter(stock);
         return 0;
     }
 

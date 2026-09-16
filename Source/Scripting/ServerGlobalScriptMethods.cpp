@@ -278,6 +278,22 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, hstring protoId)
+{
+    if (!server->GetProtoItem(protoId)) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
+
+    return server->ItemMngr.CreateItem(protoId, 0, nullptr);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, ptr<ProtoItem> proto)
+{
+    return server->ItemMngr.CreateItem(proto->GetProtoId(), 0, nullptr);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CloneItem(ptr<ServerEngine> server, ptr<Item> item)
 {
     ValidateEntityAccess(item);
