@@ -141,7 +141,6 @@ VARIABLE_SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
 VARIABLE_SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
 VARIABLE_SETTING(string, ClientNetwork, ProxyUser, ""); // Proxy username
 VARIABLE_SETTING(string, ClientNetwork, ProxyPass, ""); // Proxy password
-VARIABLE_SETTING(int32_t, ClientNetwork, Ping); // Network ping (read only)
 VARIABLE_SETTING(bool, ClientNetwork, DebugNet, false); // If true, network debugging is enabled
 SETTING_GROUP_END(ClientNetwork);
 

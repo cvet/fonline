@@ -348,6 +348,12 @@ FO_SCRIPT_API uint32_t Client_Game_BytesReceive(ptr<ClientEngine> client)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetPing(ptr<ClientEngine> client)
+{
+    return client->GetConnection()->GetPing();
+}
+
+///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Game_GetItem(ptr<ClientEngine> client, ident_t itemId)
 {
     if (!itemId) {
