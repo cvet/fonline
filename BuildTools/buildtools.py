@@ -316,8 +316,17 @@ ANDROID_REQUIRED_SDK_PACKAGES = (
 )
 
 
+MSBUILD_DIAGNOSTIC_SHAPE = re.compile(r'\b(error|warning)((?:\s+[^:\s]*)?)\s*:', re.IGNORECASE)
+
+
 def log(*parts: object) -> None:
 	print('[BuildTools]', *parts, flush=True)
+
+
+def describe_failure(ex: BaseException) -> str:
+	# MSBuild fails a custom build step on any output line shaped '... error <code>: ...' whatever the command returns, and
+	# urllib renders a missing cache entry exactly so ('HTTP Error 404: Not Found'), so that colon is never printed
+	return MSBUILD_DIAGNOSTIC_SHAPE.sub(r'\1\2 -', f'{type(ex).__name__} - {ex}')
 
 
 class TerminalProgress:
@@ -894,7 +903,7 @@ def workspace_cache_fetch(name: str, target_path: Path) -> bool:
 		log('Workspace cache hit:', name)
 		return True
 	except OSError as ex:
-		log(f'Workspace cache miss for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache miss for {name} ({describe_failure(ex)})')
 		remove_path_if_exists(target_path)
 		return False
 
@@ -909,7 +918,7 @@ def workspace_cache_store(name: str, source_path: Path) -> None:
 		upload_url(url, source_path)
 		log('Workspace cache filled:', name)
 	except OSError as ex:
-		log(f'Workspace cache store failed for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache store failed for {name} ({describe_failure(ex)})')
 
 
 def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path, label: str) -> None:
@@ -922,7 +931,7 @@ def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path,
 			archive.add(source_path, arcname=source_path.name)
 		workspace_cache_store(name, archive_path)
 	except (OSError, tarfile.TarError) as ex:
-		log(f'Workspace cache pack failed for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache pack failed for {name} ({describe_failure(ex)})')
 	finally:
 		remove_path_if_exists(archive_path)
 
@@ -942,7 +951,7 @@ def download_file(url: str, target_path: Path, label: str) -> None:
 				raise
 
 			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
-			log(f'Download {label} failed ({type(ex).__name__}: {ex}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			log(f'Download {label} failed ({describe_failure(ex)}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
 			remove_path_if_exists(target_path)
 			time.sleep(delay)
 
@@ -1103,7 +1112,7 @@ def restore_workspace_cache_tree(
 		shutil.move(str(source), str(destination))
 		return True
 	except (OSError, tarfile.TarError) as ex:
-		log(f'Cached {label} archive is unusable ({type(ex).__name__}: {ex})')
+		log(f'Cached {label} archive is unusable ({describe_failure(ex)})')
 		remove_path_if_exists(destination)
 		return False
 	finally:

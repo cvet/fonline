@@ -310,6 +310,14 @@ does not consult the cache, and `FO_DOTNET_RUNTIME_ROOT` (a local source tree, n
 it. Concurrent jobs that miss together each build and publish, as they would without the cache; the host's idle
 retention removes a tree nobody has read for its retention period.
 
+A miss, a failed store and a failed download retry are reported, never raised, and the report must not read as a
+compiler diagnostic. `setup-mono` runs as a Visual Studio custom build step, and MSBuild fails such a step on any
+output line shaped `... error <code>: ...` whatever the command returns — which is exactly how urllib renders a
+missing entry (`HTTP Error 404: Not Found`). The first cold miss on Windows therefore built and published the
+runtime and then failed the step with exit code `-1`. `describe_failure` prints the exception with that colon
+replaced (`HTTPError - HTTP Error 404 - Not Found`); `tests/test_managed_runtime_workspace_cache.py` checks the
+fetch and store lines against MSBuild's own expression.
+
 ### `EngineSources.cmake`
 
 Builds source lists and generated resource files used by later stages. It appends source lists for engine layers such as Essentials, Common, Frontend, Client, Server, Tools, Scripting, and tests. It also prepares app icon/resource data such as the generated Windows `.rc` file.

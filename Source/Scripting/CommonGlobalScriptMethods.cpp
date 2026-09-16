@@ -44,9 +44,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Build, platform and geometry facts. They are read where they are produced - a build macro or a
-// GameSettings constant - instead of being copied into a setting first: nothing configures them, and a
-// setting that no config can set is a published fact wearing a knob's clothes
+// Build, platform and geometry facts, read where they are produced (a build macro or a GameSettings constant) rather
+// than copied into a setting first: nothing configures them, so a setting would be a fact wearing a knob's clothes
 
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API bool Common_Game_WebBuild(ptr<BaseEngine> engine)

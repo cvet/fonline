@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
+import re
 import sys
 import tarfile
+import urllib.error
 
 import pytest
 
@@ -15,6 +17,12 @@ import buildtools as _buildtools  # noqa: E402
 
 
 CACHE_URL = "https://ci.example/cache/workspaces"
+# The expression MSBuild matches against custom build step output; a match fails the step whatever its exit code
+MSBUILD_CANONICAL_ERROR = re.compile(
+    r"^\s*(((?P<origin>(((\d+>)?[a-zA-Z]?:[^:]*)|([^:]*))):)|())(?P<subcategory>(()|([^:]*? )))"
+    r"(?P<category>(error|warning))( \s*(?P<code>[^: ]*))?\s*:(?P<text>.*)$",
+    re.IGNORECASE,
+)
 
 
 class FakeWorkspaceCache:
@@ -273,3 +281,31 @@ def test_the_runtime_build_code_in_the_key_covers_every_patch_and_no_cache_code(
         "MONO_RUNTIME_SUBSET",
     } <= set(reached)
     assert not {"setup_mono", "workspace_cache_fetch", "workspace_cache_store_tree", "build_mono_workspace_cache_name"} & set(reached)
+
+
+def refuse_with_http_error(code: int, reason: str):
+    def refuse(url: str, path: Path) -> None:
+        raise urllib.error.HTTPError(url, code, reason, None, None)
+
+    return refuse
+
+
+@pytest.mark.parametrize("step", ["fetch", "store"])
+def test_a_cache_failure_is_logged_without_the_shape_msbuild_fails_a_build_step_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], step: str
+) -> None:
+    # A Windows runtime build that missed the cache built and published the runtime, then failed on its own miss line
+    monkeypatch.setenv(_buildtools.WORKSPACE_CACHE_VAR, CACHE_URL)
+    archive = tmp_path / "runtime.tar.gz"
+
+    if step == "fetch":
+        monkeypatch.setattr(_buildtools, "fetch_url", refuse_with_http_error(404, "Not Found"))
+        assert not _buildtools.workspace_cache_fetch("runtime.tar.gz", archive)
+    else:
+        archive.write_bytes(b"runtime")
+        monkeypatch.setattr(_buildtools, "upload_url", refuse_with_http_error(500, "Internal Server Error"))
+        _buildtools.workspace_cache_store("runtime.tar.gz", archive)
+
+    lines = capsys.readouterr().out.splitlines()
+    assert any("runtime.tar.gz" in line and "HTTP Error" in line for line in lines)
+    assert not [line for line in lines if MSBUILD_CANONICAL_ERROR.match(line)]
