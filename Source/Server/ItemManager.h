@@ -63,6 +63,7 @@ public:
 
     auto CreateItem(hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>;
     auto CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>;
+    auto CloneItem(ptr<Item> source) -> ptr<Item>;
     auto SplitItem(ptr<Item> item, int32_t count) -> nptr<Item>;
     void ChangeItemStackCount(ptr<Item> stack, int32_t count_diff, nptr<Item> absorbed_item);
     auto AddItemContainer(ptr<Item> cont, hstring pid, int32_t count, const any_t& stack_id) -> nptr<Item>;
@@ -77,6 +78,7 @@ public:
 private:
     auto GetItemHolder(ptr<Item> item) -> ptr<Entity>;
     void RemoveItemHolder(ptr<Item> item, ptr<Entity> holder);
+    auto GetMoveSourceHolder(ptr<Item> item) -> nptr<Entity>;
     void RestoreSplitItem(ptr<Item> item, ptr<Item> splitted_item);
 
     ptr<ServerEngine> _engine;

@@ -1227,6 +1227,133 @@ namespace ScriptMethodsTest
         return 0;
     }
 
+    ident ReentryMoveItemId;
+    ident ReentryMoveTargetId;
+    int ReentryMoveCalls;
+
+    [[Event]]
+    void OnReentryCritterItemMoved(Critter cr, Item item, CritterItemSlot fromSlot)
+    {
+        if (item.Id != ReentryMoveItemId || item.Ownership != ItemOwnership::Nowhere) return;
+
+        Critter? target = Game.GetCritter(ReentryMoveTargetId);
+        if (target is null) return;
+
+        ReentryMoveCalls++;
+        Game.MoveItem(item, target);
+    }
+
+    int TestGameMoveItemRemovalReentry()
+    {
+        Critter owner = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter receiver = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter interceptor = Game.CreateCritter("TestCritter".hstr(), false);
+        if (owner is null || receiver is null || interceptor is null) return -1;
+
+        Item item = owner.AddItem("TestItem".hstr(), 1);
+        if (item is null) return -2;
+
+        ReentryMoveItemId = item.Id;
+        ReentryMoveTargetId = interceptor.Id;
+        ReentryMoveCalls = 0;
+
+        // The removal event places the detached item elsewhere, so the outer move must not attach it a second time
+        Game.OnCritterItemMoved.Subscribe(OnReentryCritterItemMoved);
+        Item? moved = Game.MoveItem(item, receiver);
+        Game.OnCritterItemMoved.Unsubscribe(OnReentryCritterItemMoved);
+        ReentryMoveItemId = ident();
+
+        if (ReentryMoveCalls != 1) return -3;
+        if (moved !is null) return -4;
+        if (item.Ownership != ItemOwnership::CritterInventory || item.CritterId != interceptor.Id) return -5;
+        if (receiver.CountItem("TestItem".hstr()) != 0 || interceptor.CountItem("TestItem".hstr()) != 1 || owner.CountItem("TestItem".hstr()) != 0) return -6;
+
+        Game.DestroyCritter(owner);
+        Game.DestroyCritter(receiver);
+        Game.DestroyCritter(interceptor);
+        return 0;
+    }
+
+    ident FinishMoveItemId;
+    ident FinishMoveTargetId;
+    bool FinishMoveRefused;
+
+    [[Event]]
+    void OnFinishMoveItem(Item item)
+    {
+        if (item.Id != FinishMoveItemId) return;
+
+        Critter? target = Game.GetCritter(FinishMoveTargetId);
+        if (target is null) return;
+
+        try {
+            Game.MoveItem(item, target);
+        }
+        catch {
+            FinishMoveRefused = true;
+        }
+    }
+
+    int TestGameDestroyingItemIsNotMoved()
+    {
+        Critter owner = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter target = Game.CreateCritter("TestCritter".hstr(), false);
+        if (owner is null || target is null) return -1;
+
+        Item item = owner.AddItem("TestItem".hstr(), 1);
+        if (item is null) return -2;
+
+        ident itemId = item.Id;
+        FinishMoveItemId = itemId;
+        FinishMoveTargetId = target.Id;
+        FinishMoveRefused = false;
+
+        Game.OnItemFinish.Subscribe(OnFinishMoveItem);
+        Game.DestroyItem(item);
+        Game.OnItemFinish.Unsubscribe(OnFinishMoveItem);
+        FinishMoveItemId = ident();
+
+        if (!FinishMoveRefused) return -3;
+        if (Game.GetItem(itemId) !is null) return -4;
+        if (target.CountItem("TestItem".hstr()) != 0 || owner.CountItem("TestItem".hstr()) != 0) return -5;
+
+        Game.DestroyCritter(owner);
+        Game.DestroyCritter(target);
+        return 0;
+    }
+
+    int TestGameCloneItem()
+    {
+        Critter owner = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter receiver = Game.CreateCritter("TestCritter".hstr(), false);
+        if (owner is null || receiver is null) return -1;
+
+        Item source = owner.AddItem("TestStackableItem".hstr(), 5);
+        if (source is null) return -2;
+
+        Item clone = Game.CloneItem(source);
+        if (clone is null || clone.Id == source.Id || clone.Count != 5) return -3;
+        if (clone.Ownership != ItemOwnership::Nowhere || source.Count != 5) return -4;
+
+        // The copy is adjusted while detached, so no holder ever observes the copied count
+        clone.Count = 2;
+        source.Count = 3;
+
+        Item? moved = Game.MoveItem(clone, receiver);
+        if (moved is null || moved.Id != clone.Id) return -6;
+        if (clone.Ownership != ItemOwnership::CritterInventory) return -7;
+        if (receiver.CountItem("TestStackableItem".hstr()) != 2 || owner.CountItem("TestStackableItem".hstr()) != 3) return -8;
+
+        Item abandoned = Game.CloneItem(source);
+        ident abandonedId = abandoned.Id;
+        Game.DestroyItem(abandoned);
+        if (Game.GetItem(abandonedId) !is null || owner.CountItem("TestStackableItem".hstr()) != 3) return -9;
+
+        Game.DestroyCritter(owner);
+        Game.DestroyCritter(receiver);
+        return 0;
+    }
+
     int TestGameDestroyItemById()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
@@ -3391,6 +3518,30 @@ TEST_CASE("ServerGameItemOperations")
     SECTION("ItemStackChangedEvent")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameItemStackChangedEvent"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("MoveItemRemovalReentry")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemRemovalReentry"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("DestroyingItemIsNotMoved")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyingItemIsNotMoved"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("CloneItem")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCloneItem"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

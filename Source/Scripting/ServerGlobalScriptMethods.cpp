@@ -278,6 +278,18 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CloneItem(ptr<ServerEngine> server, ptr<Item> item)
+{
+    ValidateEntityAccess(item);
+
+    if (item->IsDestroying()) {
+        throw ScriptException("Cannot clone an item that is being destroyed", item->GetId());
+    }
+
+    return server->ItemMngr.CloneItem(item);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> toCr)
 {
     ValidateEntityAccess(item);

@@ -98,8 +98,20 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
     default:
         break;
     }
+}
 
-    item->SetOwnership(ItemOwnership::Nowhere);
+auto ItemManager::GetMoveSourceHolder(ptr<Item> item) -> nptr<Entity>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!item->IsDestroyed() && !item->IsDestroying(), "Cannot move an item that is being destroyed", item->GetId());
+
+    // A detached item has no holder to leave, so moving it only places it
+    if (item->GetOwnership() == ItemOwnership::Nowhere) {
+        return nullptr;
+    }
+
+    return GetItemHolder(item);
 }
 
 auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>
@@ -260,6 +272,20 @@ void ItemManager::DestroyItem(ptr<Item> item)
     _engine->EntityMngr.UnregisterItem(item, true);
 }
 
+auto ItemManager::CloneItem(ptr<Item> source) -> ptr<Item>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    EnsureEntitySynced(source);
+    auto source_holder = source.hold_ref();
+    ignore_unused(source_holder);
+
+    FO_VERIFY_AND_THROW(!source->IsDestroyed() && !source->IsDestroying(), "Cannot clone an item that is being destroyed", source->GetId());
+    FO_VERIFY_AND_THROW(!source->HasInnerItems(), "Cannot clone a container with contents", source->GetId());
+
+    return CreateItem(source->GetProtoId(), source->GetCount(), source->GetProperties());
+}
+
 auto ItemManager::SplitItem(ptr<Item> item, int32_t count) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
@@ -370,14 +396,17 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
         return item;
     }
 
-    auto holder = GetItemHolder(item);
-    auto holder_holder = holder.hold_ref();
+    auto holder = GetMoveSourceHolder(item);
+    auto holder_holder = holder.try_hold_ref();
     ignore_unused(holder_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
-        RemoveItemHolder(item, holder);
+        if (holder) {
+            RemoveItemHolder(item, holder);
+        }
 
-        if (item->IsDestroyed() || to_cr->IsDestroyed() || to_cr->IsDestroying()) {
+        // Removal events re-enter scripts, and an item they have already placed somewhere else counts as moved
+        if (item->IsDestroyed() || item->GetOwnership() != ItemOwnership::Nowhere || to_cr->IsDestroyed() || to_cr->IsDestroying()) {
             return nullptr;
         }
 
@@ -418,17 +447,20 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Map> to_map, mpos 
         return item;
     }
 
-    auto holder = GetItemHolder(item);
-    auto holder_holder = holder.hold_ref();
+    auto holder = GetMoveSourceHolder(item);
+    auto holder_holder = holder.try_hold_ref();
     ignore_unused(holder_holder);
     auto dropper = holder.dyn_cast<Critter>();
     auto dropper_holder = dropper.try_hold_ref();
     ignore_unused(dropper_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
-        RemoveItemHolder(item, holder);
+        if (holder) {
+            RemoveItemHolder(item, holder);
+        }
 
-        if (item->IsDestroyed() || to_map->IsDestroyed()) {
+        // Removal events re-enter scripts, and an item they have already placed somewhere else counts as moved
+        if (item->IsDestroyed() || item->GetOwnership() != ItemOwnership::Nowhere || to_map->IsDestroyed() || to_map->IsDestroying()) {
             return nullptr;
         }
 
@@ -487,14 +519,17 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Item> to_cont, con
         return item;
     }
 
-    auto holder = GetItemHolder(item);
-    auto holder_holder = holder.hold_ref();
+    auto holder = GetMoveSourceHolder(item);
+    auto holder_holder = holder.try_hold_ref();
     ignore_unused(holder_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
-        RemoveItemHolder(item, holder);
+        if (holder) {
+            RemoveItemHolder(item, holder);
+        }
 
-        if (item->IsDestroyed() || to_cont->IsDestroyed() || to_cont->IsDestroying()) {
+        // Removal events re-enter scripts, and an item they have already placed somewhere else counts as moved
+        if (item->IsDestroyed() || item->GetOwnership() != ItemOwnership::Nowhere || to_cont->IsDestroyed() || to_cont->IsDestroying()) {
             return nullptr;
         }
 

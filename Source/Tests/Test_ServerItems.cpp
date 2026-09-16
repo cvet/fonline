@@ -325,6 +325,83 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     server->CrMngr.DestroyCritter(cr);
 }
 
+TEST_CASE("ServerItemDetachedMoves")
+{
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+
+    hstring critter_pid = fn("TestCritter");
+    hstring item_pid = fn("TestItem");
+
+    auto owner = server->CreateCritter(critter_pid, false);
+    auto receiver = server->CreateCritter(critter_pid, false);
+    auto source = server->ItemMngr.AddItemCritter(owner, item_pid, 1);
+    REQUIRE(static_cast<bool>(source));
+
+    SECTION("CloneIsDetachedCopyPlacedByMove")
+    {
+        auto clone = server->ItemMngr.CloneItem(source);
+        CHECK(clone->GetId() != source->GetId());
+        CHECK(clone->GetProtoId() == item_pid);
+        CHECK(clone->GetOwnership() == ItemOwnership::Nowhere);
+
+        auto moved = server->ItemMngr.MoveItem(clone, clone->GetCount(), receiver);
+        REQUIRE(static_cast<bool>(moved));
+        CHECK(moved->GetId() == clone->GetId());
+        CHECK(clone->GetOwnership() == ItemOwnership::CritterInventory);
+        CHECK(static_cast<bool>(receiver->GetInvItem(clone->GetId())));
+        CHECK(static_cast<bool>(owner->GetInvItem(source->GetId())));
+    }
+
+    SECTION("DetachedItemIsPlacedByMove")
+    {
+        auto detached = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
+        CHECK(detached->GetOwnership() == ItemOwnership::Nowhere);
+
+        auto moved = server->ItemMngr.MoveItem(detached, 1, receiver);
+        REQUIRE(static_cast<bool>(moved));
+        CHECK(moved->GetId() == detached->GetId());
+        CHECK(static_cast<bool>(receiver->GetInvItem(detached->GetId())));
+    }
+
+    SECTION("AbandonedCloneIsDestroyedByCreator")
+    {
+        auto clone = server->ItemMngr.CloneItem(source);
+        ident_t clone_id = clone->GetId();
+        server->ItemMngr.DestroyItem(clone);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetItem(clone_id)));
+        CHECK(static_cast<bool>(owner->GetInvItem(source->GetId())));
+    }
+
+    SECTION("ContainerWithContentsIsNotCloned")
+    {
+        auto inner = server->ItemMngr.AddItemContainer(source, item_pid, 1, {});
+        REQUIRE(static_cast<bool>(inner));
+        CHECK_THROWS(server->ItemMngr.CloneItem(source));
+    }
+
+    server->CrMngr.DestroyCritter(receiver);
+    server->CrMngr.DestroyCritter(owner);
+}
+
 TEST_CASE("ServerCritterLifecycleOperations")
 {
     auto settings = MakeSettings();
