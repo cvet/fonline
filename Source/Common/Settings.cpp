@@ -193,14 +193,6 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Baking.MapperResourceEntries");
         _appliedSettings.emplace("Baking.ServerResourceEntries");
         _appliedSettings.emplace("ClientNetwork.Ping");
-        _appliedSettings.emplace("Hex.ScrollMouseUp");
-        _appliedSettings.emplace("Hex.ScrollMouseDown");
-        _appliedSettings.emplace("Hex.ScrollMouseLeft");
-        _appliedSettings.emplace("Hex.ScrollMouseRight");
-        _appliedSettings.emplace("Hex.ScrollKeybUp");
-        _appliedSettings.emplace("Hex.ScrollKeybDown");
-        _appliedSettings.emplace("Hex.ScrollKeybLeft");
-        _appliedSettings.emplace("Hex.ScrollKeybRight");
     }
 }
 

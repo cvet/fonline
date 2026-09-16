@@ -1035,6 +1035,18 @@ enum class MultihexGenerationType : uint8_t
     AnyUnique = 2,
 };
 
+// The manual-scroll intent a view is currently under. Input decides it, the view consumes it, and the two
+// never share a field: a direction is a per-frame intent, not a value anyone configures
+///@ ExportEnum
+enum class ScrollDirection : uint8_t
+{
+    None = 0,
+    Left = 0x01,
+    Right = 0x02,
+    Up = 0x04,
+    Down = 0x08,
+};
+
 class AnimationResolver
 {
 public:

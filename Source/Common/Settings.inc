@@ -340,14 +340,6 @@ FIXED_SETTING(int32_t, Hex, ScrollSpeed, 1200); // Scroll speed in pixels per se
 FIXED_SETTING(int32_t, Hex, ZoomSpeed, 100); // Speed of zooming
 VARIABLE_SETTING(bool, Hex, FullscreenMouseScroll, true); // If true, fullscreen mouse scroll is enabled
 VARIABLE_SETTING(bool, Hex, WindowedMouseScroll, false); // If true, windowed mouse scroll is enabled
-VARIABLE_SETTING(bool, Hex, ScrollKeybLeft, false); // Keyboard map scroll left (read only)
-VARIABLE_SETTING(bool, Hex, ScrollKeybRight, false); // Keyboard map scroll right (read only)
-VARIABLE_SETTING(bool, Hex, ScrollKeybUp, false); // Keyboard map scroll up (read only)
-VARIABLE_SETTING(bool, Hex, ScrollKeybDown, false); // Keyboard map scroll down (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseLeft, false); // Mouse map scroll left (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseRight, false); // Mouse map scroll right (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseUp, false); // Mouse map scroll up (read only)
-VARIABLE_SETTING(bool, Hex, ScrollMouseDown, false); // Mouse map scroll down (read only)
 VARIABLE_SETTING(uint8_t, Hex, RoofAlpha, 200); // Roof alpha value
 VARIABLE_SETTING(bool, Hex, ShowTile, true); // If true, tiles are shown
 VARIABLE_SETTING(bool, Hex, ShowRoof, true); // If true, roofs are shown

@@ -2593,11 +2593,6 @@ void ClientEngine::UnloadMap()
 
     OnMapUnload.Fire();
 
-    Settings->Hex.ScrollMouseRight = false;
-    Settings->Hex.ScrollMouseLeft = false;
-    Settings->Hex.ScrollMouseDown = false;
-    Settings->Hex.ScrollMouseUp = false;
-
     if (_curMap) {
         auto map = GetCurMap();
         FO_VERIFY_AND_THROW(map, "Map is null");

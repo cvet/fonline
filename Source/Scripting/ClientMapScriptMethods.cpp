@@ -185,6 +185,18 @@ FO_SCRIPT_API void Client_Map_SetScrollCheck(ptr<MapView> self, bool enabled)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API ScrollDirection Client_Map_GetManualScroll(ptr<MapView> self)
+{
+    return self->GetManualScroll();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetManualScroll(ptr<MapView> self, ScrollDirection dirs)
+{
+    self->SetManualScroll(dirs);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetExtraScrollOffset(ptr<MapView> self, fpos32 offset)
 {
     self->SetExtraScrollOffset(offset);
