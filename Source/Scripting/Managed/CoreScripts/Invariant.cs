@@ -19,7 +19,10 @@ public static class Invariant
     // `Verify(IsValid(x), ...)` cannot, since nothing ties the helper's result to x's null state. Annotate
     // such a helper with `[MemberNotNullWhen]`/`[NotNullWhen]` rather than reaching for `!` at the call
 
-    // verify(cond, message) -- the common form. Throws when the invariant is broken
+    // verify(cond, message) -- the common form. Throws when the invariant is broken.
+    //
+    // `condition` is a predicate. Write it as if this call were stripped like an assert: work the rest of the
+    // method depends on happens first, and Verify only reads the answer.
     public static void Verify([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string message)
     {
         if (!condition) {
