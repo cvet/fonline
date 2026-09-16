@@ -1,8 +1,6 @@
 namespace FOnline;
 
 using System;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -28,6 +26,71 @@ public static class ScriptFuncRegistration
         RegisterAttributedScriptFuncs(typeof(MapInitAttribute), "MapInit");
         RegisterAttributedScriptFuncs(typeof(LocationInitAttribute), "LocationInit");
         RegisterAttributedScriptFuncs(typeof(CallableFromNativeAttribute), "CallableFromNative");
+    }
+
+    // Action<...> and Func<...> by parameter count. Building them here rather than with System.Linq.Expressions keeps
+    // that assembly and Reflection.Emit out of every runtime payload
+    private static readonly Type[] ActionTypes = {
+        typeof(Action),
+        typeof(Action<>),
+        typeof(Action<, >),
+        typeof(Action<,, >),
+        typeof(Action<,,, >),
+        typeof(Action<,,,, >),
+        typeof(Action<,,,,, >),
+        typeof(Action<,,,,,, >),
+        typeof(Action<,,,,,,, >),
+        typeof(Action<,,,,,,,, >),
+        typeof(Action<,,,,,,,,, >),
+        typeof(Action<,,,,,,,,,, >),
+        typeof(Action<,,,,,,,,,,, >),
+        typeof(Action<,,,,,,,,,,,, >),
+        typeof(Action<,,,,,,,,,,,,, >),
+        typeof(Action<,,,,,,,,,,,,,, >),
+        typeof(Action<,,,,,,,,,,,,,,, >),
+    };
+    private static readonly Type[] FuncTypes = {
+        typeof(Func<>),
+        typeof(Func<, >),
+        typeof(Func<,, >),
+        typeof(Func<,,, >),
+        typeof(Func<,,,, >),
+        typeof(Func<,,,,, >),
+        typeof(Func<,,,,,, >),
+        typeof(Func<,,,,,,, >),
+        typeof(Func<,,,,,,,, >),
+        typeof(Func<,,,,,,,,, >),
+        typeof(Func<,,,,,,,,,, >),
+        typeof(Func<,,,,,,,,,,, >),
+        typeof(Func<,,,,,,,,,,,, >),
+        typeof(Func<,,,,,,,,,,,,, >),
+        typeof(Func<,,,,,,,,,,,,,, >),
+        typeof(Func<,,,,,,,,,,,,,,, >),
+        typeof(Func<,,,,,,,,,,,,,,,, >),
+    };
+
+    internal static Type MakeActionType(Type[] parameterTypes)
+    {
+        if (parameterTypes.Length >= ActionTypes.Length) {
+            throw new NotSupportedException("Managed script function has more parameters than a delegate can carry: " +
+                                            parameterTypes.Length);
+        }
+
+        return parameterTypes.Length == 0 ? ActionTypes[0]
+                                          : ActionTypes[parameterTypes.Length].MakeGenericType(parameterTypes);
+    }
+
+    internal static Type MakeFuncType(Type[] parameterTypes, Type returnType)
+    {
+        if (parameterTypes.Length >= FuncTypes.Length) {
+            throw new NotSupportedException("Managed script function has more parameters than a delegate can carry: " +
+                                            parameterTypes.Length);
+        }
+
+        Type[] typeArguments = new Type[parameterTypes.Length + 1];
+        Array.Copy(parameterTypes, typeArguments, parameterTypes.Length);
+        typeArguments[parameterTypes.Length] = returnType;
+        return FuncTypes[parameterTypes.Length].MakeGenericType(typeArguments);
     }
 
     public static void RegisterAttributedScriptFuncs(Type attributeType, string attributeName)
@@ -76,10 +139,9 @@ public static class ScriptFuncRegistration
 
         // Build a matching Action<...>/Func<...> delegate type so the static method can be wrapped as a Delegate
         // and invoked later via Native.InvokeCallback (DynamicInvoke).
-        Type? delegateType = hasByRef ? ResolveByRefDelegateType(method, delegateParamTypes)
-                           : method.ReturnType == typeof(void)
-                               ? Expression.GetActionType(delegateParamTypes)
-                               : Expression.GetFuncType(delegateParamTypes.Append(method.ReturnType).ToArray());
+        Type? delegateType = hasByRef                          ? ResolveByRefDelegateType(method, delegateParamTypes)
+                           : method.ReturnType == typeof(void) ? MakeActionType(delegateParamTypes)
+                                                               : MakeFuncType(delegateParamTypes, method.ReturnType);
 
         if (delegateType == null) {
             Game.Log(

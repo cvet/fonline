@@ -269,6 +269,16 @@ PowerShell; `-p:` is ambiguous with the runtime script's named parameters. Unix
 builds retain `-p:`. The regression exercises PowerShell parameter binding with
 the conflicting runtime parameter names and preserves unrelated properties.
 
+Runtime source builds also pass `RunAnalyzers=false` and `EnableXlfLocalization=false`. Analyzers
+(NetAnalyzers, CodeStyle, StyleCop and the runtime's own) only report; they never change emitted IL,
+and the runtime's source build turns them off the same way. Xlf localization only produces satellite
+assemblies for the build-time source generators, which the published tree does not contain. Measured
+on Windows x64 from a fresh `v10.0.11` clone: `libs.sfx` 25.6 min before and 17.1 min after, and
+`mono.corelib` 2.9 min before and 1.2 min after. `Csc` is the bulk of `libs.sfx` either way (52.6
+CPU-minutes before, 36.6 after), then `ILLinkTrimAssembly` at about 5 CPU-minutes, which stays because
+it shapes the shipped libraries. All 171 class libraries of the runtime pack and
+`System.Private.CoreLib` build byte-identical with and without the properties (SHA-256 compared).
+
 Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
 target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
 zlib-ng retains its own `/W3`, additional diagnostics and `/WX`; this prevents

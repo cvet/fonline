@@ -215,9 +215,9 @@ link are specific to the browser and easy to break by "simplifying" them:
   the single-threaded browser keeps it: detaching the browser thread tears down the interpreter/JIT TLS
   context, and the next managed call aborts while recreating `ThreadContext` without initialized JIT TLS.
 - **Nothing on the managed side may memory-map a file.** `AssemblyName.GetAssemblyName` does, so
-  `ManagedLoadContextHost` reads the assembly's simple name through a `PEReader` over a `FileStream`
-  instead. Excluding `SystemNative_MMap` from the table is what surfaces this, as an ordinary
-  `EntryPointNotFoundException`.
+  `ManagedLoadContextHost` takes the assembly's simple name from its file name instead, which the baker
+  guarantees by rejecting a packed assembly named after anything but itself. Excluding `SystemNative_MMap`
+  from the table is what surfaces a violation, as an ordinary `EntryPointNotFoundException`.
 
 - **`ALLOW_UNIMPLEMENTED_SYSCALLS` stays `0`, and two syscalls are implemented instead.** Emscripten
   provides weak stubs for the syscalls it does not implement, but `tools/system_libs.py` links that

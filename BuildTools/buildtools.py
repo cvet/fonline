@@ -1011,7 +1011,9 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 	# Private compilers avoid generator dependency paths retained from deleted runtime checkouts.
 	# PowerShell treats -p as an ambiguous script parameter; /p passes through to MSBuild
 	property_prefix = '/p:' if os.name == 'nt' else '-p:'
-	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false']
+	# Analyzers and generator translations change nothing the runtime publishes, which builds byte-identical without
+	# them, and they are much of the library compile time; the runtime's own source build turns analyzers off the same way
+	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false', f'{property_prefix}RunAnalyzers=false', f'{property_prefix}EnableXlfLocalization=false']
 	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
 	# unrelated runtime projects the same output filename, breaking generators and task publishing
 	# The nested runtime selects its own host toolchain. Outer MSBuild search paths may name optional
