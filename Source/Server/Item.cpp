@@ -274,9 +274,7 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
                 return item;
             }
 
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
+            _engine->ItemMngr.ChangeItemStackCount(item_already, item->GetCount(), item);
             return item_already;
         }
     }

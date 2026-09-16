@@ -491,7 +491,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
             server->ItemMngr.DestroyItem(item);
         }
         else {
-            item->SetCount(cur_count - count);
+            server->ItemMngr.ChangeItemStackCount(item, -count, nullptr);
         }
     }
 }
