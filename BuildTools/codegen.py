@@ -145,6 +145,9 @@ class ExportMethodTag:
     ret_provides_cover: bool = False
     ret_is_parent: bool = False
     ret_is_ancestor: bool = False
+    is_cover_primitive: bool = False
+    is_cover_probe: bool = False
+    is_singleton_lock: bool = False
 
 
 @dataclass(slots=True)
@@ -865,6 +868,11 @@ PROVIDES_COVER_MARKER = 'FO_PROVIDES_COVER'
 RETURNS_PARENT_MARKER = 'FO_RETURNS_PARENT'
 RETURNS_ANCESTOR_MARKER = 'FO_RETURNS_ANCESTOR'
 RETURN_COVER_MARKERS = (PROVIDES_COVER_MARKER, RETURNS_PARENT_MARKER, RETURNS_ANCESTOR_MARKER)
+COVER_PRIMITIVE_MARKER = 'FO_COVER_PRIMITIVE'
+COVER_PROBE_MARKER = 'FO_COVER_PROBE'
+SINGLETON_LOCK_MARKER = 'FO_SINGLETON_LOCK'
+# Эти метят не возвращаемое значение, а сам метод: он и есть та поверхность, к которой скриптам нельзя
+SURFACE_COVER_MARKERS = (COVER_PRIMITIVE_MARKER, COVER_PROBE_MARKER, SINGLETON_LOCK_MARKER)
 
 
 def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: bool = False) -> list[MethodArg]:
@@ -916,10 +924,11 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     # The cover markers are empty macros in front of the return type, so they have to come off before the type
     # is parsed -- everything below joins the remaining tokens into one type spelling
     ret_cover_markers: set[str] = set()
-    while return_tokens and return_tokens[0] in RETURN_COVER_MARKERS:
+    while return_tokens and return_tokens[0] in RETURN_COVER_MARKERS + SURFACE_COVER_MARKERS:
         ret_cover_markers.add(return_tokens[0])
         return_tokens = return_tokens[1:]
-    assert len(ret_cover_markers) <= 1, 'A return value takes at most one cover marker: ' + tag_context
+    assert len([m for m in ret_cover_markers if m in RETURN_COVER_MARKERS]) <= 1, \
+        'A return value takes at most one cover marker: ' + tag_context
     raw_ret_type_text = ''.join(return_tokens)
     ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(raw_ret_type_text)
     ret = engine_type_to_meta_type(ret_type_text, valid_types, allow_raw_handle_pointer=ret_wrapper)
@@ -1502,7 +1511,9 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper, ret_cover_markers = parse_export_method_signature(method_context, valid_types, game_entities)
 
             codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper, ret_provides_cover=PROVIDES_COVER_MARKER in ret_cover_markers,
-                ret_is_parent=RETURNS_PARENT_MARKER in ret_cover_markers, ret_is_ancestor=RETURNS_ANCESTOR_MARKER in ret_cover_markers))
+                ret_is_parent=RETURNS_PARENT_MARKER in ret_cover_markers, ret_is_ancestor=RETURNS_ANCESTOR_MARKER in ret_cover_markers,
+                is_cover_primitive=COVER_PRIMITIVE_MARKER in ret_cover_markers, is_cover_probe=COVER_PROBE_MARKER in ret_cover_markers,
+                is_singleton_lock=SINGLETON_LOCK_MARKER in ret_cover_markers))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
             # client/server compatibility hash when a raw signature is converted to a wrapper
@@ -2346,6 +2357,9 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     (', .ReturnProvidesCover = true' if method_tag.ret_provides_cover else '') +
                     (', .ReturnIsParent = true' if method_tag.ret_is_parent else '') +
                     (', .ReturnIsAncestor = true' if method_tag.ret_is_ancestor else '') +
+                    (', .IsCoverPrimitive = true' if method_tag.is_cover_primitive else '') +
+                    (', .IsCoverProbe = true' if method_tag.is_cover_probe else '') +
+                    (', .IsSingletonLock = true' if method_tag.is_singleton_lock else '') +
                     ' });')
             method_blocks.append(method_body_lines)
 

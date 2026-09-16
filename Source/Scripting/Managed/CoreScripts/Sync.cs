@@ -103,9 +103,24 @@ public static partial class Sync
     }
 
     // Lifecycle: strict query — destroyed/destroying entities return false before the native coverage probe
+    [CoverProbe]
     public static bool IsCovered(Entity entity)
     {
         return !entity.IsDestroyed && !entity.IsDestroying && Game.IsEntityLocked(entity);
+    }
+
+    // Puts the snapshot back on the way out, where the caller has nothing left to decide: it is returning
+    // anyway, and what it returns does not depend on whether every entry survived.
+    //
+    // Restore is already partial -- it locks the survivors and its bool only reports whether the input was
+    // complete -- so this form differs from it in the ANSWER alone, not in the work. Kept as its own name
+    // for readability (owner decision 2026-09-16): at the call site the name says the answer was weighed and
+    // found to decide nothing, which a discarded bool cannot.
+    // Lifecycle: best-effort; same work as Restore, with the completeness answer deliberately not reported
+    [CoverEffect(CoverEffectKind.Restore)]
+    public static async Task RestoreBestEffort(List<Entity> entities)
+    {
+        _ = await Restore(entities);
     }
 
     // Lifecycle: restores every live entry and returns true only if the entire input stayed live; an empty snapshot releases all cover and succeeds
@@ -253,6 +268,20 @@ public static partial class Sync
     // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr-to-map link
     [CoverEffect(CoverEffectKind.Extend)]
     public static Task<bool> WidenCritterWithMap(Critter cr) => WidenCritterWithMap(new List<Entity>(), cr);
+
+    // Gives the caller its critter and map back on the way out of a cover-neutral helper, where the answer
+    // decides nothing: the work is over, and a critter that did not survive it is the caller's own next
+    // question.
+    //
+    // Like RestoreBestEffort, this differs from the strict form in the answer alone. WidenBestEffort is the
+    // one that differs in the WORK: strict Widen refuses as a whole when any requested entity is gone and
+    // leaves the cover untouched, while the best-effort widen keeps the live remainder
+    // Lifecycle: best-effort; same work as WidenCritterWithMap, with the answer deliberately not reported
+    [CoverEffect(CoverEffectKind.Extend)]
+    public static async Task WidenCritterWithMapBestEffort(Critter cr)
+    {
+        _ = await WidenCritterWithMap(cr);
+    }
 
     // Widens cover with strictRoots + cr + its current map when mapped; every retry explicitly re-proves all roots.
     // Lifecycle: a stale explicit root/cr/current map returns false; a changed cr-to-map link is retried
@@ -787,6 +816,7 @@ public static partial class Sync
     }
 
     // Lifecycle: strict — a mapped root, stable destroyed/destroying member, or exhausted retry budget returns false
+    [CoverEffect(CoverEffectKind.Extend)]
     public static Task<bool>
     WidenCritterWithGlobalMapGroup(Critter cr) => WidenCritterWithGlobalMapGroup(new List<Entity>(), cr);
 

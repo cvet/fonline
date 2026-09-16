@@ -3487,6 +3487,18 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
         out << CS_INDENT << "[return: ReturnsAncestor]\n";
     }
 
+    // The raw synchronization surface names itself, so the analyzer asks the declaration instead of holding a
+    // list of method names that a rename here would quietly invalidate
+    if (method.IsCoverPrimitive) {
+        out << CS_INDENT << "[CoverPrimitive]\n";
+    }
+    if (method.IsCoverProbe) {
+        out << CS_INDENT << "[CoverProbe]\n";
+    }
+    if (method.IsSingletonLock) {
+        out << CS_INDENT << "[SingletonLock]\n";
+    }
+
     AppendCsCallableDeclaration(out, CS_INDENT, declaration_prefix, method_name, arg_declarations, "");
 
     if (is_method_static && method.Name == "Log" && method.Args.size() == 1 && ret == "void" && MakeCsTypeName(method.Args.front().Type) == "string") {

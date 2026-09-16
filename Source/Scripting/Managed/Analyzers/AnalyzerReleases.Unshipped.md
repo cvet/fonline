@@ -11,3 +11,5 @@ FOSYNC003 | Synchronization | Warning | An execution-context entry point does no
 FOSYNC004 | Synchronization | Warning | Cover state is probed (Sync.IsCovered / Game.IsEntityLocked) instead of acquired.
 FOSYNC005 | Synchronization | Warning | A raw synchronization primitive is used outside its wrapper: Game.Sync / SyncRelease outside Sync, Game.Lock / Unlock outside GameLock.
 FOSYNC009 | Synchronization | Warning | Cover for a value is not re-proved after an await that released it.
+FOSYNC011 | Synchronization | Warning | A Sync helper changes the held cover -- through the primitive or another changing helper -- without declaring the effect it has.
+FOSYNC010 | Synchronization | Warning | The boolean answer of a cover acquisition is discarded instead of read.

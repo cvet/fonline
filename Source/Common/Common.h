@@ -557,6 +557,12 @@ struct ComplexTypeDesc
 #define FO_RETURNS_PARENT
 #define FO_RETURNS_ANCESTOR
 
+// The raw synchronization surface, marked where it is exported: naming these in the analyzer would let a
+// rename here disarm a rule with nothing left to notice it
+#define FO_COVER_PRIMITIVE
+#define FO_COVER_PROBE
+#define FO_SINGLETON_LOCK
+
 struct ArgDesc
 {
     string Name {};
@@ -600,6 +606,12 @@ struct MethodDesc
     // (FO_RETURNS_ANCESTOR). The receiver's own cover does not reach it; cover declared with that reach does
     bool ReturnIsParent {};
     bool ReturnIsAncestor {};
+
+    // The raw surface script code never reaches for directly: the primitive that replaces the held set, the
+    // question about what is held, and the singleton bucket lock
+    bool IsCoverPrimitive {};
+    bool IsCoverProbe {};
+    bool IsSingletonLock {};
 };
 
 struct StructLayoutDesc

@@ -103,6 +103,8 @@ reach up to its map. Sibling-to-parent escalation and parent-cover reduction wer
 | `FOSYNC004` | Cover state is probed (`Sync.IsCovered`, `Game.IsEntityLocked`) instead of acquired. |
 | `FOSYNC005` | A raw synchronization primitive is used outside its wrapper: `Game.Sync` / `Game.SyncRelease` outside `Sync`, `Game.Lock` / `Game.Unlock` outside `GameLock`. |
 | `FOSYNC009` | Cover for a value is not re-proved after an await that released it. |
+| `FOSYNC010` | The boolean answer of a cover acquisition is discarded -- the call is a whole statement, or assigned to `_` -- instead of read. |
+| `FOSYNC011` | A `Sync` helper changes the held cover -- through the primitive or through another helper whose declared effect changes it -- without declaring a `[CoverEffect]` of its own. |
 
 FOSYNC004 and the entity half of FOSYNC005 come from the retired external sync-flow audit, which owned them as
 `forbidden-is-covered-probe` / `forbidden-is-entity-locked-probe` and `direct-game-sync`. Neither needs
@@ -110,6 +112,18 @@ dataflow: they are about which surface a call reaches for. A probe answers what 
 code branching on it either works unprotected on one path or silently skips the work on the other; and the
 `Sync` helpers are not thin wrappers, they acquire multi-root packages atomically and retry with a re-proof
 that nothing migrated, which reaching for the primitive directly drops.
+
+**Which methods those are is declared at the export, not listed in the analyzer.** A C++ script export marks
+itself `FO_COVER_PRIMITIVE` (`Game.Sync`, `Game.SyncRelease`), `FO_COVER_PROBE` (`Game.IsEntityLocked`) or
+`FO_SINGLETON_LOCK` (`Game.Lock`, `Game.Unlock`); codegen carries the marker through `MethodDesc`, and the
+managed baker emits `[CoverPrimitive]`, `[CoverProbe]` or `[SingletonLock]` on the generated method. The
+model's own probe, `Sync.IsCovered`, declares `[CoverProbe]` in C# beside it. Until 2026-09-16 the analyzer
+held these as three arrays of method names, which meant a rename in the engine would have disarmed both rules
+in silence — and unlike the analyzer's own rules, nothing downstream would have reported that silence either.
+Two self-test cases pin the property from both sides: renaming the export keeps the rule firing, and a method
+that merely wears the old name is ordinary code. `Game.TrySyncEntity` deliberately carries no marker: it
+resolves an *id* to a live entity and answers false when the entity is gone, and no `Sync` helper can stand in
+for it, because every one of them takes an entity that may already be dead.
 
 ### The singleton bucket lock: `GameLock`
 
@@ -183,6 +197,37 @@ diagnostic (`FOSYNC008`) for acquiring one. Both are gone. The exclusion was the
 and the diagnostic contradicted the runtime it was supposed to describe — an acquisition aimed at
 always-covered data is not a mistake to report, it is a call that succeeds.
 
+## An acquisition answers, and the answer is the point (FOSYNC010)
+
+An acquisition can legitimately fail: the entity may have been destroyed or migrated while the caller
+waited. The boolean is that answer, so discarding it walks on over a value whose cover was never
+established -- the very state the re-proof was written to prevent, now invisible because nothing branches
+on it. FOSYNC009 cannot see this: its discharge asks whether an acquisition *names* the value, not whether
+anything reads the result, so an ignored re-proof satisfies it.
+
+Sometimes there is genuinely nothing to decide -- cover handed back on the way out of a cover-neutral
+helper, a subject the code has already proved gone. That is what the **best-effort forms** are for:
+`Sync.WidenBestEffort`, `Sync.RestoreBestEffort`, `Sync.WidenCritterWithMapBestEffort` and
+`Sync.RestoreCallerCover` return `Task`, not `Task<bool>`, so they answer nothing and say so in the call
+itself. The decision to drop the answer then lives in one named place instead of at each call site, where
+it is indistinguishable from an oversight.
+
+**Two different things wear that name, and the difference is worth knowing.** `WidenBestEffort` differs from
+strict `Widen` in the *work*: `Widen` refuses as a whole the moment any requested entity is gone and leaves
+the held set untouched, while the best-effort widen skips the dead and keeps the live remainder -- one
+cannot be written as the other plus a discarded answer. `RestoreBestEffort` and
+`WidenCritterWithMapBestEffort` differ in the *answer* alone: `Restore` is already partial by construction
+(it locks the survivors, and its bool reports only whether the input was complete), so these two are the
+strict call with its completeness answer deliberately unread. They are kept as names of their own for
+readability (owner decision 2026-09-16): at the call site a name states that the answer was weighed and
+found to decide nothing, which `_ = await ...` states only to a reader who already knows the helper. The
+rule treats both kinds alike, because what it checks is whether the call promises an answer at all.
+
+The backlog the rule opened with was 166 sites, and all 166 were that shape: a snapshot put back before a
+`return`, a `break`, a `continue`, inside a `finally`, or as the last statement of a method, plus two
+cover-neutral helpers handing the critter and its map back at the end. Not one of them was an acquisition
+guarding work that followed -- those already read their answer, which is why the rule found none.
+
 ## Cover that an await released (FOSYNC009)
 
 The discharge rules above answer *is there cover for this value*. `FOSYNC009` answers the other half — *did
@@ -226,7 +271,12 @@ extras and restores the union, so it **keeps** what it found — `Extend`. `Sync
 exactly the snapshot — `Restore`; `Sync.Snapshot` reports it without changing anything; `Sync.Release` drops it.
 Nothing in the analysis recognises `Widen`, `Lock` or `Restore` as words: a helper renamed keeps its meaning, a
 helper added without the attribute has none, and a project that spells its acquisitions differently is read the
-same way. From the effects:
+same way. That last property cuts both ways, which is what `FOSYNC011` is for: a helper added to `Sync` without
+the attribute is not merely undeclared, it is **invisible** -- no rule objects, the build stays green, and cover
+silently stops being tracked through it. So a body that reaches the primitive, or another helper whose declared
+effect changes the held set, must declare its own. A helper that only answers a question -- a membership
+comparison, a probe, a collector -- changes nothing and declares nothing, which is why the rule asks what the
+body reaches rather than where it is declared. From the effects:
 
 - **Preserving is provable.** A body whose every await widens — directly, through `Sync.Restore` of a snapshot
   it took itself, or through another method the same proof covers — cannot take the caller's cover away. A body

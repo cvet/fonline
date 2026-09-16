@@ -51,22 +51,20 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     // its Proto<Modifier>) are covered without this engine-owned analyzer having to know their names.
     private const string AlwaysCoveredMemberName = "IsAlwaysCovered";
 
-    // Asking whether cover is held, rather than taking it. `Sync.IsCovered` is the model's own probe and
-    // `Game.IsEntityLocked` the engine's.
-    private static readonly string[] CoverProbeNames = { "IsCovered", "IsEntityLocked" };
-
-    // The raw entity-cover primitives, meaning the ones a Sync helper can replace.
+    // The raw synchronization surface is declared where it is exported, not listed here. A list of method
+    // names is a rule that a rename disarms with nothing to notice it -- and unlike the analyzer's own rules,
+    // nothing downstream would report the silence either. `Game.Sync` / `Game.SyncRelease` carry
+    // FO_COVER_PRIMITIVE, `Game.IsEntityLocked` carries FO_COVER_PROBE, `Game.Lock` / `Game.Unlock` carry
+    // FO_SINGLETON_LOCK, and `Sync.IsCovered` -- the model's own probe, written in C# -- declares
+    // [CoverProbe] directly
     //
-    // `Game.TrySyncEntity` is absent for a different reason: it resolves an *id* to a live entity and
-    // covers it, answering false when the entity is gone. Every Sync helper takes an entity, so none can
-    // stand in for it -- a handle retained across a yield may already be dead, which is exactly when this
-    // is the right call. Flagging it would report code for using the only tool that fits.
-    private static readonly string[] RawSyncPrimitiveNames = { "Sync", "SyncRelease" };
-
-    // The raw pair behind the Game singleton bucket lock, which only the GameLock scope may call. The bucket guards
-    // property storage rather than entity cover, so no Sync helper replaces it; the scope does, because it releases
-    // on every path and, being a ref struct, cannot be held across an await.
-    private static readonly string[] SingletonLockPrimitiveNames = { "Lock", "Unlock" };
+    // `Game.TrySyncEntity` carries no marker, for a reason worth keeping: it resolves an *id* to a live
+    // entity and covers it, answering false when the entity is gone. Every Sync helper takes an entity, so
+    // none can stand in for it -- a handle retained across a yield may already be dead, which is exactly when
+    // this is the right call. Marking it would report code for using the only tool that fits
+    public const string CoverPrimitiveAttributeFullName = "FOnline.CoverPrimitiveAttribute";
+    public const string CoverProbeAttributeFullName = "FOnline.CoverProbeAttribute";
+    public const string SingletonLockAttributeFullName = "FOnline.SingletonLockAttribute";
 
     // The Game methods whose subject is an entity to cover. Game also carries the whole rest of the
     // script surface, so a rule about acquisitions must name these rather than take the type as a whole:
@@ -157,10 +155,34 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             "have been destroyed or relocated in between. The re-proof is a Sync call naming that value, and its " +
             "result is an answer to act on -- the acquisition can legitimately fail because the entity is gone.");
 
+    internal static readonly DiagnosticDescriptor DiscardedAcquisitionAnswerRule = new DiagnosticDescriptor(
+        id: "FOSYNC010", title: "The answer of a cover acquisition is discarded",
+        messageFormat: "'{0}' answers whether the cover was established and the answer is discarded; read it, or take the cover back with a best-effort helper that promises no answer",
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "An acquisition can legitimately fail: the entity may have been destroyed or migrated while the " +
+            "caller waited. The boolean is that answer, so discarding it continues over a value whose cover was " +
+            "never established -- which is the very state the re-proof was written to prevent, now invisible " +
+            "because nothing branches on it. FOSYNC009 cannot see this: its discharge asks whether an acquisition " +
+            "names the value, not whether anything reads the result. Where there is genuinely nothing to decide -- " +
+            "cover taken back on the way out, a subject the code has already proved gone -- the best-effort " +
+            "helpers say so in the call itself and answer nothing at all.");
+
+    internal static readonly DiagnosticDescriptor UndeclaredCoverEffectRule = new DiagnosticDescriptor(
+        id: "FOSYNC011", title: "A Sync helper changes the held cover without declaring what it does",
+        messageFormat: "'{0}' changes the held cover through {1} but declares no [CoverEffect]; every rule reads the effect from the declaration, so cover stops being tracked through this call",
+        category: Category, defaultSeverity: DiagnosticSeverity.Warning, isEnabledByDefault: true,
+        description: "What a call does to the held cover is read from its own [CoverEffect] declaration, never from its " +
+            "name. That is what keeps a rename a rename -- and it is also why a helper added to Sync without the " +
+            "attribute is invisible to the whole analysis: no rule objects, the build stays green, and cover " +
+            "silently stops being tracked through it. A helper that only asks a question -- a membership " +
+            "comparison, a probe, a collector -- changes nothing and declares nothing, which is why the rule asks " +
+            "about reaching the primitive or another changing helper rather than about being declared in Sync.");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics {
         get;
     } = ImmutableArray.Create(NonEntityTargetRule, UndischargedCoverRule, EntryPointCoverRule, CoverProbeRule,
-                              RawSyncPrimitiveRule, CoverLostToAwaitRule);
+                              RawSyncPrimitiveRule, CoverLostToAwaitRule, DiscardedAcquisitionAnswerRule,
+                              UndeclaredCoverEffectRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -180,6 +202,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 INamedTypeSymbol? acquiresCover = compilation.GetTypeByMetadataName(AcquiresCoverAttributeFullName);
                 INamedTypeSymbol? passesCover = compilation.GetTypeByMetadataName(PassesCoverAttributeFullName);
                 INamedTypeSymbol? coverEffect = compilation.GetTypeByMetadataName(CoverEffectAttributeFullName);
+                INamedTypeSymbol? coverPrimitive = compilation.GetTypeByMetadataName(CoverPrimitiveAttributeFullName);
+                INamedTypeSymbol? coverProbe = compilation.GetTypeByMetadataName(CoverProbeAttributeFullName);
+                INamedTypeSymbol? singletonLock = compilation.GetTypeByMetadataName(SingletonLockAttributeFullName);
                 INamedTypeSymbol? entityType = compilation.GetTypeByMetadataName(EntityTypeFullName);
 
                 if (requiresCover == null || entityType == null) {
@@ -209,6 +234,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                                            acquiresCover,
                                            passesCover,
                                            coverEffect,
+                                           coverPrimitive,
+                                           coverProbe,
+                                           singletonLock,
                                            entityType,
                                            syncType,
                                            gameType,
@@ -226,6 +254,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
                 compilationStart.RegisterSyntaxNodeAction(nodeContext =>
                                                               AnalyzeEntryPointDeclaration(nodeContext, model),
+                                                          SyntaxKind.MethodDeclaration);
+
+                compilationStart.RegisterSyntaxNodeAction(nodeContext =>
+                                                              AnalyzeSyncHelperDeclaration(nodeContext, model),
                                                           SyntaxKind.MethodDeclaration);
             });
     }
@@ -259,6 +291,38 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     }
 
     // FOSYNC002 -- the obligation must be discharged at every call site.
+    // A helper answers when it hands back a bool -- directly or through a task. The best-effort forms answer
+    // nothing, which is how a call says in its own name that there is nothing to decide here
+    private static bool AnswersWhetherCoverWasTaken(IMethodSymbol method)
+    {
+        ITypeSymbol type = method.ReturnType;
+
+        if (type is INamedTypeSymbol { IsGenericType : true } task &&
+            (task.Name == "Task" || task.Name == "ValueTask") && task.TypeArguments.Length == 1) {
+            type = task.TypeArguments[0];
+        }
+
+        return type.SpecialType == SpecialType.System_Boolean;
+    }
+
+    // The answer is thrown away when the call is the whole statement, with or without an await, and when it is
+    // assigned to a discard. Everything else -- a condition, a return, an argument, a local -- reads it
+    private static bool IsDiscardedResult(InvocationExpressionSyntax invocation)
+    {
+        SyntaxNode? node = invocation;
+
+        while (node?.Parent is ParenthesizedExpressionSyntax or AwaitExpressionSyntax) {
+            node = node.Parent;
+        }
+
+        if (node?.Parent is AssignmentExpressionSyntax assignment &&
+            assignment.Left is IdentifierNameSyntax { Identifier.ValueText : "_" }) {
+            return true;
+        }
+
+        return node?.Parent is ExpressionStatementSyntax;
+    }
+
     // The two rules the retired sync-flow audit owned that need no dataflow at all: they are about which
     // surface a call reaches for, not about what it proves. Both are scoped by the *symbol's* containing
     // type, so a project class called Sync or Game cannot silently satisfy or trip them.
@@ -287,12 +351,19 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (System.Array.IndexOf(CoverProbeNames, callee.Name) >= 0) {
+        // FOSYNC010 -- the acquisition answered and nobody listened
+        if (onSync && AnswersWhetherCoverWasTaken(callee) && IsDiscardedResult(invocation)) {
+            context.ReportDiagnostic(
+                Diagnostic.Create(DiscardedAcquisitionAnswerRule, invocation.GetLocation(), "Sync." + callee.Name));
+            return;
+        }
+
+        if (model.IsCoverProbe(callee)) {
             context.ReportDiagnostic(Diagnostic.Create(CoverProbeRule, invocation.GetLocation(), callee.Name));
             return;
         }
 
-        if (onGame && System.Array.IndexOf(RawSyncPrimitiveNames, callee.Name) >= 0) {
+        if (model.IsCoverPrimitive(callee)) {
             context.ReportDiagnostic(
                 Diagnostic.Create(RawSyncPrimitiveRule,
                                   invocation.GetLocation(),
@@ -301,9 +372,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // The arity check keeps an unrelated Game overload of the same name out of the rule.
-        bool isSingletonPair = onGame && callee.Parameters.Length == 0 &&
-                               System.Array.IndexOf(SingletonLockPrimitiveNames, callee.Name) >= 0;
+        // The marker names the pair exactly, so no arity check is needed to keep an unrelated overload out
+        bool isSingletonPair = model.IsSingletonLock(callee);
 
         if (isSingletonPair && !SymbolEqualityComparer.Default.Equals(callerType, model.GameLockType)) {
             context.ReportDiagnostic(
@@ -853,6 +923,50 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
     }
 
+    // FOSYNC011 -- a helper inside Sync that changes the held set says so on its own declaration. The rule
+    // asks what the body reaches, not what the method is called: the primitive itself, or another helper whose
+    // declared effect changes the set. A predicate that only reports stays silent, and so does a body that
+    // merely takes a snapshot -- a snapshot changes nothing
+    private static void AnalyzeSyncHelperDeclaration(SyntaxNodeAnalysisContext context, CoverModel model)
+    {
+        var declaration = (MethodDeclarationSyntax)context.Node;
+
+        if (context.SemanticModel.GetDeclaredSymbol(declaration, context.CancellationToken)
+                is not IMethodSymbol method) {
+            return;
+        }
+
+        if (model.SyncType == null || !SymbolEqualityComparer.Default.Equals(method.ContainingType, model.SyncType) ||
+            model.EffectOf(method) != null) {
+            return;
+        }
+
+        SyntaxNode? body = (SyntaxNode?)declaration.Body ?? declaration.ExpressionBody;
+
+        if (body == null) {
+            return;
+        }
+
+        foreach (InvocationExpressionSyntax call in body.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
+            if (context.SemanticModel.GetSymbolInfo(call, context.CancellationToken)
+                    .Symbol is not IMethodSymbol callee) {
+                continue;
+            }
+
+            bool primitive = model.IsCoverPrimitive(callee);
+
+            if (!primitive && !model.Acquires(callee) && model.EffectOf(callee) != CoverEffect.Release) {
+                continue;
+            }
+
+            context.ReportDiagnostic(Diagnostic.Create(UndeclaredCoverEffectRule,
+                                                       declaration.Identifier.GetLocation(),
+                                                       method.Name,
+                                                       primitive ? "Game." + callee.Name : callee.Name));
+            return;
+        }
+    }
+
     // v1 is body-scoped, not path-sensitive: any cover acquisition anywhere in the enclosing body
     // discharges the obligation. That direction is deliberate -- it under-reports rather than blocking a
     // build on a branch the analyzer cannot yet follow. Path sensitivity wants a ControlFlowGraph walk,
@@ -962,6 +1076,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private readonly INamedTypeSymbol? AcquiresCoverAttribute;
         private readonly INamedTypeSymbol? PassesCoverAttribute;
         private readonly INamedTypeSymbol? CoverEffectAttribute;
+        private readonly INamedTypeSymbol? CoverPrimitiveAttribute;
+        private readonly INamedTypeSymbol? CoverProbeAttribute;
+        private readonly INamedTypeSymbol? SingletonLockAttribute;
 
         // CoverReach.Parent and CoverReach.Ancestors, as the attribute's constructor argument carries them
         private const int ReachParent = 1 << 0;
@@ -973,8 +1090,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         public CoverModel(Compilation compilation, INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover,
                           INamedTypeSymbol? preservesCover, INamedTypeSymbol? returnsParent,
                           INamedTypeSymbol? returnsAncestor, INamedTypeSymbol? acquiresCover,
-                          INamedTypeSymbol? passesCover, INamedTypeSymbol? coverEffect, INamedTypeSymbol entityType,
-                          INamedTypeSymbol? syncType, INamedTypeSymbol? gameType, INamedTypeSymbol? gameLockType,
+                          INamedTypeSymbol? passesCover, INamedTypeSymbol? coverEffect,
+                          INamedTypeSymbol? coverPrimitive, INamedTypeSymbol? coverProbe,
+                          INamedTypeSymbol? singletonLock, INamedTypeSymbol entityType, INamedTypeSymbol? syncType,
+                          INamedTypeSymbol? gameType, INamedTypeSymbol? gameLockType,
                           List<INamedTypeSymbol> entryMarkers)
         {
             CompilationContext = compilation;
@@ -986,6 +1105,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             AcquiresCoverAttribute = acquiresCover;
             PassesCoverAttribute = passesCover;
             CoverEffectAttribute = coverEffect;
+            CoverPrimitiveAttribute = coverPrimitive;
+            CoverProbeAttribute = coverProbe;
+            SingletonLockAttribute = singletonLock;
             EntityType = entityType;
             SyncType = syncType;
             GameType = gameType;
@@ -1486,6 +1608,25 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             }
 
             return null;
+        }
+
+        // The raw surface, as the export declares itself
+        public bool IsCoverPrimitive(IMethodSymbol method)
+        {
+            return CoverPrimitiveAttribute != null &&
+                   HasAttribute(method.OriginalDefinition.GetAttributes(), CoverPrimitiveAttribute);
+        }
+
+        public bool IsCoverProbe(IMethodSymbol method)
+        {
+            return CoverProbeAttribute != null &&
+                   HasAttribute(method.OriginalDefinition.GetAttributes(), CoverProbeAttribute);
+        }
+
+        public bool IsSingletonLock(IMethodSymbol method)
+        {
+            return SingletonLockAttribute != null &&
+                   HasAttribute(method.OriginalDefinition.GetAttributes(), SingletonLockAttribute);
         }
 
         // An acquisition is any effect that leaves the job holding something it can name

@@ -71,6 +71,15 @@ namespace FOnline
         public CoverEffectKind Effect { get; }
     }
 
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class CoverPrimitiveAttribute : System.Attribute { }
+
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class CoverProbeAttribute : System.Attribute { }
+
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class SingletonLockAttribute : System.Attribute { }
+
     [System.AttributeUsage(System.AttributeTargets.ReturnValue)]
     public sealed class ReturnsAncestorAttribute : System.Attribute { }
 
@@ -145,6 +154,7 @@ namespace FOnline
         public static bool Lock(Entity entity) { return true; }
         [CoverEffect(CoverEffectKind.Extend)]
         public static bool WidenCritterWithMap(Critter cr) { return true; }
+        [CoverProbe]
         public static bool IsCovered(Entity entity) { return true; }
         [CoverEffect(CoverEffectKind.Replace)]
         public static System.Threading.Tasks.Task<bool> LockAsync(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
@@ -162,12 +172,16 @@ namespace FOnline
 
     public static class Game
     {
+        [CoverProbe]
         public static bool IsEntityLocked(Entity entity) { return true; }
         public static bool TrySyncEntity(int id) { return true; }
+        [CoverPrimitive]
         public static void Sync(Entity entity) { }
 
         // The singleton bucket lock, reserved for the GameLock scope below
+        [SingletonLock]
         public static void Lock() { }
+        [SingletonLock]
         public static void Unlock() { }
 
         // The rest of the surface, which shares the type but takes entities as ordinary arguments.
@@ -285,6 +299,44 @@ namespace LastFrontier
             Reads(1, null);
             Reads(2, default);
             Reads(3);
+        }
+    }
+}");
+
+        // Renaming the export is what a list of method names in the analyzer cannot survive: the rule would go
+        // quiet and nothing downstream would report the silence. The marker travels with the declaration
+        CheckWithPreamble(
+            failures,
+            "the raw primitive is recognised after a rename, because the marker travels with it",
+            Preamble.Replace("public static void Sync(Entity entity)", "public static void Grip(Entity entity)"),
+            @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Work(Critter cr)
+        {
+            Game.Grip(cr);
+        }
+    }
+}",
+            "FOSYNC005");
+
+        // The other half of the same fact: a method that merely wears the old name declares nothing and is
+        // ordinary code
+        CheckWithPreamble(failures,
+                          "a method that only wears the primitive's name is not the primitive",
+                          Preamble.Replace("[CoverPrimitive]", ""),
+                          @"
+namespace LastFrontier
+{
+    using FOnline;
+    public static class Probe
+    {
+        public static void Work(Critter cr)
+        {
+            Game.Sync(cr);
         }
     }
 }");
@@ -525,7 +577,10 @@ namespace LastFrontier
 
         public static void Caller(Critter cr)
         {
-            Sync.Lock(cr);
+            if (!Sync.Lock(cr)) {
+                return;
+            }
+
             Reads(cr);
         }
     }
@@ -816,6 +871,7 @@ namespace FOnline
 {
     public static partial class Sync
     {
+        [CoverEffect(CoverEffectKind.Replace)]
         public static void Helper(Critter cr)
         {
             if (IsCovered(cr)) { }
@@ -1177,6 +1233,86 @@ namespace LastFrontier
               "FOSYNC009");
 
         Check(failures,
+              "an acquisition whose answer nobody reads proves nothing",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        public static async Task Reproves(Critter cr)
+        {
+            await Sync.Widen(cr);
+        }
+    }
+}",
+              "FOSYNC010");
+
+        Check(failures, "the same acquisition read as an answer is what the rule asks for", @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        public static async Task<bool> Reproves(Critter cr)
+        {
+            if (!await Sync.Widen(cr)) {
+                return false;
+            }
+
+            return true;
+        }
+    }
+}");
+
+        Check(failures,
+              "a discard is the same defect written plainly",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        public static async Task Reproves(Critter cr)
+        {
+            _ = await Sync.Widen(cr);
+        }
+    }
+}",
+              "FOSYNC010");
+
+        Check(failures,
+              "a helper that changes the held cover without declaring the effect is invisible to every rule",
+              @"
+namespace FOnline
+{
+    using System.Threading.Tasks;
+    public static partial class Sync
+    {
+        public static async Task<bool> ComposesWithoutDeclaring(Entity entity)
+        {
+            return await Widen(entity);
+        }
+    }
+}",
+              "FOSYNC011");
+
+        Check(failures, "a helper that only answers a question declares nothing and is not asked to", @"
+namespace FOnline
+{
+    public static partial class Sync
+    {
+        public static bool AsksOnly(Entity entity)
+        {
+            return IsCovered(entity);
+        }
+    }
+}");
+
+        Check(failures,
               "a body that releases the cover outright is not preserving",
               @"
 namespace LastFrontier
@@ -1420,7 +1556,7 @@ namespace LastFrontier
     using FOnline;
     public static class Probe
     {
-        public static void Takes(StaticItem item) { Sync.Lock(item); }
+        public static bool Takes(StaticItem item) { return Sync.Lock(item); }
     }
 }");
 
