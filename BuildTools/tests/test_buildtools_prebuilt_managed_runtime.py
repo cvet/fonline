@@ -16,6 +16,12 @@ sys.path.insert(0, str(BUILDTOOLS_DIR))
 import buildtools as _buildtools  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def no_workspace_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    # CI jobs configure the cache for the whole job, and these tests exercise the build it would otherwise replace
+    monkeypatch.delenv(_buildtools.WORKSPACE_CACHE_VAR, raising=False)
+
+
 def make_published_tree(root: Path, triplet: str) -> Path:
     tree = root / triplet
     (tree / "lib").mkdir(parents=True)

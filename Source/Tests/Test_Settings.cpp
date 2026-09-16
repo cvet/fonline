@@ -142,6 +142,65 @@ TEST_CASE("Settings")
         CHECK_FALSE(packs[1].ClientOnly);
     }
 
+    SECTION("IgnoreInputDirsFromASubConfigLeaveTheDirectoryOutOfEveryPack")
+    {
+        ConfigFile config {"[SubConfig]\n"
+                           "Name = Shipping\n"
+                           "Baking.IgnoreInputDirs = scripts/tests\n"
+                           "[ResourcePack]\n"
+                           "Name = ScriptPack\n"
+                           "InputDirs = scripts scripts/tests\n"
+                           "[ResourcePack]\n"
+                           "Name = MetadataPack\n"
+                           "InputDirs = scripts/tests scripts\n"
+                           "[ResourcePack]\n"
+                           "Name = ArtPack\n"
+                           "InputDirs = art\n"};
+        string scripts_dir = strex("cfg").combine_path("scripts").str();
+        string tests_dir = strex("cfg").combine_path("scripts/tests").str();
+        string art_dir = strex("cfg").combine_path("art").str();
+
+        GlobalSettings development {false};
+        development.ApplyDefaultSettings();
+        development.ApplyConfigFile(config, "cfg");
+        development.ApplyAutoSettings();
+
+        CHECK(development.GetResourcePacks()[0].InputDirs == vector<string> {scripts_dir, tests_dir});
+        CHECK(development.GetResourcePacks()[1].InputDirs == vector<string> {tests_dir, scripts_dir});
+
+        GlobalSettings shipping {false};
+        shipping.ApplyDefaultSettings();
+        shipping.ApplyConfigFile(config, "cfg");
+        shipping.ApplySubConfigSection("Shipping");
+
+        // Applying twice matters: the second pass must not report the already left out directory as unknown
+        shipping.ApplyAutoSettings();
+        shipping.ApplyAutoSettings();
+
+        REQUIRE(shipping.GetResourcePacks().size() == 3);
+        CHECK(shipping.GetResourcePacks()[0].InputDirs == vector<string> {scripts_dir});
+        CHECK(shipping.GetResourcePacks()[1].InputDirs == vector<string> {scripts_dir});
+        CHECK(shipping.GetResourcePacks()[2].InputDirs == vector<string> {art_dir});
+    }
+
+    SECTION("IgnoredInputDirThatNoPackReadsIsRejected")
+    {
+        ConfigFile config {"[SubConfig]\n"
+                           "Name = Misspelled\n"
+                           "Baking.IgnoreInputDirs = scripts/test\n"
+                           "[ResourcePack]\n"
+                           "Name = ScriptPack\n"
+                           "InputDirs = scripts scripts/tests\n"};
+
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+        settings.ApplyConfigFile(config, "cfg");
+        settings.ApplySubConfigSection("Misspelled");
+
+        CHECK_THROWS_AS(settings.ApplyAutoSettings(), SettingsException);
+        CHECK(settings.GetResourcePacks()[0].InputDirs.size() == 2);
+    }
+
     SECTION("ApplyCommandLineSetsCustomValuesAndImplicitFlags")
     {
         GlobalSettings settings {false};

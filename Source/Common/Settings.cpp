@@ -297,6 +297,8 @@ void GlobalSettings::ApplyAutoSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
+    ApplyIgnoreInputDirs();
+
     *FixedSettingForEdit(Common.Packaged) = IsPackaged();
 
 #if FO_WEB
@@ -350,10 +352,37 @@ void GlobalSettings::ApplyAutoSettings()
     *FixedSettingForEdit(Network.CompatibilityVersion) = !Network.ForceCompatibilityVersion.empty() ? Network.ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
+// Resource packs are read with their config, before a sub-config or the command line can name an input to ignore,
+// so the packs in effect are rebuilt from the declared ones every time
+void GlobalSettings::ApplyIgnoreInputDirs()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ResourcePackInfo> res_packs = _declaredResourcePacks;
+
+    for (const string& ignored_dir : Baking.IgnoreInputDirs) {
+        bool is_pack_input = false;
+
+        for (ResourcePackInfo& res_pack : res_packs) {
+            string ignored_path = strex(res_pack.ConfigDir).combine_path(ignored_dir).str();
+            size_t removed = std::erase(res_pack.InputDirs, ignored_path);
+            is_pack_input = is_pack_input || removed != 0;
+        }
+
+        // A misspelled entry would otherwise leave the directory baked with nothing reporting it
+        if (!is_pack_input && !res_packs.empty()) {
+            throw SettingsException("Ignored input directory is not an input directory of any resource pack", ignored_dir);
+        }
+    }
+
+    _resourcePacks = std::move(res_packs);
+}
+
 void GlobalSettings::CopyFrom(const GlobalSettings& other)
 {
     FO_STACK_TRACE_ENTRY();
 
+    _declaredResourcePacks = other._declaredResourcePacks;
     _resourcePacks = other._resourcePacks;
     _subConfigs = other._subConfigs;
     _appliedConfigs = other._appliedConfigs;
@@ -621,6 +650,8 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
             throw SettingsException("Resource pack name not specifed");
         }
 
+        pack_info.ConfigDir = config_dir;
+
         if (string server_only = get_map_value("ServerOnly"); !server_only.empty()) {
             pack_info.ServerOnly = strvex(server_only).to_bool();
         }
@@ -659,6 +690,7 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
             }
         }
 
+        _declaredResourcePacks.emplace_back(pack_info);
         _resourcePacks.emplace_back(std::move(pack_info));
     }
 }

@@ -44,6 +44,7 @@ class ConfigFile;
 struct ResourcePackInfo
 {
     string Name {};
+    string ConfigDir {};
     vector<string> InputDirs {};
     vector<string> InputFiles {};
     vector<string> IncludePatterns {};
@@ -142,7 +143,10 @@ private:
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
     void AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir);
     void AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir);
+    void ApplyIgnoreInputDirs();
 
+    // As the configs declare them; the packs in effect are these minus Baking.IgnoreInputDirs
+    vector<ResourcePackInfo> _declaredResourcePacks {};
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};
     any_t _emptySetting {};

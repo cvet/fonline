@@ -925,6 +925,11 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("Obsolete.gen.cs") != string::npos);
     CHECK(unified_project.find("<ProjectReference Include=\"FOnline.ManagedHost.gen.csproj\" />") != string::npos);
 
+    // Every target keeps its portable PDB inside the assembly, so script frames carry file and line wherever it runs
+    for (string_view target : {"Server", "Client", "Mapper"}) {
+        CHECK(unified_project.find(strex("== '{}|AnyCPU' \">\n    <DebugType>embedded</DebugType>", target).str()) != string::npos);
+    }
+
     // The analysis profile: level and mode as properties, analyzer packages as private package references,
     // and the analyzer configuration file as an AdditionalFiles item beside them
     CHECK(unified_project.find("<EnableNETAnalyzers>true</EnableNETAnalyzers>") != string::npos);
@@ -937,6 +942,7 @@ TEST_CASE("ManagedScriptBaker")
     string managed_host_project = ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj");
     CHECK(managed_host_project.find("<AssemblyName>FOnline.ManagedHost</AssemblyName>") != string::npos);
     CHECK(managed_host_project.find("ManagedHost/ManagedLoadContextHost.cs") != string::npos);
+    CHECK(managed_host_project.find("<DebugType>embedded</DebugType>") != string::npos);
     // The profile covers the script project only; the host compiles engine-owned source
     CHECK(managed_host_project.find("<AnalysisMode>") == string::npos);
     CHECK(managed_host_project.find("<PackageReference") == string::npos);
