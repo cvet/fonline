@@ -57,7 +57,7 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(settings.Packaged ? settings.ServerResources : settings.BakeOutput, settings.ServerResourceEntries);
+    resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ServerResources : settings.Baking.BakeOutput, settings.Baking.ServerResourceEntries);
     return resources;
 }
 
@@ -99,7 +99,7 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     logging::write("Start server");
     logging::write("Updater version: {}", FO_UPDATER_VERSION);
-    logging::write("Compatibility version: {}", Settings->CompatibilityVersion);
+    logging::write("Compatibility version: {}", Settings->Network.CompatibilityVersion);
     logging::write("Metadata version: {}", GetMetadataVersion());
 
     if (_restoreSnapshot) {
@@ -108,8 +108,8 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         if (_restoreSnapshot->Payload.empty()) {
             throw ServerSnapshotException("Snapshot restore requires a database payload");
         }
-        if (_restoreSnapshot->State.CompatibilityVersion != Settings->CompatibilityVersion) {
-            throw ServerSnapshotException("Snapshot compatibility version mismatch", _restoreSnapshot->State.CompatibilityVersion, Settings->CompatibilityVersion);
+        if (_restoreSnapshot->State.CompatibilityVersion != Settings->Network.CompatibilityVersion) {
+            throw ServerSnapshotException("Snapshot compatibility version mismatch", _restoreSnapshot->State.CompatibilityVersion, Settings->Network.CompatibilityVersion);
         }
         if (_restoreSnapshot->State.MetadataVersion != GetMetadataVersion()) {
             throw ServerSnapshotException("Snapshot metadata version mismatch", _restoreSnapshot->State.MetadataVersion, GetMetadataVersion());
@@ -281,13 +281,13 @@ auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!Settings->WriteHealthFile) {
+    if (!Settings->Server.WriteHealthFile) {
         return std::nullopt;
     }
 
     auto exe_path = platform::get_exe_path();
     string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME)).str();
-    _healthFileName = fs::make_writable_path(Settings->UserWritablePath, health_file_name);
+    _healthFileName = fs::make_writable_path(Settings->Common.UserWritablePath, health_file_name);
 
     if (WriteHealthFile("Starting...")) {
         _mainWorker.add_job(WrapJobWithSync([this]() FO_DEFERRED { return HealthFileJob(); }));
@@ -307,7 +307,7 @@ auto ServerEngine::HealthFileJob() -> std::optional<timespan>
         _healthWriter.add_job([this, health_info = GetHealthInfo()]() FO_DEFERRED { return HealthFileWriteJob(health_info); });
     }
 
-    return std::chrono::milliseconds {Settings->HealthFilePeriodMs};
+    return std::chrono::milliseconds {Settings->Server.HealthFilePeriodMs};
 }
 
 auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optional<timespan>
@@ -316,7 +316,7 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 
     string buf;
     buf.reserve(health_info.size() + 128);
-    buf += strex("{} v{}\n\n", Settings->GameName, Settings->GameVersion);
+    buf += strex("{} v{}\n\n", Settings->Common.GameName, Settings->Common.GameVersion);
     buf += health_info;
     WriteHealthFile(buf);
 
@@ -359,7 +359,7 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
     InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
+    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
 #endif
 
     return std::nullopt;
@@ -371,22 +371,22 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
 
     logging::write("Start networking");
 
-    FO_VERIFY_AND_THROW(Settings->MaxMessageSize >= 0, "ServerNetwork.MaxMessageSize must not be negative", Settings->MaxMessageSize);
-    FO_VERIFY_AND_THROW(Settings->MaxBufferedInputSize >= 0, "ServerNetwork.MaxBufferedInputSize must not be negative", Settings->MaxBufferedInputSize);
-    FO_VERIFY_AND_THROW(Settings->MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->MaxRemoteCallPayloadSize);
-    FO_VERIFY_AND_THROW(Settings->MaxBufferedInputSize == 0 || Settings->MaxMessageSize == 0 || Settings->MaxBufferedInputSize >= Settings->MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->MaxBufferedInputSize, Settings->MaxMessageSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxMessageSize >= 0, "ServerNetwork.MaxMessageSize must not be negative", Settings->ServerNetwork.MaxMessageSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize >= 0, "ServerNetwork.MaxBufferedInputSize must not be negative", Settings->ServerNetwork.MaxBufferedInputSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->ServerNetwork.MaxRemoteCallPayloadSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize == 0 || Settings->ServerNetwork.MaxMessageSize == 0 || Settings->ServerNetwork.MaxBufferedInputSize >= Settings->ServerNetwork.MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->ServerNetwork.MaxBufferedInputSize, Settings->ServerNetwork.MaxMessageSize);
 
     unique_ptr<NetworkServer> interthread_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
     _connectionServers.emplace_back(std::move(interthread_server));
 
-    if (Settings->DisableNetworking) {
+    if (Settings->ServerNetwork.DisableNetworking) {
         logging::write("Skip remote networking startup");
         return std::nullopt;
     }
 
     auto on_connection = [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); };
 
-    if (Settings->EnableUdp) {
+    if (Settings->ServerNetwork.EnableUdp) {
         StartConnectionServer("UDP", [&] { return NetworkServer::StartUdpSocketsServer(Settings, on_connection); });
     }
 
@@ -407,10 +407,10 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
     const auto& entity_types = GetEntityTypes();
 
     DataBaseCollectionSchemas collection_schemas;
-    collection_schemas.reserve(3 + entity_types.size() + Settings->CustomCollections.size());
+    collection_schemas.reserve(3 + entity_types.size() + Settings->DataBase.CustomCollections.size());
 
     unordered_map<hstring, DataBaseKeyType> registered_collection_types {};
-    registered_collection_types.reserve(2 + entity_types.size() + Settings->CustomCollections.size());
+    registered_collection_types.reserve(2 + entity_types.size() + Settings->DataBase.CustomCollections.size());
 
     auto register_collection = [&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
         FO_VERIFY_AND_THROW(!collection_name.as_str().empty(), "Database collection registration received an empty collection name", key_type, registered_collection_types.size());
@@ -460,11 +460,11 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
     for (const auto& type_desc : entity_types | std::views::values) {
         register_collection(type_desc.PropRegistrar->GetTypeNamePlural(), DataBaseKeyType::IntId);
     }
-    for (const auto& entry : Settings->CustomCollections) {
+    for (const auto& entry : Settings->DataBase.CustomCollections) {
         register_custom_collection(entry);
     }
 
-    DbStorage = ConnectToDataBase(Settings, Settings->DbStorage, collection_schemas, [] {
+    DbStorage = ConnectToDataBase(Settings, Settings->Server.DbStorage, collection_schemas, [] {
         FO_VERIFY_AND_THROW(IsAppInitialized(), "App is not initialized");
         GetApp()->RequestQuit(false);
     });
@@ -611,7 +611,7 @@ auto ServerEngine::InitLanguageJob() -> std::optional<timespan>
     logging::write("Load language data");
 
     _defaultLang = TextPack {&Hashes};
-    _defaultLang.LoadFromResources(Resources, Settings->Language);
+    _defaultLang.LoadFromResources(Resources, Settings->Client.Language);
 
     return std::nullopt;
 }
@@ -631,8 +631,8 @@ auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (Settings->Packaged) {
-        logging::write("Initialize updater backend with client resources using {} storage", Settings->UpdateFilesInMemory ? "memory" : "disk");
+    if (Settings->Common.Packaged) {
+        logging::write("Initialize updater backend with client resources using {} storage", Settings->ServerNetwork.UpdateFilesInMemory ? "memory" : "disk");
 
         _updaterBackend.emplace();
         _updaterBackend->LoadFromClientResources(*Settings, GetMetadataVersion());
@@ -682,7 +682,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         FrameAdvance();
 
         // Worker pool
-        int32_t worker_threads = Settings->SingleThreadedLogic ? 1 : Settings->WorkerThreads;
+        int32_t worker_threads = Settings->Server.SingleThreadedLogic ? 1 : Settings->Server.WorkerThreads;
         _workerPool.emplace("ServerPool", worker_threads, _shutdownInProgress.as_ptr(), /*start_paused*/ true);
 
         TimeEventManager::DispatcherHooks hooks;
@@ -845,7 +845,7 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
     TracyPlot("Server jobs per second", numeric_cast<int64_t>(_stats.JobsPerSecond));
 #endif
 
-    return std::chrono::milliseconds {Settings->SyncPeriodMs};
+    return std::chrono::milliseconds {Settings->Server.SyncPeriodMs};
 }
 
 auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
@@ -854,7 +854,7 @@ auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 
     FrameAdvance();
 
-    return std::chrono::nanoseconds {Settings->FrameTimePeriodNs};
+    return std::chrono::nanoseconds {Settings->Server.FrameTimePeriodNs};
 }
 
 void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
@@ -923,7 +923,7 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
         return std::nullopt;
     }
 
-    return std::chrono::milliseconds {Settings->ConnectionProcessPeriodMs};
+    return std::chrono::milliseconds {Settings->Server.ConnectionProcessPeriodMs};
 }
 
 void ServerEngine::OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player)
@@ -978,7 +978,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
         return std::nullopt;
     }
 
-    return std::chrono::milliseconds {Settings->ConnectionProcessPeriodMs};
+    return std::chrono::milliseconds {Settings->Server.ConnectionProcessPeriodMs};
 }
 
 void ServerEngine::UpdateJobStats(nanotime cur_time)
@@ -1169,9 +1169,9 @@ void ServerEngine::Shutdown()
 
         // A job parked in EntityLock::Acquire still counts as active, so past the grace window every waiter is
         // aborted and the resulting throw is what unwinds the job
-        logging::write("Shutdown stage: workerPool.WaitIdle (graceMs={})", Settings->ShutdownGraceMs);
+        logging::write("Shutdown stage: workerPool.WaitIdle (graceMs={})", Settings->Server.ShutdownGraceMs);
 
-        if (!_workerPool->WaitIdle(std::chrono::milliseconds {Settings->ShutdownGraceMs})) {
+        if (!_workerPool->WaitIdle(std::chrono::milliseconds {Settings->Server.ShutdownGraceMs})) {
             logging::write("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
 
             vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
@@ -1513,7 +1513,7 @@ auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSna
         FlushExactSyncTime();
 
         ServerSnapshotState state;
-        state.CompatibilityVersion = Settings->CompatibilityVersion;
+        state.CompatibilityVersion = Settings->Network.CompatibilityVersion;
         state.MetadataVersion = string {GetMetadataVersion()};
         state.SynchronizedTime = quiescence_state.SynchronizedTime;
         state.LastEntityId = GetLastEntityId();
@@ -1578,8 +1578,8 @@ void ServerEngine::DrawGui()
         return;
     }
 
-    if (Settings->LockMaxWaitTime != 0) {
-        timespan max_wait_time = timespan {std::chrono::milliseconds {Settings->LockMaxWaitTime}};
+    if (Settings->Server.LockMaxWaitTime != 0) {
+        timespan max_wait_time = timespan {std::chrono::milliseconds {Settings->Server.LockMaxWaitTime}};
 
         if (!Lock(max_wait_time)) {
             ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
@@ -1665,8 +1665,8 @@ void ServerEngine::DrawGui()
 
     if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (begin_info_table("##InfoTable")) {
-            info_row("Version", strex("{}", Settings->GameVersion).str());
-            info_row("Compatibility version", strex("{}", Settings->CompatibilityVersion).str());
+            info_row("Version", strex("{}", Settings->Common.GameVersion).str());
+            info_row("Compatibility version", strex("{}", Settings->Network.CompatibilityVersion).str());
             info_row("Metadata version", strex("{}", GetMetadataVersion()).str());
             info_row("System time", strex("{}", nanotime::now()).str());
             info_row("Synchronized time", strex("{}", GetSynchronizedTime()).str());
@@ -2051,8 +2051,8 @@ auto ServerEngine::GetHealthInfo() const -> string
     string buf;
     buf.reserve(2048);
 
-    buf += strex("Version: {}\n", Settings->GameVersion);
-    buf += strex("Compatibility version: {}\n", Settings->CompatibilityVersion);
+    buf += strex("Version: {}\n", Settings->Common.GameVersion);
+    buf += strex("Compatibility version: {}\n", Settings->Network.CompatibilityVersion);
     buf += strex("Metadata version: {}\n", GetMetadataVersion());
     buf += strex("System time: {}\n", nanotime::now());
     buf += strex("Synchronized time: {}\n", GetSynchronizedTime());
@@ -2111,8 +2111,8 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::chrono::milliseconds retry_delay {std::max(Settings->ListenRetryDelay, 1)};
-    nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ListenRetryTime, 0)};
+    std::chrono::milliseconds retry_delay {std::max(Settings->ServerNetwork.ListenRetryDelay, 1)};
+    nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ServerNetwork.ListenRetryTime, 0)};
 
     for (int32_t attempt = 1;; attempt++) {
         try {
@@ -2126,7 +2126,7 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
         }
         catch (const std::exception&) {
             if (nanotime::now() >= deadline) {
-                logging::write("Listener {} did not start within {} ms of retries", what, std::max(Settings->ListenRetryTime, 0));
+                logging::write("Listener {} did not start within {} ms of retries", what, std::max(Settings->ServerNetwork.ListenRetryTime, 0));
                 throw;
             }
 
@@ -2148,7 +2148,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
     }
 
     // Anti-flood: drop bursts from a single source before any per-connection allocation
-    if (Settings->NewConnectionRatePerSec > 0) {
+    if (Settings->ServerNetwork.NewConnectionRatePerSec > 0) {
         constexpr size_t MAX_CONN_RATE_ENTRIES = 50000;
         int64_t now_sec = nanotime::now().seconds();
         string source_key {net_connection->GetHost()};
@@ -2163,7 +2163,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
                 std::erase_if(_connRates, [now_sec](const auto& entry) { return entry.second.WindowSec != now_sec; });
             }
 
-            accept_rate = EvaluateConnectionRate(_connRates[source_key], now_sec, Settings->NewConnectionRatePerSec);
+            accept_rate = EvaluateConnectionRate(_connRates[source_key], now_sec, Settings->ServerNetwork.NewConnectionRatePerSec);
         }
 
         if (!accept_rate) {
@@ -2174,7 +2174,7 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
     }
 
     // Population cap: reject when the connection or player ceiling is reached, before creating a player
-    if (Settings->MaxConnections > 0 || Settings->MaxPlayers > 0) {
+    if (Settings->ServerNetwork.MaxConnections > 0 || Settings->ServerNetwork.MaxPlayers > 0) {
         size_t cur_connections;
         size_t cur_players;
 
@@ -2185,9 +2185,9 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
             cur_connections = _notLoggedInPlayers.size() + cur_players;
         }
 
-        if (!ShouldAcceptConnection(cur_connections, cur_players, Settings->MaxConnections, Settings->MaxPlayers)) {
+        if (!ShouldAcceptConnection(cur_connections, cur_players, Settings->ServerNetwork.MaxConnections, Settings->ServerNetwork.MaxPlayers)) {
             _rejectedConnections.fetch_add(1, std::memory_order_relaxed);
-            logging::write("Rejected new connection from {}: population cap reached (connections={}, players={}, max_connections={}, max_players={})", net_connection->GetHost(), cur_connections, cur_players, Settings->MaxConnections, Settings->MaxPlayers);
+            logging::write("Rejected new connection from {}: population cap reached (connections={}, players={}, max_connections={}, max_players={})", net_connection->GetHost(), cur_connections, cur_players, Settings->ServerNetwork.MaxConnections, Settings->ServerNetwork.MaxPlayers);
             net_connection->Disconnect();
             return;
         }
@@ -2287,7 +2287,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
                 }
 
                 auto updater_backend = make_ptr(&*_updaterBackend);
-                updater_backend->ProcessUpdateFile(not_logged_in_player, Settings->UpdateFileMaxPortionSize);
+                updater_backend->ProcessUpdateFile(not_logged_in_player, Settings->Network.UpdateFileMaxPortionSize);
                 connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
             }
@@ -2342,7 +2342,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
     // Bounded so one flooding connection cannot monopolize a worker thread shared with world jobs; the job
     // reschedules, so leftovers are drained on the next pass
-    int32_t max_per_pass = Settings->MaxMessagesPerProcessPass;
+    int32_t max_per_pass = Settings->ServerNetwork.MaxMessagesPerProcessPass;
     int32_t processed_msgs = 0;
 
     while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected() && !player->IsDestroyed()) {
@@ -2906,7 +2906,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     auto updater_version = in_buf->Read<uint32_t>();
     string requested_binary_target = in_buf->Read<string>();
 
-    bool compatibility_outdated = comp_version != Settings->CompatibilityVersion;
+    bool compatibility_outdated = comp_version != Settings->Network.CompatibilityVersion;
     bool updater_outdated = updater_version != FO_UPDATER_VERSION;
 
     // The updater connects before it has any resources of its own, so an empty version means "nothing to
@@ -4790,7 +4790,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
         return std::nullopt;
     }
 
-    return std::chrono::milliseconds {Settings->CritterMovingPeriodMs};
+    return std::chrono::milliseconds {Settings->Server.CritterMovingPeriodMs};
 }
 
 void ServerEngine::StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator)
@@ -4886,8 +4886,8 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     if (remote_call_it->second.MaxPayloadSize != 0 && remote_call_payload_size > remote_call_it->second.MaxPayloadSize) {
         throw GenericException("Remote call data exceeds structural payload limit", remote_call_name, remote_call_payload_size, remote_call_it->second.MaxPayloadSize);
     }
-    if (Settings->MaxRemoteCallPayloadSize != 0 && remote_call_payload_size > numeric_cast<size_t>(Settings->MaxRemoteCallPayloadSize)) {
-        throw GenericException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->MaxRemoteCallPayloadSize);
+    if (Settings->ServerNetwork.MaxRemoteCallPayloadSize != 0 && remote_call_payload_size > numeric_cast<size_t>(Settings->ServerNetwork.MaxRemoteCallPayloadSize)) {
+        throw GenericException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->ServerNetwork.MaxRemoteCallPayloadSize);
     }
 
     vector<uint8_t> remote_call_data;

@@ -131,11 +131,11 @@ void GameTimer::FrameAdvance(bool clamp_to_cap)
     nanotime now_time = nanotime::now() - pause_offset;
     nanotime new_frame_time;
 
-    if (clamp_to_cap && _settings->DeltaTimeCap != 0) {
+    if (clamp_to_cap && _settings->Timer.DeltaTimeCap != 0) {
         int32_t dt = (now_time - prev_frame_time - _debuggingOffset).to_ms<int32_t>();
 
-        if (dt > _settings->DeltaTimeCap) {
-            _debuggingOffset += std::chrono::milliseconds(dt - _settings->DeltaTimeCap);
+        if (dt > _settings->Timer.DeltaTimeCap) {
+            _debuggingOffset += std::chrono::milliseconds(dt - _settings->Timer.DeltaTimeCap);
         }
 
         new_frame_time = now_time - _debuggingOffset;

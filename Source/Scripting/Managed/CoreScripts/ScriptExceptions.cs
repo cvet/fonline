@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 // through the engine and counted, so a harness can prove that a run stayed clean
 public static class ScriptExceptions
 {
-    private static int _globalCount;
+    private static int RecordedGlobally;
 
     [ThreadStatic]
-    private static int _contextCount;
+    private static int RecordedInContext;
 
-    public static int GlobalCount => _globalCount;
+    public static int GlobalCount => RecordedGlobally;
 
     // Synchronous faults only: a deferred Task fault completes on a foreign thread and counts globally
-    public static int ContextCount => _contextCount;
+    public static int ContextCount => RecordedInContext;
 
     // A script-owned dispatch boundary -- a loop that runs independent content callbacks and must survive one of
     // them failing -- stops the fault there and reports it exactly as an engine dispatch boundary would
@@ -68,13 +68,13 @@ public static class ScriptExceptions
 
     internal static void Record(Exception ex, bool log)
     {
-        _contextCount++;
+        RecordedInContext++;
         RecordGlobal(ex, log);
     }
 
     private static void RecordGlobal(Exception ex, bool log)
     {
-        Interlocked.Increment(ref _globalCount);
+        Interlocked.Increment(ref RecordedGlobally);
 
         if (log) {
             Native.ReportException(ex);

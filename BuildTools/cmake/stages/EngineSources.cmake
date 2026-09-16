@@ -404,6 +404,8 @@ AppendList(FO_BAKER_SOURCE
 
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_BAKER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.cpp"
         "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.h"
         "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.cpp")
 endif()

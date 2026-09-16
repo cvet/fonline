@@ -56,21 +56,28 @@ public:
     void IndexFiles();
     // The resource paths of every indexed sound, for a caller that resolves its own naming conventions
     [[nodiscard]] auto GetSoundNames() const noexcept -> const_span<string> { return _soundNames; }
-    auto PlaySound(string_view name) -> bool;
+    // The handle names the sound while it plays, and zero means there is nothing playing to name: the device
+    // is silent, the sound was out of earshot, or the resource could not be played. A caller that only starts
+    // a sound ignores it
+    auto PlaySound(string_view name) -> uint32_t;
     // Attenuation scales the mixed volume, pan runs from -1 at the left ear to 1 at the right one; how far a
     // sound carries and how hard it leans is game policy, so the caller decides both
-    auto PlaySound(string_view name, float32_t attenuation, float32_t pan) -> bool;
+    auto PlaySound(string_view name, float32_t attenuation, float32_t pan) -> uint32_t;
+    // Places a sound that is already playing. Answers false once that sound has finished, which is how a
+    // caller following it learns to stop
+    auto UpdateSound(uint32_t sound_id, float32_t attenuation, float32_t pan) -> bool;
     auto PlayMusic(string_view fname, timespan repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
 
     // Leans an interleaved S16 stereo buffer to one side, in place
-    static void ApplyPan(vector<uint8_t>& buf, float32_t pan);
+    static void ApplyPan(span<uint8_t> buf, float32_t pan);
 
 private:
     struct Sound;
 
-    auto Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> bool;
+    // Returns the handle of the loaded sound, or zero when the resource could not be played
+    auto Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> uint32_t;
     void ProcessSounds(uint8_t silence, span<uint8_t> output);
     auto ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool;
     auto StreamOgg(ptr<Sound> sound) -> bool;
@@ -81,6 +88,7 @@ private:
     ptr<IAppAudio> _audio;
     bool _isActive {};
     int32_t _streamingPortion {};
+    uint32_t _soundIdCounter {};
     vector<string> _soundNames {};
     vector<unique_ptr<Sound>> _playingSounds;
     vector<uint8_t> _outputBuf {};

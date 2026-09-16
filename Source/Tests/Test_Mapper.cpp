@@ -1398,7 +1398,7 @@ TEST_CASE("MapperLoadMapResolvesNameAndPath")
 
     // Mirror the project's proto-extension order (LastFrontier.fomain), where .foloc precedes .fomap.
     // That ordering is what let a same-stem location file shadow the map file during discovery
-    BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"foinfo", "fopro", "foloc", "fomap", "focr", "foitem"});
+    BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"foinfo", "fopro", "foloc", "fomap", "focr", "foitem"});
 
     auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
@@ -1617,28 +1617,28 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         CHECK(all_layers >= 6);
 
         // Each layer switched off must cost exactly the entities that belong to it
-        settings.ShowCrit = false;
+        settings.Hex.ShowCrit = false;
         mapper->SelectAll();
         CHECK(mapper->SelectedEntities.size() < all_layers);
 
-        settings.ShowScen = false;
-        settings.ShowWall = false;
-        settings.ShowTile = false;
-        settings.ShowRoof = false;
+        settings.Hex.ShowScen = false;
+        settings.Hex.ShowWall = false;
+        settings.Hex.ShowTile = false;
+        settings.Hex.ShowRoof = false;
         mapper->SelectAll();
         size_t items_only = mapper->SelectedEntities.size();
         CHECK(items_only < all_layers);
 
-        settings.ShowItem = false;
+        settings.Hex.ShowItem = false;
         mapper->SelectAll();
         CHECK(mapper->SelectedEntities.empty());
 
-        settings.ShowItem = true;
-        settings.ShowScen = true;
-        settings.ShowWall = true;
-        settings.ShowTile = true;
-        settings.ShowRoof = true;
-        settings.ShowCrit = true;
+        settings.Hex.ShowItem = true;
+        settings.Hex.ShowScen = true;
+        settings.Hex.ShowWall = true;
+        settings.Hex.ShowTile = true;
+        settings.Hex.ShowRoof = true;
+        settings.Hex.ShowCrit = true;
     }
 
     SECTION("PerKindSelectionSwitchesGateTheSameWalk")
@@ -1741,11 +1741,11 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
     REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), MakeMapText(MakeItemBlock(10, TILE_A, 5, 5))));
 
     auto settings = MakeMapperTestSettings();
-    BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+    BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
 
     // The direct-draw render path the headless fixture uses turns map zoom off, and with it the zoom
     // buttons become no-ops that cannot be told apart from a press that never landed
-    BakerTests::OverrideSetting(settings.MapZoomEnabled, true);
+    BakerTests::OverrideSetting(settings.View.MapZoomEnabled, true);
     auto pack_config = ConfigFile(strex("[ResourcePack]\nName = MapperControlsTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str());
     settings.ApplyConfigFile(pack_config, "");
 
@@ -1879,9 +1879,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         press("Controls", "Scroll check", draw_controls);
 
         // The folded groups carry the layer toggles the renderer reads
-        bool show_items_before = settings.ShowItem;
+        bool show_items_before = settings.Hex.ShowItem;
         press("Controls", "Items", draw_controls);
-        CHECK(settings.ShowItem != show_items_before);
+        CHECK(settings.Hex.ShowItem != show_items_before);
 
         for (string_view layer_label : {"Scenery", "Walls", "Critters", "Tiles", "Roof", "Fast"}) {
             press("Controls", layer_label, draw_controls);
@@ -1893,9 +1893,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         // The workspace layer buttons rebuild the map, and its tab list is what switches the panel mode
         auto draw_workspace = [&mapper] { mapper->DrawWorkspaceWindowImGui(); };
 
-        bool workspace_items_before = settings.ShowItem;
+        bool workspace_items_before = settings.Hex.ShowItem;
         press("Workspace", "Items", draw_workspace);
-        CHECK(settings.ShowItem != workspace_items_before);
+        CHECK(settings.Hex.ShowItem != workspace_items_before);
 
         for (string_view layer_button : {"Scenery", "Walls", "Critters", "Tiles", "Roof", "Fast"}) {
             INFO(layer_button);
@@ -2057,10 +2057,10 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 
     // The particle preview sub-editor initialises only when a preview effect is configured and a map is
     // shown; without both it returns immediately and none of its windows ever draw
-    BakerTests::OverrideSetting(settings.ParticlePreviewEffect, string {"Particles/MapperEditorTest.spk"});
+    BakerTests::OverrideSetting(settings.Mapper.ParticlePreviewEffect, string {"Particles/MapperEditorTest.spk"});
 
     // Every particle renderer draws a wireframe overlay on top of its geometry when this is on
-    BakerTests::OverrideSetting(settings.DrawWireframe, true);
+    BakerTests::OverrideSetting(settings.Render.DrawWireframe, true);
     auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
 
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
@@ -2945,7 +2945,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), reference_map));
 
     auto settings = MakeMapperTestSettings();
-    BakerTests::OverrideSetting(settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+    BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
     auto pack_config = ConfigFile(strex("[ResourcePack]\nName = MapperSaveTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str());
     settings.ApplyConfigFile(pack_config, "");
 

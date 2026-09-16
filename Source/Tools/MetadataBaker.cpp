@@ -36,9 +36,6 @@
 
 FO_BEGIN_NAMESPACE
 
-auto GetServerSettings() -> unordered_set<string>;
-auto GetClientSettings() -> unordered_set<string>;
-
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
@@ -1488,31 +1485,6 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
     FO_STACK_TRACE_ENTRY();
 
     vector<vector<string>> result_tag_setting;
-    auto known_settings = ctx.Target == "Server" ? GetServerSettings() : GetClientSettings();
-
-    auto resolve_setting_name = [&](const CodeGenTagDesc& tag_desc, string_view name) -> string {
-        if (name.find('.') != string_view::npos) {
-            return string(name);
-        }
-
-        vector<string> matches;
-
-        for (const auto& setting_name : known_settings) {
-            if (setting_name == name || setting_name.ends_with(strex(".{}", name))) {
-                matches.emplace_back(setting_name);
-            }
-        }
-
-        if (matches.empty()) {
-            return string(name);
-        }
-
-        if (matches.size() != 1) {
-            throw MetadataBakerException("Invalid Setting codegen tag: ambiguous setting name", tag_desc.SourceFile, tag_desc.LineNumber, name);
-        }
-
-        return std::move(matches.front());
-    };
 
     for (const auto& tag_desc : ctx.CodeGenTags[METADATA_SETTING_SECTION]) {
         if (tag_desc.Tokens.size() < 3) {
@@ -1550,7 +1522,13 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
             raw_name += token;
         }
 
-        string name = resolve_setting_name(tag_desc, raw_name);
+        // A setting is named by its group, so the tag carries the whole name and nothing here guesses the
+        // group from a bare one - that guess is what made a short name global across every group
+        if (raw_name.find('.') == string::npos) {
+            throw MetadataBakerException("Invalid Setting codegen tag: expected the Group.Name form", tag_desc.SourceFile, tag_desc.LineNumber, raw_name);
+        }
+
+        string name = std::move(raw_name);
 
         if (!ctx.Meta.IsValidBaseType(type_str)) {
             throw MetadataBakerException("Invalid Setting codegen tag: invalid type", tag_desc.SourceFile, tag_desc.LineNumber, type_str);

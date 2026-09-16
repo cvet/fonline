@@ -241,6 +241,41 @@ public sealed class AcquiresCoverAttribute : Attribute
 {
 }
 
+// What a call does to the cover the job holds. The rules below read the effect from this declaration instead of
+// recognising a helper by its name: a name is documentation, and documentation that decides analysis silently
+// changes meaning when someone renames a method or adds one the pattern happens to match
+public enum CoverEffectKind
+{
+    // The held set becomes exactly what the call names: whatever the caller held before is gone
+    Replace,
+
+    // What was held stays held and the named entities join it, so the caller keeps its cover across the call
+    Extend,
+
+    // The held set becomes the snapshot handed in
+    Restore,
+
+    // Reports the held set without changing it
+    Snapshot,
+
+    // Drops the cover, holding nothing
+    Release,
+}
+
+// For the helpers that acquire cover -- the `Sync` surface. Everything the analysis knows about an acquisition
+// it reads here: whether awaiting it costs the caller its cover, whether handing a value to it covers that
+// value, and whether a restore puts back what a snapshot held
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class CoverEffectAttribute : Attribute
+{
+    public CoverEffectAttribute(CoverEffectKind effect)
+    {
+        Effect = effect;
+    }
+
+    public CoverEffectKind Effect { get; }
+}
+
 // For a parameter a method RETURNS unchanged -- a checking pass-through such as Game.VerifyNotNull. The result is the
 // argument itself, so it is covered exactly when the argument was, with the same reach
 [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]

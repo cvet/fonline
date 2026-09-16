@@ -245,7 +245,7 @@ auto MasterBaker::BakeAll() noexcept -> bool
 
     try {
         _report = safe_alloc::make_shared<BakingReport>(_settings);
-        report_path = GetBakingReportPath(_settings->BakeOutput);
+        report_path = GetBakingReportPath(_settings->Baking.BakeOutput);
 
         if (!report_path.empty()) {
             bool remove_old_report_ok = fs::remove_file(report_path);
@@ -280,7 +280,7 @@ auto MasterBaker::BakeAll() noexcept -> bool
                 logging::write("Baking report saved to {}", report_path);
 
                 if (success && _report->IsFullRebuild()) {
-                    string full_report_path = GetFullBakingReportPath(_settings->BakeOutput);
+                    string full_report_path = GetFullBakingReportPath(_settings->Baking.BakeOutput);
                     bool write_full_report_ok = fs::write_file(full_report_path, report_data);
                     FO_VERIFY_AND_THROW(write_full_report_ok, "Unable to write the full baking report", full_report_path);
                     logging::write("Full baking report saved to {}", full_report_path);
@@ -342,7 +342,7 @@ void MasterBaker::BakeAllInternal()
 
     logging::write("Start baking");
 
-    FO_VERIFY_AND_THROW(!_settings->BakeOutput.empty(), "Resource baker cannot write outputs because BakeOutput is empty", _settings->GetResourcePacks().size());
+    FO_VERIFY_AND_THROW(!_settings->Baking.BakeOutput.empty(), "Resource baker cannot write outputs because BakeOutput is empty", _settings->GetResourcePacks().size());
 
     string build_hash_path = MakeOutputPath("Resources.build-hash");
     std::atomic_bool force_baking = ResolveRebuildMode(build_hash_path);
@@ -372,7 +372,7 @@ auto MasterBaker::MakeOutputPath(string_view path) const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return strex(_settings->BakeOutput).combine_path(path);
+    return strex(_settings->Baking.BakeOutput).combine_path(path);
 }
 
 // Decides whether this run reuses the existing output or starts from scratch. The build hash is deleted up front
@@ -388,7 +388,7 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
     bool force_baking = false;
     string rebuild_reason = "incremental";
 
-    if (_settings->ForceBaking) {
+    if (_settings->Baking.ForceBaking) {
         logging::write("Force rebuild all resources");
         force_baking = true;
         rebuild_reason = "requested";
@@ -400,7 +400,7 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
     }
 
     if (force_baking) {
-        bool delete_output_ok = fs::remove_dir_tree(_settings->BakeOutput);
+        bool delete_output_ok = fs::remove_dir_tree(_settings->Baking.BakeOutput);
         FO_VERIFY_AND_THROW(delete_output_ok, "Unable to delete baking output dir");
     }
 
@@ -416,7 +416,7 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
 
     _report->SetRebuildMode(force_baking, rebuild_reason);
 
-    bool make_output_ok = fs::create_directories(_settings->BakeOutput);
+    bool make_output_ok = fs::create_directories(_settings->Baking.BakeOutput);
     FO_VERIFY_AND_THROW(make_output_ok, "Unable to recreate baking output dir");
 
     return force_baking;
@@ -446,7 +446,7 @@ auto MasterBaker::PreparePackContexts(unordered_map<string, unique_ptr<DataSourc
     FO_STACK_TRACE_ENTRY();
 
     const auto& res_packs = _settings->GetResourcePacks();
-    async_launch_mode async_mode = _settings->SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
+    async_launch_mode async_mode = _settings->Baking.SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
 
     vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
 
@@ -569,7 +569,7 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
 {
     FO_STACK_TRACE_ENTRY();
 
-    async_launch_mode async_mode = _settings->SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
+    async_launch_mode async_mode = _settings->Baking.SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
     int32_t bake_order = -10;
 
     while (true) {
@@ -780,7 +780,7 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
     // spelling at once, and then the expected one is what this run just baked - see the rename loop below
     set<string> present_paths;
 
-    fs::iterate_dir(_settings->BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
+    fs::iterate_dir(_settings->Baking.BakeOutput, true, [&](string_view path, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
 
         present_paths.emplace(path);
@@ -1076,7 +1076,7 @@ auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(_settings->BakeOutput).combine_path(res_pack_name).combine_path(path);
+    return strex(_settings->Baking.BakeOutput).combine_path(res_pack_name).combine_path(path);
 }
 
 auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool

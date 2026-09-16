@@ -371,10 +371,10 @@ void Null_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> wi
 
     ignore_unused(window);
 
-    FO_VERIFY_AND_THROW(settings.ScreenWidth > 0, "Settings screen width must be positive");
-    FO_VERIFY_AND_THROW(settings.ScreenHeight > 0, "Settings screen height must be positive");
+    FO_VERIFY_AND_THROW(settings.View.ScreenWidth > 0, "Settings screen width must be positive");
+    FO_VERIFY_AND_THROW(settings.View.ScreenHeight > 0, "Settings screen height must be positive");
 
-    _viewPortRect = {0, 0, settings.ScreenWidth, settings.ScreenHeight};
+    _viewPortRect = {0, 0, settings.View.ScreenWidth, settings.View.ScreenHeight};
     _currentRenderTarget = nullptr;
     _scissorEnabled = false;
     _scissorRect = {};

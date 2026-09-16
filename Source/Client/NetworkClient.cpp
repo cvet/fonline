@@ -40,7 +40,7 @@ NetworkClientConnection::NetworkClientConnection(ptr<ClientNetworkSettings> sett
 {
     FO_STACK_TRACE_ENTRY();
 
-    _incomeBuf.resize(_settings->NetBufferSize);
+    _incomeBuf.resize(_settings->Network.NetBufferSize);
     _isConnecting = true;
 }
 

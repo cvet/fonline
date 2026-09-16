@@ -51,7 +51,7 @@ namespace
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"test_collection:Int"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int"});
 
         return settings;
     }

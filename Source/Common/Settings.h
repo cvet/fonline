@@ -83,15 +83,22 @@ protected:
     map<string, string> _settingValues {};
 };
 
-#define SETTING_GROUP(name, ...) \
-    struct name : __VA_ARGS__ \
+// A group owns its settings as a nested aggregate named after it, so a setting is addressed as Settings.Group.Name
+// and two groups may share a short name
+#define SETTING_GROUP(group, ...) \
+    struct group##Settings : __VA_ARGS__ \
     { \
-        name() = default; \
-        name(const name&) = delete; \
-        name(name&&) noexcept = default; \
-        auto operator=(const name&) -> name& = delete; \
-        auto operator=(name&&) noexcept -> name& = delete
-#define SETTING_GROUP_END() }
+        group##Settings() = default; \
+        group##Settings(const group##Settings&) = delete; \
+        group##Settings(group##Settings&&) noexcept = default; \
+        auto operator=(const group##Settings&) -> group##Settings& = delete; \
+        auto operator=(group##Settings&&) noexcept -> group##Settings& = delete; \
+        struct group##Group \
+        {
+#define SETTING_GROUP_END(group) \
+    } \
+    group {}; \
+    }
 #define FIXED_SETTING(type, group, name, ...) const type name = {}
 #define VARIABLE_SETTING(type, group, name, ...) type name = {}
 #include "Settings.inc"

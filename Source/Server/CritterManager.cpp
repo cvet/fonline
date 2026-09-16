@@ -68,9 +68,7 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
                 return item;
             }
 
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
+            _engine->ItemMngr.ChangeItemStackCount(item_already, item->GetCount(), item);
             return item_already;
         }
     }

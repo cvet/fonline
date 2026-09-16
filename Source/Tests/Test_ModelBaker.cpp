@@ -2006,7 +2006,7 @@ TEST_CASE("ModelInfoBakerValidations")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
-        OverrideSetting(rig.Settings.ModelAttachmentMaxExtent, 2.0f);
+        OverrideSetting(rig.Settings.Baking.ModelAttachmentMaxExtent, 2.0f);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\n", 1);
         AddTestModelSource(rig, MakeTestModelSource("Critters/Body.fbx", "Body", {}));
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Body", true, {}, {}, 100.0f));
@@ -2031,7 +2031,7 @@ TEST_CASE("ModelInfoBakerValidations")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
-        OverrideSetting(rig.Settings.ModelAttachmentMaxExtent, 2.0f);
+        OverrideSetting(rig.Settings.Baking.ModelAttachmentMaxExtent, 2.0f);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\n", 1);
         AddTestModelSource(rig, MakeTestModelSource("Critters/Body.fbx", "Body", {}));
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Body", true, {}, {}, 100.0f));

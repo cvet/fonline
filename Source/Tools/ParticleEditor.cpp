@@ -123,15 +123,15 @@ void ParticlePreviewSubEditor::Initialize()
     _extensions = _particleFactory->GetExtensions();
     _enabled = !_extensions.empty();
 
-    if (!_enabled || _mapper->Settings->ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
+    if (!_enabled || _mapper->Settings->Mapper.ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
         return;
     }
 
     RefreshResources();
-    _resourcePath = _mapper->Settings->ParticlePreviewEffect;
-    _seed = _mapper->Settings->ParticlePreviewSeed;
-    _scale = std::isfinite(_mapper->Settings->ParticlePreviewScale) ? std::clamp(_mapper->Settings->ParticlePreviewScale, 0.01f, 100.0f) : 1.0f;
-    _prewarm = _mapper->Settings->ParticlePreviewPrewarm;
+    _resourcePath = _mapper->Settings->Mapper.ParticlePreviewEffect;
+    _seed = _mapper->Settings->Mapper.ParticlePreviewSeed;
+    _scale = std::isfinite(_mapper->Settings->Mapper.ParticlePreviewScale) ? std::clamp(_mapper->Settings->Mapper.ParticlePreviewScale, 0.01f, 100.0f) : 1.0f;
+    _prewarm = _mapper->Settings->Mapper.ParticlePreviewPrewarm;
     _windowVisible = true;
 
     if (optional<mpos> preview_hex = ResolveHex()) {

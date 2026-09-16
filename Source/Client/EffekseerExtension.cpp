@@ -1316,7 +1316,7 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, index_count);
 
-        if (_settings->DrawWireframe) {
+        if (_settings->Render.DrawWireframe) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
         }
     }
@@ -1815,7 +1815,7 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, index_count);
 
-        if (_settings->DrawWireframe) {
+        if (_settings->Render.DrawWireframe) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
         }
     }
@@ -2167,7 +2167,7 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, index_count);
 
-        if (_settings->DrawWireframe) {
+        if (_settings->Render.DrawWireframe) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
         }
     }
@@ -2921,7 +2921,7 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, vertex_count);
 
-        if (_settings->DrawWireframe) {
+        if (_settings->Render.DrawWireframe) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, vertex_count, system->ViewProjMatrix);
         }
     }

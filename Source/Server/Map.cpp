@@ -49,7 +49,7 @@ Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<L
     _protoMap {proto},
     _staticMap {static_map},
     _mapSize {GetSize()},
-    _hexField {CreateHexField(_mapSize, engine->Settings->MapInstanceStaticGrid)},
+    _hexField {CreateHexField(_mapSize, engine->Settings->Server.MapInstanceStaticGrid)},
     _mapLocation {location}
 {
     FO_STACK_TRACE_ENTRY();
@@ -173,6 +173,35 @@ auto Map::GetCritters() const noexcept -> const_span<ptr<Critter>>
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _critters;
+}
+
+auto Map::GetCritters(CritterFindType find_type) -> vector<ptr<Critter>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    bool find_players = is_enum_set(find_type, CritterFindType::Players);
+    bool find_npc = is_enum_set(find_type, CritterFindType::Npc);
+    span<ptr<Critter>> source = _critters;
+
+    if (find_players && !find_npc) {
+        source = _playerCritters;
+    }
+    else if (find_npc && !find_players) {
+        source = _nonPlayerCritters;
+    }
+
+    vector<ptr<Critter>> critters;
+    critters.reserve(source.size());
+
+    for (ptr<Critter> cr : source) {
+        if (cr->CheckFind(find_type)) {
+            critters.emplace_back(cr);
+        }
+    }
+
+    return critters;
 }
 
 auto Map::GetPlayerCritters() noexcept -> span<ptr<Critter>>

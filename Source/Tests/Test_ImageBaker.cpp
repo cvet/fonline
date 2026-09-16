@@ -947,10 +947,10 @@ static void SkipSpriteMesh(data_reader& reader)
 
 static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, int32_t alpha_threshold = 0, int32_t max_triangles = 4096, float32_t area_savings_weight = 64.0f)
 {
-    BakerTests::OverrideSetting(rig.Settings.Enabled, enabled);
-    BakerTests::OverrideSetting(rig.Settings.AlphaThreshold, alpha_threshold);
-    BakerTests::OverrideSetting(rig.Settings.MaxTriangles, max_triangles);
-    BakerTests::OverrideSetting(rig.Settings.AreaSavingsWeight, area_savings_weight);
+    BakerTests::OverrideSetting(rig.Settings.SpriteMesh.Enabled, enabled);
+    BakerTests::OverrideSetting(rig.Settings.SpriteMesh.AlphaThreshold, alpha_threshold);
+    BakerTests::OverrideSetting(rig.Settings.SpriteMesh.MaxTriangles, max_triangles);
+    BakerTests::OverrideSetting(rig.Settings.SpriteMesh.AreaSavingsWeight, area_savings_weight);
 }
 
 [[nodiscard]] static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask", ipos32 offset = {}) -> vector<uint8_t>
@@ -1637,15 +1637,15 @@ TEST_CASE("ImageBaker")
 
         SECTION("AlphaThreshold")
         {
-            OverrideSetting(rig.Settings.AlphaThreshold, 255);
+            OverrideSetting(rig.Settings.SpriteMesh.AlphaThreshold, 255);
         }
         SECTION("MaxTriangles")
         {
-            OverrideSetting(rig.Settings.MaxTriangles, 0);
+            OverrideSetting(rig.Settings.SpriteMesh.MaxTriangles, 0);
         }
         SECTION("AreaSavingsWeight")
         {
-            OverrideSetting(rig.Settings.AreaSavingsWeight, -1.0f);
+            OverrideSetting(rig.Settings.SpriteMesh.AreaSavingsWeight, -1.0f);
         }
 
         rig.AddSourceFile("gfx/invalid-settings.mask", "mask");

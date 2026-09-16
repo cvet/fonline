@@ -663,9 +663,9 @@ TEST_CASE("ServerResourcesFollowPackagedSetting")
     REQUIRE(fs::write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
 
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
-    BakerTests::OverrideSetting(settings.ServerResources, packaged_dir);
-    BakerTests::OverrideSetting(settings.ServerResourceEntries, vector<string> {"ServerPack"});
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, baked_dir);
+    BakerTests::OverrideSetting(settings.Baking.ServerResources, packaged_dir);
+    BakerTests::OverrideSetting(settings.Baking.ServerResourceEntries, vector<string> {"ServerPack"});
 
     auto resources = GetServerResources(settings);
 
@@ -673,7 +673,7 @@ TEST_CASE("ServerResourcesFollowPackagedSetting")
     CHECK(resources.IsFileExists("payload.txt"));
     CHECK_FALSE(resources.IsFileExists("client-only.txt"));
 
-    BakerTests::OverrideSetting(settings.Packaged, true);
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
 
     FileSystem packaged_resources = GetServerResources(settings);
 
@@ -970,7 +970,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", source_storage.generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", source_storage.generic_string()).str());
         auto server = MakeServerEngine(settings);
 
         string startup_error = WaitForServerStart(server);
@@ -1016,7 +1016,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
     {
         // A state that disagrees with its payload must fail before gameplay hooks run
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
         auto mismatched_state = captured_state;
         mismatched_state.LastEntityId = ident_t {captured_state.LastEntityId.underlying_value() + 1};
         auto server = MakeServerEngine(settings, ServerSnapshotRestore {mismatched_state, captured_payload});
@@ -1032,13 +1032,13 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
     {
         // An empty payload is rejected at construction rather than producing an empty world
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", (storage_root / "empty-payload").generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", (storage_root / "empty-payload").generic_string()).str());
         CHECK_THROWS_AS(MakeServerEngine(settings, ServerSnapshotRestore {captured_state, {}}), ServerSnapshotException);
     }
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
         auto server = MakeServerEngine(settings, ServerSnapshotRestore {captured_state, captured_payload});
 
         auto shutdown = scope_exit([&server]() noexcept {
@@ -1148,7 +1148,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
 TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
 {
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.SingleThreadedLogic, true);
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, true);
     auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1235,8 +1235,8 @@ TEST_CASE("ServerEngineWritesHealthFile")
     auto cleanup_health_file = scope_exit([&health_file_name]() noexcept { RemoveServerHealthFile(health_file_name); });
 
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.WriteHealthFile, true);
-    BakerTests::OverrideSetting(settings.HealthFilePeriodMs, int32_t {5});
+    BakerTests::OverrideSetting(settings.Server.WriteHealthFile, true);
+    BakerTests::OverrideSetting(settings.Server.HealthFilePeriodMs, int32_t {5});
 
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
 
@@ -1290,7 +1290,7 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     // Shutdown must be safe on an engine whose startup aborted before the worker pool existed; an unrecognized
     // DbStorage reproduces that state deterministically
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
+    BakerTests::OverrideSetting(settings.Server.DbStorage, string {"UnreachableStorageForTest"});
 
     CheckServerStartupFailsSafely(settings);
 }
@@ -1318,7 +1318,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         auto server = MakeServerEngine(settings);
         string startup_error = WaitForServerStart(server);
@@ -1349,7 +1349,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         auto server = MakeServerEngine(settings);
         string startup_error = WaitForServerStart(server);
@@ -1398,31 +1398,31 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
 
     SECTION("RejectsMissingSeparator")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BrokenCollection"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"BrokenCollection"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsEmptyTrimmedCollectionName")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"   : Int"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"   : Int"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsUnknownKeyType")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BadType:Uuid"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"BadType:Uuid"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsDuplicateCollectionName")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("AcceptsTrimmedCaseInsensitiveKeyTypes")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
 
         auto server = MakeServerEngine(settings);
 

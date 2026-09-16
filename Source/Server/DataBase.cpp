@@ -323,10 +323,10 @@ void DataBase::DrawGui()
 
 DataBaseImpl::DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) :
     _settings {db_settings},
-    _opLogEnabled {_settings->OpLogEnabled},
-    _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->PanicOpLogSizeThreshold)},
-    _panicShutdownTimeout {std::chrono::milliseconds {_settings->PanicShutdownTimeout}},
-    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->ReconnectRetryPeriod, 1)}},
+    _opLogEnabled {_settings->DataBase.OpLogEnabled},
+    _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->DataBase.PanicOpLogSizeThreshold)},
+    _panicShutdownTimeout {std::chrono::milliseconds {_settings->DataBase.PanicShutdownTimeout}},
+    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->DataBase.ReconnectRetryPeriod, 1)}},
     _panicCallback {std::move(panic_callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -378,7 +378,7 @@ void DataBaseImpl::InitializeOpLogs()
         return;
     }
 
-    if (_settings->OpLogPath.empty()) {
+    if (_settings->DataBase.OpLogPath.empty()) {
         throw DataBaseException("Empty oplog path in settings");
     }
 
@@ -459,7 +459,7 @@ void DataBaseImpl::InitializeOpLogs()
         return;
     };
 
-    string oplog_path = fs::make_writable_path(_settings->UserWritablePath, _settings->OpLogPath);
+    string oplog_path = fs::make_writable_path(_settings->Common.UserWritablePath, _settings->DataBase.OpLogPath);
     open_log_file(_pendingChangesLog, oplog_path, "pending database changes file");
     open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
@@ -487,11 +487,11 @@ void DataBaseImpl::RestorePendingChanges()
     }
 
     for (size_t i = 0; i < committed_changes_content.size(); i++) {
-        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->OpLogPath);
+        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->DataBase.OpLogPath);
         size_t line_index = i + 1;
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
-            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->OpLogPath);
+            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->DataBase.OpLogPath);
         }
     }
 
@@ -504,8 +504,8 @@ void DataBaseImpl::RestorePendingChanges()
             auto line_view = string_view {line};
             auto first_space = line_view.find(' ');
             auto second_space = line_view.find(' ', first_space + 1);
-            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->OpLogPath, line_view.size(), first_space);
-            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->OpLogPath, line_view.size(), first_space, second_space);
+            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space);
+            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space, second_space);
 
             auto command = line_view.substr(0, first_space);
             auto collection = line_view.substr(first_space + 1, second_space - first_space - 1);
@@ -543,7 +543,7 @@ void DataBaseImpl::RestorePendingChanges()
                         InsertRecord(collection_name, storage_record_id, doc);
                     }
                     else if (!AreDocumentsEqual(current_doc, doc)) {
-                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->OpLogPath);
+                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->DataBase.OpLogPath);
                     }
                 }
                 else if (!DoesDocumentContain(current_doc, doc)) {
@@ -564,7 +564,7 @@ void DataBaseImpl::RestorePendingChanges()
         throw;
     }
     catch (const std::exception& ex) {
-        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->OpLogPath);
+        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBase.OpLogPath);
     }
 
     FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
@@ -572,10 +572,10 @@ void DataBaseImpl::RestorePendingChanges()
     logging::write("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_committedChangesLog->Truncate()) {
-        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str());
+        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->DataBase.OpLogPath).replace(".oplog", "-committed.oplog").str());
     }
     if (!_pendingChangesLog->Truncate()) {
-        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->OpLogPath);
+        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->DataBase.OpLogPath);
     }
 
     _backendFailed = false;

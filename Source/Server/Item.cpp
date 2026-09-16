@@ -274,9 +274,7 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
                 return item;
             }
 
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
+            _engine->ItemMngr.ChangeItemStackCount(item_already, item->GetCount(), item);
             return item_already;
         }
     }
@@ -338,12 +336,12 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
         auto slot = GetCritterSlot();
         size_t slot_num = static_cast<size_t>(slot);
 
-        if (slot_num >= _engine->Settings->CritterSlotEnabled.size() || !_engine->Settings->CritterSlotEnabled[slot_num]) {
+        if (slot_num >= _engine->Settings->Critter.CritterSlotEnabled.size() || !_engine->Settings->Critter.CritterSlotEnabled[slot_num]) {
             return false;
         }
 
         if (as_public) {
-            if (slot_num >= _engine->Settings->CritterSlotSendData.size() || !_engine->Settings->CritterSlotSendData[slot_num]) {
+            if (slot_num >= _engine->Settings->Critter.CritterSlotSendData.size() || !_engine->Settings->Critter.CritterSlotSendData[slot_num]) {
                 return false;
             }
         }

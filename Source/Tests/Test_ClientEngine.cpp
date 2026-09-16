@@ -2010,9 +2010,9 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
     CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
 
     GlobalSettings settings = MakeClientTestSettings();
-    BakerTests::OverrideSetting(settings.Packaged, true);
-    BakerTests::OverrideSetting(settings.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {pack_name});
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {pack_name});
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
@@ -2054,14 +2054,14 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
     }
 
     GlobalSettings settings = MakeClientTestSettings();
-    BakerTests::OverrideSetting(settings.Packaged, true);
-    BakerTests::OverrideSetting(settings.ClientResources, install);
-    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {"Before", "Embedded", "Art"});
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
+    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Before", "Embedded", "Art"});
     settings.ApplyWritableRoot(writable);
 
     vector<ResourceIndexPack> packs;
     vector<string> pack_paths;
-    vector<string> indexed_names = GetResourceIndexPackNames(settings.ClientResourceEntries);
+    vector<string> indexed_names = GetResourceIndexPackNames(settings.Baking.ClientResourceEntries);
     REQUIRE(ResolveResourceIndexPacks({install}, indexed_names, packs, pack_paths));
     string index_path = GetClientResourceIndexPath(settings);
     REQUIRE(fs::create_directories(strex(index_path).extract_dir().str()));
@@ -2111,9 +2111,9 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
     WriteClientTestPack(writable_resources, "Main", {{"shared.txt", "writable-base"}, {"overlay-only.txt", "overlay-only"}});
 
     GlobalSettings settings = MakeClientTestSettings();
-    BakerTests::OverrideSetting(settings.Packaged, true);
-    BakerTests::OverrideSetting(settings.ClientResources, unique_name);
-    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {"Main", "Fallback"});
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Main", "Fallback"});
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
@@ -2486,7 +2486,7 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
     // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already
     // inside the frame and the check below would pass without proving anything
     isize32 layout_size = model->GetDrawSize();
-    int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->ModelProjFactor);
+    int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->Render.ModelProjFactor);
     REQUIRE(layout_size.width <= bounds_span_limit);
     REQUIRE(layout_size.height <= bounds_span_limit);
 
@@ -3185,8 +3185,8 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
 
     int32_t rejection_count = 0;
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool, queueing
-    // nothing, or accepting a pack that resolves to no entries
+    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
+    // sound handle, queueing nothing, or accepting a pack that resolves to no entries
     CHECK(rejection_count == 8 + 16 + 128 + 256);
 }
 
@@ -3798,7 +3798,7 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 {
     auto settings = MakeClientTestSettings();
-    settings.DrawWireframe = true;
+    settings.Render.DrawWireframe = true;
     auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });

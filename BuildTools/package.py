@@ -25,6 +25,7 @@ from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
 
 import buildtools
 import foconfig
+import managed_runtime_payload
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
@@ -59,6 +60,7 @@ ANDROID_ABI_BY_ARCH = {
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
 MANAGED_RUNTIME_DIRECTORY = 'ManagedRuntime'
+MANAGED_ASSEMBLIES_DIRECTORY = 'Assemblies'
 MANAGED_RUNTIME_MANIFEST = 'runtime.manifest'
 MANAGED_CORELIB_RELATIVE_PATH = os.path.join('lib', 'netcoreapp', 'System.Private.CoreLib.dll')
 RESOURCE_TARGET_EXCLUDED_SUFFIXES = {
@@ -1142,7 +1144,7 @@ class Packager:
 				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
 				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
 				if platform == 'Windows':
-					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'ForceOpenGL=1', default_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'Render.ForceOpenGL=1', default_runtime_variant))
 				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
 				if os.path.isfile(headless_runtime_path):
 					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
@@ -1534,20 +1536,24 @@ class Packager:
 			if os.path.commonpath((baked_runtime_base, os.path.realpath(file_path))) != baked_runtime_base
 		]
 
-		runtime_files = sorted(
-			file_path
-			for file_path in glob.glob(os.path.join(runtime_dir, '**'), recursive=True)
-			if os.path.isfile(file_path)
-		)
-		assert runtime_files, 'Managed runtime payload is empty: ' + runtime_dir
+		# The selection runs over this target's own class libraries, whose references may differ from the baker host's
+		pack_assemblies = [
+			managed_runtime_payload.read_assembly_identity_file(Path(file_path))
+			for arcname, file_path in entries
+			if arcname.startswith(MANAGED_ASSEMBLIES_DIRECTORY + '/') and arcname.endswith('.dll')
+		]
+		runtime_files, runtime_manifest = managed_runtime_payload.select_payload(Path(runtime_dir), pack_assemblies)
 		entries.extend(
-			(
-				MANAGED_RUNTIME_DIRECTORY + '/' + os.path.relpath(file_path, runtime_dir).replace(os.sep, '/'),
-				file_path,
-			)
-			for file_path in runtime_files
+			(MANAGED_RUNTIME_DIRECTORY + '/' + relative_path.as_posix(), os.path.join(runtime_dir, *relative_path.parts))
+			for relative_path in runtime_files
 		)
-		self.write_resource_pack_entries(archive_path, entries)
+
+		with tempfile.TemporaryDirectory() as manifest_dir:
+			manifest_path = os.path.join(manifest_dir, MANAGED_RUNTIME_MANIFEST)
+			with open(manifest_path, 'w', encoding='utf-8', newline='\n') as manifest_file:
+				manifest_file.write(runtime_manifest)
+			entries.append((MANAGED_RUNTIME_DIRECTORY + '/' + MANAGED_RUNTIME_MANIFEST, manifest_path))
+			self.write_resource_pack_entries(archive_path, entries)
 
 	def package_target_managed_runtime_resources(self, target: Literal['Client', 'Server']) -> None:
 		managed_runtime_pack = self.find_managed_runtime_pack(target)
@@ -1745,7 +1751,7 @@ class Packager:
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
 
-				additional_config_data = 'ForceOpenGL=1' if variant.graphics == 'OGL' else None
+				additional_config_data = 'Render.ForceOpenGL=1' if variant.graphics == 'OGL' else None
 				excluded_companions = set(client_runtime_companions)
 
 				if self.args.target == 'Client' and not is_lib:

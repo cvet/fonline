@@ -75,8 +75,8 @@ int main(int argc, char** argv) // Handled by SDL
 
         GetApp()->MainWindow.SetTitle("Server");
 
-        isize32 configured_client_size = isize32 {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight};
-        GetApp()->MainWindow.SetSize({GetApp()->Settings.ServerWidth, GetApp()->Settings.ServerHeight});
+        isize32 configured_client_size = isize32 {GetApp()->Settings.View.ScreenWidth, GetApp()->Settings.View.ScreenHeight};
+        GetApp()->MainWindow.SetSize({GetApp()->Settings.Server.ServerWidth, GetApp()->Settings.Server.ServerHeight});
 
         refcount_nptr<ServerEngine> server {};
         vector<unique_ptr<GlobalSettings>> client_settings;
@@ -101,7 +101,7 @@ int main(int argc, char** argv) // Handled by SDL
             auto lines = strex(str).split('\n');
             log_buffer.emplace_back(std::move(lines), st ? *st : stack_trace::catched_data {std::nullopt, stack_trace::get()});
 
-            if (log_buffer.size() > numeric_cast<size_t>(GetApp()->Settings.MaxServerLogLines)) {
+            if (log_buffer.size() > numeric_cast<size_t>(GetApp()->Settings.Server.MaxServerLogLines)) {
                 log_buffer.pop_front();
             }
 
@@ -152,8 +152,8 @@ int main(int argc, char** argv) // Handled by SDL
                 auto settings = safe_alloc::make_unique<GlobalSettings>(false);
                 settings->CopyFrom(GetApp()->Settings);
                 ClientStartupSettingsHook(*settings, client_index, true);
-                settings->ScreenWidth = client_size.width;
-                settings->ScreenHeight = client_size.height;
+                settings->View.ScreenWidth = client_size.width;
+                settings->View.ScreenHeight = client_size.height;
 
                 ptr<GlobalSettings> settings_ptr = settings.get();
                 auto client = safe_alloc::make_refcounted<ClientEngine>(settings_ptr, GetClientResources(*settings), window);
@@ -176,7 +176,7 @@ int main(int argc, char** argv) // Handled by SDL
             }
         };
 
-        if (!GetApp()->Settings.NoStart) {
+        if (!GetApp()->Settings.Server.NoStart) {
             logging::write("Auto start server");
         }
 
@@ -185,16 +185,16 @@ int main(int argc, char** argv) // Handled by SDL
             GetApp()->BeginFrame();
 
             // Autostart
-            if (!GetApp()->Settings.NoStart && !server && !auto_start_triggered) {
+            if (!GetApp()->Settings.Server.NoStart && !server && !auto_start_triggered) {
                 auto_start_triggered = true;
                 start_server();
             }
 
-            if (server && get_server()->IsStarted() && GetApp()->Settings.AutoStartClientOnServer > 0 && !start_client_triggered) {
+            if (server && get_server()->IsStarted() && GetApp()->Settings.Server.AutoStartClientOnServer > 0 && !start_client_triggered) {
                 start_client_triggered = true;
-                logging::write("Auto start embedded client(s): {}", GetApp()->Settings.AutoStartClientOnServer);
+                logging::write("Auto start embedded client(s): {}", GetApp()->Settings.Server.AutoStartClientOnServer);
 
-                for (int32_t i = 0; i < GetApp()->Settings.AutoStartClientOnServer; i++) {
+                for (int32_t i = 0; i < GetApp()->Settings.Server.AutoStartClientOnServer; i++) {
                     start_client();
                 }
             }
@@ -481,7 +481,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                                 time_desc_t time = nanotime::now().desc(true);
                                 string log_name = strex("{}_Log_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", FO_DEV_NAME, time.year, time.month, time.day, time.hour, time.minute, time.second).str();
-                                string log_path = fs::make_writable_path(GetApp()->Settings.UserWritablePath, log_name);
+                                string log_path = fs::make_writable_path(GetApp()->Settings.Common.UserWritablePath, log_name);
                                 std::ofstream log_file {std::filesystem::path {fs::make_path(log_path)}, std::ios::binary | std::ios::trunc};
 
                                 if (log_file && !log_lines.empty()) {
@@ -521,7 +521,7 @@ int main(int argc, char** argv) // Handled by SDL
                             }
                         }
 
-                        ImGui::SetNextItemOpen(!GetApp()->Settings.CollapseLogOnStart, ImGuiCond_FirstUseEver);
+                        ImGui::SetNextItemOpen(!GetApp()->Settings.Server.CollapseLogOnStart, ImGuiCond_FirstUseEver);
 
                         if (ImGui::CollapsingHeader("Log")) {
                             float32_t log_height = std::max(150.0f, ImGui::GetContentRegionAvail().y);

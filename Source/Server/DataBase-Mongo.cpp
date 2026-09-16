@@ -60,15 +60,15 @@ public:
 
     explicit DbMongo(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _escapeDot {db_settings->MongoEscapeChar.empty() ? '\0' : db_settings->MongoEscapeChar.front()}
+        _escapeDot {db_settings->DataBase.MongoEscapeChar.empty() ? '\0' : db_settings->DataBase.MongoEscapeChar.front()}
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (db_settings->MongoEscapeChar.length() > 1) {
-            throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings->MongoEscapeChar);
+        if (db_settings->DataBase.MongoEscapeChar.length() > 1) {
+            throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings->DataBase.MongoEscapeChar);
         }
         if (_escapeDot == '.') {
-            throw DataBaseException("DbMongo escape char can't be '.'", db_settings->MongoEscapeChar);
+            throw DataBaseException("DbMongo escape char can't be '.'", db_settings->DataBase.MongoEscapeChar);
         }
 
         InitializeMongoRuntime();

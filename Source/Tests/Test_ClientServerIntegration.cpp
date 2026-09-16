@@ -763,7 +763,7 @@ namespace ClientServerIntegrationClient
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
         return settings;
     }
@@ -776,7 +776,7 @@ namespace ClientServerIntegrationClient
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedClientSettings(settings);
-        BakerTests::OverrideSetting(settings.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
         return settings;
     }
@@ -1597,7 +1597,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
         auto map_proto = client->GetProtoMap(client->Hashes.to_hashed_string("UnitTestSharedMap"));
         REQUIRE(map_proto);
 
-        isize32 screen_size {client->Settings->ScreenWidth, client->Settings->ScreenHeight};
+        isize32 screen_size {client->Settings->View.ScreenWidth, client->Settings->View.ScreenHeight};
 
         auto load_view = [&](bool with_removal) {
             auto map_view = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), screen_size);
@@ -1792,8 +1792,8 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
 
     auto malformed_handshake = NetOutBuffer(64);
     malformed_handshake.StartMsg(NetMessage::Handshake);
-    malformed_handshake.write<uint32_t>(std::numeric_limits<uint32_t>::max());
-    malformed_handshake.write<uint16_t>(uint16_t {0});
+    malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+    malformed_handshake.Write<uint16_t>(uint16_t {0});
     malformed_handshake.EndMsg();
     send_to_server(malformed_handshake.GetData());
 
@@ -1808,8 +1808,8 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.InactivityDisconnectTime, 0);
-    BakerTests::OverrideSetting(server_settings.LoginTimeout, 25);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, 0);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, 25);
     auto server = MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1848,7 +1848,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
 
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
     auto server = MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1880,11 +1880,11 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     REQUIRE_FALSE(server->GetMetadataVersion().empty());
     auto handshake = NetOutBuffer(128);
     handshake.StartMsg(NetMessage::Handshake);
-    handshake.write(server_settings.CompatibilityVersion);
-    handshake.write<string_view>("0123456789abcdef");
-    handshake.write<uint32_t>(FO_UPDATER_VERSION);
-    handshake.write<string_view>("Linux-x64");
-    handshake.write<uint32_t>(0x12345678);
+    handshake.Write(server_settings.Network.CompatibilityVersion);
+    handshake.Write<string_view>("0123456789abcdef");
+    handshake.Write<uint32_t>(FO_UPDATER_VERSION);
+    handshake.Write<string_view>("Linux-x64");
+    handshake.Write<uint32_t>(0x12345678);
     handshake.EndMsg();
     send_to_server(handshake.GetData());
 
@@ -1903,11 +1903,11 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
 
             if (response.NeedProcess()) {
                 REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
-                CHECK_FALSE(response.read<bool>());
-                CHECK_FALSE(response.read<bool>());
-                CHECK(response.read<bool>());
-                CHECK(response.read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.read<uint32_t>();
+                CHECK_FALSE(response.Read<bool>());
+                CHECK_FALSE(response.Read<bool>());
+                CHECK(response.Read<bool>());
+                CHECK(response.Read<string>() == server->GetMetadataVersion());
+                uint32_t response_encrypt_key = response.Read<uint32_t>();
                 CHECK(response_encrypt_key != 0);
                 received_answer = true;
             }
@@ -1929,7 +1929,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
     auto server = MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1959,11 +1959,11 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     static_assert(FO_UPDATER_VERSION > 1);
     auto handshake = NetOutBuffer(128);
     handshake.StartMsg(NetMessage::Handshake);
-    handshake.write(server_settings.CompatibilityVersion);
-    handshake.write(server->GetMetadataVersion());
-    handshake.write<uint32_t>(FO_UPDATER_VERSION - 1);
-    handshake.write<string_view>("Linux-x64");
-    handshake.write<uint32_t>(0x12345678);
+    handshake.Write(server_settings.Network.CompatibilityVersion);
+    handshake.Write(server->GetMetadataVersion());
+    handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
+    handshake.Write<string_view>("Linux-x64");
+    handshake.Write<uint32_t>(0x12345678);
     handshake.EndMsg();
     send_to_server(handshake.GetData());
 
@@ -1981,11 +1981,11 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 
             if (response.NeedProcess()) {
                 REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
-                CHECK_FALSE(response.read<bool>());
-                CHECK(response.read<bool>());
-                CHECK_FALSE(response.read<bool>());
-                CHECK(response.read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.read<uint32_t>();
+                CHECK_FALSE(response.Read<bool>());
+                CHECK(response.Read<bool>());
+                CHECK_FALSE(response.Read<bool>());
+                CHECK(response.Read<string>() == server->GetMetadataVersion());
+                uint32_t response_encrypt_key = response.Read<uint32_t>();
                 CHECK(response_encrypt_key != 0);
                 response.SetEncryptKey(response_encrypt_key);
 
@@ -2205,11 +2205,11 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     auto synchronize = [&](bool in_memory, bool replace_published = false) {
         uint16_t port = IntegrationTestPort.fetch_add(1);
         GlobalSettings server_settings = MakeServerTestSettings(port);
-        BakerTests::OverrideSetting(server_settings.Packaged, true);
-        BakerTests::OverrideSetting(server_settings.ClientResources, published);
-        BakerTests::OverrideSetting(server_settings.ClientResourceEntries, vector<string> {"Metadata", "Art"});
-        BakerTests::OverrideSetting(server_settings.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
-        BakerTests::OverrideSetting(server_settings.UpdateFilesInMemory, in_memory);
+        BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+        BakerTests::OverrideSetting(server_settings.Baking.ClientResourceEntries, vector<string> {"Metadata", "Art"});
+        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
         auto server = MakeServerEngine(server_settings);
         auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
         string error = WaitForServerStart(server);
@@ -2226,9 +2226,9 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 #endif
 
         GlobalSettings client_settings = MakeClientTestSettings(port);
-        BakerTests::OverrideSetting(client_settings.Packaged, true);
-        BakerTests::OverrideSetting(client_settings.ClientResources, install);
-        BakerTests::OverrideSetting(client_settings.ClientResourceEntries, vector<string> {"Embedded", "Metadata", "Art"});
+        BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+        BakerTests::OverrideSetting(client_settings.Baking.ClientResourceEntries, vector<string> {"Embedded", "Metadata", "Art"});
         client_settings.ApplyWritableRoot(writable);
         Updater updater {&client_settings, &GetApp()->MainWindow};
         REQUIRE(WaitForUpdaterResult(updater));
@@ -2322,11 +2322,11 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     auto client_settings = MakeClientTestSettings(port);
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
     auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
-    BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
+    BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
 
     // The rig has no resource packs to read a version back from, and this case is about the hash list rather
     // than about pack reading, so the client reports the version the test metadata carries
-    BakerTests::OverrideSetting(client_settings.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
+    BakerTests::OverrideSetting(client_settings.Network.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
 
     auto server = MakeServerEngine(server_settings);
     auto client = MakeClientEngine(client_settings);
@@ -2385,8 +2385,8 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
     outdated_writer.write<uint16_t>(uint16_t {0});
 
     REQUIRE(fs::write_file(metadata_path, outdated_metadata));
-    BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
-    BakerTests::OverrideSetting(client_settings.ClientResourceEntries, vector<string> {pack_name});
+    BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
+    BakerTests::OverrideSetting(client_settings.Baking.ClientResourceEntries, vector<string> {pack_name});
 
     CHECK_NOTHROW([&client_settings] {
         Updater updater {&client_settings, &GetApp()->MainWindow};
@@ -2402,7 +2402,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
 
     auto server_settings = MakeServerTestSettings(port);
     // Linux debug stack traces for the expected script exception below can outlive the default ping window
-    BakerTests::OverrideSetting(server_settings.ClientPingTime, 120000);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.ClientPingTime, 120000);
     auto client_settings = MakeClientTestSettings(port);
 
     auto server = MakeServerEngine(server_settings);

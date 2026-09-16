@@ -510,7 +510,7 @@ TEST_CASE("AudioBaker")
 
         TestRig rig;
         rig.AddSourceFile("Sfx/Shot.wav", MakeWav({MakeFormatChunk(1, 1, sample_rate, 16), MakePcm16DataChunk(samples)}));
-        OverrideSetting(rig.Settings.AudioVorbisQuality, 2.0f);
+        OverrideSetting(rig.Settings.Baking.AudioVorbisQuality, 2.0f);
 
         AudioBaker baker(rig.MakeContext());
 

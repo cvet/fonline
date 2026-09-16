@@ -122,7 +122,7 @@ AngelScript `throw(...)` / `verify(...)` context arguments are formatted by `Get
 
 ### Logging and crash-path primitives
 
-[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `logging::safe_write_stack_trace(const stack_trace::data&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `logging::write_message` with the captured `stack_trace::catched_data`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `logging::set_async_writing(true)` once `settings.AsyncLogWrite` is known.
+[../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `logging::safe_write_stack_trace(const stack_trace::data&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `logging::write_message` with the captured `stack_trace::catched_data`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `logging::set_async_writing(true)` once `settings.Common.AsyncLogWrite` is known.
 
 ### Crash-to-log guarantee and self-test
 
@@ -180,7 +180,7 @@ Current `../../.vscode/launch.json` entries use:
 
 These native launch configurations depend on `Prepare :: Launch (Debug)`, which currently bakes resources and builds the debug `LF_Server` binary before attaching the C++ debugger.
 
-The AngelScript debugger requires `Script.AngelScriptDebuggerEnabled = True`. The maintained native and web debug launch routes set it explicitly; ordinary `LocalTest` launches leave it disabled, and `GameplayTests` also forces it off. The TCP endpoint binds to `Script.AngelScriptDebuggerBindHost = 127.0.0.1` by default. Remote binding must be an explicit command-line or subconfig override on a trusted network.
+The AngelScript debugger requires `AngelScript.DebuggerEnabled = True`. The maintained native and web debug launch routes set it explicitly; ordinary `LocalTest` launches leave it disabled, and `GameplayTests` also forces it off. The TCP endpoint binds to `AngelScript.DebuggerBindHost = 127.0.0.1` by default. Remote binding must be an explicit command-line or subconfig override on a trusted network.
 
 ## Fast Route Selection
 
@@ -275,8 +275,8 @@ If you need to trace the current debugging flow through the live repository, sta
 Current checks worth running when debugger launch flow, attach assumptions, or troubleshooting guidance changes:
 
 - verify native, AngelScript, and web debugging entries against `../../.vscode/launch.json`, including the AngelScript discovery port `43001`; keep this guide focused on debugger route selection rather than duplicating every launch profile
-- `../../Tools/CiChecks/check_debug_workflows.py` verifies launch/task references, explicit `Script.AngelScriptDebuggerEnabled = True` on maintained debug routes, and rejects the obsolete debugger-setting spelling in maintained tooling
-- `../../LastFrontier.fomain` keeps ordinary launches debugger-off with a loopback bind default, while `GameplayTests` explicitly preserves `Script.AngelScriptDebuggerEnabled = False`
+- `../../Tools/CiChecks/check_debug_workflows.py` verifies launch/task references, explicit `AngelScript.DebuggerEnabled = True` on maintained debug routes, and rejects the obsolete debugger-setting spelling in maintained tooling
+- `../../LastFrontier.fomain` keeps ordinary launches debugger-off with a loopback bind default, while `GameplayTests` explicitly preserves `AngelScript.DebuggerEnabled = False`
 - `Docs/Testing.md` remains the reference for the current `LF_ServerHeadless --ApplySubConfig GameplayTests` workflow and `Validation Boundary Test Routing` table used during gameplay bug triage
 - `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` cover embedded-client interaction, GUI, and UI-text paths that are commonly rechecked when debugging workflows depend on client-visible behavior
 - `Docs/WebDebugging.md` and `Docs/AndroidDebugging.md` confirm the browser and external-device branches of the general debug-path selection table
@@ -293,4 +293,4 @@ Quick validation when touching either side:
 4. Launch `LF_Client.exe --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime â†’ host fails (no embedded fallback when compatibility differs).
 5. Point `--ClientLibPath` to an invalid path without `--ClientLibCompatibilityVersion` â†’ host falls back to the embedded client.
 6. Re-run `LF_UnitTests` after ABI changes; `Test_ClientRuntimeApi.cpp` covers exports validation and compatibility helpers.
-7. Build a packaged server target and confirm `<Settings.PlatformBinaries>/<target>/` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the runtime libraries the client will pull during startup binary sync.
+7. Build a packaged server target and confirm `<Settings.Baking.PlatformBinaries>/<target>/` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the runtime libraries the client will pull during startup binary sync.

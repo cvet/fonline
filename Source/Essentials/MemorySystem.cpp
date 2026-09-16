@@ -92,7 +92,7 @@ void CRTDECL operator delete(void* p) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -104,7 +104,7 @@ void CRTDECL operator delete[](void* p) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -117,9 +117,9 @@ void* CRTDECL operator new(std::size_t size) noexcept(false)
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -135,9 +135,9 @@ void* CRTDECL operator new[](std::size_t size) noexcept(false)
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -153,9 +153,9 @@ void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*/) noex
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -168,9 +168,9 @@ void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*tag*/) no
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -182,7 +182,7 @@ void CRTDECL operator delete(void* p, std::size_t /*size*/) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -194,7 +194,7 @@ void CRTDECL operator delete[](void* p, std::size_t /*size*/) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -206,7 +206,7 @@ void CRTDECL operator delete(void* p, std::align_val_t /*align*/) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -218,7 +218,7 @@ void CRTDECL operator delete[](void* p, std::align_val_t /*align*/) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -230,7 +230,7 @@ void CRTDECL operator delete(void* p, std::size_t /*size*/, std::align_val_t /*a
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -242,7 +242,7 @@ void CRTDECL operator delete[](void* p, std::size_t /*size*/, std::align_val_t /
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_TRACY
-    tracy_free(p);
+    TracyFree(p);
     tracy::rpfree(p);
 #else
     rpfree(p);
@@ -255,9 +255,9 @@ void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(fa
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -273,9 +273,9 @@ void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -291,9 +291,9 @@ void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -306,9 +306,9 @@ void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std
 
     void* p = nullptr;
 #if FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -433,9 +433,9 @@ static auto mem_malloc(size_t size) noexcept -> nptr<void>
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     void* p = tracy::rpmalloc(size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpmalloc(size);
@@ -449,7 +449,7 @@ static auto mem_calloc(size_t num, size_t size) noexcept -> nptr<void>
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     const auto result_size = num * size;
     if (num != 0 && size != 0 && result_size / num != size) {
         return nullptr; // Overflow
@@ -458,7 +458,7 @@ static auto mem_calloc(size_t num, size_t size) noexcept -> nptr<void>
     if (p != nullptr) {
         memory::fill(p, 0, result_size);
     }
-    tracy_alloc(p, result_size);
+    TracyAlloc(p, result_size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpcalloc(num, size);
@@ -472,10 +472,10 @@ static auto mem_realloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
-    tracy::init_rpmalloc();
-    tracy_free(ptr.get());
+    tracy::InitRpmalloc();
+    TracyFree(ptr.get());
     void* p = tracy::rprealloc(ptr.get(), size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rprealloc(ptr.get(), size);
@@ -489,7 +489,7 @@ static void mem_free(nptr<void> ptr) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
-    tracy_free(ptr.get());
+    TracyFree(ptr.get());
     tracy::rpfree(ptr.get());
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     rpfree(ptr.get());
@@ -503,9 +503,9 @@ static auto mem_aligned_malloc(size_t size, size_t alignment) noexcept -> nptr<v
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
-    tracy::init_rpmalloc();
+    tracy::InitRpmalloc();
     void* p = tracy::rpaligned_alloc(alignment, size);
-    tracy_alloc(p, size);
+    TracyAlloc(p, size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpaligned_alloc(alignment, size);
@@ -529,7 +529,7 @@ static void mem_aligned_free(nptr<void> ptr) noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
-    tracy_free(ptr.get());
+    TracyFree(ptr.get());
     tracy::rpfree(ptr.get());
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     rpfree(ptr.get());

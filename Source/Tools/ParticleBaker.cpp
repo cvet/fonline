@@ -99,11 +99,11 @@ static auto GetEffekseerDependencyCachePath(const BakingContext& context, string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (context.Settings->BakeOutput.empty()) {
+    if (context.Settings->Baking.BakeOutput.empty()) {
         return {};
     }
 
-    return strex(context.Settings->BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer").combine_path(context.PackName).combine_path(strex("{}.deps", output_path));
+    return strex(context.Settings->Baking.BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer").combine_path(context.PackName).combine_path(strex("{}.deps", output_path));
 }
 
 static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<vector<string>>
@@ -283,8 +283,8 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
         throw ParticleBakerException("Failed to refresh Effekseer dependency cache", output_path, cache_path);
     }
 
-    if (!context.Settings->BakeOutput.empty()) {
-        string baked_output_path = strex(context.Settings->BakeOutput).combine_path(context.PackName).combine_path(output_path).str();
+    if (!context.Settings->Baking.BakeOutput.empty()) {
+        string baked_output_path = strex(context.Settings->Baking.BakeOutput).combine_path(context.PackName).combine_path(output_path).str();
 
         if (fs::exists(baked_output_path) && !fs::remove_file(baked_output_path)) {
             throw ParticleBakerException("Failed to invalidate stale Effekseer particle", output_path, baked_output_path);

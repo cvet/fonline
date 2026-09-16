@@ -405,7 +405,7 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mappe
     for (const auto& map_file_header : map_files) {
         string ext = strex(map_file_header.GetPath()).get_file_extension();
 
-        if (std::ranges::find(mapper->Settings->ProtoFileExtensions, ext) == mapper->Settings->ProtoFileExtensions.end()) {
+        if (std::ranges::find(mapper->Settings->Baking.ProtoFileExtensions, ext) == mapper->Settings->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -900,7 +900,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
         }
     }
 
-    string path = fs::make_writable_path(mapper->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path());
     ImageWriter::WriteSimplePng(path, size, pixels);
 }
 

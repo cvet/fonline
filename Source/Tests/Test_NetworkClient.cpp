@@ -136,7 +136,7 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 {
     auto settings = MakeClientNetworkSettings();
     auto port = TestClientPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
     InterthreadDataCallback server_send_to_client;
     vector<uint8_t> server_received;
@@ -196,7 +196,7 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
 {
     auto settings = MakeClientNetworkSettings();
     auto port = TestClientPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
     InterthreadDataCallback server_send_to_client;
 
@@ -223,8 +223,8 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
 {
     auto settings = MakeClientNetworkSettings();
     auto port = TestClientPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
-    BakerTests::OverrideSetting(settings.DisableZlibCompression, false);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, false);
 
     InterthreadDataCallback server_send_to_client;
     size_t client_disconnect_count = 0;
@@ -315,7 +315,7 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
     auto start_server = [&]() -> unique_ptr<NetworkServer> {
         for (int32_t attempt = 0; attempt != 64; ++attempt) {
             port = TestClientPort.fetch_add(1);
-            BakerTests::OverrideSetting(server_settings.ServerPort, port);
+            BakerTests::OverrideSetting(server_settings.Network.ServerPort, port);
 
             try {
                 return NetworkServer::StartAsioServer(&server_settings, [&](shared_ptr<NetworkServerConnection> conn) {
@@ -344,9 +344,9 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
         safe_call([&server] { server->Shutdown(); });
     });
 
-    BakerTests::OverrideSetting(client_settings.ServerHost, string {"127.0.0.1"});
-    BakerTests::OverrideSetting(client_settings.ServerPort, port);
-    BakerTests::OverrideSetting(client_settings.ProxyType, 0);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+    BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
 
     auto conn = NetworkClientConnection::CreateSocketsConnection(&client_settings);
 
@@ -450,7 +450,7 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
     auto start_server = [&]() -> unique_ptr<NetworkServer> {
         for (int32_t attempt = 0; attempt != 64; ++attempt) {
             port = TestClientPort.fetch_add(1);
-            BakerTests::OverrideSetting(server_settings.ServerPort, port);
+            BakerTests::OverrideSetting(server_settings.Network.ServerPort, port);
 
             try {
                 return NetworkServer::StartUdpSocketsServer(&server_settings, [&](shared_ptr<NetworkServerConnection> conn) {
@@ -479,8 +479,8 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
         safe_call([&server] { server->Shutdown(); });
     });
 
-    BakerTests::OverrideSetting(client_settings.ServerHost, string {"127.0.0.1"});
-    BakerTests::OverrideSetting(client_settings.ServerPort, port);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+    BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
 
     auto conn = NetworkClientConnection::CreateUdpSocketsConnection(&client_settings);
 

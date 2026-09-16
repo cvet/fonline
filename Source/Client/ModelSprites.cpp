@@ -101,7 +101,7 @@ auto ModelSprite::IsDirectDraw() const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _factory->_settings->ModelDirectDraw;
+    return _factory->_settings->Render.ModelDirectDraw;
 }
 
 auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
@@ -217,11 +217,11 @@ void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 
     const auto& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
-    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
     mat44 proj_base = scene_ortho * cam_view;
     mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
 
-    _model->DrawInScene(proj, settings.ModelProjFactor);
+    _model->DrawInScene(proj, settings.Render.ModelProjFactor);
 }
 
 void ModelSprite::SetupFrame(isize32 frame_size)
@@ -419,7 +419,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
     model_spr->GetModel()->PrepareFrameLayout();
-    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->ModelSpriteMaxTextureWidth, _settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->Render.ModelSpriteMaxTextureWidth, _settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     isize32 render_frame_size = model_spr->_requestedFrameSize.value_or(model_spr->GetModel()->GetDrawSize());
     ModelSpriteFramePlacement start_placement = ClampModelSpriteFramePlacement({.Size = render_frame_size, .Pivot = model_spr->GetModel()->GetFramePivot()}, max_logical_frame);
     render_frame_size = start_placement.Size;

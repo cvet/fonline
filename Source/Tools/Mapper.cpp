@@ -89,11 +89,11 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
+    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
 #endif
 
     _curLang = TextPack {&Hashes};
-    _curLang.LoadFromResources(Resources, Settings->Language);
+    _curLang.LoadFromResources(Resources, Settings->Client.Language);
 
     AnimViewer = safe_alloc::make_unique<AnimationViewer>(this, &SprMngr, &ResMngr, &GameTime);
     PartViewer = safe_alloc::make_unique<ParticleViewer>(this, &SprMngr);
@@ -150,12 +150,12 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitModules();
     OnStart.Fire();
 
-    if (!Settings->StartMap.empty()) {
-        auto map = LoadMap(Settings->StartMap);
+    if (!Settings->Mapper.StartMap.empty()) {
+        auto map = LoadMap(Settings->Mapper.StartMap);
 
         if (map) {
-            if (Settings->StartHexX > 0 && Settings->StartHexY > 0) {
-                map->InstantScrollTo(map->GetSize().from_raw_pos(Settings->StartHexX, Settings->StartHexY));
+            if (Settings->Mapper.StartHexX > 0 && Settings->Mapper.StartHexY > 0) {
+                map->InstantScrollTo(map->GetSize().from_raw_pos(Settings->Mapper.StartHexX, Settings->Mapper.StartHexY));
             }
 
             ShowMap(map);
@@ -169,7 +169,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     // A cached layout only matters for the interactive editor, so a headless run skips it rather than
     // feeding a stale ini into an ImGui context that draws nothing
-    if (!Settings->NullRenderer) {
+    if (!Settings->Render.NullRenderer) {
         string imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
 
         if (!imgui_ini.empty()) {
@@ -182,7 +182,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     string history_str = Cache.GetString("mapper_console.txt");
     ConsoleHistory = strex(history_str).normalize_line_endings().split('\n');
 
-    while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings->ConsoleHistorySize) {
+    while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings->Input.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
 
@@ -346,14 +346,14 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
     MapperWindowFocused = window_focused;
 
     if (InputLocked) {
-        Settings->ScrollMouseRight = false;
-        Settings->ScrollMouseLeft = false;
-        Settings->ScrollMouseDown = false;
-        Settings->ScrollMouseUp = false;
-        Settings->ScrollKeybRight = false;
-        Settings->ScrollKeybLeft = false;
-        Settings->ScrollKeybDown = false;
-        Settings->ScrollKeybUp = false;
+        Settings->Hex.ScrollMouseRight = false;
+        Settings->Hex.ScrollMouseLeft = false;
+        Settings->Hex.ScrollMouseDown = false;
+        Settings->Hex.ScrollMouseUp = false;
+        Settings->Hex.ScrollKeybRight = false;
+        Settings->Hex.ScrollKeybLeft = false;
+        Settings->Hex.ScrollKeybDown = false;
+        Settings->Hex.ScrollKeybUp = false;
         MouseHoldMode = INT_NONE;
         RightMouseDragged = false;
         RightMouseInertia = {};
@@ -361,12 +361,12 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
         RightMouseVelocityTime = {};
     }
 
-    if (bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings->FullscreenMouseScroll) || (!is_fullscreen && Settings->WindowedMouseScroll)) {
+    if (bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings->Hex.FullscreenMouseScroll) || (!is_fullscreen && Settings->Hex.WindowedMouseScroll)) {
         if (!InputLocked) {
-            Settings->ScrollMouseRight = MousePos.x >= Settings->ScreenWidth - 1;
-            Settings->ScrollMouseLeft = MousePos.x <= 0;
-            Settings->ScrollMouseDown = MousePos.y >= Settings->ScreenHeight - 1;
-            Settings->ScrollMouseUp = MousePos.y <= 0;
+            Settings->Hex.ScrollMouseRight = MousePos.x >= Settings->View.ScreenWidth - 1;
+            Settings->Hex.ScrollMouseLeft = MousePos.x <= 0;
+            Settings->Hex.ScrollMouseDown = MousePos.y >= Settings->View.ScreenHeight - 1;
+            Settings->Hex.ScrollMouseUp = MousePos.y <= 0;
         }
     }
 
@@ -657,32 +657,32 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 
     switch (dikdw) {
     case KeyCode::F1:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowItem);
+        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowItem);
         break;
     case KeyCode::F2:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowScen);
+        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowScen);
         break;
     case KeyCode::F3:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowWall);
+        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowWall);
         break;
     case KeyCode::F4:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowCrit);
+        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowCrit);
         break;
     case KeyCode::F5:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowTile);
+        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowTile);
         break;
     case KeyCode::F6:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->ShowFast);
+        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowFast);
         break;
     case KeyCode::F7:
         InterfaceHidden = !InterfaceHidden;
         break;
     case KeyCode::F8:
         if (SprMngr.IsFullscreen()) {
-            Settings->FullscreenMouseScroll = !Settings->FullscreenMouseScroll;
+            Settings->Hex.FullscreenMouseScroll = !Settings->Hex.FullscreenMouseScroll;
         }
         else {
-            Settings->WindowedMouseScroll = !Settings->WindowedMouseScroll;
+            Settings->Hex.WindowedMouseScroll = !Settings->Hex.WindowedMouseScroll;
         }
         break;
     case KeyCode::F9:
@@ -749,7 +749,7 @@ void MapperEngine::HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         ContentWindowVisible = !ContentWindowVisible;
         break;
     case KeyCode::F11:
-        SprMngr.GetAtlasMngr()->DumpAtlases(Settings->UserWritablePath);
+        SprMngr.GetAtlasMngr()->DumpAtlases(Settings->Common.UserWritablePath);
         break;
     case KeyCode::C0:
     case KeyCode::Numpad0:
@@ -825,16 +825,16 @@ void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
     if (dikdw != KeyCode::None && !ConsoleEdit) {
         switch (dikdw) {
         case KeyCode::Left:
-            Settings->ScrollKeybLeft = true;
+            Settings->Hex.ScrollKeybLeft = true;
             break;
         case KeyCode::Right:
-            Settings->ScrollKeybRight = true;
+            Settings->Hex.ScrollKeybRight = true;
             break;
         case KeyCode::Up:
-            Settings->ScrollKeybUp = true;
+            Settings->Hex.ScrollKeybUp = true;
             break;
         case KeyCode::Down:
-            Settings->ScrollKeybDown = true;
+            Settings->Hex.ScrollKeybDown = true;
             break;
         default:
             break;
@@ -844,16 +844,16 @@ void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
     if (dikup != KeyCode::None) {
         switch (dikup) {
         case KeyCode::Left:
-            Settings->ScrollKeybLeft = false;
+            Settings->Hex.ScrollKeybLeft = false;
             break;
         case KeyCode::Right:
-            Settings->ScrollKeybRight = false;
+            Settings->Hex.ScrollKeybRight = false;
             break;
         case KeyCode::Up:
-            Settings->ScrollKeybUp = false;
+            Settings->Hex.ScrollKeybUp = false;
             break;
         case KeyCode::Down:
-            Settings->ScrollKeybDown = false;
+            Settings->Hex.ScrollKeybDown = false;
             break;
         default:
             break;
@@ -1527,13 +1527,13 @@ void MapperEngine::DrawMainPanelImGui()
         if (ImGui::BeginMenu("View")) {
             bool view_layer_changed = false;
 
-            view_layer_changed |= ImGui::MenuItem("Items", nullptr, &Settings->ShowItem);
-            view_layer_changed |= ImGui::MenuItem("Scenery", nullptr, &Settings->ShowScen);
-            view_layer_changed |= ImGui::MenuItem("Walls", nullptr, &Settings->ShowWall);
-            view_layer_changed |= ImGui::MenuItem("Critters", nullptr, &Settings->ShowCrit);
-            view_layer_changed |= ImGui::MenuItem("Tiles", nullptr, &Settings->ShowTile);
-            view_layer_changed |= ImGui::MenuItem("Roof", nullptr, &Settings->ShowRoof);
-            view_layer_changed |= ImGui::MenuItem("Fast", nullptr, &Settings->ShowFast);
+            view_layer_changed |= ImGui::MenuItem("Items", nullptr, &Settings->Hex.ShowItem);
+            view_layer_changed |= ImGui::MenuItem("Scenery", nullptr, &Settings->Hex.ShowScen);
+            view_layer_changed |= ImGui::MenuItem("Walls", nullptr, &Settings->Hex.ShowWall);
+            view_layer_changed |= ImGui::MenuItem("Critters", nullptr, &Settings->Hex.ShowCrit);
+            view_layer_changed |= ImGui::MenuItem("Tiles", nullptr, &Settings->Hex.ShowTile);
+            view_layer_changed |= ImGui::MenuItem("Roof", nullptr, &Settings->Hex.ShowRoof);
+            view_layer_changed |= ImGui::MenuItem("Fast", nullptr, &Settings->Hex.ShowFast);
 
             if (view_layer_changed && _curMap) {
                 _curMap->RebuildMap();
@@ -1584,15 +1584,15 @@ void MapperEngine::DrawMainPanelImGui()
                 SprMngr.MinimizeWindow();
             }
             if (ImGui::MenuItem("Dump atlases")) {
-                SprMngr.GetAtlasMngr()->DumpAtlases(Settings->UserWritablePath);
+                SprMngr.GetAtlasMngr()->DumpAtlases(Settings->Common.UserWritablePath);
             }
 
             ImGui::Separator();
             if (SprMngr.IsFullscreen()) {
-                ImGui::MenuItem("Fullscreen mouse scroll", nullptr, &Settings->FullscreenMouseScroll);
+                ImGui::MenuItem("Fullscreen mouse scroll", nullptr, &Settings->Hex.FullscreenMouseScroll);
             }
             else {
-                ImGui::MenuItem("Windowed mouse scroll", nullptr, &Settings->WindowedMouseScroll);
+                ImGui::MenuItem("Windowed mouse scroll", nullptr, &Settings->Hex.WindowedMouseScroll);
             }
             ImGui::EndMenu();
         }
@@ -1681,19 +1681,19 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
     bool visibility_changed = false;
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {4.0f, ImGui::GetStyle().ItemSpacing.y});
-    visibility_changed |= toggle_visibility("Items", "Items", Settings->ShowItem);
+    visibility_changed |= toggle_visibility("Items", "Items", Settings->Hex.ShowItem);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Scenery", "Scenery", Settings->ShowScen);
+    visibility_changed |= toggle_visibility("Scenery", "Scenery", Settings->Hex.ShowScen);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Walls", "Walls", Settings->ShowWall);
+    visibility_changed |= toggle_visibility("Walls", "Walls", Settings->Hex.ShowWall);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Critters", "Critters", Settings->ShowCrit);
+    visibility_changed |= toggle_visibility("Critters", "Critters", Settings->Hex.ShowCrit);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Tiles", "Tiles", Settings->ShowTile);
+    visibility_changed |= toggle_visibility("Tiles", "Tiles", Settings->Hex.ShowTile);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Roof", "Roof", Settings->ShowRoof);
+    visibility_changed |= toggle_visibility("Roof", "Roof", Settings->Hex.ShowRoof);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Fast", "Fast", Settings->ShowFast);
+    visibility_changed |= toggle_visibility("Fast", "Fast", Settings->Hex.ShowFast);
     ImGui::PopStyleVar();
 
     if (visibility_changed && _curMap) {
@@ -2046,7 +2046,7 @@ void MapperEngine::DrawContentWindowImGui()
                     if (ImGui::Button("Next slot")) {
                         size_t to_slot = static_cast<size_t>(InContItem->GetCritterSlot()) + 1;
 
-                        while (numeric_cast<size_t>(to_slot) >= Settings->CritterSlotEnabled.size() || !Settings->CritterSlotEnabled[to_slot % 256]) {
+                        while (numeric_cast<size_t>(to_slot) >= Settings->Critter.CritterSlotEnabled.size() || !Settings->Critter.CritterSlotEnabled[to_slot % 256]) {
                             to_slot++;
                         }
 
@@ -2484,13 +2484,13 @@ void MapperEngine::DrawMapWindowImGui()
     ImGui::Checkbox("Select entire entity", &SelectEntireEntity);
 
     auto visibility_before = array {
-        Settings->ShowItem,
-        Settings->ShowScen,
-        Settings->ShowWall,
-        Settings->ShowCrit,
-        Settings->ShowTile,
-        Settings->ShowRoof,
-        Settings->ShowFast,
+        Settings->Hex.ShowItem,
+        Settings->Hex.ShowScen,
+        Settings->Hex.ShowWall,
+        Settings->Hex.ShowCrit,
+        Settings->Hex.ShowTile,
+        Settings->Hex.ShowRoof,
+        Settings->Hex.ShowFast,
     };
 
     auto draw_checkbox_group = [](auto&& entries) {
@@ -2501,24 +2501,24 @@ void MapperEngine::DrawMapWindowImGui()
 
     if (ImGui::CollapsingHeader("Visibility")) {
         draw_checkbox_group(array {
-            std::pair {"Items", &Settings->ShowItem},
-            std::pair {"Scenery", &Settings->ShowScen},
-            std::pair {"Walls", &Settings->ShowWall},
-            std::pair {"Critters", &Settings->ShowCrit},
-            std::pair {"Tiles", &Settings->ShowTile},
-            std::pair {"Roof", &Settings->ShowRoof},
-            std::pair {"Fast", &Settings->ShowFast},
+            std::pair {"Items", &Settings->Hex.ShowItem},
+            std::pair {"Scenery", &Settings->Hex.ShowScen},
+            std::pair {"Walls", &Settings->Hex.ShowWall},
+            std::pair {"Critters", &Settings->Hex.ShowCrit},
+            std::pair {"Tiles", &Settings->Hex.ShowTile},
+            std::pair {"Roof", &Settings->Hex.ShowRoof},
+            std::pair {"Fast", &Settings->Hex.ShowFast},
         });
     }
 
     auto visibility_after = array {
-        Settings->ShowItem,
-        Settings->ShowScen,
-        Settings->ShowWall,
-        Settings->ShowCrit,
-        Settings->ShowTile,
-        Settings->ShowRoof,
-        Settings->ShowFast,
+        Settings->Hex.ShowItem,
+        Settings->Hex.ShowScen,
+        Settings->Hex.ShowWall,
+        Settings->Hex.ShowCrit,
+        Settings->Hex.ShowTile,
+        Settings->Hex.ShowRoof,
+        Settings->Hex.ShowFast,
     };
 
     bool visibility_changed = visibility_before != visibility_after;
@@ -3468,22 +3468,22 @@ void MapperEngine::HandleLeftMouseUp()
                     if (cur_map->IsIgnorePid(item->GetProtoId())) {
                         return false;
                     }
-                    if (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings->ShowTile) {
+                    if (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings->Hex.ShowTile) {
                         return true;
                     }
-                    else if (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings->ShowRoof) {
+                    else if (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings->Hex.ShowRoof) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && !item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings->ShowItem) {
+                    else if (!item->GetIsTile() && !item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings->Hex.ShowItem) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && item->GetIsScenery() && SelectSceneryEnabled && Settings->ShowScen) {
+                    else if (!item->GetIsTile() && item->GetIsScenery() && SelectSceneryEnabled && Settings->Hex.ShowScen) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && item->GetIsWall() && SelectWallsEnabled && Settings->ShowWall) {
+                    else if (!item->GetIsTile() && item->GetIsWall() && SelectWallsEnabled && Settings->Hex.ShowWall) {
                         return true;
                     }
-                    else if (Settings->ShowFast && cur_map->IsFastPid(item->GetProtoId())) {
+                    else if (Settings->Hex.ShowFast && cur_map->IsFastPid(item->GetProtoId())) {
                         return true;
                     }
                     else {
@@ -3498,7 +3498,7 @@ void MapperEngine::HandleLeftMouseUp()
                         }
                     }
                     for (ptr<CritterHexView> hex_cr : copy_hold_ref(cur_map->GetCrittersOnHex(hex, CritterFindType::Any))) {
-                        if (SelectCrittersEnabled && Settings->ShowCrit) {
+                        if (SelectCrittersEnabled && Settings->Hex.ShowCrit) {
                             SelectAdd(hex_cr, hex);
                         }
                     }
@@ -3976,16 +3976,16 @@ void MapperEngine::SelectAll()
             continue;
         }
 
-        if ((!item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings->ShowItem) || //
-            (item->GetIsScenery() && SelectSceneryEnabled && Settings->ShowScen) || //
-            (item->GetIsWall() && SelectWallsEnabled && Settings->ShowWall) || //
-            (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings->ShowTile) || //
-            (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings->ShowRoof)) {
+        if ((!item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings->Hex.ShowItem) || //
+            (item->GetIsScenery() && SelectSceneryEnabled && Settings->Hex.ShowScen) || //
+            (item->GetIsWall() && SelectWallsEnabled && Settings->Hex.ShowWall) || //
+            (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings->Hex.ShowTile) || //
+            (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings->Hex.ShowRoof)) {
             SelectAdd(item);
         }
     }
 
-    if (SelectCrittersEnabled && Settings->ShowCrit) {
+    if (SelectCrittersEnabled && Settings->Hex.ShowCrit) {
         span<refcount_ptr<CritterHexView>> critters = cur_map->GetCritters();
 
         for (size_t i = 0; i < critters.size(); i++) {
@@ -4108,12 +4108,12 @@ auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy,
     }
 
     if (hex_move && have_tiles) {
-        if (std::abs(offs_hx) < Settings->MapTileStep && std::abs(offs_hy) < Settings->MapTileStep) {
+        if (std::abs(offs_hx) < Settings->Geometry.MapTileStep && std::abs(offs_hy) < Settings->Geometry.MapTileStep) {
             return false;
         }
 
-        offs_hx -= offs_hx % Settings->MapTileStep;
-        offs_hy -= offs_hy % Settings->MapTileStep;
+        offs_hx -= offs_hx % Settings->Geometry.MapTileStep;
+        offs_hy -= offs_hy % Settings->Geometry.MapTileStep;
     }
 
     // Setup hex moving switcher
@@ -4480,7 +4480,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<
     mpos corrected_hex = hex;
 
     if (proto->GetIsTile()) {
-        corrected_hex = cur_map->GetSize().from_raw_pos(corrected_hex.x - corrected_hex.x % Settings->MapTileStep, corrected_hex.y - corrected_hex.y % Settings->MapTileStep);
+        corrected_hex = cur_map->GetSize().from_raw_pos(corrected_hex.x - corrected_hex.x % Settings->Geometry.MapTileStep, corrected_hex.y - corrected_hex.y % Settings->Geometry.MapTileStep);
     }
 
     if (!owner && (!cur_map->GetSize().is_valid_pos(corrected_hex))) {
@@ -5562,7 +5562,7 @@ void MapperEngine::CurDraw()
         }
 
         if (proto->GetIsTile()) {
-            hex = cur_map->GetSize().from_raw_pos(hex.x - hex.x % Settings->MapTileStep, hex.y - hex.y % Settings->MapTileStep);
+            hex = cur_map->GetSize().from_raw_pos(hex.x - hex.x % Settings->Geometry.MapTileStep, hex.y - hex.y % Settings->Geometry.MapTileStep);
         }
 
         auto spr = GetPreviewSprite(proto->GetPicMap());
@@ -5572,13 +5572,13 @@ void MapperEngine::CurDraw()
             ipos32 pos = cur_map->MapToScreenPos(cur_map->GetHexMapPos(hex));
             pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(proto->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(proto->GetOffset().y) * zoom));
             pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(spr->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(spr->GetOffset().y) * zoom));
-            pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(Settings->MapHexWidth / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(Settings->MapHexHeight) * zoom));
+            pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(Settings->Geometry.MapHexWidth / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(Settings->Geometry.MapHexHeight) * zoom));
             pos -= ipos32(iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom));
 
             if (proto->GetIsTile() && PreviewRoofTiles) {
                 // The flat tile/roof XY offset already came from the prototype Offset above; a roof preview rides the
                 // same 3D elevation as a placed roof tile, so raise it on screen by that elevation's projection
-                float32_t elev_y = GeometryHelper::ProjectWorldToMap(vec3 {0.0F, numeric_cast<float32_t>(Settings->MapRoofElevation), 0.0F}).y;
+                float32_t elev_y = GeometryHelper::ProjectWorldToMap(vec3 {0.0F, numeric_cast<float32_t>(Settings->Geometry.MapRoofElevation), 0.0F}).y;
                 pos.y += iround<int32_t>(elev_y * zoom);
             }
 
@@ -5627,7 +5627,7 @@ void MapperEngine::DrawSettingsWindowImGui()
     }
 
     auto apply_resolution = [&](isize32 resolution) {
-        if (Settings->ScreenWidth == resolution.width && Settings->ScreenHeight == resolution.height) {
+        if (Settings->View.ScreenWidth == resolution.width && Settings->View.ScreenHeight == resolution.height) {
             return;
         }
 
@@ -5638,7 +5638,7 @@ void MapperEngine::DrawSettingsWindowImGui()
         AddMess(strex("Resolution changed to {}x{}", resolution.width, resolution.height));
     };
 
-    ImGui::Text("Current resolution: %d x %d", Settings->ScreenWidth, Settings->ScreenHeight);
+    ImGui::Text("Current resolution: %d x %d", Settings->View.ScreenWidth, Settings->View.ScreenHeight);
     bool fullscreen = SprMngr.IsFullscreen();
     if (ImGui::Checkbox("Fullscreen", &fullscreen)) {
         SprMngr.ToggleFullscreen();
@@ -5665,7 +5665,7 @@ void MapperEngine::DrawSettingsWindowImGui()
 
     if (ImGui::BeginChild("##SettingsResolutions", {0.0f, 0.0f}, false)) {
         for (const auto& res : popular_resolutions) {
-            bool is_current = Settings->ScreenWidth == res.width && Settings->ScreenHeight == res.height;
+            bool is_current = Settings->View.ScreenWidth == res.width && Settings->View.ScreenHeight == res.height;
             if (ImGui::Selectable(strex("{} x {}", res.width, res.height).c_str(), is_current)) {
                 apply_resolution(res);
             }
@@ -5870,7 +5870,7 @@ void MapperEngine::ConsoleSubmitCommand()
         }
     }
 
-    while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings->ConsoleHistorySize) {
+    while (numeric_cast<int32_t>(ConsoleHistory.size()) > Settings->Input.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
 
@@ -6166,7 +6166,7 @@ auto MapperEngine::IsProtoFileExtension(string_view path) const -> bool
     FO_STACK_TRACE_ENTRY();
 
     string ext = strex(path).get_file_extension();
-    return std::ranges::find(Settings->ProtoFileExtensions, ext) != Settings->ProtoFileExtensions.end();
+    return std::ranges::find(Settings->Baking.ProtoFileExtensions, ext) != Settings->Baking.ProtoFileExtensions.end();
 }
 
 auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, const string& map_text) -> nptr<MapView>
@@ -6275,7 +6275,7 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
     if (!map_file) {
         string map_path = strex(map_name).format_path().str();
 
-        for (const auto& proto_ext : Settings->ProtoFileExtensions) {
+        for (const auto& proto_ext : Settings->Baking.ProtoFileExtensions) {
             File by_path = map_files.FindFileByPath(strex("{}.{}", map_path, proto_ext).str());
 
             if (by_path && resolve_declared_map(by_path)) {
@@ -6602,8 +6602,8 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
             fomap_path = strex(first_container_path).change_file_name(fomap_name);
         }
         else {
-            FO_VERIFY_AND_THROW(!Settings->ProtoFileExtensions.empty(), "No proto file extensions are configured");
-            fomap_path = strex("{}.{}", fomap_name, Settings->ProtoFileExtensions.front()).format_path();
+            FO_VERIFY_AND_THROW(!Settings->Baking.ProtoFileExtensions.empty(), "No proto file extensions are configured");
+            fomap_path = strex("{}.{}", fomap_name, Settings->Baking.ProtoFileExtensions.front()).format_path();
         }
     }
 

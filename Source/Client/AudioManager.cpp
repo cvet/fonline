@@ -48,8 +48,10 @@ struct AudioManager::Sound
     size_t ConvertedBufCur {};
     int32_t OriginalChannels {};
     int32_t OriginalRate {};
-    // Fixed for the life of the sound: a one-shot effect ends long before the listener moves far enough
-    // for a recomputation to be audible, and the pan is baked into the converted stereo buffer anyway
+    // Names this sound for as long as it plays, so a caller can place it again; never reused once it is gone
+    uint32_t Id {};
+    // Read by the mixer on the audio thread and rewritten by UpdateSound under the device lock, so a sound
+    // that outlives a camera move is heard from where its source is now rather than where it was
     float32_t Attenuation {1.0f};
     float32_t Pan {};
     bool IsMusic {};
@@ -79,7 +81,7 @@ AudioManager::AudioManager(ptr<AudioSettings> settings, ptr<FileSystem> resource
     if (!_audio->IsEnabled()) {
         return;
     }
-    if (_settings->DisableAudio) {
+    if (_settings->Audio.DisableAudio) {
         return;
     }
 
@@ -119,8 +121,16 @@ void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
         span<uint8_t> mix_buffer = span<uint8_t> {_outputBuf.data(), output.size()};
 
         if (ProcessSound(sound, silence, mix_buffer)) {
-            int32_t volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
+            int32_t volume = sound->IsMusic ? _settings->Audio.MusicVolume : _settings->Audio.SoundVolume;
             volume = numeric_cast<int32_t>(std::lround(numeric_cast<float32_t>(volume) * sound->Attenuation));
+
+            // Panned on the way to the mixer rather than into the decoded buffer: a sound short enough to
+            // decode in one go would otherwise keep the lean it started with for ever, and a second pan laid
+            // over the first would multiply the two
+            if (sound->Pan != 0.0f) {
+                ApplyPan(mix_buffer, sound->Pan);
+            }
+
             _audio->MixAudio(output, mix_buffer, volume);
             ++it;
         }
@@ -223,7 +233,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     return false;
 }
 
-auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> bool
+auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -231,7 +241,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     auto file = _resources->ReadFile(fname);
 
     if (!file) {
-        return false;
+        return 0;
     }
 
     auto sound_owner = safe_alloc::make_unique<Sound>();
@@ -332,7 +342,10 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
             break;
         }
 
-        return false;
+        // A resource that exists and still cannot be played is a defect in what was baked, and a zero handle
+        // alone says only that nothing is playing, so the failure is made visible to whoever is debugging
+        break_into_debugger();
+        return 0;
     }
 
     auto released_file_context = file_context.release();
@@ -367,7 +380,9 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     }
 
     if (result < 0) {
-        return false;
+        logging::write("Decode of sound '{}' failed, error code {}", fname, result);
+        break_into_debugger();
+        return 0;
     }
 
     sound->BaseBufLen = decoded;
@@ -378,17 +393,24 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     }
 
     if (!ConvertData(sound)) {
-        return false;
+        logging::write("Conversion of sound '{}' to the mixing format failed", fname);
+        break_into_debugger();
+        return 0;
     }
 
     sound->IsMusic = is_music;
     sound->RepeatTime = repeat_time;
 
+    // The handle is taken where the sound enters the list, so a load that fails part-way leaves the manager
+    // exactly as it was
+    uint32_t sound_id = ++_soundIdCounter;
+    sound->Id = sound_id;
+
     _audio->LockDevice();
     _playingSounds.emplace_back(std::move(sound_owner));
     _audio->UnlockDevice();
 
-    return true;
+    return sound_id;
 }
 
 auto AudioManager::StreamOgg(ptr<Sound> sound) -> bool
@@ -438,17 +460,12 @@ auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
         return false;
     }
 
-    // Safe after conversion because the mixing format is the engine's own S16 stereo, whatever the device runs
-    if (sound->Pan != 0.0f) {
-        ApplyPan(sound->ConvertedBuf, sound->Pan);
-    }
-
     sound->ConvertedBufCur = 0;
 
     return true;
 }
 
-void AudioManager::ApplyPan(vector<uint8_t>& buf, float32_t pan)
+void AudioManager::ApplyPan(span<uint8_t> buf, float32_t pan)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -457,8 +474,9 @@ void AudioManager::ApplyPan(vector<uint8_t>& buf, float32_t pan)
         return;
     }
 
-    // A balance rather than constant power: lifting the near channel above unity would clip a loud sample,
-    // which is a worse artefact than the three decibels this gives up at full deflection
+    // Safe on any buffer the mixer carries, because the mixing format is the engine's own S16 stereo whatever
+    // the device runs. A balance rather than constant power: lifting the near channel above unity would clip a
+    // loud sample, which is a worse artefact than the three decibels this gives up at full deflection
     float32_t left_gain = pan > 0.0f ? 1.0f - pan : 1.0f;
     float32_t right_gain = pan < 0.0f ? 1.0f + pan : 1.0f;
 
@@ -475,36 +493,66 @@ void AudioManager::IndexFiles()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const string& sound_ext : _settings->SoundFileExtensions) {
+    for (const string& sound_ext : _settings->Audio.SoundFileExtensions) {
         for (const auto& file_header : _resources->FilterFiles(sound_ext)) {
             _soundNames.emplace_back(file_header.GetPath());
         }
     }
 }
 
-auto AudioManager::PlaySound(string_view name) -> bool
+auto AudioManager::PlaySound(string_view name) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     return PlaySound(name, 1.0f, 0.0f);
 }
 
-auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t pan) -> bool
+auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t pan) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_isActive || _settings->SoundVolume == 0) {
-        return true;
+    // A silent device plays nothing, so there is no handle to hand out. This is not a refusal: a player who
+    // turned the volume down is a normal state, and the resource itself is untouched
+    if (!_isActive || _settings->Audio.SoundVolume == 0) {
+        return 0;
     }
 
     // Out of earshot: return before the read so a distant event costs neither a file read nor a decode
     if (attenuation <= 0.0f) {
-        return true;
+        return 0;
     }
 
     // The name is a resource path the caller already resolved: which file a game concept maps to, and how a
     // set of numbered variants is picked among, is naming convention rather than mixing
     return Load(name, false, timespan::zero, attenuation, pan);
+}
+
+auto AudioManager::UpdateSound(uint32_t sound_id, float32_t attenuation, float32_t pan) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_isActive || sound_id == 0) {
+        return false;
+    }
+
+    // The mixer drops a finished sound from this list on the audio thread, so both the search and the write
+    // are made with the device held
+    _audio->LockDevice();
+
+    bool updated = false;
+
+    for (auto& sound : _playingSounds) {
+        if (sound->Id == sound_id) {
+            sound->Attenuation = attenuation;
+            sound->Pan = pan;
+            updated = true;
+            break;
+        }
+    }
+
+    _audio->UnlockDevice();
+
+    return updated;
 }
 
 auto AudioManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
@@ -517,7 +565,7 @@ auto AudioManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 
     StopMusic();
 
-    return Load(fname, true, repeat_time, 1.0f, 0.0f);
+    return Load(fname, true, repeat_time, 1.0f, 0.0f) != 0;
 }
 
 void AudioManager::StopSounds()

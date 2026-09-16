@@ -665,10 +665,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritterOnHex(ptr<Map
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
+        if (cr->GetValueAsInt(prop) == propertyValue) {
             return cr;
         }
     }
@@ -732,18 +731,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPlayerCritterCount(ptr<Map> self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterFindType findType)
 {
-    vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
-
-    critters.reserve(map_critters.size());
-
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType)) {
-            critters.emplace_back(cr);
-        }
-    }
-
-    return critters;
+    return self->GetCritters(findType);
 }
 
 ///@ ExportMethod
@@ -758,13 +746,13 @@ FO_SCRIPT_API vector<ptr<Player>> Server_Map_GetSpectatorPlayers(ptr<Map> self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, hstring pid, CritterFindType findType)
 {
+    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
     for (ptr<Critter> cr : map_critters) {
-        if ((!pid || cr->GetProtoId() == pid) && cr->CheckFind(findType)) {
+        if (!pid || cr->GetProtoId() == pid) {
             critters.emplace_back(cr);
         }
     }
@@ -775,13 +763,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, ptr<ProtoCritter> proto, CritterFindType findType)
 {
+    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
     for (ptr<Critter> cr : map_critters) {
-        if (cr->GetProtoId() == proto->GetProtoId() && cr->CheckFind(findType)) {
+        if (cr->GetProtoId() == proto->GetProtoId()) {
             critters.emplace_back(cr);
         }
     }
@@ -793,13 +781,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    span<ptr<Critter>> map_critters = self->GetCritters();
+    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
     vector<ptr<Critter>> critters;
 
     critters.reserve(map_critters.size());
 
     for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
+        if (cr->GetValueAsInt(prop) == propertyValue) {
             critters.emplace_back(cr);
         }
     }
@@ -829,10 +817,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPat
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
+        if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
             critters.emplace_back(cr);
         }
     }
@@ -844,10 +831,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
+        if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
             critters.emplace_back(cr);
         }
     }
@@ -859,12 +845,11 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeePath(ptr<Map> self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
         mpos hex = cr->GetHex();
 
-        if (cr->CheckFind(findType) && GeometryHelper::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
+        if (GeometryHelper::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.emplace_back(cr);
         }
     }

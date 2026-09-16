@@ -41,11 +41,11 @@ auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<string> pack_dirs {settings.Packaged ? settings.ClientResources : settings.BakeOutput};
+    vector<string> pack_dirs {settings.Common.Packaged ? settings.Baking.ClientResources : settings.Baking.BakeOutput};
 
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
-    if (settings.Packaged && !settings.UserWritablePath.empty()) {
+    if (settings.Common.Packaged && !settings.Common.UserWritablePath.empty()) {
         string writable_dir = GetClientWritableResourceDir(settings);
 
         if (writable_dir != pack_dirs.front()) {
@@ -60,12 +60,12 @@ auto GetClientWritableResourceDir(const ClientSettings& settings) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (settings.UserWritablePath.empty()) {
-        return string(settings.ClientResources);
+    if (settings.Common.UserWritablePath.empty()) {
+        return string(settings.Baking.ClientResources);
     }
 
-    string relative = fs::is_absolute_path(settings.ClientResources) ? "Resources" : string(settings.ClientResources);
-    return fs::make_writable_path(settings.UserWritablePath, relative);
+    string relative = fs::is_absolute_path(settings.Baking.ClientResources) ? "Resources" : string(settings.Baking.ClientResources);
+    return fs::make_writable_path(settings.Common.UserWritablePath, relative);
 }
 
 auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_name) -> string
@@ -81,7 +81,7 @@ void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, 
 
     vector<string> dirs = GetClientPackDirs(settings);
 
-    if (settings.Packaged && pack_name != EMBEDDED_PACK_NAME) {
+    if (settings.Common.Packaged && pack_name != EMBEDDED_PACK_NAME) {
         string base_path = GetClientResourcePackPath(settings, pack_name);
 
         if (optional && !OpenResourcePackFile(base_path)) {

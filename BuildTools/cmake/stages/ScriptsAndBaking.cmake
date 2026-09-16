@@ -40,7 +40,7 @@ function(AddBakingTarget target)
 
     AddCommandTarget(${target}
         COMMAND_ARGS
-        COMMAND ${bakeResources} -ForceBaking ${forceBaking}
+        COMMAND ${bakeResources} -Baking.ForceBaking ${forceBaking}
         COMMAND ${resourceBuildHashCommand}
         DEPENDS ForceCodeGeneration
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}

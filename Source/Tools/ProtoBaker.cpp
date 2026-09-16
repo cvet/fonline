@@ -66,9 +66,9 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
-        auto it = std::ranges::find(_context->Settings->ProtoFileExtensions, ext);
+        auto it = std::ranges::find(_context->Settings->Baking.ProtoFileExtensions, ext);
 
-        if (it == _context->Settings->ProtoFileExtensions.end()) {
+        if (it == _context->Settings->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -90,7 +90,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
             InitAngelScriptScripting(&engine, *_context->Settings, *_context->BakedFiles);
 #endif
 #if FO_MANAGED_SCRIPTING
-            InitManagedScripting(&engine, _context->BakedFiles, _context->Settings->CacheResources, _context->Settings->BakeOutput);
+            InitManagedScripting(&engine, _context->BakedFiles, _context->Settings->Baking.CacheResources, _context->Settings->Baking.BakeOutput);
 #endif
             auto data = BakeProtoFiles(&engine, &engine, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-server", data);
@@ -276,7 +276,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
                     // A repeated ancestor contributes only where it is first reached: applying it again would
                     // undo whatever the earlier parent overrode, which the source gives no hint of
                     if (!reached_parents.insert(parent_pid).second) {
-                        if (!_context->Settings->AllowRepeatedProtoParents) {
+                        if (!_context->Settings->Baking.AllowRepeatedProtoParents) {
                             throw ProtoBakerException("Proto reaches the same parent through several inheritance paths", base_name, parent_name, name);
                         }
 

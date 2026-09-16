@@ -134,10 +134,10 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
 
     auto settings = GlobalSettings(false);
     settings.ApplyDefaultSettings();
-    BakerTests::OverrideSetting(settings.ClientResources, client_resources_dir);
-    BakerTests::OverrideSetting(settings.PlatformBinaries, platform_binaries_dir);
-    BakerTests::OverrideSetting(settings.ClientResourceEntries, vector<string> {"Scripts"});
-    BakerTests::OverrideSetting(settings.UpdateFilesInMemory, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, client_resources_dir);
+    BakerTests::OverrideSetting(settings.Baking.PlatformBinaries, platform_binaries_dir);
+    BakerTests::OverrideSetting(settings.Baking.ClientResourceEntries, vector<string> {"Scripts"});
+    BakerTests::OverrideSetting(settings.ServerNetwork.UpdateFilesInMemory, true);
 
     UpdaterBackend updater_backend;
     updater_backend.LoadFromClientResources(settings, BakerTests::TEST_METADATA_VERSION);

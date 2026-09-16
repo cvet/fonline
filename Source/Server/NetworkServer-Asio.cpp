@@ -110,13 +110,13 @@ auto NetworkServer::StartAsioServer(ptr<ServerNetworkSettings> settings, NewConn
 {
     FO_STACK_TRACE_ENTRY();
 
-    logging::write("Listen TCP connections on port {}", settings->ServerPort);
+    logging::write("Listen TCP connections on port {}", settings->Network.ServerPort);
 
     try {
         return safe_alloc::make_unique<NetworkServer_Asio>(settings, std::move(callback));
     }
     catch (const std::system_error& ex) {
-        throw NetworkServerException("Can't listen for TCP connections", settings->ServerPort, GetAsioErrorText(ex.code()));
+        throw NetworkServerException("Can't listen for TCP connections", settings->Network.ServerPort, GetAsioErrorText(ex.code()));
     }
 }
 
@@ -138,13 +138,13 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
         _port = 0;
     }
 
-    if (settings->DisableTcpNagle) {
+    if (settings->Network.DisableTcpNagle) {
         std::error_code no_delay_error;
         _socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
 
-    _inBufData.resize(_settings->NetBufferSize);
+    _inBufData.resize(_settings->Network.NetBufferSize);
 }
 
 void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation, const std::error_code& error)
@@ -280,7 +280,7 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 
 NetworkServer_Asio::NetworkServer_Asio(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->ServerPort))),
+    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->Network.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();

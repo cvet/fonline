@@ -88,7 +88,7 @@ namespace
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
 
         return settings;
     }
@@ -124,23 +124,50 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int CritterItemTransferInCalls;
-    ident CritterItemTransferInSourceId;
-    ident CritterItemTransferInResultId;
-    int CritterItemTransferInSourceCount;
-    int CritterItemTransferInResultCount;
-    int CritterItemTransferInCount;
+    int ItemStackChangedCalls;
+    ident ItemStackChangedItemId;
+    int ItemStackChangedItemCount;
+    int ItemStackChangedCountDiff;
+    ident ItemStackChangedAbsorbedId;
+    int ItemStackChangedAbsorbedCount;
+    int ItemStackReducedCalls;
+    ident ItemStackReducedItemId;
+    int ItemStackReducedItemCount;
+    int ItemStackReducedCountDiff;
 
     [[Event]]
-    void OnCritterItemTransferIn(Critter cr, Item sourceItem, Item resultItem, int count)
+    void OnItemStackChanged(Item item, int countDiff, Item? absorbedItem)
     {
-        CritterItemTransferInCalls++;
-        CritterItemTransferInSourceId = sourceItem.Id;
-        CritterItemTransferInResultId = resultItem.Id;
-        CritterItemTransferInSourceCount = sourceItem.Count;
-        CritterItemTransferInResultCount = resultItem.Count;
-        CritterItemTransferInCount = count;
-        resultItem.Hidden = true;
+        ItemStackChangedCalls++;
+
+        if (countDiff < 0) {
+            ItemStackReducedCalls++;
+            ItemStackReducedItemId = item.Id;
+            ItemStackReducedItemCount = item.Count;
+            ItemStackReducedCountDiff = countDiff;
+            return;
+        }
+
+        ItemStackChangedItemId = item.Id;
+        ItemStackChangedItemCount = item.Count;
+        ItemStackChangedCountDiff = countDiff;
+        ItemStackChangedAbsorbedId = absorbedItem is null ? ident() : absorbedItem.Id;
+        ItemStackChangedAbsorbedCount = absorbedItem is null ? 0 : absorbedItem.Count;
+        item.Hidden = true;
+    }
+
+    void ResetItemStackChanged()
+    {
+        ItemStackChangedCalls = 0;
+        ItemStackChangedItemId = ident();
+        ItemStackChangedItemCount = 0;
+        ItemStackChangedCountDiff = 0;
+        ItemStackChangedAbsorbedId = ident();
+        ItemStackChangedAbsorbedCount = 0;
+        ItemStackReducedCalls = 0;
+        ItemStackReducedItemId = ident();
+        ItemStackReducedItemCount = 0;
+        ItemStackReducedCountDiff = 0;
     }
 
     // ========== Critter Inventory Operations ==========
@@ -1121,17 +1148,17 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int TestGameMoveItemMergeEvent()
+    int TestGameItemStackChangedEvent()
     {
-        CritterItemTransferInCalls = 0;
-        CritterItemTransferInSourceId = ident();
-        CritterItemTransferInResultId = ident();
-        CritterItemTransferInSourceCount = 0;
-        CritterItemTransferInResultCount = 0;
-        CritterItemTransferInCount = 0;
+        ResetItemStackChanged();
+        Game.OnItemStackChanged.Subscribe(OnItemStackChanged);
+        int result = RunItemStackChangedScenario();
+        Game.OnItemStackChanged.Unsubscribe(OnItemStackChanged);
+        return result;
+    }
 
-        Game.OnCritterItemTransferIn.Subscribe(OnCritterItemTransferIn);
-
+    int RunItemStackChangedScenario()
+    {
         Critter sourceCr = Game.CreateCritter("TestCritter".hstr(), false);
         Critter resultCr = Game.CreateCritter("TestCritter".hstr(), false);
         if (sourceCr is null || resultCr is null) return -1;
@@ -1139,19 +1166,61 @@ namespace ScriptMethodsTest
         Item sourceItem = sourceCr.AddItem("TestStackableItem".hstr(), 4);
         Item resultItem = resultCr.AddItem("TestStackableItem".hstr(), 3);
         if (sourceItem is null || resultItem is null) return -2;
+        if (ItemStackChangedCalls != 0) return -3;
 
         ident sourceId = sourceItem.Id;
         ident resultId = resultItem.Id;
+
+        // A partial move debits the source and merges the split, so it reports twice and the absorbed item is
+        // the split rather than the source stack
         Item? moved = Game.MoveItem(sourceItem, 2, resultCr);
+        if (moved is null || moved.Id != resultId) return -4;
+        if (ItemStackChangedCalls != 2 || ItemStackChangedItemId != resultId || ItemStackChangedItemCount != 5 || ItemStackChangedCountDiff != 2) return -5;
+        if (ItemStackReducedCalls != 1 || ItemStackReducedItemId != sourceId || ItemStackReducedItemCount != 2 || ItemStackReducedCountDiff != -2) return -6;
+        if (ItemStackChangedAbsorbedId == ident() || ItemStackChangedAbsorbedId == sourceId || ItemStackChangedAbsorbedCount != 2) return -7;
+        if (Game.GetItem(ItemStackChangedAbsorbedId) !is null) return -8;
+        if (sourceItem.Count != 2 || resultItem.Count != 5 || !resultItem.Hidden) return -9;
 
-        Game.OnCritterItemTransferIn.Unsubscribe(OnCritterItemTransferIn);
+        ResetItemStackChanged();
+        moved = Game.MoveItem(sourceItem, 2, resultCr);
+        if (moved is null || moved.Id != resultId) return -10;
+        if (ItemStackChangedCalls != 1 || ItemStackChangedAbsorbedId != sourceId || ItemStackChangedAbsorbedCount != 2 || ItemStackChangedItemCount != 7) return -11;
+        if (Game.GetItem(sourceId) !is null) return -12;
 
-        if (moved is null || moved.Id != resultId) return -3;
-        if (CritterItemTransferInCalls != 1) return -4;
-        if (CritterItemTransferInSourceId != sourceId || CritterItemTransferInResultId != resultId) return -5;
-        if (CritterItemTransferInSourceCount != 4 || CritterItemTransferInResultCount != 3 || CritterItemTransferInCount != 2) return -6;
-        if (sourceItem.Count != 2 || resultItem.Count != 5) return -7;
-        if (!resultItem.Hidden) return -8;
+        ResetItemStackChanged();
+        Item added = resultCr.AddItem("TestStackableItem".hstr(), 3);
+        if (added is null || added.Id != resultId || resultItem.Count != 10) return -13;
+        if (ItemStackChangedCalls != 1 || ItemStackChangedCountDiff != 3 || ItemStackChangedAbsorbedId != ident() || ItemStackChangedItemCount != 10) return -14;
+
+        ResetItemStackChanged();
+        resultCr.DestroyItem("TestStackableItem".hstr(), 4);
+        if (resultItem.Count != 6) return -15;
+        if (ItemStackChangedCalls != 1 || ItemStackReducedCalls != 1 || ItemStackReducedItemId != resultId || ItemStackReducedItemCount != 6 || ItemStackReducedCountDiff != -4) return -16;
+
+        ResetItemStackChanged();
+        Game.DestroyItem(resultItem, 2);
+        if (resultItem.Count != 4) return -17;
+        if (ItemStackChangedCalls != 1 || ItemStackReducedCalls != 1 || ItemStackReducedCountDiff != -2 || ItemStackReducedItemCount != 4) return -18;
+
+        Item container = resultCr.AddItem("TestItem2".hstr(), 1);
+        if (container is null) return -19;
+
+        ResetItemStackChanged();
+        Item innerItem = container.AddItem("TestStackableItem".hstr(), 3);
+        if (innerItem is null || ItemStackChangedCalls != 0) return -20;
+
+        Item looseItem = sourceCr.AddItem("TestStackableItem".hstr(), 4);
+        if (looseItem is null) return -21;
+
+        ident looseId = looseItem.Id;
+        moved = Game.MoveItem(looseItem, 4, container);
+        if (moved is null || moved.Id != innerItem.Id || innerItem.Count != 7) return -22;
+        if (ItemStackChangedCalls != 1 || ItemStackChangedItemId != innerItem.Id || ItemStackChangedAbsorbedId != looseId || ItemStackChangedCountDiff != 4) return -23;
+
+        ResetItemStackChanged();
+        Item innerAdded = container.AddItem("TestStackableItem".hstr(), 2);
+        if (innerAdded is null || innerAdded.Id != innerItem.Id || innerItem.Count != 9) return -24;
+        if (ItemStackChangedCalls != 1 || ItemStackChangedCountDiff != 2 || ItemStackChangedAbsorbedId != ident()) return -25;
 
         Game.DestroyCritter(sourceCr);
         Game.DestroyCritter(resultCr);
@@ -3319,9 +3388,9 @@ TEST_CASE("ServerGameItemOperations")
         CHECK(func.GetResult() == 0);
     }
 
-    SECTION("MoveItemMergeEvent")
+    SECTION("ItemStackChangedEvent")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemMergeEvent"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameItemStackChangedEvent"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

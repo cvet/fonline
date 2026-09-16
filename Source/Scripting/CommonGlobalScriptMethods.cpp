@@ -627,7 +627,7 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timesp
 ///@ ExportMethod
 FO_SCRIPT_API LanguageName Common_Game_GetLanguage(ptr<BaseEngine> engine)
 {
-    return LanguageName {engine->Hashes.to_hashed_string(engine->Settings->Language)};
+    return LanguageName {engine->Hashes.to_hashed_string(engine->Settings->Client.Language)};
 }
 
 ///@ ExportMethod

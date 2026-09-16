@@ -1,5 +1,7 @@
 namespace FOnline.Analyzers;
 
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -25,6 +27,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     public const string ReturnsAncestorAttributeFullName = "FOnline.ReturnsAncestorAttribute";
     public const string AcquiresCoverAttributeFullName = "FOnline.AcquiresCoverAttribute";
     public const string PassesCoverAttributeFullName = "FOnline.PassesCoverAttribute";
+    public const string CoverEffectAttributeFullName = "FOnline.CoverEffectAttribute";
     public const string EntityTypeFullName = "FOnline.Entity";
 
     // The cover primitives are engine-owned, so they are matched by their symbol's full metadata name.
@@ -176,6 +179,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 INamedTypeSymbol? returnsAncestor = compilation.GetTypeByMetadataName(ReturnsAncestorAttributeFullName);
                 INamedTypeSymbol? acquiresCover = compilation.GetTypeByMetadataName(AcquiresCoverAttributeFullName);
                 INamedTypeSymbol? passesCover = compilation.GetTypeByMetadataName(PassesCoverAttributeFullName);
+                INamedTypeSymbol? coverEffect = compilation.GetTypeByMetadataName(CoverEffectAttributeFullName);
                 INamedTypeSymbol? entityType = compilation.GetTypeByMetadataName(EntityTypeFullName);
 
                 if (requiresCover == null || entityType == null) {
@@ -196,13 +200,15 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                     }
                 }
 
-                var model = new CoverModel(requiresCover,
+                var model = new CoverModel(compilation,
+                                           requiresCover,
                                            providesCover,
                                            preservesCover,
                                            returnsParent,
                                            returnsAncestor,
                                            acquiresCover,
                                            passesCover,
+                                           coverEffect,
                                            entityType,
                                            syncType,
                                            gameType,
@@ -507,6 +513,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         int callSite = invocation.SpanStart;
         AwaitExpressionSyntax? lastAwait = null;
+        AwaitExpressionSyntax? firstAwait = null;
 
         foreach (AwaitExpressionSyntax candidate in body.DescendantNodes().OfType<AwaitExpressionSyntax>()) {
             if (!PrecedesOnSomePath(candidate, invocation)) {
@@ -523,8 +530,16 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            if (candidate.Span.End <= callSite && (lastAwait == null || candidate.SpanStart > lastAwait.SpanStart)) {
+            if (candidate.Span.End > callSite) {
+                continue;
+            }
+
+            if (lastAwait == null || candidate.SpanStart > lastAwait.SpanStart) {
                 lastAwait = candidate;
+            }
+
+            if (firstAwait == null || candidate.SpanStart < firstAwait.SpanStart) {
+                firstAwait = candidate;
             }
         }
 
@@ -539,9 +554,22 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        // The same holds for a local the body re-reads after the await -- `map = cr.GetMap();` once the attacker
+        // has been locked again. What the use sees is what that assignment put there, not what the await released
+        if (ReboundAfter(body, lastAwait.SpanStart, invocation, tracked, semantics, cancellationToken)) {
+            return;
+        }
+
         // The re-proof may be the await itself (`await Sync.Widen(... value ...)`), which starts at or after
         // the await's own start, so the window opens there rather than after it.
-        if (ReProvesCover(body, lastAwait.SpanStart, callSite, tracked, model, semantics, cancellationToken)) {
+        if (ReProvesCover(body,
+                          lastAwait.SpanStart,
+                          callSite,
+                          firstAwait?.SpanStart ?? lastAwait.SpanStart,
+                          tracked,
+                          model,
+                          semantics,
+                          cancellationToken)) {
             return;
         }
 
@@ -649,11 +677,57 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool ReProvesCover(SyntaxNode body, int windowStart, int windowEnd, ISymbol tracked,
-                                      CoverModel model, SemanticModel semantics, CancellationToken cancellationToken)
+    // An assignment to the tracked value between the await and the use, placed where the use cannot be reached
+    // without it: the same block, earlier in it. The value at the use is that assignment's, so whatever the await
+    // did to the old one says nothing about it
+    private static bool ReboundAfter(SyntaxNode body, int windowStart, SyntaxNode use, ISymbol tracked,
+                                     SemanticModel semantics, CancellationToken cancellationToken)
+    {
+        foreach (AssignmentExpressionSyntax assignment in body.DescendantNodes().OfType<AssignmentExpressionSyntax>()) {
+            if (assignment.SpanStart < windowStart || assignment.SpanStart >= use.SpanStart ||
+                !assignment.IsKind(SyntaxKind.SimpleAssignmentExpression)) {
+                continue;
+            }
+
+            if (!SymbolEqualityComparer.Default.Equals(
+                    semantics.GetSymbolInfo(assignment.Left, cancellationToken).Symbol?.OriginalDefinition,
+                    tracked.OriginalDefinition)) {
+                continue;
+            }
+
+            // Unlike an await, an assignment counts only when it cannot be skipped: one inside a branch leaves
+            // the stale value on the other path, so the statement has to sit in the use's own block
+            StatementSyntax? assigned = StatementInBlock(assignment);
+            StatementSyntax? used = StatementInBlock(use);
+
+            if (assigned != null && used != null && ReferenceEquals(assigned.Parent, used.Parent) &&
+                assigned.SpanStart < used.SpanStart) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ReProvesCover(SyntaxNode body, int windowStart, int windowEnd, int coverHeldUntil,
+                                      ISymbol tracked, CoverModel model, SemanticModel semantics,
+                                      CancellationToken cancellationToken)
     {
         if (model.SyncType == null) {
             return false;
+        }
+
+        // Restoring a snapshot taken while the value was still covered puts that cover back -- the snapshot is
+        // the cover, so it names the value without mentioning it
+        if (RestoresSnapshotTakenWhileCovered(body,
+                                              windowStart,
+                                              windowEnd,
+                                              coverHeldUntil,
+                                              tracked,
+                                              model,
+                                              semantics,
+                                              cancellationToken)) {
+            return true;
         }
 
         foreach (InvocationExpressionSyntax candidate in body.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
@@ -665,31 +739,69 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            bool onSync = SymbolEqualityComparer.Default.Equals(symbol.ContainingType, model.SyncType);
+            bool acquisition = model.Acquires(symbol);
 
-            // Sync is not the only way back: a helper that takes the value on a [ProvidesCover] parameter
+            // An acquisition is not the only way back: a helper that takes the value on a providing parameter
             // acquires it just as well, and the codebase routes most multi-root acquisitions through one.
-            if (!onSync && !symbol.Parameters.Any(model.HasProvidesCover)) {
+            if (!acquisition && !symbol.Parameters.Any(model.ProvidesCover)) {
                 continue;
             }
 
             foreach (ArgumentSyntax argument in candidate.ArgumentList.Arguments) {
-                if (!onSync) {
+                if (!acquisition) {
                     IParameterSymbol? bound = BoundParameter(candidate, symbol, argument);
 
-                    if (bound == null || !model.HasProvidesCover(bound)) {
+                    if (bound == null || !model.ProvidesCover(bound)) {
                         continue;
                     }
                 }
 
-                // Names the value anywhere in the acquisition, including inside a collection of roots.
-                foreach (IdentifierNameSyntax mention in argument.DescendantNodesAndSelf()
-                             .OfType<IdentifierNameSyntax>()) {
-                    if (SymbolEqualityComparer.Default.Equals(
-                            semantics.GetSymbolInfo(mention, cancellationToken).Symbol,
-                            tracked)) {
-                        return true;
-                    }
+                // Names the value anywhere in the acquisition, including through a local list of roots the
+                // body fills before handing it over
+                if (model.NamesValue(argument.Expression, tracked, body, semantics)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // `List<Entity> cover = Sync.Snapshot();` early, `await Sync.Restore(cover)` after the re-entrant work: the
+    // restore re-establishes exactly what was held at the snapshot, so a value covered then is covered again.
+    // The snapshot has to predate the await that took the cover away, or it captured a set the value had already
+    // dropped out of.
+    private static bool RestoresSnapshotTakenWhileCovered(SyntaxNode body, int windowStart, int windowEnd,
+                                                          int coverHeldUntil, ISymbol tracked, CoverModel model,
+                                                          SemanticModel semantics, CancellationToken cancellationToken)
+    {
+        foreach (InvocationExpressionSyntax candidate in body.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
+            if (candidate.SpanStart < windowStart || candidate.SpanStart >= windowEnd ||
+                candidate.ArgumentList.Arguments.Count != 1) {
+                continue;
+            }
+
+            if (semantics.GetSymbolInfo(candidate, cancellationToken).Symbol is not IMethodSymbol restore ||
+                model.EffectOf(restore) != CoverEffect.Restore) {
+                continue;
+            }
+
+            if (semantics.GetSymbolInfo(candidate.ArgumentList.Arguments[0].Expression, cancellationToken)
+                    .Symbol is not ILocalSymbol snapshot) {
+                continue;
+            }
+
+            foreach (SyntaxReference reference in snapshot.DeclaringSyntaxReferences) {
+                if (reference.GetSyntax(cancellationToken) is not
+                    VariableDeclaratorSyntax { Initializer.Value : {} initializer } declarator ||
+                    declarator.SpanStart >= coverHeldUntil) {
+                    continue;
+                }
+
+                if (semantics.GetSymbolInfo(initializer, cancellationToken).Symbol is IMethodSymbol source &&
+                    model.EffectOf(source) == CoverEffect.Snapshot &&
+                    !DeclaredAtOrAfter(tracked, declarator.SpanStart, cancellationToken)) {
+                    return true;
                 }
             }
         }
@@ -757,15 +869,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            if (model.AcquiresCover(symbol)) {
-                return true;
-            }
-
-            if (!SymbolEqualityComparer.Default.Equals(symbol.ContainingType, model.SyncType)) {
-                continue;
-            }
-
-            if (IsAcquisitionName(symbol.Name)) {
+            if (model.AcquiresCover(symbol) || model.Acquires(symbol)) {
                 return true;
             }
         }
@@ -819,13 +923,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         return null;
     }
 
-    private static bool IsAcquisitionName(string name)
-    {
-        return name.StartsWith("Lock", System.StringComparison.Ordinal) ||
-               name.StartsWith("Widen", System.StringComparison.Ordinal) ||
-               name.StartsWith("Restore", System.StringComparison.Ordinal);
-    }
-
     private static SyntaxNode? EnclosingBody(SyntaxNode node)
     {
         for (SyntaxNode? current = node; current != null; current = current.Parent) {
@@ -838,48 +935,67 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     }
 
     // Resolved contract vocabulary for one compilation.
+    // Mirrors FOnline.CoverEffectKind: the analyzer reads the value the attribute carries, and the order is the
+    // contract between them
+    private enum CoverEffect
+    {
+        Replace,
+        Extend,
+        Restore,
+        Snapshot,
+        Release,
+    }
+
     private sealed class CoverModel
     {
-        private readonly INamedTypeSymbol _requiresCover;
-        private readonly INamedTypeSymbol? _providesCover;
+        private readonly Compilation CompilationContext;
+        private readonly ConcurrentDictionary<IMethodSymbol, bool> PreservingCache =
+            new ConcurrentDictionary<IMethodSymbol, bool>(SymbolEqualityComparer.Default);
+        private readonly ConcurrentDictionary<IParameterSymbol, bool> ProvidingCache =
+            new ConcurrentDictionary<IParameterSymbol, bool>(SymbolEqualityComparer.Default);
+        private readonly INamedTypeSymbol RequiresCoverAttribute;
+        private readonly INamedTypeSymbol? ProvidesCoverAttribute;
 
-        private readonly INamedTypeSymbol? _preservesCover;
-        private readonly INamedTypeSymbol? _returnsParent;
-        private readonly INamedTypeSymbol? _returnsAncestor;
-        private readonly INamedTypeSymbol? _acquiresCover;
-        private readonly INamedTypeSymbol? _passesCover;
+        private readonly INamedTypeSymbol? PreservesCoverAttribute;
+        private readonly INamedTypeSymbol? ReturnsParentAttribute;
+        private readonly INamedTypeSymbol? ReturnsAncestorAttribute;
+        private readonly INamedTypeSymbol? AcquiresCoverAttribute;
+        private readonly INamedTypeSymbol? PassesCoverAttribute;
+        private readonly INamedTypeSymbol? CoverEffectAttribute;
 
         // CoverReach.Parent and CoverReach.Ancestors, as the attribute's constructor argument carries them
         private const int ReachParent = 1 << 0;
         private const int ReachAncestors = 1 << 1;
-        private readonly INamedTypeSymbol _entityType;
+        private readonly INamedTypeSymbol EntityType;
 
-        private readonly List<INamedTypeSymbol> _entryMarkers;
+        private readonly List<INamedTypeSymbol> EntryMarkers;
 
-        public CoverModel(INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover,
+        public CoverModel(Compilation compilation, INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover,
                           INamedTypeSymbol? preservesCover, INamedTypeSymbol? returnsParent,
                           INamedTypeSymbol? returnsAncestor, INamedTypeSymbol? acquiresCover,
-                          INamedTypeSymbol? passesCover, INamedTypeSymbol entityType, INamedTypeSymbol? syncType,
-                          INamedTypeSymbol? gameType, INamedTypeSymbol? gameLockType,
+                          INamedTypeSymbol? passesCover, INamedTypeSymbol? coverEffect, INamedTypeSymbol entityType,
+                          INamedTypeSymbol? syncType, INamedTypeSymbol? gameType, INamedTypeSymbol? gameLockType,
                           List<INamedTypeSymbol> entryMarkers)
         {
-            _requiresCover = requiresCover;
-            _providesCover = providesCover;
-            _preservesCover = preservesCover;
-            _returnsParent = returnsParent;
-            _returnsAncestor = returnsAncestor;
-            _acquiresCover = acquiresCover;
-            _passesCover = passesCover;
-            _entityType = entityType;
+            CompilationContext = compilation;
+            RequiresCoverAttribute = requiresCover;
+            ProvidesCoverAttribute = providesCover;
+            PreservesCoverAttribute = preservesCover;
+            ReturnsParentAttribute = returnsParent;
+            ReturnsAncestorAttribute = returnsAncestor;
+            AcquiresCoverAttribute = acquiresCover;
+            PassesCoverAttribute = passesCover;
+            CoverEffectAttribute = coverEffect;
+            EntityType = entityType;
             SyncType = syncType;
             GameType = gameType;
             GameLockType = gameLockType;
-            _entryMarkers = entryMarkers;
+            EntryMarkers = entryMarkers;
         }
 
         public bool IsEntryPoint(IMethodSymbol method)
         {
-            foreach (INamedTypeSymbol marker in _entryMarkers) {
+            foreach (INamedTypeSymbol marker in EntryMarkers) {
                 if (HasAttribute(method.GetAttributes(), marker)) {
                     return true;
                 }
@@ -892,8 +1008,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         // Whether this compilation has any acquisition at all. `Sync` is declared on every target, but its
         // helpers exist only where entities are synchronized
-        public bool CanAcquireCover => SyncType != null && SyncType.GetMembers().OfType<IMethodSymbol>().Any(
-                                                               method => IsAcquisitionName(method.Name));
+        public bool CanAcquireCover => SyncType != null && SyncType.GetMembers().OfType<IMethodSymbol>().Any(Acquires);
 
         public INamedTypeSymbol? GameType { get; }
 
@@ -901,23 +1016,240 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         public bool HasRequiresCover(IParameterSymbol parameter)
         {
-            return HasAttribute(parameter.GetAttributes(), _requiresCover);
+            return HasAttribute(parameter.GetAttributes(), RequiresCoverAttribute);
         }
 
         // On a method the attribute names the receiver, which no parameter can express.
         public bool HasRequiresCoverOnMethod(IMethodSymbol method)
         {
-            return HasAttribute(method.GetAttributes(), _requiresCover);
+            return HasAttribute(method.GetAttributes(), RequiresCoverAttribute);
         }
 
         public bool HasProvidesCover(IParameterSymbol parameter)
         {
-            return _providesCover != null && HasAttribute(parameter.GetAttributes(), _providesCover);
+            return ProvidesCoverAttribute != null && HasAttribute(parameter.GetAttributes(), ProvidesCoverAttribute);
+        }
+
+        // Does handing the value to this parameter leave it covered when the call returns? Declared with
+        // [ProvidesCover], or proved from the callee's own body: an acquisition naming that parameter, taken
+        // where the method cannot return past it without having run it, and not undone by anything the body
+        // awaits afterwards. A conditional acquisition proves nothing -- a helper that widens only for a
+        // transport and returns true on every other path gives no guarantee at all -- so the shape is limited
+        // to a top-level acquisition and the guard form (`if (!await Sync...) { return; }`) that means the same.
+        public bool ProvidesCover(IParameterSymbol parameter)
+        {
+            return HasProvidesCover(parameter) || ProvidesCoverByBody(parameter, new Recursion());
+        }
+
+        private bool ProvidesCoverByBody(IParameterSymbol parameter, Recursion recursion)
+        {
+            IParameterSymbol definition = parameter.OriginalDefinition;
+
+            if (ProvidingCache.TryGetValue(definition, out bool cached)) {
+                return cached;
+            }
+
+            if (!recursion.Parameters.Add(definition)) {
+                recursion.HitCycle = true;
+
+                return false;
+            }
+
+            bool outerCycle = recursion.HitCycle;
+            recursion.HitCycle = false;
+            bool result = ComputesToProvidingBody(definition, recursion);
+            recursion.Parameters.Remove(definition);
+
+            if (result || !recursion.HitCycle) {
+                ProvidingCache[definition] = result;
+            }
+
+            recursion.HitCycle |= outerCycle;
+
+            return result;
+        }
+
+        private bool ComputesToProvidingBody(IParameterSymbol parameter, Recursion recursion)
+        {
+            if (parameter.ContainingSymbol is not IMethodSymbol method || !IsEntityish(parameter.Type)) {
+                return false;
+            }
+
+            foreach (SyntaxReference reference in method.DeclaringSyntaxReferences) {
+                SyntaxNode declaration = reference.GetSyntax();
+                SyntaxNode? body = declaration switch {
+                    BaseMethodDeclarationSyntax m => (SyntaxNode?)m.Body ?? m.ExpressionBody,
+                    LocalFunctionStatementSyntax f => (SyntaxNode?)f.Body ?? f.ExpressionBody,
+                    _ => null,
+                };
+
+                if (body == null || !CompilationContext.ContainsSyntaxTree(declaration.SyntaxTree)) {
+                    continue;
+                }
+
+                SemanticModel semantics = CompilationContext.GetSemanticModel(declaration.SyntaxTree);
+
+                foreach (InvocationExpressionSyntax candidate in body.DescendantNodes()
+                             .OfType<InvocationExpressionSyntax>()) {
+                    if (!AcquiresFor(candidate, parameter, body, semantics, recursion) ||
+                        !RunsOnEveryReturningPath(candidate, body, semantics)) {
+                        continue;
+                    }
+
+                    if (HoldsUntilReturn(candidate, parameter, body, semantics, recursion)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // An acquisition that names this parameter: `Sync` itself, or another method that provides for the
+        // parameter the value is handed to
+        private bool AcquiresFor(InvocationExpressionSyntax call, IParameterSymbol parameter, SyntaxNode body,
+                                 SemanticModel semantics, Recursion recursion)
+        {
+            if (semantics.GetSymbolInfo(call).Symbol is not IMethodSymbol callee) {
+                return false;
+            }
+
+            SeparatedSyntaxList<ArgumentSyntax> arguments = call.ArgumentList.Arguments;
+
+            for (int i = 0; i < arguments.Count; i++) {
+                if (!NamesValue(arguments[i].Expression, parameter, body, semantics)) {
+                    continue;
+                }
+
+                if (Acquires(callee)) {
+                    return true;
+                }
+
+                IParameterSymbol? bound = BoundParameter(call, callee, arguments[i]);
+
+                if (bound != null && (HasProvidesCover(bound) || ProvidesCoverByBody(bound, recursion))) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // The value named directly, or through a local collection the acquisition takes as its roots --
+        // `List<Entity> roots = new List<Entity> { cr, map }; await Sync.Widen(roots);` names both
+        public bool NamesValue(ExpressionSyntax expression, ISymbol value, SyntaxNode body, SemanticModel semantics)
+        {
+            foreach (IdentifierNameSyntax mention in expression.DescendantNodesAndSelf()
+                         .OfType<IdentifierNameSyntax>()) {
+                ISymbol? symbol = semantics.GetSymbolInfo(mention).Symbol;
+
+                if (SymbolEqualityComparer.Default.Equals(symbol?.OriginalDefinition, value.OriginalDefinition)) {
+                    return true;
+                }
+
+                if (symbol is not ILocalSymbol local || !IsEntityish(local.Type)) {
+                    continue;
+                }
+
+                foreach (SyntaxNode contribution in CollectionContributions(local, body, semantics)) {
+                    foreach (IdentifierNameSyntax inner in contribution.DescendantNodesAndSelf()
+                                 .OfType<IdentifierNameSyntax>()) {
+                        if (SymbolEqualityComparer.Default.Equals(
+                                semantics.GetSymbolInfo(inner).Symbol?.OriginalDefinition,
+                                value.OriginalDefinition)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // What a local collection was built from: its initializer plus every Add/AddRange on it in this body
+        private IEnumerable<SyntaxNode> CollectionContributions(ILocalSymbol local, SyntaxNode body,
+                                                                SemanticModel semantics)
+        {
+            foreach (SyntaxReference reference in local.DeclaringSyntaxReferences) {
+                if (reference.GetSyntax() is VariableDeclaratorSyntax { Initializer.Value : {} initializer }) {
+                    yield return initializer;
+                }
+            }
+
+            foreach (InvocationExpressionSyntax call in body.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
+                if (call.Expression is not MemberAccessExpressionSyntax access ||
+                    (access.Name.Identifier.ValueText != "Add" && access.Name.Identifier.ValueText != "AddRange") ||
+                    !SymbolEqualityComparer.Default.Equals(semantics.GetSymbolInfo(access.Expression).Symbol, local)) {
+                    continue;
+                }
+
+                foreach (ArgumentSyntax argument in call.ArgumentList.Arguments) {
+                    yield return argument.Expression;
+                }
+            }
+        }
+
+        // Only a statement of the body itself, or the condition of a guard whose branch never falls through, is
+        // run by every path that returns after it. Anything deeper -- a loop, an else, a switch section -- is a
+        // choice the caller cannot see, and a contract that holds only on one branch is not a contract
+        private bool RunsOnEveryReturningPath(SyntaxNode call, SyntaxNode body, SemanticModel semantics)
+        {
+            for (SyntaxNode? node = call; node != null && node != body; node = node.Parent) {
+                if (node is not StatementSyntax statement) {
+                    continue;
+                }
+
+                if (!ReferenceEquals(statement.Parent, body)) {
+                    return false;
+                }
+
+                if (statement is not IfStatementSyntax guard) {
+                    return true;
+                }
+
+                // The call sits in the guard's own condition, so it runs; the branch must take the failure away
+                if (!guard.Condition.Span.Contains(call.Span) || guard.Else != null) {
+                    return false;
+                }
+
+                ControlFlowAnalysis? flow = semantics.AnalyzeControlFlow(guard.Statement);
+
+                return flow != null && flow.Succeeded && !flow.EndPointIsReachable;
+            }
+
+            return false;
+        }
+
+        // Nothing awaited after the acquisition may take the cover away again: a later await either preserves
+        // what it found or names the value itself
+        private bool HoldsUntilReturn(SyntaxNode acquisition, IParameterSymbol parameter, SyntaxNode body,
+                                      SemanticModel semantics, Recursion recursion)
+        {
+            foreach (AwaitExpressionSyntax later in body.DescendantNodes().OfType<AwaitExpressionSyntax>()) {
+                if (later.SpanStart <= acquisition.SpanStart) {
+                    continue;
+                }
+
+                if (later.Expression is InvocationExpressionSyntax invocation &&
+                    AcquiresFor(invocation, parameter, body, semantics, recursion)) {
+                    continue;
+                }
+
+                if (semantics.GetSymbolInfo(later.Expression).Symbol is IMethodSymbol awaited &&
+                    PreservesCover(awaited)) {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
         }
 
         public bool HasProvidesCoverOnReturn(IMethodSymbol method)
         {
-            return _providesCover != null && HasAttribute(method.GetReturnTypeAttributes(), _providesCover);
+            return ProvidesCoverAttribute != null &&
+                   HasAttribute(method.GetReturnTypeAttributes(), ProvidesCoverAttribute);
         }
 
         // Baked map data and prototypes carry their own cover, so an obligation for one is already met.
@@ -958,15 +1290,222 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         // A script helper declared as an acquisition: it establishes cover through Sync for entities it names itself
         public bool AcquiresCover(IMethodSymbol method)
         {
-            return _acquiresCover != null && HasAttribute(method.GetAttributes(), _acquiresCover);
+            return AcquiresCoverAttribute != null && HasAttribute(method.GetAttributes(), AcquiresCoverAttribute);
         }
 
-        // Does awaiting this call give the caller back the cover it had?
+        // Does awaiting this call give the caller back the cover it had? Declared with [PreservesCover], or
+        // proved here from the callee's own body.
         public bool PreservesCover(IMethodSymbol method)
         {
-            return _preservesCover != null &&
-                   method.GetAttributes().Any(
-                       a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, _preservesCover));
+            if (PreservesCoverAttribute != null &&
+                method.GetAttributes().Any(
+                    a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, PreservesCoverAttribute))) {
+                return true;
+            }
+
+            return PreservesCoverByBody(method, new Recursion());
+        }
+
+        // `Sync.Widen` re-establishes the cover it found and adds to it, so a body whose every await widens --
+        // directly, or through another method this proves the same of -- hands the caller back everything it
+        // held. That is exactly what [PreservesCover] asserts, and proving it beats asking for it: the contract
+        // exists in hundreds of helpers that never wrote it down, and a proved fact cannot drift from the body
+        // the way a written one can. The annotation stays for what no body here shows -- a helper that locks and
+        // then restores the caller's snapshot, and anything compiled elsewhere.
+        //
+        // Conservative in one direction only: an await this cannot resolve, or a body outside this compilation,
+        // answers "does not preserve", which reports rather than hides.
+        private bool PreservesCoverByBody(IMethodSymbol method, Recursion recursion)
+        {
+            IMethodSymbol definition = method.OriginalDefinition;
+
+            if (PreservingCache.TryGetValue(definition, out bool cached)) {
+                return cached;
+            }
+
+            // A cycle proves nothing on its own: answer "no" for the recursive edge rather than assuming
+            if (!recursion.Methods.Add(definition)) {
+                recursion.HitCycle = true;
+
+                return false;
+            }
+
+            bool outerCycle = recursion.HitCycle;
+            recursion.HitCycle = false;
+            bool result = ComputesToPreservingBody(definition, recursion);
+            recursion.Methods.Remove(definition);
+
+            // A "no" that came out of a cycle edge depends on where the walk started, so it is not a fact to keep
+            if (result || !recursion.HitCycle) {
+                PreservingCache[definition] = result;
+            }
+
+            recursion.HitCycle |= outerCycle;
+
+            return result;
+        }
+
+        private bool ComputesToPreservingBody(IMethodSymbol method, Recursion recursion)
+        {
+            if (method.DeclaringSyntaxReferences.Length == 0) {
+                return false;
+            }
+
+            bool restoresAnything = false;
+
+            foreach (SyntaxReference reference in method.DeclaringSyntaxReferences) {
+                SyntaxNode declaration = reference.GetSyntax();
+                SyntaxNode? body = declaration switch {
+                    BaseMethodDeclarationSyntax m => (SyntaxNode?)m.Body ?? m.ExpressionBody,
+                    LocalFunctionStatementSyntax f => (SyntaxNode?)f.Body ?? f.ExpressionBody,
+                    _ => null,
+                };
+
+                if (body == null || !CompilationContext.ContainsSyntaxTree(declaration.SyntaxTree)) {
+                    return false;
+                }
+
+                SemanticModel semantics = CompilationContext.GetSemanticModel(declaration.SyntaxTree);
+
+                // Releasing the cover outright is the one way a body drops it without awaiting anything
+                foreach (InvocationExpressionSyntax call in body.DescendantNodes()
+                             .OfType<InvocationExpressionSyntax>()) {
+                    if (semantics.GetSymbolInfo(call).Symbol is IMethodSymbol released &&
+                        EffectOf(released) == CoverEffect.Release) {
+                        return false;
+                    }
+                }
+
+                foreach (AwaitExpressionSyntax await in body.DescendantNodes().OfType<AwaitExpressionSyntax>()) {
+                    if (semantics.GetSymbolInfo(await.Expression).Symbol is not IMethodSymbol awaited) {
+                        return false;
+                    }
+
+                    if (EffectOf(awaited) is {} effect) {
+                        if (effect != CoverEffect.Extend && !RestoresOwnSnapshot(await.Expression, body, semantics) &&
+                            !RepairedRightAfter(await, body, semantics)) {
+                            return false;
+                        }
+                    }
+                    else if (!PreservesCoverByBody(awaited, recursion) && !RepairedRightAfter(await, body, semantics)) {
+                        return false;
+                    }
+
+                    restoresAnything = true;
+                }
+            }
+
+            // A body that never awaits re-establishes nothing, and the rule's premise is that awaiting at all
+            // is what costs the caller its cover -- so only a body that puts it back counts as preserving
+            return restoresAnything;
+        }
+
+        // `List<Entity> cover = Sync.Snapshot(); ... await Sync.Restore(cover);` puts back what the body found,
+        // so the caller loses nothing across it
+        private bool RestoresOwnSnapshot(ExpressionSyntax call, SyntaxNode body, SemanticModel semantics)
+        {
+            if (call is not InvocationExpressionSyntax invocation ||
+                semantics.GetSymbolInfo(invocation).Symbol is not IMethodSymbol restore ||
+                EffectOf(restore) != CoverEffect.Restore || invocation.ArgumentList.Arguments.Count != 1) {
+                return false;
+            }
+
+            if (semantics.GetSymbolInfo(invocation.ArgumentList.Arguments[0].Expression)
+                    .Symbol is not ILocalSymbol snapshot) {
+                return false;
+            }
+
+            foreach (SyntaxReference reference in snapshot.DeclaringSyntaxReferences) {
+                if (reference.GetSyntax() is VariableDeclaratorSyntax { Initializer.Value : {} initializer } &&
+                    semantics.GetSymbolInfo(initializer).Symbol is IMethodSymbol source &&
+                    EffectOf(source) == CoverEffect.Snapshot) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // The other preserving shape, written out by hand where a callee is known to replace the cover: take the
+        // snapshot, run the re-entrant work, and put the snapshot back in the very next statement, leaving on
+        // failure. Nothing between the two can observe the gap, so the caller loses nothing across the whole body
+        private bool RepairedRightAfter(AwaitExpressionSyntax awaited, SyntaxNode body, SemanticModel semantics)
+        {
+            StatementSyntax? statement = null;
+
+            for (SyntaxNode? node = awaited; node != null && node != body; node = node.Parent) {
+                if (node is StatementSyntax candidate && candidate.Parent is BlockSyntax) {
+                    statement = candidate;
+                    break;
+                }
+            }
+
+            if (statement?.Parent is not BlockSyntax block) {
+                return false;
+            }
+
+            int index = block.Statements.IndexOf(statement);
+
+            if (index < 0 || index + 1 >= block.Statements.Count) {
+                return false;
+            }
+
+            foreach (AwaitExpressionSyntax repair in block.Statements[index + 1]
+                         .DescendantNodesAndSelf()
+                         .OfType<AwaitExpressionSyntax>()) {
+                if (RestoresOwnSnapshot(repair.Expression, body, semantics)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsSyncMethod(IMethodSymbol method)
+        {
+            return SyncType != null && SymbolEqualityComparer.Default.Equals(method.ContainingType, SyncType);
+        }
+
+        // What the call does to the held cover, as its own declaration states it. Reading the effect instead of
+        // the method's name is what keeps a rename a rename: nothing here recognises `Widen`, `Restore` or
+        // `Lock` as words
+        public CoverEffect? EffectOf(IMethodSymbol method)
+        {
+            if (CoverEffectAttribute == null) {
+                return null;
+            }
+
+            foreach (AttributeData attribute in method.OriginalDefinition.GetAttributes()) {
+                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, CoverEffectAttribute) ||
+                    attribute.ConstructorArguments.Length == 0 ||
+                    attribute.ConstructorArguments[0].Value is not int value) {
+                    continue;
+                }
+
+                return (CoverEffect)value;
+            }
+
+            return null;
+        }
+
+        // An acquisition is any effect that leaves the job holding something it can name
+        public bool Acquires(IMethodSymbol method)
+        {
+            CoverEffect? effect = EffectOf(method);
+
+            return effect is CoverEffect.Replace or CoverEffect.Extend or CoverEffect.Restore;
+        }
+
+        // One walk of the call graph: what it is standing in, and whether it had to cut a cycle to answer
+        private sealed class Recursion
+        {
+            public HashSet<IMethodSymbol> Methods { get; } = new HashSet<IMethodSymbol>(SymbolEqualityComparer.Default);
+
+            public HashSet<IParameterSymbol> Parameters {
+                get;
+            } = new HashSet<IParameterSymbol>(SymbolEqualityComparer.Default);
+
+            public bool HitCycle { get; set; }
         }
 
         public bool ComesFromProvidedCover(ExpressionSyntax expression, SemanticModel semantics,
@@ -981,7 +1520,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? ProvidedReach(ExpressionSyntax expression, SemanticModel semantics,
                                    CancellationToken cancellationToken)
         {
-            if (_providesCover == null) {
+            if (ProvidesCoverAttribute == null) {
                 return null;
             }
 
@@ -1012,9 +1551,9 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 }
 
                 // A pass-through hands back the very argument it was given, cover and reach included
-                if (expression is InvocationExpressionSyntax passThrough && _passesCover != null) {
+                if (expression is InvocationExpressionSyntax passThrough && PassesCoverAttribute != null) {
                     foreach (IParameterSymbol passed in direct.Parameters) {
-                        ExpressionSyntax? argument = HasAttribute(passed.GetAttributes(), _passesCover)
+                        ExpressionSyntax? argument = HasAttribute(passed.GetAttributes(), PassesCoverAttribute)
                                                        ? ArgumentFor(passThrough, direct, passed)
                                                        : null;
 
@@ -1108,10 +1647,10 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? UpwardReach(IMethodSymbol accessor, ExpressionSyntax receiver, SemanticModel semantics,
                                  CancellationToken cancellationToken)
         {
-            bool returnsParent =
-                _returnsParent != null && HasAttribute(accessor.GetReturnTypeAttributes(), _returnsParent);
-            bool returnsAncestor =
-                _returnsAncestor != null && HasAttribute(accessor.GetReturnTypeAttributes(), _returnsAncestor);
+            bool returnsParent = ReturnsParentAttribute != null &&
+                                 HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsParentAttribute);
+            bool returnsAncestor = ReturnsAncestorAttribute != null &&
+                                   HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsAncestorAttribute);
 
             if (!returnsParent && !returnsAncestor) {
                 return null;
@@ -1141,7 +1680,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? DeclaredReach(ImmutableArray<AttributeData> attributes)
         {
             foreach (AttributeData attribute in attributes) {
-                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, _providesCover)) {
+                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, ProvidesCoverAttribute)) {
                     continue;
                 }
 
@@ -1182,7 +1721,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? HandedOverReach(SyntaxNode body, ISymbol wanted, SemanticModel semantics,
                                      CancellationToken cancellationToken)
         {
-            if (_providesCover == null) {
+            if (ProvidesCoverAttribute == null) {
                 return null;
             }
 
@@ -1217,7 +1756,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private bool IsEntity(ITypeSymbol type)
         {
             for (ITypeSymbol? current = type; current != null; current = current.BaseType) {
-                if (SymbolEqualityComparer.Default.Equals(current, _entityType)) {
+                if (SymbolEqualityComparer.Default.Equals(current, EntityType)) {
                     return true;
                 }
             }

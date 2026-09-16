@@ -1193,11 +1193,11 @@ static void ValidateModelWorldExtent(const BakingSettings& settings, const Model
 
     float32_t extent = GetModelBoundsMaxAbsExtent(bounds);
 
-    if (extent > settings.ModelAttachmentMaxExtent) {
-        throw ModelInfoBakerException(too_large_message, what, fname, extent, settings.ModelAttachmentMaxExtent);
+    if (extent > settings.Baking.ModelAttachmentMaxExtent) {
+        throw ModelInfoBakerException(too_large_message, what, fname, extent, settings.Baking.ModelAttachmentMaxExtent);
     }
-    if (extent < settings.ModelAttachmentMinExtent) {
-        throw ModelInfoBakerException(too_small_message, what, fname, extent, settings.ModelAttachmentMinExtent);
+    if (extent < settings.Baking.ModelAttachmentMinExtent) {
+        throw ModelInfoBakerException(too_small_message, what, fname, extent, settings.Baking.ModelAttachmentMinExtent);
     }
 }
 
@@ -1832,7 +1832,7 @@ static auto GetModelBoundsMeasurement(const BakingSettings& settings) -> ModelBo
 {
     FO_STACK_TRACE_ENTRY();
 
-    return settings.PreciseModelBounds ? ModelBoundsMeasurement::PerVertex : ModelBoundsMeasurement::PerBoneEnvelope;
+    return settings.Baking.PreciseModelBounds ? ModelBoundsMeasurement::PerVertex : ModelBoundsMeasurement::PerBoneEnvelope;
 }
 
 // The client sizes its lighting frame from this envelope, so a centimetre-space aggregate must fail the bake
@@ -2188,7 +2188,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
     // Deterministic section order
     std::sort(fo3d_files.begin(), fo3d_files.end(), [](const File& a, const File& b) { return a.GetPath() < b.GetPath(); });
 
-    async_launch_mode async_mode = ctx.ForceSyncMode.value_or(ctx.Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred;
+    async_launch_mode async_mode = ctx.ForceSyncMode.value_or(ctx.Settings->Baking.SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred;
     ModelBoundsMeasurement measurement = GetModelBoundsMeasurement(*ctx.Settings);
     vector<std::future<ModelAnimationInfoSection>> section_bakings;
     section_bakings.reserve(fo3d_files.size());

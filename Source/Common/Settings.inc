@@ -38,7 +38,7 @@
 #endif
 
 ///@ ExportSettings Common
-SETTING_GROUP(CommonSettings, virtual BaseSettings);
+SETTING_GROUP(Common, virtual BaseSettings)
 FIXED_SETTING(string, Common, CommandLine); // Command line used to start the game (read only)
 FIXED_SETTING(vector<string>, Common, CommandLineArgs); // Command line arguments used to start the game (read only)
 FIXED_SETTING(string, Common, GameName, "FOnline"); // Game name, used in logs and window title
@@ -51,34 +51,39 @@ FIXED_SETTING(bool, Common, Packaged); // If yes, then the packaging was done (r
 FIXED_SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
 FIXED_SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
 FIXED_SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
-SETTING_GROUP_END();
+SETTING_GROUP_END(Common);
 
 ///@ ExportSettings Common
-SETTING_GROUP(ScriptSettings, virtual BaseSettings);
-FIXED_SETTING(int32_t, Script, AngelScriptOverrunReportTime); // Time in milliseconds to report AngelScript execution or entity-lock wait overrun, 0 to disable
-FIXED_SETTING(bool, Script, AngelScriptDebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
-FIXED_SETTING(string, Script, AngelScriptDebuggerBindHost, "127.0.0.1"); // AngelScript debugger TCP bind host
-FIXED_SETTING(vector<string>, Script, AngelScriptMutableGlobalsAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
-FIXED_SETTING(vector<string>, Script, AngelScriptAttributedFunctionDirectCallAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
-FIXED_SETTING(vector<string>, Script, AngelScriptExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
-FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
-FIXED_SETTING(string, Script, ManagedScriptProjectName, "FOnline"); // Managed project base name
-FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
-FIXED_SETTING(string, Script, ManagedScriptMsBuild, "dotnet msbuild"); // Managed msbuild command
-FIXED_SETTING(vector<string>, Script, ManagedScriptDirs, "Engine/Source/Scripting/Managed/CoreScripts", "Scripts"); // Managed script source directories, top-level .cs files of each are compiled in place
-FIXED_SETTING(string, Script, ManagedScriptGeneratedDir); // Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)
-FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
-FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
-FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzers); // Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build
-FIXED_SETTING(vector<string>, Script, ManagedScriptAnalyzerPackages); // Roslyn analyzer NuGet packages as 'name,version' entries, version is mandatory and must be exact
-FIXED_SETTING(vector<string>, Script, ManagedScriptAdditionalFiles); // Analyzer configuration file paths passed to the script compilation as AdditionalFiles
-FIXED_SETTING(string, Script, ManagedScriptAnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
-FIXED_SETTING(string, Script, ManagedScriptAnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
-FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
-SETTING_GROUP_END();
+SETTING_GROUP(AngelScript, virtual BaseSettings)
+FIXED_SETTING(int32_t, AngelScript, OverrunReportTime); // Time in milliseconds to report AngelScript execution or entity-lock wait overrun, 0 to disable
+FIXED_SETTING(bool, AngelScript, DebuggerEnabled, false); // If true, AngelScript debugger endpoint is enabled
+FIXED_SETTING(string, AngelScript, DebuggerBindHost, "127.0.0.1"); // AngelScript debugger TCP bind host
+FIXED_SETTING(vector<string>, AngelScript, MutableGlobalsAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
+FIXED_SETTING(vector<string>, AngelScript, AttributedFunctionDirectCallAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
+FIXED_SETTING(vector<string>, AngelScript, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+SETTING_GROUP_END(AngelScript);
 
 ///@ ExportSettings Common
-SETTING_GROUP(NetworkSettings, virtual BaseSettings);
+SETTING_GROUP(ManagedScript, virtual BaseSettings)
+FIXED_SETTING(int32_t, ManagedScript, OverrunReportTime); // Time in milliseconds to report managed script execution or entity-lock wait overrun, 0 to disable
+FIXED_SETTING(vector<string>, ManagedScript, Assemblies, "FOnline"); // Managed script assemblies to build
+FIXED_SETTING(string, ManagedScript, ProjectName, "FOnline"); // Managed project base name
+FIXED_SETTING(string, ManagedScript, TargetFramework, "net10.0"); // Managed project target framework
+FIXED_SETTING(string, ManagedScript, MsBuild, "dotnet msbuild"); // Managed msbuild command
+FIXED_SETTING(vector<string>, ManagedScript, Dirs, "Engine/Source/Scripting/Managed/CoreScripts", "Scripts"); // Managed script source directories, top-level .cs files of each are compiled in place
+FIXED_SETTING(string, ManagedScript, GeneratedDir); // Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)
+FIXED_SETTING(vector<string>, ManagedScript, ExtraSources); // Extra managed source files as 'assembly,target,path' entries
+FIXED_SETTING(vector<string>, ManagedScript, ExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
+FIXED_SETTING(vector<string>, ManagedScript, Analyzers); // Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build
+FIXED_SETTING(vector<string>, ManagedScript, AnalyzerPackages); // Roslyn analyzer NuGet packages as 'name,version' entries, version is mandatory and must be exact
+FIXED_SETTING(vector<string>, ManagedScript, AdditionalFiles); // Analyzer configuration file paths passed to the script compilation as AdditionalFiles
+FIXED_SETTING(string, ManagedScript, AnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
+FIXED_SETTING(string, ManagedScript, AnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
+FIXED_SETTING(bool, ManagedScript, BakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
+SETTING_GROUP_END(ManagedScript);
+
+///@ ExportSettings Common
+SETTING_GROUP(Network, virtual BaseSettings)
 FIXED_SETTING(int32_t, Network, ServerPort, 4000); // Server port number
 FIXED_SETTING(int32_t, Network, WebSocketPort, 4001); // WebSockets port for server listen and client connect
 FIXED_SETTING(int32_t, Network, NetBufferSize, 4096); // Network buffer size
@@ -100,10 +105,10 @@ FIXED_SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch rand
 FIXED_SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 FIXED_SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
 FIXED_SETTING(string, Network, ForceMetadataVersion, ""); // Custom metadata version, for simulating a client baked apart from the server
-SETTING_GROUP_END();
+SETTING_GROUP_END(Network);
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
+SETTING_GROUP(ServerNetwork, virtual NetworkSettings)
 FIXED_SETTING(bool, ServerNetwork, DisableNetworking, false); // If true, server networking listeners are not started
 FIXED_SETTING(bool, ServerNetwork, EnableUdp, false); // If true, UDP listener is enabled for native clients
 FIXED_SETTING(bool, ServerNetwork, RejectUdpConnections, false); // If true, UDP listener silently drops incoming Connect packets so clients fall back to TCP (debug aid)
@@ -123,10 +128,10 @@ FIXED_SETTING(int32_t, ServerNetwork, ListenRetryTime, 30000); // Time in millis
 FIXED_SETTING(int32_t, ServerNetwork, ListenRetryDelay, 500); // Delay in milliseconds between listener bind attempts
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 FIXED_SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
-SETTING_GROUP_END();
+SETTING_GROUP_END(ServerNetwork);
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
+SETTING_GROUP(ClientNetwork, virtual NetworkSettings)
 FIXED_SETTING(string, ClientNetwork, ServerHost, "127.0.0.1"); // Server host address
 FIXED_SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server host for client connect
 FIXED_SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
@@ -138,19 +143,19 @@ VARIABLE_SETTING(string, ClientNetwork, ProxyUser, ""); // Proxy username
 VARIABLE_SETTING(string, ClientNetwork, ProxyPass, ""); // Proxy password
 VARIABLE_SETTING(int32_t, ClientNetwork, Ping); // Network ping (read only)
 VARIABLE_SETTING(bool, ClientNetwork, DebugNet, false); // If true, network debugging is enabled
-SETTING_GROUP_END();
+SETTING_GROUP_END(ClientNetwork);
 
 ///@ ExportSettings Client
-SETTING_GROUP(AudioSettings, virtual BaseSettings);
+SETTING_GROUP(Audio, virtual BaseSettings)
 VARIABLE_SETTING(bool, Audio, DisableAudio, false); // If true, audio is disabled
 VARIABLE_SETTING(int32_t, Audio, SoundVolume, 100); // Sound volume percentage
 VARIABLE_SETTING(int32_t, Audio, MusicVolume, 100); // Music volume percentage
 FIXED_SETTING(vector<string>, Audio, SoundFileExtensions, "wav", "ogg"); // Source extensions the sound-name index accepts; every baked payload is Ogg Vorbis whatever the extension says
 FIXED_SETTING(int32_t, Audio, MixRate, 44100); // Sample rate the engine mixes at before handing the stream to the device, which resamples if it runs at another one
-SETTING_GROUP_END();
+SETTING_GROUP_END(Audio);
 
 ///@ ExportSettings Client
-SETTING_GROUP(ViewSettings, virtual BaseSettings);
+SETTING_GROUP(View, virtual BaseSettings)
 VARIABLE_SETTING(int32_t, View, ScreenWidth, 1024); // Screen width in pixels
 VARIABLE_SETTING(int32_t, View, ScreenHeight, 768); // Screen height in pixels
 FIXED_SETTING(int32_t, View, MonitorWidth); // Monitor width (read only)
@@ -165,10 +170,10 @@ FIXED_SETTING(bool, View, DisableFog); // Disables fog for more performance
 FIXED_SETTING(vector<int32_t>, View, GlobalDayColorTime, 300, 600, 1140, 1380); // Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime
 FIXED_SETTING(vector<uint8_t>, View, GlobalDayColor, 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29); // Project-wide default DayColor (12 bytes, channel-major: R0..R3 G0..G3 B0..B3); maps may override per-map via Map.DayColor
 FIXED_SETTING(bool, View, DisableIndoorMask, false); // If true, MapView skips the _rtIndoorMask render pass (saves a sprite-draw + RT swap per frame). Use for projects without weather, or to debug-see weather through hidden roofs.
-SETTING_GROUP_END();
+SETTING_GROUP_END(View);
 
 ///@ ExportSettings Common
-SETTING_GROUP(GeometrySettings, virtual BaseSettings);
+SETTING_GROUP(Geometry, virtual BaseSettings)
 FIXED_SETTING(bool, Geometry, MapHexagonal); // Hexagonal map grid (read only)
 FIXED_SETTING(bool, Geometry, MapSquare); // Square map grid (read only)
 FIXED_SETTING(int32_t, Geometry, MapDirCount); // Directions count (read only)
@@ -183,18 +188,18 @@ FIXED_SETTING(bool, Geometry, MapSmoothPath, true); // Enable pathfinding path s
 FIXED_SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
 FIXED_SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 FIXED_SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
-SETTING_GROUP_END();
+SETTING_GROUP_END(Geometry);
 
 ///@ ExportSettings Common
-SETTING_GROUP(SpriteMeshSettings, virtual BaseSettings);
+SETTING_GROUP(SpriteMesh, virtual BaseSettings)
 FIXED_SETTING(bool, SpriteMesh, Enabled, false); // If true, polygonal sprite meshes are generated during image baking
 FIXED_SETTING(int32_t, SpriteMesh, AlphaThreshold, 0); // Minimum alpha excluded from sprite mesh geometry (0-254)
 FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles, 4096); // Maximum triangle budget searched across whole-sprite, per-component, and detailed mesh candidates
 FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight, 32.0f); // Score awarded for removing a full frame area; one point offsets one submitted triangle
-SETTING_GROUP_END();
+SETTING_GROUP_END(SpriteMesh);
 
 ///@ ExportSettings Common
-SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
+SETTING_GROUP(Render, virtual ViewSettings, virtual GeometrySettings)
 FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
 FIXED_SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone to fo3d settings)
@@ -246,10 +251,10 @@ FIXED_SETTING(int32_t, Render, ImGuiFontTextureSize, 256); // Minimum ImGui text
 FIXED_SETTING(int32_t, Render, SpriteHitValue, 127); // If alpha is greather then hit test is passed
 FIXED_SETTING(string, Render, CritterStubSpriteName, ""); // Fallback critter sprite, empty value uses built-in runtime dummy sprite
 FIXED_SETTING(string, Render, ItemStubSpriteName, ""); // Fallback item sprite, empty value uses built-in runtime dummy sprite
-SETTING_GROUP_END();
+SETTING_GROUP_END(Render);
 
 ///@ ExportSettings Client
-SETTING_GROUP(WebSettings, virtual RenderSettings);
+SETTING_GROUP(Web, virtual RenderSettings)
 FIXED_SETTING(bool, Web, AutoResize, true); // If true, web screen resolution is recalculated on browser window resize
 FIXED_SETTING(string, Web, LoadingImage, ""); // Loading image path for web page, relative to main fomain file
 FIXED_SETTING(string, Web, BackgroundColor, "rgb(0, 0, 0)"); // Background color for the web page around the game screen
@@ -261,10 +266,10 @@ FIXED_SETTING(int32_t, Web, MinWidth, 1024); // Minimum adaptive web width in pi
 FIXED_SETTING(int32_t, Web, MinHeight, 768); // Minimum adaptive web height in pixels
 FIXED_SETTING(int32_t, Web, MaxWidth, 1920); // Maximum adaptive web width in pixels
 FIXED_SETTING(int32_t, Web, MaxHeight, 1080); // Maximum adaptive web height in pixels
-SETTING_GROUP_END();
+SETTING_GROUP_END(Web);
 
 ///@ ExportSettings Server
-SETTING_GROUP(AndroidSettings, virtual BaseSettings);
+SETTING_GROUP(Android, virtual BaseSettings)
 FIXED_SETTING(string, Android, PackageName, "com.fonline.app"); // Android application package name for packaging tools
 FIXED_SETTING(int32_t, Android, VersionCode, 1); // Android application version code for packaging tools
 FIXED_SETTING(int32_t, Android, MinSdk, 23); // Android minimum supported SDK level for packaging tools
@@ -276,22 +281,22 @@ FIXED_SETTING(string, Android, Keystore, ""); // Android release signing keystor
 FIXED_SETTING(string, Android, KeystorePassword, ""); // Android release signing keystore password for packaging tools
 FIXED_SETTING(string, Android, KeyAlias, ""); // Android release signing key alias for packaging tools
 FIXED_SETTING(string, Android, KeyPassword, ""); // Android release signing key password for packaging tools
-SETTING_GROUP_END();
+SETTING_GROUP_END(Android);
 
 ///@ ExportSettings Server
-SETTING_GROUP(PackagingSettings, virtual AndroidSettings, virtual WebSettings);
+SETTING_GROUP(Packaging, virtual AndroidSettings, virtual WebSettings)
 FIXED_SETTING(string, Packaging, CodeSigningHook, ""); // Windows code signing hook executable path for packaging tools
 FIXED_SETTING(string, Packaging, AppIcon, ""); // Windows application ICO source path for packaging tools
 FIXED_SETTING(string, Packaging, MsiUpgradeCode, ""); // Windows MSI installer upgrade GUID for packaging tools, must never change once an MSI has shipped
-SETTING_GROUP_END();
+SETTING_GROUP_END(Packaging);
 
 ///@ ExportSettings Common
-SETTING_GROUP(TimerSettings, virtual BaseSettings);
+SETTING_GROUP(Timer, virtual BaseSettings)
 FIXED_SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in milliseconds
-SETTING_GROUP_END();
+SETTING_GROUP_END(Timer);
 
 ///@ ExportSettings Common
-SETTING_GROUP(BakingSettings, virtual ScriptSettings, virtual SpriteMeshSettings, virtual BaseSettings);
+SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual BaseSettings)
 FIXED_SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 FIXED_SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 FIXED_SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
@@ -315,23 +320,23 @@ FIXED_SETTING(int32_t, Baking, CompressLevel, 1); // Deflate level baking compre
 FIXED_SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
 FIXED_SETTING(int32_t, Baking, ZipCompressLevel, 1); // Deflate level for distribution zip archives and the executable's Embedded resource pack (0-9)
 FIXED_SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
-SETTING_GROUP_END();
+SETTING_GROUP_END(Baking);
 
 ///@ ExportSettings Server
-SETTING_GROUP(CritterSettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
+SETTING_GROUP(Critter, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings)
 FIXED_SETTING(int32_t, Critter, MaxAddUnstackableItems, 10); // Maximum number of unstackable items to add
 FIXED_SETTING(vector<bool>, Critter, CritterSlotEnabled, true, true); // Critter slot enabled flags
 FIXED_SETTING(vector<bool>, Critter, CritterSlotSendData, false, true); // Critter slot send data flags
 FIXED_SETTING(vector<bool>, Critter, CritterSlotMultiItem, true, false); // Critter slot multi-item flags
-SETTING_GROUP_END();
+SETTING_GROUP_END(Critter);
 
 ///@ ExportSettings Client
-SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
+SETTING_GROUP(CritterView, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings)
 FIXED_SETTING(int32_t, CritterView, NameOffset, 0); // Name offset value
-SETTING_GROUP_END();
+SETTING_GROUP_END(CritterView);
 
 ///@ ExportSettings Client
-SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings);
+SETTING_GROUP(Hex, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings)
 FIXED_SETTING(int32_t, Hex, ScrollFixedDt, 10); // Scroll fixed delta time in milliseconds
 FIXED_SETTING(int32_t, Hex, ScrollSpeed, 1200); // Scroll speed in pixels per second
 FIXED_SETTING(int32_t, Hex, ZoomSpeed, 100); // Speed of zooming
@@ -354,10 +359,10 @@ VARIABLE_SETTING(bool, Hex, ShowWall, true); // If true, walls are shown
 VARIABLE_SETTING(bool, Hex, ShowCrit, true); // If true, critters are shown
 VARIABLE_SETTING(bool, Hex, ShowFast, true); // If true, fast mode is enabled
 FIXED_SETTING(int32_t, Hex, ScrollBlockSize, 1); // Blocked hexes around scroll block line
-SETTING_GROUP_END();
+SETTING_GROUP_END(Hex);
 
 ///@ ExportSettings Common
-SETTING_GROUP(PlatformSettings, virtual BaseSettings);
+SETTING_GROUP(Platform, virtual BaseSettings)
 FIXED_SETTING(bool, Platform, WebBuild); // Web build (read only)
 FIXED_SETTING(bool, Platform, WindowsBuild); // Windows build (read only)
 FIXED_SETTING(bool, Platform, LinuxBuild); // Linux build (read only)
@@ -366,10 +371,10 @@ FIXED_SETTING(bool, Platform, AndroidBuild); // Android build (read only)
 FIXED_SETTING(bool, Platform, IOsBuild); // iOS build (read only)
 FIXED_SETTING(bool, Platform, DesktopBuild); // Desktop build (read only)
 FIXED_SETTING(bool, Platform, TabletBuild); // Tablet build (read only)
-SETTING_GROUP_END();
+SETTING_GROUP_END(Platform);
 
 ///@ ExportSettings Server
-SETTING_GROUP(DataBaseSettings, virtual CommonSettings);
+SETTING_GROUP(DataBase, virtual CommonSettings)
 FIXED_SETTING(bool, DataBase, OpLogEnabled, true); // If true, pending database changes are mirrored to oplog for recovery; if false, any database write failure causes immediate panic
 FIXED_SETTING(string, DataBase, OpLogPath, "DbPendingChanges.oplog"); // Pending database changes oplog path; committed replay progress path is derived as this value plus -committed
 FIXED_SETTING(int32_t, DataBase, ReconnectRetryPeriod, 1000); // Database backend retry period in milliseconds while oplog mode is active
@@ -378,17 +383,17 @@ FIXED_SETTING(int32_t, DataBase, PanicShutdownTimeout, 5000); // Graceful shutdo
 FIXED_SETTING(int32_t, DataBase, JsonIndent, 4); // JSON backend indentation, 0 for compact output
 FIXED_SETTING(string, DataBase, MongoEscapeChar, ":"); // Single character used to replace dots in Mongo document keys
 FIXED_SETTING(vector<string>, DataBase, CustomCollections); // Space-separated user-defined database collections in format CollectionName:Int or CollectionName:Str
-SETTING_GROUP_END();
+SETTING_GROUP_END(DataBase);
 
 ///@ ExportSettings Client
-SETTING_GROUP(InputSettings, virtual BaseSettings);
+SETTING_GROUP(Input, virtual BaseSettings)
 VARIABLE_SETTING(bool, Input, DisableGamepad, false); // If true, gamepad support is disabled
 VARIABLE_SETTING(int32_t, Input, DoubleClickTime, 500); // Double-click time in milliseconds
 VARIABLE_SETTING(int32_t, Input, ConsoleHistorySize, 100); // Console history size
-SETTING_GROUP_END();
+SETTING_GROUP_END(Input);
 
 ///@ ExportSettings Client
-SETTING_GROUP(MapperSettings, virtual BakingSettings);
+SETTING_GROUP(Mapper, virtual BakingSettings)
 FIXED_SETTING(string, Mapper, StartMap, ""); // Start map name
 VARIABLE_SETTING(int32_t, Mapper, StartHexX, -1); // Start hex X coordinate
 VARIABLE_SETTING(int32_t, Mapper, StartHexY, -1); // Start hex Y coordinate
@@ -397,10 +402,10 @@ VARIABLE_SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resourc
 VARIABLE_SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
 VARIABLE_SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
 VARIABLE_SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
-SETTING_GROUP_END();
+SETTING_GROUP_END(Mapper);
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
+SETTING_GROUP(Client, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings)
 FIXED_SETTING(int32_t, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32_t, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
@@ -411,10 +416,10 @@ VARIABLE_SETTING(string, Client, Language, "engl"); // Language setting
 VARIABLE_SETTING(bool, Client, WinNotify, true); // If true, Windows notifications are enabled
 VARIABLE_SETTING(bool, Client, SoundNotify, false); // If true, sound notifications are enabled
 VARIABLE_SETTING(bool, Client, HelpInfo, false); // If true, help information is shown
-SETTING_GROUP_END();
+SETTING_GROUP_END(Client);
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings, virtual PackagingSettings);
+SETTING_GROUP(Server, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings, virtual PackagingSettings)
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled
@@ -437,7 +442,7 @@ FIXED_SETTING(int32_t, Server, ConnectionProcessPeriodMs, 100); // Player / unlo
 FIXED_SETTING(int32_t, Server, CritterMovingPeriodMs, 50); // Critter movement-step job period in milliseconds
 FIXED_SETTING(int32_t, Server, HealthFilePeriodMs, 300); // Health-file refresh job period in milliseconds
 FIXED_SETTING(int32_t, Server, ShutdownGraceMs, 5000); // Grace period in milliseconds for in-flight worker jobs to drain on shutdown before parked entity-lock waiters are force-aborted
-SETTING_GROUP_END();
+SETTING_GROUP_END(Server);
 
 #undef FIXED_SETTING
 #undef VARIABLE_SETTING

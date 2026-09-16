@@ -310,7 +310,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DumpAtlases(ptr<ClientEngine> client)
 {
-    client->SprMngr.GetAtlasMngr()->DumpAtlases(client->Settings->UserWritablePath);
+    client->SprMngr.GetAtlasMngr()->DumpAtlases(client->Settings->Common.UserWritablePath);
 }
 
 ///@ ExportMethod
@@ -332,7 +332,7 @@ FO_SCRIPT_API void Client_Game_DrawMiniMap(ptr<ClientEngine> client, int32_t zoo
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_RefreshAlwaysOnTop(ptr<ClientEngine> client)
 {
-    client->SprMngr.SetAlwaysOnTop(client->Settings->AlwaysOnTop);
+    client->SprMngr.SetAlwaysOnTop(client->Settings->Render.AlwaysOnTop);
 }
 
 ///@ ExportMethod
@@ -610,15 +610,21 @@ FO_SCRIPT_API vector<string> Client_Game_GetSoundNames(ptr<ClientEngine> client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
+FO_SCRIPT_API uint32_t Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
 {
     return client->AudioMngr.PlaySound(soundName);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)
+FO_SCRIPT_API uint32_t Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)
 {
     return client->AudioMngr.PlaySound(soundName, attenuation, pan);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_UpdateSound(ptr<ClientEngine> client, uint32_t soundId, float32_t attenuation, float32_t pan)
+{
+    return client->AudioMngr.UpdateSound(soundId, attenuation, pan);
 }
 
 ///@ ExportMethod
@@ -1507,10 +1513,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
-    int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
-    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
-    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
+    int32_t l = std::clamp(pos.x, 0, client->Settings->View.ScreenWidth);
+    int32_t t = std::clamp(pos.y, 0, client->Settings->View.ScreenHeight);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->View.ScreenWidth);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->View.ScreenHeight);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1534,10 +1540,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 
     rt->SetCustomDrawEffect(effect);
 
-    int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
-    int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
-    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
-    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
+    int32_t l = std::clamp(pos.x, 0, client->Settings->View.ScreenWidth);
+    int32_t t = std::clamp(pos.y, 0, client->Settings->View.ScreenHeight);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->View.ScreenWidth);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->View.ScreenHeight);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1550,14 +1556,14 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    frect32 from = frect32(std::clamp(fromX, 0, client->Settings->ScreenWidth), //
-        std::clamp(fromY, 0, client->Settings->ScreenHeight), //
-        std::clamp(fromW, 0, client->Settings->ScreenWidth - fromX), //
-        std::clamp(fromH, 0, client->Settings->ScreenHeight - fromY));
-    irect32 to = irect32(std::clamp(toX, 0, client->Settings->ScreenWidth), //
-        std::clamp(toY, 0, client->Settings->ScreenHeight), //
-        std::clamp(toW, 0, client->Settings->ScreenWidth - toX), //
-        std::clamp(toH, 0, client->Settings->ScreenHeight - toY));
+    frect32 from = frect32(std::clamp(fromX, 0, client->Settings->View.ScreenWidth), //
+        std::clamp(fromY, 0, client->Settings->View.ScreenHeight), //
+        std::clamp(fromW, 0, client->Settings->View.ScreenWidth - fromX), //
+        std::clamp(fromH, 0, client->Settings->View.ScreenHeight - fromY));
+    irect32 to = irect32(std::clamp(toX, 0, client->Settings->View.ScreenWidth), //
+        std::clamp(toY, 0, client->Settings->View.ScreenHeight), //
+        std::clamp(toW, 0, client->Settings->View.ScreenWidth - toX), //
+        std::clamp(toH, 0, client->Settings->View.ScreenHeight - toY));
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -1601,7 +1607,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    string path = fs::make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(client->Settings->Common.UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
@@ -1616,7 +1622,7 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
 {
-    string path = fs::make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(client->Settings->Common.UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {

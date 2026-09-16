@@ -54,6 +54,13 @@ static auto MakeManagedRuntimeCacheKey(const vector<ManagedRuntimeResource>& run
 static auto IsSameManagedRuntimeCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> data) -> bool;
 static auto IsSameManagedRuntimeCache(const std::filesystem::path& cache_root, const vector<ManagedRuntimeResource>& runtime_resources) -> bool;
 
+auto MakeManagedAssemblyResourceDir(string_view target_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex("Assemblies/Assemblies-{}", strex(target_name).lower()).str();
+}
+
 auto FindManagedRuntimeDirectory() -> optional<std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();

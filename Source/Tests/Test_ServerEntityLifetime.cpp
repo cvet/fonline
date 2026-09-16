@@ -47,11 +47,11 @@ static auto MakeServerEntityLifetimeSettings() -> GlobalSettings
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
     BakerTests::ApplySelfContainedServerSettings(settings);
-    BakerTests::OverrideSetting(settings.DbStorage, string {"Memory"});
-    BakerTests::OverrideSetting(settings.WriteHealthFile, false);
-    BakerTests::OverrideSetting(settings.WorkerThreads, int32_t {1});
-    BakerTests::OverrideSetting(settings.Packaged, false);
-    BakerTests::OverrideSetting(settings.BakeOutput, string {});
+    BakerTests::OverrideSetting(settings.Server.DbStorage, string {"Memory"});
+    BakerTests::OverrideSetting(settings.Server.WriteHealthFile, false);
+    BakerTests::OverrideSetting(settings.Server.WorkerThreads, int32_t {1});
+    BakerTests::OverrideSetting(settings.Common.Packaged, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
     return settings;
 }
 

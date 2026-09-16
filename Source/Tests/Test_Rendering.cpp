@@ -74,8 +74,8 @@ TEST_CASE("NullRenderer")
 {
     Null_Renderer renderer;
     GlobalSettings settings {false};
-    settings.ScreenWidth = 320;
-    settings.ScreenHeight = 200;
+    settings.View.ScreenWidth = 320;
+    settings.View.ScreenHeight = 200;
     renderer.Init(settings, nullptr);
 
     SECTION("TextureReadWriteAndClear")

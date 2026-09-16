@@ -188,7 +188,7 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t c
 
     // Non-stacked items
     if (!proto->GetStackable() && count > 1) {
-        int32_t fixed_count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+        int32_t fixed_count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
         for (int32_t i = 0; i < fixed_count; i++) {
             (void)add_item();
@@ -280,10 +280,16 @@ auto ItemManager::SplitItem(ptr<Item> item, int32_t count) -> nptr<Item>
         return nullptr;
     }
 
-    int32_t fresh_count = item->GetCount();
-    item->SetCount(fresh_count - count);
-    FO_VERIFY_AND_THROW(!new_item->IsDestroyed(), "Newly split item is already destroyed");
+    ChangeItemStackCount(item, -count, nullptr);
 
+    // The stack change event re-enters scripts and the freshly split item is reachable there; giving the debited
+    // units back to the source keeps a split the scripts refused lossless
+    if (new_item->IsDestroyed() || new_item->IsDestroying()) {
+        ChangeItemStackCount(item, count, nullptr);
+        return nullptr;
+    }
+
+    FO_VERIFY_AND_THROW(new_item->GetOwnership() == ItemOwnership::Nowhere, "Item stack change event gave the split item a holder", new_item->GetId());
     return new_item;
 }
 
@@ -291,11 +297,61 @@ void ItemManager::RestoreSplitItem(ptr<Item> item, ptr<Item> splitted_item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!item->IsDestroyed() && item->GetProtoId() == splitted_item->GetProtoId()) {
-        item->SetCount(item->GetCount() + splitted_item->GetCount());
+    // The split item carries a copy of the source properties rather than units taken out of them, so the rollback
+    // returns the count alone and never offers it as an absorbed item
+    if (!item->IsDestroyed() && !item->IsDestroying() && item->GetProtoId() == splitted_item->GetProtoId()) {
+        ChangeItemStackCount(item, splitted_item->GetCount(), nullptr);
     }
 
     DestroyItem(splitted_item);
+}
+
+void ItemManager::ChangeItemStackCount(ptr<Item> stack, int32_t count_diff, nptr<Item> absorbed_item)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    EnsureEntitySynced(stack);
+    auto stack_holder = stack.hold_ref();
+    auto absorbed_item_holder = absorbed_item.try_hold_ref();
+    ignore_unused(stack_holder);
+    ignore_unused(absorbed_item_holder);
+
+    FO_VERIFY_AND_THROW(!absorbed_item || count_diff > 0, "Absorbed item without incoming units", count_diff);
+    int32_t result_count = stack->GetCount() + count_diff;
+    FO_VERIFY_AND_THROW(result_count > 0, "Stack count change leaves no units", stack->GetId(), stack->GetCount(), count_diff);
+
+    nptr<Entity> holder = nullptr;
+
+    if (stack->GetOwnership() != ItemOwnership::Nowhere) {
+        holder = GetItemHolder(stack);
+    }
+
+    auto holder_holder = holder.try_hold_ref();
+    ignore_unused(holder_holder);
+    ItemOwnership absorbed_ownership = absorbed_item ? absorbed_item->GetOwnership() : ItemOwnership::Nowhere;
+
+    stack->SetCount(result_count);
+
+    if (count_diff != 0) {
+        _engine->OnItemStackChanged.Fire(stack, count_diff, absorbed_item);
+    }
+
+    // The absorbed units already count in the stack, so the item that carried them goes before a check can throw
+    if (absorbed_item && !absorbed_item->IsDestroyed()) {
+        FO_VERIFY_AND_THROW(absorbed_item->GetOwnership() == absorbed_ownership, "Item stack change event moved the absorbed item", absorbed_item->GetId());
+        DestroyItem(absorbed_item);
+    }
+
+    // The event re-enters scripts, so the stack is proved to be the same item in the same place with the committed count
+    FO_VERIFY_AND_THROW(!stack->IsDestroyed() && !stack->IsDestroying(), "Item stack change event destroyed the changed stack", stack->GetId());
+    FO_VERIFY_AND_THROW(stack->GetCount() == result_count, "Item stack change event changed the stack count", stack->GetId(), stack->GetCount(), result_count);
+
+    if (holder) {
+        FO_VERIFY_AND_THROW(stack->GetOwnership() != ItemOwnership::Nowhere && GetItemHolder(stack) == holder, "Item stack change event moved the changed stack", stack->GetId());
+    }
+    else {
+        FO_VERIFY_AND_THROW(stack->GetOwnership() == ItemOwnership::Nowhere, "Item stack change event gave the changed stack a holder", stack->GetId());
+    }
 }
 
 auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) -> nptr<Item>
@@ -317,29 +373,6 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
     auto holder = GetItemHolder(item);
     auto holder_holder = holder.hold_ref();
     ignore_unused(holder_holder);
-
-    if (count != 0 && item->GetStackable()) {
-        auto result_item = to_cr->GetInvItemByPid(item->GetProtoId());
-
-        if (result_item && result_item != item) {
-            auto result_item_holder = result_item.hold_ref();
-            ignore_unused(result_item_holder);
-
-            int32_t source_count = item->GetCount();
-            int32_t result_count = result_item->GetCount();
-            int32_t transfer_count = std::min(count, source_count);
-
-            _engine->OnCritterItemTransferIn.Fire(to_cr, item, result_item, transfer_count);
-
-            FO_VERIFY_AND_THROW(!item->IsDestroyed() && !item->IsDestroying(), "Critter item transfer event destroyed the source item", item->GetId());
-            FO_VERIFY_AND_THROW(!to_cr->IsDestroyed() && !to_cr->IsDestroying(), "Critter item transfer event destroyed the destination critter", to_cr->GetId());
-            FO_VERIFY_AND_THROW(!result_item->IsDestroyed() && !result_item->IsDestroying(), "Critter item transfer event destroyed the destination stack", result_item->GetId());
-            FO_VERIFY_AND_THROW(GetItemHolder(item) == holder, "Critter item transfer event moved the source item", item->GetId());
-            FO_VERIFY_AND_THROW(item->GetCount() == source_count, "Critter item transfer event changed the source count", item->GetId(), item->GetCount(), source_count);
-            FO_VERIFY_AND_THROW(to_cr->GetInvItemByPid(item->GetProtoId()) == result_item, "Critter item transfer event replaced the destination stack", to_cr->GetId(), item->GetProtoId());
-            FO_VERIFY_AND_THROW(result_item->GetCount() == result_count, "Critter item transfer event changed the destination count", result_item->GetId(), result_item->GetCount(), result_count);
-        }
-    }
 
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
@@ -420,7 +453,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Map> to_map, mpos 
         auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
-        if (to_map->IsDestroyed()) {
+        if (to_map->IsDestroyed() || to_map->IsDestroying()) {
             RestoreSplitItem(item, splitted_item);
             return nullptr;
         }
@@ -504,11 +537,11 @@ auto ItemManager::AddItemContainer(ptr<Item> cont, hstring pid, int32_t count, c
 
     if (item) {
         if (item->GetStackable()) {
-            item->SetCount(item->GetCount() + count);
+            ChangeItemStackCount(item, count, nullptr);
             result = item;
         }
         else {
-            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
                 auto new_item = CreateItem(pid, 0, nullptr);
@@ -522,7 +555,7 @@ auto ItemManager::AddItemContainer(ptr<Item> cont, hstring pid, int32_t count, c
             result = cont->AddItemToContainer(new_item, stack_id);
         }
         else {
-            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
                 auto new_item = CreateItem(pid, 0, nullptr);
@@ -551,7 +584,7 @@ auto ItemManager::AddItemCritter(ptr<Critter> cr, hstring pid, int32_t count) ->
     nptr<Item> result = nullptr;
 
     if (item && item->GetStackable()) {
-        item->SetCount(item->GetCount() + count);
+        ChangeItemStackCount(item, count, nullptr);
         result = item;
     }
     else {
@@ -560,7 +593,7 @@ auto ItemManager::AddItemCritter(ptr<Critter> cr, hstring pid, int32_t count) ->
             result = _engine->CrMngr.AddItemToCritter(cr, new_item, true);
         }
         else {
-            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->Critter.MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
                 auto new_item = CreateItem(pid, 0, nullptr);
@@ -593,7 +626,7 @@ void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
             DestroyItem(item);
         }
         else {
-            item->SetCount(item->GetCount() - count);
+            ChangeItemStackCount(item, -count, nullptr);
         }
     }
     else {

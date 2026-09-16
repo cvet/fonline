@@ -591,16 +591,16 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     _ctx->Settings = &settings;
-    _ctx->VSync = settings.VSync;
+    _ctx->VSync = settings.Render.VSync;
     _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
 
     // Device
     constexpr SDL_GPUShaderFormat requested_formats = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL;
-    auto gpu_driver_name = make_ptr(&settings.SDLGpuDriver);
-    _ctx->Device = SDL_CreateGPUDevice(requested_formats, settings.RenderDebug, gpu_driver_name->empty() ? nullptr : gpu_driver_name->c_str());
+    auto gpu_driver_name = make_ptr(&settings.Render.SDLGpuDriver);
+    _ctx->Device = SDL_CreateGPUDevice(requested_formats, settings.Render.RenderDebug, gpu_driver_name->empty() ? nullptr : gpu_driver_name->c_str());
 
     if (!_ctx->Device) {
-        throw AppInitException("SDL_CreateGPUDevice failed", SDL_GetError(), settings.SDLGpuDriver);
+        throw AppInitException("SDL_CreateGPUDevice failed", SDL_GetError(), settings.Render.SDLGpuDriver);
     }
 
     logging::write("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
@@ -667,7 +667,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     AppRender::MAX_ATLAS_HEIGHT = 4096;
 
     // Backbuffer proxy: all backbuffer rendering goes here and Present() blits it to the swapchain
-    CreateBackbufferProxy(_ctx, {settings.ScreenWidth, settings.ScreenHeight});
+    CreateBackbufferProxy(_ctx, {settings.View.ScreenWidth, settings.View.ScreenHeight});
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
@@ -988,7 +988,7 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     }
     else {
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->View.ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->View.ScreenHeight));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.width) / screen_aspect);
 
@@ -996,8 +996,8 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         vp_oy = (_ctx->BackBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
-        screen_width = _ctx->Settings->ScreenWidth;
-        screen_height = _ctx->Settings->ScreenHeight;
+        screen_width = _ctx->Settings->View.ScreenWidth;
+        screen_height = _ctx->Settings->View.ScreenHeight;
     }
 
     _ctx->CurRenderTarget = new_render_target;

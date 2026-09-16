@@ -61,11 +61,11 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     FileSystem resources;
     vector<string> pack_dirs = GetClientPackDirs(settings);
     string index_path = GetClientResourceIndexPath(settings);
-    vector<string> indexed_packs = GetResourceIndexPackNames(settings.ClientResourceEntries);
+    vector<string> indexed_packs = GetResourceIndexPackNames(settings.Baking.ClientResourceEntries);
     bool index_mounted = false;
 
     // Embedded keeps its configured position
-    if (settings.Packaged && !indexed_packs.empty() && IsResourceIndexCurrent(index_path, pack_dirs, indexed_packs)) {
+    if (settings.Common.Packaged && !indexed_packs.empty() && IsResourceIndexCurrent(index_path, pack_dirs, indexed_packs)) {
         unique_nptr<ResourceIndexSource> index;
 
         try {
@@ -77,10 +77,10 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
         }
 
         if (index) {
-            size_t prefix_size = settings.ClientResourceEntries.size() - indexed_packs.size();
+            size_t prefix_size = settings.Baking.ClientResourceEntries.size() - indexed_packs.size();
 
             for (size_t i = 0; i < prefix_size; ++i) {
-                AddClientPackSource(resources, settings, settings.ClientResourceEntries[i]);
+                AddClientPackSource(resources, settings, settings.Baking.ClientResourceEntries[i]);
             }
 
             resources.AddCustomSource(index.take_not_null());
@@ -89,7 +89,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
     }
 
     if (!index_mounted) {
-        for (const string& pack : settings.ClientResourceEntries) {
+        for (const string& pack : settings.Baking.ClientResourceEntries) {
             AddClientPackSource(resources, settings, pack);
         }
     }
@@ -104,7 +104,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -136,19 +136,19 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->UserWritablePath, Settings->CacheResources));
+    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
 #endif
 
-    logging::write("Client compatibility version: {}", Settings->CompatibilityVersion);
+    logging::write("Client compatibility version: {}", Settings->Network.CompatibilityVersion);
 
-    string metadata_version = !Settings->ForceMetadataVersion.empty() ? Settings->ForceMetadataVersion : string(GetMetadataVersion());
+    string metadata_version = !Settings->Network.ForceMetadataVersion.empty() ? Settings->Network.ForceMetadataVersion : string(GetMetadataVersion());
     _conn.SetMetadataVersion(metadata_version);
     logging::write("Client metadata version: {}", metadata_version);
 
     Hashes.set_resolve_hash_failure_handler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
 
     _curLang = TextPack {&Hashes};
-    _curLang.LoadFromResources(Resources, Settings->Language);
+    _curLang.LoadFromResources(Resources, Settings->Client.Language);
 
     // Modules initialization
     ClientInitHook(this);
@@ -274,7 +274,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs::make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -741,7 +741,7 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
-    if (std::cmp_greater(moving->GetSteps().size(), Settings->MaxPathFindLength)) {
+    if (std::cmp_greater(moving->GetSteps().size(), Settings->Geometry.MaxPathFindLength)) {
         break_into_debugger();
         cr->StopMoving();
         return;
@@ -846,12 +846,12 @@ void ClientEngine::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-        resources.AddDirSource(Settings->ClientResources, false, true, true);
+        resources.AddDirSource(Settings->Baking.ClientResources, false, true, true);
 
-        if (!Settings->UserWritablePath.empty()) {
+        if (!Settings->Common.UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
             // it on top so the up-to-date file wins the size/hash check below
-            resources.AddDirSource(fs::make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
+            resources.AddDirSource(fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.ClientResources), false, true, true);
         }
 
         auto reader = data_reader(data);
@@ -887,7 +887,7 @@ void ClientEngine::Net_OnInitData()
                 }
             }
 
-            if (Settings->Packaged) {
+            if (Settings->Common.Packaged) {
                 throw ResourcesOutdatedException("Resource pack outdated", fname);
             }
         }
@@ -1849,7 +1849,7 @@ void ClientEngine::Net_OnLoadMap()
         auto map_proto = GetProtoMap(map_pid);
         FO_VERIFY_AND_THROW(map_proto, "Missing required map prototype");
 
-        isize32 screen_size = {Settings->ScreenWidth, Settings->ScreenHeight};
+        isize32 screen_size = {Settings->View.ScreenWidth, Settings->View.ScreenHeight};
         OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
 
         _curLocation = safe_alloc::make_refcounted<LocationView>(this, loc_id, loc_proto);
@@ -2598,14 +2598,14 @@ void ClientEngine::ChangeLanguage(string_view lang_name)
     lang_pack.LoadFromResources(Resources, lang_name);
 
     _curLang = std::move(lang_pack);
-    Settings->Language = lang_name;
+    Settings->Client.Language = lang_name;
 }
 
 auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (lang_name.empty() || lang_name == Settings->Language) {
+    if (lang_name.empty() || lang_name == Settings->Client.Language) {
         return _curLang;
     }
 
@@ -2627,10 +2627,10 @@ void ClientEngine::UnloadMap()
 
     OnMapUnload.Fire();
 
-    Settings->ScrollMouseRight = false;
-    Settings->ScrollMouseLeft = false;
-    Settings->ScrollMouseDown = false;
-    Settings->ScrollMouseUp = false;
+    Settings->Hex.ScrollMouseRight = false;
+    Settings->Hex.ScrollMouseLeft = false;
+    Settings->Hex.ScrollMouseDown = false;
+    Settings->Hex.ScrollMouseUp = false;
 
     if (_curMap) {
         auto map = GetCurMap();

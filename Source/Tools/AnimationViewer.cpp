@@ -482,7 +482,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 
     // Which critter property feeds which model layer is game-specific, so `Render.ModelLayerProperties`
     // declares the mapping and a prototype is dressed here without game knowledge in the engine
-    const auto& mapping = _engine->Settings->ModelLayerProperties;
+    const auto& mapping = _engine->Settings->Render.ModelLayerProperties;
 
     if (mapping.empty()) {
         return;
@@ -819,7 +819,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
             // Matches CritterHexView::GetNameTextPos, whose offsets are game pixels and therefore scale
             // by the full on-screen zoom rather than the residual draw scale
             ipos32 name_top = to_screen({view_local.x + view_local.width / 2, view_local.y});
-            int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->NameOffset + _protoNameOffset) * _zoom);
+            int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->CritterView.NameOffset + _protoNameOffset) * _zoom);
             add_segment({0, name_y}, {PREVIEW_SIZE.width, name_y}, NAME_POINT_COLOR);
         }
     }

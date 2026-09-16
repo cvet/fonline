@@ -13,27 +13,27 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         new Queue<ScriptSynchronizationContext>();
     private static readonly HashSet<ScriptSynchronizationContext> SynchronousContexts =
         new HashSet<ScriptSynchronizationContext>();
-    private static bool _closed;
+    private static bool Closed;
 
-    private readonly Queue<Action> _continuations = new Queue<Action>();
-    private readonly SynchronizationContext? _previous;
-    private readonly ScriptSynchronizationContext? _synchronousOwner;
-    private bool _synchronous;
+    private readonly Queue<PostedContinuation> Continuations = new Queue<PostedContinuation>();
+    private readonly SynchronizationContext? Previous;
+    private readonly ScriptSynchronizationContext? SynchronousOwner;
+    private bool Synchronous;
 
     private ScriptSynchronizationContext(bool synchronous)
     {
-        _previous = Current;
-        _synchronous = synchronous;
+        Previous = Current;
+        Synchronous = synchronous;
 
         lock (SchedulerGate)
         {
-            ObjectDisposedException.ThrowIf(_closed, typeof(ScriptSynchronizationContext));
+            ObjectDisposedException.ThrowIf(Closed, typeof(ScriptSynchronizationContext));
 
             if (synchronous) {
                 SynchronousContexts.Add(this);
             }
-            else if (_previous is ScriptSynchronizationContext parent) {
-                _synchronousOwner = parent.GetSynchronousOwner();
+            else if (Previous is ScriptSynchronizationContext parent) {
+                SynchronousOwner = parent.GetSynchronousOwner();
             }
         }
 
@@ -61,17 +61,17 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
     {
         lock (SchedulerGate)
         {
-            if (_closed) {
+            if (Closed) {
                 return;
             }
 
             ScriptSynchronizationContext? owner = GetSynchronousOwner();
 
             if (owner != null) {
-                owner._continuations.Enqueue(() => Run(() => callback(state)));
+                owner.Continuations.Enqueue(new PostedContinuation(this, callback, state));
             }
             else {
-                _continuations.Enqueue(() => callback(state));
+                Continuations.Enqueue(new PostedContinuation(this, callback, state));
                 ReadyContexts.Enqueue(this);
             }
 
@@ -91,16 +91,16 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
     public void Dispose()
     {
-        SetSynchronizationContext(_previous);
+        SetSynchronizationContext(Previous);
 
-        if (_synchronous) {
+        if (Synchronous) {
             lock (SchedulerGate)
             {
                 SynchronousContexts.Remove(this);
-                _synchronous = false;
+                Synchronous = false;
 
-                if (!_closed) {
-                    for (int i = 0; i < _continuations.Count; i++) {
+                if (!Closed) {
+                    for (int i = 0; i < Continuations.Count; i++) {
                         ReadyContexts.Enqueue(this);
                     }
                 }
@@ -126,21 +126,21 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         }
 
         while (!task.IsCompleted) {
-            Action ? continuation;
+            PostedContinuation ? continuation;
 
             lock (SchedulerGate)
             {
-                while (!_closed && !task.IsCompleted && _continuations.Count == 0) {
+                while (!Closed && !task.IsCompleted && Continuations.Count == 0) {
                     Monitor.Wait(SchedulerGate);
                 }
 
-                ObjectDisposedException.ThrowIf(_closed, typeof(ScriptSynchronizationContext));
+                ObjectDisposedException.ThrowIf(Closed, typeof(ScriptSynchronizationContext));
 
-                continuation = _continuations.Count != 0 ? _continuations.Dequeue() : null;
+                continuation = Continuations.Count != 0 ? Continuations.Dequeue() : null;
             }
 
             if (continuation != null) {
-                Native.RunScriptContinuation(() => Run(continuation));
+                Native.RunScriptContinuation(continuation.Run);
             }
         }
 
@@ -158,20 +158,18 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
         // Newly posted work waits for the next engine frame; a yielding loop cannot monopolize this frame
         for (int i = 0; i < count; i++) {
-            ScriptSynchronizationContext context;
-            Action continuation;
+            PostedContinuation continuation;
 
             lock (SchedulerGate)
             {
-                if (_closed || ReadyContexts.Count == 0) {
+                if (Closed || ReadyContexts.Count == 0) {
                     return;
                 }
 
-                context = ReadyContexts.Dequeue();
-                continuation = context._continuations.Dequeue();
+                continuation = ReadyContexts.Dequeue().Continuations.Dequeue();
             }
 
-            Native.RunScriptContinuation(() => context.Run(continuation));
+            Native.RunScriptContinuation(continuation.Run);
         }
     }
 
@@ -179,16 +177,16 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
     {
         lock (SchedulerGate)
         {
-            _closed = true;
+            Closed = true;
 
             foreach (ScriptSynchronizationContext context in ReadyContexts) {
-                context._continuations.Clear();
+                context.Continuations.Clear();
             }
 
             ReadyContexts.Clear();
 
             foreach (ScriptSynchronizationContext context in SynchronousContexts) {
-                context._continuations.Clear();
+                context.Continuations.Clear();
             }
 
             Monitor.PulseAll(SchedulerGate);
@@ -197,18 +195,41 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
     private ScriptSynchronizationContext? GetSynchronousOwner()
     {
-        if (_synchronous) {
+        if (Synchronous) {
             return this;
         }
 
-        return _synchronousOwner != null && _synchronousOwner._synchronous ? _synchronousOwner : null;
+        return SynchronousOwner != null && SynchronousOwner.Synchronous ? SynchronousOwner : null;
     }
 
-    private void Run(Action continuation)
+    // A posted callback kept with the context it was posted to. The pump runs it through a delegate bound to this
+    // object, so engine diagnostics can name the script code it resumes (ScriptEntryNames)
+    internal sealed class PostedContinuation
+    {
+        internal PostedContinuation(ScriptSynchronizationContext context, SendOrPostCallback callback, object? state)
+        {
+            Context = context;
+            Callback = callback;
+            State = state;
+        }
+
+        internal ScriptSynchronizationContext Context { get; }
+
+        internal SendOrPostCallback Callback { get; }
+
+        internal object? State { get; }
+
+        internal void Run()
+        {
+            Context.Run(Callback, State);
+        }
+    }
+
+    private void Run(SendOrPostCallback callback, object? state)
     {
         lock (SchedulerGate)
         {
-            if (_closed) {
+            if (Closed) {
                 return;
             }
         }
@@ -217,7 +238,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         SetSynchronizationContext(this);
 
         try {
-            continuation();
+            callback(state);
         }
         catch (Exception ex) {
             ScriptExceptions.Record(ex, true);

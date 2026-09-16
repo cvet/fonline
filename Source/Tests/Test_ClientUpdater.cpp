@@ -55,7 +55,7 @@ namespace TestClientUpdater
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedClientSettings(settings);
-        BakerTests::OverrideSetting(settings.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
         return settings;
     }
@@ -120,7 +120,7 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
     GlobalSettings client_settings = MakeUpdaterClientSettings(port);
     string bake_output = PrepareUpdaterBakeOutput();
     auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
-    BakerTests::OverrideSetting(client_settings.BakeOutput, bake_output);
+    BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, bake_output);
 
     // Nothing is listening on this port: the player starts the client while the server is down
     Updater updater {&client_settings, &GetApp()->MainWindow};

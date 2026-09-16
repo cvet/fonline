@@ -201,8 +201,8 @@ TEST_CASE("ServerConnectionLatchesInputOverflowForItsOwningWorker")
 {
     auto settings = MakeServerNetworkSettings();
 
-    BakerTests::OverrideSetting(settings.MaxMessageSize, 64);
-    BakerTests::OverrideSetting(settings.MaxBufferedInputSize, 64);
+    BakerTests::OverrideSetting(settings.ServerNetwork.MaxMessageSize, 64);
+    BakerTests::OverrideSetting(settings.ServerNetwork.MaxBufferedInputSize, 64);
 
     auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
     auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
@@ -313,7 +313,7 @@ TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
     {
         auto settings = MakeServerNetworkSettings();
         auto port = TestServerPort.fetch_add(1);
-        BakerTests::OverrideSetting(settings.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
         shared_ptr<NetworkServerConnection> accepted_conn;
         auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); });
@@ -335,7 +335,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 {
     auto settings = MakeServerNetworkSettings();
     auto port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
     shared_ptr<NetworkServerConnection> accepted_conn;
     vector<uint8_t> received_data;
@@ -394,7 +394,7 @@ TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
 {
     auto settings = MakeServerNetworkSettings();
     auto port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
     size_t accepted_count = 0;
     size_t client_disconnect_count = 0;
@@ -439,7 +439,7 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
     auto start_server = [&settings, &port, &startup_error, &callback_count, &second_connection_promise]() -> unique_ptr<NetworkServer> {
         for (int32_t attempt = 0; attempt != 64; ++attempt) {
             port = TestServerPort.fetch_add(1);
-            BakerTests::OverrideSetting(settings.ServerPort, port);
+            BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
             try {
                 return NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
@@ -488,7 +488,7 @@ TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
 
     auto settings = MakeServerNetworkSettings();
     uint16_t port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
     std::promise<shared_ptr<NetworkServerConnection>> accepted_connection_promise;
     auto accepted_connection_future = accepted_connection_promise.get_future();
@@ -527,7 +527,7 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     REQUIRE(net_sockets::startup());
 
     auto settings = MakeServerNetworkSettings();
-    BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
 
     // The port counter is per-process while CI runs several processes on one machine, so a genuinely free port is
     // found first and only the second bind fails deliberately
@@ -537,7 +537,7 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
 
     for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
         port = TestServerPort.fetch_add(1);
-        BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+        BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
 
         try {
             server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
@@ -576,7 +576,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     REQUIRE(net_sockets::startup());
 
     auto settings = MakeServerNetworkSettings();
-    BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
 
     mutex state_mutex;
     shared_ptr<NetworkServerConnection> accepted_conn;
@@ -590,7 +590,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 
     for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
         port = TestServerPort.fetch_add(1);
-        BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+        BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
 
         try {
             server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {

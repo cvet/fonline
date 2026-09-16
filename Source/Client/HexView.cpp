@@ -143,7 +143,7 @@ void HexView::StartFade(uint8_t from_alpha)
 
     nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
 
-    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->FadingDuration};
+    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration};
     _fadeFromAlpha = from_alpha;
     _fading = true;
 
@@ -156,7 +156,7 @@ void HexView::EvaluateCurAlpha()
 
     if (_fading) {
         nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
-        int32_t fading_duration = _map->GetEngine()->Settings->FadingDuration;
+        int32_t fading_duration = _map->GetEngine()->Settings->View.FadingDuration;
         int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
         float32_t t = fading_duration == 0 ? 1.0f : 1.0f - numeric_cast<float32_t>(fading_remaining) / numeric_cast<float32_t>(fading_duration);
 

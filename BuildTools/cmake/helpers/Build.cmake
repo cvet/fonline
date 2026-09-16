@@ -73,7 +73,13 @@ function(DisableLibWarnings)
 			# interpreter addressing, correct on every target architecture, not our patch. A full gameplay San_Undefined
 			# run reports this at exactly one site (the AngelScript VM) and 0 pointer-overflow sites in Engine/Source, so
 			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage
-			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow>
+			#
+			# -fsanitize=shift-base is excluded for the same reason, and again for vendored design only: libvorbis packs
+			# a bark-band pair into one int as `((lo-1)<<16)+(hi-1)` (psy.c), so the first band shifts -1 left and reads
+			# back with an arithmetic >>16. Shifting a negative value is UB by the letter of C, correct on every
+			# two's-complement target the engine builds for, and the encoder reaches it on the first Ogg bake. The
+			# shift-exponent check stays on everywhere, and our own code is unaffected by this exclusion
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow$<COMMA>shift-base>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
 endfunction()

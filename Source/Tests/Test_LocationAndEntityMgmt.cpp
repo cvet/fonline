@@ -51,7 +51,7 @@ namespace
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"TestCollection:Int"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"TestCollection:Int"});
 
         return settings;
     }
@@ -1696,7 +1696,7 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 
     {
         auto settings = MakeSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
         string startup_error = WaitForStart(server.as_ptr());
@@ -1722,7 +1722,7 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 
     {
         auto settings = MakeSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
 
