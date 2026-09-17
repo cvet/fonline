@@ -274,6 +274,13 @@ auto MapManager::GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>
     return it->second;
 }
 
+void MapManager::ClearStaticMaps() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _staticMaps.clear();
+}
+
 void MapManager::GenerateMapContent(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();

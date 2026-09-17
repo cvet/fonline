@@ -132,6 +132,7 @@ public:
     void ChangeDir(mdir dir);
     void LockMapTransfers() noexcept;
     void UnlockMapTransfers() noexcept;
+    void ClearAllAssociations() noexcept;
 
     void Broadcast_Property(NetProperty type, ptr<const Property> prop, ptr<const ServerEntity> entity);
     void Broadcast_Action(CritterAction action, int32_t action_data, nptr<const Item> item);

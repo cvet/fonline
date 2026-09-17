@@ -55,9 +55,16 @@ Location::~Location()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!IsEngineShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(_locMaps.empty(), "Server location has maps during destruction", GetId(), _locMaps.size());
-    }
+    FO_VERIFY_AND_CONTINUE(_locMaps.empty(), "Server location has maps during destruction", GetId(), _locMaps.size());
+}
+
+void Location::ClearAllAssociations() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    _locMaps.clear();
 }
 
 auto Location::GetRawMaps() noexcept -> vector<refcount_ptr<Map>>&

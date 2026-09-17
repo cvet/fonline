@@ -325,8 +325,67 @@ releases that attachment after loading the first backend.
 before any other Mono call, so eglib `g_malloc` (metadata, runtime internals) uses the engine
 heap and terminate-on-OOM contract. Managed objects still live in SGen, which maps pages
 through `mono_valloc`.
-Backend teardown keeps one attachment while it stops continuations, invalidates wrapper
-alive flags, releases GC handles and unloads its managed assembly scope.
+Backend teardown keeps one attachment while it stops continuations, clears the script statics,
+releases persistent callback GC handles and global-function descriptors, collects, invalidates wrapper
+alive flags and releases its managed assembly scope. Collection runs while the assembly images are
+still available for the core-method lookup and the engine is alive. Callback handles must be released
+before collection because a captured entity stays rooted by the handle even after its script static is cleared.
+
+**Clearing the statics comes first**, because a wrapper's finalizer is the one path that gives
+its native entity reference back - the wrapper takes the reference in its constructor
+(`Native.AddRefEntity`) and returns it there (`Native.ReleaseEntity`), and nothing takes it away
+behind the wrapper's back - and a wrapper reachable from a static is never collected at all,
+since the script assembly load context is not collectible. `ScriptStaticCleanup` walks the
+script assembly by reflection and nulls each static reference field, which clears the **root,
+not the graph**: a collection, a closure, a delegate or a cache behind a cleared field becomes
+garbage on its own. A `static readonly` field cannot be reassigned - the runtime refuses that
+write - so a collection behind one is emptied instead, which releases the same references: through
+the non-generic `IList` / `IDictionary` where the value offers them, otherwise through a mutable
+`ICollection<T>`, which covers sets. Queues and stacks do not implement that interface and are cleared
+through their known BCL `Clear` methods, including subclasses of the generic types. An unrelated object
+with a method named `Clear` is never invoked. Arrays are cleared in place through `IList`.
+A read-only view is left
+alone, since asking it is cheaper than provoking the exception it would answer with. Anything the
+cleanup cannot reach is named in its report with a leading `!`. It runs as managed code deliberately - the same walk
+through the embedding API (`mono_class_vtable` plus `mono_field_static_set_value`) leaves the
+static area disagreeing with the root descriptor the collector scans it by, and the collector
+then dies on the next collection; a bisection pinned that to the very first field written. It
+covers the embedding project's script types only. The engine's own managed
+namespace (`FOnline`) is not script state but the runtime plumbing the engine shuts down through
+its own steps - the continuation scheduler's queues and gate above all - and nulling those from
+under a live scheduler leaves the collector reading an object header that is no longer there.
+Generic statics, thread statics, and value-type statics containing references remain out of reach.
+Embedding projects must reject these shapes, including auto-property and event backing fields, in
+their script analysis. An init-only reference to a non-collection or read-only view also remains
+uncleared and is included in the report; this sweep does not prove such an object's graph contains no entities.
+
+**Then the collector runs, from managed code**: `GC.Collect()` followed by
+`GC.WaitForPendingFinalizers()`, alternating because a finalized wrapper can drop the last
+reference to another one. The pass limit bounds repeated collections; a separate five-second budget
+bounds the finalizer waits. The runtime wait executes on an engine-requested pool task so a blocked
+finalizer cannot park the shutdown thread indefinitely. A timeout is reported as a managed failure;
+it does not cancel the finalizer or take its native reference away. This is not a deadline for a
+stop-the-world GC itself. `mono_domain_finalize` is not used: it belongs to domain unloading, and on the
+root domain it answered with a timeout and then took the runtime down. The wait ends on the
+count of live wrappers, and the collection took 89 to 181 ms per engine on a test run, which a
+parallel run pays once per engine it destroys.
+
+**What is left is counted always and named on request.** `EntityWrapperTracker` keeps a live
+wrapper count unconditionally - one interlocked increment in the generated wrapper's constructor,
+one decrement in its finalizer - so every shutdown knows how many wrappers outlived it, and a
+non-zero count is reported and raises `FO_VERIFY_AND_CONTINUE` even on a production run that asked
+for no diagnostics. Naming them costs a dictionary write per wrapper, and a wrapper is built on
+every marshalling, so the weak table that can name them waits for
+`ManagedScript.DeepTrackEntityWrappers`; the counting report says so, and turning it on is the
+next step of the hunt rather than its precondition. With the table armed, the report separates a
+wrapper something still holds - a static, a closure, a captured async state machine - from one
+merely queued for collection, and adds how many wrappers the run registered in total.
+Reporting holds each weakly tracked wrapper alive through its native name/id lookup. Collection and
+reporting exceptions, or missing core methods in a loaded script image, are reported rather than
+interpreted as a zero count. A failed collection still attempts the outstanding-wrapper report.
+`BuildTools/tests/test_managed_shutdown.py` compiles these two production core classes with a small
+native-entity fixture under the installed .NET SDK. It covers static collections, wrapper counts,
+a blocked finalizer, and collection during a diagnostic lookup; it complements embedded-runtime testing.
 GC-handle owners that may outlive a dispatch, including stored callback descriptors and
 event subscriptions, retain the process-wide Mono domain and attach around their final release.
 

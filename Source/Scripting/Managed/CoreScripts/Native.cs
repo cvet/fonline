@@ -722,8 +722,8 @@ internal static class Native
         where T : unmanaged
     {
         T value = default;
-        ThrowNativeError(GetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value),
-                                                  Unsafe.SizeOf<T>()));
+        ThrowNativeError(
+            GetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
         return value;
     }
 
@@ -734,8 +734,8 @@ internal static class Native
     internal static void SetPropertyValue<T>(IntPtr entityPtr, int propIndex, T value)
         where T : unmanaged
     {
-        ThrowNativeError(SetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value),
-                                                  Unsafe.SizeOf<T>()));
+        ThrowNativeError(
+            SetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]

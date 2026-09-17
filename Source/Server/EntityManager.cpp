@@ -1516,6 +1516,31 @@ void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Shutdown drops the world in bulk rather than running the ordinary destroy flows, which also delete the
+    // entity from the database and fire the events that scripts - already gone by now - would answer. What those
+    // flows do and a bare registry drop skips is unlinking, so the links are cleared here explicitly: every
+    // entity is still held by its registry while that runs, so nothing is destroyed halfway through the sweep,
+    // and each destructor below then verifies the same empty state it verifies in ordinary destruction
+    for (auto& player : _allPlayers | std::views::values) {
+        player->ClearAllAssociations();
+    }
+
+    for (auto& location : _allLocations | std::views::values) {
+        location->ClearAllAssociations();
+    }
+
+    for (auto& map : _allMaps | std::views::values) {
+        map->ClearAllAssociations();
+    }
+
+    for (auto& cr : _allCritters | std::views::values) {
+        cr->ClearAllAssociations();
+    }
+
+    for (auto& item : _allItems | std::views::values) {
+        item->ClearAllAssociations();
+    }
+
     auto destroy_entities = [this](auto& entities) FO_TSA_NO_ANALYSIS {
         for (auto&& [id, entity] : copy(entities)) {
             entity->SetParent(nullptr);

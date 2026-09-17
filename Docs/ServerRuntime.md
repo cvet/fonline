@@ -169,15 +169,53 @@ Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()
 
 Typed entity destruction has a single active owner once the target is marked `Destroying`. `OnItemFinish`, `OnCritterFinish`, and `OnLocationFinish` handlers may observe the entity and may issue redundant destroy calls, but they must not complete the same teardown inline; the native owner asserts that the entity still exists after the finish event. Map and location destruction apply the same rule across the owning pair. Once `DestroyMap()` marks a map as destroying, scripted events in that flow may not destroy the owning location to take over the same map; `DestroyLocation()` asserts that none of its maps is already in another destroy-flow before it marks them. `OnMapFinish` and `OnMapRemoved` handlers therefore run while the map still exists, but native continuation asserts that the same map and location were not destroyed behind the current owner. Map content destruction may still detach an already-`Destroying` non-player critter from the map without issuing another finish event; this only completes the map containment edge when the critter's own destroy owner is still active. For the same reason, removing an item from a critter that is already `Destroying` (inventory teardown inside `DestroyCritter`) does not fire `OnCritterItemMoved`: the item is being destroyed with its owner rather than relocated, and re-entering scripts there would let an item-movement handler attach a new inner entity (for example a modifier `StartEvent`) to the already-destroying critter, which the entity layer rejects. Normal item moves on a live critter still fire the event.
 
-Native entity references can outlive `ServerEngine`, including references released later by a
-managed wrapper finalizer. The engine and each `ServerEntity` therefore share ownership of the
-engine's atomic shutdown flag. `Shutdown()` publishes to that flag before teardown; the Critter,
-Item, Map, Location and Player destructors read their retained flag instead of dereferencing the
-borrowed engine pointer. Their normal-destruction invariant checks remain enabled whenever shutdown
-has not begun. This retained state permits final reference release only: it does not make a destroyed
-entity usable or extend the lifetime of engine methods, property registrars, networking or scripts.
-The worker pool still borrows the same flag while its owning engine drains it. The state belongs to
-one engine and survives until its last retained entity is released.
+**No entity outlives its engine.** A `ServerEntity` borrows the engine that owns its property registrar, its
+prototype, the interned hashes its properties carry and every manager it reaches, so an entity that survives
+`~ServerEngine` holds nothing but dangling pointers. The rule is measured rather than assumed: the
+`ServerEntity` constructor raises a live-entity count on its engine and the destructor drops it, and
+`~ServerEngine` reports any remainder with `FO_VERIFY_AND_CONTINUE` (`Server entities outlived the server
+engine`, the count travelling as a context value) — the spelling the empty-link checks in the entity
+destructors use, which reports through the installed exception callback with a stack trace and continues,
+since a destructor may not throw. `~ClientEngine` reports the same for `ClientEntity`. Before taking the count the server destructor releases
+`MapManager`'s static-map cache, whose billets — the static items and authored critters a map spawns from — are
+entities owned by the engine itself; leaving them to member-destruction order counted engine-owned data as an
+escaped reference (1.3 million of them).
+
+**Historical residual (2026-09-15):** a gameplay-test worker session ended with a few dozen
+destroyed-but-alive entities (≈44 critters, 2 maps, a location, a player, an item; on the client side ≈64 views
+after a long suite). They are unregistered and unlinked, so what keeps them alive is a native reference nothing
+gives back. A reference-count trace could not name the holder unambiguously (its AddRef/Release pairing is by
+count, not by holder identity). These historical counts are not evidence about a current build; the
+engine-wide check remains a reported measurement, not a gate.
+
+Each script backend gives its entity references back during `Shutdown()`, before the engine can be destroyed.
+The AngelScript backend does it by releasing its script engine (`ShutDownAndRelease()`, asserted to reach zero).
+The managed backend has one path and one only: the wrapper's finalizer. A wrapper rooted by a script static is
+never collected, because the script assembly load context is not collectible, so `~ManagedScriptBackend` first
+asks the core scripts to null every static reference field of the project's script types — the root, not the graph,
+by reflection rather than through the embedding API, which corrupts the static area — and then collects
+releases persistent callback roots and waits for the finalizer queue from managed code (`GC.Collect` plus
+`GC.WaitForPendingFinalizers`, with both a pass limit and a separate finalizer-wait deadline), while the engine those references
+point into is still alive. Nothing takes a reference away behind a wrapper's back. The sweep leaves the engine's
+own managed namespace alone, which the engine shuts down through its own steps, and three shapes stay out of its
+reach — statics of generic types, thread statics, and statics of value types with a reference inside — which
+embedding projects must forbid in their script analysis. Deep tracking names surviving wrappers; the live
+count is always available. See [Scripting.md](Scripting.md).
+
+Client entity registration is a borrowed index guarded by a mutex: managed finalizers can unregister a
+detached view on another thread. `ClientEngine::GetEntity` promotes the borrow with `TryAddRef` while
+holding that mutex and returns an owning `refcount_nptr`, so the result remains alive after the lock is
+released. A view whose final release has begun cannot be resurrected. Unregistering an older view with
+the same id preserves its successor's entry.
+
+`Shutdown()` drops the world in bulk rather than running the ordinary destroy flows, which would also delete each
+entity from the database and fire events that no longer have scripts to answer them. What those flows do and a
+bare registry drop skips is unlinking, so `EntityManager::DestroyAllEntities()` first calls
+`ClearAllAssociations()` on every player, location, map, critter and item: each type drops exactly the runtime
+links its destructor requires to be empty, while every entity is still held by its registry, and no property is
+written, so nothing a persisted entity carries into the database changes. The Critter, Item, Map, Location and
+Player destructors therefore verify their empty-association invariants unconditionally, at shutdown as in
+ordinary destruction.
 
 `work_thread` and `WorkerPool` each expose a raw completed-job counter through a diagnostics snapshot (`get_diagnostics()` and `GetDiagnostics()`). `ServerEngine` keeps a separate throughput counter for jobs that should be visible in server stats: the `_starter` initialization sequence is excluded, and recurring service jobs that mostly reflect scheduler cadence (`SyncPointJob`, `TimeEventJob`, `FrameTimeJob`, `HealthFileJob`, and `HealthFileWriteJob`) are excluded too. The always-open Info summary reports jobs per second, jobs per minute, total completed visible jobs, and CPU load for the machine and current process. The separate `Performance details` panel is closed by default and expands raw per-executor job counts, worker-pool internals, and per-core system CPU load. Job throughput is the live server cadence metric. The former loop-based metrics — per-loop time statistics (average/min/max/last loop time), the loops-per-second counter (and its Tracy plot), and the `Server.LoopAverageTimeInterval` setting — were all removed as the server moves from loop-based to event-based execution; only the `Tracy` "Server jobs per second" plot remains.
 

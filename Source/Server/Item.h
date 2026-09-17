@@ -78,6 +78,7 @@ public:
     void RemoveItemFromContainer(ptr<Item> item);
     void SetItemToContainer(ptr<Item> item);
     void SetMultihexEntries(vector<mpos> entries);
+    void ClearAllAssociations() noexcept;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

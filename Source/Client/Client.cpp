@@ -250,6 +250,13 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 ClientEngine::~ClientEngine()
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Every client entity borrows this engine - its property registrars, protos, interned hashes and resource
+    // views - so an entity that outlives it holds nothing but dangling pointers. Shutdown gives back every
+    // reference the script backend holds and destroys the view hierarchy, so a non-zero count is a reference
+    // that was never given back; the residual this reports is tracked in Docs/ServerRuntime.md
+    int32_t live_entities = _liveEntityCount.load(std::memory_order_acquire);
+    FO_VERIFY_AND_CONTINUE(live_entities == 0, "Client entities outlived the client engine", live_entities);
 }
 
 void ClientEngine::Shutdown()
@@ -1697,6 +1704,7 @@ void ClientEngine::Net_OnProperty()
     _conn.InBuf->Pop(prop_data.Alloc(data_size), data_size);
 
     nptr<Entity> entity {};
+    refcount_nptr<ClientEntity> custom_entity_holder;
 
     switch (type) {
     case NetProperty::Game:
@@ -1744,7 +1752,8 @@ void ClientEngine::Net_OnProperty()
         entity = GetCurLocation();
         break;
     case NetProperty::CustomEntity:
-        entity = GetEntity(entity_id);
+        custom_entity_holder = GetEntity(entity_id);
+        entity = custom_entity_holder.as_nptr();
         break;
     default:
         FO_UNREACHABLE_PLACE();
@@ -1900,7 +1909,7 @@ void ClientEngine::Net_OnAddCustomEntity()
     hstring pid = _conn.InBuf->Read<hstring>(Hashes);
     _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
-    nptr<Entity> holder;
+    refcount_nptr<Entity> holder;
 
     if (holder_id) {
         holder = GetEntity(holder_id);
@@ -1911,7 +1920,7 @@ void ClientEngine::Net_OnAddCustomEntity()
         }
     }
     else {
-        holder = this;
+        holder = ptr<Entity> {this}.hold_ref();
     }
 
     auto entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
@@ -1932,7 +1941,6 @@ void ClientEngine::Net_OnRemoveCustomEntity()
         return;
     }
 
-    auto entity_ref_holder = entity.hold_ref();
     auto custom_entity = entity.dyn_cast<CustomEntityView>();
 
     if (!custom_entity) {
@@ -1942,13 +1950,13 @@ void ClientEngine::Net_OnRemoveCustomEntity()
 
     OnCustomEntityOut.Fire(custom_entity);
 
-    nptr<Entity> holder;
+    refcount_nptr<Entity> holder;
 
     if (custom_entity->GetCustomHolderId()) {
         holder = GetEntity(custom_entity->GetCustomHolderId());
     }
     else {
-        holder = this;
+        holder = ptr<Entity> {this}.hold_ref();
     }
 
     if (holder) {
@@ -2117,17 +2125,19 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     moving->ValidateRuntimeState();
 }
 
-auto ClientEngine::GetEntity(ident_t id) -> nptr<ClientEntity>
+auto ClientEngine::GetEntity(ident_t id) -> refcount_nptr<ClientEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock locker {_allEntitiesLocker};
     auto it = _allEntities.find(id);
 
     if (it == _allEntities.end()) {
         return nullptr;
     }
 
-    return it->second;
+    // A finalizer may already be retiring the entity and waiting to unregister it under the same lock.
+    return it->second.try_hold_ref();
 }
 
 void ClientEngine::RegisterEntity(ptr<ClientEntity> entity)
@@ -2136,6 +2146,7 @@ void ClientEngine::RegisterEntity(ptr<ClientEntity> entity)
 
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
+    scoped_lock locker {_allEntitiesLocker};
     _allEntities.insert_or_assign(entity->GetId(), entity);
 }
 
@@ -2145,7 +2156,14 @@ void ClientEngine::UnregisterEntity(ptr<ClientEntity> entity)
 
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
-    _allEntities.erase(entity->GetId());
+    scoped_lock locker {_allEntitiesLocker};
+
+    // Only this entity's own borrow is erased: registration is by id, so the id may already carry a successor
+    auto it = _allEntities.find(entity->GetId());
+
+    if (it != _allEntities.end() && it->second == entity) {
+        _allEntities.erase(it);
+    }
 }
 
 auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t

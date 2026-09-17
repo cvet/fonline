@@ -130,37 +130,34 @@ static auto MakeServerEntityLifetimeOwners(ptr<ServerEngine> server, ptr<StaticM
     return entities;
 }
 
-TEST_CASE("ServerEntityOwnersOutliveServer", "[server][entity][lifetime]")
+// A native owner may outlive Shutdown and be released from another thread, but never outlive the engine itself:
+// every entity borrows the engine's registrars, protos and interned hashes, so ~ServerEngine asserts the count
+TEST_CASE("ServerEntityOwnersReleasedAfterShutdownOnAnotherThread", "[server][entity][lifetime]")
 {
     GlobalSettings settings = MakeServerEntityLifetimeSettings();
     StaticMap static_map {msize {2, 2}, false};
-    vector<refcount_ptr<ServerEntity>> retained;
-
-    {
-        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-        bool shutdown_done = false;
-        auto shutdown_guard = scope_exit([&]() noexcept {
-            if (!shutdown_done) {
-                safe_call([&server] { server->Shutdown(); });
-            }
-        });
-
-        REQUIRE(WaitForServerEntityLifetimeStartup(server));
-        REQUIRE_FALSE(server->IsStartingError());
-        REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) { retained = MakeServerEntityLifetimeOwners(server, &static_map); }));
-        REQUIRE(retained.size() == 5);
-
-        for (const auto& entity : retained) {
-            REQUIRE(entity->GetRefCount() == 1);
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    bool shutdown_done = false;
+    auto shutdown_guard = scope_exit([&]() noexcept {
+        if (!shutdown_done) {
+            safe_call([&server] { server->Shutdown(); });
         }
+    });
 
-        // No entity owns the server; this scope must drop its final native owner before the deferred releases
-        REQUIRE(server->GetRefCount() == 1);
-        REQUIRE_NOTHROW(server->Shutdown());
-        shutdown_done = true;
-        REQUIRE(server->IsShutdownInProgress());
-        REQUIRE(server->GetRefCount() == 1);
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    REQUIRE_FALSE(server->IsStartingError());
+
+    vector<refcount_ptr<ServerEntity>> retained;
+    REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) { retained = MakeServerEntityLifetimeOwners(server, &static_map); }));
+    REQUIRE(retained.size() == 5);
+
+    for (const auto& entity : retained) {
+        REQUIRE(entity->GetRefCount() == 1);
     }
+
+    REQUIRE_NOTHROW(server->Shutdown());
+    shutdown_done = true;
+    REQUIRE(server->IsShutdownInProgress());
 
     std::atomic_size_t released {0};
     std::thread::id releasing_thread;
@@ -177,6 +174,9 @@ TEST_CASE("ServerEntityOwnersOutliveServer", "[server][entity][lifetime]")
 
     CHECK(releasing_thread != owning_thread);
     CHECK(released.load(std::memory_order_relaxed) == 5);
+
+    // The engine outlives its last entity, so nothing above dereferenced a freed registrar
+    CHECK(server->GetRefCount() == 1);
 }
 
 TEST_CASE("ServerEntityOwnersReleaseBeforeShutdown", "[server][entity][lifetime]")

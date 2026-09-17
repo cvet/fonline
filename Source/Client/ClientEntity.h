@@ -50,7 +50,7 @@ public:
     ClientEntity(ClientEntity&&) noexcept = delete;
     auto operator=(const ClientEntity&) = delete;
     auto operator=(ClientEntity&&) noexcept = delete;
-    ~ClientEntity() override = default;
+    ~ClientEntity() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
     [[nodiscard]] auto GetId() const noexcept -> ident_t override { return _id; }

@@ -133,7 +133,7 @@ public:
     [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine> { return this; }
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
-    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress->load(); }
+    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress.load(); }
     [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
@@ -260,7 +260,8 @@ public:
 private:
     std::atomic_bool _started {false};
     std::atomic_bool _startingError {false};
-    shared_ptr<std::atomic_bool> _shutdownInProgress {safe_alloc::make_shared<std::atomic_bool>(false)};
+    std::atomic_bool _shutdownInProgress {false};
+    std::atomic<int32_t> _liveEntityCount {};
 
 public:
     EntityManager EntityMngr;

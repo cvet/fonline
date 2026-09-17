@@ -61,6 +61,7 @@ SETTING_GROUP_END(AngelScript);
 ///@ ExportSettings Common
 SETTING_GROUP(ManagedScript, virtual BaseSettings)
 SETTING(int32_t, ManagedScript, OverrunReportTime); // Time in milliseconds to report managed script execution or entity-lock wait overrun, 0 to disable
+SETTING(bool, ManagedScript, DeepTrackEntityWrappers, false); // If true, every managed entity wrapper is also tracked weakly so shutdown can name the wrappers that still hold a native entity reference; costs a dictionary write per wrapper, while the live wrapper count shutdown reports is always kept
 SETTING(vector<string>, ManagedScript, Assemblies, "FOnline"); // Managed script assemblies to build
 SETTING(string, ManagedScript, ProjectName, "FOnline"); // Managed project base name
 SETTING(string, ManagedScript, TargetFramework, "net10.0"); // Managed project target framework

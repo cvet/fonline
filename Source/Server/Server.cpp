@@ -147,6 +147,17 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 ServerEngine::~ServerEngine()
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Engine-owned content whose billets are entities: released here, before the count below is taken, so that
+    // data belonging to the engine does not read as a reference that escaped it
+    MapMngr.ClearStaticMaps();
+
+    // Every server entity borrows this engine - its property registrars, protos, interned hashes and managers -
+    // so an entity that outlives it holds nothing but dangling pointers. Shutdown gives back every reference the
+    // script backends hold and empties the world registry, so a non-zero count is a native reference that was
+    // never given back; the residual this reports is tracked in Docs/ServerRuntime.md
+    int32_t live_entities = _liveEntityCount.load(std::memory_order_acquire);
+    FO_VERIFY_AND_CONTINUE(live_entities == 0, "Server entities outlived the server engine", live_entities);
 }
 
 auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
@@ -683,7 +694,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 
         // Worker pool
         int32_t worker_threads = Settings->Server.SingleThreadedLogic ? 1 : Settings->Server.WorkerThreads;
-        _workerPool.emplace("ServerPool", worker_threads, _shutdownInProgress.as_ptr(), /*start_paused*/ true);
+        _workerPool.emplace("ServerPool", worker_threads, &_shutdownInProgress, /*start_paused*/ true);
 
         TimeEventManager::DispatcherHooks hooks;
         hooks.Schedule = [this](refcount_ptr<Entity> entity, uint32_t event_id, timespan delay) { OnTimeEventSchedule(std::move(entity), event_id, delay); };
@@ -1126,7 +1137,7 @@ void ServerEngine::Shutdown()
 
     logging::write("Stop server");
 
-    _shutdownInProgress->store(true, std::memory_order_release);
+    _shutdownInProgress.store(true, std::memory_order_release);
 
     // Shutdown runs on a caller thread with no SyncContext, so one is stood up here to satisfy the invariant
     // that any entity touch happens under a primary context

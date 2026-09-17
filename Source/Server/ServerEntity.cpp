@@ -39,12 +39,15 @@ FO_BEGIN_NAMESPACE
 ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) noexcept :
     Entity(registrar, props, engine->Settings->Server.ServerPropertiesPackData ? base_props : nullptr),
     _engine {engine},
-    _engineShutdownInProgress {engine->_shutdownInProgress},
     _id {id}
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
+
+    // The engine is borrowed, not owned: it owns the property registrars, protos, hashes and managers this
+    // entity reads, so no entity may outlive it. This count is what proves that in ~ServerEngine
+    _engine->_liveEntityCount.fetch_add(1, std::memory_order_relaxed);
 }
 
 ServerEntity::~ServerEntity()
@@ -67,6 +70,8 @@ ServerEntity::~ServerEntity()
     if (parent) {
         parent->Release();
     }
+
+    _engine->_liveEntityCount.fetch_sub(1, std::memory_order_acq_rel);
 }
 
 void ServerEntity::SetInitCalled() noexcept
