@@ -310,15 +310,15 @@ bool ok    = maybeItem == null || maybeItem.IsReady();              // narrowed 
 bool both  = Other() && maybeItem != null && maybeItem.IsReady();   // narrowed after the check
 bool tail  = maybeItem != null && Other() && maybeItem.IsReady();   // still narrowed at the tail
 // the narrowing covers the WHOLE right operand, not just an adjacent term:
-bool cmp   = maybeItem != null && maybeItem.Count == wanted;        // maybeItem.Count narrowed
-if (maybeItem != null && maybeItem.Count > 0 && Other()) { ... }    // narrowed across the compound
+bool cmp   = maybeItem != null && maybeItem.Hidden == wanted;       // maybeItem.Hidden narrowed
+if (maybeItem != null && maybeItem.Hidden && Other()) { ... }       // narrowed across the compound
 // every checked local in the chain narrows in the later operands, not just the nearest:
-if (a != null && b != null && a.Count == b.Count) { ... }          // both a and b narrowed
-if (a == null || b == null || a.Count != b.Count) { return; }      // both narrowed past the ||s
+if (a != null && b != null && a.Hidden == b.Hidden) { ... }        // both a and b narrowed
+if (a == null || b == null || a.Hidden != b.Hidden) { return; }    // both narrowed past the ||s
 
 // 6) Ternary branches narrow when the condition is a null-check
-int n = maybeItem != null ? maybeItem.Count : 0;         // then-branch narrowed
-int m = maybeItem == null ? 0 : maybeItem.Count;         // else-branch narrowed
+bool n = maybeItem != null ? maybeItem.Hidden : false;   // then-branch narrowed
+bool m = maybeItem == null ? false : maybeItem.Hidden;   // else-branch narrowed
 ```
 
 Smart-cast deliberately does **not** narrow:

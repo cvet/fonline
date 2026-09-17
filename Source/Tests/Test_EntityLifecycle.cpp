@@ -797,7 +797,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
 
         int32_t calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetItemInitCalls"), calls));
@@ -832,7 +832,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func.Call(1));
 
         size_t initial_item_count = server->EntityMngr.GetItemsCount();
-        REQUIRE_THROWS_AS(server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr), ItemManagerException);
+        REQUIRE_THROWS_AS(server->ItemMngr.CreateItem(fn("TestItem"), nullptr), ItemManagerException);
         CHECK(server->EntityMngr.GetItemsCount() == initial_item_count);
 
         int32_t calls = 0;
@@ -889,7 +889,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func.Call(1));
 
         size_t initial_item_count = server->EntityMngr.GetItemsCount();
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
         ident_t item_id = item->GetId();
 
         server->ItemMngr.DestroyItem(item);
@@ -1160,7 +1160,7 @@ TEST_CASE("EntityManagerCppApi")
 
         size_t after_critter_item_count = server->EntityMngr.GetItemsCount();
 
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
 
         CHECK(server->EntityMngr.GetItemsCount() == after_critter_item_count + 1);
 
@@ -1213,7 +1213,7 @@ TEST_CASE("EntityManagerCppApi")
 
     SECTION("GetEntityFindsCreatedItem")
     {
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
 
         ident_t item_id = item->GetId();
         auto found = server->EntityMngr.GetItem(item_id);
@@ -1325,22 +1325,18 @@ TEST_CASE("CritterCppApi")
 
         CHECK_FALSE(cr->HasItems());
 
-        auto item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        REQUIRE(static_cast<bool>(item1));
+        auto item1 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
         CHECK(cr->HasItems());
 
-        auto item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        REQUIRE(static_cast<bool>(item2));
+        auto item2 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
+        CHECK(item2->GetId() != item1->GetId());
 
         vector<ptr<Item>> inv_items = cr->GetInvItems();
-        CHECK(inv_items.size() >= 2);
+        CHECK(inv_items.size() == 2);
 
         // Find by pid
-        auto found = cr->GetInvItemByPid(fn("TestItem"));
+        auto found = cr->GetItemByPidInvPriority(fn("TestItem"));
         CHECK(static_cast<bool>(found));
-
-        // Count by pid
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) >= 2);
 
         // Find by id
         auto found_by_id = cr->GetInvItem(item1->GetId());
@@ -1630,7 +1626,7 @@ TEST_CASE("ItemCppApi")
     {
         // Hold a ref so the item survives DestroyItem (which drops the manager's last reference and
         // frees it) and the post-destroy IsDestroyed() check reads a valid object
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr).hold_ref();
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr).hold_ref();
 
         CHECK(item->GetId() != ident_t {});
         CHECK(item->GetProtoId() == fn("TestItem"));
@@ -1644,32 +1640,11 @@ TEST_CASE("ItemCppApi")
     {
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
-        auto item = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 5);
-        REQUIRE(static_cast<bool>(item));
+        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
         CHECK(cr->HasItems());
 
-        server->ItemMngr.SubItemCritter(cr, fn("TestItem"), 3);
-        // Still has 2 items
-        CHECK(cr->HasItems());
-
-        server->ItemMngr.SubItemCritter(cr, fn("TestItem"), 2);
+        server->ItemMngr.DestroyItem(item);
         CHECK_FALSE(cr->HasItems());
-
-        server->CrMngr.DestroyCritter(cr);
-    }
-
-    SECTION("ItemSetCount")
-    {
-        auto cr = server->CreateCritter(fn("TestCritter"), false);
-
-        server->ItemMngr.SetItemCritter(cr, fn("TestItem"), 10);
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) == 10);
-
-        server->ItemMngr.SetItemCritter(cr, fn("TestItem"), 3);
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) == 3);
-
-        server->ItemMngr.SetItemCritter(cr, fn("TestItem"), 0);
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) == 0);
 
         server->CrMngr.DestroyCritter(cr);
     }
@@ -1678,11 +1653,8 @@ TEST_CASE("ItemCppApi")
     {
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
-        auto item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        auto item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-
-        REQUIRE(static_cast<bool>(item1));
-        REQUIRE(static_cast<bool>(item2));
+        auto item1 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
+        auto item2 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
 
         // Different item instances
         CHECK(item1->GetId() != item2->GetId());
@@ -2512,9 +2484,10 @@ TEST_CASE("CritterManagerCppApi")
     {
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
-        server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
+        for (int32_t i = 0; i < 3; i++) {
+            (void)server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
+        }
+
         CHECK(cr->HasItems());
 
         server->CrMngr.DestroyInventory(cr);

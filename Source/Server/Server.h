@@ -249,8 +249,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterSendInitialInfo, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemStackChanged, ptr<Item> /*item*/, int32_t /*countDiff*/, nptr<Item> /*absorbedItem*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, ptr<Item> /*item*/, bool /*firstTime*/);
@@ -358,7 +356,6 @@ private:
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
     void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
