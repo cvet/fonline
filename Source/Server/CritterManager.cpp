@@ -60,19 +60,6 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
     ValidateEntityAccess(cr);
     EnsureEntitySynced(item);
 
-    if (item->GetStackable()) {
-        auto item_already = cr->GetInvItemByPid(item->GetProtoId());
-
-        if (item_already) {
-            if (item_already == item) {
-                return item;
-            }
-
-            _engine->ItemMngr.ChangeItemStackCount(item_already, item->GetCount(), item);
-            return item_already;
-        }
-    }
-
     if (item->GetOwnership() != ItemOwnership::CritterInventory) {
         item->SetCritterSlot(CritterItemSlot::Inventory);
     }

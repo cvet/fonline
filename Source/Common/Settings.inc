@@ -311,7 +311,6 @@ SETTING_GROUP_END(Baking);
 
 ///@ ExportSettings Server
 SETTING_GROUP(Critter, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings)
-SETTING(int32_t, Critter, MaxAddUnstackableItems, 10); // Maximum number of unstackable items to add
 SETTING(vector<bool>, Critter, CritterSlotEnabled, true, true); // Critter slot enabled flags
 SETTING(vector<bool>, Critter, CritterSlotSendData, false, true); // Critter slot send data flags
 SETTING(vector<bool>, Critter, CritterSlotMultiItem, true, false); // Critter slot multi-item flags

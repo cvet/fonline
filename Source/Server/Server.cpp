@@ -592,7 +592,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         // instead of a persisted list the map overlay and the loaded clients no longer agree with
         set_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_setter(&ServerEngine::OnSetMapRemovedStaticItems));
         set_post_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_post_setter(&ServerEngine::OnPostSetMapRemovedStaticItems));
-        set_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, wrap_setter(&ServerEngine::OnSetItemCount));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
@@ -1766,14 +1765,12 @@ void ServerEngine::DrawGui()
     draw_item = [&](ptr<const Item> item) {
         ImGui::PushID(make_nptr(item.get()).void_cast());
 
-        string label = strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount()).str();
+        string label = strex("{} ({})", item->GetName(), item->GetId()).str();
 
         if (ImGui::TreeNode(label.c_str())) {
             if (begin_info_table("##ItemSummary")) {
                 info_row("Id", strex("{}", item->GetId()).str());
                 info_row("Proto", strex("{}", item->GetProtoId()).str());
-                info_row("Count", strex("{}", item->GetCount()).str());
-                info_row("Stackable", strex("{}", item->GetStackable()).str());
                 info_row("Ownership", strex("{}", item->GetOwnership()).str());
                 info_row("Critter slot", strex("{}", item->GetCritterSlot()).str());
                 info_row("Critter id", strex("{}", item->GetCritterId()).str());
@@ -4219,24 +4216,6 @@ void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const 
     FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     map->RefreshRemovedStaticItems();
-}
-
-void ServerEngine::OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ignore_unused(prop);
-
-    auto item = entity.dyn_cast<Item>();
-    auto new_count = memory::read_unaligned<uint32_t>(data.GetPtr());
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
-
-    if (!item->GetStackable() && new_count != 1) {
-        throw GenericException("Trying to change count of not stackable item");
-    }
-    else if (new_count <= 0) {
-        throw GenericException("Item count can't be zero or negative", new_count);
-    }
 }
 
 void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)

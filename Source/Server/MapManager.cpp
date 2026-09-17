@@ -291,7 +291,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
 
     // Generate hex items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->GetHexItemBillets()) {
-        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, base_item->GetProperties());
+        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), base_item->GetProperties());
         id_map.emplace(base_item_id, item->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         map->AddItem(item, base_item->GetHex(), nullptr);
@@ -320,7 +320,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
         owner_id = id_map[owner_id];
 
         // Create item
-        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, base_item->GetProperties());
+        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), base_item->GetProperties());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
         // Add to parent
@@ -335,7 +335,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
             auto item_cont = map->GetItem(owner_id);
             FO_VERIFY_AND_THROW(item_cont, "Missing required item container");
 
-            item_cont->AddItemToContainer(item, {});
+            item_cont->AddItemToContainer(item, any_t {string {base_item->GetContainerStack()}});
             FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         }
         else {

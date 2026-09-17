@@ -1937,22 +1937,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                                     cur_map->RebuildMap();
                                 }
                                 else if (ImGui::GetIO().KeyAlt && !SelectedEntities.empty()) {
-                                    bool add = true;
-
-                                    if (proto->GetStackable()) {
-                                        vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(SelectedEntities.front());
-
-                                        for (size_t child_index = 0; child_index < children.size(); child_index++) {
-                                            if (proto->GetProtoId() == children[child_index]->GetProtoId()) {
-                                                add = false;
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    if (add) {
-                                        CreateItem(proto->GetProtoId(), {}, SelectedEntities.front());
-                                    }
+                                    CreateItem(proto->GetProtoId(), {}, SelectedEntities.front());
                                 }
                                 else {
                                     SetCurMode(CUR_MODE_PLACE_OBJECT);
@@ -2055,7 +2040,7 @@ void MapperEngine::DrawContentWindowImGui()
             if (ImGui::BeginChild("##ContainerItems", {0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f}, true)) {
                 for (size_t i = 0; i < inner_items.size(); i++) {
                     auto inner_item = inner_items[i].as_ptr();
-                    strex label = strex("{} x{}", inner_item->GetName(), inner_item->GetCount());
+                    strex label = strex("{}", inner_item->GetName());
                     bool selected = InContItem == inner_item;
 
                     if (ImGui::Selectable(label.c_str(), selected)) {

@@ -1091,21 +1091,6 @@ auto Critter::HasItems() const noexcept -> bool
     return !_invItems.empty();
 }
 
-auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-
-    for (ptr<Item> item : _invItems) {
-        if (item->GetProtoId() == item_pid) {
-            return item;
-        }
-    }
-
-    return nullptr;
-}
-
 auto Critter::GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1115,31 +1100,20 @@ auto Critter::GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>
     auto proto = _engine->GetProtoItem(item_pid);
     FO_VERIFY_AND_THROW(proto, "Item proto not found", item_pid);
 
-    if (proto->GetStackable()) {
-        for (auto& item : _invItems) {
-            if (item->GetProtoId() == item_pid) {
+    // Prefer an item actually in the Inventory slot over one equipped elsewhere
+    nptr<Item> another_slot;
+
+    for (auto& item : _invItems) {
+        if (item->GetProtoId() == item_pid) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item.get();
             }
+
+            another_slot = item.get();
         }
     }
-    else {
-        // Non-stackable: prefer an item actually in the Inventory slot over one equipped elsewhere
-        nptr<Item> another_slot;
 
-        for (auto& item : _invItems) {
-            if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get();
-                }
-
-                another_slot = item.get();
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>
@@ -1155,22 +1129,6 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>
     }
 
     return it->as_nptr();
-}
-
-auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    int32_t count = 0;
-
-    for (ptr<const Item> item : _invItems) {
-        if (item->GetProtoId() == pid) {
-            count += item->GetCount();
-        }
-    }
-
-    return count;
 }
 
 auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>

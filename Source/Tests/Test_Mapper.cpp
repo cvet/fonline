@@ -195,7 +195,7 @@ namespace MapperMergeTest
 
         // Moving clears the selection, so the delete right after it operates on an unselected entity
         Game.MoveEntity(added, mpos(13, 13));
-        Game.SetEntityProperty(added, "Count", "3");
+        Game.SetEntityProperty(added, "LightDistance", "3");
         Game.SelectEntity(added, true);
         if (Game.GetSelectedEntity() is null) return -3;
 
@@ -426,8 +426,6 @@ namespace MapperMergeTest
         int before = maps[currentIndex].GetItems().length();
         Item clone = item.Clone();
         clone.Finish();
-        Item countedClone = item.Clone(2);
-        countedClone.Finish();
         if (maps[currentIndex].GetItems().length() != before) return -3;
 
         return 0;
@@ -458,7 +456,6 @@ namespace MapperMergeTest
         cr.StopMove();
 
         // The critter carries nothing, so every inventory query must answer empty rather than fail
-        if (cr.CountItem("MapperMergeTileA".hstr()) != 0) return -1;
         if (!cr.GetItems().isEmpty()) return -2;
         if (cr.GetItem("MapperMergeTileA".hstr()) !is null) return -3;
 
@@ -476,10 +473,9 @@ namespace MapperMergeTest
         if (cr.GetBonePos("Head".hstr(), boneOffset)) return -21;
 
         ProtoItem tileProto = Game.GetProtoItem("MapperMergeTileA".hstr());
-        if (cr.CountItem(tileProto) != 0) return -11;
         if (cr.GetItem(tileProto) !is null) return -12;
-        if (cr.GetItem(ItemProperty::Count, 1) !is null) return -13;
-        if (!cr.GetItems(ItemProperty::Count, 1).isEmpty()) return -14;
+        if (cr.GetItem(ItemProperty::LightDistance, 1) !is null) return -13;
+        if (!cr.GetItems(ItemProperty::LightDistance, 1).isEmpty()) return -14;
 
         cr.MoveToHex(mpos(8, 8), ipos(0, 0), 10);
         cr.MoveToHex(mpos(8, 8), 0, ipos(0, 0), 10);
@@ -925,16 +921,16 @@ namespace MapperMergeTest
         return count;
     }
 
-    // Describes a survivor independently of authoring order; the survivor keeps its own data, so Count
+    // Describes a survivor independently of authoring order; the survivor keeps its own data, so LightDistance
     // fingerprints which item won the path-dependent race and the id pins which one survived
     struct SurvivorDesc
     {
         int64_t Id;
         mpos Origin;
         vector<mpos> Covered;
-        int32_t Count;
+        int32_t LightDistance;
 
-        auto operator==(const SurvivorDesc& other) const -> bool { return Id == other.Id && Origin == other.Origin && Covered == other.Covered && Count == other.Count; }
+        auto operator==(const SurvivorDesc& other) const -> bool { return Id == other.Id && Origin == other.Origin && Covered == other.Covered && LightDistance == other.LightDistance; }
     };
 
     static auto CollectSurvivors(ptr<MapView> map, hstring proto_id) -> vector<SurvivorDesc>
@@ -943,7 +939,7 @@ namespace MapperMergeTest
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == proto_id) {
-                survivors.emplace_back(SurvivorDesc {item->GetId().underlying_value(), item->GetHex(), CollectMeshHexes(item), item->GetCount()});
+                survivors.emplace_back(SurvivorDesc {item->GetId().underlying_value(), item->GetHex(), CollectMeshHexes(item), item->GetLightDistance()});
             }
         }
 
@@ -1085,8 +1081,8 @@ TEST_CASE("MapperMultihexMeshMerge")
         // Neither tile is clean and their data differs, so they stay apart: merging two non-clean items requires
         // identical data
         string body;
-        body += MakeItemBlock(60, TILE_A, 5, 5, "Count = 7");
-        body += MakeItemBlock(61, TILE_A, 6, 5, "Count = 9");
+        body += MakeItemBlock(60, TILE_A, 5, 5, "LightDistance = 7");
+        body += MakeItemBlock(61, TILE_A, 6, 5, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("ModifiedPairMap", "ModifiedPairMap.fomap", MakeMapText(body));
         REQUIRE(map);
@@ -1108,7 +1104,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(70, TILE_A, 5, 5);
         body += MakeItemBlock(71, TILE_A, 6, 5);
         body += MakeItemBlock(72, TILE_A, 7, 5);
-        body += MakeItemBlock(73, TILE_A, 8, 5, "Count = 7");
+        body += MakeItemBlock(73, TILE_A, 8, 5, "LightDistance = 7");
 
         auto map = mapper->LoadMapFromText("CleanPlusModifiedMap", "CleanPlusModifiedMap.fomap", MakeMapText(body));
         REQUIRE(map);
@@ -1157,10 +1153,10 @@ TEST_CASE("MapperMultihexMeshMerge")
         // A naive flood-fill would merge this line too but pick a different survivor: here clean middle tiles
         // bridge two modified ends and the clean proto data wins, which is exactly what must not change
         string body;
-        body += MakeItemBlock(200, TILE_A, 5, 5, "Count = 3");
+        body += MakeItemBlock(200, TILE_A, 5, 5, "LightDistance = 3");
         body += MakeItemBlock(201, TILE_A, 6, 5);
         body += MakeItemBlock(202, TILE_A, 7, 5);
-        body += MakeItemBlock(203, TILE_A, 8, 5, "Count = 9");
+        body += MakeItemBlock(203, TILE_A, 8, 5, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("ModChainAsc", "ModChainAsc.fomap", MakeMapText(body));
         REQUIRE(map);
@@ -1168,7 +1164,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}, {8, 5}});
     }
 
@@ -1176,7 +1172,7 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         string body;
         body += MakeItemBlock(210, TILE_A, 5, 5);
-        body += MakeItemBlock(211, TILE_A, 6, 5, "Count = 4");
+        body += MakeItemBlock(211, TILE_A, 6, 5, "LightDistance = 4");
         body += MakeItemBlock(212, TILE_A, 7, 5);
 
         auto map = mapper->LoadMapFromText("CleanModClean", "CleanModClean.fomap", MakeMapText(body));
@@ -1185,7 +1181,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}});
     }
 
@@ -1194,10 +1190,10 @@ TEST_CASE("MapperMultihexMeshMerge")
         // The same chain with the id order reversed, so the per-step merge direction differs: an identical result
         // is what proves the optimization stayed insensitive to authoring order
         string body;
-        body += MakeItemBlock(220, TILE_A, 5, 5, "Count = 3");
+        body += MakeItemBlock(220, TILE_A, 5, 5, "LightDistance = 3");
         body += MakeItemBlock(223, TILE_A, 6, 5);
         body += MakeItemBlock(222, TILE_A, 7, 5);
-        body += MakeItemBlock(221, TILE_A, 8, 5, "Count = 9");
+        body += MakeItemBlock(221, TILE_A, 8, 5, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("ModChainModLowIds", "ModChainModLowIds.fomap", MakeMapText(body));
         REQUIRE(map);
@@ -1205,7 +1201,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}, {8, 5}});
     }
 
@@ -1214,9 +1210,9 @@ TEST_CASE("MapperMultihexMeshMerge")
         // Two tiles share authored data and merge while the third differs with no clean tile to bridge it, which
         // a pure proto-adjacency flood-fill would over-merge into one mesh
         string body;
-        body += MakeItemBlock(230, TILE_A, 5, 5, "Count = 5");
-        body += MakeItemBlock(231, TILE_A, 6, 5, "Count = 5");
-        body += MakeItemBlock(232, TILE_A, 7, 5, "Count = 8");
+        body += MakeItemBlock(230, TILE_A, 5, 5, "LightDistance = 5");
+        body += MakeItemBlock(231, TILE_A, 6, 5, "LightDistance = 5");
+        body += MakeItemBlock(232, TILE_A, 7, 5, "LightDistance = 8");
 
         auto map = mapper->LoadMapFromText("ModXModXModY", "ModXModXModY.fomap", MakeMapText(body));
         REQUIRE(map);
@@ -1225,11 +1221,11 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(survivors.size() == 2);
 
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 5);
+        CHECK(survivors[0].LightDistance == 5);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}});
 
         CHECK(survivors[1].Origin == mpos {7, 5});
-        CHECK(survivors[1].Count == 8);
+        CHECK(survivors[1].LightDistance == 8);
         CHECK(survivors[1].Covered == vector<mpos> {{7, 5}});
     }
 
@@ -1295,7 +1291,7 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 300); // lowest id wins
         CHECK(survivors[0].Origin == mpos {3, 3});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         // hex_less is y-major: (3,3) then (20,20) then (5,25)
         CHECK(survivors[0].Covered == vector<mpos> {{3, 3}, {20, 20}, {5, 25}});
     }
@@ -1304,10 +1300,10 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
     {
         string body;
         body += MakeItemBlock(310, TILE_U, 2, 2);
-        body += MakeItemBlock(311, TILE_U, 10, 2, "Count = 7");
+        body += MakeItemBlock(311, TILE_U, 10, 2, "LightDistance = 7");
         body += MakeItemBlock(312, TILE_U, 2, 10);
-        body += MakeItemBlock(313, TILE_U, 25, 25, "Count = 7");
-        body += MakeItemBlock(314, TILE_U, 18, 4, "Count = 9");
+        body += MakeItemBlock(313, TILE_U, 25, 25, "LightDistance = 7");
+        body += MakeItemBlock(314, TILE_U, 18, 4, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("U_MixedScatter", "U_MixedScatter.fomap", MakeMapText(body));
         REQUIRE(map);
@@ -1318,19 +1314,19 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         // Clean group (310 + 312)
         CHECK(survivors[0].Id == 310);
         CHECK(survivors[0].Origin == mpos {2, 2});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{2, 2}, {2, 10}});
 
-        // Count == 7 group (311 + 313)
+        // LightDistance == 7 group (311 + 313)
         CHECK(survivors[1].Id == 311);
         CHECK(survivors[1].Origin == mpos {10, 2});
-        CHECK(survivors[1].Count == 7);
+        CHECK(survivors[1].LightDistance == 7);
         CHECK(survivors[1].Covered == vector<mpos> {{10, 2}, {25, 25}});
 
-        // Lone Count == 9 tile (314)
+        // Lone LightDistance == 9 tile (314)
         CHECK(survivors[2].Id == 314);
         CHECK(survivors[2].Origin == mpos {18, 4});
-        CHECK(survivors[2].Count == 9);
+        CHECK(survivors[2].LightDistance == 9);
         CHECK(survivors[2].Covered == vector<mpos> {{18, 4}});
     }
 
@@ -1348,7 +1344,7 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 320); // lowest id, even though it was authored second and sits at (6,5)
         CHECK(survivors[0].Origin == mpos {5, 5}); // origin normalized to the hex_less-smallest covered hex
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}});
     }
 
@@ -1377,8 +1373,8 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         string body;
         body += MakeItemBlock(350, TILE_U, 2, 2);
         body += MakeItemBlock(351, TILE_U, 9, 9);
-        body += MakeItemBlock(352, TILE_U, 4, 12, "Count = 4");
-        body += MakeItemBlock(353, TILE_U, 20, 1, "Count = 4");
+        body += MakeItemBlock(352, TILE_U, 4, 12, "LightDistance = 4");
+        body += MakeItemBlock(353, TILE_U, 20, 1, "LightDistance = 4");
 
         auto map = mapper->LoadMapFromText("U_Idempotent", "U_Idempotent.fomap", MakeMapText(body));
         REQUIRE(map);

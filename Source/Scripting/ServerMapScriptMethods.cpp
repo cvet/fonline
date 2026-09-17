@@ -70,7 +70,7 @@ FO_SCRIPT_API FO_RETURNS_PARENT ptr<Location> Server_Map_GetLocation(ptr<Map> se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -78,16 +78,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, nullptr);
     return item;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -95,16 +92,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), nullptr);
     return item;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, int32_t count, readonly_map<ItemProperty, int32_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, readonly_map<ItemProperty, int32_t> props)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -112,33 +106,25 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
+
+    auto proto = self->GetEngine()->GetProtoItem(protoId);
+
+    if (!proto) {
+        throw ScriptException("Invalid item proto id arg", protoId);
     }
 
-    if (!props.empty()) {
-        auto proto = self->GetEngine()->GetProtoItem(protoId);
+    Properties props_ = proto->GetProperties()->Copy();
 
-        if (!proto) {
-            throw ScriptException("Invalid item proto id arg", protoId);
-        }
-
-        Properties props_ = proto->GetProperties()->Copy();
-
-        for (const auto& [key, value] : props) {
-            props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
-        }
-
-        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, &props_);
-        return item;
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, &props_);
     return item;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, int32_t count, readonly_map<ItemProperty, int32_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, readonly_map<ItemProperty, int32_t> props)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -146,22 +132,14 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
+
+    Properties props_ = proto->GetProperties()->Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    if (!props.empty()) {
-        Properties props_ = proto->GetProperties()->Copy();
-
-        for (const auto& [key, value] : props) {
-            props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
-        }
-
-        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, &props_);
-        return item;
-    }
-
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), &props_);
     return item;
 }
 
