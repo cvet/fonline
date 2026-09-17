@@ -100,8 +100,8 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
     return nullptr;
 }
 
-ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider) :
-    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings})},
+ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
+    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings, .DrawWireframe = std::move(draw_wireframe)})},
     _settings {settings},
     _gameTime {game_time}
 {

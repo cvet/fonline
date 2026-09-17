@@ -46,6 +46,10 @@ struct RenderSettings;
 
 using ParticleTextureLoader = copyable_function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
+// Whether the particle triangles are re-drawn as a line list. Asked per draw rather than read from a setting:
+// the particle viewer turns the overlay on for one preview and off again, which is live state, not a knob
+using ParticleWireframeQuery = copyable_function<bool()>;
+
 enum class ParticleSceneBackgroundState : uint8_t
 {
     Unavailable,
@@ -100,6 +104,7 @@ struct ParticleRuntimeServices
     ParticleTextureLoader TextureLoader;
     ParticleSceneBackgroundProvider SceneBackgroundProvider;
     ptr<RenderSettings> Settings;
+    ParticleWireframeQuery DrawWireframe;
 };
 
 class ParticleRuntimeSystem
@@ -146,7 +151,7 @@ public:
 // The returned vector is sorted by backend priority, with the first backend being the most preferred
 auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
 
-// Mirrors the sprite-batch wireframe from Render.DrawWireframe by re-drawing the triangles as a line list; the
+// Mirrors the sprite-batch wireframe by re-drawing the triangles as a line list; the
 // overlay buffer is created lazily and reused
 void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix);
 

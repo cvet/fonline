@@ -702,6 +702,7 @@ public:
     EventObserver<> OnQuit {};
 
     AppWindow MainWindow;
+    AppScreenState ScreenState {};
     AppRender Render;
     AppInput Input;
     AppAudio Audio;

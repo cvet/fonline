@@ -472,10 +472,10 @@ void ParticleViewer::RenderPreview()
     }
 
     // Scope the wireframe overlay to the preview render only: the particle backends draw quad edges while
-    // Render.DrawWireframe is set, and restoring it right after keeps a hosting mapper scene unaffected
-    bool prev_draw_wireframe = _engine->Settings->Render.DrawWireframe;
-    _engine->Settings->Render.DrawWireframe = _showWireframe;
-    auto wireframe_guard = scope_exit([&]() noexcept { _engine->Settings->Render.DrawWireframe = prev_draw_wireframe; });
+    // the renderer is asked to overlay it, and restoring it right after keeps a hosting mapper scene unaffected
+    bool prev_draw_wireframe = _sprMngr->IsDrawWireframe();
+    _sprMngr->SetDrawWireframe(_showWireframe);
+    auto wireframe_guard = scope_exit([&]() noexcept { _sprMngr->SetDrawWireframe(prev_draw_wireframe); });
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
         // Nearest filtering, because ImGui presents the target scaled by the display's DPI scale and a

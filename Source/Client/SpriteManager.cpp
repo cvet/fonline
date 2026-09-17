@@ -111,6 +111,9 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
     _spriteEffectDrawBuf->Indices = {0, 1, 3, 1, 2, 3};
     _spriteEffectDrawBuf->IndCount = 6;
 
+    _alwaysOnTop = _settings->Render.AlwaysOnTop;
+    _drawWireframe = _settings->Render.DrawWireframe;
+
     isize32 screen_size = _window->GetScreenSize();
 
 #if !FO_DIRECT_SPRITES_DRAW
@@ -190,11 +193,6 @@ void SpriteManager::SetScreenSize(isize32 size)
         }
     }
 
-    if (_window->IsVirtual()) {
-        _settings->View.ScreenWidth = size.width;
-        _settings->View.ScreenHeight = size.height;
-    }
-
     _window->SetScreenSize(size);
 }
 
@@ -261,6 +259,7 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
 {
     FO_STACK_TRACE_ENTRY();
 
+    _alwaysOnTop = enable;
     _window->AlwaysOnTop(enable);
 }
 
@@ -408,8 +407,9 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
     const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
     int32_t width_from_i = tex->Size.width;
     int32_t height_from_i = tex->Size.height;
-    int32_t width_to_i = rt_stack.empty() ? _settings->View.ScreenWidth : rt_stack.back()->GetTexture()->Size.width;
-    int32_t height_to_i = rt_stack.empty() ? _settings->View.ScreenHeight : rt_stack.back()->GetTexture()->Size.height;
+    isize32 screen_size = GetScreenSize();
+    int32_t width_to_i = rt_stack.empty() ? screen_size.width : rt_stack.back()->GetTexture()->Size.width;
+    int32_t height_to_i = rt_stack.empty() ? screen_size.height : rt_stack.back()->GetTexture()->Size.height;
     float32_t width_from_f = numeric_cast<float32_t>(width_from_i);
     float32_t height_from_f = numeric_cast<float32_t>(height_from_i);
     float32_t width_to_f = numeric_cast<float32_t>(width_to_i);
@@ -763,7 +763,7 @@ void SpriteManager::Flush()
 
     DisableScissor();
 
-    if (_settings->Render.DrawWireframe) {
+    if (_drawWireframe) {
         DrawSpriteWireframe();
     }
 
@@ -857,7 +857,7 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
     size_t ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
-        if (_settings->Render.DrawWireframe) {
+        if (_drawWireframe) {
             QueueSpriteWireframe(start_index, ind_count);
         }
 
@@ -924,7 +924,7 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
     size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
-        if (_settings->Render.DrawWireframe) {
+        if (_drawWireframe) {
             QueueSpriteWireframe(start_index, ind_count);
         }
 
@@ -1355,7 +1355,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         if (ind_count != 0) {
-            if (_settings->Render.DrawWireframe) {
+            if (_drawWireframe) {
                 QueueSpriteWireframe(start_ipos, ind_count);
             }
 

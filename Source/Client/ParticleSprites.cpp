@@ -194,6 +194,7 @@ ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<Re
     _settings {settings},
     _particleMngr {settings, effect_mngr, &spr_mngr->GetRender(), spr_mngr->GetResources(), game_time, //
         [this, hashes](string_view path) mutable FO_DEFERRED { return LoadTexture(hashes->to_hashed_string(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED { return spr_mngr->IsDrawWireframe(); }, //
         [spr_mngr]() mutable FO_DEFERRED {
             nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};

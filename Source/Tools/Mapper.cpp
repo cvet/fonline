@@ -92,8 +92,12 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
 #endif
 
+    FullscreenMouseScroll = Settings->Hex.FullscreenMouseScroll;
+    WindowedMouseScroll = Settings->Hex.WindowedMouseScroll;
+
     _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Client.Language);
+    SetCurLangName(Settings->Client.Language);
 
     AnimViewer = safe_alloc::make_unique<AnimationViewer>(this, &SprMngr, &ResMngr, &GameTime);
     PartViewer = safe_alloc::make_unique<ParticleViewer>(this, &SprMngr);
@@ -361,11 +365,12 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
         RightMouseVelocityTime = {};
     }
 
-    if (bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && Settings->Hex.FullscreenMouseScroll) || (!is_fullscreen && Settings->Hex.WindowedMouseScroll)) {
+    if (bool is_fullscreen = SprMngr.IsFullscreen(); (is_fullscreen && FullscreenMouseScroll) || (!is_fullscreen && WindowedMouseScroll)) {
         if (!InputLocked) {
-            ScrollMouseRight = MousePos.x >= Settings->View.ScreenWidth - 1;
+            isize32 screen_size = SprMngr.GetScreenSize();
+            ScrollMouseRight = MousePos.x >= screen_size.width - 1;
             ScrollMouseLeft = MousePos.x <= 0;
-            ScrollMouseDown = MousePos.y >= Settings->View.ScreenHeight - 1;
+            ScrollMouseDown = MousePos.y >= screen_size.height - 1;
             ScrollMouseUp = MousePos.y <= 0;
         }
     }
@@ -659,32 +664,32 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 
     switch (dikdw) {
     case KeyCode::F1:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowItem);
+        ToggleMapVisibilityFlag(MapLayers::Items);
         break;
     case KeyCode::F2:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowScen);
+        ToggleMapVisibilityFlag(MapLayers::Scenery);
         break;
     case KeyCode::F3:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowWall);
+        ToggleMapVisibilityFlag(MapLayers::Walls);
         break;
     case KeyCode::F4:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowCrit);
+        ToggleMapVisibilityFlag(MapLayers::Critters);
         break;
     case KeyCode::F5:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowTile);
+        ToggleMapVisibilityFlag(MapLayers::Tiles);
         break;
     case KeyCode::F6:
-        ToggleMapVisibilityFlag(GetCurMap(), Settings->Hex.ShowFast);
+        ToggleMapVisibilityFlag(MapLayers::Fast);
         break;
     case KeyCode::F7:
         InterfaceHidden = !InterfaceHidden;
         break;
     case KeyCode::F8:
         if (SprMngr.IsFullscreen()) {
-            Settings->Hex.FullscreenMouseScroll = !Settings->Hex.FullscreenMouseScroll;
+            FullscreenMouseScroll = !FullscreenMouseScroll;
         }
         else {
-            Settings->Hex.WindowedMouseScroll = !Settings->Hex.WindowedMouseScroll;
+            WindowedMouseScroll = !WindowedMouseScroll;
         }
         break;
     case KeyCode::F9:
@@ -817,6 +822,17 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         break;
     default:
         break;
+    }
+}
+
+void MapperEngine::PushLayerVisibility()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto cur_map = GetCurMap();
+
+    if (cur_map) {
+        cur_map->SetVisibleLayers(VisibleLayers);
     }
 }
 
@@ -1555,17 +1571,26 @@ void MapperEngine::DrawMainPanelImGui()
         }
 
         if (ImGui::BeginMenu("View")) {
-            bool view_layer_changed = false;
+            MapLayers layers_before = VisibleLayers;
 
-            view_layer_changed |= ImGui::MenuItem("Items", nullptr, &Settings->Hex.ShowItem);
-            view_layer_changed |= ImGui::MenuItem("Scenery", nullptr, &Settings->Hex.ShowScen);
-            view_layer_changed |= ImGui::MenuItem("Walls", nullptr, &Settings->Hex.ShowWall);
-            view_layer_changed |= ImGui::MenuItem("Critters", nullptr, &Settings->Hex.ShowCrit);
-            view_layer_changed |= ImGui::MenuItem("Tiles", nullptr, &Settings->Hex.ShowTile);
-            view_layer_changed |= ImGui::MenuItem("Roof", nullptr, &Settings->Hex.ShowRoof);
-            view_layer_changed |= ImGui::MenuItem("Fast", nullptr, &Settings->Hex.ShowFast);
+            auto layer_menu_item = [this](string_view_nt label, MapLayers layer) {
+                bool visible = is_enum_set(VisibleLayers, layer);
 
-            if (view_layer_changed && _curMap) {
+                if (ImGui::MenuItem(label.c_str(), nullptr, &visible)) {
+                    VisibleLayers = visible ? combine_enum(VisibleLayers, layer) : exclude_enum(VisibleLayers, layer);
+                }
+            };
+
+            layer_menu_item("Items", MapLayers::Items);
+            layer_menu_item("Scenery", MapLayers::Scenery);
+            layer_menu_item("Walls", MapLayers::Walls);
+            layer_menu_item("Critters", MapLayers::Critters);
+            layer_menu_item("Tiles", MapLayers::Tiles);
+            layer_menu_item("Roof", MapLayers::Roof);
+            layer_menu_item("Fast", MapLayers::Fast);
+
+            if (VisibleLayers != layers_before && _curMap) {
+                PushLayerVisibility();
                 _curMap->RebuildMap();
             }
 
@@ -1619,10 +1644,10 @@ void MapperEngine::DrawMainPanelImGui()
 
             ImGui::Separator();
             if (SprMngr.IsFullscreen()) {
-                ImGui::MenuItem("Fullscreen mouse scroll", nullptr, &Settings->Hex.FullscreenMouseScroll);
+                ImGui::MenuItem("Fullscreen mouse scroll", nullptr, &FullscreenMouseScroll);
             }
             else {
-                ImGui::MenuItem("Windowed mouse scroll", nullptr, &Settings->Hex.WindowedMouseScroll);
+                ImGui::MenuItem("Windowed mouse scroll", nullptr, &WindowedMouseScroll);
             }
             ImGui::EndMenu();
         }
@@ -1686,7 +1711,9 @@ void MapperEngine::DrawWorkspaceWindowImGui()
         return;
     }
 
-    auto toggle_visibility = [&](string_view_nt label, string_view_nt tooltip, bool& value) {
+    auto toggle_visibility = [&](string_view_nt label, string_view_nt tooltip, MapLayers layer) {
+        bool value = is_enum_set(VisibleLayers, layer);
+
         if (value) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -1703,7 +1730,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
         }
 
         if (clicked) {
-            value = !value;
+            VisibleLayers = value ? exclude_enum(VisibleLayers, layer) : combine_enum(VisibleLayers, layer);
         }
 
         return clicked;
@@ -1711,24 +1738,25 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
     bool visibility_changed = false;
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {4.0f, ImGui::GetStyle().ItemSpacing.y});
-    visibility_changed |= toggle_visibility("Items", "Items", Settings->Hex.ShowItem);
+    visibility_changed |= toggle_visibility("Items", "Items", MapLayers::Items);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Scenery", "Scenery", Settings->Hex.ShowScen);
+    visibility_changed |= toggle_visibility("Scenery", "Scenery", MapLayers::Scenery);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Walls", "Walls", Settings->Hex.ShowWall);
+    visibility_changed |= toggle_visibility("Walls", "Walls", MapLayers::Walls);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Critters", "Critters", Settings->Hex.ShowCrit);
+    visibility_changed |= toggle_visibility("Critters", "Critters", MapLayers::Critters);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Tiles", "Tiles", Settings->Hex.ShowTile);
+    visibility_changed |= toggle_visibility("Tiles", "Tiles", MapLayers::Tiles);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Roof", "Roof", Settings->Hex.ShowRoof);
+    visibility_changed |= toggle_visibility("Roof", "Roof", MapLayers::Roof);
     ImGui::SameLine();
-    visibility_changed |= toggle_visibility("Fast", "Fast", Settings->Hex.ShowFast);
+    visibility_changed |= toggle_visibility("Fast", "Fast", MapLayers::Fast);
     ImGui::PopStyleVar();
 
     if (visibility_changed && _curMap) {
         auto cur_map = GetCurMap();
         FO_VERIFY_AND_THROW(cur_map, "Current map is null");
+        PushLayerVisibility();
         cur_map->RebuildMap();
     }
 
@@ -2498,47 +2526,34 @@ void MapperEngine::DrawMapWindowImGui()
     ImGui::Checkbox("Axial grid selection", &SelectAxialGrid);
     ImGui::Checkbox("Select entire entity", &SelectEntireEntity);
 
-    auto visibility_before = array {
-        Settings->Hex.ShowItem,
-        Settings->Hex.ShowScen,
-        Settings->Hex.ShowWall,
-        Settings->Hex.ShowCrit,
-        Settings->Hex.ShowTile,
-        Settings->Hex.ShowRoof,
-        Settings->Hex.ShowFast,
-    };
-
     auto draw_checkbox_group = [](auto&& entries) {
         for (const auto& [label, value] : entries) {
             ImGui::Checkbox(label, value);
         }
     };
 
-    if (ImGui::CollapsingHeader("Visibility")) {
-        draw_checkbox_group(array {
-            std::pair {"Items", &Settings->Hex.ShowItem},
-            std::pair {"Scenery", &Settings->Hex.ShowScen},
-            std::pair {"Walls", &Settings->Hex.ShowWall},
-            std::pair {"Critters", &Settings->Hex.ShowCrit},
-            std::pair {"Tiles", &Settings->Hex.ShowTile},
-            std::pair {"Roof", &Settings->Hex.ShowRoof},
-            std::pair {"Fast", &Settings->Hex.ShowFast},
-        });
-    }
+    MapLayers visibility_before = VisibleLayers;
 
-    auto visibility_after = array {
-        Settings->Hex.ShowItem,
-        Settings->Hex.ShowScen,
-        Settings->Hex.ShowWall,
-        Settings->Hex.ShowCrit,
-        Settings->Hex.ShowTile,
-        Settings->Hex.ShowRoof,
-        Settings->Hex.ShowFast,
+    auto draw_layer_checkbox = [this](string_view_nt label, MapLayers layer) {
+        bool visible = is_enum_set(VisibleLayers, layer);
+
+        if (ImGui::Checkbox(label.c_str(), &visible)) {
+            VisibleLayers = visible ? combine_enum(VisibleLayers, layer) : exclude_enum(VisibleLayers, layer);
+        }
     };
 
-    bool visibility_changed = visibility_before != visibility_after;
+    if (ImGui::CollapsingHeader("Visibility")) {
+        draw_layer_checkbox("Items", MapLayers::Items);
+        draw_layer_checkbox("Scenery", MapLayers::Scenery);
+        draw_layer_checkbox("Walls", MapLayers::Walls);
+        draw_layer_checkbox("Critters", MapLayers::Critters);
+        draw_layer_checkbox("Tiles", MapLayers::Tiles);
+        draw_layer_checkbox("Roof", MapLayers::Roof);
+        draw_layer_checkbox("Fast", MapLayers::Fast);
+    }
 
-    if (visibility_changed) {
+    if (VisibleLayers != visibility_before) {
+        PushLayerVisibility();
         cur_map->RebuildMap();
     }
 
@@ -3483,22 +3498,22 @@ void MapperEngine::HandleLeftMouseUp()
                     if (cur_map->IsIgnorePid(item->GetProtoId())) {
                         return false;
                     }
-                    if (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings->Hex.ShowTile) {
+                    if (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && is_enum_set(VisibleLayers, MapLayers::Tiles)) {
                         return true;
                     }
-                    else if (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings->Hex.ShowRoof) {
+                    else if (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && is_enum_set(VisibleLayers, MapLayers::Roof)) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && !item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings->Hex.ShowItem) {
+                    else if (!item->GetIsTile() && !item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && is_enum_set(VisibleLayers, MapLayers::Items)) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && item->GetIsScenery() && SelectSceneryEnabled && Settings->Hex.ShowScen) {
+                    else if (!item->GetIsTile() && item->GetIsScenery() && SelectSceneryEnabled && is_enum_set(VisibleLayers, MapLayers::Scenery)) {
                         return true;
                     }
-                    else if (!item->GetIsTile() && item->GetIsWall() && SelectWallsEnabled && Settings->Hex.ShowWall) {
+                    else if (!item->GetIsTile() && item->GetIsWall() && SelectWallsEnabled && is_enum_set(VisibleLayers, MapLayers::Walls)) {
                         return true;
                     }
-                    else if (Settings->Hex.ShowFast && cur_map->IsFastPid(item->GetProtoId())) {
+                    else if (is_enum_set(VisibleLayers, MapLayers::Fast) && cur_map->IsFastPid(item->GetProtoId())) {
                         return true;
                     }
                     else {
@@ -3513,7 +3528,7 @@ void MapperEngine::HandleLeftMouseUp()
                         }
                     }
                     for (ptr<CritterHexView> hex_cr : copy_hold_ref(cur_map->GetCrittersOnHex(hex, CritterFindType::Any))) {
-                        if (SelectCrittersEnabled && Settings->Hex.ShowCrit) {
+                        if (SelectCrittersEnabled && is_enum_set(VisibleLayers, MapLayers::Critters)) {
                             SelectAdd(hex_cr, hex);
                         }
                     }
@@ -3991,16 +4006,16 @@ void MapperEngine::SelectAll()
             continue;
         }
 
-        if ((!item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && Settings->Hex.ShowItem) || //
-            (item->GetIsScenery() && SelectSceneryEnabled && Settings->Hex.ShowScen) || //
-            (item->GetIsWall() && SelectWallsEnabled && Settings->Hex.ShowWall) || //
-            (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && Settings->Hex.ShowTile) || //
-            (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && Settings->Hex.ShowRoof)) {
+        if ((!item->GetIsScenery() && !item->GetIsWall() && SelectItemsEnabled && is_enum_set(VisibleLayers, MapLayers::Items)) || //
+            (item->GetIsScenery() && SelectSceneryEnabled && is_enum_set(VisibleLayers, MapLayers::Scenery)) || //
+            (item->GetIsWall() && SelectWallsEnabled && is_enum_set(VisibleLayers, MapLayers::Walls)) || //
+            (item->GetIsTile() && !item->GetIsRoofTile() && SelectTilesEnabled && is_enum_set(VisibleLayers, MapLayers::Tiles)) || //
+            (item->GetIsTile() && item->GetIsRoofTile() && SelectRoofTilesEnabled && is_enum_set(VisibleLayers, MapLayers::Roof))) {
             SelectAdd(item);
         }
     }
 
-    if (SelectCrittersEnabled && Settings->Hex.ShowCrit) {
+    if (SelectCrittersEnabled && is_enum_set(VisibleLayers, MapLayers::Critters)) {
         span<refcount_ptr<CritterHexView>> critters = cur_map->GetCritters();
 
         for (size_t i = 0; i < critters.size(); i++) {
@@ -5642,7 +5657,7 @@ void MapperEngine::DrawSettingsWindowImGui()
     }
 
     auto apply_resolution = [&](isize32 resolution) {
-        if (Settings->View.ScreenWidth == resolution.width && Settings->View.ScreenHeight == resolution.height) {
+        if (SprMngr.GetScreenSize() == resolution) {
             return;
         }
 
@@ -5653,7 +5668,8 @@ void MapperEngine::DrawSettingsWindowImGui()
         AddMess(strex("Resolution changed to {}x{}", resolution.width, resolution.height));
     };
 
-    ImGui::Text("Current resolution: %d x %d", Settings->View.ScreenWidth, Settings->View.ScreenHeight);
+    isize32 current_screen_size = SprMngr.GetScreenSize();
+    ImGui::Text("Current resolution: %d x %d", current_screen_size.width, current_screen_size.height);
     bool fullscreen = SprMngr.IsFullscreen();
     if (ImGui::Checkbox("Fullscreen", &fullscreen)) {
         SprMngr.ToggleFullscreen();
@@ -5680,7 +5696,7 @@ void MapperEngine::DrawSettingsWindowImGui()
 
     if (ImGui::BeginChild("##SettingsResolutions", {0.0f, 0.0f}, false)) {
         for (const auto& res : popular_resolutions) {
-            bool is_current = Settings->View.ScreenWidth == res.width && Settings->View.ScreenHeight == res.height;
+            bool is_current = SprMngr.GetScreenSize() == res;
             if (ImGui::Selectable(strex("{} x {}", res.width, res.height).c_str(), is_current)) {
                 apply_resolution(res);
             }
@@ -6350,6 +6366,7 @@ void MapperEngine::ShowMap(ptr<MapView> map)
         }
 
         _curMap = map.hold_ref();
+        PushLayerVisibility();
         ClearMapperTrackOverlay();
         RefreshActiveProtoLists();
     }
@@ -6883,14 +6900,17 @@ void MapperEngine::AdvanceCritterDir(ptr<CritterHexView> cr) const
     cr->ChangeDir(GetNextCritterDir(cr->GetDir()));
 }
 
-void MapperEngine::ToggleMapVisibilityFlag(nptr<MapView> map, bool& value) const
+void MapperEngine::ToggleMapVisibilityFlag(MapLayers layer)
 {
     FO_STACK_TRACE_ENTRY();
 
-    value = !value;
+    VisibleLayers = is_enum_set(VisibleLayers, layer) ? exclude_enum(VisibleLayers, layer) : combine_enum(VisibleLayers, layer);
+    PushLayerVisibility();
 
-    if (map) {
-        map->RebuildMap();
+    auto cur_map = GetCurMap();
+
+    if (cur_map) {
+        cur_map->RebuildMap();
     }
 }
 

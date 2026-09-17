@@ -357,24 +357,24 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("Present") == "value");
     }
 
-    SECTION("RuntimeSettingWritesVariableAndCustomValues")
+    SECTION("RuntimeSettingRejectsEngineSettingsAndKeepsCustomValues")
     {
         GlobalSettings settings {false};
         settings.ApplyDefaultSettings();
 
-        settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "True");
-        CHECK(settings.Hex.WindowedMouseScroll);
+        // Every engine setting is read-only at runtime: a configured value is a knob someone turned, and the
+        // system that owns a value which changes while the game runs keeps that value itself
+        bool original_scroll = settings.Hex.WindowedMouseScroll;
+        CHECK_THROWS_AS(settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "True"), SettingsException);
+        CHECK(settings.Hex.WindowedMouseScroll == original_scroll);
         CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Hex.WindowedMouseScroll")));
 
         // The group is part of the name: a bare short name reaches no engine setting and is kept as a custom
         // one, which is what lets two groups declare the same short name without one answering for the other
         settings.SetRuntimeSetting("WindowedMouseScroll", "False");
-        CHECK(settings.Hex.WindowedMouseScroll);
+        CHECK(settings.Hex.WindowedMouseScroll == original_scroll);
         CHECK(settings.GetCustomSetting("WindowedMouseScroll") == "False");
         CHECK(settings.GetRuntimeSetting("WindowedMouseScroll") == "False");
-
-        settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "False");
-        CHECK_FALSE(settings.Hex.WindowedMouseScroll);
 
         settings.SetRuntimeSetting("Project.RuntimeValue", "value");
         CHECK(settings.GetCustomSetting("Project.RuntimeValue") == "value");
@@ -384,26 +384,17 @@ TEST_CASE("Settings")
         CHECK(settings.Common.GameName == original_game_name);
         CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Common.GameName")));
 
-        string variable_collision = "Hex.WindowedMouseScroll";
-        variable_collision.push_back('\0');
-        variable_collision += "Custom";
-        REQUIRE(const_hash(variable_collision.c_str()) == const_hash("Hex.WindowedMouseScroll"));
-        settings.SetRuntimeSetting(variable_collision, "True");
-        CHECK_FALSE(settings.Hex.WindowedMouseScroll);
-        CHECK(settings.GetCustomSetting(variable_collision) == "True");
-        CHECK(settings.GetRuntimeSetting(variable_collision) == "True");
-        CHECK_FALSE(strvex(settings.GetRuntimeSetting("Hex.WindowedMouseScroll")).to_bool());
-
-        string fixed_collision = "Common.GameName";
-        fixed_collision.push_back('\0');
-        fixed_collision += "Custom";
-        settings.SetRuntimeSetting(fixed_collision, "custom");
+        string name_collision = "Common.GameName";
+        name_collision.push_back('\0');
+        name_collision += "Custom";
+        REQUIRE(const_hash(name_collision.c_str()) == const_hash("Common.GameName"));
+        settings.SetRuntimeSetting(name_collision, "custom");
         CHECK(settings.Common.GameName == original_game_name);
-        CHECK(settings.GetCustomSetting(fixed_collision) == "custom");
-        CHECK(settings.GetRuntimeSetting(fixed_collision) == "custom");
+        CHECK(settings.GetCustomSetting(name_collision) == "custom");
+        CHECK(settings.GetRuntimeSetting(name_collision) == "custom");
         CHECK(settings.GetRuntimeSetting("Common.GameName") == settings.Common.GameName);
 
-        // A bare fixed-setting name is not the setting either: it writes a custom value instead of throwing
+        // A bare engine-setting name is not the setting either: it writes a custom value instead of throwing
         settings.SetRuntimeSetting("GameName", "Bare");
         CHECK(settings.Common.GameName == original_game_name);
         CHECK(settings.GetRuntimeSetting("GameName") == "Bare");

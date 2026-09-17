@@ -94,13 +94,11 @@ static auto MakeCompleteConfigBakerConfig() -> string
 {
     string config;
 
-#define FIXED_SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
-#define VARIABLE_SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
+#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"
-#undef FIXED_SETTING
-#undef VARIABLE_SETTING
+#undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
 

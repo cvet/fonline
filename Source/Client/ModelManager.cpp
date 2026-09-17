@@ -76,7 +76,7 @@ auto ResolveModelParticleSceneBackground(bool direct_scene_draw, bool direct_mod
     return scene_background_provider ? scene_background_provider() : ParticleSceneBackgroundResult {};
 }
 
-ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider) :
+ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
     _settings {settings},
     _resources {resources},
     _engineMetadata {engine_metadata},
@@ -86,7 +86,7 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _sceneBackgroundProvider {std::move(scene_background_provider)},
-    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
+    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), std::move(draw_wireframe), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -222,6 +222,7 @@ static auto ErrCodeToString(GLenum err_code) -> string
 struct OpenGL_Renderer::Context
 {
     nptr<GlobalSettings> Settings {};
+    nptr<const AppScreenState> Screen {};
     bool RenderDebug {};
     bool ForceGlslEsProfile {};
     nptr<SDL_Window> SdlWindow {};
@@ -355,7 +356,7 @@ static auto WebGlContextHandleAsSdlContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE conte
 
 OpenGL_Renderer::OpenGL_Renderer() = default;
 
-void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -367,6 +368,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     logging::write("Used OpenGL rendering");
 
     _ctx->Settings = &settings;
+    _ctx->Screen = screen;
     _ctx->RenderDebug = settings.Render.RenderDebug;
     _ctx->ForceGlslEsProfile = settings.Render.ForceGlslEsProfile;
     _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
@@ -539,7 +541,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 #endif
 
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_ctx->BaseFrameBufObj));
-    _ctx->BaseFrameBufSize = {settings.View.ScreenWidth, settings.View.ScreenHeight};
+    _ctx->BaseFrameBufSize = screen->Size;
 
     // Shared bump-allocated uniform buffer (see the Context field comment)
     if (GL_HAS_CTX(uniform_buffer_object, _ctx.get())) {
@@ -955,7 +957,7 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         _ctx->BaseFrameBufObjBinded = true;
 
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->View.ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->View.ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / screen_aspect);
 
@@ -963,8 +965,8 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         vp_oy = (_ctx->BaseFrameBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
-        screen_width = _ctx->Settings->View.ScreenWidth;
-        screen_height = _ctx->Settings->View.ScreenHeight;
+        screen_width = _ctx->Screen->Size.width;
+        screen_height = _ctx->Screen->Size.height;
     }
 
     _ctx->ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};

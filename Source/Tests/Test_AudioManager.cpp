@@ -334,7 +334,7 @@ TEST_CASE("AudioManagerDynamicPlacement")
         CHECK(audio.UpdateSound(sound_id, 0.5f, 0.0f));
         (void)device.PullMixedBuffer();
 
-        CHECK(device.MixedVolume == settings.Audio.SoundVolume / 2);
+        CHECK(device.MixedVolume == audio.GetSoundVolume() / 2);
     }
 
     SECTION("AFinishedSoundStopsAnsweringItsHandle")

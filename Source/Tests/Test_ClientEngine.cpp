@@ -1241,7 +1241,7 @@ namespace ClientEngineTest
         if (Game.IsFullscreen() != wasFullscreen) return -1;
 
         Game.MinimizeWindow();
-        Game.RefreshAlwaysOnTop();
+        Game.SetAlwaysOnTop(Game.IsAlwaysOnTop());
         Game.FlashUnfocusedWindow();
         Game.SetScreenKeyboard(true);
         Game.SetScreenKeyboard(false);
@@ -3721,7 +3721,7 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 {
     auto settings = MakeClientTestSettings();
-    settings.Render.DrawWireframe = true;
+    BakerTests::OverrideSetting(settings.Render.DrawWireframe, true);
     auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });

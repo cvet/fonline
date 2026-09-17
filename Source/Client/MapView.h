@@ -201,6 +201,8 @@ public:
     [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool { return _manualScroll != ScrollDirection::None; }
     [[nodiscard]] auto GetManualScroll() const noexcept -> ScrollDirection { return _manualScroll; }
+    [[nodiscard]] auto GetVisibleLayers() const noexcept -> MapLayers { return _visibleLayers; }
+    [[nodiscard]] auto IsLayerVisible(MapLayers layer) const noexcept -> bool { return is_enum_set(_visibleLayers, layer); }
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
@@ -252,6 +254,7 @@ public:
     void SetManualScroll(ScrollDirection dirs) noexcept { _manualScroll = dirs; }
     void InstantScroll(fpos32 scroll);
     void InstantScrollTo(mpos center_hex);
+    void SetVisibleLayers(MapLayers layers) noexcept;
 
     // Critters
     auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<CritterHexView>;
@@ -415,6 +418,7 @@ private:
     timespan _scrollDtAccum {};
 
     ScrollDirection _manualScroll {};
+    MapLayers _visibleLayers {MapLayers::All};
     bool _autoScrollActive {};
     bool _autoScrollCanStop {};
     fpos32 _autoScrollOffset {};

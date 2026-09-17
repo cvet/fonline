@@ -652,14 +652,14 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("resolves setting groups and serializes their configured values")
     {
-        ConfigFile config {"Common.DebugBuild = true\nProject.DebugFlag = false\n"};
+        ConfigFile config {"Project.DebugBuild = true\nProject.DebugFlag = false\n"};
         rig.Settings.ApplyConfigFile(config, "");
         rig.AddSourceFile("Scripts/TestSettings.fos", R"(
 namespace TestSettings
 {
 #if CLIENT
-///@ Setting Client bool Common.DebugBuild
-///@ Setting Client bool Common . DebugBuild
+///@ Setting Client bool Project.DebugBuild
+///@ Setting Client bool Project . DebugBuild
 ///@ Setting Client bool Project.DebugFlag
 #endif
 }
@@ -705,11 +705,11 @@ namespace TestSettings
 
         reader.verify_end();
 
-        auto debug_build_value = rig.Settings.FindSettingValue("Common.DebugBuild");
+        auto debug_build_value = rig.Settings.FindSettingValue("Project.DebugBuild");
         auto debug_flag_value = rig.Settings.FindSettingValue("Project.DebugFlag");
         REQUIRE(debug_build_value);
         REQUIRE(debug_flag_value);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool", *debug_build_value}) == 2);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugBuild", "bool", *debug_build_value}) == 2);
         CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugFlag", "bool", *debug_flag_value}) == 1);
     }
 

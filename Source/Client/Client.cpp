@@ -115,6 +115,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Client.Language);
+    SetCurLangName(Settings->Client.Language);
 
     // Modules initialization
     ClientInitHook(this);
@@ -1815,7 +1816,7 @@ void ClientEngine::Net_OnLoadMap()
         auto map_proto = GetProtoMap(map_pid);
         FO_VERIFY_AND_THROW(map_proto, "Missing required map prototype");
 
-        isize32 screen_size = {Settings->View.ScreenWidth, Settings->View.ScreenHeight};
+        isize32 screen_size = SprMngr.GetScreenSize();
         OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
 
         _curLocation = safe_alloc::make_refcounted<LocationView>(this, loc_id, loc_proto);
@@ -2564,14 +2565,14 @@ void ClientEngine::ChangeLanguage(string_view lang_name)
     lang_pack.LoadFromResources(Resources, lang_name);
 
     _curLang = std::move(lang_pack);
-    Settings->Client.Language = lang_name;
+    SetCurLangName(lang_name);
 }
 
 auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (lang_name.empty() || lang_name == Settings->Client.Language) {
+    if (lang_name.empty() || lang_name == GetCurLangName()) {
         return _curLang;
     }
 
