@@ -131,7 +131,7 @@ namespace AudioBakerTests
 
         for (size_t frame = 0; frame < frame_count; frame++) {
             float64_t phase = 2.0 * std::numbers::pi * frequency * numeric_cast<float64_t>(frame) / numeric_cast<float64_t>(sample_rate);
-            auto value = numeric_cast<int16_t>(iround<int32_t>(std::sin(phase) * 20000.0));
+            int16_t value = numeric_cast<int16_t>(iround<int32_t>(std::sin(phase) * 20000.0));
 
             for (int32_t channel = 0; channel < channels; channel++) {
                 samples[frame * numeric_cast<size_t>(channels) + numeric_cast<size_t>(channel)] = value;

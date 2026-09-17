@@ -596,7 +596,17 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
             pack_info.Name = std::move(name);
         }
         else {
-            throw SettingsException("Resource pack name not specifed");
+            // A section without a name is what a config cut or merged at a section boundary leaves behind, so the keys
+            // it did receive are what tells the two apart
+            string section_keys;
+
+            for (auto&& [key, value] : *res_pack) {
+                if (!key.empty()) {
+                    section_keys += strex("{}={}; ", key, value).str();
+                }
+            }
+
+            throw SettingsException("Resource pack name not specified", section_keys);
         }
 
         pack_info.ConfigDir = config_dir;
@@ -661,7 +671,7 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view
             config_info.Name = std::move(name);
         }
         else {
-            throw SettingsException("Sub config name not specifed");
+            throw SettingsException("Sub config name not specified");
         }
 
         if (auto parents = strex(get_map_value("Parent")).split(' '); !parents.empty()) {
