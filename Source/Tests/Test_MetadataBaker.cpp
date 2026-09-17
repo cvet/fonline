@@ -1011,8 +1011,8 @@ namespace TestRefTypeProps
 
         const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
         REQUIRE(route_snapshot_type.IsRefType);
-        REQUIRE(route_snapshot_type.RefType != nullptr);
-        REQUIRE(route_snapshot_type.RefType->FieldsRegistrar != nullptr);
+        REQUIRE(route_snapshot_type.RefType);
+        REQUIRE(route_snapshot_type.RefType->FieldsRegistrar);
         auto steps_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Steps");
         auto tags_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Tags");
         auto note_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Note");
@@ -1161,10 +1161,10 @@ namespace TestNestedRefTypeProps
         const auto& beta_type = meta.GetBaseType("Beta");
         REQUIRE(alpha_type.IsRefType);
         REQUIRE(beta_type.IsRefType);
-        REQUIRE(alpha_type.RefType != nullptr);
-        REQUIRE(beta_type.RefType != nullptr);
-        REQUIRE(alpha_type.RefType->FieldsRegistrar != nullptr);
-        REQUIRE(beta_type.RefType->FieldsRegistrar != nullptr);
+        REQUIRE(alpha_type.RefType);
+        REQUIRE(beta_type.RefType);
+        REQUIRE(alpha_type.RefType->FieldsRegistrar);
+        REQUIRE(beta_type.RefType->FieldsRegistrar);
 
         auto dependency_prop = alpha_type.RefType->FieldsRegistrar->FindProperty("Dependency");
         REQUIRE(static_cast<bool>(dependency_prop));

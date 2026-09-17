@@ -1317,7 +1317,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     vert_size = sizeof(Vertex2D);
 #endif
 
-    if (VertexBuf == nullptr || upload_vertices > VertexBufSize) {
+    if (!VertexBuf || upload_vertices > VertexBufSize) {
         ReleaseComObjectSlot(VertexBuf);
 
         VertexBufSize = upload_vertices + 1024;
@@ -1361,7 +1361,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     // Fill index buffer
     auto upload_indices = custom_indices_size.value_or(IndCount);
 
-    if (IndexBuf == nullptr || upload_indices > IndexBufSize) {
+    if (!IndexBuf || upload_indices > IndexBufSize) {
         ReleaseComObjectSlot(IndexBuf);
 
         IndexBufSize = upload_indices + 1024;
@@ -1472,7 +1472,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
     // Fill constant buffers
     auto setup_cbuffer = [this](auto&& buf, auto&& buf_handle) {
-        if (buf_handle == nullptr) {
+        if (!buf_handle) {
             D3D11_BUFFER_DESC cbuf_desc = {};
             cbuf_desc.ByteWidth = sizeof(buf);
             cbuf_desc.Usage = D3D11_USAGE_DYNAMIC;

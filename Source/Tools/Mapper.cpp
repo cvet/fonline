@@ -1481,7 +1481,7 @@ void MapperEngine::DrawMainPanelImGui()
         };
 
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Save current", "Ctrl+S", false, static_cast<bool>(_curMap))) {
+            if (ImGui::MenuItem("Save current", "Ctrl+S", false, !!_curMap)) {
                 SaveCurrentMap();
             }
             if (ImGui::MenuItem("Reset changes", nullptr, false, _curMap && IsMapDirty(GetCurMap()))) {
@@ -1518,8 +1518,8 @@ void MapperEngine::DrawMainPanelImGui()
             }
             ImGui::MenuItem("Script call", nullptr, &ScriptCallWindowVisible);
             ImGui::MenuItem("Map browser", nullptr, &MapListWindowVisible);
-            ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, static_cast<bool>(_curMap));
-            ImGui::MenuItem("History", nullptr, &HistoryWindowVisible, static_cast<bool>(_curMap));
+            ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, !!_curMap);
+            ImGui::MenuItem("History", nullptr, &HistoryWindowVisible, !!_curMap);
             ParticleEditors.DrawMenuItems();
             ImGui::MenuItem("Settings", nullptr, &SettingsWindowVisible);
             ImGui::EndMenu();
@@ -1578,26 +1578,26 @@ void MapperEngine::DrawMainPanelImGui()
 
         if (ImGui::BeginMenu("Tools")) {
             run_menu_action_with_message(
-                ImGui::MenuItem("Rebuild map", nullptr, false, static_cast<bool>(_curMap)),
+                ImGui::MenuItem("Rebuild map", nullptr, false, !!_curMap),
                 [&] {
                     auto cur_map = GetCurMap();
                     FO_VERIFY_AND_THROW(cur_map, "Current map is null");
                     cur_map->RebuildMap();
                 },
                 "Map rebuilt");
-            run_menu_action_with_message(ImGui::MenuItem("Mark blocked hexes", nullptr, false, static_cast<bool>(_curMap)), [&] { MarkBlockedHexes(); }, "Blocked hexes marked");
-            run_menu_action_with_message(ImGui::MenuItem("Reverse lights", nullptr, false, static_cast<bool>(_curMap)), [&] { ParseCommand("* reverse-light"); }, "Reverse lights done");
-            run_menu_action_with_message(ImGui::MenuItem("Merge by command", nullptr, false, static_cast<bool>(_curMap)), [&] { ParseCommand("* merge-items"); }, "Merge items command done");
-            run_menu_action_with_message(ImGui::MenuItem("Break by command", nullptr, false, static_cast<bool>(_curMap)), [&] { ParseCommand("* break-items"); }, "Break items command done");
+            run_menu_action_with_message(ImGui::MenuItem("Mark blocked hexes", nullptr, false, !!_curMap), [&] { MarkBlockedHexes(); }, "Blocked hexes marked");
+            run_menu_action_with_message(ImGui::MenuItem("Reverse lights", nullptr, false, !!_curMap), [&] { ParseCommand("* reverse-light"); }, "Reverse lights done");
+            run_menu_action_with_message(ImGui::MenuItem("Merge by command", nullptr, false, !!_curMap), [&] { ParseCommand("* merge-items"); }, "Merge items command done");
+            run_menu_action_with_message(ImGui::MenuItem("Break by command", nullptr, false, !!_curMap), [&] { ParseCommand("* break-items"); }, "Break items command done");
 
             ImGui::Separator();
-            if (ImGui::MenuItem("Merge multihex items", nullptr, false, static_cast<bool>(_curMap))) {
+            if (ImGui::MenuItem("Merge multihex items", nullptr, false, !!_curMap)) {
                 auto cur_map = GetCurMap();
                 FO_VERIFY_AND_THROW(cur_map, "Current map is null");
                 size_t merged = MergeItemsToMultihexMeshes(cur_map);
                 AddMess(strex("Merged items: {}", merged));
             }
-            if (ImGui::MenuItem("Break multihex items", nullptr, false, static_cast<bool>(_curMap))) {
+            if (ImGui::MenuItem("Break multihex items", nullptr, false, !!_curMap)) {
                 auto cur_map = GetCurMap();
                 FO_VERIFY_AND_THROW(cur_map, "Current map is null");
                 size_t broken = BreakItemsMultihexMeshes(cur_map);
@@ -3636,7 +3636,7 @@ void MapperEngine::SetMapperHexOverlayVisible(bool visible)
 
     MapperHexOverlayVisible = visible;
 
-    if (_curMap != nullptr) {
+    if (_curMap) {
         _curMap->RebuildMap();
     }
 }
@@ -3660,7 +3660,7 @@ void MapperEngine::AddMapperTrackOverlayHex(mpos hex, int32_t kind)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_curMap != nullptr && !_curMap->GetSize().is_valid_pos(hex)) {
+    if (_curMap && !_curMap->GetSize().is_valid_pos(hex)) {
         return;
     }
 

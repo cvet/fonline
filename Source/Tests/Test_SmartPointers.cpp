@@ -142,6 +142,9 @@ namespace
     concept explicitly_bool_testable = requires(T value) { static_cast<bool>(value); };
 
     template<typename T>
+    concept equality_comparable_with_nullptr = requires(const T& value) { value == nullptr; };
+
+    template<typename T>
     concept has_mutable_get_pp = requires(T value) { value.get_pp(); };
 
     template<typename T>
@@ -184,6 +187,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!std::is_default_constructible_v<ptr<PtrBase>>);
         STATIC_REQUIRE(!std::is_constructible_v<ptr<PtrBase>, std::nullptr_t>);
         STATIC_REQUIRE(!std::is_assignable_v<ptr<PtrBase>&, std::nullptr_t>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<ptr<PtrBase>>);
         STATIC_REQUIRE(!explicitly_bool_testable<ptr<PtrBase>>);
         STATIC_REQUIRE(!has_mutable_get_pp<ptr<PtrBase>>);
         STATIC_REQUIRE(!has_default_reset<ptr<PtrBase>>);
@@ -192,6 +196,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::is_default_constructible_v<nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_constructible_v<nptr<PtrBase>, std::nullptr_t>);
         STATIC_REQUIRE(std::is_assignable_v<nptr<PtrBase>&, std::nullptr_t>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<nptr<PtrBase>>);
         STATIC_REQUIRE(explicitly_bool_testable<nptr<PtrBase>>);
         STATIC_REQUIRE(has_mutable_get_pp<nptr<PtrBase>>);
         STATIC_REQUIRE(has_default_reset<nptr<PtrBase>>);
@@ -214,6 +219,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!std::is_default_constructible_v<unique_ptr<PtrBase>>);
         STATIC_REQUIRE(!std::is_constructible_v<unique_ptr<PtrBase>, std::nullptr_t>);
         STATIC_REQUIRE(!std::is_assignable_v<unique_ptr<PtrBase>&, std::nullptr_t>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<unique_ptr<PtrBase>>);
         STATIC_REQUIRE(!explicitly_bool_testable<unique_ptr<PtrBase>>);
         STATIC_REQUIRE(!has_default_reset<unique_ptr<PtrBase>>);
         STATIC_REQUIRE(has_lvalue_release<unique_ptr<PtrBase>>);
@@ -223,12 +229,15 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::is_default_constructible_v<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_constructible_v<unique_nptr<PtrBase>, std::nullptr_t>);
         STATIC_REQUIRE(std::is_assignable_v<unique_nptr<PtrBase>&, std::nullptr_t>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(explicitly_bool_testable<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(has_default_reset<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(has_lvalue_release<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_nptr<PtrBase>&>().release()), nptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<unique_arr_ptr<PtrBase>>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<unique_arr_ptr<PtrBase>>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<unique_del_nptr<PtrBase>>);
         STATIC_REQUIRE(has_lvalue_release<unique_del_ptr<PtrBase>>);
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_ptr<PtrBase>&>().release()), ptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<unique_del_ptr<PtrBase>>);
@@ -264,6 +273,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!std::is_default_constructible_v<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(!std::is_constructible_v<refcount_ptr<RefCountedValue>, std::nullptr_t>);
         STATIC_REQUIRE(!std::is_assignable_v<refcount_ptr<RefCountedValue>&, std::nullptr_t>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(!explicitly_bool_testable<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(!has_default_reset<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(has_lvalue_release_ownership<refcount_ptr<RefCountedValue>>);
@@ -272,6 +282,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::is_default_constructible_v<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(std::is_constructible_v<refcount_nptr<RefCountedValue>, std::nullptr_t>);
         STATIC_REQUIRE(std::is_assignable_v<refcount_nptr<RefCountedValue>&, std::nullptr_t>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(explicitly_bool_testable<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(has_default_reset<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(has_lvalue_release_ownership<refcount_nptr<RefCountedValue>>);
@@ -286,6 +297,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::is_convertible_v<shared_ptr<PtrDerived>&, nptr<PtrBase>>);
         STATIC_REQUIRE(!std::is_constructible_v<shared_ptr<PtrBase>, ptr<PtrDerived>>);
         STATIC_REQUIRE(has_void_cast<shared_ptr<PtrBase>>);
+        STATIC_REQUIRE(!equality_comparable_with_nullptr<shared_ptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<weak_ptr<PtrBase>>);
     }
 

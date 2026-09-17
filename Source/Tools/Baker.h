@@ -87,7 +87,7 @@ public:
 
 protected:
     [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->Baking.SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
-    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return _context->Report != nullptr; }
+    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return !!_context->Report; }
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
 
     void AddBakingReportCounter(string_view name, uint64_t value = 1) const;

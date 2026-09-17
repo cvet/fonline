@@ -150,7 +150,7 @@ auto Critter::IsMoving() const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _moving != nullptr;
+    return !!_moving;
 }
 
 auto Critter::GetMovingUid() const noexcept -> uint32_t

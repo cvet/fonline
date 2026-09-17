@@ -1757,7 +1757,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1806,7 +1806,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1869,7 +1869,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -2887,7 +2887,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
         auto cr = server->CreateCritter(critter_pid, false);
         cr->SetParent(map); // parent only — keeps the critter (and its inventory) covered via the map
         auto coins = server->ItemMngr.AddItemCritter(cr, coin_pid, COINS_PER_HOLDER);
-        REQUIRE(coins != nullptr);
+        REQUIRE(coins);
         REQUIRE(coins->GetCount() == COINS_PER_HOLDER);
         holders.push_back(cr);
     }
@@ -2928,7 +2928,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
                 ctx.SyncEntities(req);
 
                 auto stack = from_cr->GetInvItemByPid(coin_pid);
-                if (stack != nullptr && stack->GetCount() > 0) {
+                if (stack && stack->GetCount() > 0) {
                     server->ItemMngr.MoveItem(stack, 1, to_cr);
                     moves_done.fetch_add(1, std::memory_order_relaxed);
                 }
@@ -2972,7 +2972,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
     int64_t total = 0;
     for (auto cr : holders) {
         auto stack = cr->GetInvItemByPid(coin_pid);
-        total += (stack != nullptr) ? int64_t {stack->GetCount()} : int64_t {0};
+        total += stack ? int64_t {stack->GetCount()} : int64_t {0};
     }
 
     INFO("moves_done=" << moves_done.load() << " skips=" << move_skips.load() << " total=" << total << " expected=" << EXPECTED_TOTAL);
@@ -3032,18 +3032,18 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
     SECTION("source grows mid-split: fresh read conserves the injected units")
     {
         auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 20);
-        REQUIRE(source != nullptr);
+        REQUIRE(source);
 
         // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split
         REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {5}));
 
         auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        REQUIRE(moved != nullptr);
+        REQUIRE(moved);
 
         auto src_after = h1->GetInvItemByPid(coin_pid);
         auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
+        int32_t src_count = src_after ? src_after->GetCount() : 0;
+        int32_t dst_count = dst_after ? dst_after->GetCount() : 0;
 
         INFO("src=" << src_count << " dst=" << dst_count << " total=" << (src_count + dst_count));
         // 20 spawned + 5 injected during the split = 25 must survive. Pre-fix: 20 (the +5 was clobbered
@@ -3054,19 +3054,19 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
     SECTION("source drained below the split count mid-split: re-validation undoes the move")
     {
         auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 2);
-        REQUIRE(source != nullptr);
+        REQUIRE(source);
 
         // The split product's OnItemInit removes 1 from the source (2 -> 1), so the fresh post-yield
         // re-validation (count >= GetCount()) trips and the split is undone
         REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {-1}));
 
         auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        CHECK(moved == nullptr); // re-validation cleanup -> nullptr; the move did not happen
+        CHECK_FALSE(moved); // re-validation cleanup -> empty; the move did not happen
 
         auto src_after = h1->GetInvItemByPid(coin_pid);
         auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
+        int32_t src_count = src_after ? src_after->GetCount() : 0;
+        int32_t dst_count = dst_after ? dst_after->GetCount() : 0;
 
         INFO("src=" << src_count << " dst=" << dst_count);
         // 2 spawned - 1 drained = 1 unit total, all on the source; no phantom split on h2. Pre-fix the

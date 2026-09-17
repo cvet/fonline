@@ -861,7 +861,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     EnsureEntitySynced(cr);
     ValidateEntityAccess(map);
 
-    if (map != nullptr) {
+    if (map) {
         FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter transfer target hex is outside target map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
     }
 
@@ -877,7 +877,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     FO_VERIFY_AND_THROW(!prev_map_id || prev_map_ref, "Previous map id is set but previous map was not found");
     ValidateEntityAccess(prev_map_ref);
 
-    if (map != nullptr && map != prev_map_ref) {
+    if (map && map != prev_map_ref) {
         auto loc = map->GetLocation();
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
         ValidateEntityAccess(loc);
@@ -902,7 +902,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
     if (prev_map_ref == map) {
         // Between one map
-        if (map != nullptr) {
+        if (map) {
             FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter intra-map transfer target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
 
             int32_t multihex = cr->GetMultihex();
@@ -1097,7 +1097,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
-    if (map != nullptr) {
+    if (map) {
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add a critter to an already destroyed map", map->GetId(), cr->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a critter to a map that is being destroyed", map->GetId(), cr->GetId());
         FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter map placement target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
@@ -1181,7 +1181,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
-    if (map != nullptr) {
+    if (map) {
         FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
         auto map_holder = map.hold_ref();
         ignore_unused(map_holder);

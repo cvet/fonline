@@ -166,7 +166,7 @@ public:
         }
     }
 
-    [[nodiscard]] auto IsAttached() const noexcept -> bool { return static_cast<bool>(_thread); }
+    [[nodiscard]] auto IsAttached() const noexcept -> bool { return !!_thread; }
 
     // Detaches now instead of in the thread-local destructor, which on the main thread runs inside process exit,
     // after Mono's own threads were killed possibly holding the locks the detach takes
@@ -905,7 +905,7 @@ static auto GetActiveBackendOrThrow() -> ptr<ManagedScriptBackend>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveBackend == nullptr || ActiveBackend->GetMetadata() == nullptr) {
+    if (!ActiveBackend || !ActiveBackend->GetMetadata()) {
         throw ScriptSystemException("Managed backend is not active");
     }
 
@@ -1432,7 +1432,7 @@ static auto NativeGetHashStr(uint64_t value) -> MonoString*
 
     string text = strex("{}", value).str();
 
-    if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr) {
+    if (ActiveBackend && ActiveBackend->GetMetadata()) {
         bool failed = false;
         hstring resolved = ActiveBackend->GetMetadata()->Hashes.resolve_hash(value, &failed);
 
@@ -1498,7 +1498,7 @@ static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveBackend == nullptr || ActiveBackend->GetMetadata() == nullptr) {
+    if (!ActiveBackend || !ActiveBackend->GetMetadata()) {
         return nullptr;
     }
 
@@ -1521,7 +1521,7 @@ static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (ActiveBackend == nullptr || ActiveBackend->GetMetadata() == nullptr) {
+    if (!ActiveBackend || !ActiveBackend->GetMetadata()) {
         return static_cast<mono_bool>(0);
     }
 
@@ -1536,7 +1536,7 @@ static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash
     }
 
     hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
-    return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, proto_id) != nullptr ? 1 : 0);
+    return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, proto_id) ? 1 : 0);
 }
 
 // Plural proto enumeration (managed equivalent of AngelScript Game_GetProtoCustomEntities): count + by-index, backing
@@ -1545,7 +1545,7 @@ static auto NativeGetProtoEntityCount(MonoString* type_name) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveBackend == nullptr || ActiveBackend->GetMetadata() == nullptr) {
+    if (!ActiveBackend || !ActiveBackend->GetMetadata()) {
         return 0;
     }
 
@@ -1558,7 +1558,7 @@ static auto NativeGetProtoEntityAt(MonoString* type_name, int32_t index) -> void
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ActiveBackend == nullptr || ActiveBackend->GetMetadata() == nullptr) {
+    if (!ActiveBackend || !ActiveBackend->GetMetadata()) {
         return nullptr;
     }
 
@@ -2069,7 +2069,7 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
     string event_name_str = ToStringAndFree(event_name);
     auto desc = FindEntityTypeDesc(meta, owner_type_name);
 
-    if (desc == nullptr) {
+    if (!desc) {
         throw ScriptSystemException("Managed event owner type not found", owner_type_name);
     }
 
@@ -2131,7 +2131,7 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
     string event_name_str = ToStringAndFree(event_name);
     auto desc = FindEntityTypeDesc(meta, owner_type_name);
 
-    if (desc == nullptr) {
+    if (!desc) {
         throw ScriptSystemException("Managed event owner type not found", owner_type_name);
     }
 
@@ -2543,7 +2543,7 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
     string owner_type_name = ToStringAndFree(owner_type);
     string method_name_str = ToStringAndFree(method_name);
     auto ref_type_desc = FindRefTypeDesc(meta, owner_type_name);
-    bool is_ref_type_method = ref_type_desc != nullptr;
+    bool is_ref_type_method = !!ref_type_desc;
     auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
     uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
@@ -2555,7 +2555,7 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
     auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
     auto method = FindMethod(meta, owner_type_name, method_name_str, method_index, args_count);
 
-    if (method == nullptr) {
+    if (!method) {
         throw ScriptSystemException("Managed method not found", owner_type_name, method_name_str, method_index, args_count);
     }
 
@@ -2733,7 +2733,7 @@ static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args)
 
     auto backend = ActiveBackend;
 
-    if (!backend || backend->GetMetadata() == nullptr) {
+    if (!backend || !backend->GetMetadata()) {
         return INVOKE_STATUS_FAILED;
     }
 
@@ -3922,7 +3922,7 @@ static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_v
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity == nullptr) {
+    if (!entity) {
         return nullptr;
     }
 
@@ -4110,7 +4110,7 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
-    FO_VERIFY_AND_THROW(base_type.StructLayout != nullptr, "Struct layout is missing");
+    FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
 
     ManagedObjectRoot value_root;
     value_root.SetObject(value);
@@ -4132,7 +4132,7 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
             hstring resolved_hash = ResolveManagedHashValue(backend, hash);
             *ptr<void>(raw_data + field_desc.Offset).reinterpret_as<hstring>() = resolved_hash;
         }
-        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
+        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
             MonoObject* field_value = mono_field_get_value_object(domain, field, value_root.GetObject());
 
             if (field_value == nullptr) {
@@ -4152,7 +4152,7 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
-    FO_VERIFY_AND_THROW(base_type.StructLayout != nullptr, "Struct layout is missing");
+    FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
 
     ManagedObjectRoot value_root;
     value_root.SetObject(value);
@@ -4175,7 +4175,7 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
             hash = resolved_hash.as_hash();
             memory::copy(raw_data + field_desc.Offset, &hash, sizeof(hash));
         }
-        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
+        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
             MonoObject* field_value = mono_field_get_value_object(domain, field, value_root.GetObject());
 
             if (field_value == nullptr) {
@@ -4195,7 +4195,7 @@ static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const Ba
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
-    FO_VERIFY_AND_THROW(base_type.StructLayout != nullptr, "Struct layout is missing");
+    FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
@@ -4220,7 +4220,7 @@ static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const Ba
             hstring::hash_t managed_hash = MakeManagedHashValue(backend, hash);
             mono_field_set_value(obj.GetObject(), field, &managed_hash);
         }
-        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
+        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
             MonoObject* field_value = CreateStructObject(backend, field_desc.Type, const_cast<uint8_t*>(raw_data + field_desc.Offset));
 
             if (field_value == nullptr) {
@@ -4242,7 +4242,7 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
-    FO_VERIFY_AND_THROW(base_type.StructLayout != nullptr, "Struct layout is missing");
+    FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
     FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw property struct size does not match the value type size", base_type.Name, raw_data.size(), base_type.Size);
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -4268,7 +4268,7 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
             memory::copy(&managed_hash, data + field_desc.Offset, sizeof(managed_hash));
             mono_field_set_value(obj.GetObject(), field, &managed_hash);
         }
-        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
+        else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
             MonoObject* field_value = CreatePropertyStructObject(backend, field_desc.Type, {data + field_desc.Offset, field_desc.Type.Size});
 
             if (field_value == nullptr) {
@@ -4795,7 +4795,7 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
         void* ref_ptr = *static_cast<void**>(data);
         return CreateRefTypeObject(backend, base_type, ref_ptr);
     }
-    if (base_type.IsStruct && base_type.StructLayout != nullptr) {
+    if (base_type.IsStruct && base_type.StructLayout) {
         return CreateStructObject(backend, base_type, data);
     }
     if (base_type.IsPrimitive || base_type.IsEnum) {
@@ -4833,7 +4833,7 @@ static auto BoxSimplePropertyValue(ptr<const ManagedScriptBackend> backend, cons
     if (base_type.IsPrimitive || base_type.IsEnum || base_type.IsStruct) {
         FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw data size does not match the value type size");
 
-        if (base_type.IsStruct && base_type.StructLayout != nullptr) {
+        if (base_type.IsStruct && base_type.StructLayout) {
             return CreatePropertyStructObject(backend, base_type, raw_data);
         }
 
@@ -5012,7 +5012,7 @@ static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> b
 
         ptr<void> data = prop_data.Alloc(base_type.Size);
 
-        if (base_type.IsStruct && base_type.StructLayout != nullptr) {
+        if (base_type.IsStruct && base_type.StructLayout) {
             CopyManagedStructToPropertyData(backend, base_type, value, data.get());
         }
         else {
@@ -5265,7 +5265,7 @@ static auto IsDynamicManagedRefType(const BaseTypeDesc& base_type) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return base_type.IsRefType && base_type.RefType != nullptr && base_type.RefType->FieldsRegistrar != nullptr;
+    return base_type.IsRefType && base_type.RefType && base_type.RefType->FieldsRegistrar;
 }
 
 static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
@@ -5396,7 +5396,7 @@ static auto FindRefTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_nam
 
     const BaseTypeDesc& base_type = meta->GetBaseType(owner_type_name);
 
-    if (!base_type.IsRefType || base_type.RefType == nullptr) {
+    if (!base_type.IsRefType || !base_type.RefType) {
         return nullptr;
     }
 
@@ -5408,8 +5408,8 @@ static auto FindMethod(ptr<EngineMetadata> meta, string_view owner_type_name, st
     FO_STACK_TRACE_ENTRY();
 
     auto entity_desc = FindEntityTypeDesc(meta, owner_type_name);
-    auto ref_type_desc = entity_desc == nullptr ? FindRefTypeDesc(meta, owner_type_name) : nullptr;
-    const vector<MethodDesc>* methods = entity_desc != nullptr ? &entity_desc->Methods : (ref_type_desc != nullptr ? &ref_type_desc->Methods : nullptr);
+    auto ref_type_desc = !entity_desc ? FindRefTypeDesc(meta, owner_type_name) : nullptr;
+    const vector<MethodDesc>* methods = entity_desc ? &entity_desc->Methods : (ref_type_desc ? &ref_type_desc->Methods : nullptr);
 
     if (methods == nullptr || method_index < 0 || numeric_cast<size_t>(method_index) >= methods->size()) {
         return nullptr;

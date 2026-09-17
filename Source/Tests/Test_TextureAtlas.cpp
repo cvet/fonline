@@ -94,7 +94,7 @@ TEST_CASE("TextureAtlasLayoutReusesInteriorSpaceAfterChurn")
     REQUIRE(replacement);
     CHECK(replacement.as_nptr() == released_record);
     CHECK(replacement->GetPosition() == ipos32 {2, 2});
-    CHECK(replacement->GetSpriteMesh() == nullptr);
+    CHECK_FALSE(replacement->GetSpriteMesh());
 }
 
 TEST_CASE("TextureAtlasLayoutReleaseOrderIsDeterministic")
@@ -224,7 +224,7 @@ TEST_CASE("TextureAtlasLayoutClearsReleasedMeshObserver")
     allocation.reset();
 
     CHECK_FALSE(observer->IsActive());
-    CHECK(observer->GetSpriteMesh() == nullptr);
+    CHECK_FALSE(observer->GetSpriteMesh());
 }
 
 TEST_CASE("TextureAtlasLayoutDumpOverlayDrawsMeshGeometry")

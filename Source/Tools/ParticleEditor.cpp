@@ -493,7 +493,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     bool had_index = _resourcesIndexed;
-    bool preview_was_active = static_cast<bool>(_previewSprite);
+    bool preview_was_active = !!_previewSprite;
     mpos preview_hex = _previewHex;
     bool selected_resource_changed = force_reload;
 

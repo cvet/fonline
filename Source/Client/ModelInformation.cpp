@@ -241,7 +241,7 @@ auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
     FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone), "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring& bone_name : _fastTransitionBones) {
-        FO_VERIFY_AND_THROW(FindModelBone(_hierarchy->_rootBone, bone_name) != nullptr, "Fast transition bone was not found in a baked model description", bone_name, name);
+        FO_VERIFY_AND_THROW(FindModelBone(_hierarchy->_rootBone, bone_name), "Fast transition bone was not found in a baked model description", bone_name, name);
     }
 
     auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {

@@ -558,8 +558,8 @@ namespace
                 }
             }
 
-            FO_VERIFY_AND_THROW(ProbeIntProp != nullptr, "No public int property was registered for probing");
-            FO_VERIFY_AND_THROW(ProbeStringProp != nullptr, "No public string property was registered for probing");
+            FO_VERIFY_AND_THROW(ProbeIntProp, "No public int property was registered for probing");
+            FO_VERIFY_AND_THROW(ProbeStringProp, "No public string property was registered for probing");
 
             Proto.AllocData();
             FullSource.AllocData();

@@ -1610,7 +1610,7 @@ void Application::BeginFrame()
         RequestQuit();
     }
 
-    FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
+    FO_VERIFY_AND_THROW(!_ctx->RenderTargetTex, "Context render target tex must be unset before this operation");
     auto active_renderer = GetActiveRenderer(_ctx);
     active_renderer->ClearRenderTarget(_ctx->ClearColor);
 
@@ -2273,7 +2273,7 @@ void Application::EndFrame()
         EndWindowRender();
     }
 
-    FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
+    FO_VERIFY_AND_THROW(!_ctx->RenderTargetTex, "Context render target tex must be unset before this operation");
     auto active_renderer = GetActiveRenderer(_ctx);
 
     // Skip unprocessed events

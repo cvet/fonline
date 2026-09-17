@@ -226,10 +226,10 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
         .EffectName = _name,
         .Vertices = std::move(captured_vertices),
         .Vertices3D = std::move(captured_vertices_3d),
-        .HasBackgroundTexture = BackgroundTex != nullptr,
+        .HasBackgroundTexture = !!BackgroundTex,
         .Indices = std::move(captured_indices),
         .PrimitiveType = dbuf->PrimType,
-        .HasMainTexture = MainTex != nullptr,
+        .HasMainTexture = !!MainTex,
         .HasProjection = ProjBuf.has_value(),
         .AtlasSubRect = captured_sub_rect,
         .Sampling = captured_sampling,
@@ -471,7 +471,7 @@ auto EffekseerRuntimeTestRig::CanCreateSystem() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _backend->Create(_effectPath) != nullptr;
+    return !!_backend->Create(_effectPath);
 }
 
 auto EffekseerRuntimeTestRig::TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>

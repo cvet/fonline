@@ -811,8 +811,8 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
     FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(_registrar == other._registrar, "Properties registrar mismatch in overlay rebuild", _registrar->GetTypeName(), other._registrar->GetTypeName());
-    FO_STRONG_ASSERT(_baseProps != nullptr, "Overlay rebuild target has no base properties", _registrar->GetTypeName());
-    FO_STRONG_ASSERT(other._baseProps == nullptr, "Overlay rebuild source already has base properties", _registrar->GetTypeName());
+    FO_STRONG_ASSERT(_baseProps, "Overlay rebuild target has no base properties", _registrar->GetTypeName());
+    FO_STRONG_ASSERT(!other._baseProps, "Overlay rebuild source already has base properties", _registrar->GetTypeName());
 
     ResetOverlayData();
 
@@ -947,7 +947,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
         }
     }
     else {
-        FO_STRONG_ASSERT(false, "Unsupported properties copy path", _registrar->GetTypeName(), _baseProps != nullptr, other._baseProps != nullptr);
+        FO_STRONG_ASSERT(false, "Unsupported properties copy path", _registrar->GetTypeName(), !!_baseProps, !!other._baseProps);
     }
 }
 
@@ -1085,7 +1085,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
     auto whole_pod_data_size = reader.read<uint32_t>();
     FO_VERIFY_AND_THROW(whole_pod_data_size == _registrar->_wholePodDataSize, "Serialized POD property block was baked for a different property layout", _registrar->GetTypeName(), whole_pod_data_size, _registrar->_wholePodDataSize);
     bool has_overlay_data = reader.read<bool>();
-    FO_VERIFY_AND_THROW((_baseProps != nullptr) == has_overlay_data, "Serialized property storage mode does not match the target property container", _registrar->GetTypeName(), has_overlay_data, _baseProps != nullptr);
+    FO_VERIFY_AND_THROW(!!_baseProps == has_overlay_data, "Serialized property storage mode does not match the target property container", _registrar->GetTypeName(), has_overlay_data, !!_baseProps);
 
     if (_baseProps) {
         ResetOverlayData();

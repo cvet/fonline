@@ -597,7 +597,7 @@ static void CopyPropertyStructToScriptStruct(ptr<hash_resolver> hashes, const Ba
             memory::copy(&hash, field_raw, sizeof(hash));
             new (field_script.get()) hstring(hash != 0 ? hashes->resolve_hash(hash) : hstring());
         }
-        else if (field.Type.IsStruct && field.Type.StructLayout != nullptr) {
+        else if (field.Type.IsStruct && field.Type.StructLayout) {
             CopyPropertyStructToScriptStruct(hashes, field.Type, {field_raw.get(), field.Type.Size}, field_script);
         }
         else {
@@ -624,7 +624,7 @@ static void CopyScriptStructToPropertyData(const BaseTypeDesc& base_type, ptr<co
             hstring::hash_t hash = field_script.reinterpret_as<const hstring>()->as_hash();
             memory::copy(field_raw, &hash, sizeof(hash));
         }
-        else if (field.Type.IsStruct && field.Type.StructLayout != nullptr) {
+        else if (field.Type.IsStruct && field.Type.StructLayout) {
             CopyScriptStructToPropertyData(field.Type, field_script, {field_raw.get(), field.Type.Size});
         }
         else {

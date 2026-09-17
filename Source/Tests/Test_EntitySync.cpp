@@ -991,16 +991,16 @@ TEST_CASE("SyncContext")
 {
     SECTION("NoContextByDefault")
     {
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
     }
 
     SECTION("SyncContextLifecycle")
     {
         {
             SyncContext ctx;
-            CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+            CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
         }
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
     }
 
     SECTION("LockWaitIsSeparatedFromExecutionAcrossNestedContexts")
@@ -1080,13 +1080,13 @@ TEST_CASE("SyncContext")
     SECTION("ActivateDeactivate")
     {
         SyncContext ctx;
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
 
         ctx.Activate();
         CHECK(SyncContext::GetCurrentOnThisThread() == &ctx);
 
         ctx.Deactivate();
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
     }
 
     SECTION("ActivateOverwritesPrevious")
@@ -1104,7 +1104,7 @@ TEST_CASE("SyncContext")
         CHECK(SyncContext::GetCurrentOnThisThread() == &ctx1);
 
         ctx1.Deactivate();
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
     }
 
     SECTION("DeactivateOnlyIfCurrent")
@@ -1117,7 +1117,7 @@ TEST_CASE("SyncContext")
         CHECK(SyncContext::GetCurrentOnThisThread() == &ctx1);
 
         ctx1.Deactivate();
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
     }
 
     SECTION("DestructorCleansUpIfCurrent")
@@ -1127,7 +1127,7 @@ TEST_CASE("SyncContext")
             ctx.Activate();
             CHECK(SyncContext::GetCurrentOnThisThread() == &ctx);
         }
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
     }
 
     SECTION("ReleaseWithoutSync")
@@ -1223,7 +1223,7 @@ TEST_CASE("SyncContextNegative")
 
     SECTION("SyncCurrentContextWithNoContextIsNoOp")
     {
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
         // No active context — there is nothing to call SyncEntity on. The pre-refactor static
         // SyncCurrentContext(nullptr) was a no-op; now the equivalent is just "no current ctx"
     }
@@ -1244,11 +1244,11 @@ TEST_CASE("SyncContextNegative")
     SECTION("DeactivateWithoutActivateIsNoOp")
     {
         SyncContext ctx;
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
 
         // Deactivate without prior Activate should not crash
         ctx.Deactivate();
-        CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+        CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
     }
 
     SECTION("ActivateDeactivateRapidCycle")
@@ -1259,7 +1259,7 @@ TEST_CASE("SyncContextNegative")
             ctx.Activate();
             CHECK(SyncContext::GetCurrentOnThisThread() == &ctx);
             ctx.Deactivate();
-            CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
+            CHECK_FALSE(SyncContext::GetCurrentOnThisThread());
         }
     }
 

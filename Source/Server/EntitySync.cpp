@@ -586,13 +586,13 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
         return "not-held";
     };
 
-    logging::write("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity != nullptr ? entity->GetName() : string_view {}, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
+    logging::write("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity ? entity->GetName() : string_view {}, entity ? entity->GetId() : ident_t {}, entity && entity->IsDestroyed());
 
     for (auto walk = try_hold_entity(entity); walk; walk = walk->GetParentRaw()) {
         logging::write("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
-    auto widen = entity != nullptr ? entity->GetSyncWidenEntity() : nullptr;
+    auto widen = entity ? entity->GetSyncWidenEntity() : nullptr;
 
     for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
         logging::write("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
@@ -636,7 +636,7 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
         for (auto current = try_hold_entity(start); current; current = current->GetParentRaw()) {
             auto lock = current->GetEntityLock();
 
-            if (lock == nullptr || lock->IsLockedByCurrentThread()) {
+            if (!lock || lock->IsLockedByCurrentThread()) {
                 return true;
             }
         }
@@ -857,13 +857,13 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                 for (auto entity : snapshot) {
                     auto widen = entity->GetSyncWidenEntity();
 
-                    if (widen == nullptr) {
+                    if (!widen) {
                         continue;
                     }
 
                     auto widen_lock = widen->GetEntityLock();
 
-                    if (widen_lock == nullptr) {
+                    if (!widen_lock) {
                         continue;
                     }
 
@@ -898,7 +898,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
             for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
                 auto parent_lock = parent->GetEntityLock();
 
-                if (parent_lock == nullptr) {
+                if (!parent_lock) {
                     continue;
                 }
                 if (std::ranges::find(new_locks, parent_lock) != new_locks.end()) {
@@ -926,7 +926,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
         for (auto& entity : requested) {
             auto own_lock = entity->GetEntityLock();
 
-            if (own_lock == nullptr) {
+            if (!own_lock) {
                 continue;
             }
 
@@ -955,10 +955,10 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
             // legitimately have replaced it with the parent, and demanding the own lock would exhaust the budget
             auto widen = entity->GetSyncWidenEntity();
 
-            if (widen != nullptr) {
+            if (widen) {
                 auto widen_lock = widen->GetEntityLock();
 
-                if (widen_lock != nullptr) {
+                if (widen_lock) {
                     bool widen_covered = held_contains(widen_lock);
 
                     if (!widen_covered) {
@@ -992,7 +992,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                 for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
                     auto parent_lock = parent->GetEntityLock();
 
-                    if (parent_lock != nullptr && !marked(parent_lock)) {
+                    if (parent_lock && !marked(parent_lock)) {
                         all_covered = false;
                         break;
                     }
@@ -1093,7 +1093,7 @@ void FO_TSA_NO_ANALYSIS SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> en
     for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
         auto parent_lock = parent->GetEntityLock();
 
-        if (parent_lock == nullptr || parent_lock == lock) {
+        if (!parent_lock || parent_lock == lock) {
             continue; // no lock, or shares `entity`'s lock — not a separate ancestor
         }
         if (std::ranges::find(_heldLocks, parent_lock) != _heldLocks.end()) {
@@ -1602,7 +1602,7 @@ auto SyncContext::GetOutermostOnThisThread() noexcept -> nptr<SyncContext>
         return nullptr;
     }
 
-    while (ctx->_previousContext != nullptr) {
+    while (ctx->_previousContext) {
         ctx = ctx->_previousContext;
     }
 

@@ -1126,8 +1126,8 @@ TEST_CASE("LoadUnloadCritter")
         server->DbStorage.Delete(get_func("Items"), item_id);
         server->UnloadCritter(cr);
 
-        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
-        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
 
         bool is_error = false;
         auto loaded_holder = server->EntityMngr.LoadCritter(cr_id, false, is_error);
@@ -1145,7 +1145,7 @@ TEST_CASE("LoadUnloadCritter")
         loaded->MarkAsDestroyed();
         server->EntityMngr.UnregisterCritter(loaded);
 
-        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
     }
 
     SECTION("DirectCustomInnerEntityLifecycle")
@@ -1184,7 +1184,7 @@ TEST_CASE("LoadUnloadCritter")
         CHECK_FALSE(cr->HasInnerEntities());
         CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()).empty());
         CHECK(custom->IsDestroyed());
-        CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetCustomEntity(custom_type, custom_id));
 
         server->EntityMngr.DestroyEntity(cr);
     }
@@ -1241,8 +1241,8 @@ TEST_CASE("LoadUnloadCritter")
         container->MarkAsDestroyed();
         server->EntityMngr.UnregisterItem(container, false);
 
-        CHECK(server->EntityMngr.GetItem(container_id) == nullptr);
-        CHECK(server->EntityMngr.GetItem(inner_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetItem(container_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(inner_id));
 
         bool is_error = false;
         refcount_nptr<Item> loaded_holder = server->EntityMngr.LoadItem(container_id, is_error);
@@ -1269,8 +1269,8 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(server->EntityMngr.GetItem(inner_id) == loaded_inner);
 
         server->ItemMngr.DestroyItem(loaded);
-        CHECK(server->EntityMngr.GetItem(container_id) == nullptr);
-        CHECK(server->EntityMngr.GetItem(inner_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetItem(container_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(inner_id));
     }
 
     SECTION("ContainerRejectsItsOwnSubtree")
@@ -1340,10 +1340,10 @@ TEST_CASE("LoadUnloadCritter")
         server->MapMngr.DestroyLocation(loc);
         server->DbStorage.WaitCommitChanges();
 
-        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
-        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
-        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
-        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetLocation(loc_id));
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
 
         server->DbStorage.Insert(locations_collection, loc_id, loc_doc);
         server->DbStorage.Insert(maps_collection, map_id, map_doc);
@@ -1434,10 +1434,10 @@ TEST_CASE("LoadUnloadCritter")
         server->MapMngr.DestroyLocation(loc);
         server->DbStorage.WaitCommitChanges();
 
-        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
-        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
-        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
-        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetLocation(loc_id));
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
 
         server->DbStorage.Insert(maps_collection, map_id, map_doc);
         server->DbStorage.Insert(critters_collection, cr_id, cr_doc);
@@ -1517,10 +1517,10 @@ TEST_CASE("LoadUnloadCritter")
         server->MapMngr.DestroyLocation(loc);
         server->DbStorage.WaitCommitChanges();
 
-        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
-        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
-        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
-        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetLocation(loc_id));
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
 
         server->DbStorage.Insert(maps_collection, map_id, map_doc);
         server->DbStorage.WaitCommitChanges();
@@ -1539,8 +1539,8 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetCritters().empty());
         CHECK(loaded->GetItems().empty());
         CHECK(server->EntityMngr.GetMap(map_id) == loaded);
-        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
-        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
 
         loaded->MarkAsDestroyed();
         server->EntityMngr.UnregisterMap(loaded);
@@ -1581,8 +1581,8 @@ TEST_CASE("LoadUnloadCritter")
         server->MapMngr.DestroyLocation(loc);
         server->DbStorage.WaitCommitChanges();
 
-        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
-        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetLocation(loc_id));
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
 
         server->DbStorage.Insert(locations_collection, loc_id, loc_doc);
         server->DbStorage.Insert(maps_collection, map_id, map_doc);
@@ -1615,8 +1615,8 @@ TEST_CASE("LoadUnloadCritter")
         loaded_holder.reset();
         server->DbStorage.WaitCommitChanges();
 
-        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
-        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetLocation(loc_id));
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
     }
 
     SECTION("DirectLoadLocationPrunesMissingMapRefs")
@@ -1646,8 +1646,8 @@ TEST_CASE("LoadUnloadCritter")
         server->MapMngr.DestroyLocation(loc);
         server->DbStorage.WaitCommitChanges();
 
-        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
-        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetLocation(loc_id));
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
 
         server->DbStorage.Insert(locations_collection, loc_id, loc_doc);
         server->DbStorage.WaitCommitChanges();
@@ -1663,13 +1663,13 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetMapIds().empty());
         CHECK_FALSE(loaded->HasMaps());
         CHECK(server->EntityMngr.GetLocation(loc_id) == loaded);
-        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
 
         server->MapMngr.DestroyLocation(loaded);
         loaded_holder.reset();
         server->DbStorage.WaitCommitChanges();
 
-        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+        CHECK_FALSE(server->EntityMngr.GetLocation(loc_id));
     }
 }
 
@@ -1746,9 +1746,9 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 
         // Only registry lookups are asserted, because reading properties needs the entity covered and a test
         // holding just the engine lock cannot take a pre-existing one into its context
-        CHECK(server->EntityMngr.GetLocation(location_id) != nullptr);
-        CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id) != nullptr);
-        CHECK(server->EntityMngr.GetCustomEntity(custom_type, ident_t {}) == nullptr);
+        CHECK(server->EntityMngr.GetLocation(location_id));
+        CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id));
+        CHECK_FALSE(server->EntityMngr.GetCustomEntity(custom_type, ident_t {}));
     }
 }
 

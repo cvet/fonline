@@ -3418,7 +3418,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         }
 
         CHECK_FALSE(allocation_observer->IsActive());
-        CHECK(allocation_observer->GetSpriteMesh() == nullptr);
+        CHECK_FALSE(allocation_observer->GetSpriteMesh());
     }
 
     SECTION("Moving an atlas sprite rebinds the allocation mesh observer")
@@ -3444,7 +3444,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         }
 
         CHECK_FALSE(allocation_observer->IsActive());
-        CHECK(allocation_observer->GetSpriteMesh() == nullptr);
+        CHECK_FALSE(allocation_observer->GetSpriteMesh());
     }
 }
 

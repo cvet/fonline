@@ -440,7 +440,7 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType layout registration conflicts with already registered methods", name, ref_type.Methods.size());
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType layout is already registered", name, layout.size());
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType layout registration found an existing fields registrar", name);
+    FO_VERIFY_AND_THROW(!ref_type.FieldsRegistrar, "RefType layout registration found an existing fields registrar", name);
     FO_VERIFY_AND_THROW(_dynamicRefTypeRegistrars.count(string(name)) == 0, "Dynamic RefType registrar is already registered", name);
 
     auto fields_registrar = safe_alloc::make_unique<PropertyRegistrar>(strex("{}RefType", name), _side, &Hashes, this);
@@ -474,7 +474,7 @@ void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType methods are already registered", name, ref_type.Methods.size());
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType methods registration conflicts with a dynamic field layout", name);
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType methods registration found an existing fields registrar", name);
+    FO_VERIFY_AND_THROW(!ref_type.FieldsRegistrar, "RefType methods registration found an existing fields registrar", name);
 
     ref_type.Methods = std::move(methods);
 }
@@ -489,7 +489,7 @@ void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType single-method registration conflicts with already registered methods", name, ref_type.Methods.size(), method.Name);
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType single-method registration conflicts with a dynamic field layout", name, method.Name);
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType single-method registration found an existing fields registrar", name, method.Name);
+    FO_VERIFY_AND_THROW(!ref_type.FieldsRegistrar, "RefType single-method registration found an existing fields registrar", name, method.Name);
 
     ref_type.Methods.emplace_back(std::move(method));
 }
@@ -718,7 +718,7 @@ void EngineMetadata::FinalizeRegistration()
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }), "Registered struct layout has no fields");
-    FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrar == nullptr; }), "Registered reference type has no methods or field registrar");
+    FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && !e.second.FieldsRegistrar; }), "Registered reference type has no methods or field registrar");
 
     // A name leaves circulation for good: stored data under a migrated name must never meet a registered one
     for (const auto& [rule_name, rules_by_scope] : _migrationRules) {

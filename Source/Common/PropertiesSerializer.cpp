@@ -1164,8 +1164,8 @@ static auto GetRefTypeFieldsRegistrar(const BaseTypeDesc& base_type) -> ptr<cons
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
-    FO_VERIFY_AND_THROW(base_type.RefType != nullptr, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar != nullptr, "Reference type has no fields registrar");
+    FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
     return base_type.RefType->FieldsRegistrar;
 }
 

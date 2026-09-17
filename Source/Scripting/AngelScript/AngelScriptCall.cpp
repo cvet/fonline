@@ -426,7 +426,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(call.ArgsData.size() == func->GetParamCount(), "Script function call argument storage does not match function signature", func->GetDeclaration(), call.ArgsData.size(), func->GetParamCount());
-    FO_VERIFY_AND_THROW((call.RetData != nullptr) == (func->GetReturnTypeId() != AngelScript::asTYPEID_VOID), "Script call return storage does not match function return type", call.RetData != nullptr, func->GetReturnTypeId());
+    FO_VERIFY_AND_THROW(!!call.RetData == (func->GetReturnTypeId() != AngelScript::asTYPEID_VOID), "Script call return storage does not match function return type", !!call.RetData, func->GetReturnTypeId());
 
     int32_t as_result = 0;
     ptr<AngelScript::asIScriptEngine> as_engine = func->GetEngine();

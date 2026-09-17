@@ -462,7 +462,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         }
 
         for (const auto& type : MakeSortedBaseTypes(meta)) {
-            if (type->IsStruct && type->StructLayout != nullptr) {
+            if (type->IsStruct && type->StructLayout) {
                 out << "public partial struct " << EscapeCsIdentifier(type->Name) << "\n";
                 out << "{\n";
 
@@ -570,13 +570,13 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
                 out << "}\n\n";
             }
-            else if (type->IsRefType && type->RefType != nullptr) {
+            else if (type->IsRefType && type->RefType) {
                 unordered_set<string> member_names;
 
                 out << "public partial class " << EscapeCsIdentifier(type->Name) << "\n";
                 out << "{\n";
 
-                if (type->RefType->FieldsRegistrar != nullptr) {
+                if (type->RefType->FieldsRegistrar) {
                     out << CS_INDENT << "public " << EscapeCsIdentifier(type->Name) << "()\n";
                     out << CS_INDENT << "{\n";
                     out << CS_INDENT << "}\n\n";
@@ -603,7 +603,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n\n";
                 }
 
-                AppendMethods(out, type->RefType->Methods, type->Name, false, type->RefType->FieldsRegistrar == nullptr, type->RefType->FieldsRegistrar == nullptr, false, member_names);
+                AppendMethods(out, type->RefType->Methods, type->Name, false, !type->RefType->FieldsRegistrar, !type->RefType->FieldsRegistrar, false, member_names);
                 out << "}\n\n";
             }
         }
@@ -2980,7 +2980,7 @@ static auto IsDynamicManagedRefType(const BaseTypeDesc& type) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return type.IsRefType && type.RefType != nullptr && type.RefType->FieldsRegistrar != nullptr;
+    return type.IsRefType && type.RefType && type.RefType->FieldsRegistrar;
 }
 
 static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
@@ -4324,7 +4324,7 @@ static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
 
     auto underlying_type = enum_type.EnumUnderlyingType;
 
-    if (underlying_type == nullptr) {
+    if (!underlying_type) {
         return "int";
     }
 
