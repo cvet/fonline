@@ -134,6 +134,13 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
+`Test_ManagedScriptBaker` pins the generated scalar-property route: primitive and enum accessors and component
+presence checks must use the indexed unboxed bridge, while complex properties retain conversion. For live
+Mono validation, exercise every primitive width, enum values, virtual getters, rewriting setters and caught
+native errors, and measure warmed generated property calls with `GC.GetAllocatedBytesForCurrentThread()`.
+Callbacks and first writes to prototype-backed storage may have their own allocation costs, so warm storage
+before measuring and keep callback behavior checks separate from the allocation assertion.
+
 `python -m pytest BuildTools/tests/test_managed_stack_traces.py BuildTools/tests/test_managed_async_callbacks.py`
 checks the canonical managed exception descriptions and callback failure accounting. The stack-trace probes
 cover transparent versus semantic wrappers, all aggregate causes, and message identity. A CMake-built native

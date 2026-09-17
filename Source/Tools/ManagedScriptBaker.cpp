@@ -3237,7 +3237,8 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
     string property_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
     const BaseTypeDesc& base_type = prop->GetBaseType();
-    bool use_narrow_integer_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
+    bool use_scalar_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum);
+    bool use_integer_bridge = use_scalar_bridge && !is_static && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
 
     if (!member_names.emplace(property_name).second) {
         return;
@@ -3261,10 +3262,11 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
 
-    if (use_narrow_integer_bridge) {
-        string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
-        out << CS_INDENT << "        return (" << decl_type << ")" << (is_static ? "global::FOnline.Game." : "") << "GetAsInt(\n";
-        out << CS_INDENT << "            (global::FOnline." << property_enum_type << ")(" << prop->GetRegIndex() << "));\n";
+    if (use_integer_bridge) {
+        out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetEntityValueAsInt(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+    }
+    else if (use_scalar_bridge) {
+        out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
     else {
         out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetProperty(\n";
@@ -3279,11 +3281,11 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
         out << CS_INDENT << "    set\n";
         out << CS_INDENT << "    {\n";
 
-        if (use_narrow_integer_bridge) {
-            string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
-            out << CS_INDENT << "        " << (is_static ? "global::FOnline.Game." : "") << "SetAsInt(\n";
-            out << CS_INDENT << "            (global::FOnline." << property_enum_type << ")(" << prop->GetRegIndex() << "),\n";
-            out << CS_INDENT << "            value);\n";
+        if (use_integer_bridge) {
+            out << CS_INDENT << "        global::FOnline.Native.SetEntityValueAsInt(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
+        }
+        else if (use_scalar_bridge) {
+            out << CS_INDENT << "        global::FOnline.Native.SetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
         }
         else {
             out << CS_INDENT << "        global::FOnline.Native.SetProperty(\n";
@@ -3852,9 +3854,6 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
         }
 
         if (member_names.emplace(has_accessor_name).second) {
-            string owner_literal = EscapeCsStringLiteral(owner_type_name);
-            string prop_literal = EscapeCsStringLiteral(prop->GetName());
-
             out << CS_INDENT << "public ";
 
             if (is_static) {
@@ -3865,10 +3864,7 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
             out << CS_INDENT << "{\n";
             out << CS_INDENT << "    get\n";
             out << CS_INDENT << "    {\n";
-            out << CS_INDENT << "        return (bool)global::FOnline.Native.GetProperty(\n";
-            out << CS_INDENT << "            \"" << owner_literal << "\",\n";
-            out << CS_INDENT << "            \"" << prop_literal << "\",\n";
-            out << CS_INDENT << "            " << MakeTargetPtrExpression(is_static, false) << ");\n";
+            out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<bool>(" << MakeTargetPtrExpression(is_static, false) << ", " << prop->GetRegIndex() << ");\n";
             out << CS_INDENT << "    }\n";
             out << CS_INDENT << "}\n\n";
         }

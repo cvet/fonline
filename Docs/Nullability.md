@@ -12,6 +12,10 @@ Convention and runtime enforcement for nullable values across AngelScript and th
 
 This applies symmetrically on both sides of the script-engine boundary.
 
+The managed indexed scalar-property bridge accepts only non-nullable primitive and enum properties. Its
+unmanaged value buffer has no null representation; nullable and reference-valued properties keep the converting
+bridge described in [Scripting.md](Scripting.md). Both paths retain native entity access and lifetime checks.
+
 ## Script side: `T?` suffix
 
 AngelScript modules in [Scripts/](../../Scripts/) use a Kotlin/C#-style `?` suffix on the type to mark nullability. Default is **non-nullable**.

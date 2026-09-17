@@ -717,6 +717,30 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern int FireEvent(string ownerType, string eventName, IntPtr entityPtr, object?[] args);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static T GetPropertyValue<T>(IntPtr entityPtr, int propIndex)
+        where T : unmanaged
+    {
+        T value = default;
+        ThrowNativeError(GetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value),
+                                                  Unsafe.SizeOf<T>()));
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? GetPropertyValueInternal(IntPtr entityPtr, int propIndex, ref byte value, int size);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void SetPropertyValue<T>(IntPtr entityPtr, int propIndex, T value)
+        where T : unmanaged
+    {
+        ThrowNativeError(SetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value),
+                                                  Unsafe.SizeOf<T>()));
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? SetPropertyValueInternal(IntPtr entityPtr, int propIndex, ref byte value, int size);
+
     internal static object GetProperty(string ownerType, string propertyName, IntPtr entityPtr)
     {
         string ? error;

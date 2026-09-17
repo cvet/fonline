@@ -460,6 +460,8 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
 static void NativeUnsubscribeEvent(MonoString* event_name, void* entity_ptr, void* subscription);
 static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t;
 static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoString** error) -> MonoObject*;
+static auto NativeGetPropertyValue(void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
+static auto NativeSetPropertyValue(void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
 static auto NativeSetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value) -> MonoString*;
 static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property_name, MonoObject* getter);
 static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
@@ -1698,6 +1700,70 @@ static auto ResolveManagedGenericProperty(void* entity_ptr, int32_t prop_index, 
     return {entity, prop};
 }
 
+static auto ResolveManagedScalarProperty(void* entity_ptr, int32_t prop_index, int32_t size, bool require_mutable) -> pair<ptr<Entity>, ptr<const Property>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, require_mutable);
+    const BaseTypeDesc& base_type = prop->GetBaseType();
+    FO_VERIFY_AND_THROW(!prop->IsNullable() && (base_type.IsPrimitive || base_type.IsEnum), "Managed property requires a non-nullable scalar", prop->GetName());
+    FO_VERIFY_AND_THROW(size > 0 && numeric_cast<size_t>(size) == prop->GetBaseSize(), "Managed scalar property size mismatch", prop->GetName(), size);
+    return {entity, prop};
+}
+
+static auto NativeGetPropertyValue(void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        auto [entity, prop] = ResolveManagedScalarProperty(entity_ptr, prop_index, size, false);
+        entity->LockForPropertyAccessShared();
+        auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccessShared(); });
+
+        entity->ValidateAccess();
+
+        if (prop->IsVirtual()) {
+            PropertyRawData prop_data = GetPropertyRawData(entity, prop);
+            FO_VERIFY_AND_THROW(prop_data.GetSize() == prop->GetBaseSize(), "Managed scalar property data size mismatch", prop->GetName());
+            memory::copy(ptr<void> {value}, prop_data.GetPtr(), prop_data.GetSize());
+        }
+        else {
+            auto props = entity->GetProperties();
+            props->ValidateForRawData(prop);
+            auto raw_data = props->GetRawData(prop);
+            FO_VERIFY_AND_THROW(raw_data.size() == prop->GetBaseSize(), "Managed scalar property data size mismatch", prop->GetName());
+            memory::copy(ptr<void> {value}, raw_data.data(), raw_data.size());
+        }
+
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return MakeManagedNativeError(ex);
+    }
+}
+
+static auto NativeSetPropertyValue(void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        auto [entity, prop] = ResolveManagedScalarProperty(entity_ptr, prop_index, size, true);
+        entity->LockForPropertyAccess();
+        auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
+
+        entity->ValidateAccess();
+        PropertyRawData prop_data;
+
+        // Setters may re-enter managed code; own the bytes before invoking them
+        prop_data.Set(ptr<const void> {value}, prop->GetBaseSize());
+        entity->SetValueFromData(prop, prop_data);
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return MakeManagedNativeError(ex);
+    }
+}
+
 static auto NativeGetEntityValueAsIntImpl(void* entity_ptr, int32_t prop_index) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -2182,7 +2248,7 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
         args_data[i + first_event_arg] = ConvertManagedObjectToNative(backend, arg_desc.Type, arg, native_args[i]);
     }
 
-    vector<ptr<void>> args_ptrs;
+    small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
     args_ptrs.reserve(call_args_count);
     for (size_t arg_idx = 0; arg_idx < call_args_count; arg_idx++) {
         args_ptrs.emplace_back(args_data[arg_idx]);
@@ -2579,7 +2645,7 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
         args_data[i + first_method_arg] = ConvertManagedObjectToNative(backend, method->Args[i].Type, arg, native_args[i]);
     }
 
-    vector<ptr<void>> args_ptrs;
+    small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
     args_ptrs.reserve(args_count + first_method_arg);
     for (size_t arg_idx = 0; arg_idx < args_count + first_method_arg; arg_idx++) {
         args_ptrs.emplace_back(args_data[arg_idx]);
@@ -3295,6 +3361,8 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::UnsubscribeEvent", reinterpret_cast<const void*>(NativeUnsubscribeEvent));
     mono_add_internal_call("FOnline.Native::FireEvent", reinterpret_cast<const void*>(NativeFireEvent));
     mono_add_internal_call("FOnline.Native::GetPropertyInternal", reinterpret_cast<const void*>(NativeGetProperty));
+    mono_add_internal_call("FOnline.Native::GetPropertyValueInternal", reinterpret_cast<const void*>(NativeGetPropertyValue));
+    mono_add_internal_call("FOnline.Native::SetPropertyValueInternal", reinterpret_cast<const void*>(NativeSetPropertyValue));
     mono_add_internal_call("FOnline.Native::SetPropertyInternal", reinterpret_cast<const void*>(NativeSetProperty));
     mono_add_internal_call("FOnline.Native::SetPropertyGetter", reinterpret_cast<const void*>(NativeSetPropertyGetter));
     mono_add_internal_call("FOnline.Native::AddPropertySetter", reinterpret_cast<const void*>(NativeAddPropertySetter));

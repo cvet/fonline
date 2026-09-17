@@ -825,7 +825,9 @@ TEST_CASE("ManagedScriptBaker")
             {"Entity", {{"ManagedInner", "HasProtos"}, {"ManagedGlobal"}}},
             {"EntityHolder", {{"Server", "Critter", "ManagedInner", "ManagedEntry"}, {"Server", "Game", "ManagedGlobal", "ManagedGlobal"}}},
             {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
-            {"Property", {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
+            {"Property",
+                {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "int8", "ManagedInt8", "Mutable"}, {"Critter", "Server", "uint8", "ManagedUInt8", "Mutable"}, {"Critter", "Server", "int32", "ManagedInt32", "Mutable"}, {"Critter", "Server", "uint32", "ManagedUInt32", "Mutable"}, {"Critter", "Server", "int64", "ManagedInt64", "Mutable"}, {"Critter", "Server", "uint64", "ManagedUInt64", "Mutable"}, {"Critter", "Server", "float32", "ManagedFloat32", "Mutable"}, {"Critter", "Server", "float64", "ManagedFloat64", "Mutable"}, {"Critter", "Server", "bool", "ManagedBool", "Mutable"}, {"Critter", "Server", "CritterCondition", "ManagedEnum", "Mutable"}, {"Critter", "Server", "bool", "ManagedProbe", "Component"},
+                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
         }));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
@@ -966,11 +968,22 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Game\",\n                \"ManagedSteps\",\n                IntPtr.Zero)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Game\",\n                \"ManagedSteps\",\n                IntPtr.Zero,\n                value)") != string::npos);
     CHECK(server_entities.find("public static ushort ManagedNarrowLimit") != string::npos);
-    CHECK(server_entities.find("return (ushort)global::FOnline.Game.GetAsInt(\n                (global::FOnline.GameProperty)(") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Game.SetAsInt(\n                (global::FOnline.GameProperty)(") != string::npos);
+    CHECK(server_entities.find("return global::FOnline.Native.GetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
     CHECK(server_entities.find("public short ManagedSkill") != string::npos);
-    CHECK(server_entities.find("return (short)GetAsInt(\n                (global::FOnline.CritterProperty)(") != string::npos);
-    CHECK(server_entities.find("SetAsInt(\n                (global::FOnline.CritterProperty)(") != string::npos);
+    CHECK(server_entities.find("return (short)global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetEntityValueAsInt(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
+    for (string_view scalar_type : {"sbyte", "byte", "short"}) {
+        CHECK(server_entities.find(strex("return ({})global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ", scalar_type).str()) != string::npos);
+    }
+
+    for (string_view scalar_type : {"int", "uint", "long", "ulong", "float", "double", "bool", "CritterCondition"}) {
+        CHECK(server_entities.find(strex("global::FOnline.Native.GetPropertyValue<{}>(_entityPtr, ", scalar_type).str()) != string::npos);
+    }
+
+    CHECK(server_entities.find("bool HasManagedProbe\n    {\n        get\n        {\n            return global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<CritterCondition>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr,\n                value)") != string::npos);
