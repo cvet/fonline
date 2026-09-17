@@ -2519,13 +2519,14 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native+libs.sfx'
 
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
-# subset or source patches change: an unchanged marker leaves a prepared host on the old runtime
-MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl'
+# subset, cmake args, or source patches change: an unchanged marker leaves a prepared host on the old runtime
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
 MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info'
+MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
 
 # Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
 MONO_WORKSPACE_CACHE_FORMAT = 1
@@ -2577,6 +2578,12 @@ def resolve_mono_marker_suffix(os_name: str) -> str:
 		return MONO_WINDOWS_SOURCE_MARKER_SUFFIX
 
 	return MONO_SUBSET_MARKER_SUFFIX
+
+
+def resolve_mono_cmake_args() -> list[str]:
+	# Without ENABLE_OVERRIDABLE_ALLOCATORS, mono_set_allocator_vtable still returns TRUE and is a no-op
+	property_prefix = '/p:' if os.name == 'nt' else '-p:'
+	return [f'{property_prefix}CMakeArgs={MONO_OVERRIDABLE_ALLOCATORS_CMAKE}']
 
 
 PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
@@ -3201,7 +3208,7 @@ def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		if os_name == 'windows':
 			patch_runtime_windows_embedded_debug_info(runtime_root)
 
-		run_runtime_build(['-os', os_name, '-arch', layout.dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root, target_os=os_name)
+		run_runtime_build(['-os', os_name, '-arch', layout.dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name), *resolve_mono_cmake_args()], runtime_root, target_os=os_name)
 
 	run_marker_step(layout.built_marker, 'Build runtime', build_runtime)
 

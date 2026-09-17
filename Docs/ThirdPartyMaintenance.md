@@ -110,7 +110,8 @@ For a new engine dependency:
   land in the CRT heap rather than rpmalloc, outside the engine
   out-of-memory contract and invisible to allocator statistics and Tracy. Hooks
   come in several shapes — a runtime setter (`SDL_SetMemoryFunctions`,
-  `asSetGlobalMemoryFunctions`, `Effekseer::SetMallocFunc`), a struct passed at
+  `asSetGlobalMemoryFunctions`, `Effekseer::SetMallocFunc`,
+  `mono_set_allocator_vtable`), a struct passed at
   init (`png_create_read_struct_2`, `bson_mem_set_vtable`), or a compile-time
   symbol the consumer defines (`UFBX_EXTERNAL_MALLOC`). Read the hook's
   *implementation*, not just its declaration: LibreSSL still exports

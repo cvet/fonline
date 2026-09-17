@@ -70,6 +70,16 @@ FO_DISABLE_WARNINGS_POP()
 extern "C" void* mono_threads_enter_gc_safe_region_unbalanced(void** stack_data);
 extern "C" void mono_threads_exit_gc_safe_region_unbalanced(void* cookie, void** stack_data);
 
+// eglib copies the vtable; the public setter still returns TRUE when ENABLE_OVERRIDABLE_ALLOCATORS is off
+struct MonoEglibMemVTable
+{
+    void* (*malloc)(size_t);
+    void* (*realloc)(void*, size_t);
+    void (*free)(void*);
+    void* (*calloc)(size_t, size_t);
+};
+extern "C" void monoeg_g_mem_get_vtable(MonoEglibMemVTable* vtable);
+
 #include "WinApiUndef.inc"
 
 #if FO_WEB
@@ -5839,9 +5849,54 @@ static void SetEnvironmentVariableDefault(const char* name, const char* value)
 #endif
 }
 
+static auto ManagedMemMalloc(size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return safe_alloc::malloc_raw(size).get();
+}
+
+static auto ManagedMemRealloc(void* mem, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return safe_alloc::realloc_raw(mem, size).get();
+}
+
+static void ManagedMemFree(void* mem) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    safe_alloc::free_raw(mem);
+}
+
+static auto ManagedMemCalloc(size_t num, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return safe_alloc::calloc_raw(num, size).get();
+}
+
 static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
 {
     FO_STACK_TRACE_ENTRY();
+
+    // eglib g_malloc (metadata, runtime internals). Must precede every other Mono call, including
+    // debug init. SGen and code pages stay on mono_valloc
+    MonoAllocatorVTable allocator_vtable {};
+    allocator_vtable.version = MONO_ALLOCATOR_VTABLE_VERSION;
+    allocator_vtable.malloc = &ManagedMemMalloc;
+    allocator_vtable.realloc = &ManagedMemRealloc;
+    allocator_vtable.free = &ManagedMemFree;
+    allocator_vtable.calloc = &ManagedMemCalloc;
+    FO_VERIFY_AND_THROW(mono_set_allocator_vtable(&allocator_vtable) != 0, "Failed to install Managed runtime allocator vtable");
+
+    MonoEglibMemVTable installed_vtable {};
+    monoeg_g_mem_get_vtable(&installed_vtable);
+    FO_VERIFY_AND_THROW(installed_vtable.malloc == allocator_vtable.malloc, "Managed runtime allocator vtable is not installed", "malloc");
+    FO_VERIFY_AND_THROW(installed_vtable.realloc == allocator_vtable.realloc, "Managed runtime allocator vtable is not installed", "realloc");
+    FO_VERIFY_AND_THROW(installed_vtable.free == allocator_vtable.free, "Managed runtime allocator vtable is not installed", "free");
+    FO_VERIFY_AND_THROW(installed_vtable.calloc == allocator_vtable.calloc, "Managed runtime allocator vtable is not installed", "calloc");
 
     // The engine host owns process-level crash reporting. Ask embedded Mono to chain the handlers
     // that were already installed by the host (or by a test runner) instead of replacing them

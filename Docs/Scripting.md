@@ -321,6 +321,10 @@ attachment and leave its ownership unchanged.
 The worker that first initializes the Mono VM is the one exception: `mono_jit_init_version`
 implicitly attaches its native caller, so the initialization scope explicitly adopts and
 releases that attachment after loading the first backend.
+`ConfigureManagedRuntime` installs `mono_set_allocator_vtable` onto `safe_alloc`'s raw tier
+before any other Mono call, so eglib `g_malloc` (metadata, runtime internals) uses the engine
+heap and terminate-on-OOM contract. Managed objects still live in SGen, which maps pages
+through `mono_valloc`.
 Backend teardown keeps one attachment while it stops continuations, invalidates wrapper
 alive flags, releases GC handles and unloads its managed assembly scope.
 GC-handle owners that may outlive a dispatch, including stored callback descriptors and
