@@ -921,9 +921,8 @@ void ManagedScriptBackend::EnableDeepEntityWrapperTracking()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The live wrapper count is kept by the core scripts unconditionally; this arms the deep half, the weak
-    // table that can name what the count reports. A backend whose metadata is not an engine - the baker's, for
-    // one - has no settings to read, and stays counting only: naming is a diagnostic for a running game
+    // The core scripts always keep the live wrapper count; this arms the weak table that names what it reports. A backend with no
+    // engine behind its metadata (the baker's) has no settings to read and stays counting only, naming being a running-game diagnostic
     nptr<GlobalSettings> settings = GetBackendSettings(this);
 
     if (!settings || !settings->ManagedScript.DeepTrackEntityWrappers) {
@@ -950,9 +949,8 @@ void ManagedScriptBackend::ClearScriptStatics() noexcept
         return;
     }
 
-    // Done in managed code rather than through mono_field_static_set_value: writing the static area from the
-    // embedding API leaves it disagreeing with the root descriptor the collector scans it by, which a bisection
-    // pinned to the very first field written
+    // Done in managed code: mono_field_static_set_value leaves the static area disagreeing with the root descriptor the collector
+    // scans it by, which a bisection pinned to the very first field written
     safe_call([this] {
         // Reading a static through reflection runs the type's static constructor when it has not run yet, and
         // those reach back into native code, so the backend has to be the active one for this call
@@ -985,10 +983,8 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
         return;
     }
 
-    // The collecting and the waiting happen in managed code: GC.WaitForPendingFinalizers is the supported way
-    // to wait for the finalizer thread, while mono_domain_finalize belongs to domain unloading and answered a
-    // root-domain shutdown with a timeout and then a crash. Passes alternate there for the same reason - a
-    // finalized wrapper can drop the last reference to another one
+    // GC.WaitForPendingFinalizers in managed code is the supported finalizer wait; mono_domain_finalize belongs to domain unloading and
+    // timed out, then crashed, on a root-domain shutdown. Passes repeat because a finalized wrapper can drop the last reference to another
     constexpr int32_t PASS_LIMIT = 8;
 
     safe_call([this] {
@@ -997,16 +993,15 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
 
         int32_t outstanding = -1;
 
-        // A timed-out or failed collection must still leave a wrapper report for diagnosis.
+        // A timed-out or failed collection must still leave a wrapper report for diagnosis
         safe_call([&] { outstanding = InvokeEntityWrapperTrackerCollect(collect_method, PASS_LIMIT); });
 
         timespan collect_duration = collect_time.get_duration();
         MonoMethod* dump_method = FindCoreScriptMethod(this, "EntityWrapperTracker", "DumpOutstandingWrappers", 0);
         string report = InvokeEntityWrapperTrackerDump(dump_method);
 
-        // The report is empty on the ordinary path - nothing outstanding, deep tracking off - and an empty line
-        // is not worth printing once per destroyed engine. Whatever it does say is printed with the duration,
-        // because this phase is paid per destroyed engine and a parallel run destroys dozens
+        // Empty on the ordinary path and not worth a line per destroyed engine; a real report carries the duration, because this phase
+        // is paid per destroyed engine and a parallel run destroys dozens
         if (!report.empty()) {
             logging::write("Managed wrapper tracking: {}, collected in {}", report, collect_duration);
         }
@@ -1722,10 +1717,8 @@ static auto InvokeEntityWrapperTrackerDump(MonoMethod* method) -> string
     return ToStringAndFree(reinterpret_cast<MonoString*>(result));
 }
 
-// Managed wrappers AddRef the native entity and Release in the finalizer, so a wrapper retained past destroy
-// keeps it alive-but-destroyed rather than dangling. Giving the reference back is the finalizer's job alone:
-// backend teardown runs the collector and waits for it, and what the collector cannot reach is reported by the
-// engine's live entity count rather than taken away behind the wrapper's back
+// A wrapper AddRefs the native entity and releases it only in its finalizer, so one retained past destroy keeps it alive-but-destroyed;
+// what teardown's collection cannot reach is reported by the live entity count rather than taken away behind the wrapper's back
 static void NativeAddRefEntity(void* entity_ptr)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -6508,11 +6501,8 @@ ManagedScriptBackend::~ManagedScriptBackend()
                 }
             });
 
-            // A static reference is cleared by the engine rather than by the script that wrote it: nothing else
-            // can reach it, since the script assembly load context is not collectible and its statics are roots
-            // for the life of the process. What this cannot reach - statics of generic types, thread statics,
-            // references inside value-type statics - is not allowed to exist, and static analysis is what holds
-            // that line
+            // The engine clears script statics because the script load context is not collectible and they root for the process lifetime;
+            // the ones this cannot reach (generic types, thread statics, references inside value-type statics) static analysis forbids
             ClearScriptStatics();
 
             for (uint32_t gc_handle : _persistentGcHandles) {
@@ -6524,7 +6514,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
             _persistentGcHandles.clear();
             _globalFuncs.clear();
 
-            // Callback handles can root wrappers too; collect after releasing them and before losing the images.
+            // Callback handles can root wrappers too; collect after releasing them and before losing the images
             FinalizeManagedObjects();
             ReleaseAliveFlag();
 

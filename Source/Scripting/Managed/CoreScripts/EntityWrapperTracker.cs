@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 // on.
 //
 // The reference to the wrapper is weak on purpose: a strong one would root exactly what the table measures,
-// nothing would ever be finalized and the table would never empty.
+// nothing would ever be finalized and the table would never empty
 internal static class EntityWrapperTracker
 {
     private static readonly ConcurrentDictionary<long, TrackedWrapper> Tracked =
@@ -79,7 +79,7 @@ internal static class EntityWrapperTracker
     // Collecting from managed code rather than through the embedding API: GC.WaitForPendingFinalizers is the
     // supported way to wait for the finalizer thread, and it is the runtime's own business how that is done.
     // Passes alternate because a finalized wrapper can drop the last reference to another one, and the loop
-    // stops at zero or the pass limit. Waiting for the finalizer queue has its own deadline.
+    // stops at zero or the pass limit. Waiting for the finalizer queue has its own deadline
     [CallableByEngine]
     private static int CollectAndWaitForFinalizers(int passLimit)
     {
@@ -90,7 +90,7 @@ internal static class EntityWrapperTracker
             GC.Collect();
             long remaining = deadline - Environment.TickCount64;
 
-            // The runtime wait has no timeout; keep it off the engine teardown thread.
+            // The runtime wait has no timeout; keep it off the engine teardown thread
             if (remaining <= 0 || !Task.Run(GC.WaitForPendingFinalizers).Wait((int)remaining)) {
                 throw new TimeoutException("Managed finalizer queue did not drain within the shutdown budget");
             }

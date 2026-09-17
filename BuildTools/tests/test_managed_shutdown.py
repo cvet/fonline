@@ -204,7 +204,7 @@ def shutdown_probe(tmp_path_factory):
 @pytest.mark.parametrize("kind", ["ordinary", "deep", "array", "queue", "blocked", "report-lifetime"])
 def test_managed_shutdown(shutdown_probe, kind):
     dotnet, assembly = shutdown_probe
-    # Tier-zero JIT keeps dead locals alive and hides an absent KeepAlive during the diagnostic lookup.
+    # Tier-zero JIT keeps dead locals alive and hides an absent KeepAlive during the diagnostic lookup
     env = {**os.environ, "DOTNET_TieredCompilation": "0"}
     result = subprocess.run([dotnet, str(assembly), kind], env=env, capture_output=True, text=True, timeout=12)
     assert result.returncode == 0, result.stdout + result.stderr

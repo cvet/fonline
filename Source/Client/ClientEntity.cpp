@@ -59,9 +59,8 @@ ClientEntity::~ClientEntity()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // A client entity is normally retired through DestroySelf, which unregisters it, but it is ref counted and
-    // may instead be released by its last owner - a script handle to a received item, for one. The registry
-    // holds borrows, so that release must take its entry with it, or a lookup by id returns freed memory
+    // Usually retired through DestroySelf, but the last owner (a script handle to a received item) may release it instead, and the
+    // registry holds borrows, so that release must take the entry with it or a lookup by id returns freed memory
     if (_registered) {
         _engine->UnregisterEntity(this);
         _registered = false;

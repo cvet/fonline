@@ -67,7 +67,7 @@ internal static class ScriptStaticCleanup
 
     private static void ClearField(Type type, FieldInfo field, List<string> cleared, List<string> unreachable)
     {
-        // Literals have no storage; reference-bearing value types and thread statics require script analysis.
+        // Literals have no storage; reference-bearing value types and thread statics require script analysis
         if (field.IsLiteral || field.FieldType.IsValueType || field.IsDefined(typeof(ThreadStaticAttribute), false)) {
             return;
         }

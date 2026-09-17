@@ -152,10 +152,8 @@ ServerEngine::~ServerEngine()
     // data belonging to the engine does not read as a reference that escaped it
     MapMngr.ClearStaticMaps();
 
-    // Every server entity borrows this engine - its property registrars, protos, interned hashes and managers -
-    // so an entity that outlives it holds nothing but dangling pointers. Shutdown gives back every reference the
-    // script backends hold and empties the world registry, so a non-zero count is a native reference that was
-    // never given back; the residual this reports is tracked in Docs/ServerRuntime.md
+    // Every server entity borrows this engine (property registrars, protos, hashes, managers), so one that outlives it dangles; the
+    // script references and the world registry are gone by now, so a non-zero count is a native reference that was never given back
     int32_t live_entities = _liveEntityCount.load(std::memory_order_acquire);
     FO_VERIFY_AND_CONTINUE(live_entities == 0, "Server entities outlived the server engine", live_entities);
 }

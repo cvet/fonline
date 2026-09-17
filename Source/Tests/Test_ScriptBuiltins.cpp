@@ -2525,7 +2525,7 @@ namespace ScriptBuiltins
         if (Settings.Common.GameName.isEmpty()) return -1;
         if (Settings.Network.ServerPort <= 0) return -2;
 
-        bool debugBuild = Game.DebugBuild;
+        bool debugBuild = DebugBuild;
         bool packaged = Settings.Common.Packaged;
         if (debugBuild && packaged) return -3;
 

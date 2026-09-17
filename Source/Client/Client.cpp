@@ -251,10 +251,8 @@ ClientEngine::~ClientEngine()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Every client entity borrows this engine - its property registrars, protos, interned hashes and resource
-    // views - so an entity that outlives it holds nothing but dangling pointers. Shutdown gives back every
-    // reference the script backend holds and destroys the view hierarchy, so a non-zero count is a reference
-    // that was never given back; the residual this reports is tracked in Docs/ServerRuntime.md
+    // Every client entity borrows this engine (property registrars, protos, hashes, resource views), so one that outlives it dangles;
+    // the script references and the view hierarchy are gone by now, so a non-zero count is a reference that was never given back
     int32_t live_entities = _liveEntityCount.load(std::memory_order_acquire);
     FO_VERIFY_AND_CONTINUE(live_entities == 0, "Client entities outlived the client engine", live_entities);
 }
@@ -2136,7 +2134,7 @@ auto ClientEngine::GetEntity(ident_t id) -> refcount_nptr<ClientEntity>
         return nullptr;
     }
 
-    // A finalizer may already be retiring the entity and waiting to unregister it under the same lock.
+    // A finalizer may already be retiring the entity and waiting to unregister it under the same lock
     return it->second.try_hold_ref();
 }
 
