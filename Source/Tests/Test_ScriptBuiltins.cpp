@@ -143,7 +143,7 @@ namespace
     static auto MakeAngelScriptEngine(ScriptMessages& messages) -> AngelScript::asIScriptEngine*
     {
         auto engine = make_nptr(AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION));
-        REQUIRE(engine != nullptr);
+        REQUIRE(engine);
 
         REQUIRE(engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false) >= 0);
         REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), &messages, AngelScript::asCALL_CDECL) >= 0);
@@ -199,13 +199,13 @@ namespace
         FO_STACK_TRACE_ENTRY();
 
         auto ctx = make_nptr(AngelScript::asGetActiveContext());
-        FO_VERIFY_AND_THROW(ctx != nullptr, "Missing active AngelScript context");
+        FO_VERIFY_AND_THROW(ctx, "Missing active AngelScript context");
 
         nptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
-        FO_VERIFY_AND_THROW(engine != nullptr, "Missing AngelScript engine");
+        FO_VERIFY_AND_THROW(engine, "Missing AngelScript engine");
 
         nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("array<ArrayCmpOnlyNativeValue>");
-        FO_VERIFY_AND_THROW(array_type != nullptr, "Missing array<ArrayCmpOnlyNativeValue> type");
+        FO_VERIFY_AND_THROW(array_type, "Missing array<ArrayCmpOnlyNativeValue> type");
 
         auto values = ScriptArray::Create(array_type.get(), 2);
 
@@ -239,7 +239,7 @@ namespace
     static auto BuildAngelScriptModule(AngelScript::asIScriptEngine* engine, string_view module_name, string_view source) -> int32_t
     {
         auto module = make_nptr(engine->GetModule(string(module_name).c_str(), AngelScript::asGM_ALWAYS_CREATE));
-        REQUIRE(module != nullptr);
+        REQUIRE(module);
         REQUIRE(module->AddScriptSection("InlineArrayTemplateCheck", source.data(), source.size()) >= 0);
         return module->Build();
     }
@@ -267,7 +267,7 @@ namespace
         REQUIRE(build_result >= 0);
 
         nptr<AngelScript::asIScriptModule> module = engine->GetModule(string {module_name}.c_str(), AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(module != nullptr);
+        REQUIRE(module);
         return module;
     }
 
@@ -276,10 +276,10 @@ namespace
         FO_STACK_TRACE_ENTRY();
 
         nptr<AngelScript::asIScriptFunction> func = module->GetFunctionByDecl(string {declaration}.c_str());
-        REQUIRE(func != nullptr);
+        REQUIRE(func);
 
         nptr<AngelScript::asIScriptContext> ctx = engine->CreateContext();
-        REQUIRE(ctx != nullptr);
+        REQUIRE(ctx);
         REQUIRE(ctx->Prepare(func.get()) >= 0);
         int32_t exec_result = ctx->Execute();
         UNSCOPED_INFO(strex("Script execution result: {}, exception: {}", exec_result, ctx->GetExceptionString()).str());
@@ -303,7 +303,7 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        REQUIRE(engine != nullptr);
+        REQUIRE(engine);
         CHECK(engine->ShutDownAndRelease() >= 0);
         ReportScriptMessages(messages);
         CHECK_FALSE(HasScriptMessage(messages, "GC cannot destroy an object"));
@@ -331,7 +331,7 @@ namespace
     {
         string array_type_decl = strex("array<{}>", type_decl).str();
         auto array_type = make_nptr(engine->GetTypeInfoByDecl(array_type_decl.c_str()));
-        REQUIRE(array_type != nullptr);
+        REQUIRE(array_type);
 
         auto values = ScriptArray::Create(array_type.get(), 2);
 
@@ -3956,64 +3956,64 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         RegisterAngelScriptArray(as_engine.get());
 
         nptr<AngelScript::asITypeInfo> int_type = as_engine->GetTypeInfoByDecl("array<int>");
-        REQUIRE(int_type != nullptr);
+        REQUIRE(int_type);
         nptr<AngelScript::asITypeInfo> uint_type = as_engine->GetTypeInfoByDecl("array<uint>");
-        REQUIRE(uint_type != nullptr);
+        REQUIRE(uint_type);
 
         RegisterArrayDummyRef(as_engine.get());
         nptr<AngelScript::asITypeInfo> dummy_ref_handle_type = as_engine->GetTypeInfoByDecl("array<ArrayDummyRef@>");
-        REQUIRE(dummy_ref_handle_type != nullptr);
+        REQUIRE(dummy_ref_handle_type);
 
         REQUIRE(BuildAngelScriptModule(as_engine.get(), "ArrayGcNodeModule", "class ArrayGcNode { ArrayGcNode@ Next; }\n") >= 0);
         nptr<AngelScript::asIScriptModule> gc_module = as_engine->GetModule("ArrayGcNodeModule", AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(gc_module != nullptr);
+        REQUIRE(gc_module);
         nptr<AngelScript::asITypeInfo> gc_node_type = gc_module->GetTypeInfoByDecl("ArrayGcNode");
-        REQUIRE(gc_node_type != nullptr);
+        REQUIRE(gc_node_type);
         nptr<AngelScript::asITypeInfo> gc_node_handle_type = gc_module->GetTypeInfoByDecl("array<ArrayGcNode@>");
-        REQUIRE(gc_node_handle_type != nullptr);
+        REQUIRE(gc_node_handle_type);
         CHECK((gc_node_handle_type->GetFlags() & AngelScript::asOBJ_GC) != 0);
 
         REQUIRE(BuildAngelScriptModule(as_engine.get(), "ArrayFinalNodeModule", "final class ArrayFinalNode { int Value; }\n") >= 0);
         nptr<AngelScript::asIScriptModule> final_module = as_engine->GetModule("ArrayFinalNodeModule", AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(final_module != nullptr);
+        REQUIRE(final_module);
         nptr<AngelScript::asITypeInfo> final_node_type = final_module->GetTypeInfoByDecl("ArrayFinalNode");
-        REQUIRE(final_node_type != nullptr);
+        REQUIRE(final_node_type);
         CHECK((final_node_type->GetFlags() & AngelScript::asOBJ_NOINHERIT) != 0);
         nptr<AngelScript::asITypeInfo> final_node_handle_type = final_module->GetTypeInfoByDecl("array<ArrayFinalNode@>");
-        REQUIRE(final_node_handle_type != nullptr);
+        REQUIRE(final_node_handle_type);
         CHECK((final_node_handle_type->GetFlags() & AngelScript::asOBJ_GC) == 0);
 
         RegisterArrayComparableValue(as_engine.get(), "ArrayNoCompareValue", false, false);
         nptr<AngelScript::asITypeInfo> no_compare_value_type = as_engine->GetTypeInfoByDecl("array<ArrayNoCompareValue>");
-        REQUIRE(no_compare_value_type != nullptr);
+        REQUIRE(no_compare_value_type);
 
         RegisterArrayComparableValue(as_engine.get(), "ArrayMultiEqualsValue", true, false);
         nptr<AngelScript::asITypeInfo> multi_equals_value_type = as_engine->GetTypeInfoByDecl("array<ArrayMultiEqualsValue>");
-        REQUIRE(multi_equals_value_type != nullptr);
+        REQUIRE(multi_equals_value_type);
 
         RegisterArrayComparableValue(as_engine.get(), "ArrayMultiCmpValue", false, true);
         nptr<AngelScript::asITypeInfo> multi_cmp_value_type = as_engine->GetTypeInfoByDecl("array<ArrayMultiCmpValue>");
-        REQUIRE(multi_cmp_value_type != nullptr);
+        REQUIRE(multi_cmp_value_type);
 
         RegisterArrayCmpOnlyValue(as_engine.get(), "ArrayCmpOnlyNativeValue");
         REQUIRE(as_engine->RegisterGlobalFunction("bool CheckArrayCmpOnlyValueOps()", FO_SCRIPT_FUNC(CheckArrayCmpOnlyValueOps), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(BuildAngelScriptModule(as_engine.get(), "ArrayCmpOnlyValueOpsModule", "bool RunArrayCmpOnlyValueOps() { return CheckArrayCmpOnlyValueOps(); }\n") >= 0);
         nptr<AngelScript::asIScriptModule> cmp_only_module = as_engine->GetModule("ArrayCmpOnlyValueOpsModule", AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(cmp_only_module != nullptr);
+        REQUIRE(cmp_only_module);
         nptr<AngelScript::asIScriptFunction> cmp_only_func = cmp_only_module->GetFunctionByDecl("bool RunArrayCmpOnlyValueOps()");
-        REQUIRE(cmp_only_func != nullptr);
+        REQUIRE(cmp_only_func);
 
         RegisterArrayComparatorFilterValue(as_engine.get(), "ArrayCmpParamMismatchValue", "int opCmp(const ArrayCmpOnlyNativeValue &in) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmp));
         nptr<AngelScript::asITypeInfo> param_mismatch_value_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpParamMismatchValue>");
-        REQUIRE(param_mismatch_value_type != nullptr);
+        REQUIRE(param_mismatch_value_type);
 
         RegisterArrayComparatorFilterValue(as_engine.get(), "ArrayCmpByValueParamValue", "int opCmp(ArrayCmpByValueParamValue) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmpByValue));
         nptr<AngelScript::asITypeInfo> by_value_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpByValueParamValue>");
-        REQUIRE(by_value_param_type != nullptr);
+        REQUIRE(by_value_param_type);
 
         RegisterArrayComparatorFilterValue(as_engine.get(), "ArrayCmpOutRefParamValue", "int opCmp(ArrayCmpOutRefParamValue &out) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmpMutable));
         nptr<AngelScript::asITypeInfo> out_ref_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpOutRefParamValue>");
-        REQUIRE(out_ref_param_type != nullptr);
+        REQUIRE(out_ref_param_type);
 
         auto int_arr = ScriptArray::Create(int_type.get(), 2);
 
@@ -4155,7 +4155,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
         {
             nptr<AngelScript::asIScriptContext> ctx = as_engine->CreateContext();
-            REQUIRE(ctx != nullptr);
+            REQUIRE(ctx);
             auto release_ctx = scope_exit([&ctx]() noexcept { safe_call([&ctx] { ctx->Release(); }); });
 
             REQUIRE(ctx->Prepare(cmp_only_func.get()) >= 0);
@@ -4359,9 +4359,9 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         RegisterAngelScriptDict(as_engine.get());
 
         nptr<AngelScript::asITypeInfo> int_dict_type = as_engine->GetTypeInfoByDecl("dict<int,int>");
-        REQUIRE(int_dict_type != nullptr);
+        REQUIRE(int_dict_type);
         nptr<AngelScript::asITypeInfo> string_key_dict_type = as_engine->GetTypeInfoByDecl("dict<int64,int64>");
-        REQUIRE(string_key_dict_type != nullptr);
+        REQUIRE(string_key_dict_type);
 
         auto dict = ScriptDict::Create(int_dict_type.get());
 
@@ -4519,7 +4519,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
         auto check_value_comparator_throw = [&as_engine](string_view dict_decl, string_view expected_message) {
             nptr<AngelScript::asITypeInfo> dict_type = as_engine->GetTypeInfoByDecl(string {dict_decl}.c_str());
-            REQUIRE(dict_type != nullptr);
+            REQUIRE(dict_type);
 
             auto dict = ScriptDict::Create(dict_type.get());
             int32_t key = 1;
@@ -4541,7 +4541,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         check_value_comparator_throw("dict<int,DictMultiEqualsNativeValue>", "Type has multiple matching opEquals or opCmp methods");
 
         nptr<AngelScript::asITypeInfo> multi_cmp_key_dict_type = as_engine->GetTypeInfoByDecl("dict<DictMultiCmpNativeValue,int>");
-        REQUIRE(multi_cmp_key_dict_type != nullptr);
+        REQUIRE(multi_cmp_key_dict_type);
 
         auto multi_cmp_key_dict = ScriptDict::Create(multi_cmp_key_dict_type.get());
         ArrayComparableValue low_key {1};

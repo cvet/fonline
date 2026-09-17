@@ -1834,13 +1834,13 @@ BoundsMaxZ = 3.5
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-        REQUIRE(as_engine != nullptr);
+        REQUIRE(as_engine);
 
         nptr<AngelScript::asITypeInfo> hstring_type = as_engine->GetTypeInfoByDecl("hstring");
-        REQUIRE(hstring_type != nullptr);
+        REQUIRE(hstring_type);
 
         nptr<AngelScript::asIScriptFunction> conv_method = hstring_type->GetMethodByDecl("string opImplConv() const");
-        REQUIRE(conv_method != nullptr);
+        REQUIRE(conv_method);
 
         hstring key = server->Hashes.to_hashed_string("AlphaKey");
         REQUIRE(ctx->Prepare(conv_method.get()) >= 0);

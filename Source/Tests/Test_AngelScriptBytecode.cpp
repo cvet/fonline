@@ -2738,13 +2738,13 @@ void CallCalleeNullableWithNull()
     {
         auto run = [](ptr<asIScriptModule> module, const char* declaration) -> asBYTE {
             nptr<asIScriptEngine> engine = module->GetEngine();
-            REQUIRE(engine != nullptr);
+            REQUIRE(engine);
 
             nptr<asIScriptFunction> func = module->GetFunctionByDecl(declaration);
-            REQUIRE(func != nullptr);
+            REQUIRE(func);
 
             nptr<asIScriptContext> ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
+            REQUIRE(ctx);
             REQUIRE(ctx->Prepare(func.get()) >= 0);
             REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
             asBYTE result = ctx->GetReturnByte();
@@ -2773,7 +2773,7 @@ void CallCalleeNullableWithNull()
         RegisterVariadicProbeApi(load_engine.get());
 
         nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
-        REQUIRE(load_module != nullptr);
+        REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         REQUIRE(load_module->LoadByteCode(&reader) >= 0);
         CHECK(run(load_module, "bool PrimitiveConstructorUsesAlignedCount()") == 1);
@@ -2805,15 +2805,15 @@ int RunInitList()
 )";
 
     nptr<asIScriptModule> module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
-    REQUIRE(module != nullptr);
+    REQUIRE(module);
     CHECK(module->AddScriptSection("initlist_test", InitListScript.data(), numeric_cast<unsigned>(InitListScript.size())) >= 0);
     REQUIRE(module->Build() >= 0);
 
     nptr<asIScriptFunction> func = module->GetFunctionByDecl("int RunInitList()");
-    REQUIRE(func != nullptr);
+    REQUIRE(func);
 
     nptr<asIScriptContext> ctx = engine->CreateContext();
-    REQUIRE(ctx != nullptr);
+    REQUIRE(ctx);
     CHECK(ctx->Prepare(func.get()) >= 0);
     REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
     CHECK(ctx->GetReturnDWord() == 8U);
