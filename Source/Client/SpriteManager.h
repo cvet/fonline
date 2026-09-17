@@ -190,6 +190,8 @@ public:
     [[nodiscard]] auto GetWindowSize() const -> isize32;
     [[nodiscard]] auto GetScreenSize() const -> isize32;
     [[nodiscard]] auto IsFullscreen() const -> bool;
+    [[nodiscard]] auto IsAlwaysOnTop() const noexcept -> bool { return _alwaysOnTop; }
+    [[nodiscard]] auto IsDrawWireframe() const noexcept -> bool { return _drawWireframe; }
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) -> int32_t;
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
@@ -206,6 +208,7 @@ public:
     void MinimizeWindow();
     void BlinkWindow();
     void SetAlwaysOnTop(bool enable);
+    void SetDrawWireframe(bool enable) noexcept { _drawWireframe = enable; }
 
     void RegisterSpriteFactory(unique_ptr<SpriteFactory> factory);
     auto GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>;
@@ -282,6 +285,8 @@ private:
 
     nptr<RenderTarget> _rtMain {};
     nptr<RenderTarget> _rtSceneBackground {};
+    bool _alwaysOnTop {};
+    bool _drawWireframe {};
     bool _sceneBackgroundValid {};
 
     vector<DipData> _dipQueue {};

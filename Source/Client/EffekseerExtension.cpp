@@ -1045,7 +1045,7 @@ static auto CalculateParticleTangentFrame(Effekseer::BillboardType billboard, co
 class FOnlineEffekseerSpriteRenderer final : public Effekseer::SpriteRenderer
 {
 public:
-    FOnlineEffekseerSpriteRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding, ParticleSceneBackgroundProvider scene_background_provider) :
+    FOnlineEffekseerSpriteRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, shared_ptr<EffekseerDrawBinding> binding, ParticleSceneBackgroundProvider scene_background_provider) :
         _binding {std::move(binding)},
         _sceneBackgroundProvider {std::move(scene_background_provider)},
         _particleEffects {effect_mngr},
@@ -1056,7 +1056,7 @@ public:
         _whiteTexture {render->CreateTexture({1, 1}, true, false)},
         _effectMngr {effect_mngr},
         _render {render},
-        _settings {settings}
+        _drawWireframe {draw_wireframe}
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -1316,7 +1316,7 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, index_count);
 
-        if (_settings->Render.DrawWireframe) {
+        if (_drawWireframe()) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
         }
     }
@@ -1440,7 +1440,7 @@ private:
     unique_nptr<RenderDrawBuffer> _wireframeBuf {};
     ptr<EffectManager> _effectMngr;
     ptr<IAppRender> _render;
-    ptr<RenderSettings> _settings;
+    ParticleWireframeQuery _drawWireframe;
     optional<EffekseerSpriteNodeSnapshot> _node {};
     size_t _declaredInstanceCount {};
     vector<EffekseerSpriteInstanceSnapshot> _instances {};
@@ -1449,13 +1449,13 @@ private:
 class FOnlineEffekseerRingRenderer final : public Effekseer::RingRenderer
 {
 public:
-    FOnlineEffekseerRingRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
+    FOnlineEffekseerRingRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
         _particleEffects {effect_mngr},
         _drawBuffer {render->CreateDrawBuffer(false)},
         _effectMngr {effect_mngr},
         _render {render},
-        _settings {settings},
+        _drawWireframe {draw_wireframe},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
         FO_STACK_TRACE_ENTRY();
@@ -1815,7 +1815,7 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, index_count);
 
-        if (_settings->Render.DrawWireframe) {
+        if (_drawWireframe()) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
         }
     }
@@ -1826,7 +1826,7 @@ private:
     unique_nptr<RenderDrawBuffer> _wireframeBuf {};
     ptr<EffectManager> _effectMngr;
     ptr<IAppRender> _render;
-    ptr<RenderSettings> _settings;
+    ParticleWireframeQuery _drawWireframe;
     unique_ptr<RenderTexture> _whiteTexture;
     optional<EffekseerRingNodeSnapshot> _node {};
     size_t _declaredInstanceCount {};
@@ -2014,10 +2014,10 @@ static auto ValidateModelNodeParameter(const Effekseer::ModelRenderer::NodeParam
 class EffekseerStripGeometry final
 {
 public:
-    EffekseerStripGeometry(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings) :
+    EffekseerStripGeometry(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe) :
         _effectMngr {effect_mngr},
         _render {render},
-        _settings {settings},
+        _drawWireframe {draw_wireframe},
         _particleEffects {effect_mngr},
         _drawBuffer {render->CreateDrawBuffer(false)},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
@@ -2167,14 +2167,14 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, index_count);
 
-        if (_settings->Render.DrawWireframe) {
+        if (_drawWireframe()) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, index_count, system->ViewProjMatrix);
         }
     }
 
     ptr<EffectManager> _effectMngr;
     ptr<IAppRender> _render;
-    ptr<RenderSettings> _settings;
+    ParticleWireframeQuery _drawWireframe;
     EffekseerParticleEffects _particleEffects;
     unique_ptr<RenderDrawBuffer> _drawBuffer;
     unique_ptr<RenderTexture> _whiteTexture;
@@ -2186,9 +2186,9 @@ private:
 class FOnlineEffekseerRibbonRenderer final : public Effekseer::RibbonRenderer
 {
 public:
-    FOnlineEffekseerRibbonRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
+    FOnlineEffekseerRibbonRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
-        _geometry {effect_mngr, render, settings}
+        _geometry {effect_mngr, render, draw_wireframe}
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -2386,9 +2386,9 @@ struct EffekseerTrackInstanceSnapshot
 class FOnlineEffekseerTrackRenderer final : public Effekseer::TrackRenderer
 {
 public:
-    FOnlineEffekseerTrackRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
+    FOnlineEffekseerTrackRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
-        _geometry {effect_mngr, render, settings}
+        _geometry {effect_mngr, render, draw_wireframe}
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -2625,13 +2625,13 @@ struct EffekseerModelInstanceSnapshot
 class FOnlineEffekseerModelRenderer final : public Effekseer::ModelRenderer
 {
 public:
-    FOnlineEffekseerModelRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, shared_ptr<EffekseerDrawBinding> binding) :
+    FOnlineEffekseerModelRenderer(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, shared_ptr<EffekseerDrawBinding> binding) :
         _binding {std::move(binding)},
         _particleEffects {effect_mngr},
         _drawBuffer {render->CreateDrawBuffer(false)},
         _effectMngr {effect_mngr},
         _render {render},
-        _settings {settings},
+        _drawWireframe {draw_wireframe},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
         FO_STACK_TRACE_ENTRY();
@@ -2921,7 +2921,7 @@ private:
 
         effect->DrawBuffer(_drawBuffer, 0, vertex_count);
 
-        if (_settings->Render.DrawWireframe) {
+        if (_drawWireframe()) {
             DrawParticleBufferWireframe(_effectMngr, _render, _wireframeBuf, *_drawBuffer, vertex_count, system->ViewProjMatrix);
         }
     }
@@ -2940,7 +2940,7 @@ private:
     unique_nptr<RenderDrawBuffer> _wireframeBuf {};
     ptr<EffectManager> _effectMngr;
     ptr<IAppRender> _render;
-    ptr<RenderSettings> _settings;
+    ParticleWireframeQuery _drawWireframe;
     unique_ptr<RenderTexture> _whiteTexture;
     optional<EffekseerModelNodeSnapshot> _node {};
     size_t _declaredInstanceCount {};
@@ -3074,7 +3074,7 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
 
 struct EffekseerRuntimeState
 {
-    EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<RenderSettings> settings, ptr<FileSystem> resources, ParticleTextureLoader texture_loader, ParticleSceneBackgroundProvider scene_background_provider) :
+    EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, ptr<FileSystem> resources, ParticleTextureLoader texture_loader, ParticleSceneBackgroundProvider scene_background_provider) :
         Binding {safe_alloc::make_shared<EffekseerDrawBinding>()},
         SceneBackgroundProvider {std::move(scene_background_provider)},
         Setting {Effekseer::Setting::Create()},
@@ -3082,11 +3082,11 @@ struct EffekseerRuntimeState
         TextureLoader {Effekseer::MakeRefPtr<FOnlineEffekseerTextureLoader>(std::move(texture_loader))},
         ModelLoader {Effekseer::MakeRefPtr<FOnlineEffekseerModelLoader>(resources)},
         GpuParticleFactory {Effekseer::MakeRefPtr<DetectingGpuParticleFactory>()},
-        SpriteRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerSpriteRenderer>(effect_mngr, render, settings, Binding, SceneBackgroundProvider)},
-        RibbonRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRibbonRenderer>(effect_mngr, render, settings, Binding)},
-        RingRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, settings, Binding)},
-        TrackRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerTrackRenderer>(effect_mngr, render, settings, Binding)},
-        ModelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, settings, Binding)}
+        SpriteRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerSpriteRenderer>(effect_mngr, render, draw_wireframe, Binding, SceneBackgroundProvider)},
+        RibbonRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRibbonRenderer>(effect_mngr, render, draw_wireframe, Binding)},
+        RingRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, draw_wireframe, Binding)},
+        TrackRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerTrackRenderer>(effect_mngr, render, draw_wireframe, Binding)},
+        ModelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, draw_wireframe, Binding)}
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -3144,7 +3144,7 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
 struct EffekseerParticleRuntimeBackend::Impl
 {
     explicit Impl(const ParticleRuntimeServices& services) :
-        Runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.Settings, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
+        Runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.DrawWireframe, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
         Resources {services.Resources}
     {
         FO_STACK_TRACE_ENTRY();

@@ -255,6 +255,7 @@ public:
     auto CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<ItemView>;
     auto CloneEntity(ptr<Entity> entity) -> nptr<Entity>;
     void PushManualScroll();
+    void PushLayerVisibility();
     void CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<const ItemView> from_item);
 
     auto MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t;
@@ -352,6 +353,13 @@ public:
     bool ScrollMouseRight {};
     bool ScrollMouseUp {};
     bool ScrollMouseDown {};
+    // The layers the editor draws, pushed into whichever map is current - a map opened later inherits the
+    // set the author is already working under
+    MapLayers VisibleLayers {MapLayers::All};
+    // Whether the cursor at the screen edge scrolls the map, seeded from the configured preference and then
+    // owned by the editor - the F8 hotkey and the render-plan scripts both turn it off while they work
+    bool FullscreenMouseScroll {};
+    bool WindowedMouseScroll {};
     ipos32 MainPanelPos {};
     mpos SelectHex1 {};
     mpos SelectHex2 {};
@@ -466,7 +474,7 @@ private:
     auto GetTileLayerFromKey(KeyCode key) const -> optional<int32_t>;
     auto GetNextCritterDir(mdir dir) const -> mdir;
     void AdvanceCritterDir(ptr<CritterHexView> cr) const;
-    void ToggleMapVisibilityFlag(nptr<MapView> map, bool& value) const;
+    void ToggleMapVisibilityFlag(MapLayers layer);
     auto ContainsCaseInsensitive(string_view text, string_view filter) const -> bool;
     auto ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<const AtlasSprite>;
     auto DrawAtlasSpriteImage(ptr<ImDrawList> draw_list, ptr<const AtlasSprite> atlas_sprite, ImVec2 logical_min, ImVec2 logical_size) const -> bool;

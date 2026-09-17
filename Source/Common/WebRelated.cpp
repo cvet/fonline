@@ -362,21 +362,22 @@ extern "C"
         auto& settings = FO_NAMESPACE GetApp() -> Settings;
 
         if (settings.Web.AutoResize) {
-            FO_NAMESPACE WebRelated::ApplyWindowSettings(settings);
+            auto& screen_state = FO_NAMESPACE GetApp() -> ScreenState;
+            FO_NAMESPACE WebRelated::ApplyWindowSettings(settings, screen_state);
 
-            const auto screen_width = settings.View.ScreenWidth;
-            const auto screen_height = settings.View.ScreenHeight;
+            const auto screen_width = screen_state.Size.width;
+            const auto screen_height = screen_state.Size.height;
             const auto screen_size = FO_NAMESPACE GetApp() -> MainWindow.GetScreenSize();
 
             if (screen_size.width != screen_width || screen_size.height != screen_height) {
                 FO_NAMESPACE GetApp() -> MainWindow.SetScreenSize({screen_width, screen_height});
             }
             else {
-                FO_NAMESPACE WebRelated::ApplyCanvasLayout(settings);
+                FO_NAMESPACE WebRelated::ApplyCanvasLayout(settings, screen_state);
             }
         }
         else {
-            FO_NAMESPACE WebRelated::ApplyCanvasLayout(settings);
+            FO_NAMESPACE WebRelated::ApplyCanvasLayout(settings, FO_NAMESPACE GetApp()->ScreenState);
         }
     }
 
@@ -455,7 +456,7 @@ namespace WebRelated
 #endif
     }
 
-    void ApplyWindowSettings(WebSettings& settings)
+    void ApplyWindowSettings(WebSettings& settings, AppScreenState& screen)
     {
 #if FO_WEB
         WebInstallResizeHandlerImpl();
@@ -464,34 +465,33 @@ namespace WebRelated
         const auto window_h = WebGetWindowHeight();
         const auto fullscreen = WebIsFullscreenImpl() != 0;
         const auto adaptive_size = CalcAdaptiveScreenSize(window_w, window_h, fullscreen, settings);
-        settings.View.ScreenWidth = adaptive_size.width;
-        settings.View.ScreenHeight = adaptive_size.height;
-        settings.Render.Fullscreen = fullscreen;
+        screen.Size = adaptive_size;
+        screen.Fullscreen = fullscreen;
 
         const auto fixed_w = WebGetFixedWidth();
         const auto fixed_h = WebGetFixedHeight();
 
         if (fixed_w != 0) {
-            settings.View.ScreenWidth = fixed_w;
+            screen.Size.width = fixed_w;
         }
         if (fixed_h != 0) {
-            settings.View.ScreenHeight = fixed_h;
+            screen.Size.height = fixed_h;
         }
 
-        ApplyCanvasLayout(settings);
+        ApplyCanvasLayout(settings, screen);
 #else
-        ignore_unused(settings);
+        ignore_unused(settings, screen);
 #endif
     }
 
-    void ApplyCanvasLayout(WebSettings& settings) noexcept
+    void ApplyCanvasLayout(WebSettings& settings, const AppScreenState& screen) noexcept
     {
 #if FO_WEB
-        const auto horizontal_pos_factor = settings.Render.Fullscreen ? 0.5f : settings.Web.HorizontalPosFactor;
-        const auto vertical_pos_factor = settings.Render.Fullscreen ? 0.5f : settings.Web.VerticalPosFactor;
-        WebApplyCanvasLayoutImpl(settings.View.ScreenWidth, settings.View.ScreenHeight, horizontal_pos_factor, vertical_pos_factor);
+        const auto horizontal_pos_factor = screen.Fullscreen ? 0.5f : settings.Web.HorizontalPosFactor;
+        const auto vertical_pos_factor = screen.Fullscreen ? 0.5f : settings.Web.VerticalPosFactor;
+        WebApplyCanvasLayoutImpl(screen.Size.width, screen.Size.height, horizontal_pos_factor, vertical_pos_factor);
 #else
-        ignore_unused(settings);
+        ignore_unused(settings, screen);
 #endif
     }
 

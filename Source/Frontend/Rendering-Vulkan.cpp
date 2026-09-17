@@ -219,6 +219,7 @@ struct Vulkan_Renderer::Context
     }
 
     ptr<GlobalSettings> Settings;
+    nptr<const AppScreenState> Screen {};
     ptr<SDL_Window> SdlWindow;
     VkInstance Instance {};
     VkPhysicalDevice PhysicalDevice {};
@@ -2124,7 +2125,7 @@ auto Vulkan_Renderer::GetViewPort() const -> irect32
     return _ctx->ViewPort;
 }
 
-void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2132,6 +2133,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
     _ctx = safe_alloc::make_unique<Context>(&settings, window.reinterpret_as<SDL_Window>());
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    _ctx->Screen = screen;
 
     logging::write("Used Vulkan rendering");
 
@@ -3327,14 +3329,14 @@ static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize
     FO_STACK_TRACE_ENTRY();
 
     float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-    float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->View.ScreenWidth), numeric_cast<float32_t>(ctx->Settings->View.ScreenHeight));
+    float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Screen->Size.width), numeric_cast<float32_t>(ctx->Screen->Size.height));
     int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
     int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
 
     int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
     int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
     ctx->ViewPort = irect32 {vp_ox, vp_oy, fit_width, fit_height};
-    ctx->TargetSize = {ctx->Settings->View.ScreenWidth, ctx->Settings->View.ScreenHeight};
+    ctx->TargetSize = ctx->Screen->Size;
     ctx->ProjMatrix = BuildOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
 }
 
@@ -3358,13 +3360,13 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         // from the resolved target size
         isize32 back_buf_size = _ctx->SwapchainSize;
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->View.ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->View.ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
         int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
         int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
         new_viewport = irect32 {vp_ox, vp_oy, fit_width, fit_height};
-        new_target_size = {_ctx->Settings->View.ScreenWidth, _ctx->Settings->View.ScreenHeight};
+        new_target_size = _ctx->Screen->Size;
     }
     else {
         auto vk_tex = tex.dyn_cast<const Vulkan_Texture>();

@@ -27,25 +27,19 @@ internal static class Program
                                                                        (-7, 5, 1),
                                                                        (int.MinValue, 4, 0),
                                                                        (int.MaxValue, 1, 7) };
-                 int previous = Game.MapDirCount;
-                 try {
-                     foreach (int count in new[] { 6, 8 }) {
-                         Game.MapDirCount = count;
-                         foreach (var sample in samples) {
-                             Check(new hdir(sample.Value).value == (count == 6 ? sample.Hex : sample.Square),
-                                   "Wrong normalized direction for " + sample.Value);
-                         }
-                         sbyte signedDirection = -1;
-                         byte unsignedDirection = 255;
-                         Check(new hdir(signedDirection).value == count - 1,
-                               "Signed narrow direction bypassed normalization");
-                         Check(new hdir(unsignedDirection).value == (count == 6 ? 3 : 7),
-                               "Unsigned direction narrowed before normalization");
-                     }
+                 // The direction count follows the geometry the engine was built for, so the run measures the
+                 // one in effect rather than switching between them
+                 int count = Game.MapDirCount;
+                 Check(count == 6 || count == 8, "Unexpected map direction count " + count);
+                 foreach (var sample in samples) {
+                     Check(new hdir(sample.Value).value == (count == 6 ? sample.Hex : sample.Square),
+                           "Wrong normalized direction for " + sample.Value);
                  }
-                 finally {
-                     Game.MapDirCount = previous;
-                 }
+                 sbyte signedDirection = -1;
+                 byte unsignedDirection = 255;
+                 Check(new hdir(signedDirection).value == count - 1, "Signed narrow direction bypassed normalization");
+                 Check(new hdir(unsignedDirection).value == (count == 6 ? 3 : 7),
+                       "Unsigned direction narrowed before normalization");
                  Check(System.Runtime.InteropServices.Marshal.SizeOf<hdir>() == 1, "Direction ABI size changed");
                  Check(typeof(hdir).GetConstructor(new[] { typeof(sbyte) })?.GetParameters()[0].ParameterType ==
                            typeof(sbyte),

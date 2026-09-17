@@ -170,7 +170,6 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Common.UserWritablePath");
         _appliedSettings.emplace("Network.CompatibilityVersion");
         _appliedSettings.emplace("Common.Packaged");
-        _appliedSettings.emplace("Common.DebugBuild");
         _appliedSettings.emplace("Render.RenderDebug");
         _appliedSettings.emplace("View.MonitorWidth");
         _appliedSettings.emplace("View.MonitorHeight");
@@ -264,8 +263,7 @@ void GlobalSettings::ApplyDefaultSettings()
     FO_DISABLE_WARNINGS_PUSH()
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
-#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = {__VA_ARGS__}
-#define VARIABLE_SETTING(type, group, name, ...) group.name = {__VA_ARGS__}
+#define SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = {__VA_ARGS__}
 #include "Settings.inc"
     FO_DISABLE_WARNINGS_POP()
 }
@@ -287,7 +285,6 @@ void GlobalSettings::ApplyAutoSettings()
     *FixedSettingForEdit(Common.Packaged) = IsPackaged();
 
 #if FO_DEBUG
-    *FixedSettingForEdit(Common.DebugBuild) = true;
     *FixedSettingForEdit(Render.RenderDebug) = true;
 #endif
 
@@ -343,8 +340,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
 
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
-#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = other.group.name
-#define VARIABLE_SETTING(type, group, name, ...) group.name = other.group.name
+#define SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = other.group.name
 #include "Settings.inc"
 }
 
@@ -422,13 +418,12 @@ auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-#define FIXED_SETTING(type, group, setting_name, ...) \
+#define SETTING(type, group, setting_name, ...) \
     case const_hash(#group "." #setting_name): \
         if (name == #group "." #setting_name) { \
             return strex("{}", group.setting_name).str(); \
         } \
         break
-#define VARIABLE_SETTING(type, group, setting_name, ...) FIXED_SETTING(type, group, setting_name, __VA_ARGS__)
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 
@@ -438,8 +433,7 @@ auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
         break;
     }
 
-#undef FIXED_SETTING
-#undef VARIABLE_SETTING
+#undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
 
@@ -450,17 +444,10 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-#define FIXED_SETTING(type, group, setting_name, ...) \
+#define SETTING(type, group, setting_name, ...) \
     case const_hash(#group "." #setting_name): \
         if (name == #group "." #setting_name) { \
-            throw SettingsException("Fixed setting is read-only", name); \
-        } \
-        break
-#define VARIABLE_SETTING(type, group, setting_name, ...) \
-    case const_hash(#group "." #setting_name): \
-        if (name == #group "." #setting_name) { \
-            SetEntry(group.setting_name, value, false); \
-            return; \
+            throw SettingsException("Setting is read-only", name); \
         } \
         break
 #define SETTING_GROUP(group, ...)
@@ -472,8 +459,7 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
         break;
     }
 
-#undef FIXED_SETTING
-#undef VARIABLE_SETTING
+#undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
 
@@ -556,12 +542,9 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     SetEntry(sett, value, append); \
     _settingValues[full_name] = strex("{}", sett).str(); \
     break
-#define FIXED_SETTING(type, group, name, ...) \
+#define SETTING(type, group, name, ...) \
     case const_hash(#group "." #name): \
         SET_SETTING(*FixedSettingForEdit(group.name), #group "." #name)
-#define VARIABLE_SETTING(type, group, name, ...) \
-    case const_hash(#group "." #name): \
-        SET_SETTING(group.name, #group "." #name)
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 
@@ -721,8 +704,7 @@ auto GlobalSettings::Save() const -> map<string, string>
         }
     };
 
-#define FIXED_SETTING(type, group, name, ...) add_setting(#group "." #name, group.name)
-#define VARIABLE_SETTING(type, group, name, ...) add_setting(#group "." #name, group.name)
+#define SETTING(type, group, name, ...) add_setting(#group "." #name, group.name)
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"
@@ -734,16 +716,9 @@ void GlobalSettings::Draw(bool editable)
 {
     FO_STACK_TRACE_ENTRY();
 
-#define FIXED_SETTING(type, group, name, ...) \
+#define SETTING(type, group, name, ...) \
     if (editable) { \
         DrawEditableEntry(#group "." #name, *FixedSettingForEdit(group.name)); \
-    } \
-    else { \
-        DrawEntry(#group "." #name, group.name); \
-    }
-#define VARIABLE_SETTING(type, group, name, ...) \
-    if (editable) { \
-        DrawEditableEntry(#group "." #name, group.name); \
     } \
     else { \
         DrawEntry(#group "." #name, group.name); \

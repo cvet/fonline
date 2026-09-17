@@ -110,7 +110,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->View.ScreenWidth, _settings->View.ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, _sprMngr.GetScreenSize(), true, true, Color::Neutral);
     }
 
     _sprMngr.EndScene();
@@ -193,20 +193,20 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->View.ScreenWidth, _settings->View.ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, _sprMngr.GetScreenSize(), true, true, Color::Neutral);
     }
 
     if (elapsed_time >= _settings->Client.UpdaterInfoDelay) {
         auto text_format = TextFormat {.Font = FontType::Default, .Flags = combine_enum(FontFlag::CenterX, FontFlag::CenterY, FontFlag::Bordered)};
 
         if (_settings->Client.UpdaterInfoPos < 0) {
-            _fontMngr.DrawText(irect32 {0, 0, _settings->View.ScreenWidth, _settings->View.ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
+            _fontMngr.DrawText(irect32 {0, 0, _sprMngr.GetScreenSize().width, _sprMngr.GetScreenSize().height / 2}, update_text, Color::TextWhite, text_format);
         }
         else if (_settings->Client.UpdaterInfoPos == 0) {
-            _fontMngr.DrawText(irect32 {0, 0, _settings->View.ScreenWidth, _settings->View.ScreenHeight}, update_text, Color::TextWhite, text_format);
+            _fontMngr.DrawText(irect32 {0, 0, _sprMngr.GetScreenSize().width, _sprMngr.GetScreenSize().height}, update_text, Color::TextWhite, text_format);
         }
         else {
-            _fontMngr.DrawText(irect32 {0, _settings->View.ScreenHeight / 2, _settings->View.ScreenWidth, _settings->View.ScreenHeight / 2}, update_text, Color::TextWhite, text_format);
+            _fontMngr.DrawText(irect32 {0, _sprMngr.GetScreenSize().height / 2, _sprMngr.GetScreenSize().width, _sprMngr.GetScreenSize().height / 2}, update_text, Color::TextWhite, text_format);
         }
     }
 

@@ -365,16 +365,16 @@ auto Null_Renderer::IsRenderTargetFlipped() const -> bool
     return false;
 }
 
-void Null_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void Null_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(window);
+    ignore_unused(settings, window);
 
-    FO_VERIFY_AND_THROW(settings.View.ScreenWidth > 0, "Settings screen width must be positive");
-    FO_VERIFY_AND_THROW(settings.View.ScreenHeight > 0, "Settings screen height must be positive");
+    FO_VERIFY_AND_THROW(screen->Size.width > 0, "Screen width must be positive");
+    FO_VERIFY_AND_THROW(screen->Size.height > 0, "Screen height must be positive");
 
-    _viewPortRect = {0, 0, settings.View.ScreenWidth, settings.View.ScreenHeight};
+    _viewPortRect = {0, 0, screen->Size.width, screen->Size.height};
     _currentRenderTarget = nullptr;
     _scissorEnabled = false;
     _scissorRect = {};

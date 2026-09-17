@@ -64,7 +64,6 @@ class RefTypeMethod:
 
 @dataclass(slots=True)
 class SettingsEntry:
-    kind: str
     value_type: str
     name: str
     init_values: list[str]
@@ -1002,11 +1001,10 @@ def parse_settings_group_name(first_line: str) -> str:
 def parse_settings_entry(line: str, valid_types: set[str]) -> SettingsEntry:
     setting_comment = [line[line.find('//') + 2:].strip()] if line.find('//') != -1 else []
     setting_type = line[:line.find('(')]
-    assert setting_type in ['FIXED_SETTING', 'VARIABLE_SETTING'], 'Invalid setting type ' + setting_type
+    assert setting_type == 'SETTING', 'Invalid setting type ' + setting_type
     setting_args = [token.strip().strip('"') for token in line[line.find('(') + 1:line.find(')')].split(',')]
     assert len(setting_args) >= 3, 'Invalid setting args count'
     return SettingsEntry(
-        'fix' if setting_type == 'FIXED_SETTING' else 'var',
         engine_type_to_meta_type(setting_args[0], valid_types),
         setting_args[1] + '.' + setting_args[2],
         setting_args[3:],
@@ -1018,7 +1016,7 @@ def parse_settings_entries(tag_context: list[str], valid_types: set[str], hasher
     settings: list[SettingsEntry] = []
     for line in tag_context[1:]:
         settings.append(parse_settings_entry(line, valid_types))
-        hash_recursive(hasher, (settings[-1].kind, settings[-1].value_type, settings[-1].name, settings[-1].init_values))
+        hash_recursive(hasher, (settings[-1].value_type, settings[-1].name, settings[-1].init_values))
     return settings
 
 

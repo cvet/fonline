@@ -3309,54 +3309,44 @@ static void AppendSettingProperty(ostringstream& out, string_view indent, const 
         return;
     }
 
+    // A setting is read on the script surface and never written: a configured value is a knob someone
+    // turned, and a value that changes while the game runs belongs to the system that owns it
     string setting_literal = EscapeCsStringLiteral(setting_name);
     string type_name = MakeCsTypeName(type);
     const BaseTypeDesc& base_type = type.BaseType;
     string getter_method;
-    string setter_method;
     string getter_cast;
-    string setter_value = "value";
 
     if (type.Kind == ComplexTypeKind::Simple) {
         if (base_type.IsBool) {
             getter_method = "GetSettingBool";
-            setter_method = "SetSettingBool";
         }
         else if (base_type.IsEnum) {
             getter_method = "GetSettingInt";
-            setter_method = "SetSettingInt";
             getter_cast = strex("({})", type_name).str();
-            setter_value = "(int)value";
         }
         else if (base_type.IsInt8 || base_type.IsInt16 || base_type.IsInt32) {
             getter_method = "GetSettingInt";
-            setter_method = "SetSettingInt";
             getter_cast = strex("({})", type_name).str();
         }
         else if (base_type.IsUInt8 || base_type.IsUInt16 || base_type.IsUInt32) {
             getter_method = "GetSettingUInt";
-            setter_method = "SetSettingUInt";
             getter_cast = strex("({})", type_name).str();
         }
         else if (base_type.IsInt64) {
             getter_method = "GetSettingLong";
-            setter_method = "SetSettingLong";
         }
         else if (base_type.IsUInt64) {
             getter_method = "GetSettingULong";
-            setter_method = "SetSettingULong";
         }
         else if (base_type.IsSingleFloat) {
             getter_method = "GetSettingFloat";
-            setter_method = "SetSettingFloat";
         }
         else if (base_type.IsDoubleFloat) {
             getter_method = "GetSettingDouble";
-            setter_method = "SetSettingDouble";
         }
         else if (base_type.IsString) {
             getter_method = "GetSettingString";
-            setter_method = "SetSettingString";
         }
         else {
             throw ManagedScriptBakerException("Unsupported Managed setting type", strex("{} {}", setting_name, base_type.Name).str());
@@ -3365,51 +3355,39 @@ static void AppendSettingProperty(ostringstream& out, string_view indent, const 
     else if (type.Kind == ComplexTypeKind::Array) {
         if (base_type.IsBool) {
             getter_method = "GetSettingBoolList";
-            setter_method = "SetSettingBoolList";
         }
         else if (base_type.IsInt8) {
             getter_method = "GetSettingSByteList";
-            setter_method = "SetSettingSByteList";
         }
         else if (base_type.IsUInt8) {
             getter_method = "GetSettingByteList";
-            setter_method = "SetSettingByteList";
         }
         else if (base_type.IsInt16) {
             getter_method = "GetSettingShortList";
-            setter_method = "SetSettingShortList";
         }
         else if (base_type.IsUInt16) {
             getter_method = "GetSettingUShortList";
-            setter_method = "SetSettingUShortList";
         }
         else if (base_type.IsInt32) {
             getter_method = "GetSettingIntList";
-            setter_method = "SetSettingIntList";
         }
         else if (base_type.IsUInt32) {
             getter_method = "GetSettingUIntList";
-            setter_method = "SetSettingUIntList";
         }
         else if (base_type.IsInt64) {
             getter_method = "GetSettingLongList";
-            setter_method = "SetSettingLongList";
         }
         else if (base_type.IsUInt64) {
             getter_method = "GetSettingULongList";
-            setter_method = "SetSettingULongList";
         }
         else if (base_type.IsSingleFloat) {
             getter_method = "GetSettingFloatList";
-            setter_method = "SetSettingFloatList";
         }
         else if (base_type.IsDoubleFloat) {
             getter_method = "GetSettingDoubleList";
-            setter_method = "SetSettingDoubleList";
         }
         else if (base_type.IsString) {
             getter_method = "GetSettingStringList";
-            setter_method = "SetSettingStringList";
         }
         else {
             throw ManagedScriptBakerException("Unsupported Managed array setting type", strex("{} {}", setting_name, base_type.Name).str());
@@ -3425,12 +3403,6 @@ static void AppendSettingProperty(ostringstream& out, string_view indent, const 
     out << indent << "    {\n";
     out << indent << "        return " << getter_cast << "global::FOnline.Native." << getter_method << "(\n";
     out << indent << "            \"" << setting_literal << "\");\n";
-    out << indent << "    }\n";
-    out << indent << "    set\n";
-    out << indent << "    {\n";
-    out << indent << "        global::FOnline.Native." << setter_method << "(\n";
-    out << indent << "            \"" << setting_literal << "\",\n";
-    out << indent << "            " << setter_value << ");\n";
     out << indent << "    }\n";
     out << indent << "}\n\n";
 }

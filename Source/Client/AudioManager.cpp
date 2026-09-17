@@ -69,7 +69,9 @@ struct OggFileContext
 AudioManager::AudioManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio) :
     _settings {settings},
     _resources {resources},
-    _audio {audio}
+    _audio {audio},
+    _musicVolume {settings->Audio.MusicVolume},
+    _soundVolume {settings->Audio.SoundVolume}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -121,7 +123,7 @@ void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
         span<uint8_t> mix_buffer = span<uint8_t> {_outputBuf.data(), output.size()};
 
         if (ProcessSound(sound, silence, mix_buffer)) {
-            int32_t volume = sound->IsMusic ? _settings->Audio.MusicVolume : _settings->Audio.SoundVolume;
+            int32_t volume = sound->IsMusic ? _musicVolume : _soundVolume;
             volume = numeric_cast<int32_t>(std::lround(numeric_cast<float32_t>(volume) * sound->Attenuation));
 
             // Panned on the way to the mixer, not into the decoded buffer: a sound decoded in one go would keep the lean it
@@ -511,7 +513,7 @@ auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t 
 
     // A silent device plays nothing, so there is no handle to hand out. This is not a refusal: a player who
     // turned the volume down is a normal state, and the resource itself is untouched
-    if (!_isActive || _settings->Audio.SoundVolume == 0) {
+    if (!_isActive || _soundVolume == 0) {
         return 0;
     }
 

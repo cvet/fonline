@@ -612,6 +612,7 @@ auto ServerEngine::InitLanguageJob() -> std::optional<timespan>
 
     _defaultLang = TextPack {&Hashes};
     _defaultLang.LoadFromResources(Resources, Settings->Client.Language);
+    SetCurLangName(Settings->Client.Language);
 
     return std::nullopt;
 }

@@ -136,6 +136,20 @@ FO_SCRIPT_API int32_t Common_Game_MapDirCount(ptr<BaseEngine> engine)
 }
 
 ///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DebugBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_DEBUG != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_CurrentLanguage(ptr<BaseEngine> engine)
+{
+    return engine->GetCurLangName();
+}
+
+///@ ExportMethod GlobalGetter
 FO_SCRIPT_API string Common_Game_GitBranch(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
@@ -734,7 +748,7 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timesp
 ///@ ExportMethod
 FO_SCRIPT_API LanguageName Common_Game_GetLanguage(ptr<BaseEngine> engine)
 {
-    return LanguageName {engine->Hashes.to_hashed_string(engine->Settings->Client.Language)};
+    return LanguageName {engine->Hashes.to_hashed_string(engine->GetCurLangName())};
 }
 
 ///@ ExportMethod

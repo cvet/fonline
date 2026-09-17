@@ -92,6 +92,26 @@ static auto RequireCurMapperMap(ptr<MapperEngine> mapper_ptr) -> ptr<MapView>
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API MapLayers Mapper_Game_GetVisibleMapLayers(ptr<MapperEngine> mapper)
+{
+    return mapper->VisibleLayers;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetVisibleMapLayers(ptr<MapperEngine> mapper, MapLayers layers)
+{
+    mapper->VisibleLayers = layers;
+    mapper->PushLayerVisibility();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMouseScroll(ptr<MapperEngine> mapper, bool inFullscreen, bool inWindow)
+{
+    mapper->FullscreenMouseScroll = inFullscreen;
+    mapper->WindowedMouseScroll = inWindow;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstring pid, mpos hex)
 {
     auto map = RequireCurMapperMap(mapper);

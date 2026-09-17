@@ -1617,28 +1617,20 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         CHECK(all_layers >= 6);
 
         // Each layer switched off must cost exactly the entities that belong to it
-        settings.Hex.ShowCrit = false;
+        mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Critters);
         mapper->SelectAll();
         CHECK(mapper->SelectedEntities.size() < all_layers);
 
-        settings.Hex.ShowScen = false;
-        settings.Hex.ShowWall = false;
-        settings.Hex.ShowTile = false;
-        settings.Hex.ShowRoof = false;
+        mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Scenery, MapLayers::Walls, MapLayers::Tiles, MapLayers::Roof);
         mapper->SelectAll();
         size_t items_only = mapper->SelectedEntities.size();
         CHECK(items_only < all_layers);
 
-        settings.Hex.ShowItem = false;
+        mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Items);
         mapper->SelectAll();
         CHECK(mapper->SelectedEntities.empty());
 
-        settings.Hex.ShowItem = true;
-        settings.Hex.ShowScen = true;
-        settings.Hex.ShowWall = true;
-        settings.Hex.ShowTile = true;
-        settings.Hex.ShowRoof = true;
-        settings.Hex.ShowCrit = true;
+        mapper->VisibleLayers = MapLayers::All;
     }
 
     SECTION("PerKindSelectionSwitchesGateTheSameWalk")
@@ -1879,9 +1871,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         press("Controls", "Scroll check", draw_controls);
 
         // The folded groups carry the layer toggles the renderer reads
-        bool show_items_before = settings.Hex.ShowItem;
+        bool show_items_before = is_enum_set(mapper->VisibleLayers, MapLayers::Items);
         press("Controls", "Items", draw_controls);
-        CHECK(settings.Hex.ShowItem != show_items_before);
+        CHECK(is_enum_set(mapper->VisibleLayers, MapLayers::Items) != show_items_before);
 
         for (string_view layer_label : {"Scenery", "Walls", "Critters", "Tiles", "Roof", "Fast"}) {
             press("Controls", layer_label, draw_controls);
@@ -1893,9 +1885,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         // The workspace layer buttons rebuild the map, and its tab list is what switches the panel mode
         auto draw_workspace = [&mapper] { mapper->DrawWorkspaceWindowImGui(); };
 
-        bool workspace_items_before = settings.Hex.ShowItem;
+        bool workspace_items_before = is_enum_set(mapper->VisibleLayers, MapLayers::Items);
         press("Workspace", "Items", draw_workspace);
-        CHECK(settings.Hex.ShowItem != workspace_items_before);
+        CHECK(is_enum_set(mapper->VisibleLayers, MapLayers::Items) != workspace_items_before);
 
         for (string_view layer_button : {"Scenery", "Walls", "Critters", "Tiles", "Roof", "Fast"}) {
             INFO(layer_button);

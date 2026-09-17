@@ -1059,6 +1059,22 @@ enum class ScrollDirection : uint8_t
     Down = 0x08,
 };
 
+// The layers a map view draws. The mapper hides one to work on another, so the visible set is editor state
+// the view is told about - a value that changes while the tool runs is not something anyone configures
+///@ ExportEnum
+enum class MapLayers : uint8_t
+{
+    None = 0,
+    Items = 0x01,
+    Scenery = 0x02,
+    Walls = 0x04,
+    Critters = 0x08,
+    Tiles = 0x10,
+    Roof = 0x20,
+    Fast = 0x40,
+    All = 0x7F,
+};
+
 class AnimationResolver
 {
 public:

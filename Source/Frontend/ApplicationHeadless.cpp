@@ -67,11 +67,14 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     ignore_unused(_imguiEffect);
     ignore_unused(MainWindow._grabbed);
 
-    _ctx->HeadlessRenderer.Init(Settings, nullptr);
-    MainWindow._windowHandle = CreateInternalWindow({Settings.View.ScreenWidth, Settings.View.ScreenHeight});
+    ScreenState.Size = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+    ScreenState.Fullscreen = Settings.Render.Fullscreen;
+
+    _ctx->HeadlessRenderer.Init(Settings, &ScreenState, nullptr);
+    MainWindow._windowHandle = CreateInternalWindow(ScreenState.Size);
     MainWindow._title = Settings.Common.GameName;
-    MainWindow._virtualSize = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
-    MainWindow._virtualScreenSize = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+    MainWindow._virtualSize = ScreenState.Size;
+    MainWindow._virtualScreenSize = ScreenState.Size;
     auto main_window = make_ptr(&MainWindow);
     _allWindows.emplace_back(main_window);
     _activeWindow = main_window;
@@ -120,7 +123,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
     FO_STACK_TRACE_ENTRY();
 
     if (size.width <= 0 || size.height <= 0) {
-        size = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+        size = ScreenState.Size;
     }
 
     auto window = safe_alloc::make_unique<AppWindow>(this);
@@ -224,7 +227,7 @@ auto Application::GetMainWindowBackbufferSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+    return ScreenState.Size;
 }
 
 void Application::SyncMainWindowBackbufferSize()
@@ -266,11 +269,11 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
     isize32 screen_size = window->GetScreenSize();
 
     if (screen_size.width > 0 && screen_size.height > 0) {
-        _hostScreenWidthSaved = Settings.View.ScreenWidth;
-        _hostScreenHeightSaved = Settings.View.ScreenHeight;
+        _hostScreenWidthSaved = ScreenState.Size.width;
+        _hostScreenHeightSaved = ScreenState.Size.height;
         _hostScreenSizeSaved = true;
-        Settings.View.ScreenWidth = screen_size.width;
-        Settings.View.ScreenHeight = screen_size.height;
+        ScreenState.Size.width = screen_size.width;
+        ScreenState.Size.height = screen_size.height;
     }
 }
 
@@ -290,8 +293,8 @@ void Application::EndWindowRender()
 
     if (was_virtual) {
         if (_hostScreenSizeSaved) {
-            Settings.View.ScreenWidth = _hostScreenWidthSaved;
-            Settings.View.ScreenHeight = _hostScreenHeightSaved;
+            ScreenState.Size.width = _hostScreenWidthSaved;
+            ScreenState.Size.height = _hostScreenHeightSaved;
             _hostScreenSizeSaved = false;
         }
 
@@ -519,7 +522,7 @@ auto AppWindow::GetSize() const -> isize32
     FO_STACK_TRACE_ENTRY();
 
     if (_isVirtual) {
-        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : isize32 {_app->Settings.View.ScreenWidth, _app->Settings.View.ScreenHeight};
+        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : _app->ScreenState.Size;
     }
 
     return ResolveWindowStub()->Size;
@@ -547,7 +550,7 @@ auto AppWindow::GetScreenSize() const -> isize32
         return _virtualScreenSize.width > 0 && _virtualScreenSize.height > 0 ? _virtualScreenSize : GetSize();
     }
 
-    return {GetApp()->Settings.View.ScreenWidth, GetApp()->Settings.View.ScreenHeight};
+    return {GetApp()->ScreenState.Size.width, GetApp()->ScreenState.Size.height};
 }
 
 void AppWindow::SetScreenSize(isize32 size)
@@ -561,9 +564,9 @@ void AppWindow::SetScreenSize(isize32 size)
         }
     }
     else {
-        if (size.width != GetApp()->Settings.View.ScreenWidth || size.height != GetApp()->Settings.View.ScreenHeight) {
-            GetApp()->Settings.View.ScreenWidth = size.width;
-            GetApp()->Settings.View.ScreenHeight = size.height;
+        if (size.width != GetApp()->ScreenState.Size.width || size.height != GetApp()->ScreenState.Size.height) {
+            GetApp()->ScreenState.Size.width = size.width;
+            GetApp()->ScreenState.Size.height = size.height;
             _onScreenSizeChangedDispatcher();
         }
     }
@@ -637,7 +640,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     auto window = ResolveWindowStub();
     bool changed = window->Fullscreen != enable;
     window->Fullscreen = enable;
-    _app->Settings.Render.Fullscreen = enable;
+    _app->ScreenState.Fullscreen = enable;
     _app->_mainWindowFullscreenBackbufferMode = enable;
 
     return changed;

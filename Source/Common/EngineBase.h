@@ -176,27 +176,26 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
     [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui> { return _imgui; }
+    [[nodiscard]] auto IsStartingUp() const noexcept -> bool { return _startingUp; }
+    [[nodiscard]] auto GetCurLangName() const noexcept -> const string& { return _curLangName; }
+    [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;
 
     // Scripts run single-threaded while the engine comes up and hold nobody back, so the responsiveness
     // budget that reports an overrunning call does not apply to them until it is serving
-    [[nodiscard]] auto IsStartingUp() const noexcept -> bool { return _startingUp; }
     void SetStartingUp(bool starting_up) noexcept { _startingUp = starting_up; }
-
+    void SetCurLangName(string_view lang_name) { _curLangName = lang_name; }
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
-    [[nodiscard]] auto CaptureRandomState() const -> random_generator::state_data;
+    auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
-    virtual void Shutdown() { }
     void FrameAdvance();
 
+    virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
     virtual auto RunScriptContext(const function<void()>& callback) -> timespan;
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
-    [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
-    // Dispatch an inbound remote call to its registered handler. Normally invoked by the derived engine when a call
-    // arrives over the network; also callable in-process (e.g
     void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
 
     ptr<GlobalSettings> Settings;
@@ -213,6 +212,7 @@ protected:
 
 private:
     refcount_ptr<ScriptImGui> _imgui;
+    string _curLangName {};
     std::atomic_bool _startingUp {false};
     mutable mutex _randomGeneratorLocker {};
     mutable random_generator _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {};

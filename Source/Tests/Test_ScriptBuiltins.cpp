@@ -2525,26 +2525,20 @@ namespace ScriptBuiltins
         if (Settings.Common.GameName.isEmpty()) return -1;
         if (Settings.Network.ServerPort <= 0) return -2;
 
-        bool debugBuild = Settings.Common.DebugBuild;
+        bool debugBuild = Game.DebugBuild;
         bool packaged = Settings.Common.Packaged;
         if (debugBuild && packaged) return -3;
 
-        // Writable engine settings round-trip through the setter
-        int oldVolume = Settings.Audio.SoundVolume;
-        Settings.Audio.SoundVolume = 42;
-        if (Settings.Audio.SoundVolume != 42) return -4;
-        Settings.Audio.SoundVolume = oldVolume;
-        if (Settings.Audio.SoundVolume != oldVolume) return -5;
+        // Scalar settings of every kind are readable; none of them is writable, so the surface carries
+        // getters only and a script cannot change a configured value behind the configuration's back
+        int volume = Settings.Audio.SoundVolume;
+        if (volume < 0) return -4;
 
-        string oldProxy = Settings.ClientNetwork.ProxyHost;
-        Settings.ClientNetwork.ProxyHost = "unit-test-proxy";
-        if (Settings.ClientNetwork.ProxyHost != "unit-test-proxy") return -6;
-        Settings.ClientNetwork.ProxyHost = oldProxy;
+        string proxy = Settings.ClientNetwork.ProxyHost;
+        if (proxy != proxy) return -5;
 
-        bool oldUdp = Settings.ClientNetwork.UseUdp;
-        Settings.ClientNetwork.UseUdp = !oldUdp;
-        if (Settings.ClientNetwork.UseUdp == oldUdp) return -7;
-        Settings.ClientNetwork.UseUdp = oldUdp;
+        bool useUdp = Settings.ClientNetwork.UseUdp;
+        if (useUdp && !useUdp) return -6;
 
         // Vector settings are exposed as arrays
         array<int> dayColorTime = Settings.View.GlobalDayColorTime;

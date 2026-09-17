@@ -607,6 +607,14 @@ constexpr auto combine_enum(T first, Args... rest) noexcept -> T
     return static_cast<T>((static_cast<U>(first) | ... | static_cast<U>(rest)));
 }
 
+template<typename T, typename... Args>
+    requires(std::is_enum_v<T> && (std::is_same_v<T, Args> && ...))
+constexpr auto exclude_enum(T first, Args... rest) noexcept -> T
+{
+    using U = std::underlying_type_t<T>;
+    return static_cast<T>(static_cast<U>(first) & ~(static_cast<U>(rest) | ...));
+}
+
 // Enum formatter
 FO_END_NAMESPACE
 template<typename T>
