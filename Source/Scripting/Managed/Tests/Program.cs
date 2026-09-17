@@ -226,6 +226,28 @@ internal static class Program
                  Check(ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeLambda()) == "DispatchProbe::MakeLambda",
                        "A lambda is not named after the script method that wrote it");
              }),
+            ("an async remote call is named after its handler, not the adapter that wraps it",
+             () =>
+             {
+                 Native.RegisteredRemoteCalls.Clear();
+                 Native.RegisteredRemoteCallHandlers.Clear();
+                 RemoteCallScriptFuncs.RegisterRemoteCalls();
+                 int asyncCall = Native.RegisteredRemoteCalls.IndexOf("AsyncRemote");
+                 int voidCall = Native.RegisteredRemoteCalls.IndexOf("VoidRemote");
+                 Check(asyncCall >= 0 && voidCall >= 0, "The remote call probes were not registered");
+                 string asyncName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[asyncCall]);
+                 string voidName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[voidCall]);
+                 Check(asyncName == "DispatchProbe::AsyncRemote (via RemoteCallScriptFuncs::ObserveTaskHandler)",
+                       "An async remote call is named after the adapter instead of its handler: " + asyncName);
+                 Check(voidName == "DispatchProbe::VoidRemote",
+                       "A remote call that needs no adapter is not named after its own method: " + voidName);
+                 Action callback = ExampleGame.DispatchProbe.NoArgs;
+                 string capturingName =
+                     ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeCapturingLambda(callback));
+                 Check(capturingName == "DispatchProbe::MakeCapturingLambda",
+                       "A lambda holding a callback beside its own state was renamed after that callback: " +
+                           capturingName);
+             }),
             ("a resumed await is named after its async method",
              () =>
              {
@@ -394,6 +416,24 @@ public static class DispatchProbe
     {
         await Task.Yield();
         AsyncFinished = true;
+    }
+    [ServerRemoteCall]
+    public static void VoidRemote()
+    {
+    }
+    [ServerRemoteCall]
+    public static async Task AsyncRemote()
+    {
+        await Task.Yield();
+    }
+    public static Action MakeCapturingLambda(Action callback)
+    {
+        int marker = OverloadValue;
+        return () =>
+        {
+            callback();
+            OverloadValue = marker;
+        };
     }
     [AdminRemoteCall]
     public static void AdminOnly()

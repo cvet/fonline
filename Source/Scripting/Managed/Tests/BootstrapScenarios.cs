@@ -69,7 +69,10 @@ internal static class BootstrapScenarios
                               "OwnershipProbe::NativeEntry:CallableFromNative",
                               "OwnershipProbe::Registered:BootstrapHandler",
                           }) ||
-                     !Native.RegisteredRemoteCalls.SequenceEqual(new[] { "RemoteProbe" })) {
+                     // Reflection does not order types across an assembly, and the naming probes declare
+                     // remote calls of their own, so the registered set is compared sorted
+                     !Native.RegisteredRemoteCalls.OrderBy(name => name, StringComparer.Ordinal)
+                          .SequenceEqual(new[] { "AsyncRemote", "RemoteProbe", "VoidRemote" })) {
                 throw new InvalidOperationException(
                     "Managed initialization and registrations depend on the working directory");
             }

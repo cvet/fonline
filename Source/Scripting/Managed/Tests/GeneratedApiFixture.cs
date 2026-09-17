@@ -9,8 +9,12 @@ internal static class Native
     public static readonly System.Collections.Generic.List<string> RegisteredRemoteCalls = new();
     public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result,
                                                 Delegate handler) => RegisteredFunctions.Add(name + ":" + attribute);
-    public static void RegisterRemoteCallHandler(string name, int parameters,
-                                                 Delegate handler) => RegisteredRemoteCalls.Add(name);
+    public static readonly System.Collections.Generic.List<Delegate> RegisteredRemoteCallHandlers = new();
+    public static void RegisterRemoteCallHandler(string name, int parameters, Delegate handler)
+    {
+        RegisteredRemoteCalls.Add(name);
+        RegisteredRemoteCallHandlers.Add(handler);
+    }
     public static int FallbackCalls;
     public static bool InvokeScriptFunc(string name, object?[] args)
     {

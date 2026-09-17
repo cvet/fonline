@@ -300,9 +300,13 @@ attached debugger, engine start-up, `FO_DEBUG` builds) and the line shape are th
 `Script execution overrun: <entry> (execution: ..., lock wait: ..., total: ...)` and `Script lock wait overrun`
 read alike from either backend. The entry is named the way dispatch by name spells a function, `Type::Method`: a
 lambda or local function carries the method that wrote it, and a continuation is named after the async method it
-resumes, with a ` (continuation)` suffix. `ScriptSynchronizationContext` keeps each posted callback with its state so
-`ScriptEntryNames` can find that method, and the name is resolved only for a run that overran, so an entry that
-stays under the threshold costs one clock read. A run that ends in an exception is reported through the exception.
+resumes, with a ` (continuation)` suffix. An adapter delegate — a compiler-generated lambda whose closure holds one
+delegate and nothing else it could be running instead — is named after the handler it wraps, with a ` (via <adapter>)`
+suffix, because `RemoteCallScriptFuncs` wraps every async remote call in one Action and the adapter's own name would
+therefore be the answer for all of them and the handler for none. `ScriptSynchronizationContext` keeps each posted
+callback with its state so `ScriptEntryNames` can find that method, and the name is resolved only for a run that
+overran, so an entry that stays under the threshold costs one clock read. A run that ends in an exception is
+reported through the exception.
 
 Every native-to-managed entry also owns a bounded Mono thread attachment. A worker that was
 not already running managed code ordinarily attaches immediately before the callback and
