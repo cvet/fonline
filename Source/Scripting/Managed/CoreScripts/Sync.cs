@@ -606,7 +606,8 @@ public static partial class Sync
         Game.SyncRelease();
     }
 
-    // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr->map link
+    // A destroying parent is terminal: its destroyer may be parked on the marks this job's outer context keeps on it
+    // Lifecycle: a stale or destroying cr/current map returns false; a changed cr->map link is retried
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCritterWithMap(Critter cr)
     {
@@ -625,7 +626,7 @@ public static partial class Sync
                 return true;
             }
 
-            if (map.IsDestroyed) {
+            if (map.IsDestroyed || map.IsDestroying) {
                 return false;
             }
 
@@ -690,7 +691,7 @@ public static partial class Sync
         }
     }
 
-    // Lifecycle: a stale cr or resolved map/location returns false; acquisition races retry against the current parent chain
+    // Lifecycle: a stale or destroying cr or resolved map/location returns false; acquisition races retry against the current parent chain
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCritterWithMapAndLocation(Critter cr)
     {
@@ -709,7 +710,7 @@ public static partial class Sync
                 return true;
             }
 
-            if (map.IsDestroyed) {
+            if (map.IsDestroyed || map.IsDestroying) {
                 return false;
             }
 
@@ -725,7 +726,7 @@ public static partial class Sync
             }
 
             Location loc = map.GetLocation();
-            if (loc.IsDestroyed) {
+            if (loc.IsDestroyed || loc.IsDestroying) {
                 return false;
             }
 
@@ -749,7 +750,7 @@ public static partial class Sync
         }
     }
 
-    // Lifecycle: a stale cr/member/destination chain returns false; a changed source graph is retried because cr may have migrated or changed groups
+    // Lifecycle: a stale cr/member/destination chain or a destroying source map/location returns false; a changed source graph is retried because cr may have migrated or changed groups
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockForTransferToMap(Critter cr, Map destMap)
     {
@@ -767,6 +768,9 @@ public static partial class Sync
             if (destLoc.IsDestroyed || destLoc.IsDestroying) {
                 return false;
             }
+            if (srcMap != null && (srcMap.IsDestroyed || srcMap.IsDestroying)) {
+                return false;
+            }
 
             List<Entity> scope = new List<Entity> { cr, destMap, destLoc };
             if (srcMap != null) {
@@ -777,14 +781,7 @@ public static partial class Sync
                 continue;
             }
 
-            ident srcMapId = new ident(0);
-            if (srcMap != null) {
-                if (srcMap.IsDestroyed || srcMap.IsDestroying) {
-                    continue;
-                }
-
-                srcMapId = srcMap.Id;
-            }
+            ident srcMapId = srcMap != null ? srcMap.Id : new ident(0);
 
             if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLoc.Id) {
                 continue;
@@ -793,7 +790,7 @@ public static partial class Sync
             if (srcMap != null) {
                 Location srcLoc = srcMap.GetLocation();
                 if (srcLoc.IsDestroyed || srcLoc.IsDestroying) {
-                    continue;
+                    return false;
                 }
 
                 ident srcLocId = srcLoc.Id;

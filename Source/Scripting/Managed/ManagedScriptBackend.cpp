@@ -2649,6 +2649,14 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
     method->Call(call);
     reconcile_ref_type_owners();
 
+    // A PassOwnership export returns an entity carrying the caller's reference, while the managed wrapper takes a
+    // reference of its own, so the handed one is adopted here and dropped once the result is boxed
+    refcount_nptr<Entity> passed_entity_ownership;
+
+    if (method->PassOwnership && method->Ret.Kind == ComplexTypeKind::Simple && method->Ret.BaseType.IsEntity && !method->Ret.BaseType.IsGlobalEntity) {
+        passed_entity_ownership = refcount_nptr<Entity>::from_adopted_ref(ret_storage.EntityPtr.get());
+    }
+
     size_t mutable_args_count = static_cast<size_t>(std::ranges::count_if(method->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; }));
 
     if (mutable_args_count != 0) {
