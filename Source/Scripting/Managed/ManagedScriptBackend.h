@@ -44,6 +44,7 @@ FO_BEGIN_NAMESPACE
 class ManagedScriptBackend final : public ScriptSystemBackend
 {
 public:
+    ManagedScriptBackend();
     ~ManagedScriptBackend() override;
 
     [[nodiscard]] auto GetDomain() const -> void* { return _domain.get_no_const(); }
@@ -58,6 +59,10 @@ public:
     void Process() override;
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
     void AdoptPersistentGcHandle(uint32_t gc_handle);
+    void BuildAbiTables();
+    [[nodiscard]] auto GetAbi() const -> nptr<const struct ManagedAbiRuntimeState>;
+    auto GetAbi() -> nptr<struct ManagedAbiRuntimeState>;
+    void AddInnerEntityVisits(uint64_t count);
 
 private:
     auto CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>;
@@ -80,6 +85,7 @@ private:
     vector<uint32_t> _persistentGcHandles {};
     uint32_t _loadScopeGcHandle {};
     uint32_t _aliveFlagGcHandle {};
+    unique_nptr<struct ManagedAbiRuntimeState> _abi {};
 };
 
 FO_END_NAMESPACE

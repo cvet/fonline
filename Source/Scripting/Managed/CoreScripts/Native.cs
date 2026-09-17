@@ -21,6 +21,18 @@ internal sealed class NativeCallException : InvalidOperationException
     }
 }
 
+[System.Runtime.CompilerServices.InlineArray(256)]
+internal struct ScalarCallFrame
+{
+    private byte Element0;
+}
+
+[System.Runtime.CompilerServices.InlineArray(256)]
+internal struct InnerEntityFillFrame
+{
+    private IntPtr Element0;
+}
+
 internal static class Native
 {
     // The generated non-nullable members prove the pointer before they wrap it -- a property that reads a
@@ -658,19 +670,28 @@ internal static class Native
     // Entity-holder accessors (managed equivalent of AngelScript CustomEntity_Add/HasAny/GetOne/GetAll),
     // backing generated Add<X>/Has<X>s/Get<X>/Get<X>s methods for metadata EntityHolder entries.
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr CreateInnerEntity(IntPtr holderPtr, string entryName, IntPtr protoId);
+    internal static extern IntPtr CreateInnerEntity(IntPtr holderPtr, int entryId, IntPtr protoId);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern bool HasInnerEntities(IntPtr holderPtr, string entryName);
+    internal static extern bool HasInnerEntities(IntPtr holderPtr, int entryId);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr GetInnerEntity(IntPtr holderPtr, string entryName, long id);
+    internal static extern IntPtr GetInnerEntity(IntPtr holderPtr, int entryId, long id);
+
+    internal static int FillInnerEntities(IntPtr holderPtr, int entryId, ref IntPtr buffer, int capacity)
+    {
+        string ? error;
+        int count = FillInnerEntitiesInternal(holderPtr, entryId, ref buffer, capacity, out error);
+        ThrowNativeError(error);
+        return count;
+    }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern int GetInnerEntityCount(IntPtr holderPtr, string entryName);
+    private static extern int FillInnerEntitiesInternal(IntPtr holderPtr, int entryId, ref IntPtr buffer, int capacity,
+                                                        out string? error);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr GetInnerEntityAt(IntPtr holderPtr, string entryName, int index);
+    internal static extern long GetAndResetInnerEntityVisits();
 
     // Generic property accessors by index (mirror AngelScript Entity_GetValueAsInt/SetValueAsInt and
     // Entity_GetValueAsAny/SetValueAsAny); back the generated Entity.GetAs*/SetAs* wrappers.
@@ -714,14 +735,62 @@ internal static class Native
     private static extern string? SetEntityValueAsAnyInternal(IntPtr entityPtr, int propIndex, string value);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr SubscribeEvent(string ownerType, string eventName, IntPtr entityPtr, Delegate handler,
+    internal static extern IntPtr SubscribeEvent(int eventId, IntPtr entityPtr, Delegate handler,
                                                  bool hasExplicitResult, int priority);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern void UnsubscribeEvent(string eventName, IntPtr entityPtr, IntPtr subscription);
+    internal static extern void UnsubscribeEvent(int eventId, IntPtr entityPtr, IntPtr subscription);
+
+    internal static int FireEventBoxed(int eventId, IntPtr entityPtr, object?[] args)
+    {
+        string ? error;
+        int result = FireEventBoxedInternal(eventId, entityPtr, args, out error);
+        ThrowNativeError(error);
+        return result;
+    }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern int FireEvent(string ownerType, string eventName, IntPtr entityPtr, object?[] args);
+    private static extern int FireEventBoxedInternal(int eventId, IntPtr entityPtr, object?[] args, out string? error);
+
+    internal static int FireEventIndexed(int eventId, IntPtr entityPtr, ref byte frame, int frameSize)
+    {
+        string ? error;
+        int result = FireEventIndexedInternal(eventId, entityPtr, ref frame, frameSize, out error);
+        ThrowNativeError(error);
+        return result;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern int FireEventIndexedInternal(int eventId, IntPtr entityPtr, ref byte frame, int frameSize,
+                                                       out string? error);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int EnumToInt32<TProp>(TProp prop)
+        where TProp : unmanaged, Enum
+    {
+        if (Unsafe.SizeOf<TProp>() == 4) {
+            return Unsafe.As<TProp, int>(ref prop);
+        }
+
+        if (Unsafe.SizeOf<TProp>() == 8) {
+            return checked((int)Unsafe.As<TProp, long>(ref prop));
+        }
+
+        if (Unsafe.SizeOf<TProp>() == 2) {
+            return Unsafe.As<TProp, short>(ref prop);
+        }
+
+        return Unsafe.As<TProp, byte>(ref prop);
+    }
+
+    internal static void BindAbi(ulong hash, int methodCount, int eventCount, int settingCount, int innerCount)
+    {
+        ThrowNativeError(BindAbiInternal(hash, methodCount, eventCount, settingCount, innerCount));
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? BindAbiInternal(ulong hash, int methodCount, int eventCount, int settingCount,
+                                                  int innerCount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static T GetPropertyValue<T>(IntPtr entityPtr, int propIndex)
@@ -780,18 +849,26 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern void AddPropertyDeferredSetter(string ownerType, string propertyName, Delegate setter);
 
-    internal static object CallMethod(string ownerType, string methodName, int methodIndex, IntPtr entityPtr,
-                                      object?[] args)
+    internal static object CallMethodBoxed(int methodId, IntPtr entityPtr, object?[] args)
     {
         string ? error;
-        object? value = CallMethodInternal(ownerType, methodName, methodIndex, entityPtr, args, out error);
+        object? value = CallMethodBoxedInternal(methodId, entityPtr, args, out error);
         ThrowNativeError(error);
         return value!;
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern object? CallMethodInternal(string ownerType, string methodName, int methodIndex,
-                                                     IntPtr entityPtr, object?[] args, out string? error);
+    private static extern object? CallMethodBoxedInternal(int methodId, IntPtr entityPtr, object?[] args,
+                                                          out string? error);
+
+    internal static void CallMethodIndexed(int methodId, IntPtr entityPtr, ref byte frame, int frameSize)
+    {
+        ThrowNativeError(CallMethodIndexedInternal(methodId, entityPtr, ref frame, frameSize));
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? CallMethodIndexedInternal(int methodId, IntPtr entityPtr, ref byte frame,
+                                                            int frameSize);
 
     private static void ThrowNativeError(string? error)
     {
@@ -849,6 +926,18 @@ internal static class Native
     // "cs" remote call. Used to exercise the managed serialize -> deserialize -> dispatch glue on one side.
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern void LoopbackRemoteCall(object? caller, string name, object?[] args);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static T GetSettingValue<T>(int settingId)
+        where T : unmanaged
+    {
+        T value = default;
+        ThrowNativeError(GetSettingValueInternal(settingId, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? GetSettingValueInternal(int settingId, ref byte value, int size);
 
     internal static bool GetSettingBool(string name)
     {

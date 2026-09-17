@@ -875,6 +875,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.sln"));
     CHECK_FALSE(std::filesystem::exists(script_dir / "ServerEnums.cs"));
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
+    CHECK(std::filesystem::exists(script_dir / "ServerAbi.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "ClientEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "MapperEnums.gen.cs"));
     CHECK_FALSE(std::filesystem::exists(work_dir / "Scripts"));
@@ -909,6 +910,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("<OutputPath>$(FOnlineBakeRoot)/") != string::npos);
     CHECK(unified_project.find("/TestPack/Assemblies/ServerAssemblies/</OutputPath>") != string::npos);
     CHECK(unified_project.find("ServerEnums.gen.cs") != string::npos);
+    CHECK(unified_project.find("ServerAbi.gen.cs") != string::npos);
     CHECK(unified_project.find("ClientEnums.gen.cs") != string::npos);
     CHECK(unified_project.find("MapperEnums.gen.cs") != string::npos);
     CHECK(unified_project.find("CoreScripts/Attributes.cs") != string::npos);
@@ -991,37 +993,52 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Critter\",\n                \"ManagedTextGroups\",\n                _entityPtr)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Critter\",\n                \"ManagedTextGroups\",\n                _entityPtr,\n                value)") != string::npos);
     CHECK(server_entities.find("public static List<mpos> TraceHexLine") != string::npos);
-    CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"TraceHexLine\",") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.CallMethodBoxed(") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.CallMethodIndexed(") != string::npos);
+    CHECK(server_entities.find("Native.CallMethod(\n") == string::npos);
+    CHECK(server_entities.find("\"TraceHexLine\"") == string::npos);
     CHECK(server_entities.find("return (List<mpos>)__result;") != string::npos);
     CHECK(server_entities.find("public static void DestroyEntities(List<Entity> entities)") != string::npos);
     CHECK(server_entities.find("public static void DestroyEntities(List<ident> ids)") == string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"DestroyEntities\",") != string::npos);
+    CHECK(server_entities.find("\"DestroyEntities\"") == string::npos);
+    CHECK(server_entities.find("Convert.ToInt32") == string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.EnumToInt32(prop)") != string::npos);
+    CHECK(server_entities.find("internal static class PropertyCallbackAdapters") != string::npos);
+    CHECK(server_entities.find("public static int DivRem(") != string::npos);
+    CHECK(server_entities.find("ReadUnaligned<int>(") != string::npos);
     CHECK(server_entities.find("public static void Destroy<T>(T? entity) where T : Entity") != string::npos);
     CHECK(server_entities.find("public static void Destroy<T>(System.Collections.Generic.List<T>? entities) where T : Entity") != string::npos);
     CHECK(server_entities.find("DestroyEntity(entities[__i]);") != string::npos);
     CHECK(server_entities.find("public static ManagedGlobal AddManagedGlobal()") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\", IntPtr.Zero)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, ") != string::npos);
+    CHECK(server_entities.find(", IntPtr.Zero);") != string::npos);
+    CHECK(server_entities.find("CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\"") == string::npos);
     CHECK(server_entities.find("public static bool HasManagedGlobals()") != string::npos);
     CHECK(server_entities.find("public static System.Collections.Generic.List<ManagedGlobal> GetManagedGlobals()") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.GetInnerEntityAt(IntPtr.Zero, \"ManagedGlobal\", __i)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.FillInnerEntities(") != string::npos);
+    CHECK(server_entities.find("GetInnerEntityAt") == string::npos);
+    CHECK(server_entities.find("GetInnerEntityCount") == string::npos);
     CHECK(server_entities.find("public ManagedInner AddManagedEntry(hstring pid)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(_entityPtr, \"ManagedEntry\", pid.Value)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("CreateInnerEntity(_entityPtr, \"ManagedEntry\"") == string::npos);
     CHECK(server_entities.find("public bool HasManagedEntrys()") != string::npos);
     CHECK(server_entities.find("public System.Collections.Generic.List<ManagedInner> GetManagedEntrys()") != string::npos);
     CHECK(server_entities.find("public ManagedInner? GetManagedEntry(ident id)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.GetInnerEntity(_entityPtr, \"ManagedEntry\", id.value)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetInnerEntity(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("GetInnerEntity(_entityPtr, \"ManagedEntry\"") == string::npos);
     CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::System.Func<Critter, global::System.Threading.Tasks.Task> setter)") != string::npos);
     CHECK(server_entities.find("public static void AddPropertyDeferredSetter(CritterProperty property, global::System.Func<Critter, global::System.Threading.Tasks.Task> setter)") != string::npos);
     CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::FOnline.PropertySetter<Critter, short> setter)") != string::npos);
     CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::FOnline.PropertySetterWithProperty<Critter, CritterProperty, short> setter)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.AddPropertySetterWithProperty(\"Critter\", property.ToString(), setter);") != string::npos);
     CHECK(server_entities.find("public static Dictionary<string, string> ReadConfigSection(\n        string resourcePath,\n        string sectionName\n    )") != string::npos);
-    CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"ReadConfigSection\",") != string::npos);
+    CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethodBoxed(") != string::npos);
     CHECK(server_entities.find("return (Dictionary<string, string>)__result;") != string::npos);
     CHECK(server_entities.find("public static Dictionary<string, string> DbGetRecord(hstring collectionName, string id)") != string::npos);
-    CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"DbGetRecord\",") != string::npos);
+    CHECK(server_entities.find("\"ReadConfigSection\"") == string::npos);
+    CHECK(server_entities.find("\"DbGetRecord\"") == string::npos);
     CHECK(server_entities.find("public static void DbInsertRecord(\n        hstring collectionName,\n        string id,\n        Dictionary<string, string> keyValues\n    )") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"DbInsertRecord\",") != string::npos);
+    CHECK(server_entities.find("\"DbInsertRecord\"") == string::npos);
     CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_void? func)") != string::npos);
     CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_voidAsync? func)") != string::npos);
     CHECK(server_entities.find("public static int CountTimeEvent(Callback_voidAsync? func)") != string::npos);
@@ -1029,20 +1046,26 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static void RepeatTimeEvent(Callback_voidAsync? func, timespan repeat)") != string::npos);
     CHECK(server_entities.find("Callback_void_CritterAsync? func") != string::npos);
 
-    CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"StartTimeEvent\",") != string::npos);
     CHECK(server_entities.find("return (uint)__result;") != string::npos);
     CHECK(server_entities.find("public static uint DecodeUtf8(string text, ref int length)") != string::npos);
     CHECK(server_entities.find("object?[] __args = new object?[]\n        {\n            text,\n            length,\n        };") != string::npos);
-    CHECK(server_entities.find("object[] __result = (object[])global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"DecodeUtf8\",") != string::npos);
+    CHECK(server_entities.find("object[] __result = (object[])global::FOnline.Native.CallMethodBoxed(") != string::npos);
+    CHECK(server_entities.find("\"DecodeUtf8\"") == string::npos);
     CHECK(server_entities.find("length = (int)__result[1];") != string::npos);
     CHECK(server_entities.find("return (uint)__result[0];") != string::npos);
     CHECK(server_entities.find("public static void GetHexInterval(mpos fromHex, mpos toHex, ref ipos hexOffset)") != string::npos);
     CHECK(server_entities.find("object?[] __args = new object?[]\n        {\n            fromHex,\n            toHex,\n            hexOffset,\n        };") != string::npos);
-    CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethod(\n            \"Game\",\n            \"GetHexInterval\",") != string::npos);
+    CHECK(server_entities.find("\"GetHexInterval\"") == string::npos);
     CHECK(server_entities.find("hexOffset = (ipos)__result;") != string::npos);
     CHECK(server_entities.find("public static GameOnManagedTestEvent OnManagedTest") != string::npos);
     CHECK(server_entities.find("private static GameOnManagedTestEvent? __event_OnManagedTest;") != string::npos);
     CHECK(server_entities.find("new GameOnManagedTestEvent(IntPtr.Zero)") != string::npos);
+
+    string server_abi = ReadTextFile(script_dir / "ServerAbi.gen.cs");
+    CHECK(server_abi.find("static partial void BindGeneratedAbi()") != string::npos);
+    CHECK(server_abi.find("global::FOnline.Native.BindAbi(") != string::npos);
+    CHECK(server_abi.find("internal const int GeneratorIdentity = ") != string::npos);
+    CHECK(server_abi.find("internal static class ManagedAbi") != string::npos);
 
     string server_events = ReadTextFile(script_dir / "ServerEvents.gen.cs");
     CHECK(server_events.find("NotImplementedException") == string::npos);
@@ -1056,17 +1079,21 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("public void Unsubscribe(GameOnManagedTestEventHandlerAsyncResult handler)") != string::npos);
     CHECK(server_events.find("{ if (handler == null)") == string::npos);
     CHECK(server_events.find("global::FOnline.Native.RequireEventAttribute(handler);\n        IntPtr backend = global::FOnline.Native.GetBackend();\n        (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n        if (_nativeSubscriptions.ContainsKey(key))") != string::npos);
-    CHECK(server_events.find("_nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n            \"Game\",\n            \"OnManagedTest\",") != string::npos);
+    CHECK(server_events.find("_nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n") != string::npos);
+    CHECK(server_events.find("\"OnManagedTest\"") == string::npos);
     CHECK(server_events.find("false,\n            (int)priority);") != string::npos);
-    CHECK(server_events.find("global::FOnline.Native.UnsubscribeEvent(\n                \"OnManagedTest\",\n                _entityPtr,\n                subscription);") != string::npos);
-    CHECK(server_events.find("EventResult __result = (EventResult)global::FOnline.Native.FireEvent(\n                \"Game\",\n                \"OnManagedTest\",\n                _entityPtr,\n                __args);") != string::npos);
+    CHECK(server_events.find("global::FOnline.Native.UnsubscribeEvent(\n") != string::npos);
+    CHECK(server_events.find("FireEventIndexed(") != string::npos);
+    CHECK(server_events.find("FireEventBoxed(") != string::npos);
+    CHECK(server_events.find("AdaptInvoke(") != string::npos);
     CHECK(server_events.find("return EventResult.StopChain;") != string::npos);
     CHECK(server_events.find("public delegate void GameOnManagedArrayEventHandler(List<int> values)") != string::npos);
     CHECK(server_events.find("object?[] __args = new object?[]\n            {\n                values,\n            };") != string::npos);
     CHECK(server_events.find("public delegate void GameOnManagedDictEventHandler(Dictionary<string, string> values)") != string::npos);
     CHECK(server_events.find("public delegate void GameOnManagedMutablePositionEventHandler(") != string::npos);
     CHECK(server_events.find("ref int third") != string::npos);
-    CHECK(server_events.find("third = global::FOnline.Native.UnboxArg<int>(__args[2]);") != string::npos);
+    CHECK(server_events.find("ReadUnaligned<int>(ref __frame[") != string::npos);
+    CHECK(server_events.find("third = global::FOnline.Native.UnboxArg<int>(__args[2]);") == string::npos);
     CHECK(server_events.find("third = (int)__args[0];") == string::npos);
 
     string client_settings = ReadTextFile(script_dir / "ClientSettings.gen.cs");
@@ -1078,10 +1105,13 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(client_settings.find("public static List<byte> GlobalDayColor\n") != string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingByteList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColor\"") != string::npos);
+    CHECK(client_settings.find("global::FOnline.Native.GetSettingValue<") != string::npos);
+    CHECK(client_settings.find("global::FOnline.Native.SetSettingValue<") == string::npos);
 
     string client_types = ReadTextFile(script_dir / "ClientTypes.gen.cs");
     CHECK(client_types.find("public static MapSpriteHolder __Factory()") != string::npos);
-    CHECK(client_types.find("\"__Factory\",\n            2,\n            IntPtr.Zero,") != string::npos);
+    CHECK(client_types.find("global::FOnline.Native.CallMethodBoxed(") != string::npos);
+    CHECK(client_types.find("\"__Factory\"") == string::npos);
 
     string server_types = ReadTextFile(script_dir / "ServerTypes.gen.cs");
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_voidAsync();") != string::npos);
@@ -1111,8 +1141,10 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("public string CheckpointLabel") != string::npos);
     CHECK(server_types.find("private IntPtr _refPtr;") != string::npos);
     CHECK(server_types.find("public ushort GetSpeed()") != string::npos);
-    CHECK(server_types.find("object __result = global::FOnline.Native.CallMethod(\n            \"MovingContext\",\n            \"GetSpeed\",") != string::npos);
-    CHECK(server_types.find("return (ushort)__result;") != string::npos);
+    CHECK(server_types.find("global::FOnline.Native.CallMethodIndexed(") != string::npos);
+    CHECK(server_types.find("ReadUnaligned<ushort>(") != string::npos);
+    CHECK(server_types.find("\"GetSpeed\"") == string::npos);
+    CHECK(server_types.find("Native.CallMethod(\n") == string::npos);
     CHECK(server_entities.find("public partial class Entity : System.IEquatable<Entity>") != string::npos);
     CHECK(server_entities.find("private readonly bool[]? _backendAlive;") != string::npos);
     CHECK(server_entities.find("            if (_backendAlive != null && _backendAlive[0]) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
@@ -1281,6 +1313,84 @@ TEST_CASE("ManagedScriptBaker rebakes when an editorconfig above the sources cha
 
     REQUIRE(!stamps.empty());
     CHECK(std::ranges::max(stamps) == fs::last_write_time(strex("{}", editor_config.string()).str()));
+#endif
+}
+
+TEST_CASE("ManagedScriptBaker stamp includes generated API files so a generator-only change rebakes")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static partial class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitAbiStamp");
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    vector<pair<string, uint64_t>> first_checks;
+    ManagedScriptBaker baker(rig.MakeContext("TestPack", [&first_checks](string_view path, uint64_t write_time) {
+        first_checks.emplace_back(string {path}, write_time);
+        return false;
+    }));
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    auto abi_path = script_dir / "ServerAbi.gen.cs";
+    REQUIRE(std::filesystem::exists(abi_path));
+    REQUIRE(!first_checks.empty());
+
+    uint64_t first_stamp = 0;
+
+    for (const auto& [path, write_time] : first_checks) {
+        first_stamp = std::max(first_stamp, write_time);
+    }
+
+    CHECK(first_stamp >= fs::last_write_time(strex("{}", abi_path.string()).str()));
+
+    auto future_time = std::filesystem::last_write_time(abi_path) + std::chrono::hours(24);
+    std::filesystem::last_write_time(abi_path, future_time);
+    uint64_t generated_stamp = fs::last_write_time(strex("{}", abi_path.string()).str());
+
+    vector<pair<string, uint64_t>> second_checks;
+    ManagedScriptBaker rebaker(rig.MakeContext("TestPack", [&second_checks](string_view path, uint64_t write_time) {
+        second_checks.emplace_back(string {path}, write_time);
+        return false;
+    }));
+    REQUIRE_NOTHROW(rebaker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    REQUIRE(!second_checks.empty());
+
+    uint64_t second_stamp = 0;
+    bool saw_entry_assembly = false;
+
+    for (const auto& [path, write_time] : second_checks) {
+        second_stamp = std::max(second_stamp, write_time);
+
+        if (path.find("TestPack.Server.dll") != string::npos) {
+            saw_entry_assembly = true;
+            CHECK(write_time >= generated_stamp);
+        }
+    }
+
+    CHECK(saw_entry_assembly);
+    CHECK(second_stamp >= generated_stamp);
+    CHECK(second_stamp > first_stamp);
 #endif
 }
 

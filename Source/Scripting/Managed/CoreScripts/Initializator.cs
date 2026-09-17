@@ -7,9 +7,11 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-public static class Initializator
+public static partial class Initializator
 {
     private static bool InitializedEarly;
+
+    static partial void BindGeneratedAbi();
 
     [CallableByEngine]
     internal static void InitializeEarly()
@@ -20,6 +22,7 @@ public static class Initializator
         }
 
         InitializedEarly = true;
+        BindGeneratedAbi();
         ValidateAsyncMethods();
         ScriptFuncRegistration.RegisterEngineAttributeFuncs();
         RemoteCallScriptFuncs.RegisterRemoteCalls();

@@ -823,4 +823,45 @@ bool GlobalSettings::IsSecretSettingName(string_view name) const
     return false;
 }
 
+auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static const unordered_map<string, NumericSettingAccess> accessors = [] {
+        unordered_map<string, NumericSettingAccess> result;
+
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, setting_name, ...) \
+    do { \
+        NumericSettingAccess access; \
+        if constexpr (std::is_same_v<type, bool>) { \
+            access.ReadBool = [](ptr<const GlobalSettings> settings) { return settings->group.setting_name; }; \
+        } \
+        else if constexpr (std::is_integral_v<type> && std::is_signed_v<type>) { \
+            access.ReadSigned = [](ptr<const GlobalSettings> settings) -> int64_t { return numeric_cast<int64_t>(settings->group.setting_name); }; \
+        } \
+        else if constexpr (std::is_integral_v<type> && std::is_unsigned_v<type>) { \
+            access.ReadUnsigned = [](ptr<const GlobalSettings> settings) -> uint64_t { return numeric_cast<uint64_t>(settings->group.setting_name); }; \
+        } \
+        else if constexpr (std::is_floating_point_v<type>) { \
+            access.ReadFloat = [](ptr<const GlobalSettings> settings) -> float64_t { return numeric_cast<float64_t>(settings->group.setting_name); }; \
+        } \
+        else { \
+            break; \
+        } \
+        result.emplace(#group "." #setting_name, access); \
+    } while (false)
+#include "Settings.inc"
+#undef SETTING
+#undef SETTING_GROUP
+#undef SETTING_GROUP_END
+
+        return result;
+    }();
+
+    auto it = accessors.find(string {name});
+    return it != accessors.end() ? &it->second : nullptr;
+}
+
 FO_END_NAMESPACE

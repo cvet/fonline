@@ -152,4 +152,17 @@ private:
     any_t _emptySetting {};
 };
 
+// Typed read of one builtin numeric or bool setting by its "Group.Name": the managed bridge reads the live
+// GlobalSettings field through it instead of formatting and parsing text. Settings are immutable, so there is no
+// write half; exactly one Read* member is set, chosen by the declared type
+struct NumericSettingAccess
+{
+    bool (*ReadBool)(ptr<const GlobalSettings>) {};
+    int64_t (*ReadSigned)(ptr<const GlobalSettings>) {};
+    uint64_t (*ReadUnsigned)(ptr<const GlobalSettings>) {};
+    float64_t (*ReadFloat)(ptr<const GlobalSettings>) {};
+};
+
+[[nodiscard]] auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>;
+
 FO_END_NAMESPACE

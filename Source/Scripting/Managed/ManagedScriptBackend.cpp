@@ -39,10 +39,12 @@
 #include "EngineBase.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
+#include "ManagedInteropAbi.h"
 #include "ManagedPInvokeTable.h"
 #include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
+#include "Settings.h"
 #include "RemoteCallWire.h"
 
 #if FO_WINDOWS
@@ -447,11 +449,11 @@ static auto NativeMdirRotateHex(int16_t angle, int32_t steps) -> int16_t;
 static auto NativeMdirReverse(int16_t angle) -> int16_t;
 
 // Native ABI: inner entities
-static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, void* proto_id) -> void*;
-static auto NativeHasInnerEntities(void* holder_ptr, MonoString* entry_name) -> mono_bool;
-static auto NativeGetInnerEntity(void* holder_ptr, MonoString* entry_name, int64_t id) -> void*;
-static auto NativeGetInnerEntityCount(void* holder_ptr, MonoString* entry_name) -> int32_t;
-static auto NativeGetInnerEntityAt(void* holder_ptr, MonoString* entry_name, int32_t index) -> void*;
+static auto NativeCreateInnerEntity(void* holder_ptr, int32_t entry_id, void* proto_id) -> void*;
+static auto NativeHasInnerEntities(void* holder_ptr, int32_t entry_id) -> mono_bool;
+static auto NativeGetInnerEntity(void* holder_ptr, int32_t entry_id, int64_t id) -> void*;
+static auto NativeFillInnerEntities(void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) -> int32_t;
+static auto NativeGetAndResetInnerEntityVisits() -> int64_t;
 
 // Native ABI: settings
 static auto NativeGetSettingBoolRaw(MonoString* name) -> int32_t;
@@ -470,11 +472,13 @@ static auto NativeGetSettingDouble(MonoString* name) -> float64_t;
 static void NativeSetSettingDouble(MonoString* name, float64_t value);
 static auto NativeGetSettingString(MonoString* name) -> MonoString*;
 static void NativeSetSettingString(MonoString* name, MonoString* value);
+static auto NativeGetSettingValue(int32_t setting_id, void* value, int32_t size) -> MonoString*;
 
 // Native ABI: events, properties, methods and remote calls
-static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*;
-static void NativeUnsubscribeEvent(MonoString* event_name, void* entity_ptr, void* subscription);
-static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t;
+static auto NativeSubscribeEvent(int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*;
+static void NativeUnsubscribeEvent(int32_t event_id, void* entity_ptr, void* subscription);
+static auto NativeFireEventBoxed(int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) -> int32_t;
+static auto NativeFireEventIndexed(int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) -> int32_t;
 static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoString** error) -> MonoObject*;
 static auto NativeGetPropertyValue(void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
 static auto NativeSetPropertyValue(void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
@@ -483,7 +487,9 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
 static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
 static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
 static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*;
+static auto NativeCallMethodBoxed(int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*;
+static auto NativeCallMethodIndexed(int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) -> MonoString*;
+static auto NativeBindAbi(uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) -> MonoString*;
 static auto NativeInvokeScriptFuncStatus(MonoString* func_name, MonoArray* args) -> int32_t;
 static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler);
 static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_count, MonoObject* handler);
@@ -587,16 +593,14 @@ static auto GetValueClass(ptr<const ManagedScriptBackend> backend, const BaseTyp
 static auto FindFieldInHierarchy(MonoClass* klass, const char* field_name) -> MonoClassField*;
 static auto FindEntityTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_name) -> nptr<const EntityTypeDesc>;
 static auto FindRefTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_name) -> nptr<const RefTypeDesc>;
-static auto FindMethod(ptr<EngineMetadata> meta, string_view owner_type_name, string_view method_name, int32_t method_index, size_t args_count) -> nptr<const MethodDesc>;
 static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view type_name) -> ComplexTypeDesc;
 
 // Entity resolution and inner-entry helpers
 static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>;
 static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> nptr<Entity>;
 static auto ExtractProtoHashFromManagedEntity(MonoObject* value) -> hstring::hash_t;
-static auto ResolveInnerEntry(ptr<ManagedScriptBackend> backend, MonoString* entry_name) -> hstring;
 static void ValidateManagedInnerEntity(ptr<const Entity> entity);
-static auto CollectManagedInnerEntities(ptr<Entity> holder, hstring entry) -> vector<ptr<Entity>>;
+static auto CollectManagedInnerEntities(ptr<ManagedScriptBackend> backend, ptr<Entity> holder, hstring entry) -> vector<ptr<Entity>>;
 
 // Extraction and hash primitives
 static auto ExtractEntityPtr(MonoObject* obj) -> Entity*;
@@ -853,6 +857,12 @@ struct ManagedEventSubscription
     vector<ComplexTypeDesc> Args {};
     uint32_t Handler {};
     bool HasExplicitResult {};
+    int32_t EventId {-1};
+    bool UsesScalarFrame {};
+    vector<ManagedAbiSlot> Slots {};
+    uint16_t FrameSize {};
+    string AdaptClassName {};
+    nptr<MonoMethod> AdaptInvoke {};
 
     ~ManagedEventSubscription()
     {
@@ -860,6 +870,56 @@ struct ManagedEventSubscription
 
         ReleaseManagedGcHandle(Domain, Handler);
     }
+};
+
+struct ManagedAbiMethodRuntime
+{
+    nptr<const MethodDesc> Method {};
+    string Owner {};
+    bool IsRefType {};
+    bool UsesScalarFrame {};
+    vector<ManagedAbiSlot> Args {};
+    ManagedAbiSlot Ret {};
+    uint16_t FrameSize {};
+    uint16_t ResultOffset {};
+};
+
+struct ManagedAbiEventRuntime
+{
+    nptr<const EntityTypeDesc> Desc {};
+    nptr<const EntityEventDesc> Event {};
+    string Owner {};
+    string Name {};
+    bool IsGlobal {};
+    bool UsesScalarFrame {};
+    vector<ManagedAbiSlot> Args {};
+    uint16_t FrameSize {};
+};
+
+struct ManagedAbiSettingRuntime
+{
+    string Name {};
+    ManagedAbiValueKind Kind {};
+    bool UsesTypedBridge {};
+    nptr<const NumericSettingAccess> Builtin {};
+};
+
+struct ManagedAbiInnerRuntime
+{
+    hstring Entry {};
+    string Owner {};
+    string TargetType {};
+};
+
+struct ManagedAbiRuntimeState
+{
+    uint64_t Hash {};
+    bool Bound {};
+    vector<ManagedAbiMethodRuntime> Methods {};
+    vector<ManagedAbiEventRuntime> Events {};
+    vector<ManagedAbiSettingRuntime> Settings {};
+    vector<ManagedAbiInnerRuntime> Inners {};
+    uint64_t InnerEntityVisits {};
 };
 
 struct ManagedAssemblyResource
@@ -2097,7 +2157,18 @@ static auto NativeMdirReverse(int16_t angle) -> int16_t
 
 // === Native ABI: inner entities ===
 
-static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, void* proto_id) -> void*
+static auto ResolveAbiInner(ptr<ManagedScriptBackend> backend, int32_t entry_id) -> const ManagedAbiInnerRuntime&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto abi = backend->GetAbi();
+    FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
+    FO_VERIFY_AND_THROW(abi->Bound, "Managed ABI manifest is not bound");
+    FO_VERIFY_AND_THROW(entry_id >= 0 && numeric_cast<size_t>(entry_id) < abi->Inners.size(), "Managed inner-entry id is out of range", entry_id, abi->Inners.size());
+    return abi->Inners[numeric_cast<size_t>(entry_id)];
+}
+
+static auto NativeCreateInnerEntity(void* holder_ptr, int32_t entry_id, void* proto_id) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2106,11 +2177,11 @@ static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, vo
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    hstring entry = ResolveInnerEntry(backend, entry_name);
+    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
     return entity_mngr->CreateCustomInnerEntity(holder, entry, NativeHstringFromHandle(proto_id)).get();
 }
 
-static auto NativeHasInnerEntities(void* holder_ptr, MonoString* entry_name) -> mono_bool
+static auto NativeHasInnerEntities(void* holder_ptr, int32_t entry_id) -> mono_bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2118,12 +2189,12 @@ static auto NativeHasInnerEntities(void* holder_ptr, MonoString* entry_name) -> 
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    hstring entry = ResolveInnerEntry(backend, entry_name);
+    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
     auto entities = holder->GetInnerEntities(entry);
     return static_cast<mono_bool>(entities ? 1 : 0);
 }
 
-static auto NativeGetInnerEntity(void* holder_ptr, MonoString* entry_name, int64_t id) -> void*
+static auto NativeGetInnerEntity(void* holder_ptr, int32_t entry_id, int64_t id) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2131,7 +2202,7 @@ static auto NativeGetInnerEntity(void* holder_ptr, MonoString* entry_name, int64
     auto holder = ResolveEntity(backend, holder_ptr);
     ValidateEntityAccess(holder);
 
-    hstring entry = ResolveInnerEntry(backend, entry_name);
+    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
     ident_t entity_id {id};
     auto entities = holder->GetInnerEntities(entry);
 
@@ -2150,35 +2221,54 @@ static auto NativeGetInnerEntity(void* holder_ptr, MonoString* entry_name, int64
     return nullptr;
 }
 
-static auto NativeGetInnerEntityCount(void* holder_ptr, MonoString* entry_name) -> int32_t
+static auto NativeFillInnerEntities(void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = GetActiveBackendOrThrow();
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
+    FO_STRONG_ASSERT(error != nullptr, "Managed inner-entity fill error output is null");
+    *error = nullptr;
 
-    hstring entry = ResolveInnerEntry(backend, entry_name);
-    auto entities = CollectManagedInnerEntities(holder, entry);
-    return numeric_cast<int32_t>(entities.size());
+    try {
+        auto backend = GetActiveBackendOrThrow();
+        auto holder = ResolveEntity(backend, holder_ptr);
+        ValidateEntityAccess(holder);
+
+        hstring entry = ResolveAbiInner(backend, entry_id).Entry;
+        auto entities = CollectManagedInnerEntities(backend, holder, entry);
+        int32_t required = numeric_cast<int32_t>(entities.size());
+
+        if (capacity < required) {
+            return required;
+        }
+
+        FO_VERIFY_AND_THROW(required == 0 || buffer != nullptr, "Managed inner-entity fill buffer is null");
+
+        for (int32_t i = 0; i < required; i++) {
+            buffer[i] = entities[numeric_cast<size_t>(i)].get_no_const();
+        }
+
+        return required;
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return 0;
+    }
 }
 
-static auto NativeGetInnerEntityAt(void* holder_ptr, MonoString* entry_name, int32_t index) -> void*
+static auto NativeGetAndResetInnerEntityVisits() -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
     auto backend = GetActiveBackendOrThrow();
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
+    auto abi = backend->GetAbi();
 
-    hstring entry = ResolveInnerEntry(backend, entry_name);
-    auto entities = CollectManagedInnerEntities(holder, entry);
-
-    if (index < 0 || index >= numeric_cast<int32_t>(entities.size())) {
-        return nullptr;
+    if (!abi) {
+        return 0;
     }
 
-    return entities[numeric_cast<size_t>(index)].get_no_const();
+    int64_t visits = numeric_cast<int64_t>(abi->InnerEntityVisits);
+    abi->InnerEntityVisits = 0;
+    return visits;
 }
 
 // === Native ABI: settings ===
@@ -2297,9 +2387,214 @@ static void NativeSetSettingString(MonoString* name, MonoString* value)
     SetSettingValueFromString(name, ToStringAndFree(value));
 }
 
+static auto SettingKindSize(ManagedAbiValueKind kind) -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (kind) {
+    case ManagedAbiValueKind::Bool:
+    case ManagedAbiValueKind::Int8:
+    case ManagedAbiValueKind::UInt8:
+        return 1;
+    case ManagedAbiValueKind::Int16:
+    case ManagedAbiValueKind::UInt16:
+        return 2;
+    case ManagedAbiValueKind::Int32:
+    case ManagedAbiValueKind::UInt32:
+    case ManagedAbiValueKind::Float32:
+    case ManagedAbiValueKind::Enum:
+        return 4;
+    case ManagedAbiValueKind::Int64:
+    case ManagedAbiValueKind::UInt64:
+    case ManagedAbiValueKind::Float64:
+        return 8;
+    default:
+        return 0;
+    }
+}
+
+static auto ResolveAbiSetting(ptr<ManagedScriptBackend> backend, int32_t setting_id) -> const ManagedAbiSettingRuntime&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto abi = backend->GetAbi();
+    FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
+    FO_VERIFY_AND_THROW(abi->Bound, "Managed ABI manifest is not bound");
+    FO_VERIFY_AND_THROW(setting_id >= 0 && numeric_cast<size_t>(setting_id) < abi->Settings.size(), "Managed setting id is out of range", setting_id, abi->Settings.size());
+    return abi->Settings[numeric_cast<size_t>(setting_id)];
+}
+
+static void WriteSettingBytes(void* dst, int32_t size, const void* src, size_t src_size)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(dst, "Managed setting value buffer is null");
+    FO_VERIFY_AND_THROW(numeric_cast<size_t>(size) == src_size, "Managed setting value size mismatch", size, src_size);
+    memory::copy(ptr<void> {dst}, src, src_size);
+}
+
+static auto NativeGetSettingValue(int32_t setting_id, void* value, int32_t size) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        auto backend = GetActiveBackendOrThrow();
+        const ManagedAbiSettingRuntime& entry = ResolveAbiSetting(backend, setting_id);
+        FO_VERIFY_AND_THROW(entry.UsesTypedBridge, "Managed setting does not use the typed bridge", entry.Name);
+        FO_VERIFY_AND_THROW(size == SettingKindSize(entry.Kind), "Managed setting value size mismatch", entry.Name, size, SettingKindSize(entry.Kind));
+
+        nptr<GlobalSettings> settings = GetBackendSettings(backend);
+        FO_VERIFY_AND_THROW(settings, "Managed settings backend is not available");
+
+        if (entry.Builtin) {
+            switch (entry.Kind) {
+            case ManagedAbiValueKind::Bool: {
+                bool parsed = entry.Builtin->ReadBool(settings);
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::Int8: {
+                int8_t parsed = numeric_cast<int8_t>(entry.Builtin->ReadSigned(settings));
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::Int16: {
+                int16_t parsed = numeric_cast<int16_t>(entry.Builtin->ReadSigned(settings));
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::Int32:
+            case ManagedAbiValueKind::Enum: {
+                int32_t parsed = numeric_cast<int32_t>(entry.Builtin->ReadSigned(settings));
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::Int64: {
+                int64_t parsed = entry.Builtin->ReadSigned(settings);
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::UInt8: {
+                uint8_t parsed = numeric_cast<uint8_t>(entry.Builtin->ReadUnsigned(settings));
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::UInt16: {
+                uint16_t parsed = numeric_cast<uint16_t>(entry.Builtin->ReadUnsigned(settings));
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::UInt32: {
+                uint32_t parsed = numeric_cast<uint32_t>(entry.Builtin->ReadUnsigned(settings));
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::UInt64: {
+                uint64_t parsed = entry.Builtin->ReadUnsigned(settings);
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::Float32: {
+                float32_t parsed = numeric_cast<float32_t>(entry.Builtin->ReadFloat(settings));
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            case ManagedAbiValueKind::Float64: {
+                float64_t parsed = entry.Builtin->ReadFloat(settings);
+                WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+                break;
+            }
+            default:
+                throw ScriptSystemException("Unsupported Managed typed setting", entry.Name);
+            }
+
+            return nullptr;
+        }
+
+        string text = settings->GetCustomSetting(entry.Name);
+
+        switch (entry.Kind) {
+        case ManagedAbiValueKind::Bool: {
+            bool parsed = strvex(text).to_bool();
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::Int8: {
+            int8_t parsed = numeric_cast<int8_t>(strex(text).to_int32());
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::Int16: {
+            int16_t parsed = numeric_cast<int16_t>(strex(text).to_int32());
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::Int32:
+        case ManagedAbiValueKind::Enum: {
+            int32_t parsed = strex(text).to_int32();
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::Int64: {
+            int64_t parsed = strex(text).to_int64();
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::UInt8: {
+            uint8_t parsed = numeric_cast<uint8_t>(strex(text).to_uint32());
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::UInt16: {
+            uint16_t parsed = numeric_cast<uint16_t>(strex(text).to_uint32());
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::UInt32: {
+            uint32_t parsed = strex(text).to_uint32();
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::UInt64: {
+            uint64_t parsed = std::strtoull(text.c_str(), nullptr, 0);
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::Float32: {
+            float32_t parsed = strex(text).to_float32();
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        case ManagedAbiValueKind::Float64: {
+            float64_t parsed = strex(text).to_float64();
+            WriteSettingBytes(value, size, &parsed, sizeof(parsed));
+            break;
+        }
+        default:
+            throw ScriptSystemException("Unsupported Managed typed setting", entry.Name);
+        }
+
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return MakeManagedNativeError(ex);
+    }
+}
+
 // === Native ABI: events, properties, methods and remote calls ===
 
-static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*
+static auto ResolveAbiEvent(ptr<ManagedScriptBackend> backend, int32_t event_id) -> const ManagedAbiEventRuntime&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto abi = backend->GetAbi();
+    FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
+    FO_VERIFY_AND_THROW(abi->Bound, "Managed ABI manifest is not bound");
+    FO_VERIFY_AND_THROW(event_id >= 0 && numeric_cast<size_t>(event_id) < abi->Events.size(), "Managed event id is out of range", event_id, abi->Events.size());
+    return abi->Events[numeric_cast<size_t>(event_id)];
+}
+
+static auto NativeSubscribeEvent(int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2311,19 +2606,8 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
         throw ScriptSystemException("Null Managed event handler");
     }
 
-    string owner_type_name = ToStringAndFree(owner_type);
-    string event_name_str = ToStringAndFree(event_name);
-    auto desc = FindEntityTypeDesc(meta, owner_type_name);
-
-    if (!desc) {
-        throw ScriptSystemException("Managed event owner type not found", owner_type_name);
-    }
-
-    auto event_it = std::ranges::find_if(desc->Events, [&](const EntityEventDesc& event) { return event.Name == event_name_str; });
-
-    if (event_it == desc->Events.end()) {
-        throw ScriptSystemException("Managed event not found", owner_type_name, event_name_str);
-    }
+    const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
+    FO_VERIFY_AND_THROW(entry.Desc && entry.Event, "Managed ABI event descriptor is null", entry.Owner, entry.Name);
 
     auto entity = ResolveEntity(backend, entity_ptr);
     auto subscription = safe_alloc::make_shared<ManagedEventSubscription>();
@@ -2332,13 +2616,24 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
     subscription->Image = mono_class_get_image(mono_object_get_class(handler));
     subscription->Handler = mono_gchandle_new(handler, false);
     subscription->HasExplicitResult = has_explicit_result != 0;
+    subscription->EventId = event_id;
+    subscription->UsesScalarFrame = entry.UsesScalarFrame;
+    subscription->Slots = entry.Args;
+    subscription->FrameSize = entry.FrameSize;
+    subscription->AdaptClassName = strex("{}{}Event", entry.Owner, entry.Name).str();
 
-    if (!desc->IsGlobal) {
-        subscription->Args.emplace_back(meta->ResolveComplexType(owner_type_name));
+    if (entry.UsesScalarFrame) {
+        MonoClass* event_class = FindFOnlineClass(backend, subscription->AdaptClassName);
+        subscription->AdaptInvoke = mono_class_get_method_from_name(event_class, "AdaptInvoke", 5);
+        FO_VERIFY_AND_THROW(subscription->AdaptInvoke, "Managed event AdaptInvoke adapter is missing", subscription->AdaptClassName);
     }
-    for (const ArgDesc& arg : event_it->Args) {
+
+    if (!entry.IsGlobal) {
+        subscription->Args.emplace_back(meta->ResolveComplexType(entry.Owner));
+    }
+    for (const ArgDesc& arg : entry.Event->Args) {
         if (!IsManagedBridgeType(arg.Type)) {
-            throw ScriptSystemException("Managed event argument type is not supported yet", owner_type_name, event_name_str, arg.Name);
+            throw ScriptSystemException("Managed event argument type is not supported yet", entry.Owner, entry.Name, arg.Name);
         }
 
         subscription->Args.emplace_back(arg.Type);
@@ -2351,54 +2646,39 @@ static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name,
     event_data.Priority = static_cast<Entity::EventPriority>(priority);
     event_data.HasExplicitResult = has_explicit_result != 0;
 
-    entity->SubscribeEvent(event_name_str, std::move(event_data));
+    entity->SubscribeEvent(entry.Name, std::move(event_data));
     return reinterpret_cast<void*>(token);
 }
 
-static void NativeUnsubscribeEvent(MonoString* event_name, void* entity_ptr, void* subscription)
+static void NativeUnsubscribeEvent(int32_t event_id, void* entity_ptr, void* subscription)
 {
     FO_STACK_TRACE_ENTRY();
 
     auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
-    string event_name_str = ToStringAndFree(event_name);
-    entity->UnsubscribeEvent(event_name_str, reinterpret_cast<uintptr_t>(subscription));
+    const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
+    entity->UnsubscribeEvent(entry.Name, reinterpret_cast<uintptr_t>(subscription));
 }
 
-static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t
+static auto NativeFireEventImpl(const ManagedAbiEventRuntime& entry, void* entity_ptr, MonoArray* args) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
     auto backend = GetActiveBackendOrThrow();
-    nptr<EngineMetadata> meta = backend->GetMetadata();
-    FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
-
-    string owner_type_name = ToStringAndFree(owner_type);
-    string event_name_str = ToStringAndFree(event_name);
-    auto desc = FindEntityTypeDesc(meta, owner_type_name);
-
-    if (!desc) {
-        throw ScriptSystemException("Managed event owner type not found", owner_type_name);
-    }
-
-    auto event_it = std::ranges::find_if(desc->Events, [&](const EntityEventDesc& event) { return event.Name == event_name_str; });
-
-    if (event_it == desc->Events.end()) {
-        throw ScriptSystemException("Managed event not found", owner_type_name, event_name_str);
-    }
+    FO_VERIFY_AND_THROW(entry.Desc && entry.Event, "Managed ABI event descriptor is null", entry.Owner, entry.Name);
 
     auto entity = ResolveEntity(backend, entity_ptr);
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
 
-    if (args_count != event_it->Args.size()) {
-        throw ScriptSystemException("Managed event argument count mismatch", owner_type_name, event_name_str, args_count, event_it->Args.size());
+    if (args_count != entry.Event->Args.size()) {
+        throw ScriptSystemException("Managed event argument count mismatch", entry.Owner, entry.Name, args_count, entry.Event->Args.size());
     }
 
-    size_t first_event_arg = desc->IsGlobal ? 0 : 1;
+    size_t first_event_arg = entry.IsGlobal ? 0 : 1;
     size_t call_args_count = args_count + first_event_arg;
 
     if (call_args_count > MAX_CALL_ARGS) {
-        throw ScriptSystemException("Managed event argument count exceeds bridge limit", owner_type_name, event_name_str, call_args_count);
+        throw ScriptSystemException("Managed event argument count exceeds bridge limit", entry.Owner, entry.Name, call_args_count);
     }
 
     uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
@@ -2413,15 +2693,15 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
     array<ManagedNativeValue, MAX_CALL_ARGS> native_args {};
     Entity* self_entity = entity.get_no_const();
 
-    if (!desc->IsGlobal) {
+    if (!entry.IsGlobal) {
         args_data[0] = make_ptr(&self_entity).void_cast();
     }
 
     for (size_t i = 0; i < args_count; i++) {
-        const ArgDesc& arg_desc = event_it->Args[i];
+        const ArgDesc& arg_desc = entry.Event->Args[i];
 
         if (!IsManagedBridgeType(arg_desc.Type)) {
-            throw ScriptSystemException("Managed event argument type is not supported yet", owner_type_name, event_name_str, arg_desc.Name);
+            throw ScriptSystemException("Managed event argument type is not supported yet", entry.Owner, entry.Name, arg_desc.Name);
         }
 
         MonoObject* arg = mono_array_get(get_args(), MonoObject*, i);
@@ -2440,7 +2720,7 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
     bool ref_type_owners_reconciled = false;
     auto reconcile_ref_type_owners = [&]() noexcept {
         for (size_t i = 0; i < args_count; i++) {
-            ReconcileMutableDynamicRefTypeOwner(event_it->Args[i].Type, native_args[i]);
+            ReconcileMutableDynamicRefTypeOwner(entry.Event->Args[i].Type, native_args[i]);
         }
         ref_type_owners_reconciled = true;
     };
@@ -2450,11 +2730,11 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
         }
     });
 
-    auto result = entity->FireEvent(event_name_str, call);
+    auto result = entity->FireEvent(entry.Name, call);
     reconcile_ref_type_owners();
 
     for (size_t i = 0; i < args_count; i++) {
-        const ArgDesc& arg_desc = event_it->Args[i];
+        const ArgDesc& arg_desc = entry.Event->Args[i];
 
         if (!arg_desc.Type.IsMutable) {
             continue;
@@ -2465,6 +2745,72 @@ static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void
     }
 
     return static_cast<int32_t>(result);
+}
+
+static auto NativeFireEventBoxed(int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed event fire error output is null");
+    *error = nullptr;
+
+    try {
+        auto backend = GetActiveBackendOrThrow();
+        return NativeFireEventImpl(ResolveAbiEvent(backend, event_id), entity_ptr, args);
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return 0;
+    }
+}
+
+static auto NativeFireEventIndexed(int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed event fire error output is null");
+    *error = nullptr;
+
+    try {
+        auto backend = GetActiveBackendOrThrow();
+        const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
+        FO_VERIFY_AND_THROW(entry.UsesScalarFrame, "Managed event does not use a scalar frame", entry.Owner, entry.Name);
+        FO_VERIFY_AND_THROW(frame != nullptr, "Managed scalar event frame is null", entry.Owner, entry.Name);
+        FO_VERIFY_AND_THROW(frame_size == numeric_cast<int32_t>(entry.FrameSize), "Managed scalar event frame size mismatch", entry.Owner, entry.Name, frame_size, entry.FrameSize);
+
+        auto entity = ResolveEntity(backend, entity_ptr);
+        Entity* self_entity = entity.get_no_const();
+        size_t first_event_arg = entry.IsGlobal ? 0 : 1;
+        size_t call_args_count = entry.Args.size() + first_event_arg;
+        FO_VERIFY_AND_THROW(call_args_count <= MAX_CALL_ARGS, "Managed event argument count exceeds bridge limit", entry.Owner, entry.Name, call_args_count);
+
+        array<void*, MAX_CALL_ARGS> args_data {};
+
+        if (!entry.IsGlobal) {
+            args_data[0] = make_ptr(&self_entity).void_cast();
+        }
+
+        uint8_t* frame_bytes = static_cast<uint8_t*>(frame);
+
+        for (size_t i = 0; i < entry.Args.size(); i++) {
+            args_data[i + first_event_arg] = frame_bytes + entry.Args[i].Offset;
+        }
+
+        small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
+        args_ptrs.reserve(call_args_count);
+
+        for (size_t arg_idx = 0; arg_idx < call_args_count; arg_idx++) {
+            args_ptrs.emplace_back(args_data[arg_idx]);
+        }
+
+        FuncCallData call {.Accessor = &MANAGED_DATA_ACCESSOR};
+        call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
+        return static_cast<int32_t>(entity->FireEvent(entry.Name, call));
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return 0;
+    }
 }
 
 static auto NativeGetPropertyImpl(MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*
@@ -2570,6 +2916,80 @@ static auto NativeSetProperty(MonoString* owner_type, MonoString* property_name,
     }
 }
 
+static auto MakeManagedCsTypeName(const BaseTypeDesc& type) -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (type.IsBool) {
+        return "bool";
+    }
+    if (type.IsInt8) {
+        return "sbyte";
+    }
+    if (type.IsUInt8) {
+        return "byte";
+    }
+    if (type.IsInt16) {
+        return "short";
+    }
+    if (type.IsUInt16) {
+        return "ushort";
+    }
+    if (type.IsInt32) {
+        return "int";
+    }
+    if (type.IsUInt32) {
+        return "uint";
+    }
+    if (type.IsInt64) {
+        return "long";
+    }
+    if (type.IsUInt64) {
+        return "ulong";
+    }
+    if (type.IsSingleFloat) {
+        return "float";
+    }
+    if (type.IsDoubleFloat) {
+        return "double";
+    }
+    if (type.IsEnum) {
+        return type.Name;
+    }
+
+    return {};
+}
+
+static auto FindPropertyCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view method_name) -> nptr<MonoMethod>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string method_name_str {method_name};
+
+    for (nptr<void> image_ptr : backend->GetImages()) {
+        nptr<MonoImage> image = image_ptr.reinterpret_as<MonoImage>();
+        MonoClass* klass = mono_class_from_name(image.get(), "FOnline", "PropertyCallbackAdapters");
+
+        if (klass == nullptr) {
+            continue;
+        }
+
+        if (MonoMethod* method = mono_class_get_method_from_name(klass, method_name_str.c_str(), 3)) {
+            return method;
+        }
+    }
+
+    return nullptr;
+}
+
+static auto IsManagedScalarProperty(ptr<const Property> prop) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const BaseTypeDesc& base_type = prop->GetBaseType();
+    return !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum);
+}
+
 static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property_name, MonoObject* getter)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2589,7 +3009,13 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
     backend->AdoptPersistentGcHandle(getter_handle);
     release_getter_handle_on_error.release();
 
-    prop->SetGetter([backend, getter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>) -> PropertyRawData FO_DEFERRED {
+    nptr<MonoMethod> adapt;
+
+    if (IsManagedScalarProperty(prop)) {
+        adapt = FindPropertyCallbackAdapter(backend, strex("AdaptGetter_{}_{}", owner_type_name, MakeManagedCsTypeName(prop->GetBaseType())));
+    }
+
+    prop->SetGetter([backend, getter_handle, prop, owner_type_name, adapt](nptr<Entity> entity, ptr<const Property>) -> PropertyRawData FO_DEFERRED {
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property getter requires an engine context");
 
@@ -2605,6 +3031,16 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
 
                 if (mono_gchandle_get_target(getter_handle) == nullptr) {
                     throw ScriptSystemException("Managed property getter delegate was collected", prop->GetName());
+                }
+
+                if (adapt) {
+                    array<uint8_t, 8> storage {};
+                    FO_VERIFY_AND_THROW(prop->GetBaseSize() <= storage.size(), "Managed scalar property getter exceeds adapter storage", prop->GetName());
+                    void* entity_ptr = entity.get_no_const();
+                    void* args[] = {mono_gchandle_get_target(getter_handle), &entity_ptr, storage.data()};
+                    (void)InvokeManagedScript(adapt.get_no_const(), nullptr, args, "Managed property getter failed");
+                    prop_data.Set(ptr<const void> {storage.data()}, prop->GetBaseSize());
+                    return;
                 }
 
                 uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 1)), 0);
@@ -2641,7 +3077,13 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
     backend->AdoptPersistentGcHandle(setter_handle);
     release_setter_handle_on_error.release();
 
-    prop->AddSetter([backend, setter_handle, prop, owner_type_name](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
+    nptr<MonoMethod> adapt;
+
+    if (IsManagedScalarProperty(prop)) {
+        adapt = FindPropertyCallbackAdapter(backend, strex("AdaptSetter_{}_{}", owner_type_name, MakeManagedCsTypeName(prop->GetBaseType())));
+    }
+
+    prop->AddSetter([backend, setter_handle, prop, owner_type_name, adapt](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) FO_DEFERRED {
         nptr<BaseEngine> engine = backend->GetMetadata().dyn_cast<BaseEngine>();
         FO_VERIFY_AND_THROW(engine, "Managed property setter requires an engine context");
 
@@ -2656,6 +3098,17 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
 
                 if (mono_gchandle_get_target(setter_handle) == nullptr) {
                     throw ScriptSystemException("Managed property setter delegate was collected", prop->GetName());
+                }
+
+                if (adapt) {
+                    array<uint8_t, 8> storage {};
+                    FO_VERIFY_AND_THROW(prop->GetBaseSize() <= storage.size() && prop_data.GetSize() == prop->GetBaseSize(), "Managed scalar property setter size mismatch", prop->GetName());
+                    memory::copy(ptr<void> {storage.data()}, prop_data.GetPtr(), prop->GetBaseSize());
+                    void* entity_ptr = entity.get_no_const();
+                    void* args[] = {mono_gchandle_get_target(setter_handle), &entity_ptr, storage.data()};
+                    (void)InvokeManagedScript(adapt.get_no_const(), nullptr, args, "Managed property setter failed");
+                    prop_data.Set(ptr<const void> {storage.data()}, prop->GetBaseSize());
+                    return;
                 }
 
                 uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), 2)), 0);
@@ -2780,16 +3233,29 @@ static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* 
     });
 }
 
-static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*
+static auto ResolveAbiMethod(ptr<ManagedScriptBackend> backend, int32_t method_id, bool require_bound) -> const ManagedAbiMethodRuntime&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto abi = backend->GetAbi();
+    FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
+
+    if (require_bound) {
+        FO_VERIFY_AND_THROW(abi->Bound, "Managed ABI manifest is not bound");
+    }
+
+    FO_VERIFY_AND_THROW(method_id >= 0 && numeric_cast<size_t>(method_id) < abi->Methods.size(), "Managed method id is out of range", method_id, abi->Methods.size());
+    return abi->Methods[numeric_cast<size_t>(method_id)];
+}
+
+static auto NativeCallMethodImpl(const ManagedAbiMethodRuntime& entry, void* entity_ptr, MonoArray* args) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
     auto backend = GetActiveBackendOrThrow();
-    ptr<EngineMetadata> meta = backend->GetMetadata();
-    string owner_type_name = ToStringAndFree(owner_type);
-    string method_name_str = ToStringAndFree(method_name);
-    auto ref_type_desc = FindRefTypeDesc(meta, owner_type_name);
-    bool is_ref_type_method = !!ref_type_desc;
+    string_view owner_type_name = entry.Owner;
+    string_view method_name_str = entry.Method ? string_view {entry.Method->Name} : string_view {};
+    bool is_ref_type_method = entry.IsRefType;
     auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
     uint32_t args_handle = args != nullptr ? mono_gchandle_new(reinterpret_cast<MonoObject*>(args), 0) : 0;
@@ -2799,10 +3265,14 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
         }
     });
     auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
-    auto method = FindMethod(meta, owner_type_name, method_name_str, method_index, args_count);
+    nptr<const MethodDesc> method = entry.Method;
 
     if (!method) {
-        throw ScriptSystemException("Managed method not found", owner_type_name, method_name_str, method_index, args_count);
+        throw ScriptSystemException("Managed method not found", owner_type_name, method_name_str, args_count);
+    }
+
+    if (method->Args.size() != args_count) {
+        throw ScriptSystemException("Managed method argument count mismatch", owner_type_name, method_name_str, args_count, method->Args.size());
     }
 
     bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
@@ -2952,7 +3422,7 @@ static auto NativeCallMethodImpl(MonoString* owner_type, MonoString* method_name
     return BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
 }
 
-static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*
+static auto NativeCallMethodBoxed(int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2960,11 +3430,91 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
     *error = nullptr;
 
     try {
-        return NativeCallMethodImpl(owner_type, method_name, method_index, entity_ptr, args);
+        auto backend = GetActiveBackendOrThrow();
+        return NativeCallMethodImpl(ResolveAbiMethod(backend, method_id, true), entity_ptr, args);
     }
     catch (const std::exception& ex) {
         *error = MakeManagedNativeError(ex);
         return nullptr;
+    }
+}
+
+static auto NativeCallMethodIndexed(int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        auto backend = GetActiveBackendOrThrow();
+        const ManagedAbiMethodRuntime& entry = ResolveAbiMethod(backend, method_id, true);
+        FO_VERIFY_AND_THROW(entry.UsesScalarFrame, "Managed method does not use a scalar frame", entry.Owner, method_id);
+        FO_VERIFY_AND_THROW(frame != nullptr, "Managed scalar method frame is null", entry.Owner, method_id);
+        FO_VERIFY_AND_THROW(frame_size == numeric_cast<int32_t>(entry.FrameSize), "Managed scalar method frame size mismatch", entry.Owner, method_id, frame_size, entry.FrameSize);
+
+        nptr<const MethodDesc> method = entry.Method;
+        FO_VERIFY_AND_THROW(method, "Managed ABI method pointer is null", entry.Owner, method_id);
+
+        bool is_ref_type_method = entry.IsRefType;
+        bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
+        auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
+        Entity* self_entity = entity.get_no_const();
+        void* self_ref = entity_ptr;
+        size_t first_method_arg = is_ref_type_factory ? 0 : 1;
+        array<void*, MAX_CALL_ARGS> args_data {};
+
+        if (!is_ref_type_factory) {
+            args_data[0] = is_ref_type_method ? &self_ref : make_ptr(&self_entity).void_cast();
+        }
+
+        if (is_ref_type_method && !is_ref_type_factory && self_ref == nullptr) {
+            throw ScriptSystemException("Managed ref type target is null", entry.Owner, method->Name);
+        }
+
+        uint8_t* frame_bytes = static_cast<uint8_t*>(frame);
+
+        for (size_t i = 0; i < method->Args.size(); i++) {
+            args_data[i + first_method_arg] = frame_bytes + entry.Args[i].Offset;
+        }
+
+        small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
+        args_ptrs.reserve(method->Args.size() + first_method_arg);
+
+        for (size_t arg_idx = 0; arg_idx < method->Args.size() + first_method_arg; arg_idx++) {
+            args_ptrs.emplace_back(args_data[arg_idx]);
+        }
+
+        FuncCallData call {.Accessor = &MANAGED_DATA_ACCESSOR};
+        call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
+
+        if (method->Ret) {
+            call.RetData = frame_bytes + entry.ResultOffset;
+        }
+
+        method->Call(call);
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return MakeManagedNativeError(ex);
+    }
+}
+
+static auto NativeBindAbi(uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    try {
+        auto backend = GetActiveBackendOrThrow();
+        auto abi = backend->GetAbi();
+        FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
+        FO_VERIFY_AND_THROW(abi->Hash == hash, "Managed ABI manifest hash mismatch", hash, abi->Hash);
+        FO_VERIFY_AND_THROW(numeric_cast<size_t>(method_count) == abi->Methods.size(), "Managed ABI method count mismatch", method_count, abi->Methods.size());
+        FO_VERIFY_AND_THROW(numeric_cast<size_t>(event_count) == abi->Events.size(), "Managed ABI event count mismatch", event_count, abi->Events.size());
+        FO_VERIFY_AND_THROW(numeric_cast<size_t>(setting_count) == abi->Settings.size(), "Managed ABI setting count mismatch", setting_count, abi->Settings.size());
+        FO_VERIFY_AND_THROW(numeric_cast<size_t>(inner_count) == abi->Inners.size(), "Managed ABI inner-entry count mismatch", inner_count, abi->Inners.size());
+        abi->Bound = true;
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return MakeManagedNativeError(ex);
     }
 }
 
@@ -3541,7 +4091,8 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::GetEntityName", reinterpret_cast<const void*>(NativeGetEntityName));
     mono_add_internal_call("FOnline.Native::SubscribeEvent", reinterpret_cast<const void*>(NativeSubscribeEvent));
     mono_add_internal_call("FOnline.Native::UnsubscribeEvent", reinterpret_cast<const void*>(NativeUnsubscribeEvent));
-    mono_add_internal_call("FOnline.Native::FireEvent", reinterpret_cast<const void*>(NativeFireEvent));
+    mono_add_internal_call("FOnline.Native::FireEventBoxedInternal", reinterpret_cast<const void*>(NativeFireEventBoxed));
+    mono_add_internal_call("FOnline.Native::FireEventIndexedInternal", reinterpret_cast<const void*>(NativeFireEventIndexed));
     mono_add_internal_call("FOnline.Native::GetPropertyInternal", reinterpret_cast<const void*>(NativeGetProperty));
     mono_add_internal_call("FOnline.Native::GetPropertyValueInternal", reinterpret_cast<const void*>(NativeGetPropertyValue));
     mono_add_internal_call("FOnline.Native::SetPropertyValueInternal", reinterpret_cast<const void*>(NativeSetPropertyValue));
@@ -3550,7 +4101,9 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::AddPropertySetter", reinterpret_cast<const void*>(NativeAddPropertySetter));
     mono_add_internal_call("FOnline.Native::AddPropertySetterWithProperty", reinterpret_cast<const void*>(NativeAddPropertySetterWithProperty));
     mono_add_internal_call("FOnline.Native::AddPropertyDeferredSetter", reinterpret_cast<const void*>(NativeAddPropertyDeferredSetter));
-    mono_add_internal_call("FOnline.Native::CallMethodInternal", reinterpret_cast<const void*>(NativeCallMethod));
+    mono_add_internal_call("FOnline.Native::BindAbiInternal", reinterpret_cast<const void*>(NativeBindAbi));
+    mono_add_internal_call("FOnline.Native::CallMethodBoxedInternal", reinterpret_cast<const void*>(NativeCallMethodBoxed));
+    mono_add_internal_call("FOnline.Native::CallMethodIndexedInternal", reinterpret_cast<const void*>(NativeCallMethodIndexed));
     mono_add_internal_call("FOnline.Native::InvokeScriptFuncStatus", reinterpret_cast<const void*>(NativeInvokeScriptFuncStatus));
     mono_add_internal_call("FOnline.Native::GetBackendAliveFlag", reinterpret_cast<const void*>(NativeGetBackendAliveFlag));
     mono_add_internal_call("FOnline.Native::GetBackend", reinterpret_cast<const void*>(NativeGetBackend));
@@ -3561,8 +4114,8 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::CreateInnerEntity", reinterpret_cast<const void*>(NativeCreateInnerEntity));
     mono_add_internal_call("FOnline.Native::HasInnerEntities", reinterpret_cast<const void*>(NativeHasInnerEntities));
     mono_add_internal_call("FOnline.Native::GetInnerEntity", reinterpret_cast<const void*>(NativeGetInnerEntity));
-    mono_add_internal_call("FOnline.Native::GetInnerEntityCount", reinterpret_cast<const void*>(NativeGetInnerEntityCount));
-    mono_add_internal_call("FOnline.Native::GetInnerEntityAt", reinterpret_cast<const void*>(NativeGetInnerEntityAt));
+    mono_add_internal_call("FOnline.Native::FillInnerEntitiesInternal", reinterpret_cast<const void*>(NativeFillInnerEntities));
+    mono_add_internal_call("FOnline.Native::GetAndResetInnerEntityVisits", reinterpret_cast<const void*>(NativeGetAndResetInnerEntityVisits));
     mono_add_internal_call("FOnline.Native::GetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsInt));
     mono_add_internal_call("FOnline.Native::SetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsInt));
     mono_add_internal_call("FOnline.Native::GetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsAny));
@@ -3587,6 +4140,7 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::SetSettingDouble", reinterpret_cast<const void*>(NativeSetSettingDouble));
     mono_add_internal_call("FOnline.Native::GetSettingString", reinterpret_cast<const void*>(NativeGetSettingString));
     mono_add_internal_call("FOnline.Native::SetSettingString", reinterpret_cast<const void*>(NativeSetSettingString));
+    mono_add_internal_call("FOnline.Native::GetSettingValueInternal", reinterpret_cast<const void*>(NativeGetSettingValue));
 }
 
 // === Settings access helpers ===
@@ -4013,6 +4567,47 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
     if (call.ArgsData.size() != subscription->Args.size()) {
         throw ScriptSystemException("Managed event argument count mismatch");
+    }
+
+    if (subscription->UsesScalarFrame && subscription->AdaptInvoke) {
+        size_t first_event_arg = subscription->Args.size() == subscription->Slots.size() ? 0 : 1;
+        array<uint8_t, MANAGED_ABI_SCALAR_FRAME_CAPACITY> frame {};
+        FO_VERIFY_AND_THROW(subscription->FrameSize <= frame.size(), "Managed event frame exceeds adapter capacity", subscription->AdaptClassName, subscription->FrameSize);
+
+        for (size_t i = 0; i < subscription->Slots.size(); i++) {
+            const ManagedAbiSlot& slot = subscription->Slots[i];
+            FO_VERIFY_AND_THROW(numeric_cast<size_t>(slot.Offset) + slot.Size <= subscription->FrameSize, "Managed event slot is outside the adapter frame", subscription->AdaptClassName);
+            memory::copy(ptr<void> {frame.data() + slot.Offset}, ptr<void>(call.ArgsData[i + first_event_arg]), slot.Size);
+        }
+
+        void* entity_ptr = nullptr;
+
+        if (first_event_arg == 1) {
+            entity_ptr = *static_cast<Entity**>(ptr<void>(call.ArgsData[0]).get());
+        }
+
+        MonoObject* handler = mono_gchandle_get_target(subscription->Handler);
+        mono_bool has_result = subscription->HasExplicitResult ? 1 : 0;
+        int32_t frame_size = numeric_cast<int32_t>(subscription->FrameSize);
+        void* args[] = {handler, &has_result, &entity_ptr, frame.data(), &frame_size};
+        ManagedObjectRoot ret;
+        ret.SetObject(InvokeManagedScript(subscription->AdaptInvoke.get(), nullptr, args, "Managed event handler failed"));
+
+        for (size_t i = 0; i < subscription->Slots.size(); i++) {
+            const ManagedAbiSlot& slot = subscription->Slots[i];
+
+            if (!slot.Mutable) {
+                continue;
+            }
+
+            memory::copy(ptr<void>(call.ArgsData[i + first_event_arg]), ptr<void> {frame.data() + slot.Offset}, slot.Size);
+        }
+
+        if (ret.GetObject() == nullptr) {
+            return Entity::EventResult::ContinueChain;
+        }
+
+        return static_cast<Entity::EventResult>(*static_cast<int32_t*>(mono_object_unbox(ret.GetObject())));
     }
 
     MonoClass* native_class = mono_class_from_name(subscription->Image.get(), "FOnline", "Native");
@@ -5687,34 +6282,6 @@ static auto FindRefTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_nam
     return base_type.RefType.get();
 }
 
-static auto FindMethod(ptr<EngineMetadata> meta, string_view owner_type_name, string_view method_name, int32_t method_index, size_t args_count) -> nptr<const MethodDesc>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto entity_desc = FindEntityTypeDesc(meta, owner_type_name);
-    auto ref_type_desc = !entity_desc ? FindRefTypeDesc(meta, owner_type_name) : nullptr;
-    const vector<MethodDesc>* methods = entity_desc ? &entity_desc->Methods : (ref_type_desc ? &ref_type_desc->Methods : nullptr);
-
-    if (methods == nullptr || method_index < 0 || numeric_cast<size_t>(method_index) >= methods->size()) {
-        return nullptr;
-    }
-
-    const MethodDesc& method = (*methods)[numeric_cast<size_t>(method_index)];
-
-    // Property accessors take this path too: generated bodies route through Native.CallMethod by accessor index
-    if (method.Name != method_name || method.Args.size() != args_count) {
-        return nullptr;
-    }
-    if (!IsManagedBridgeType(method.Ret)) {
-        return nullptr;
-    }
-    if (std::ranges::any_of(method.Args, [](const ArgDesc& arg) { return !IsManagedBridgeType(arg.Type); })) {
-        return nullptr;
-    }
-
-    return &method;
-}
-
 static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view type_name) -> ComplexTypeDesc
 {
     FO_STACK_TRACE_ENTRY();
@@ -5810,14 +6377,6 @@ static auto ExtractProtoHashFromManagedEntity(MonoObject* value) -> hstring::has
     return proto->GetProtoId().as_hash();
 }
 
-static auto ResolveInnerEntry(ptr<ManagedScriptBackend> backend, MonoString* entry_name) -> hstring
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string entry_name_str = ToStringAndFree(entry_name);
-    return backend->GetMetadata()->Hashes.to_hashed_string(entry_name_str);
-}
-
 static void ValidateManagedInnerEntity(ptr<const Entity> entity)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -5829,7 +6388,7 @@ static void ValidateManagedInnerEntity(ptr<const Entity> entity)
     }
 }
 
-static auto CollectManagedInnerEntities(ptr<Entity> holder, hstring entry) -> vector<ptr<Entity>>
+static auto CollectManagedInnerEntities(ptr<ManagedScriptBackend> backend, ptr<Entity> holder, hstring entry) -> vector<ptr<Entity>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5837,6 +6396,7 @@ static auto CollectManagedInnerEntities(ptr<Entity> holder, hstring entry) -> ve
     vector<ptr<Entity>> result;
 
     if (!entities || entities->empty()) {
+        backend->AddInnerEntityVisits(0);
         return result;
     }
 
@@ -5847,6 +6407,7 @@ static auto CollectManagedInnerEntities(ptr<Entity> holder, hstring entry) -> ve
         result.emplace_back(entity.get());
     }
 
+    backend->AddInnerEntityVisits(result.size());
     return result;
 }
 
@@ -6528,6 +7089,11 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
     _managedHostImage = nullptr;
 }
 
+ManagedScriptBackend::ManagedScriptBackend()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
 ManagedScriptBackend::~ManagedScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
@@ -6665,6 +7231,106 @@ void ManagedScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     // The embedding engine is both metadata and script system, so take the script system here to register managed
     // global funcs into the cross-backend func map
     _scriptSys = meta.dyn_cast<ScriptSystem>();
+    BuildAbiTables();
+}
+
+void ManagedScriptBackend::BuildAbiTables()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_meta, "Engine metadata is not registered");
+
+    auto state = safe_alloc::make_unique<ManagedAbiRuntimeState>();
+    ManagedAbiManifest manifest = BuildManagedAbiManifest(*_meta, GetTargetName(_meta->GetSide()));
+    state->Hash = manifest.Hash;
+    state->Methods.reserve(manifest.Methods.size());
+    state->Events.reserve(manifest.Events.size());
+    state->Settings.reserve(manifest.Settings.size());
+    state->Inners.reserve(manifest.InnerEntries.size());
+
+    for (const ManagedAbiMethodEntry& entry : manifest.Methods) {
+        ManagedAbiMethodRuntime runtime;
+        runtime.Owner = entry.Owner;
+        runtime.IsRefType = entry.IsRefType;
+        runtime.UsesScalarFrame = entry.UsesScalarFrame;
+        runtime.Args = entry.Args;
+        runtime.Ret = entry.Ret;
+        runtime.FrameSize = entry.FrameSize;
+        runtime.ResultOffset = entry.ResultOffset;
+
+        if (entry.IsRefType) {
+            auto ref_type = FindRefTypeDesc(_meta, entry.Owner);
+            FO_VERIFY_AND_THROW(ref_type && entry.OwnerIndex < ref_type->Methods.size(), "Managed ABI ref-type method is missing", entry.Owner, entry.Name, entry.OwnerIndex);
+            runtime.Method = &ref_type->Methods[entry.OwnerIndex];
+        }
+        else {
+            auto entity_desc = FindEntityTypeDesc(_meta, entry.Owner);
+            FO_VERIFY_AND_THROW(entity_desc && entry.OwnerIndex < entity_desc->Methods.size(), "Managed ABI method is missing", entry.Owner, entry.Name, entry.OwnerIndex);
+            runtime.Method = &entity_desc->Methods[entry.OwnerIndex];
+        }
+
+        FO_VERIFY_AND_THROW(runtime.Method->Name == entry.Name, "Managed ABI method name mismatch", entry.Owner, entry.Name, runtime.Method->Name);
+        state->Methods.emplace_back(std::move(runtime));
+    }
+
+    for (const ManagedAbiEventEntry& entry : manifest.Events) {
+        ManagedAbiEventRuntime runtime;
+        runtime.Owner = entry.Owner;
+        runtime.Name = entry.Name;
+        runtime.IsGlobal = entry.IsGlobal;
+        runtime.UsesScalarFrame = entry.UsesScalarFrame;
+        runtime.Args = entry.Args;
+        runtime.FrameSize = entry.FrameSize;
+        runtime.Desc = FindEntityTypeDesc(_meta, entry.Owner);
+        FO_VERIFY_AND_THROW(runtime.Desc, "Managed ABI event owner is missing", entry.Owner);
+
+        auto event_it = std::ranges::find_if(runtime.Desc->Events, [&](const EntityEventDesc& event) { return event.Name == entry.Name; });
+        FO_VERIFY_AND_THROW(event_it != runtime.Desc->Events.end(), "Managed ABI event is missing", entry.Owner, entry.Name);
+        runtime.Event = &*event_it;
+        state->Events.emplace_back(std::move(runtime));
+    }
+
+    for (const ManagedAbiSettingEntry& entry : manifest.Settings) {
+        ManagedAbiSettingRuntime runtime;
+        runtime.Name = entry.Name;
+        runtime.Kind = entry.Kind;
+        runtime.UsesTypedBridge = entry.UsesTypedBridge;
+        runtime.Builtin = FindNumericSettingAccess(entry.Name);
+        state->Settings.emplace_back(std::move(runtime));
+    }
+
+    for (const ManagedAbiInnerEntry& entry : manifest.InnerEntries) {
+        ManagedAbiInnerRuntime runtime;
+        runtime.Owner = entry.Owner;
+        runtime.TargetType = entry.TargetType;
+        runtime.Entry = _meta->Hashes.to_hashed_string(entry.EntryName);
+        state->Inners.emplace_back(std::move(runtime));
+    }
+
+    _abi = std::move(state);
+}
+
+auto ManagedScriptBackend::GetAbi() const -> nptr<const ManagedAbiRuntimeState>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _abi.get();
+}
+
+auto ManagedScriptBackend::GetAbi() -> nptr<ManagedAbiRuntimeState>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _abi.get();
+}
+
+void ManagedScriptBackend::AddInnerEntityVisits(uint64_t count)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_abi) {
+        _abi->InnerEntityVisits += count;
+    }
 }
 
 auto ManagedScriptBackend::GetGlobalEntity() const noexcept -> nptr<Entity>

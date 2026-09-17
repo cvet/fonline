@@ -710,6 +710,17 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(ptr<BaseEngine> engine, sy
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividend, int32_t divisor, int32_t& remainder)
+{
+    ignore_unused(engine);
+
+    FO_VERIFY_AND_THROW(divisor != 0, "Division by zero");
+
+    remainder = dividend % divisor;
+    return dividend / divisor;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, {});
