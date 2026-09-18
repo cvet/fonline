@@ -197,7 +197,7 @@ public:
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, DrawFlatten);
     ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(int8_t, DrawOrderOffsetHexY);
+    FO_ENTITY_PROPERTY(int8_t, DrawOrderSubLayer);
     ///@ MigrationRule Property Item IsNoHighlight NoHighlight
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, NoHighlight);

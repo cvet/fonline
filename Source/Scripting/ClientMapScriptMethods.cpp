@@ -72,7 +72,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
     bool is_flat = mapSpr->IsFlat;
     bool no_light = mapSpr->NoLight;
     DrawOrderType draw_order = mapSpr->DrawOrder;
-    int32_t draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
+    int8_t draw_order_sub_layer = mapSpr->DrawOrderSubLayer;
     CornerType corner = mapSpr->Corner;
     bool disable_egg = mapSpr->DisableEgg;
 
@@ -83,12 +83,12 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         is_flat = proto->GetDrawFlatten();
         no_light = is_flat && !(proto->GetIsScenery() || proto->GetIsWall());
         draw_order = is_flat ? (proto->GetStatic() ? DrawOrderType::FlatItemPreLight : DrawOrderType::FlatItemAfterLight) : DrawOrderType::Item;
-        draw_order_hy_offset = numeric_cast<int32_t>(proto->GetDrawOrderOffsetHexY());
+        draw_order_sub_layer = proto->GetDrawOrderSubLayer();
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();
     }
 
-    auto mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_hy_offset, //
+    auto mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_sub_layer, //
         mapSpr->Offset, mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, //
         mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, &mapSpr->Valid);
 
