@@ -69,6 +69,13 @@ Read this together with:
   what a consumer needs to bind a nested section to the section it follows (the by-name multimap
   cannot express that, since repeated names collapse). `SkipNestedSections` parses only non-nested
   sections and skips nested bodies.
+- Repeated sections: `GetSections(name)` returns every section of that name in file order (the
+  multimap's equal range), and the single-section reads (`GetSection`, `GetAsStr`, `GetAsInt`,
+  `HasKey`, `GetSectionKeyValues`, `GetSectionContent`) read the first declared one. Neither is
+  built on `multimap::find`: the standard lets it return any element of a repeated key, and libc++
+  returns whichever node its descent meets first, so counting on from it walks past the last section.
+  MSVC STL and libstdc++ happen to return the first, which is why only a libc++ target (Web, Android,
+  Apple) would show it.
 - `ConfigFile` takes only the content: no file identity, no parse callbacks, no format tokens. For
   map files, `MapLoader` owns the interpretation - `[ProtoMap]` declares a map named by its `$Name`
   or by the file, and a nested `$Name/<Type>` prefix binds content to the anchor above it.

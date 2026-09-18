@@ -74,6 +74,7 @@ private:
     auto ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool;
     void TrimConfigRange(string_view line, size_t& begin, size_t& end);
     auto IsConfigSpace(char ch) -> bool;
+    auto FindFirstSection(string_view section_name) const noexcept -> multimap<string_view, map<string_view, string_view>>::const_iterator;
     auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>;
     auto StoreOwnedString(string_view value) -> string_view;
     auto StoreOwnedString(string&& value) -> string_view;
