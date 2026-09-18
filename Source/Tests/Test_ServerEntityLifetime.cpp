@@ -179,6 +179,24 @@ TEST_CASE("ServerEntityOwnersReleasedAfterShutdownOnAnotherThread", "[server][en
     CHECK(server->GetRefCount() == 1);
 }
 
+// Baked map files author static item ids from one upward and the client indexes them together with runtime
+// items, so a generated world has to start above them exactly as a restored one does
+TEST_CASE("ServerGeneratedWorldDrawsEntityIdsAboveTheConfiguredStart", "[server][entity][lifetime]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    ptr<Critter> cr = server->CreateCritter(server->Hashes.to_hashed_string("LifetimeCritter"), false);
+
+    CHECK(cr->GetId().underlying_value() > settings.Server.EntityStartId);
+    CHECK(server->GetLastEntityId().underlying_value() >= cr->GetId().underlying_value());
+}
+
 TEST_CASE("ServerEntityOwnersReleaseBeforeShutdown", "[server][entity][lifetime]")
 {
     GlobalSettings settings = MakeServerEntityLifetimeSettings();

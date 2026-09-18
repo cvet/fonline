@@ -687,6 +687,10 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             }
         }
 
+        // Before any script can create an entity: a generated world, like a restored one, must never hand out
+        // an id a baked map file already uses for its static items, which share the client's item index
+        EntityMngr.InitEntityIdBoundary();
+
         GameTime.SetSynchronizedTime(GetSynchronizedTime());
         FrameAdvance();
 

@@ -110,6 +110,7 @@ public:
         return it->second.template dyn_cast<const T>();
     }
 
+    void InitEntityIdBoundary();
     void LoadEntities();
     auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>;
     auto LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>;
