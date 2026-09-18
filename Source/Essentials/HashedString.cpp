@@ -35,8 +35,6 @@
 
 FO_BEGIN_NAMESPACE
 
-hstring::entry hstring::_zero_entry;
-
 hash_storage::hash_storage(hash_func func) :
     _hash_func {func}
 {

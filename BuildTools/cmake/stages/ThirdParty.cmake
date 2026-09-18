@@ -891,6 +891,12 @@ if(FO_MANAGED_SCRIPTING)
             SetValue(runtimeLib "${runtimeArchive}")
         endif()
 
+        # The Android runtime publishes its shared library beside the archive, and a bare name links the shared
+        # one, which hides the eglib symbols the allocator readback reads; the archive is what every host links
+        if(FO_ANDROID)
+            SetValue(runtimeLib "${runtimeArchive}")
+        endif()
+
         AppendList(FO_COMMON_SYSTEM_LIBS "${runtimeLib}")
     endforeach()
 

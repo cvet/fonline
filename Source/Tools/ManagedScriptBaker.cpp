@@ -2759,12 +2759,17 @@ static void AppendHstringType(ostringstream& out)
 {
     FO_STACK_TRACE_ENTRY();
 
+    out << "[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 8)]\n";
     out << "public partial struct hstring\n";
     out << "{\n";
-    out << CS_INDENT << "public ulong Value;\n\n";
-    out << CS_INDENT << "public hstring(ulong value)\n";
+    out << CS_INDENT << "public System.IntPtr Value;\n\n";
+    out << CS_INDENT << "public hstring(System.IntPtr value)\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    Value = value;\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public hstring(ulong hash)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    Value = global::FOnline.Native.ResolveHash(hash);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public hstring(string value)\n";
     out << CS_INDENT << "{\n";
@@ -2933,11 +2938,15 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "// Strong native reference held for the wrapper's lifetime (paired with the ctor AddRef), so a\n";
     out << CS_INDENT << "// wrapper retained past the entity's destroy keeps it alive-but-destroyed instead of dangling.\n";
     out << CS_INDENT << "// Giving it back on GC finalization is the only path there is, which is why backend teardown\n";
-    out << CS_INDENT << "// runs the collector and waits for it while the engine is still alive.\n";
+    out << CS_INDENT << "// runs the collector and waits for it while the engine is still alive. A wrapper the teardown\n";
+    out << CS_INDENT << "// reported as outstanding is finalized after that engine is gone, so its reference stays unreturned:\n";
+    out << CS_INDENT << "// the entity would release into freed engine memory.\n";
     out << CS_INDENT << "~Entity()\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    if (_entityPtrValue != IntPtr.Zero) {\n";
-    out << CS_INDENT << "        global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
+    out << CS_INDENT << "        if (_backendAlive != null && _backendAlive[0]) {\n";
+    out << CS_INDENT << "            global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
+    out << CS_INDENT << "        }\n\n";
     out << CS_INDENT << "        _entityPtrValue = IntPtr.Zero;\n";
     out << CS_INDENT << "        // Given back after the reference, so an entry the engine still sees means the reference is still held\n";
     out << CS_INDENT << "        global::FOnline.EntityWrapperTracker.Unregister(_trackerId);\n";
@@ -3491,7 +3500,7 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
         unordered_set<string> used_arg_names;
         string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    return global::FOnline.Native.GetHashStr(" << arg_name << ");\n";
+        out << CS_INDENT << "    return global::FOnline.Native.GetHashStrFromHash(" << arg_name << ");\n";
         out << CS_INDENT << "}\n";
     }
     else if (allow_native_bridge && IsManagedBridgeMethod(method)) {
@@ -3967,7 +3976,7 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
         if (!HasMethodSignature(desc.Methods, "GetHashStr", "string", {"ulong"})) {
             out << CS_INDENT << "public static string GetHashStr(ulong value)\n";
             out << CS_INDENT << "{\n";
-            out << CS_INDENT << "    return global::FOnline.Native.GetHashStr(value);\n";
+            out << CS_INDENT << "    return global::FOnline.Native.GetHashStrFromHash(value);\n";
             out << CS_INDENT << "}\n\n";
         }
         if (target_name == "Server" && member_names.emplace("Destroy").second) {
@@ -4069,7 +4078,7 @@ static void AppendEntityHolderAccessors(ostringstream& out, string_view owner_ty
                 out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.CreateInnerEntity(" << entity_ptr << ", \"" << entry_literal << "\", pid.Value);\n";
             }
             else {
-                out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.CreateInnerEntity(" << entity_ptr << ", \"" << entry_literal << "\", 0UL);\n";
+                out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.CreateInnerEntity(" << entity_ptr << ", \"" << entry_literal << "\", IntPtr.Zero);\n";
             }
 
             out << CS_INDENT << "    global::FOnline.Invariant.Verify(__ptr != IntPtr.Zero, \"Inner entity creation failed\");\n";

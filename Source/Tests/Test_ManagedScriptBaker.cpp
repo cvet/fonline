@@ -1000,7 +1000,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static void Destroy<T>(System.Collections.Generic.List<T>? entities) where T : Entity") != string::npos);
     CHECK(server_entities.find("DestroyEntity(entities[__i]);") != string::npos);
     CHECK(server_entities.find("public static ManagedGlobal AddManagedGlobal()") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\", 0UL)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\", IntPtr.Zero)") != string::npos);
     CHECK(server_entities.find("public static bool HasManagedGlobals()") != string::npos);
     CHECK(server_entities.find("public static System.Collections.Generic.List<ManagedGlobal> GetManagedGlobals()") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetInnerEntityAt(IntPtr.Zero, \"ManagedGlobal\", __i)") != string::npos);
@@ -1087,6 +1087,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_voidAsync();") != string::npos);
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_bool") == string::npos);
     CHECK(server_types.find("public partial struct hstring") != string::npos);
+    CHECK(server_types.find("public System.IntPtr Value;") != string::npos);
+    CHECK(server_types.find("LayoutKind.Sequential, Size = 8") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {
@@ -1113,6 +1115,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("return (ushort)__result;") != string::npos);
     CHECK(server_entities.find("public partial class Entity : System.IEquatable<Entity>") != string::npos);
     CHECK(server_entities.find("private readonly bool[]? _backendAlive;") != string::npos);
+    CHECK(server_entities.find("            if (_backendAlive != null && _backendAlive[0]) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
     CHECK(server_entities.find("Entity wrapper belongs to a different managed backend") != string::npos);
     CHECK(server_entities.find("return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue && _backend == other._backend;") != string::npos);
     CHECK(server_entities.find("public static bool operator ==(Entity? left, Entity? right)") != string::npos);

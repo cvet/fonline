@@ -579,16 +579,22 @@ internal static class Native
     private static extern void ReportExceptionInternal(string summary, string? nativeError, long[] frames);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern string GetHashStr(ulong value);
+    internal static extern string GetHashStr(System.IntPtr value);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern ulong GetHash(string text);
+    internal static extern string GetHashStrFromHash(ulong value);
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern System.IntPtr GetHash(string text);
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern System.IntPtr ResolveHash(ulong hash);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern long GetEntityId(IntPtr entityPtr);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern ulong GetEntityProtoId(IntPtr entityPtr);
+    internal static extern IntPtr GetEntityProtoId(IntPtr entityPtr);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern void AddRefEntity(IntPtr entityPtr);
@@ -637,10 +643,10 @@ internal static class Native
     // returns the proto entity pointer for `typeName`/`protoIdHash` (IntPtr.Zero if unknown), or whether it
     // exists. Backs the baker-generated Game.GetProto<X> / CheckProto<X> wrappers for custom HasProtos entities.
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr GetProtoEntity(string typeName, ulong protoIdHash);
+    internal static extern IntPtr GetProtoEntity(string typeName, IntPtr protoId);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern bool CheckProtoEntity(string typeName, ulong protoIdHash);
+    internal static extern bool CheckProtoEntity(string typeName, IntPtr protoId);
 
     // Plural proto enumeration (count + by-index) backing the generated Game.GetProto<X>s()/Get<X>s().
     [MethodImpl(MethodImplOptions.InternalCall)]
@@ -652,7 +658,7 @@ internal static class Native
     // Entity-holder accessors (managed equivalent of AngelScript CustomEntity_Add/HasAny/GetOne/GetAll),
     // backing generated Add<X>/Has<X>s/Get<X>/Get<X>s methods for metadata EntityHolder entries.
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr CreateInnerEntity(IntPtr holderPtr, string entryName, ulong protoIdHash);
+    internal static extern IntPtr CreateInnerEntity(IntPtr holderPtr, string entryName, IntPtr protoId);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern bool HasInnerEntities(IntPtr holderPtr, string entryName);

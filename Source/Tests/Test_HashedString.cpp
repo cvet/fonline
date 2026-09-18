@@ -45,6 +45,15 @@ TEST_CASE("HashedString")
         CHECK_FALSE(static_cast<bool>(empty));
         CHECK(empty.as_hash() == 0);
         CHECK(empty.as_str().empty());
+        CHECK(empty.c_str()[0] == '\0');
+        CHECK(!empty.get_entry());
+
+        alignas(hstring) uint8_t raw[sizeof(hstring)] {};
+        const hstring& zeroed = *reinterpret_cast<const hstring*>(raw);
+        CHECK_FALSE(static_cast<bool>(zeroed));
+        CHECK(zeroed.as_hash() == 0);
+        CHECK(zeroed.as_str().empty());
+        CHECK(zeroed == empty);
     }
 
     SECTION("StorageRoundtrip")

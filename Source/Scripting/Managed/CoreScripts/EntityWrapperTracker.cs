@@ -46,7 +46,7 @@ internal static class EntityWrapperTracker
     // Switched on by the engine while it loads the assemblies, never asked for from a static constructor:
     // those run while the initializator walks every type, long before there is an active backend to ask
     [CallableByEngine]
-    private static void EnableDeepWrapperTracking()
+    internal static void EnableDeepWrapperTracking()
     {
         DeepTrackingEnabled = true;
     }
@@ -81,7 +81,7 @@ internal static class EntityWrapperTracker
     // Passes alternate because a finalized wrapper can drop the last reference to another one, and the loop
     // stops at zero or the pass limit. Waiting for the finalizer queue has its own deadline
     [CallableByEngine]
-    private static int CollectAndWaitForFinalizers(int passLimit)
+    internal static int CollectAndWaitForFinalizers(int passLimit)
     {
         const int waitBudgetMilliseconds = 5000;
         long deadline = Environment.TickCount64 + waitBudgetMilliseconds;
@@ -108,7 +108,7 @@ internal static class EntityWrapperTracker
     // a captured async state machine) and will never finalize itself, while an unreachable one is simply waiting
     // for the collector and needs no action but patience
     [CallableByEngine]
-    private static string DumpOutstandingWrappers()
+    internal static string DumpOutstandingWrappers()
     {
         int live = LiveWrapperCount();
 

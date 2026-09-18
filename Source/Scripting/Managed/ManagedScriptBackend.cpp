@@ -412,13 +412,15 @@ static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool;
 
 // Native ABI: logging, hashing, backend and prototype queries
 static void NativeLog(MonoString* text);
-static auto NativeGetHash(MonoString* text) -> uint64_t;
-static auto NativeGetHashStr(uint64_t value) -> MonoString*;
+static auto NativeGetHash(MonoString* text) -> void*;
+static auto NativeGetHashStr(void* value) -> MonoString*;
+static auto NativeGetHashStrFromHash(uint64_t value) -> MonoString*;
+static auto NativeResolveHash(uint64_t hash) -> void*;
 static auto NativeGetBackendAliveFlag() -> MonoArray*;
 static auto NativeGetBackend() -> void*;
 static auto NativeRunScriptContinuation(MonoObject* continuation) -> MonoString*;
-static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> void*;
-static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> mono_bool;
+static auto NativeGetProtoEntity(MonoString* type_name, void* proto_id) -> void*;
+static auto NativeCheckProtoEntity(MonoString* type_name, void* proto_id) -> mono_bool;
 static auto NativeGetProtoEntityCount(MonoString* type_name) -> int32_t;
 static auto NativeGetProtoEntityAt(MonoString* type_name, int32_t index) -> void*;
 
@@ -432,7 +434,7 @@ static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool;
 static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool;
 static auto NativeGetEntityName(void* entity_ptr) -> MonoString*;
 static auto NativeGetEntityId(void* entity_ptr) -> int64_t;
-static auto NativeGetEntityProtoId(void* entity_ptr) -> uint64_t;
+static auto NativeGetEntityProtoId(void* entity_ptr) -> void*;
 static auto NativeGetEntityValueAsInt(void* entity_ptr, int32_t prop_index, MonoString** error) -> int32_t;
 static auto NativeSetEntityValueAsInt(void* entity_ptr, int32_t prop_index, int32_t value) -> MonoString*;
 static auto NativeGetEntityValueAsAny(void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoString*;
@@ -445,7 +447,7 @@ static auto NativeMdirRotateHex(int16_t angle, int32_t steps) -> int16_t;
 static auto NativeMdirReverse(int16_t angle) -> int16_t;
 
 // Native ABI: inner entities
-static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, uint64_t proto_id_hash) -> void*;
+static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, void* proto_id) -> void*;
 static auto NativeHasInnerEntities(void* holder_ptr, MonoString* entry_name) -> mono_bool;
 static auto NativeGetInnerEntity(void* holder_ptr, MonoString* entry_name, int64_t id) -> void*;
 static auto NativeGetInnerEntityCount(void* holder_ptr, MonoString* entry_name) -> int32_t;
@@ -521,7 +523,7 @@ template<typename T>
 static void AppendAlignedRawValue(vector<uint8_t>& data, const T& value, size_t alignment);
 
 // Managed object creation and native<->managed values
-static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> MonoObject*;
+static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstring& value) -> MonoObject*;
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*;
 static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, string_view owner_type_name, ptr<const Property> prop) -> MonoObject*;
 static void InvokeManagedConstructor(MonoClass* klass, MonoObject* obj, int32_t args_count, void** args, string_view context);
@@ -599,8 +601,7 @@ static auto CollectManagedInnerEntities(ptr<Entity> holder, hstring entry) -> ve
 // Extraction and hash primitives
 static auto ExtractEntityPtr(MonoObject* obj) -> Entity*;
 static auto ExtractRefPtr(MonoObject* obj) -> void*;
-static auto ExtractHashValue(MonoObject* obj) -> hstring::hash_t;
-static auto MakeManagedHashValue(ptr<const ManagedScriptBackend> backend, const hstring& value) -> hstring::hash_t;
+static auto ExtractNativeHstring(MonoObject* obj) -> hstring;
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring;
 
 // Assembly loading, runtime configuration and resource cache
@@ -1523,21 +1524,54 @@ static void NativeLog(MonoString* text)
     logging::write("{}", log_text);
 }
 
-static auto NativeGetHash(MonoString* text) -> uint64_t
+static auto NativeHstringHandle(const hstring& value) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!value) {
+        return nullptr;
+    }
+
+    return const_cast<void*>(static_cast<const void*>(value.get_entry().get()));
+}
+
+static auto NativeHstringFromHandle(void* value) -> hstring
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (value == nullptr) {
+        return {};
+    }
+
+    return hstring(ptr<const hstring::entry>(static_cast<const hstring::entry*>(value)));
+}
+
+static auto NativeGetHash(MonoString* text) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
     string value = ToStringAndFree(text);
 
     if (value.empty()) {
-        return 0;
+        return nullptr;
     }
 
     auto backend = GetActiveBackendOrThrow();
-    return backend->GetMetadata()->Hashes.to_hashed_string(value).as_hash();
+    return NativeHstringHandle(backend->GetMetadata()->Hashes.to_hashed_string(value));
 }
 
-static auto NativeGetHashStr(uint64_t value) -> MonoString*
+static auto NativeGetHashStr(void* value) -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (value == nullptr) {
+        return mono_string_new(GetDomainOrThrow(mono_domain_get()), "");
+    }
+
+    return mono_string_new(GetDomainOrThrow(mono_domain_get()), NativeHstringFromHandle(value).c_str());
+}
+
+static auto NativeGetHashStrFromHash(uint64_t value) -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1553,6 +1587,25 @@ static auto NativeGetHashStr(uint64_t value) -> MonoString*
     }
 
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
+}
+
+static auto NativeResolveHash(uint64_t hash) -> void*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (hash == 0) {
+        return nullptr;
+    }
+
+    auto backend = GetActiveBackendOrThrow();
+    bool failed = false;
+    hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(hash, &failed);
+
+    if (failed) {
+        throw ScriptSystemException("Managed hstring is not interned in the active backend", hash);
+    }
+
+    return NativeHstringHandle(resolved);
 }
 
 // Returns the calling engine's alive flag (a one-element managed bool array)
@@ -1605,7 +1658,7 @@ static auto NativeGetBackend() -> void*
 
 // Custom-entity proto getters: the built-in entities carry metadata-exported Game.GetProto*, custom ones
 // resolve through this path instead
-static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> void*
+static auto NativeGetProtoEntity(MonoString* type_name, void* proto_id) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1615,20 +1668,12 @@ static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) 
 
     string type_name_str = ToStringAndFree(type_name);
     ptr<const EngineMetadata> meta = ActiveBackend->GetMetadata();
-
-    bool failed = false;
-    hstring proto_id = meta->Hashes.resolve_hash(static_cast<hstring::hash_t>(proto_id_hash), &failed);
-
-    if (failed) {
-        return nullptr;
-    }
-
     hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
-    auto proto = meta->GetProtoEntity(type_hname, proto_id);
+    auto proto = meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id));
     return proto.void_cast();
 }
 
-static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> mono_bool
+static auto NativeCheckProtoEntity(MonoString* type_name, void* proto_id) -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1638,16 +1683,8 @@ static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash
 
     string type_name_str = ToStringAndFree(type_name);
     ptr<const EngineMetadata> meta = ActiveBackend->GetMetadata();
-
-    bool failed = false;
-    hstring proto_id = meta->Hashes.resolve_hash(static_cast<hstring::hash_t>(proto_id_hash), &failed);
-
-    if (failed) {
-        return static_cast<mono_bool>(0);
-    }
-
     hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
-    return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, proto_id) ? 1 : 0);
+    return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id)) ? 1 : 0);
 }
 
 // Plural proto enumeration (managed equivalent of AngelScript Game_GetProtoCustomEntities): count + by-index, backing
@@ -1805,24 +1842,24 @@ static auto NativeGetEntityId(void* entity_ptr) -> int64_t
     return entity->GetId().underlying_value();
 }
 
-static auto NativeGetEntityProtoId(void* entity_ptr) -> uint64_t
+static auto NativeGetEntityProtoId(void* entity_ptr) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
     nptr<const Entity> entity = static_cast<const Entity*>(entity_ptr);
 
     if (!entity) {
-        return {};
+        return nullptr;
     }
 
     if (nptr<const ProtoEntity> self_proto = entity.dyn_cast<ProtoEntity>(); self_proto) {
-        return self_proto->GetProtoId().as_hash();
+        return NativeHstringHandle(self_proto->GetProtoId());
     }
     if (nptr<const EntityWithProto> self_with_proto = entity.dyn_cast<EntityWithProto>(); self_with_proto) {
-        return self_with_proto->GetProtoId().as_hash();
+        return NativeHstringHandle(self_with_proto->GetProtoId());
     }
 
-    return {};
+    return nullptr;
 }
 
 // Generic property accessors by index: the generated Entity.GetAs*/SetAs* wrappers route through here
@@ -2060,7 +2097,7 @@ static auto NativeMdirReverse(int16_t angle) -> int16_t
 
 // === Native ABI: inner entities ===
 
-static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, uint64_t proto_id_hash) -> void*
+static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, void* proto_id) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2070,18 +2107,7 @@ static auto NativeCreateInnerEntity(void* holder_ptr, MonoString* entry_name, ui
     ValidateEntityAccess(holder);
 
     hstring entry = ResolveInnerEntry(backend, entry_name);
-    hstring proto_id;
-
-    if (proto_id_hash != 0) {
-        bool failed = false;
-        proto_id = backend->GetMetadata()->Hashes.resolve_hash(static_cast<hstring::hash_t>(proto_id_hash), &failed);
-
-        if (failed) {
-            throw ScriptSystemException("Unknown Managed inner entity proto id hash", proto_id_hash);
-        }
-    }
-
-    return entity_mngr->CreateCustomInnerEntity(holder, entry, proto_id).get();
+    return entity_mngr->CreateCustomInnerEntity(holder, entry, NativeHstringFromHandle(proto_id)).get();
 }
 
 static auto NativeHasInnerEntities(void* holder_ptr, MonoString* entry_name) -> mono_bool
@@ -3499,7 +3525,9 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
     mono_add_internal_call("FOnline.Native::ReportExceptionInternal", reinterpret_cast<const void*>(NativeReportException));
     mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
+    mono_add_internal_call("FOnline.Native::GetHashStrFromHash", reinterpret_cast<const void*>(NativeGetHashStrFromHash));
     mono_add_internal_call("FOnline.Native::GetHash", reinterpret_cast<const void*>(NativeGetHash));
+    mono_add_internal_call("FOnline.Native::ResolveHash", reinterpret_cast<const void*>(NativeResolveHash));
     mono_add_internal_call("FOnline.Native::GetEntityId", reinterpret_cast<const void*>(NativeGetEntityId));
     mono_add_internal_call("FOnline.Native::GetEntityProtoId", reinterpret_cast<const void*>(NativeGetEntityProtoId));
     mono_add_internal_call("FOnline.Native::AddRefEntity", reinterpret_cast<const void*>(NativeAddRefEntity));
@@ -4136,13 +4164,44 @@ static void AppendAlignedRawValue(vector<uint8_t>& data, const T& value, size_t 
 
 // === Managed object creation and native<->managed values ===
 
-static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> MonoObject*
+static void WriteManagedHstring(uint8_t dest[sizeof(hstring::hash_t)], const hstring& value)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static_assert(sizeof(nptr<const hstring::entry>) <= sizeof(hstring::hash_t));
+
+    uint8_t zeros[sizeof(hstring::hash_t)] {};
+    memory::copy(dest, zeros, sizeof(zeros));
+
+    if (value) {
+        nptr<const hstring::entry> entry = value.get_entry();
+        memory::copy(dest, &entry, sizeof(entry));
+    }
+}
+
+static auto ReadManagedHstring(const void* src) -> hstring
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const void* entry = nullptr;
+    memory::copy(&entry, src, sizeof(entry));
+
+    if (entry == nullptr) {
+        return {};
+    }
+
+    return hstring(ptr<const hstring::entry>(static_cast<const hstring::entry*>(entry)));
+}
+
+static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstring& value) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     MonoClass* hash_class = FindFOnlineClass(backend, "hstring");
-    return mono_value_box(domain, hash_class, &value);
+    uint8_t managed[sizeof(hstring::hash_t)] {};
+    WriteManagedHstring(managed, value);
+    return mono_value_box(domain, hash_class, managed);
 }
 
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*
@@ -4353,11 +4412,9 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
         }
 
         if (field_desc.Type.IsHashedString) {
-            hstring::hash_t hash {};
-            mono_field_get_value(value_root.GetObject(), field, &hash);
-
-            hstring resolved_hash = ResolveManagedHashValue(backend, hash);
-            *ptr<void>(raw_data + field_desc.Offset).reinterpret_as<hstring>() = resolved_hash;
+            uint8_t managed[sizeof(hstring::hash_t)] {};
+            mono_field_get_value(value_root.GetObject(), field, managed);
+            *ptr<void>(raw_data + field_desc.Offset).reinterpret_as<hstring>() = ReadManagedHstring(managed);
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
             MonoObject* field_value = mono_field_get_value_object(domain, field, value_root.GetObject());
@@ -4395,11 +4452,9 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
         }
 
         if (field_desc.Type.IsHashedString) {
-            hstring::hash_t hash {};
-            mono_field_get_value(value_root.GetObject(), field, &hash);
-
-            hstring resolved_hash = ResolveManagedHashValue(backend, hash);
-            hash = resolved_hash.as_hash();
+            uint8_t managed[sizeof(hstring::hash_t)] {};
+            mono_field_get_value(value_root.GetObject(), field, managed);
+            hstring::hash_t hash = ReadManagedHstring(managed).as_hash();
             memory::copy(raw_data + field_desc.Offset, &hash, sizeof(hash));
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
@@ -4444,8 +4499,9 @@ static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const Ba
 
         if (field_desc.Type.IsHashedString) {
             const hstring& hash = *reinterpret_cast<const hstring*>(raw_data + field_desc.Offset);
-            hstring::hash_t managed_hash = MakeManagedHashValue(backend, hash);
-            mono_field_set_value(obj.GetObject(), field, &managed_hash);
+            uint8_t managed[sizeof(hstring::hash_t)] {};
+            WriteManagedHstring(managed, hash);
+            mono_field_set_value(obj.GetObject(), field, managed);
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
             MonoObject* field_value = CreateStructObject(backend, field_desc.Type, const_cast<uint8_t*>(raw_data + field_desc.Offset));
@@ -4491,9 +4547,11 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
         }
 
         if (field_desc.Type.IsHashedString) {
-            hstring::hash_t managed_hash {};
-            memory::copy(&managed_hash, data + field_desc.Offset, sizeof(managed_hash));
-            mono_field_set_value(obj.GetObject(), field, &managed_hash);
+            hstring::hash_t stored_hash {};
+            memory::copy(&stored_hash, data + field_desc.Offset, sizeof(stored_hash));
+            uint8_t managed[sizeof(hstring::hash_t)] {};
+            WriteManagedHstring(managed, ResolveManagedHashValue(backend, stored_hash));
+            mono_field_set_value(obj.GetObject(), field, managed);
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout) {
             MonoObject* field_value = CreatePropertyStructObject(backend, field_desc.Type, {data + field_desc.Offset, field_desc.Type.Size});
@@ -4809,7 +4867,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
         return &storage.Text;
     }
     if (base_type.IsHashedString) {
-        storage.Hash = ResolveManagedHashValue(backend, ExtractHashValue(value));
+        storage.Hash = ExtractNativeHstring(value);
         return &storage.Hash;
     }
     if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
@@ -5003,7 +5061,7 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
     }
     if (base_type.IsHashedString) {
         const hstring& value = *static_cast<hstring*>(data);
-        return CreateHashObject(backend, MakeManagedHashValue(backend, value));
+        return CreateHashObject(backend, value);
     }
     if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         nptr<Entity> entity = *static_cast<Entity**>(data);
@@ -5049,7 +5107,7 @@ static auto BoxSimplePropertyValue(ptr<const ManagedScriptBackend> backend, cons
     if (base_type.IsHashedString) {
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hashed string raw data size does not match a hash");
         hstring::hash_t value = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
-        return CreateHashObject(backend, value);
+        return CreateHashObject(backend, ResolveManagedHashValue(backend, value));
     }
     if (base_type.IsFixedType || base_type.IsEntityProto) {
         return CreateEntityObject(backend, base_type.Name, ResolveProtoEntityFromRawData(backend, base_type, raw_data));
@@ -5214,8 +5272,7 @@ static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> b
         prop_data.Set(text.data(), text.size());
     }
     else if (base_type.IsHashedString) {
-        hstring hash = ResolveManagedHashValue(backend, ExtractHashValue(value));
-        prop_data.SetAs(hash.as_hash());
+        prop_data.SetAs(ExtractNativeHstring(value).as_hash());
     }
     else if (base_type.IsFixedType || base_type.IsEntityProto) {
         hstring::hash_t proto_hash = ExtractProtoHashFromManagedEntity(value);
@@ -5860,7 +5917,7 @@ static auto ExtractRefPtr(MonoObject* obj) -> void*
     return ref_ptr;
 }
 
-static auto ExtractHashValue(MonoObject* obj) -> hstring::hash_t
+static auto ExtractNativeHstring(MonoObject* obj) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5871,23 +5928,12 @@ static auto ExtractHashValue(MonoObject* obj) -> hstring::hash_t
     MonoClassField* field = FindFieldInHierarchy(mono_object_get_class(obj), "Value");
 
     if (field != nullptr) {
-        hstring::hash_t value {};
-        mono_field_get_value(obj, field, &value);
-        return value;
+        uint8_t managed[sizeof(hstring::hash_t)] {};
+        mono_field_get_value(obj, field, managed);
+        return ReadManagedHstring(managed);
     }
 
-    return *static_cast<hstring::hash_t*>(mono_object_unbox(obj));
-}
-
-static auto MakeManagedHashValue(ptr<const ManagedScriptBackend> backend, const hstring& value) -> hstring::hash_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!value) {
-        return {};
-    }
-
-    return backend->GetMetadata()->Hashes.to_hashed_string(value.as_str()).as_hash();
+    return ReadManagedHstring(mono_object_unbox(obj));
 }
 
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring

@@ -280,11 +280,27 @@ auto ConfigFile::StoreOwnedString(string&& value) -> string_view
     _ownedStrings.emplace_back(std::move(value));
     return _ownedStrings.back();
 }
+
+auto ConfigFile::FindFirstSection(string_view section_name) const noexcept -> multimap<string_view, map<string_view, string_view>>::const_iterator
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // multimap::find may answer with any section of a repeated name (libc++ returns the one its descent meets
+    // first), so the first declared section is the lower bound
+    multimap<string_view, map<string_view, string_view>>::const_iterator it_section = _sectionKeyValues.lower_bound(section_name);
+
+    if (it_section == _sectionKeyValues.end() || it_section->first != section_name) {
+        return _sectionKeyValues.end();
+    }
+
+    return it_section;
+}
+
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>
 {
     FO_STACK_TRACE_ENTRY();
 
-    multimap<string_view, map<string_view, string_view>>::const_iterator it_section = _sectionKeyValues.find(section_name);
+    multimap<string_view, map<string_view, string_view>>::const_iterator it_section = FindFirstSection(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return nullptr;
@@ -353,7 +369,7 @@ auto ConfigFile::GetSection(string_view section_name) const -> const map<string_
 {
     FO_STACK_TRACE_ENTRY();
 
-    multimap<string_view, map<string_view, string_view>>::const_iterator it = _sectionKeyValues.find(section_name);
+    multimap<string_view, map<string_view, string_view>>::const_iterator it = FindFirstSection(section_name);
     FO_VERIFY_AND_THROW(it != _sectionKeyValues.end(), "Lookup failed in section key values");
 
     return it->second;
@@ -363,13 +379,14 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<ptr<map<string_
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t count = _sectionKeyValues.count(section_name);
-    auto it = _sectionKeyValues.find(section_name);
+    // The equal range rather than find plus count: find may land inside a repeated name, and counting on from
+    // there walks past its last section
+    auto [first_it, last_it] = _sectionKeyValues.equal_range(section_name);
 
     vector<ptr<map<string_view, string_view>>> key_values;
-    key_values.reserve(count);
+    key_values.reserve(numeric_cast<size_t>(std::distance(first_it, last_it)));
 
-    for (size_t i = 0; i < count; i++, ++it) {
+    for (auto it = first_it; it != last_it; ++it) {
         key_values.emplace_back(&it->second);
     }
 
@@ -395,7 +412,7 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const no
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section = FindFirstSection(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return false;
@@ -414,7 +431,7 @@ auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> nptr<
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section = FindFirstSection(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return nullptr;
@@ -429,7 +446,7 @@ auto ConfigFile::GetSectionContent(string_view section_name) const -> string_vie
 
     FO_VERIFY_AND_THROW(is_enum_set(_options, ConfigFileOption::CollectContent), "Config file content collection was not enabled");
 
-    auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section = FindFirstSection(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
         return {};

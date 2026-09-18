@@ -196,6 +196,7 @@ Do not force wrappers into places where raw pointers are the clearer ABI or low-
 - Process/runtime `argc` / `argv` entrypoints and final `char**` handoffs to compatible runtime modules.
 - AngelScript generic API plumbing, generated registration strings, handle-slot storage, and low-level `char*` / `char**` buffers and process argv. Script-visible export/event/hook handle signatures use `ptr<T>` / `nptr<T>`; see "Script binding boundary" below.
 - `std::atomic<T*>` until a dedicated atomic nullable wrapper exists.
+- The `hstring` intern-entry handle (`hstring::_entry`): its object representation is the 8-byte value the managed runtime blits, so the class stays trivially copyable (`static_assert(std::is_trivially_copyable_v<hstring>)`); `get_entry()` hands the handle out as `nptr<const entry>`.
 
 For engine-owned APIs outside these categories, prefer `ptr<T>` or `nptr<T>` for borrowed values and `unique_*` / `refcount_*` for owned values.
 
