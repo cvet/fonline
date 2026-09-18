@@ -9,7 +9,7 @@ using System.Runtime.Loader;
 public static class ManagedLoadContextHost
 {
     [CallableByEngine]
-    public static object CreateLoadScope(string contextName, string[] assemblyPaths, string[] entryAssemblyPaths)
+    internal static object CreateLoadScope(string contextName, string[] assemblyPaths, string[] entryAssemblyPaths)
     {
         ManagedAssemblyLoadContext context = new ManagedAssemblyLoadContext(contextName, assemblyPaths);
         Assembly[] entryAssemblies = new Assembly[entryAssemblyPaths.Length];
@@ -22,13 +22,13 @@ public static class ManagedLoadContextHost
     }
 
     [CallableByEngine]
-    public static Assembly[] GetEntryAssemblies(object scope)
+    internal static Assembly[] GetEntryAssemblies(object scope)
     {
         return GetScope(scope).EntryAssemblies;
     }
 
     [CallableByEngine]
-    public static void ReleaseLoadScope(object scope)
+    internal static void ReleaseLoadScope(object scope)
     {
         GetScope(scope).Release();
     }

@@ -12,7 +12,7 @@ public static class Initializator
     private static bool InitializedEarly;
 
     [CallableByEngine]
-    static void InitializeEarly()
+    internal static void InitializeEarly()
     {
         if (InitializedEarly) {
             throw new InvalidOperationException(
@@ -64,7 +64,7 @@ public static class Initializator
     }
 
     [CallableByEngine]
-    static void Initialize()
+    internal static void Initialize()
     {
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(true);
 

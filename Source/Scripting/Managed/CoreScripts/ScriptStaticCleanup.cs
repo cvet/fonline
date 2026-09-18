@@ -21,7 +21,7 @@ using System.Text;
 internal static class ScriptStaticCleanup
 {
     [CallableByEngine]
-    private static string ClearScriptStatics()
+    internal static string ClearScriptStatics()
     {
         List<string> cleared = new List<string>();
         List<string> unreachable = new List<string>();
