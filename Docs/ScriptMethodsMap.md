@@ -34,7 +34,7 @@ All current native script method files were inspected:
 - `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-The current set contains **932** `///@ ExportMethod` declarations across these files.
+The current set contains **983** `///@ ExportMethod` declarations across these files.
 
 ## Naming and ownership conventions
 
@@ -93,11 +93,12 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerEntityScriptMethods.cpp`
 
-- Exported methods: 35
+- Exported methods: 36
 - Prefix: `Server_Entity_*`
 - Ownership: server-side base entity operations.
 - Typical responsibilities:
   - persistence toggles such as `IsPersistent` / `MakePersistent`;
+  - the `GetRefCount` reference-leak diagnostic, meaningful only as a difference around a controlled sequence of calls;
   - entity time-event start/count/stop/repeat/data helpers.
 - These operations are server-only because persistence and authoritative entity scheduling belong to the server runtime.
 

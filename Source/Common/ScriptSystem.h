@@ -781,7 +781,7 @@ namespace NativeDataCaller
         using Traits = NativeCallTraits<decltype(Fn)>;
 
         FO_VERIFY_AND_THROW(call.ArgsData.size() == Traits::arity, "Native script call argument storage does not match native function arity", call.ArgsData.size(), Traits::arity);
-        FO_VERIFY_AND_THROW((call.RetData != nullptr) == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", call.RetData != nullptr, !std::is_void_v<typename Traits::return_type>);
+        FO_VERIFY_AND_THROW(!!call.RetData == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", !!call.RetData, !std::is_void_v<typename Traits::return_type>);
 
         NativeCallImpl<AllowDestroyedEntityArgs>(Fn, call, std::make_index_sequence<Traits::arity> {});
     }

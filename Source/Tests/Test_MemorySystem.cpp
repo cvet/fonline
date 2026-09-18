@@ -187,7 +187,7 @@ TEST_CASE("MemorySystem")
 
                 remaining_failures = rpmalloc_test_get_span_commit_failures();
                 rpmalloc_test_set_span_commit_failures(0);
-                retry_succeeded = blocks[block_count - 1] != nullptr;
+                retry_succeeded = !!blocks[block_count - 1];
             }
 
             rpmalloc_thread_finalize();

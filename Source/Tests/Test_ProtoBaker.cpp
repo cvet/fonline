@@ -148,12 +148,12 @@ $Parent = ParentItem
     auto make_diamond_source = [](string_view child_parents) {
         return string(R"([ProtoItem]
 $Name = DiamondBase
-Count = 1
+LightDistance = 1
 
 [ProtoItem]
 $Name = DiamondVariant
 $Parent = DiamondBase
-Count = 2
+LightDistance = 2
 
 [ProtoItem]
 $Name = DiamondOther
@@ -274,38 +274,38 @@ $Parent = LongB
     {
         constexpr string_view items_abc = R"([ProtoItem]
 $Name = OrderItemA
-Count = 1
+LightDistance = 1
 
 [ProtoItem]
 $Name = OrderItemB
-Count = 2
+LightDistance = 2
 
 [ProtoItem]
 $Name = OrderItemC
-Count = 3
+LightDistance = 3
 )";
         constexpr string_view items_de_critter_p = R"([ProtoItem]
 $Name = OrderItemD
-Count = 4
+LightDistance = 4
 
 [ProtoItem]
 $Name = OrderItemE
-Count = 5
+LightDistance = 5
 
 [ProtoCritter]
 $Name = OrderCritterP
 )";
         constexpr string_view items_fgh_critter_q = R"([ProtoItem]
 $Name = OrderItemF
-Count = 6
+LightDistance = 6
 
 [ProtoItem]
 $Name = OrderItemG
-Count = 7
+LightDistance = 7
 
 [ProtoItem]
 $Name = OrderItemH
-Count = 8
+LightDistance = 8
 
 [ProtoCritter]
 $Name = OrderCritterQ
@@ -315,41 +315,41 @@ $Name = OrderCritterQ
         // file survives, while the resolved set stays identical
         constexpr string_view mixed_hg = R"([ProtoItem]
 $Name = OrderItemH
-Count = 8
+LightDistance = 8
 
 [ProtoItem]
 $Name = OrderItemG
-Count = 7
+LightDistance = 7
 )";
         constexpr string_view mixed_fed_critter_q = R"([ProtoCritter]
 $Name = OrderCritterQ
 
 [ProtoItem]
 $Name = OrderItemF
-Count = 6
+LightDistance = 6
 
 [ProtoItem]
 $Name = OrderItemE
-Count = 5
+LightDistance = 5
 
 [ProtoItem]
 $Name = OrderItemD
-Count = 4
+LightDistance = 4
 )";
         constexpr string_view mixed_cba_critter_p = R"([ProtoItem]
 $Name = OrderItemC
-Count = 3
+LightDistance = 3
 
 [ProtoCritter]
 $Name = OrderCritterP
 
 [ProtoItem]
 $Name = OrderItemB
-Count = 2
+LightDistance = 2
 
 [ProtoItem]
 $Name = OrderItemA
-Count = 1
+LightDistance = 1
 )";
 
         auto grouped = bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", items_fgh_critter_q}});
@@ -361,15 +361,15 @@ Count = 1
         // Guard against the comparison passing because the payload never reached the blob
         auto changed = bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", R"([ProtoItem]
 $Name = OrderItemF
-Count = 6
+LightDistance = 6
 
 [ProtoItem]
 $Name = OrderItemG
-Count = 7
+LightDistance = 7
 
 [ProtoItem]
 $Name = OrderItemH
-Count = 9
+LightDistance = 9
 
 [ProtoCritter]
 $Name = OrderCritterQ

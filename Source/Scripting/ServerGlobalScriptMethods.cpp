@@ -278,28 +278,60 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, hstring protoId)
+{
+    if (!server->GetProtoItem(protoId)) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
+
+    return server->ItemMngr.CreateItem(protoId, nullptr);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, ptr<ProtoItem> proto)
+{
+    return server->ItemMngr.CreateItem(proto->GetProtoId(), nullptr);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, hstring protoId, readonly_map<ItemProperty, int32_t> props)
+{
+    auto proto = server->GetProtoItem(protoId);
+
+    if (!proto) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
+
+    // The properties are applied before OnItemInit, so init handlers see them
+    Properties item_props = proto->GetProperties()->Copy();
+
+    for (const auto& [key, value] : props) {
+        item_props.SetValueAsIntProps(static_cast<int32_t>(key), value);
+    }
+
+    return server->ItemMngr.CreateItem(protoId, &item_props);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CloneItem(ptr<ServerEngine> server, ptr<Item> item)
+{
+    ValidateEntityAccess(item);
+
+    if (item->IsDestroying()) {
+        throw ScriptException("Cannot clone an item that is being destroyed", item->GetId());
+    }
+
+    return server->ItemMngr.CloneItem(item);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> toCr)
 {
     ValidateEntityAccess(item);
     ValidateEntityAccess(item->GetParentRaw());
     ValidateEntityAccess(toCr);
 
-    return server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Critter> toCr)
-{
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(item->GetParentRaw());
-    ValidateEntityAccess(toCr);
-
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    auto moved_item = server->ItemMngr.MoveItem(item, count, toCr);
-    return moved_item;
+    return server->ItemMngr.MoveItem(item, toCr);
 }
 
 ///@ ExportMethod
@@ -313,26 +345,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
         throw ScriptException("Invalid hexex args");
     }
 
-    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
-    return moved_item;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Map> toMap, mpos toHex)
-{
-    if (!toMap->GetSize().is_valid_pos(toHex)) {
-        throw ScriptException("Invalid hexex args");
-    }
-
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(item->GetParentRaw());
-    ValidateEntityAccess(toMap);
-
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    auto moved_item = server->ItemMngr.MoveItem(item, count, toMap, toHex);
+    auto moved_item = server->ItemMngr.MoveItem(item, toMap, toHex);
     return moved_item;
 }
 
@@ -343,22 +356,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
     ValidateEntityAccess(item->GetParentRaw());
     ValidateEntityAccess(toCont);
 
-    return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Item> toCont, any_t stackId = any_t {})
-{
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(item->GetParentRaw());
-    ValidateEntityAccess(toCont);
-
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    auto moved_item = server->ItemMngr.MoveItem(item, count, toCont, stackId);
-    return moved_item;
+    return server->ItemMngr.MoveItem(item, toCont, stackId);
 }
 
 ///@ ExportMethod
@@ -383,7 +381,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
+        server->ItemMngr.MoveItem(item, toCr);
     }
 }
 
@@ -413,7 +411,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
+        server->ItemMngr.MoveItem(item, toMap, toHex);
     }
 }
 
@@ -439,7 +437,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
+        server->ItemMngr.MoveItem(item, toCont, stackId);
     }
 }
 
@@ -475,24 +473,6 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
         ValidateEntityAccess(item->GetParentRaw());
 
         server->ItemMngr.DestroyItem(item);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> item, int32_t count)
-{
-    if (item && count > 0) {
-        ValidateEntityAccess(item);
-        ValidateEntityAccess(item->GetParentRaw());
-
-        int32_t cur_count = item->GetCount();
-
-        if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item);
-        }
-        else {
-            server->ItemMngr.ChangeItemStackCount(item, -count, nullptr);
-        }
     }
 }
 

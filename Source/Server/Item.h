@@ -63,7 +63,6 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetProtoItem() const noexcept -> ptr<const ProtoItem>;
     [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> nptr<Item>;
-    [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>;
     [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
     [[nodiscard]] auto GetAllInnerItems() -> vector<ptr<Item>>;
@@ -79,6 +78,7 @@ public:
     void RemoveItemFromContainer(ptr<Item> item);
     void SetItemToContainer(ptr<Item> item);
     void SetMultihexEntries(vector<mpos> entries);
+    void ClearAllAssociations() noexcept;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

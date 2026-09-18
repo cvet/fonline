@@ -68,31 +68,28 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
+    if (!self->GetEngine()->GetProtoItem(pid)) {
+        throw ScriptException("Invalid proto", pid);
     }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(pid, nullptr);
+    return self->AddItemToContainer(item, stackId);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(proto->GetProtoId(), nullptr);
+    return self->AddItemToContainer(item, stackId);
 }
 
 ///@ ExportMethod

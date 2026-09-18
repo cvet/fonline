@@ -151,7 +151,7 @@ TEST_CASE("ImGuiTestHarnessPressesWidgetsByLabel", "[imgui][harness]")
     draw_frame();
     CHECK(section_body_drawn);
 
-    CHECK(FO_NAMESPACE ImGuiTestHarness::FindWindow("NoSuchWindow") == nullptr);
+    CHECK_FALSE(FO_NAMESPACE ImGuiTestHarness::FindWindow("NoSuchWindow"));
     CHECK_FALSE(FO_NAMESPACE ImGuiTestHarness::ActivateItem("NoSuchWindow", "First"));
     CHECK_FALSE(FO_NAMESPACE ImGuiTestHarness::SetItemOpen("NoSuchWindow", "Folded"));
     CHECK(FO_NAMESPACE ImGuiTestHarness::SetWindowCollapsed("HarnessWindow", false));

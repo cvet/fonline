@@ -190,7 +190,7 @@ namespace EntityOps
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -2;
@@ -257,8 +257,8 @@ namespace EntityOps
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item item2 = cr.AddItem("TestItem2".hstr(), 1);
+        Item item1 = cr.AddItem("TestItem".hstr());
+        Item item2 = cr.AddItem("TestItem2".hstr());
         if (item1 is null || item2 is null) return -2;
 
         // Both items should be in critter's inventory
@@ -781,7 +781,7 @@ namespace EntityOps
             return -4;
         }
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -5;
@@ -829,7 +829,7 @@ namespace EntityOps
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -2;
@@ -1012,8 +1012,8 @@ namespace EntityOps
         if (cr is null) return -1;
 
         // Add items of different types
-        Item item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item item2 = cr.AddItem("TestItem2".hstr(), 1);
+        Item item1 = cr.AddItem("TestItem".hstr());
+        Item item2 = cr.AddItem("TestItem2".hstr());
         if (item1 is null || item2 is null) return -2;
 
         // Items should have different proto ids
@@ -1024,7 +1024,11 @@ namespace EntityOps
         if (allItems.length() < 2) return -4;
 
         // Destroy one type
-        cr.DestroyItem("TestItem".hstr());
+        array<Item> destroyedItems = cr.GetItems("TestItem".hstr());
+
+        for (uint i = 0; i < destroyedItems.length(); i++) {
+            Game.DestroyItem(destroyedItems[i]);
+        }
 
         // Check remaining
         array<Item> remaining = cr.GetItems();

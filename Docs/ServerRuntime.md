@@ -169,15 +169,53 @@ Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()
 
 Typed entity destruction has a single active owner once the target is marked `Destroying`. `OnItemFinish`, `OnCritterFinish`, and `OnLocationFinish` handlers may observe the entity and may issue redundant destroy calls, but they must not complete the same teardown inline; the native owner asserts that the entity still exists after the finish event. Map and location destruction apply the same rule across the owning pair. Once `DestroyMap()` marks a map as destroying, scripted events in that flow may not destroy the owning location to take over the same map; `DestroyLocation()` asserts that none of its maps is already in another destroy-flow before it marks them. `OnMapFinish` and `OnMapRemoved` handlers therefore run while the map still exists, but native continuation asserts that the same map and location were not destroyed behind the current owner. Map content destruction may still detach an already-`Destroying` non-player critter from the map without issuing another finish event; this only completes the map containment edge when the critter's own destroy owner is still active. For the same reason, removing an item from a critter that is already `Destroying` (inventory teardown inside `DestroyCritter`) does not fire `OnCritterItemMoved`: the item is being destroyed with its owner rather than relocated, and re-entering scripts there would let an item-movement handler attach a new inner entity (for example a modifier `StartEvent`) to the already-destroying critter, which the entity layer rejects. Normal item moves on a live critter still fire the event.
 
-Native entity references can outlive `ServerEngine`, including references released later by a
-managed wrapper finalizer. The engine and each `ServerEntity` therefore share ownership of the
-engine's atomic shutdown flag. `Shutdown()` publishes to that flag before teardown; the Critter,
-Item, Map, Location and Player destructors read their retained flag instead of dereferencing the
-borrowed engine pointer. Their normal-destruction invariant checks remain enabled whenever shutdown
-has not begun. This retained state permits final reference release only: it does not make a destroyed
-entity usable or extend the lifetime of engine methods, property registrars, networking or scripts.
-The worker pool still borrows the same flag while its owning engine drains it. The state belongs to
-one engine and survives until its last retained entity is released.
+**No entity outlives its engine.** A `ServerEntity` borrows the engine that owns its property registrar, its
+prototype, the interned hashes its properties carry and every manager it reaches, so an entity that survives
+`~ServerEngine` holds nothing but dangling pointers. The rule is measured rather than assumed: the
+`ServerEntity` constructor raises a live-entity count on its engine and the destructor drops it, and
+`~ServerEngine` reports any remainder with `FO_VERIFY_AND_CONTINUE` (`Server entities outlived the server
+engine`, the count travelling as a context value) — the spelling the empty-link checks in the entity
+destructors use, which reports through the installed exception callback with a stack trace and continues,
+since a destructor may not throw. `~ClientEngine` reports the same for `ClientEntity`. Before taking the count the server destructor releases
+`MapManager`'s static-map cache, whose billets — the static items and authored critters a map spawns from — are
+entities owned by the engine itself; leaving them to member-destruction order counted engine-owned data as an
+escaped reference (1.3 million of them).
+
+**Historical residual (2026-09-15):** a gameplay-test worker session ended with a few dozen
+destroyed-but-alive entities (≈44 critters, 2 maps, a location, a player, an item; on the client side ≈64 views
+after a long suite). They are unregistered and unlinked, so what keeps them alive is a native reference nothing
+gives back. A reference-count trace could not name the holder unambiguously (its AddRef/Release pairing is by
+count, not by holder identity). These historical counts are not evidence about a current build; the
+engine-wide check remains a reported measurement, not a gate.
+
+Each script backend gives its entity references back during `Shutdown()`, before the engine can be destroyed.
+The AngelScript backend does it by releasing its script engine (`ShutDownAndRelease()`, asserted to reach zero).
+The managed backend has one path and one only: the wrapper's finalizer. A wrapper rooted by a script static is
+never collected, because the script assembly load context is not collectible, so `~ManagedScriptBackend` first
+asks the core scripts to null every static reference field of the project's script types — the root, not the graph,
+by reflection rather than through the embedding API, which corrupts the static area — and then collects
+releases persistent callback roots and waits for the finalizer queue from managed code (`GC.Collect` plus
+`GC.WaitForPendingFinalizers`, with both a pass limit and a separate finalizer-wait deadline), while the engine those references
+point into is still alive. Nothing takes a reference away behind a wrapper's back. The sweep leaves the engine's
+own managed namespace alone, which the engine shuts down through its own steps, and three shapes stay out of its
+reach — statics of generic types, thread statics, and statics of value types with a reference inside — which
+embedding projects must forbid in their script analysis. Deep tracking names surviving wrappers; the live
+count is always available. See [Scripting.md](Scripting.md).
+
+Client entity registration is a borrowed index guarded by a mutex: managed finalizers can unregister a
+detached view on another thread. `ClientEngine::GetEntity` promotes the borrow with `TryAddRef` while
+holding that mutex and returns an owning `refcount_nptr`, so the result remains alive after the lock is
+released. A view whose final release has begun cannot be resurrected. Unregistering an older view with
+the same id preserves its successor's entry.
+
+`Shutdown()` drops the world in bulk rather than running the ordinary destroy flows, which would also delete each
+entity from the database and fire events that no longer have scripts to answer them. What those flows do and a
+bare registry drop skips is unlinking, so `EntityManager::DestroyAllEntities()` first calls
+`ClearAllAssociations()` on every player, location, map, critter and item: each type drops exactly the runtime
+links its destructor requires to be empty, while every entity is still held by its registry, and no property is
+written, so nothing a persisted entity carries into the database changes. The Critter, Item, Map, Location and
+Player destructors therefore verify their empty-association invariants unconditionally, at shutdown as in
+ordinary destruction.
 
 `work_thread` and `WorkerPool` each expose a raw completed-job counter through a diagnostics snapshot (`get_diagnostics()` and `GetDiagnostics()`). `ServerEngine` keeps a separate throughput counter for jobs that should be visible in server stats: the `_starter` initialization sequence is excluded, and recurring service jobs that mostly reflect scheduler cadence (`SyncPointJob`, `TimeEventJob`, `FrameTimeJob`, `HealthFileJob`, and `HealthFileWriteJob`) are excluded too. The always-open Info summary reports jobs per second, jobs per minute, total completed visible jobs, and CPU load for the machine and current process. The separate `Performance details` panel is closed by default and expands raw per-executor job counts, worker-pool internals, and per-core system CPU load. Job throughput is the live server cadence metric. The former loop-based metrics — per-loop time statistics (average/min/max/last loop time), the loops-per-second counter (and its Tracy plot), and the `Server.LoopAverageTimeInterval` setting — were all removed as the server moves from loop-based to event-based execution; only the `Tracy` "Server jobs per second" plot remains.
 
@@ -197,7 +235,7 @@ The stat fields are updated on `_mainWorker` (inside `SyncPointJob`) and read on
 - critter motion/lifecycle: `OnCritterMoved`, `OnCritterStartMoving`, `OnCritterStopMoving`, `OnCritterTransfer`, `OnCritterPreLoad`, `OnCritterInit`, `OnCritterFinish`, `OnCritterLoad`, `OnCritterUnload`;
 - map/location lifecycle: `OnLocationInit`, `OnLocationFinish`, `OnMapInit`, `OnMapFinish`;
 - map presence: `OnMapCritterIn`, `OnMapCritterOut`, `OnGlobalMapCritterIn`, `OnGlobalMapCritterOut`;
-- item lifecycle: `OnItemInit`, `OnItemFinish`, `OnItemStackChanged`, `OnCritterItemMoved`;
+- item lifecycle: `OnItemInit`, `OnItemFinish`, `OnCritterItemMoved`;
 - static item trigger: `OnStaticItemWalk`.
 
 These are engine extension points. The scripts that implement actual game rules belong to the embedding project.
@@ -208,9 +246,9 @@ All three login entrypoints (`LoginPlayerToNewRecord`, `LoginPlayerToExistentRec
 
 `MapManager::Transfer()` emits `OnCritterTransfer` only after the critter transfer, attached-critter transfers, and final visibility refresh finish. Nested event paths may destroy the transferred critter or previous-map argument before that final notification attempt; `ValidateEntityAccess()` accepts that state and event dispatch suppresses script callbacks whose entity arguments are already destroyed. While the transfer lock is held, the critter's target map/global ownership remains an asserted invariant rather than a recoverable branch.
 
-Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map. Every engine-side change to a live stack's `Count` goes through `ItemManager::ChangeItemStackCount()`, which fires `OnItemStackChanged(item, countDiff, absorbedItem)` after the new count is committed; the diff is signed, and a change that would leave no units is rejected, because emptying a stack is `DestroyItem()`. Stackable items merge by prototype, and the item whose units join an existing stack is destroyed without carrying any of its own properties over, so a merge into a critter inventory (`AddItemToCritter()`, reached by `MoveItem()` to a critter) or into a container (`AddItemToContainer()`) passes that incoming item as `absorbedItem`: it is still live during the event, so embedding scripts can fold per-item metadata into the surviving stack, and it is destroyed after the handlers return. Everything else passes no absorbed item — the by-prototype adds (`AddItemCritter()`, `AddItemContainer()`), the reductions (`SubItemCritter()`, script `Game.DestroyItem(item, count)`), the source debit of `SplitItem()`, and the count `RestoreSplitItem()` gives back, which stays absorbed-item-less on purpose because a split item is a *copy* of the source properties rather than units taken out of them, so offering it would double whatever a subscriber folds. A partial-stack `MoveItem()` therefore fires twice: the negative diff on the source, then the delivery, which is another `OnItemStackChanged` when the split merges and an ordinary add otherwise. Writing `Item.Count` from a script is not this event; use a property setter for that.
+The engine knows item **instances** only: it never merges two items into one, never splits one, and gives no meaning to a unit count. An item's count and stackability are properties an embedding game declares, and stacking — finding a merge target, splitting part of a stack into a copy, folding per-unit data — is game logic built on the instance primitives below. Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map.
 
-Every handler re-enters scripts, so each fire point is guarded afterwards. `ChangeItemStackCount()` throws if a handler destroyed the changed stack, moved it to another holder (or gave a holderless stack one), or re-counted it, and if it moved the absorbed item; an absorbed item left where it was is destroyed before those checks run, so a violation never leaves its units counted twice. `SplitItem()` returns the debited units to the source and answers `nullptr` when a handler destroyed the freshly split item, and throws if one gave that in-flight item a holder. The `MoveItem()` overloads re-check the destination after the split and fold the split back through `RestoreSplitItem()` when it died, so a refused split move is lossless rather than leaving an orphaned `Nowhere` item. `ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, so handlers can destroy that detached item, but ordinary script movement APIs require a current holder and do not move `Nowhere` items.
+`ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, and those handlers re-enter scripts: they may destroy the detached item, or move it, which for an item with no holder only places it. Each holder-specific removal (`RemoveItemFromCritter()`, `Map::RemoveItem()`, `Item::RemoveItemFromContainer()`) clears the ownership before its events, and `RemoveItemHolder()` does not reset it afterwards, so a placement made by a handler survives. The whole-item `MoveItem()` path therefore re-checks after `RemoveItemHolder()` that the item is still alive and still `Nowhere`, and answers `nullptr` when a handler has already placed it elsewhere, so the item is never attached twice. Moving an item that is being destroyed throws: `DestroyItem()` detaches it through the same removal events, and a handler must not re-home it mid-teardown. `Game.CloneItem(item)` (`ItemManager::CloneItem()`) creates a detached copy of the item's whole property bag with ownership reset, firing `OnItemInit(item, true)` as any new item does, so a script can adjust the copy before any holder observes it and then place it with `MoveItem()`; `Game.CreateItem(pid)` does the same for a fresh item of a prototype, and `Game.CreateItem(pid, props)` applies the given integer properties before `OnItemInit`, so init handlers see them. `Critter.AddItem(pid)`, `Item.AddItem(pid, stackId)` and `Map.AddItem(hex, pid[, props])` create one instance and attach it. An item created or copied this way that is never placed, or whose destination is gone, stays detached and is destroyed by the script that created it. A container with contents is not cloned, because its contents are not copied.
 
 Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex. A static item the map instance has removed contributes no trigger at all, because `VerifyTrigger()` reads the same per-instance static overlay as the rest of the static queries.
 
@@ -428,13 +466,11 @@ The reusable geometry, path finding, blockers, line tracing, and map-loading con
 
 ### `ItemManager`
 
-`ItemManager` owns item creation, splitting, destruction, and movement between holders:
+`ItemManager` owns item instance creation, copying, destruction, and movement between holders:
 
-- create loose items and map items;
-- add items to containers and critters;
-- subtract/set critter item counts;
-- split stacks;
-- move items between critters, maps, and containers;
+- create detached items and map items;
+- copy an item into a detached instance;
+- move whole items between critters, maps, and containers, placing a detached item;
 - remove item-holder relationships.
 
 `Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content. Static items are built once per `ProtoMap` into the shared `StaticMap` (`Source/Server/StaticMap.h`), carry the `ident_t` their map file authored, and are never registered, persisted, or destroyed as runtime entities. A map instance drops individual static items through its own `RemovedStaticItemIds` list rather than by mutating that shared data; the model, the accessors it filters, and the client half are described in [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal).
@@ -446,7 +482,7 @@ Server entity classes combine Common-layer property/prototype behavior with serv
 - `Location` groups maps and raises `OnMapAdded` / `OnMapRemoved`.
 - `Map` owns map fields, critter/item presence, spectators, item visibility, manual blocks, trigger verification, and `OnCheckLook` / `OnCheckTrapLook`.
 - `Critter` owns visibility, current map/location/global state, inventory, moving state, player attachment, and broadcast helpers.
-- `Item` owns holder/container relationships, stack/multihex behavior, and `OnCritterWalk`.
+- `Item` owns holder/container relationships, multihex behavior, and `OnCritterWalk`.
 - `Player` owns connection/session state and the send surface to one client.
 
 Do not duplicate the Common entity taxonomy here; [EntityModel.md](EntityModel.md) owns the base entity/property/prototype explanation.

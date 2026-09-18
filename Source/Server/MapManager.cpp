@@ -274,6 +274,13 @@ auto MapManager::GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>
     return it->second;
 }
 
+void MapManager::ClearStaticMaps() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _staticMaps.clear();
+}
+
 void MapManager::GenerateMapContent(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
@@ -291,7 +298,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
 
     // Generate hex items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->GetHexItemBillets()) {
-        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, base_item->GetProperties());
+        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), base_item->GetProperties());
         id_map.emplace(base_item_id, item->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         map->AddItem(item, base_item->GetHex(), nullptr);
@@ -320,7 +327,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
         owner_id = id_map[owner_id];
 
         // Create item
-        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, base_item->GetProperties());
+        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), base_item->GetProperties());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
         // Add to parent
@@ -335,7 +342,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
             auto item_cont = map->GetItem(owner_id);
             FO_VERIFY_AND_THROW(item_cont, "Missing required item container");
 
-            item_cont->AddItemToContainer(item, {});
+            item_cont->AddItemToContainer(item, any_t {string {base_item->GetContainerStack()}});
             FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         }
         else {
@@ -861,7 +868,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     EnsureEntitySynced(cr);
     ValidateEntityAccess(map);
 
-    if (map != nullptr) {
+    if (map) {
         FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter transfer target hex is outside target map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
     }
 
@@ -877,7 +884,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     FO_VERIFY_AND_THROW(!prev_map_id || prev_map_ref, "Previous map id is set but previous map was not found");
     ValidateEntityAccess(prev_map_ref);
 
-    if (map != nullptr && map != prev_map_ref) {
+    if (map && map != prev_map_ref) {
         auto loc = map->GetLocation();
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
         ValidateEntityAccess(loc);
@@ -902,7 +909,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
     if (prev_map_ref == map) {
         // Between one map
-        if (map != nullptr) {
+        if (map) {
             FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter intra-map transfer target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
 
             int32_t multihex = cr->GetMultihex();
@@ -1097,7 +1104,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
-    if (map != nullptr) {
+    if (map) {
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add a critter to an already destroyed map", map->GetId(), cr->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a critter to a map that is being destroyed", map->GetId(), cr->GetId());
         FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter map placement target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
@@ -1181,7 +1188,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
     cr->LockMapTransfers();
     auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
-    if (map != nullptr) {
+    if (map) {
         FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
         auto map_holder = map.hold_ref();
         ignore_unused(map_holder);

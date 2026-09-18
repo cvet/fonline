@@ -121,6 +121,7 @@ public:
 
 private:
     Null_Renderer _renderer;
+    AppScreenState _screen {};
     shared_ptr<EffekseerDrawCapture> _capture;
     nptr<RenderTexture> _renderTarget {};
 };
@@ -226,10 +227,10 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
         .EffectName = _name,
         .Vertices = std::move(captured_vertices),
         .Vertices3D = std::move(captured_vertices_3d),
-        .HasBackgroundTexture = BackgroundTex != nullptr,
+        .HasBackgroundTexture = !!BackgroundTex,
         .Indices = std::move(captured_indices),
         .PrimitiveType = dbuf->PrimType,
-        .HasMainTexture = MainTex != nullptr,
+        .HasMainTexture = !!MainTex,
         .HasProjection = ProjBuf.has_value(),
         .AtlasSubRect = captured_sub_rect,
         .Sampling = captured_sampling,
@@ -242,7 +243,9 @@ CapturingAppRender::CapturingAppRender(ptr<GlobalSettings> settings) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    _renderer.Init(*settings, nullptr);
+    _screen.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
+    _screen.Fullscreen = settings->Render.Fullscreen;
+    _renderer.Init(*settings, &_screen, nullptr);
 }
 
 auto CapturingAppRender::GetRenderTarget() -> nptr<RenderTexture>
@@ -428,7 +431,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
 
             return {_texture.as_nptr(), EffekseerFixtureAtlasRect};
         },
-        [this]() { return ProvideSceneBackground(); })},
+        [this]() { return _settings.Render.DrawWireframe; }, [this]() { return ProvideSceneBackground(); })},
     _backend {safe_alloc::make_unique<EffekseerParticleRuntimeBackend>(ParticleRuntimeServices {
         .EffectMngr = _effectManager.as_ptr(),
         .Render = _render.as_ptr(),
@@ -446,6 +449,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
         // texture of its own, so a distortion effect is measured on its renderer rather than on a missing background
         .SceneBackgroundProvider = [this]() { return ProvideSceneBackground(); },
         .Settings = &_settings,
+        .DrawWireframe = [this]() { return _settings.Render.DrawWireframe; },
     })}
 {
     FO_STACK_TRACE_ENTRY();
@@ -471,7 +475,7 @@ auto EffekseerRuntimeTestRig::CanCreateSystem() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _backend->Create(_effectPath) != nullptr;
+    return !!_backend->Create(_effectPath);
 }
 
 auto EffekseerRuntimeTestRig::TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>

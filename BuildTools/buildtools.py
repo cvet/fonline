@@ -316,8 +316,17 @@ ANDROID_REQUIRED_SDK_PACKAGES = (
 )
 
 
+MSBUILD_DIAGNOSTIC_SHAPE = re.compile(r'\b(error|warning)((?:\s+[^:\s]*)?)\s*:', re.IGNORECASE)
+
+
 def log(*parts: object) -> None:
 	print('[BuildTools]', *parts, flush=True)
+
+
+def describe_failure(ex: BaseException) -> str:
+	# MSBuild fails a custom build step on any output line shaped '... error <code>: ...' whatever the command returns, and
+	# urllib renders a missing cache entry exactly so ('HTTP Error 404: Not Found'), so that colon is never printed
+	return MSBUILD_DIAGNOSTIC_SHAPE.sub(r'\1\2 -', f'{type(ex).__name__} - {ex}')
 
 
 class TerminalProgress:
@@ -894,7 +903,7 @@ def workspace_cache_fetch(name: str, target_path: Path) -> bool:
 		log('Workspace cache hit:', name)
 		return True
 	except OSError as ex:
-		log(f'Workspace cache miss for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache miss for {name} ({describe_failure(ex)})')
 		remove_path_if_exists(target_path)
 		return False
 
@@ -909,7 +918,7 @@ def workspace_cache_store(name: str, source_path: Path) -> None:
 		upload_url(url, source_path)
 		log('Workspace cache filled:', name)
 	except OSError as ex:
-		log(f'Workspace cache store failed for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache store failed for {name} ({describe_failure(ex)})')
 
 
 def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path, label: str) -> None:
@@ -922,7 +931,7 @@ def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path,
 			archive.add(source_path, arcname=source_path.name)
 		workspace_cache_store(name, archive_path)
 	except (OSError, tarfile.TarError) as ex:
-		log(f'Workspace cache pack failed for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache pack failed for {name} ({describe_failure(ex)})')
 	finally:
 		remove_path_if_exists(archive_path)
 
@@ -942,7 +951,7 @@ def download_file(url: str, target_path: Path, label: str) -> None:
 				raise
 
 			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
-			log(f'Download {label} failed ({type(ex).__name__}: {ex}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			log(f'Download {label} failed ({describe_failure(ex)}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
 			remove_path_if_exists(target_path)
 			time.sleep(delay)
 
@@ -1002,7 +1011,9 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 	# Private compilers avoid generator dependency paths retained from deleted runtime checkouts.
 	# PowerShell treats -p as an ambiguous script parameter; /p passes through to MSBuild
 	property_prefix = '/p:' if os.name == 'nt' else '-p:'
-	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false']
+	# Analyzers and generator translations change nothing the runtime publishes, which builds byte-identical without
+	# them, and they are much of the library compile time; the runtime's own source build turns analyzers off the same way
+	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false', f'{property_prefix}RunAnalyzers=false', f'{property_prefix}EnableXlfLocalization=false']
 	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
 	# unrelated runtime projects the same output filename, breaking generators and task publishing
 	# The nested runtime selects its own host toolchain. Outer MSBuild search paths may name optional
@@ -1103,7 +1114,7 @@ def restore_workspace_cache_tree(
 		shutil.move(str(source), str(destination))
 		return True
 	except (OSError, tarfile.TarError) as ex:
-		log(f'Cached {label} archive is unusable ({type(ex).__name__}: {ex})')
+		log(f'Cached {label} archive is unusable ({describe_failure(ex)})')
 		remove_path_if_exists(destination)
 		return False
 	finally:
@@ -2508,13 +2519,14 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native+libs.sfx'
 
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
-# subset or source patches change: an unchanged marker leaves a prepared host on the old runtime
-MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl'
+# subset, cmake args, or source patches change: an unchanged marker leaves a prepared host on the old runtime
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
 MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info'
+MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
 
 # Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
 MONO_WORKSPACE_CACHE_FORMAT = 1
@@ -2566,6 +2578,12 @@ def resolve_mono_marker_suffix(os_name: str) -> str:
 		return MONO_WINDOWS_SOURCE_MARKER_SUFFIX
 
 	return MONO_SUBSET_MARKER_SUFFIX
+
+
+def resolve_mono_cmake_args() -> list[str]:
+	# Without ENABLE_OVERRIDABLE_ALLOCATORS, mono_set_allocator_vtable still returns TRUE and is a no-op
+	property_prefix = '/p:' if os.name == 'nt' else '-p:'
+	return [f'{property_prefix}CMakeArgs={MONO_OVERRIDABLE_ALLOCATORS_CMAKE}']
 
 
 PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
@@ -3190,7 +3208,7 @@ def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		if os_name == 'windows':
 			patch_runtime_windows_embedded_debug_info(runtime_root)
 
-		run_runtime_build(['-os', os_name, '-arch', layout.dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root, target_os=os_name)
+		run_runtime_build(['-os', os_name, '-arch', layout.dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name), *resolve_mono_cmake_args()], runtime_root, target_os=os_name)
 
 	run_marker_step(layout.built_marker, 'Build runtime', build_runtime)
 

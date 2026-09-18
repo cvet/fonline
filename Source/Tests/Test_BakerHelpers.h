@@ -66,9 +66,9 @@ namespace BakerTests
 
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
-        settings.View.ScreenWidth = 320;
-        settings.View.ScreenHeight = 200;
-        settings.Audio.DisableAudio = true;
+        OverrideSetting(settings.View.ScreenWidth, 320);
+        OverrideSetting(settings.View.ScreenHeight, 200);
+        OverrideSetting(settings.Audio.DisableAudio, true);
         OverrideSetting(settings.Render.NullRenderer, true);
         OverrideSetting(settings.Render.CritterStubSpriteName, string {});
         OverrideSetting(settings.Render.ItemStubSpriteName, string {});

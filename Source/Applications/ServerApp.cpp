@@ -75,7 +75,7 @@ int main(int argc, char** argv) // Handled by SDL
 
         GetApp()->MainWindow.SetTitle("Server");
 
-        isize32 configured_client_size = isize32 {GetApp()->Settings.View.ScreenWidth, GetApp()->Settings.View.ScreenHeight};
+        isize32 configured_client_size = GetApp()->ScreenState.Size;
         GetApp()->MainWindow.SetSize({GetApp()->Settings.Server.ServerWidth, GetApp()->Settings.Server.ServerHeight});
 
         refcount_nptr<ServerEngine> server {};
@@ -152,8 +152,6 @@ int main(int argc, char** argv) // Handled by SDL
                 auto settings = safe_alloc::make_unique<GlobalSettings>(false);
                 settings->CopyFrom(GetApp()->Settings);
                 ClientStartupSettingsHook(*settings, client_index, true);
-                settings->View.ScreenWidth = client_size.width;
-                settings->View.ScreenHeight = client_size.height;
 
                 ptr<GlobalSettings> settings_ptr = settings.get();
                 auto client = safe_alloc::make_refcounted<ClientEngine>(settings_ptr, GetClientResources(*settings), window);

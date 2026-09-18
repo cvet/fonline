@@ -462,7 +462,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         }
 
         for (const auto& type : MakeSortedBaseTypes(meta)) {
-            if (type->IsStruct && type->StructLayout != nullptr) {
+            if (type->IsStruct && type->StructLayout) {
                 out << "public partial struct " << EscapeCsIdentifier(type->Name) << "\n";
                 out << "{\n";
 
@@ -570,13 +570,13 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
                 out << "}\n\n";
             }
-            else if (type->IsRefType && type->RefType != nullptr) {
+            else if (type->IsRefType && type->RefType) {
                 unordered_set<string> member_names;
 
                 out << "public partial class " << EscapeCsIdentifier(type->Name) << "\n";
                 out << "{\n";
 
-                if (type->RefType->FieldsRegistrar != nullptr) {
+                if (type->RefType->FieldsRegistrar) {
                     out << CS_INDENT << "public " << EscapeCsIdentifier(type->Name) << "()\n";
                     out << CS_INDENT << "{\n";
                     out << CS_INDENT << "}\n\n";
@@ -603,7 +603,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n\n";
                 }
 
-                AppendMethods(out, type->RefType->Methods, type->Name, false, type->RefType->FieldsRegistrar == nullptr, type->RefType->FieldsRegistrar == nullptr, false, member_names);
+                AppendMethods(out, type->RefType->Methods, type->Name, false, !type->RefType->FieldsRegistrar, !type->RefType->FieldsRegistrar, false, member_names);
                 out << "}\n\n";
             }
         }
@@ -2898,7 +2898,8 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "private IntPtr _entityPtrValue;\n";
     out << CS_INDENT << "private readonly bool[]? _backendAlive;\n";
-    out << CS_INDENT << "private readonly IntPtr _backend;\n\n";
+    out << CS_INDENT << "private readonly IntPtr _backend;\n";
+    out << CS_INDENT << "private readonly long _trackerId;\n\n";
     out << CS_INDENT << "protected IntPtr _entityPtr\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
@@ -2926,16 +2927,20 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "        _backendAlive = global::FOnline.Native.GetBackendAliveFlag();\n";
     out << CS_INDENT << "        _backend = global::FOnline.Native.GetBackend();\n";
     out << CS_INDENT << "        global::FOnline.Native.AddRefEntity(entityPtr);\n";
+    out << CS_INDENT << "        _trackerId = global::FOnline.EntityWrapperTracker.Register(this, entityPtr);\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
-    out << CS_INDENT << "// Strong native reference held for the wrapper's lifetime (paired with the ctor AddRef),\n";
-    out << CS_INDENT << "// so a wrapper retained past the entity's destroy keeps it alive-but-destroyed instead of\n";
-    out << CS_INDENT << "// dangling. Released on GC finalization (the native refcount is atomic / finalizer-safe).\n";
+    out << CS_INDENT << "// Strong native reference held for the wrapper's lifetime (paired with the ctor AddRef), so a\n";
+    out << CS_INDENT << "// wrapper retained past the entity's destroy keeps it alive-but-destroyed instead of dangling.\n";
+    out << CS_INDENT << "// Giving it back on GC finalization is the only path there is, which is why backend teardown\n";
+    out << CS_INDENT << "// runs the collector and waits for it while the engine is still alive.\n";
     out << CS_INDENT << "~Entity()\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    if (_entityPtrValue != IntPtr.Zero) {\n";
     out << CS_INDENT << "        global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
     out << CS_INDENT << "        _entityPtrValue = IntPtr.Zero;\n";
+    out << CS_INDENT << "        // Given back after the reference, so an entry the engine still sees means the reference is still held\n";
+    out << CS_INDENT << "        global::FOnline.EntityWrapperTracker.Unregister(_trackerId);\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "internal IntPtr EntityPtr\n";
@@ -2980,7 +2985,7 @@ static auto IsDynamicManagedRefType(const BaseTypeDesc& type) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return type.IsRefType && type.RefType != nullptr && type.RefType->FieldsRegistrar != nullptr;
+    return type.IsRefType && type.RefType && type.RefType->FieldsRegistrar;
 }
 
 static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
@@ -3237,7 +3242,8 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
     string property_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
     const BaseTypeDesc& base_type = prop->GetBaseType();
-    bool use_narrow_integer_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
+    bool use_scalar_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum);
+    bool use_integer_bridge = use_scalar_bridge && !is_static && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
 
     if (!member_names.emplace(property_name).second) {
         return;
@@ -3261,10 +3267,11 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
 
-    if (use_narrow_integer_bridge) {
-        string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
-        out << CS_INDENT << "        return (" << decl_type << ")" << (is_static ? "global::FOnline.Game." : "") << "GetAsInt(\n";
-        out << CS_INDENT << "            (global::FOnline." << property_enum_type << ")(" << prop->GetRegIndex() << "));\n";
+    if (use_integer_bridge) {
+        out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetEntityValueAsInt(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+    }
+    else if (use_scalar_bridge) {
+        out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
     else {
         out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetProperty(\n";
@@ -3279,11 +3286,11 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
         out << CS_INDENT << "    set\n";
         out << CS_INDENT << "    {\n";
 
-        if (use_narrow_integer_bridge) {
-            string property_enum_type = EscapeCsIdentifier(strex("{}Property", owner_type_name).str());
-            out << CS_INDENT << "        " << (is_static ? "global::FOnline.Game." : "") << "SetAsInt(\n";
-            out << CS_INDENT << "            (global::FOnline." << property_enum_type << ")(" << prop->GetRegIndex() << "),\n";
-            out << CS_INDENT << "            value);\n";
+        if (use_integer_bridge) {
+            out << CS_INDENT << "        global::FOnline.Native.SetEntityValueAsInt(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
+        }
+        else if (use_scalar_bridge) {
+            out << CS_INDENT << "        global::FOnline.Native.SetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
         }
         else {
             out << CS_INDENT << "        global::FOnline.Native.SetProperty(\n";
@@ -3307,54 +3314,44 @@ static void AppendSettingProperty(ostringstream& out, string_view indent, const 
         return;
     }
 
+    // A setting is read on the script surface and never written: a configured value is a knob someone
+    // turned, and a value that changes while the game runs belongs to the system that owns it
     string setting_literal = EscapeCsStringLiteral(setting_name);
     string type_name = MakeCsTypeName(type);
     const BaseTypeDesc& base_type = type.BaseType;
     string getter_method;
-    string setter_method;
     string getter_cast;
-    string setter_value = "value";
 
     if (type.Kind == ComplexTypeKind::Simple) {
         if (base_type.IsBool) {
             getter_method = "GetSettingBool";
-            setter_method = "SetSettingBool";
         }
         else if (base_type.IsEnum) {
             getter_method = "GetSettingInt";
-            setter_method = "SetSettingInt";
             getter_cast = strex("({})", type_name).str();
-            setter_value = "(int)value";
         }
         else if (base_type.IsInt8 || base_type.IsInt16 || base_type.IsInt32) {
             getter_method = "GetSettingInt";
-            setter_method = "SetSettingInt";
             getter_cast = strex("({})", type_name).str();
         }
         else if (base_type.IsUInt8 || base_type.IsUInt16 || base_type.IsUInt32) {
             getter_method = "GetSettingUInt";
-            setter_method = "SetSettingUInt";
             getter_cast = strex("({})", type_name).str();
         }
         else if (base_type.IsInt64) {
             getter_method = "GetSettingLong";
-            setter_method = "SetSettingLong";
         }
         else if (base_type.IsUInt64) {
             getter_method = "GetSettingULong";
-            setter_method = "SetSettingULong";
         }
         else if (base_type.IsSingleFloat) {
             getter_method = "GetSettingFloat";
-            setter_method = "SetSettingFloat";
         }
         else if (base_type.IsDoubleFloat) {
             getter_method = "GetSettingDouble";
-            setter_method = "SetSettingDouble";
         }
         else if (base_type.IsString) {
             getter_method = "GetSettingString";
-            setter_method = "SetSettingString";
         }
         else {
             throw ManagedScriptBakerException("Unsupported Managed setting type", strex("{} {}", setting_name, base_type.Name).str());
@@ -3363,51 +3360,39 @@ static void AppendSettingProperty(ostringstream& out, string_view indent, const 
     else if (type.Kind == ComplexTypeKind::Array) {
         if (base_type.IsBool) {
             getter_method = "GetSettingBoolList";
-            setter_method = "SetSettingBoolList";
         }
         else if (base_type.IsInt8) {
             getter_method = "GetSettingSByteList";
-            setter_method = "SetSettingSByteList";
         }
         else if (base_type.IsUInt8) {
             getter_method = "GetSettingByteList";
-            setter_method = "SetSettingByteList";
         }
         else if (base_type.IsInt16) {
             getter_method = "GetSettingShortList";
-            setter_method = "SetSettingShortList";
         }
         else if (base_type.IsUInt16) {
             getter_method = "GetSettingUShortList";
-            setter_method = "SetSettingUShortList";
         }
         else if (base_type.IsInt32) {
             getter_method = "GetSettingIntList";
-            setter_method = "SetSettingIntList";
         }
         else if (base_type.IsUInt32) {
             getter_method = "GetSettingUIntList";
-            setter_method = "SetSettingUIntList";
         }
         else if (base_type.IsInt64) {
             getter_method = "GetSettingLongList";
-            setter_method = "SetSettingLongList";
         }
         else if (base_type.IsUInt64) {
             getter_method = "GetSettingULongList";
-            setter_method = "SetSettingULongList";
         }
         else if (base_type.IsSingleFloat) {
             getter_method = "GetSettingFloatList";
-            setter_method = "SetSettingFloatList";
         }
         else if (base_type.IsDoubleFloat) {
             getter_method = "GetSettingDoubleList";
-            setter_method = "SetSettingDoubleList";
         }
         else if (base_type.IsString) {
             getter_method = "GetSettingStringList";
-            setter_method = "SetSettingStringList";
         }
         else {
             throw ManagedScriptBakerException("Unsupported Managed array setting type", strex("{} {}", setting_name, base_type.Name).str());
@@ -3423,12 +3408,6 @@ static void AppendSettingProperty(ostringstream& out, string_view indent, const 
     out << indent << "    {\n";
     out << indent << "        return " << getter_cast << "global::FOnline.Native." << getter_method << "(\n";
     out << indent << "            \"" << setting_literal << "\");\n";
-    out << indent << "    }\n";
-    out << indent << "    set\n";
-    out << indent << "    {\n";
-    out << indent << "        global::FOnline.Native." << setter_method << "(\n";
-    out << indent << "            \"" << setting_literal << "\",\n";
-    out << indent << "            " << setter_value << ");\n";
     out << indent << "    }\n";
     out << indent << "}\n\n";
 }
@@ -3852,9 +3831,6 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
         }
 
         if (member_names.emplace(has_accessor_name).second) {
-            string owner_literal = EscapeCsStringLiteral(owner_type_name);
-            string prop_literal = EscapeCsStringLiteral(prop->GetName());
-
             out << CS_INDENT << "public ";
 
             if (is_static) {
@@ -3865,10 +3841,7 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
             out << CS_INDENT << "{\n";
             out << CS_INDENT << "    get\n";
             out << CS_INDENT << "    {\n";
-            out << CS_INDENT << "        return (bool)global::FOnline.Native.GetProperty(\n";
-            out << CS_INDENT << "            \"" << owner_literal << "\",\n";
-            out << CS_INDENT << "            \"" << prop_literal << "\",\n";
-            out << CS_INDENT << "            " << MakeTargetPtrExpression(is_static, false) << ");\n";
+            out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<bool>(" << MakeTargetPtrExpression(is_static, false) << ", " << prop->GetRegIndex() << ");\n";
             out << CS_INDENT << "    }\n";
             out << CS_INDENT << "}\n\n";
         }
@@ -4324,7 +4297,7 @@ static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
 
     auto underlying_type = enum_type.EnumUnderlyingType;
 
-    if (underlying_type == nullptr) {
+    if (!underlying_type) {
         return "int";
     }
 

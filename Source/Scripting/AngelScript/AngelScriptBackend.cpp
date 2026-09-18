@@ -363,7 +363,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     uint8_t source_config_flags = reader.read<uint8_t>();
 
     uint8_t flags = 0;
-    flags |= build_condition<FO_MANAGED_SCRIPTING> ? AS_BYTECODE_CONFIG_MANAGED : 0;
+    flags |= build_condition<FO_MANAGED_SCRIPTING>() ? AS_BYTECODE_CONFIG_MANAGED : uint8_t {0};
     FO_VERIFY_AND_THROW(source_config_flags == flags, "Script bytecode was compiled for a different build configuration", source_config_flags, flags);
 
     if (source_pointer_size != AS_BYTECODE_POINTER_SIZE) {
@@ -679,7 +679,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     writer.write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
     writer.write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
     writer.write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
-    writer.write<uint8_t>(build_condition<FO_MANAGED_SCRIPTING> ? AS_BYTECODE_CONFIG_MANAGED : 0);
+    writer.write<uint8_t>(build_condition<FO_MANAGED_SCRIPTING>() ? AS_BYTECODE_CONFIG_MANAGED : uint8_t {0});
     writer.write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
     if (!buf.empty()) {
         writer.write_object_array(const_span<AngelScript::asBYTE> {buf.data(), buf.size()});

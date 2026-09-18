@@ -375,17 +375,17 @@ TEST_CASE("AngelScriptValueAlignment")
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-        REQUIRE(as_engine != nullptr);
+        REQUIRE(as_engine);
 
         // Script classes live in the script module, not in the engine's registered-type scope
         REQUIRE(as_engine->GetModuleCount() >= 1);
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
-        REQUIRE(script_module != nullptr);
+        REQUIRE(script_module);
 
         for (string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
             INFO(class_decl);
             nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
-            REQUIRE(class_type != nullptr);
+            REQUIRE(class_type);
             CheckClassMemberAlignment(as_engine, class_type);
         }
     }
@@ -437,14 +437,14 @@ TEST_CASE("AngelScriptNativeCallNormalizesBoolArgument")
     auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
     nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-    REQUIRE(as_engine != nullptr);
+    REQUIRE(as_engine);
     REQUIRE(as_engine->GetModuleCount() >= 1);
 
     nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
-    REQUIRE(script_module != nullptr);
+    REQUIRE(script_module);
 
     nptr<AngelScript::asIScriptFunction> concat_bool = script_module->GetFunctionByDecl("string AlignTest::ConcatBool(bool)");
-    REQUIRE(concat_bool != nullptr);
+    REQUIRE(concat_bool);
 
     // The VM writes one byte for a bool and leaves the rest of its stack DWORD as it found it, so the slot is
     // filled here the way a reused slot arrives: the low byte carries the bool, the bytes above it carry litter

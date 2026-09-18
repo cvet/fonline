@@ -381,8 +381,8 @@ public static class ScriptFunc
 
         if (nonNullableTarget.IsEnum) {
             if (value is string enumText) {
-                Invariant.Verify(Enums.TryParseObject(nonNullableTarget, enumText, out object? enumValue),
-                                 "Enum value is not found");
+                bool parsedOk = Enums.TryParseObject(nonNullableTarget, enumText, out object? enumValue);
+                Invariant.Verify(parsedOk, "Enum value is not found");
                 return enumValue;
             }
 

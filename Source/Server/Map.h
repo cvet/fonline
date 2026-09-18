@@ -137,6 +137,7 @@ public:
     void VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir);
     auto CheckGagItems(mpos hex, int32_t radius, const function<bool(ptr<const Item>)>& gag_callback) const -> bool;
     auto CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_callback) const -> bool;
+    void ClearAllAssociations() noexcept;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

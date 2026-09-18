@@ -27,25 +27,19 @@ internal static class Program
                                                                        (-7, 5, 1),
                                                                        (int.MinValue, 4, 0),
                                                                        (int.MaxValue, 1, 7) };
-                 int previous = Settings.Geometry.MapDirCount;
-                 try {
-                     foreach (int count in new[] { 6, 8 }) {
-                         Settings.Geometry.MapDirCount = count;
-                         foreach (var sample in samples) {
-                             Check(new hdir(sample.Value).value == (count == 6 ? sample.Hex : sample.Square),
-                                   "Wrong normalized direction for " + sample.Value);
-                         }
-                         sbyte signedDirection = -1;
-                         byte unsignedDirection = 255;
-                         Check(new hdir(signedDirection).value == count - 1,
-                               "Signed narrow direction bypassed normalization");
-                         Check(new hdir(unsignedDirection).value == (count == 6 ? 3 : 7),
-                               "Unsigned direction narrowed before normalization");
-                     }
+                 // The direction count follows the geometry the engine was built for, so the run measures the
+                 // one in effect rather than switching between them
+                 int count = Game.MapDirCount;
+                 Check(count == 6 || count == 8, "Unexpected map direction count " + count);
+                 foreach (var sample in samples) {
+                     Check(new hdir(sample.Value).value == (count == 6 ? sample.Hex : sample.Square),
+                           "Wrong normalized direction for " + sample.Value);
                  }
-                 finally {
-                     Settings.Geometry.MapDirCount = previous;
-                 }
+                 sbyte signedDirection = -1;
+                 byte unsignedDirection = 255;
+                 Check(new hdir(signedDirection).value == count - 1, "Signed narrow direction bypassed normalization");
+                 Check(new hdir(unsignedDirection).value == (count == 6 ? 3 : 7),
+                       "Unsigned direction narrowed before normalization");
                  Check(System.Runtime.InteropServices.Marshal.SizeOf<hdir>() == 1, "Direction ABI size changed");
                  Check(typeof(hdir).GetConstructor(new[] { typeof(sbyte) })?.GetParameters()[0].ParameterType ==
                            typeof(sbyte),
@@ -226,6 +220,28 @@ internal static class Program
                  Check(ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeLambda()) == "DispatchProbe::MakeLambda",
                        "A lambda is not named after the script method that wrote it");
              }),
+            ("an async remote call is named after its handler, not the adapter that wraps it",
+             () =>
+             {
+                 Native.RegisteredRemoteCalls.Clear();
+                 Native.RegisteredRemoteCallHandlers.Clear();
+                 RemoteCallScriptFuncs.RegisterRemoteCalls();
+                 int asyncCall = Native.RegisteredRemoteCalls.IndexOf("AsyncRemote");
+                 int voidCall = Native.RegisteredRemoteCalls.IndexOf("VoidRemote");
+                 Check(asyncCall >= 0 && voidCall >= 0, "The remote call probes were not registered");
+                 string asyncName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[asyncCall]);
+                 string voidName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[voidCall]);
+                 Check(asyncName == "DispatchProbe::AsyncRemote (via RemoteCallScriptFuncs::ObserveTaskHandler)",
+                       "An async remote call is named after the adapter instead of its handler: " + asyncName);
+                 Check(voidName == "DispatchProbe::VoidRemote",
+                       "A remote call that needs no adapter is not named after its own method: " + voidName);
+                 Action callback = ExampleGame.DispatchProbe.NoArgs;
+                 string capturingName =
+                     ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeCapturingLambda(callback));
+                 Check(capturingName == "DispatchProbe::MakeCapturingLambda",
+                       "A lambda holding a callback beside its own state was renamed after that callback: " +
+                           capturingName);
+             }),
             ("a resumed await is named after its async method",
              () =>
              {
@@ -333,10 +349,10 @@ public sealed class ProbeFailure : Exception
 }
 public static class DispatchProbe
 {
-    public static CritterProperty EnumValue;
-    public static int OverloadValue;
-    public static int AdminCallCount;
-    public static bool AsyncFinished;
+    internal static CritterProperty EnumValue;
+    internal static int OverloadValue;
+    internal static int AdminCallCount;
+    internal static bool AsyncFinished;
     [CallableByName]
     public static void WriteInt(ref int value)
     {
@@ -395,6 +411,24 @@ public static class DispatchProbe
         await Task.Yield();
         AsyncFinished = true;
     }
+    [ServerRemoteCall]
+    public static void VoidRemote()
+    {
+    }
+    [ServerRemoteCall]
+    public static async Task AsyncRemote()
+    {
+        await Task.Yield();
+    }
+    public static Action MakeCapturingLambda(Action callback)
+    {
+        int marker = OverloadValue;
+        return () =>
+        {
+            callback();
+            OverloadValue = marker;
+        };
+    }
     [AdminRemoteCall]
     public static void AdminOnly()
     {
@@ -402,7 +436,7 @@ public static class DispatchProbe
     }
     public static class Inner
     {
-        public static bool Marked;
+        internal static bool Marked;
         [CallableByName]
         public static void Mark()
         {

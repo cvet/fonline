@@ -87,6 +87,7 @@ auto GetClientResourceIndexPath(const ClientSettings& settings) -> string;
 class ClientEngine : public BaseEngine, public AnimationResolver
 {
     friend class ClientScriptSystem;
+    friend class ClientEntity;
 
 public:
     explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window); // For client
@@ -118,7 +119,6 @@ public:
     [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation; }
     [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap; }
     [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap; }
-    void Shutdown() override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
     void ProcessScheduledCallbacks();
@@ -143,11 +143,13 @@ public:
     void CritterLookTo(ptr<CritterHexView> cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
-    auto GetEntity(ident_t id) -> nptr<ClientEntity>;
+    auto GetEntity(ident_t id) -> refcount_nptr<ClientEntity>;
     void RegisterEntity(ptr<ClientEntity> entity);
     void UnregisterEntity(ptr<ClientEntity> entity);
 
     void DrawMiniMap(int32_t zoom, int32_t x, int32_t y, int32_t w, int32_t h);
+
+    void Shutdown() override;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnStart);
@@ -385,7 +387,9 @@ protected:
     TextPack _curLang {make_ptr(&Hashes)};
     vector<pair<string, TextPack>> _langPackCache {};
 
-    unordered_map<ident_t, ptr<ClientEntity>> _allEntities {};
+    atomic_mutex _allEntitiesLocker {};
+    unordered_map<ident_t, ptr<ClientEntity>> _allEntities FO_TSA_GUARDED_BY(_allEntitiesLocker) {};
+    std::atomic<int32_t> _liveEntityCount {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
     refcount_nptr<PlayerView> _curPlayer {};
     refcount_nptr<LocationView> _curLocation {};

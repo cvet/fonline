@@ -60,7 +60,8 @@ public static class Enums
         string text = valueName is hstring hvalue
                         ? hvalue.ToString()
                         : Convert.ToString(valueName, CultureInfo.InvariantCulture) ?? string.Empty;
-        Invariant.Verify(TryParseObject(enumType, text, out object? result), "Enum value is not found", enumTypeName, text);
+        bool parsedOk = TryParseObject(enumType, text, out object? result);
+        Invariant.Verify(parsedOk, "Enum value is not found", enumTypeName, text);
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }
 

@@ -9,8 +9,12 @@ internal static class Native
     public static readonly System.Collections.Generic.List<string> RegisteredRemoteCalls = new();
     public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result,
                                                 Delegate handler) => RegisteredFunctions.Add(name + ":" + attribute);
-    public static void RegisterRemoteCallHandler(string name, int parameters,
-                                                 Delegate handler) => RegisteredRemoteCalls.Add(name);
+    public static readonly System.Collections.Generic.List<Delegate> RegisteredRemoteCallHandlers = new();
+    public static void RegisterRemoteCallHandler(string name, int parameters, Delegate handler)
+    {
+        RegisteredRemoteCalls.Add(name);
+        RegisteredRemoteCallHandlers.Add(handler);
+    }
     public static int FallbackCalls;
     public static bool InvokeScriptFunc(string name, object?[] args)
     {
@@ -97,12 +101,9 @@ public partial struct ucolor
 {
     public uint value;
 }
-public static class Settings
+public static partial class Game
 {
-    public static class Geometry
-    {
-        public static int MapDirCount { get; set; } = 6;
-    }
+    public static int MapDirCount { get; set; } = 6;
 }
 public partial struct hdir
 {

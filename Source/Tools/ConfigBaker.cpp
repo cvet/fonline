@@ -81,6 +81,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
         auto client_engine = BakerClientEngine(*_context->BakedFiles);
         const auto& server_game_settings = server_engine.GetGameSettings();
         const auto& client_game_settings = client_engine.GetGameSettings();
+        string pack_declarations = _context->Settings->GetResourcePackDeclarations();
 
         auto resolve_config_settings = [&](string_view sub_config) -> map<string, string> {
             FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
@@ -180,6 +181,11 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             }
 
             if (settings_errors == 0) {
+                // A packaged application reads nothing but this config, so the pack list travels in it; sections go last,
+                // since every line after a section header belongs to that section
+                server_config_content += pack_declarations;
+                client_config_content += pack_declarations;
+
                 auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
                     string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
                     _context->WriteData(cfg_name, make_const_span(cfg_content));

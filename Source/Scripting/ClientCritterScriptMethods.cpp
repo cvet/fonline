@@ -201,40 +201,6 @@ FO_SCRIPT_API void Client_Critter_RefreshView(ptr<CritterView> self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, hstring protoId)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (!protoId || item->GetProtoId() == protoId) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, ptr<ProtoItem> proto)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (item->GetProtoId() == proto->GetProtoId()) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident_t itemId)
 {
     auto item = self->GetInvItem(itemId);
@@ -251,70 +217,42 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstri
     }
 
     auto inv_items = self->GetInvItems();
+    nptr<ItemView> another_slot;
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
 
-            if (item->GetProtoId() == protoId) {
+        if (item->GetProtoId() == protoId) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == protoId) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<ProtoItem> proto)
 {
     auto inv_items = self->GetInvItems();
+    nptr<ItemView> another_slot;
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
 
-            if (item->GetProtoId() == proto->GetProtoId()) {
+        if (item->GetProtoId() == proto->GetProtoId()) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == proto->GetProtoId()) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 ///@ ExportMethod
@@ -556,7 +494,7 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
 {
     auto item = self->GetInvItem(itemId);
     auto swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
@@ -577,12 +515,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
             map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
-        if (item->GetStackable() && itemCount < item->GetCount()) {
-            item->SetCount(item->GetCount() - itemCount);
-        }
-        else {
-            self->DeleteInvItem(item);
-        }
+        self->DeleteInvItem(item);
     }
     else {
         item->SetCritterSlot(toSlot);

@@ -125,10 +125,6 @@ public:
     ///@ MigrationRule Property Item SubItemIds InnerItemIds
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, InnerItemIds);
-    ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(bool, Stackable);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(int32_t, Count);
     ///@ ExportProperty Common Mutable PublicSync Persistent Resource
     FO_ENTITY_PROPERTY(hstring, PicMap);
     ///@ ExportProperty Common Mutable PublicSync Persistent

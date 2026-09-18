@@ -298,12 +298,22 @@ internal static class Native
         List<long> frameValues = new List<long>();
         long previousHandle = 0;
 
+        // StackTrace is implemented in CoreLib, but naming it references System.Diagnostics.StackTrace, whose
+        // implementation brings System.Reflection.Metadata and its dependencies into every runtime payload
+        Assembly coreLib = typeof(object).Assembly;
+        Type stackTraceType = coreLib.GetType("System.Diagnostics.StackTrace", true)!;
+        Type stackFrameType = coreLib.GetType("System.Diagnostics.StackFrame", true)!;
+        MethodInfo getFrames = stackTraceType.GetMethod("GetFrames", Type.EmptyTypes)!;
+        MethodInfo getMethod = stackFrameType.GetMethod("GetMethod", Type.EmptyTypes)!;
+        MethodInfo getILOffset = stackFrameType.GetMethod("GetILOffset", Type.EmptyTypes)!;
+
         for (int i = chain.Count - 1; i >= 0; i--) {
-            System.Diagnostics.StackFrame[] stackFrames =
-                new System.Diagnostics.StackTrace(chain[i], false).GetFrames();
+            object stackTrace = Activator.CreateInstance(stackTraceType, chain[i], false)!;
+            Array stackFrames = (Array)getFrames.Invoke(stackTrace, null)!;
 
             for (int j = 0; j < stackFrames.Length; j++) {
-                long handle = GetMethodHandle(stackFrames[j].GetMethod());
+                object stackFrame = stackFrames.GetValue(j)!;
+                long handle = GetMethodHandle((MethodBase?)getMethod.Invoke(stackFrame, null));
 
                 // A wrapping exception is thrown from the frame that caught its cause, which the cause already lists
                 if (handle == 0 || (j == 0 && handle == previousHandle)) {
@@ -311,7 +321,7 @@ internal static class Native
                 }
 
                 frameValues.Add(handle);
-                frameValues.Add(stackFrames[j].GetILOffset());
+                frameValues.Add((int)getILOffset.Invoke(stackFrame, null)!);
                 previousHandle = handle;
             }
         }
@@ -706,6 +716,30 @@ internal static class Native
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern int FireEvent(string ownerType, string eventName, IntPtr entityPtr, object?[] args);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static T GetPropertyValue<T>(IntPtr entityPtr, int propIndex)
+        where T : unmanaged
+    {
+        T value = default;
+        ThrowNativeError(
+            GetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? GetPropertyValueInternal(IntPtr entityPtr, int propIndex, ref byte value, int size);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void SetPropertyValue<T>(IntPtr entityPtr, int propIndex, T value)
+        where T : unmanaged
+    {
+        ThrowNativeError(
+            SetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? SetPropertyValueInternal(IntPtr entityPtr, int propIndex, ref byte value, int size);
 
     internal static object GetProperty(string ownerType, string propertyName, IntPtr entityPtr)
     {

@@ -224,18 +224,12 @@ namespace ServerEngineTest
     int ImmediateInitOrder = 0;
     int DeferredInitOrder = 0;
 
-    // Reproduces single-threaded what a concurrent split lands during CreateItem's yield, because CreateItem
-    // runs between SplitItem's count read and its write
-    ident SplitInjectSourceId;
-    int SplitInjectAmount = 0;
-
     [[ModuleInit]]
     void RegisterHooks()
     {
         ImmediateInitOrder = ++ModuleInitOrder;
         Game.OnInit.Subscribe(OnInit);
         Game.OnCritterInit.Subscribe(OnCritterInit);
-        Game.OnItemInit.Subscribe(OnItemInit);
     }
 
     [[ModuleInit(2)]]
@@ -256,25 +250,6 @@ namespace ServerEngineTest
         CritterInitCalls++;
         LastCritterId = cr.Id.value;
         LastCritterFirstTime = firstTime;
-    }
-
-    [[Event]]
-    void OnItemInit(Item item, bool firstTime)
-    {
-        if (SplitInjectAmount != 0) {
-            int amount = SplitInjectAmount;
-            SplitInjectAmount = 0; // fire exactly once
-            Item? src = Game.GetItem(SplitInjectSourceId);
-            if (src !is null) {
-                src.Count += amount; // mutate the source mid-split, before SplitItem's write
-            }
-        }
-    }
-
-    void UnitTestArmSplitInjection(ident sourceId, int amount)
-    {
-        SplitInjectSourceId = sourceId;
-        SplitInjectAmount = amount;
     }
 
     void UnitTestNoop() {}
@@ -453,35 +428,6 @@ namespace ServerEngineInitGateTest
             });
     }
 
-    // The default proto leaves `Stackable` false, but the conservation stress needs the split/merge count
-    // read-modify-write that only a stackable item exercises
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
-    {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
-        ProtoItem proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
-        proto.SetStackable(true);
-        proto.GetProperties()->StoreAllData(props_data, str_hashes);
-
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
-
-        writer.write<uint32_t>(uint32_t {0});
-        ignore_unused(str_hashes);
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.write_string_bytes(type_name.as_str());
-        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.write_string_bytes(proto_name);
-        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.write_bytes(props_data);
-
-        return protos_data;
-    }
-
     static auto MakeServerTestResources(ServerTestScriptMode script_mode = ServerTestScriptMode::Default) -> FileSystem
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
@@ -501,7 +447,6 @@ namespace ServerEngineInitGateTest
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto stackable_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "UnitTestStackable");
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = script_mode == ServerTestScriptMode::Default ? MakeScriptBinary(compiler_resources) : MakeInitGateScriptBinary(compiler_resources, script_mode);
 
@@ -511,7 +456,6 @@ namespace ServerEngineInitGateTest
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
         runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);
-        runtime_source->AddFile("UnitTestStackable.fopro-bin-server", stackable_blob);
         runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile(script_mode == ServerTestScriptMode::Default ? "ServerEngineTest.fos-bin-server" : "ServerEngineInitGateTest.fos-bin-server", std::move(script_blob));
 
@@ -1757,7 +1701,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1806,7 +1750,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1869,7 +1813,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1932,7 +1876,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     auto cr_a = server->CreateCritter(critter_pid, false);
     auto cr_b = server->CreateCritter(critter_pid, false);
     auto cr_c = server->CreateCritter(critter_pid, false);
-    auto nested_item = server->ItemMngr.CreateItem(item_pid, 1, nullptr).hold_ref();
+    auto nested_item = server->ItemMngr.CreateItem(item_pid, nullptr).hold_ref();
     ptr<ServerEntity> cr_a_entity = cr_a;
     ptr<ServerEntity> cr_b_entity = cr_b;
     ptr<ServerEntity> nested_item_entity = nested_item.as_ptr();
@@ -2395,8 +2339,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
-    auto item_a = server->ItemMngr.AddItemCritter(cr_a, item_pid, 1);
-    REQUIRE(static_cast<bool>(item_a));
+    auto item_a = server->CrMngr.AddItemToCritter(cr_a, server->ItemMngr.CreateItem(item_pid, nullptr), true);
 
     // The widen link must be live in both directions before we test the cover
     REQUIRE(cr_a->GetSyncWidenEntity() == player_a_holder);
@@ -2838,245 +2781,6 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     for (auto& cr : critters) {
         cr->SetParent(nullptr);
     }
-}
-
-// Concurrent MoveItem of stackable units must conserve the total count. High-contention iteration rather than
-// a deterministic interleave, so the lost-update window is hit at all
-
-TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
-    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
-    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
-    hstring coin_pid = server->Hashes.to_hashed_string("UnitTestStackable");
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&server, &locked]() noexcept {
-        safe_call([&server, &locked] {
-            if (locked) {
-                server->Unlock();
-            }
-        });
-    });
-
-    auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto map = loc->GetMapByIndex(0);
-
-    constexpr int32_t HOLDER_COUNT = 8;
-    constexpr int32_t COINS_PER_HOLDER = 25;
-    constexpr int64_t EXPECTED_TOTAL = int64_t {HOLDER_COUNT} * int64_t {COINS_PER_HOLDER};
-
-    vector<ptr<Critter>> holders;
-    for (int32_t i = 0; i < HOLDER_COUNT; i++) {
-        auto cr = server->CreateCritter(critter_pid, false);
-        cr->SetParent(map); // parent only — keeps the critter (and its inventory) covered via the map
-        auto coins = server->ItemMngr.AddItemCritter(cr, coin_pid, COINS_PER_HOLDER);
-        REQUIRE(coins != nullptr);
-        REQUIRE(coins->GetCount() == COINS_PER_HOLDER);
-        holders.push_back(cr);
-    }
-
-    server->Unlock();
-    locked = false;
-
-    constexpr int32_t MOVER_THREADS = 6;
-    constexpr int32_t MOVES_PER_THREAD = 30000;
-
-    std::atomic<int64_t> moves_done {0};
-    std::atomic<int64_t> move_skips {0};
-
-    auto mover_fn = [&](int32_t tid) {
-        SyncContext ctx;
-        ctx.Activate();
-
-        // Per-thread LCG — deterministic per thread but overlaps other threads' holder pairs so the
-        // covers on shared stacks contend (no Math::Random in engine code; vary the stream by tid)
-        uint64_t rng = numeric_cast<uint64_t>(tid) * 0x9E3779B97F4A7C15ULL + 1U;
-
-        vector<ptr<ServerEntity>> req;
-        req.reserve(2);
-
-        for (int32_t it = 0; it < MOVES_PER_THREAD; it++) {
-            rng = rng * 6364136223846793005ULL + 1442695040888963407ULL;
-            int32_t from = numeric_cast<int32_t>((rng >> 33) % numeric_cast<uint64_t>(HOLDER_COUNT));
-            int32_t step = numeric_cast<int32_t>((rng >> 17) % numeric_cast<uint64_t>(HOLDER_COUNT - 1));
-            int32_t to = (from + 1 + step) % HOLDER_COUNT;
-
-            auto from_cr = holders[numeric_cast<size_t>(from)];
-            auto to_cr = holders[numeric_cast<size_t>(to)];
-
-            try {
-                req.clear();
-                req.emplace_back(from_cr);
-                req.emplace_back(to_cr);
-                ctx.SyncEntities(req);
-
-                auto stack = from_cr->GetInvItemByPid(coin_pid);
-                if (stack != nullptr && stack->GetCount() > 0) {
-                    server->ItemMngr.MoveItem(stack, 1, to_cr);
-                    moves_done.fetch_add(1, std::memory_order_relaxed);
-                }
-                else {
-                    move_skips.fetch_add(1, std::memory_order_relaxed);
-                }
-            }
-            catch (const EntitySyncException&) {
-                move_skips.fetch_add(1, std::memory_order_relaxed);
-            }
-
-            ctx.Release();
-        }
-
-        ctx.Deactivate();
-    };
-
-    vector<std::thread> movers;
-    for (int32_t i = 0; i < MOVER_THREADS; i++) {
-        movers.emplace_back(mover_fn, i);
-    }
-    for (auto& t : movers) {
-        t.join();
-    }
-
-    // Sum the surviving stacks under a single cover — conservation must hold regardless of how the
-    // coins redistributed across holders
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    locked = true;
-
-    vector<ptr<ServerEntity>> sync_holders;
-    sync_holders.reserve(holders.size());
-
-    for (auto cr : holders) {
-        sync_holders.emplace_back(cr);
-    }
-
-    auto ctx = server->RequireCurrentSyncContext();
-    ctx->SyncEntities(sync_holders);
-
-    int64_t total = 0;
-    for (auto cr : holders) {
-        auto stack = cr->GetInvItemByPid(coin_pid);
-        total += (stack != nullptr) ? int64_t {stack->GetCount()} : int64_t {0};
-    }
-
-    INFO("moves_done=" << moves_done.load() << " skips=" << move_skips.load() << " total=" << total << " expected=" << EXPECTED_TOTAL);
-    CHECK(moves_done.load() > 0);
-    CHECK(total == EXPECTED_TOTAL);
-
-    // Detach so item/critter refcounts drop before Shutdown
-    for (auto cr : holders) {
-        cr->SetParent(nullptr);
-    }
-}
-
-// The deterministic counterpart of the stress above: a handler mutates the source stack between SplitItem's
-// count read and its write, pinning both the fresh-read invariant and the post-yield cleanup branch
-
-TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
-    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
-    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
-    hstring coin_pid = server->Hashes.to_hashed_string("UnitTestStackable");
-    hstring arm_func = server->Hashes.to_hashed_string("ServerEngineTest::UnitTestArmSplitInjection");
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&server, &locked]() noexcept {
-        safe_call([&server, &locked] {
-            if (locked) {
-                server->Unlock();
-            }
-        });
-    });
-
-    auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto map = loc->GetMapByIndex(0);
-
-    auto h1 = server->CreateCritter(critter_pid, false);
-    auto h2 = server->CreateCritter(critter_pid, false);
-    h1->SetParent(map);
-    h2->SetParent(map);
-
-    SECTION("source grows mid-split: fresh read conserves the injected units")
-    {
-        auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 20);
-        REQUIRE(source != nullptr);
-
-        // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split
-        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {5}));
-
-        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        REQUIRE(moved != nullptr);
-
-        auto src_after = h1->GetInvItemByPid(coin_pid);
-        auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
-
-        INFO("src=" << src_count << " dst=" << dst_count << " total=" << (src_count + dst_count));
-        // 20 spawned + 5 injected during the split = 25 must survive. Pre-fix: 20 (the +5 was clobbered
-        // by SplitItem writing the stale pre-CreateItem count)
-        CHECK(src_count + dst_count == 25);
-    }
-
-    SECTION("source drained below the split count mid-split: re-validation undoes the move")
-    {
-        auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 2);
-        REQUIRE(source != nullptr);
-
-        // The split product's OnItemInit removes 1 from the source (2 -> 1), so the fresh post-yield
-        // re-validation (count >= GetCount()) trips and the split is undone
-        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {-1}));
-
-        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        CHECK(moved == nullptr); // re-validation cleanup -> nullptr; the move did not happen
-
-        auto src_after = h1->GetInvItemByPid(coin_pid);
-        auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
-
-        INFO("src=" << src_count << " dst=" << dst_count);
-        // 2 spawned - 1 drained = 1 unit total, all on the source; no phantom split on h2. Pre-fix the
-        // stale write would leave src=1 AND a phantom split=1 on h2 (a duplicated unit)
-        CHECK(src_count == 1);
-        CHECK(dst_count == 0);
-    }
-
-    h1->SetParent(nullptr);
-    h2->SetParent(nullptr);
 }
 
 // An ancestor cover grants access to a descendant but must not exclude another thread's own lock on it —

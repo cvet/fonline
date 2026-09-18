@@ -522,6 +522,11 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     auto active_renderer = GetActiveRenderer(_ctx);
 
+    // The configured entries name the window to ask the platform for; from here the live geometry is the
+    // app's own, so a resize or a fullscreen switch changes what is drawn rather than what was configured
+    ScreenState.Size = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+    ScreenState.Fullscreen = Settings.Render.Fullscreen;
+
     // Determine main window size
 #if FO_IOS || FO_ANDROID
     _isTablet = true;
@@ -546,46 +551,46 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     if (_isTablet) {
         auto display_id = SDL_GetPrimaryDisplay();
         auto display_mode = GetSdlDisplayMode(display_id);
-        Settings.View.ScreenWidth = std::max(display_mode->w, display_mode->h);
-        Settings.View.ScreenHeight = std::min(display_mode->w, display_mode->h);
+        ScreenState.Size.width = std::max(display_mode->w, display_mode->h);
+        ScreenState.Size.height = std::min(display_mode->w, display_mode->h);
 
-        float32_t ratio = numeric_cast<float32_t>(Settings.View.ScreenWidth) / numeric_cast<float32_t>(Settings.View.ScreenHeight);
-        Settings.View.ScreenHeight = 768;
-        Settings.View.ScreenWidth = iround<int32_t>(numeric_cast<float32_t>(Settings.View.ScreenHeight) * ratio);
+        float32_t ratio = numeric_cast<float32_t>(ScreenState.Size.width) / numeric_cast<float32_t>(ScreenState.Size.height);
+        ScreenState.Size.height = 768;
+        ScreenState.Size.width = iround<int32_t>(numeric_cast<float32_t>(ScreenState.Size.height) * ratio);
 
-        Settings.Render.Fullscreen = true;
+        ScreenState.Fullscreen = true;
     }
 
     if (is_enum_set(flags, AppInitFlags::ClientMode)) {
         _ctx->ClearColor = {0, 0, 0, 255};
     }
 
-    WebRelated::ApplyWindowSettings(Settings);
+    WebRelated::ApplyWindowSettings(Settings, ScreenState);
 
-    MainWindow._windowHandle = CreateInternalWindow({Settings.View.ScreenWidth, Settings.View.ScreenHeight});
+    MainWindow._windowHandle = CreateInternalWindow(ScreenState.Size);
     MainWindow._title = Settings.Common.GameName;
-    MainWindow._virtualSize = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
-    MainWindow._virtualScreenSize = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+    MainWindow._virtualSize = ScreenState.Size;
+    MainWindow._virtualScreenSize = ScreenState.Size;
     auto main_window = make_ptr(&MainWindow);
     _allWindows.emplace_back(main_window);
     _activeWindow = main_window;
 
-    if (_ctx->ActiveRendererType != RenderType::Null && !Settings.Render.Fullscreen) {
-        int32_t actual_width = Settings.View.ScreenWidth;
-        int32_t actual_height = Settings.View.ScreenHeight;
+    if (_ctx->ActiveRendererType != RenderType::Null && !ScreenState.Fullscreen) {
+        int32_t actual_width = ScreenState.Size.width;
+        int32_t actual_height = ScreenState.Size.height;
         auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
         FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
         SDL_GetWindowSizeInPixels(sdl_window.get(), &actual_width, &actual_height);
 
         if (actual_width > 0 && actual_height > 0) {
-            Settings.View.ScreenWidth = actual_width;
-            Settings.View.ScreenHeight = actual_height;
+            ScreenState.Size.width = actual_width;
+            ScreenState.Size.height = actual_height;
             MainWindow._virtualSize = {actual_width, actual_height};
             MainWindow._virtualScreenSize = {actual_width, actual_height};
         }
     }
 
-    if (_ctx->ActiveRendererType != RenderType::Null && is_enum_set(flags, AppInitFlags::ClientMode) && !_isTablet && Settings.Render.Fullscreen) {
+    if (_ctx->ActiveRendererType != RenderType::Null && is_enum_set(flags, AppInitFlags::ClientMode) && !_isTablet && ScreenState.Fullscreen) {
         auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
         FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
 
@@ -596,7 +601,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     auto main_window_handle = MainWindow._windowHandle;
-    active_renderer->Init(Settings, main_window_handle);
+    active_renderer->Init(Settings, &ScreenState, main_window_handle);
 
     if (_ctx->ActiveRendererType != RenderType::Null && MainWindow.IsFullscreen()) {
         SyncMainWindowBackbufferSize();
@@ -769,7 +774,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
     FO_STACK_TRACE_ENTRY();
 
     if (size.width <= 0 || size.height <= 0) {
-        size = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+        size = ScreenState.Size;
     }
 
     auto window = safe_alloc::make_unique<AppWindow>(this);
@@ -849,7 +854,7 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
     isize32 desired = window->_virtualSize.width > 0 && window->_virtualSize.height > 0 //
         ?
         window->_virtualSize :
-        isize32 {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+        ScreenState.Size;
 
     bool recreate_texture = true;
     auto existing_render_tex = window->GetRenderTexture();
@@ -898,18 +903,18 @@ auto Application::GetMainWindowBackbufferSize() const -> isize32
     FO_STACK_TRACE_ENTRY();
 
     if (_ctx->ActiveRendererType == RenderType::Null || !MainWindow._windowHandle) {
-        return {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+        return ScreenState.Size;
     }
 
     auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
     FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
 
-    if (Settings.Render.Fullscreen || _mainWindowFullscreenBackbufferMode || IsMainWindowActuallyFullscreen()) {
-        int32_t window_width = Settings.View.ScreenWidth;
-        int32_t window_height = Settings.View.ScreenHeight;
+    if (ScreenState.Fullscreen || _mainWindowFullscreenBackbufferMode || IsMainWindowActuallyFullscreen()) {
+        int32_t window_width = ScreenState.Size.width;
+        int32_t window_height = ScreenState.Size.height;
         SDL_GetWindowSizeInPixels(sdl_window.get(), &window_width, &window_height);
 
-        if (window_width > 0 && window_height > 0 && (window_width != Settings.View.ScreenWidth || window_height != Settings.View.ScreenHeight)) {
+        if (window_width > 0 && window_height > 0 && (window_width != ScreenState.Size.width || window_height != ScreenState.Size.height)) {
             return {window_width, window_height};
         }
 
@@ -921,10 +926,10 @@ auto Application::GetMainWindowBackbufferSize() const -> isize32
         }
     }
 
-    int32_t width = Settings.View.ScreenWidth;
-    int32_t height = Settings.View.ScreenHeight;
+    int32_t width = ScreenState.Size.width;
+    int32_t height = ScreenState.Size.height;
     SDL_GetWindowSizeInPixels(sdl_window.get(), &width, &height);
-    return width > 0 && height > 0 ? isize32 {width, height} : isize32 {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+    return width > 0 && height > 0 ? isize32 {width, height} : ScreenState.Size;
 }
 
 void Application::SyncMainWindowBackbufferSize()
@@ -981,11 +986,11 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
     isize32 screen_size = window->GetScreenSize();
 
     if (screen_size.width > 0 && screen_size.height > 0) {
-        _hostScreenWidthSaved = Settings.View.ScreenWidth;
-        _hostScreenHeightSaved = Settings.View.ScreenHeight;
+        _hostScreenWidthSaved = ScreenState.Size.width;
+        _hostScreenHeightSaved = ScreenState.Size.height;
         _hostScreenSizeSaved = true;
-        Settings.View.ScreenWidth = screen_size.width;
-        Settings.View.ScreenHeight = screen_size.height;
+        ScreenState.Size.width = screen_size.width;
+        ScreenState.Size.height = screen_size.height;
     }
 
     Render.ClearRenderTarget(ucolor {0, 0, 0, 255}, true, false);
@@ -1008,8 +1013,8 @@ void Application::EndWindowRender()
     if (was_virtual) {
         // Restore the host's screen size so engine chrome (tab bar, server panel) renders at OS pixels
         if (_hostScreenSizeSaved) {
-            Settings.View.ScreenWidth = _hostScreenWidthSaved;
-            Settings.View.ScreenHeight = _hostScreenHeightSaved;
+            ScreenState.Size.width = _hostScreenWidthSaved;
+            ScreenState.Size.height = _hostScreenHeightSaved;
             _hostScreenSizeSaved = false;
         }
 
@@ -1214,8 +1219,8 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32_t window_width = Settings.View.ScreenWidth;
-    int32_t window_height = Settings.View.ScreenHeight;
+    int32_t window_width = ScreenState.Size.width;
+    int32_t window_height = ScreenState.Size.height;
 
     if (_ctx->ActiveRendererType != RenderType::Null && MainWindow._windowHandle) {
         auto sdl_window = MainWindow.ResolveWindowHandle().reinterpret_as<SDL_Window>();
@@ -1232,7 +1237,7 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     }
 
     auto active_renderer = GetActiveRenderer(_ctx);
-    return WindowPosToScreenPos(active_renderer, {Settings.View.ScreenWidth, Settings.View.ScreenHeight}, {window_x, window_y});
+    return WindowPosToScreenPos(active_renderer, ScreenState.Size, {window_x, window_y});
 }
 
 auto Application::GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t
@@ -1611,7 +1616,7 @@ void Application::BeginFrame()
         RequestQuit();
     }
 
-    FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
+    FO_VERIFY_AND_THROW(!_ctx->RenderTargetTex, "Context render target tex must be unset before this operation");
     auto active_renderer = GetActiveRenderer(_ctx);
     active_renderer->ClearRenderTarget(_ctx->ClearColor);
 
@@ -1657,10 +1662,10 @@ void Application::BeginFrame()
         switch (sdl_event.type) {
         case SDL_EVENT_MOUSE_MOTION: {
             InputEvent::MouseMoveEvent ev;
-            ipos32 screen_pos = WindowPosToScreenPos(active_renderer, {Settings.View.ScreenWidth, Settings.View.ScreenHeight}, {iround<int32_t>(sdl_event.motion.x), iround<int32_t>(sdl_event.motion.y)});
+            ipos32 screen_pos = WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(sdl_event.motion.x), iround<int32_t>(sdl_event.motion.y)});
             irect32 vp = active_renderer->GetViewPort();
-            float32_t x_ratio = numeric_cast<float32_t>(Settings.View.ScreenWidth) / numeric_cast<float32_t>(vp.width);
-            float32_t y_ratio = numeric_cast<float32_t>(Settings.View.ScreenHeight) / numeric_cast<float32_t>(vp.height);
+            float32_t x_ratio = numeric_cast<float32_t>(ScreenState.Size.width) / numeric_cast<float32_t>(vp.width);
+            float32_t y_ratio = numeric_cast<float32_t>(ScreenState.Size.height) / numeric_cast<float32_t>(vp.height);
             ipos32 host_delta = ipos32 {iround<int32_t>(sdl_event.motion.xrel * x_ratio), iround<int32_t>(sdl_event.motion.yrel * y_ratio)};
 
             switch_active_to_hovered_child(screen_pos);
@@ -1687,7 +1692,7 @@ void Application::BeginFrame()
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
-            ipos32 button_screen_pos = WindowPosToScreenPos(active_renderer, {Settings.View.ScreenWidth, Settings.View.ScreenHeight}, {iround<int32_t>(sdl_event.button.x), iround<int32_t>(sdl_event.button.y)});
+            ipos32 button_screen_pos = WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(sdl_event.button.x), iround<int32_t>(sdl_event.button.y)});
             switch_active_to_hovered_child(button_screen_pos);
 
             bool button_to_client = !imgui_capture_mouse || host_pos_inside_active_virtual(button_screen_pos);
@@ -1913,7 +1918,7 @@ void Application::BeginFrame()
             InputEvent::MouseWheelEvent ev;
             ev.Delta = iround<int32_t>(sdl_event.wheel.y);
 
-            ipos32 wheel_screen_pos = WindowPosToScreenPos(active_renderer, {Settings.View.ScreenWidth, Settings.View.ScreenHeight}, {iround<int32_t>(sdl_event.wheel.mouse_x), iround<int32_t>(sdl_event.wheel.mouse_y)});
+            ipos32 wheel_screen_pos = WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(sdl_event.wheel.mouse_x), iround<int32_t>(sdl_event.wheel.mouse_y)});
             switch_active_to_hovered_child(wheel_screen_pos);
 
             if (!imgui_capture_mouse || host_pos_inside_active_virtual(wheel_screen_pos)) {
@@ -2110,16 +2115,16 @@ void Application::BeginFrame()
             FO_VERIFY_AND_THROW(main_sdl_window, "Window handle does not reference a valid SDL window");
             bool is_main = resized_window == main_sdl_window.get();
             isize32 event_size {width, height};
-            bool fullscreen_backbuffer_resize = is_main && (Settings.Render.Fullscreen || _mainWindowFullscreenBackbufferMode || MainWindow.IsFullscreen() || _mainWindowFullscreenTransition || IsMainWindowDisplayModeSize(event_size));
+            bool fullscreen_backbuffer_resize = is_main && (ScreenState.Fullscreen || _mainWindowFullscreenBackbufferMode || MainWindow.IsFullscreen() || _mainWindowFullscreenTransition || IsMainWindowDisplayModeSize(event_size));
             bool screen_size_changed = false;
             bool update_logical_size = is_main && !fullscreen_backbuffer_resize;
 
-            if (update_logical_size && (Settings.View.ScreenWidth != width || Settings.View.ScreenHeight != height)) {
-                isize32 old_host {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+            if (update_logical_size && (ScreenState.Size.width != width || ScreenState.Size.height != height)) {
+                isize32 old_host = ScreenState.Size;
                 isize32 new_host = event_size;
 
-                Settings.View.ScreenWidth = width;
-                Settings.View.ScreenHeight = height;
+                ScreenState.Size.width = width;
+                ScreenState.Size.height = height;
                 MainWindow._virtualSize = new_host;
                 MainWindow._virtualScreenSize = new_host;
                 screen_size_changed = true;
@@ -2179,14 +2184,14 @@ void Application::BeginFrame()
         }
     }
 
-    if (_mainWindowFullscreenTransition && IsMainWindowActuallyFullscreen() == Settings.Render.Fullscreen) {
+    if (_mainWindowFullscreenTransition && IsMainWindowActuallyFullscreen() == ScreenState.Fullscreen) {
         _mainWindowFullscreenTransition = false;
     }
 
     FlushPendingTouchTap();
 
     // Setup display size
-    io.DisplaySize = ImVec2(numeric_cast<float32_t>(Settings.View.ScreenWidth), numeric_cast<float32_t>(Settings.View.ScreenHeight));
+    io.DisplaySize = ImVec2(numeric_cast<float32_t>(ScreenState.Size.width), numeric_cast<float32_t>(ScreenState.Size.height));
 
     // Setup time step
     uint64_t cur_time = SDL_GetPerformanceCounter();
@@ -2230,7 +2235,7 @@ void Application::BeginFrame()
                     int32_t window_y;
                     SDL_GetWindowPosition(main_sdl_window.get(), &window_x, &window_y);
 
-                    ipos32 screen_pos = WindowPosToScreenPos(active_renderer, {Settings.View.ScreenWidth, Settings.View.ScreenHeight}, {iround<int32_t>(mouse_x_global) - window_x, iround<int32_t>(mouse_y_global) - window_y});
+                    ipos32 screen_pos = WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(mouse_x_global) - window_x, iround<int32_t>(mouse_y_global) - window_y});
                     if (!mouse_motion_event_seen && (!_lastMouseMoveHostPosValid || screen_pos != _lastMouseMoveHostPos)) {
                         InputEvent::MouseMoveEvent ev;
                         ipos32 host_delta = _lastMouseMoveHostPosValid ? ipos32 {screen_pos.x - _lastMouseMoveHostPos.x, screen_pos.y - _lastMouseMoveHostPos.y} : ipos32 {};
@@ -2258,7 +2263,7 @@ void Application::BeginFrame()
         }
     }
     else {
-        io.AddMousePosEvent(numeric_cast<float32_t>(Settings.View.ScreenWidth / 2), numeric_cast<float32_t>(Settings.View.ScreenHeight / 2));
+        io.AddMousePosEvent(numeric_cast<float32_t>(ScreenState.Size.width / 2), numeric_cast<float32_t>(ScreenState.Size.height / 2));
     }
 
     ImGui::NewFrame();
@@ -2274,7 +2279,7 @@ void Application::EndFrame()
         EndWindowRender();
     }
 
-    FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
+    FO_VERIFY_AND_THROW(!_ctx->RenderTargetTex, "Context render target tex must be unset before this operation");
     auto active_renderer = GetActiveRenderer(_ctx);
 
     // Skip unprocessed events
@@ -2447,7 +2452,7 @@ auto AppWindow::GetSize() const -> isize32
     FO_STACK_TRACE_ENTRY();
 
     if (_isVirtual) {
-        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : isize32 {_app->Settings.View.ScreenWidth, _app->Settings.View.ScreenHeight};
+        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : _app->ScreenState.Size;
     }
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
@@ -2489,7 +2494,7 @@ auto AppWindow::GetScreenSize() const -> isize32
         return _virtualScreenSize.width > 0 && _virtualScreenSize.height > 0 ? _virtualScreenSize : GetSize();
     }
 
-    return {_app->Settings.View.ScreenWidth, _app->Settings.View.ScreenHeight};
+    return _app->ScreenState.Size;
 }
 
 void AppWindow::SetScreenSize(isize32 size)
@@ -2503,10 +2508,10 @@ void AppWindow::SetScreenSize(isize32 size)
         }
     }
     else {
-        if (size.width != _app->Settings.View.ScreenWidth || size.height != _app->Settings.View.ScreenHeight) {
-            _app->Settings.View.ScreenWidth = size.width;
-            _app->Settings.View.ScreenHeight = size.height;
-            WebRelated::ApplyCanvasLayout(_app->Settings);
+        if (size.width != _app->ScreenState.Size.width || size.height != _app->ScreenState.Size.height) {
+            _app->ScreenState.Size.width = size.width;
+            _app->ScreenState.Size.height = size.height;
+            WebRelated::ApplyCanvasLayout(_app->Settings, _app->ScreenState);
             _onScreenSizeChangedDispatcher();
         }
     }
@@ -2593,7 +2598,7 @@ auto AppWindow::IsFullscreen() const -> bool
 
     if (_app->_ctx->ActiveRendererType != RenderType::Null) {
         if (this == &_app->MainWindow) {
-            return _app->_mainWindowFullscreenTransition ? _app->Settings.Render.Fullscreen : _app->IsMainWindowActuallyFullscreen();
+            return _app->_mainWindowFullscreenTransition ? _app->ScreenState.Fullscreen : _app->IsMainWindowActuallyFullscreen();
         }
 
         auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
@@ -2615,7 +2620,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
         auto window = ResolveWindowStub();
         bool changed = window->Fullscreen != enable;
         window->Fullscreen = enable;
-        _app->Settings.Render.Fullscreen = enable;
+        _app->ScreenState.Fullscreen = enable;
         return changed;
     }
 
@@ -2627,7 +2632,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     auto sdl_window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
 
     if (is_fullscreen == enable) {
-        _app->Settings.Render.Fullscreen = is_fullscreen;
+        _app->ScreenState.Fullscreen = is_fullscreen;
 
         if (this == &_app->MainWindow) {
             _app->_mainWindowFullscreenBackbufferMode = enable;
@@ -2637,10 +2642,10 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     }
 
     if (!is_fullscreen && enable) {
-        bool previous_setting = _app->Settings.Render.Fullscreen;
+        bool previous_setting = _app->ScreenState.Fullscreen;
         bool previous_backbuffer_mode = _app->_mainWindowFullscreenBackbufferMode;
         _app->_mainWindowFullscreenTransition = true;
-        _app->Settings.Render.Fullscreen = true;
+        _app->ScreenState.Fullscreen = true;
         _app->_mainWindowFullscreenBackbufferMode = true;
 
         bool result = SDL_SetWindowFullscreen(sdl_window.get(), true);
@@ -2651,14 +2656,14 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
             return true;
         }
 
-        _app->Settings.Render.Fullscreen = previous_setting;
+        _app->ScreenState.Fullscreen = previous_setting;
         _app->_mainWindowFullscreenBackbufferMode = previous_backbuffer_mode;
         _app->_mainWindowFullscreenTransition = false;
     }
     else if (is_fullscreen && !enable) {
-        bool previous_setting = _app->Settings.Render.Fullscreen;
+        bool previous_setting = _app->ScreenState.Fullscreen;
         _app->_mainWindowFullscreenTransition = true;
-        _app->Settings.Render.Fullscreen = false;
+        _app->ScreenState.Fullscreen = false;
 
         bool result = SDL_SetWindowFullscreen(sdl_window.get(), false);
 
@@ -2669,7 +2674,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
             return true;
         }
 
-        _app->Settings.Render.Fullscreen = previous_setting;
+        _app->ScreenState.Fullscreen = previous_setting;
         _app->_mainWindowFullscreenTransition = false;
     }
 
@@ -2929,7 +2934,7 @@ auto AppInput::GetMousePosition() const -> ipos32
     }
 
     auto active_renderer = GetActiveRenderer(_app->_ctx);
-    ipos32 host_pos = WindowPosToScreenPos(active_renderer, {_app->Settings.View.ScreenWidth, _app->Settings.View.ScreenHeight}, {iround<int32_t>(x), iround<int32_t>(y)});
+    ipos32 host_pos = WindowPosToScreenPos(active_renderer, _app->ScreenState.Size, {iround<int32_t>(x), iround<int32_t>(y)});
     return _app->TranslateHostPosToActiveWindow(host_pos);
 }
 
@@ -2953,7 +2958,7 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
 
         if (relative_to) {
             auto active_renderer = GetActiveRenderer(_app->_ctx);
-            ipos32 window_pos = ScreenPosToWindowPos(active_renderer, {_app->Settings.View.ScreenWidth, _app->Settings.View.ScreenHeight}, host_pos);
+            ipos32 window_pos = ScreenPosToWindowPos(active_renderer, _app->ScreenState.Size, host_pos);
 
             if (auto handle = relative_to->GetWindowHandleForInput(); handle) {
                 auto sdl_window = handle.reinterpret_as<SDL_Window>();

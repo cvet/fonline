@@ -534,6 +534,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -901,6 +903,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -1315,6 +1319,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const refcount_nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -1695,6 +1701,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const shared_ptr& other) const noexcept -> bool { return _obj == other._obj; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const shared_ptr& other) const noexcept -> bool { return _obj < other._obj; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _obj == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _obj < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _obj; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _obj; }
@@ -1996,6 +2004,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_arr_ptr& other) const noexcept -> bool { return _arr == other._arr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_arr_ptr& other) const noexcept -> bool { return _arr < other._arr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _arr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _arr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _arr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _arr[index]; }
@@ -2061,6 +2071,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_del_nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_del_nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }

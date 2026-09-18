@@ -91,7 +91,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos hex(10, 10);
-        Item item = map.AddItem(hex, "TestItem".hstr(), 1);
+        Item item = map.AddItem(hex, "TestItem".hstr());
         if (item is null) return -3;
 
         // Verify item exists on map
@@ -116,22 +116,7 @@ namespace MapOpsTest
             return;
         }
 
-        map.AddItem(mpos(-1, -1), "TestItem".hstr(), 1);
-    }
-
-    void TestMapAddItemInvalidCountThrows()
-    {
-        Location loc = CreateTestLocation();
-        if (loc is null) {
-            return;
-        }
-
-        Map map = loc.GetMapByIndex(0);
-        if (map is null) {
-            return;
-        }
-
-        map.AddItem(mpos(10, 10), "TestItem".hstr(), 0);
+        map.AddItem(mpos(-1, -1), "TestItem".hstr());
     }
 
     int TestMapAddItemMultiple()
@@ -144,8 +129,8 @@ namespace MapOpsTest
 
         mpos hex1(10, 10);
         mpos hex2(20, 20);
-        Item item1 = map.AddItem(hex1, "TestItem".hstr(), 3);
-        Item item2 = map.AddItem(hex2, "TestItem".hstr(), 5);
+        Item item1 = map.AddItem(hex1, "TestItem".hstr());
+        Item item2 = map.AddItem(hex2, "TestItem".hstr());
         if (item1 is null || item2 is null) return -3;
 
         // Query all items on map
@@ -172,8 +157,8 @@ namespace MapOpsTest
         Critter cr2 = map.AddCritter("TestCritter".hstr(), mpos(13, 10), mdir(0));
         if (cr1 is null || cr2 is null) return -3;
 
-        Item item1 = map.AddItem(mpos(11, 10), "TestItem".hstr(), 1);
-        Item item2 = map.AddItem(mpos(15, 10), "TestItem2".hstr(), 1);
+        Item item1 = map.AddItem(mpos(11, 10), "TestItem".hstr());
+        Item item2 = map.AddItem(mpos(15, 10), "TestItem2".hstr());
         if (item1 is null || item2 is null) return -4;
 
         int itemDistance = Game.GetDistance(item1, item2);
@@ -197,8 +182,8 @@ namespace MapOpsTest
         Critter looseCr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (looseCr1 is null || looseCr2 is null) return -1;
 
-        Item looseItem1 = looseCr1.AddItem("TestItem".hstr(), 1);
-        Item looseItem2 = looseCr2.AddItem("TestItem".hstr(), 1);
+        Item looseItem1 = looseCr1.AddItem("TestItem".hstr());
+        Item looseItem2 = looseCr2.AddItem("TestItem".hstr());
         if (looseItem1 is null || looseItem2 is null) return -2;
 
         Location loc1 = CreateTestLocation();
@@ -213,8 +198,8 @@ namespace MapOpsTest
         Critter mapCr2 = map2.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
         if (mapCr1 is null || mapCr2 is null) return -5;
 
-        Item mapItem1 = map1.AddItem(mpos(11, 10), "TestItem".hstr(), 1);
-        Item mapItem2 = map2.AddItem(mpos(11, 10), "TestItem".hstr(), 1);
+        Item mapItem1 = map1.AddItem(mpos(11, 10), "TestItem".hstr());
+        Item mapItem2 = map2.AddItem(mpos(11, 10), "TestItem".hstr());
         if (mapItem1 is null || mapItem2 is null) return -6;
 
         try {
@@ -320,31 +305,27 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
         if (cr is null) return -3;
 
-        Item item = cr.AddItem("TestItem".hstr(), 4);
-        Item container = cr.AddItem("TestItem2".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
+        Item container = cr.AddItem("TestItem2".hstr());
         if (item is null || container is null) return -4;
 
-        if (Game.MoveItem(item, 0, cr) !is null) return -5;
-        if (Game.MoveItem(item, 0, map, mpos(20, 20)) !is null) return -6;
-        if (Game.MoveItem(item, 0, container) !is null) return -7;
+        Item? movedToMap = Game.MoveItem(item, map, mpos(20, 20));
+        if (movedToMap is null || movedToMap.Id != item.Id) return -8;
 
-        Item? movedPartialToMap = Game.MoveItem(item, 1, map, mpos(20, 20));
-        if (movedPartialToMap is null) return -8;
-
-        Item item2 = cr.AddItem("TestItem".hstr(), 1);
+        Item item2 = cr.AddItem("TestItem".hstr());
         if (item2 is null) return -9;
 
         Item? movedAllToMap = Game.MoveItem(item2, map, mpos(21, 20));
         if (movedAllToMap is null) return -10;
 
-        Item item3 = cr.AddItem("TestItem".hstr(), 1);
+        Item item3 = cr.AddItem("TestItem".hstr());
         if (item3 is null) return -11;
 )"
                                     R"(
-        Item? movedPartialToContainer = Game.MoveItem(item3, 1, container);
-        if (movedPartialToContainer is null) return -12;
+        Item? movedToContainer = Game.MoveItem(item3, container);
+        if (movedToContainer is null || movedToContainer.Id != item3.Id) return -12;
 
-        Item item4 = cr.AddItem("TestItem".hstr(), 1);
+        Item item4 = cr.AddItem("TestItem".hstr());
         if (item4 is null) return -13;
 
         Item? movedAllToContainer = Game.MoveItem(item4, container);
@@ -360,14 +341,6 @@ namespace MapOpsTest
         }
         if (!caught) return -15;
 
-        caught = false;
-        try {
-            Game.MoveItem(item, 1, map, mpos(-1, -1));
-        }
-        catch {
-            caught = true;
-        }
-        if (!caught) return -16;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -385,25 +358,25 @@ namespace MapOpsTest
         Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(11, 10), mdir(0));
         if (source is null || receiver is null) return -3;
 
-        Item crItem1 = source.AddItem("TestItem".hstr(), 1);
-        Item crItem2 = source.AddItem("TestItem2".hstr(), 1);
+        Item crItem1 = source.AddItem("TestItem".hstr());
+        Item crItem2 = source.AddItem("TestItem2".hstr());
         if (crItem1 is null || crItem2 is null) return -4;
 
         array<Item> toCritter = {crItem1, crItem2};
         Game.MoveItems(toCritter, receiver);
 
-        if (receiver.CountItem("TestItem".hstr()) != 1) return -5;
-        if (receiver.CountItem("TestItem2".hstr()) != 1) return -6;
+        if (receiver.GetItems("TestItem".hstr()).length() != 1) return -5;
+        if (receiver.GetItems("TestItem2".hstr()).length() != 1) return -6;
 
-        Item destroyedCrItem = source.AddItem("TestItem".hstr(), 1);
+        Item destroyedCrItem = source.AddItem("TestItem".hstr());
         if (destroyedCrItem is null) return -14;
         Game.DestroyItem(destroyedCrItem);
 
         array<Item> destroyedToCritter = {destroyedCrItem};
         Game.MoveItems(destroyedToCritter, receiver);
 
-        Item mapItem1 = source.AddItem("TestItem".hstr(), 1);
-        Item mapItem2 = source.AddItem("TestItem2".hstr(), 1);
+        Item mapItem1 = source.AddItem("TestItem".hstr());
+        Item mapItem2 = source.AddItem("TestItem2".hstr());
         if (mapItem1 is null || mapItem2 is null) return -7;
 
         ident mapItem1Id = mapItem1.Id;
@@ -415,7 +388,7 @@ namespace MapOpsTest
         if (map.GetItem(mapItem1Id) is null) return -8;
         if (map.GetItem(mapItem2Id) is null) return -9;
 
-        Item destroyedMapItem = source.AddItem("TestItem".hstr(), 1);
+        Item destroyedMapItem = source.AddItem("TestItem".hstr());
         if (destroyedMapItem is null) return -15;
         Game.DestroyItem(destroyedMapItem);
 
@@ -423,9 +396,9 @@ namespace MapOpsTest
         Game.MoveItems(destroyedToMap, map, mpos(26, 26));
 )"
                                     R"(
-        Item container = source.AddItem("TestItem2".hstr(), 1);
-        Item contItem1 = source.AddItem("TestItem".hstr(), 1);
-        Item contItem2 = source.AddItem("TestItem2".hstr(), 1);
+        Item container = source.AddItem("TestItem2".hstr());
+        Item contItem1 = source.AddItem("TestItem".hstr());
+        Item contItem2 = source.AddItem("TestItem2".hstr());
         if (container is null || contItem1 is null || contItem2 is null) return -10;
 
         array<Item> toContainer = {contItem1, contItem2};
@@ -434,14 +407,14 @@ namespace MapOpsTest
         array<Item> containerItems = container.GetItems();
         if (containerItems.length() != 2) return -11;
 
-        Item destroyedContItem = source.AddItem("TestItem".hstr(), 1);
+        Item destroyedContItem = source.AddItem("TestItem".hstr());
         if (destroyedContItem is null) return -16;
         Game.DestroyItem(destroyedContItem);
 
         array<Item> destroyedToContainer = {destroyedContItem};
         Game.MoveItems(destroyedToContainer, container);
 
-        Item badItem = source.AddItem("TestItem".hstr(), 1);
+        Item badItem = source.AddItem("TestItem".hstr());
         if (badItem is null) return -12;
 
         array<Item> badItems = {badItem};
@@ -494,7 +467,7 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos hex(15, 15);
-        Item item = map.AddItem(hex, "TestItem".hstr(), 1);
+        Item item = map.AddItem(hex, "TestItem".hstr());
         if (item is null) return -3;
 
         ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
@@ -509,7 +482,7 @@ namespace MapOpsTest
         if (onHexProto is null) return -6;
 
         // Get item on hex by property
-        Item? onHexProp = map.GetItemOnHex(hex, ItemProperty::Count, item.Count);
+        Item? onHexProp = map.GetItemOnHex(hex, ItemProperty::LightDistance, item.LightDistance);
         if (onHexProp is null) return -7;
 
         // Get items on hex (list)
@@ -517,10 +490,10 @@ namespace MapOpsTest
         if (hexItems.length() < 1) return -8;
 
         // Get items on hex by property
-        array<Item> hexItemsProp = map.GetItemsOnHex(hex, ItemProperty::Count, item.Count);
+        array<Item> hexItemsProp = map.GetItemsOnHex(hex, ItemProperty::LightDistance, item.LightDistance);
         if (hexItemsProp.length() < 1) return -9;
 
-        if (map.GetItemOnHex(hex, ItemProperty::Count, item.Count + 1) !is null) return -10;
+        if (map.GetItemOnHex(hex, ItemProperty::LightDistance, item.LightDistance + 1) !is null) return -10;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -573,7 +546,7 @@ namespace MapOpsTest
             return;
         }
 
-        map.GetItemOnHex(mpos(-1, -1), ItemProperty::Count, 1);
+        map.GetItemOnHex(mpos(-1, -1), ItemProperty::LightDistance, 1);
     }
 
     int TestMapGetItemInRadius()
@@ -586,7 +559,7 @@ namespace MapOpsTest
 
         mpos center(50, 50);
         mpos nearby(51, 50);
-        Item item = map.AddItem(nearby, "TestItem".hstr(), 1);
+        Item item = map.AddItem(nearby, "TestItem".hstr());
         if (item is null) return -3;
 )"
                                     R"(
@@ -602,7 +575,7 @@ namespace MapOpsTest
         if (foundProto is null) return -6;
 
         // Search in radius by property
-        Item? foundProp = map.GetItemInRadius(center, 5, ItemProperty::Count, item.Count);
+        Item? foundProp = map.GetItemInRadius(center, 5, ItemProperty::LightDistance, item.LightDistance);
         if (foundProp is null) return -7;
 
         // Get items in radius (list)
@@ -618,14 +591,14 @@ namespace MapOpsTest
         if (inRadiusByProto.length() < 1) return -10;
 
         // Get items in radius by property
-        array<Item> inRadiusByProp = map.GetItemsInRadius(center, 5, ItemProperty::Count, item.Count);
+        array<Item> inRadiusByProp = map.GetItemsInRadius(center, 5, ItemProperty::LightDistance, item.LightDistance);
         if (inRadiusByProp.length() < 1) return -11;
 
         // Get items across the whole map by proto and property
         array<Item> mapItemsByProto = map.GetItems(proto);
         if (mapItemsByProto.length() < 1) return -12;
 
-        array<Item> mapItemsByProp = map.GetItems(ItemProperty::Count, item.Count);
+        array<Item> mapItemsByProp = map.GetItems(ItemProperty::LightDistance, item.LightDistance);
         if (mapItemsByProp.length() < 1) return -13;
 
         if (map.GetItemInRadius(center, 5, "MissingItem".hstr()) !is null) return -14;
@@ -633,7 +606,7 @@ namespace MapOpsTest
         ProtoItem? otherProto = Game.GetProtoItem("TestItem2".hstr());
         if (otherProto is null) return -15;
         if (map.GetItemInRadius(center, 5, otherProto) !is null) return -16;
-        if (map.GetItemInRadius(center, 5, ItemProperty::Count, item.Count + 1) !is null) return -17;
+        if (map.GetItemInRadius(center, 5, ItemProperty::LightDistance, item.LightDistance + 1) !is null) return -17;
 
         Game.DestroyLocation(loc);
         return 0;
@@ -1594,7 +1567,7 @@ namespace MapOpsTest
             return;
         }
 
-        map.GetStaticItemsOnHex(mpos(-1, -1), ItemProperty::Count, 0);
+        map.GetStaticItemsOnHex(mpos(-1, -1), ItemProperty::LightDistance, 0);
     }
 
     void TestMapGetStaticItemsInRadiusByPropertyInvalidHexThrows()
@@ -1609,7 +1582,7 @@ namespace MapOpsTest
             return;
         }
 
-        map.GetStaticItemsInRadius(mpos(-1, -1), 1, ItemProperty::Count, 0);
+        map.GetStaticItemsInRadius(mpos(-1, -1), 1, ItemProperty::LightDistance, 0);
     }
 
  )" + R"(
@@ -1654,7 +1627,7 @@ namespace MapOpsTest
 
         // Add some items
         mpos hex(10, 10);
-        map.AddItem(hex, "TestItem".hstr(), 1);
+        map.AddItem(hex, "TestItem".hstr());
 
         // Regenerate should reset map content
         map.Regenerate();
@@ -1938,7 +1911,7 @@ namespace MapOpsTest
         if (proto is null) return -3;
 
         mpos hex(12, 12);
-        Item item = map.AddItem(hex, proto, 2);
+        Item item = map.AddItem(hex, proto);
         if (item is null) return -4;
 
         // Get by proto
@@ -1978,27 +1951,7 @@ namespace MapOpsTest
             return;
         }
 
-        map.AddItem(mpos(-1, -1), proto, 1);
-    }
-
-    void TestMapAddItemByProtoInvalidCountThrows()
-    {
-        Location loc = CreateTestLocation();
-        if (loc is null) {
-            return;
-        }
-
-        Map map = loc.GetMapByIndex(0);
-        if (map is null) {
-            return;
-        }
-
-        ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
-        if (proto is null) {
-            return;
-        }
-
-        map.AddItem(mpos(12, 12), proto, 0);
+        map.AddItem(mpos(-1, -1), proto);
     }
 
     int TestMapAddCritterByProto()
@@ -2038,23 +1991,23 @@ namespace MapOpsTest
         if (map is null) return -2;
 
         mpos hex(14, 14);
-        Item item = map.AddItem(hex, "TestItem".hstr(), 1);
+        Item item = map.AddItem(hex, "TestItem".hstr());
         if (item is null) return -3;
 
         // Get item on hex by property (Count is a common int32 property)
-        Item? byProp = map.GetItemOnHex(hex, ItemProperty::Count, item.Count);
+        Item? byProp = map.GetItemOnHex(hex, ItemProperty::LightDistance, item.LightDistance);
 
         // Get item in radius by property
-        Item? inRadiusProp = map.GetItemInRadius(hex, 3, ItemProperty::Count, item.Count);
+        Item? inRadiusProp = map.GetItemInRadius(hex, 3, ItemProperty::LightDistance, item.LightDistance);
 
         // Get items list by property
-        array<Item> listByProp = map.GetItems(ItemProperty::Count, item.Count);
+        array<Item> listByProp = map.GetItems(ItemProperty::LightDistance, item.LightDistance);
 
         // GetItemsOnHex by property
-        array<Item> onHexProp = map.GetItemsOnHex(hex, ItemProperty::Count, item.Count);
+        array<Item> onHexProp = map.GetItemsOnHex(hex, ItemProperty::LightDistance, item.LightDistance);
 
         // GetItemsInRadius by property
-        array<Item> inRadiusListProp = map.GetItemsInRadius(hex, 3, ItemProperty::Count, item.Count);
+        array<Item> inRadiusListProp = map.GetItemsInRadius(hex, 3, ItemProperty::LightDistance, item.LightDistance);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -2108,16 +2061,16 @@ namespace MapOpsTest
         array<StaticItem> byRadiusProto = map.GetStaticItemsInRadius(hex, 5, proto);
 
         // GetStaticItems by hex + property
-        array<StaticItem> byHexProp = map.GetStaticItemsOnHex(hex, ItemProperty::Count, 0);
+        array<StaticItem> byHexProp = map.GetStaticItemsOnHex(hex, ItemProperty::LightDistance, 0);
 
         // GetStaticItems by hex + radius + property
-        array<StaticItem> byRadiusProp = map.GetStaticItemsInRadius(hex, 5, ItemProperty::Count, 0);
+        array<StaticItem> byRadiusProp = map.GetStaticItemsInRadius(hex, 5, ItemProperty::LightDistance, 0);
 
         // GetStaticItems by proto
         array<StaticItem> byProto = map.GetStaticItems(proto);
 
         // GetStaticItems by property
-        array<StaticItem> byProp = map.GetStaticItems(ItemProperty::Count, 0);
+        array<StaticItem> byProp = map.GetStaticItems(ItemProperty::LightDistance, 0);
 
         Game.DestroyLocation(loc);
         return 0;
@@ -2228,22 +2181,22 @@ namespace MapOpsTest
         mpos hex(16, 16);
 
         // AddItem with hstring + properties map
-        dict<ItemProperty, int> props = {{ItemProperty::Count, 5}};
-        Item item1 = map.AddItem(hex, "TestItem".hstr(), 1, props);
+        dict<ItemProperty, int> props = {{ItemProperty::LightDistance, 5}};
+        Item item1 = map.AddItem(hex, "TestItem".hstr(), props);
         if (item1 is null) return -3;
 
         // AddItem with proto + properties map
         ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
         if (proto is null) return -31;
         mpos hex2(17, 17);
-        Item item2 = map.AddItem(hex2, proto, 1, props);
+        Item item2 = map.AddItem(hex2, proto, props);
         if (item2 is null) return -4;
 
         dict<ItemProperty, int> emptyProps;
-        Item item3 = map.AddItem(mpos(18, 17), "TestItem".hstr(), 1, emptyProps);
+        Item item3 = map.AddItem(mpos(18, 17), "TestItem".hstr(), emptyProps);
         if (item3 is null) return -5;
 
-        Item item4 = map.AddItem(mpos(19, 17), proto, 1, emptyProps);
+        Item item4 = map.AddItem(mpos(19, 17), proto, emptyProps);
         if (item4 is null) return -6;
 
         Game.DestroyLocation(loc);
@@ -2262,8 +2215,8 @@ namespace MapOpsTest
             return;
         }
 
-        dict<ItemProperty, int> props = {{ItemProperty::Count, 5}};
-        map.AddItem(mpos(16, 16), "MissingItem".hstr(), 1, props);
+        dict<ItemProperty, int> props = {{ItemProperty::LightDistance, 5}};
+        map.AddItem(mpos(16, 16), "MissingItem".hstr(), props);
     }
 
     void TestMapAddItemWithPropertiesInvalidHexThrows()
@@ -2278,24 +2231,8 @@ namespace MapOpsTest
             return;
         }
 
-        dict<ItemProperty, int> props = {{ItemProperty::Count, 5}};
-        map.AddItem(mpos(-1, -1), "TestItem".hstr(), 1, props);
-    }
-
-    void TestMapAddItemWithPropertiesInvalidCountThrows()
-    {
-        Location loc = CreateTestLocation();
-        if (loc is null) {
-            return;
-        }
-
-        Map map = loc.GetMapByIndex(0);
-        if (map is null) {
-            return;
-        }
-
-        dict<ItemProperty, int> props = {{ItemProperty::Count, 5}};
-        map.AddItem(mpos(16, 16), "TestItem".hstr(), 0, props);
+        dict<ItemProperty, int> props = {{ItemProperty::LightDistance, 5}};
+        map.AddItem(mpos(-1, -1), "TestItem".hstr(), props);
     }
 
     void TestMapAddItemWithProtoPropertiesInvalidHexThrows()
@@ -2315,29 +2252,8 @@ namespace MapOpsTest
             return;
         }
 
-        dict<ItemProperty, int> props = {{ItemProperty::Count, 5}};
-        map.AddItem(mpos(-1, -1), proto, 1, props);
-    }
-
-    void TestMapAddItemWithProtoPropertiesInvalidCountThrows()
-    {
-        Location loc = CreateTestLocation();
-        if (loc is null) {
-            return;
-        }
-
-        Map map = loc.GetMapByIndex(0);
-        if (map is null) {
-            return;
-        }
-
-        ProtoItem? proto = Game.GetProtoItem("TestItem".hstr());
-        if (proto is null) {
-            return;
-        }
-
-        dict<ItemProperty, int> props = {{ItemProperty::Count, 5}};
-        map.AddItem(mpos(16, 16), proto, 0, props);
+        dict<ItemProperty, int> props = {{ItemProperty::LightDistance, 5}};
+        map.AddItem(mpos(-1, -1), proto, props);
     }
 
     // ========== AddCritter with properties ==========
@@ -3899,7 +3815,7 @@ namespace MapOpsTest
         Critter dropper = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
         if (observer is null || dropper is null) return -3;
 
-        Item item = dropper.AddItem("TestItem".hstr(), 1);
+        Item item = dropper.AddItem("TestItem".hstr());
         if (item is null) return -4;
 
         ident itemId = item.Id;
@@ -3935,7 +3851,7 @@ namespace MapOpsTest
         Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(53, 50), mdir(0), props);
         if (observer is null || source is null || receiver is null) return -3;
 
-        Item item = source.AddItem("TestItem2".hstr(), 1);
+        Item item = source.AddItem("TestItem2".hstr());
         if (item is null) return -4;
 
         ident itemId = item.Id;
@@ -3978,7 +3894,7 @@ namespace MapOpsTest
         bool caught = false;
 
         try {
-            map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+            map.AddItem(mpos(52, 50), "TestItem".hstr());
         }
         catch {
             caught = true;
@@ -4018,7 +3934,7 @@ namespace MapOpsTest
         bool caught = false;
 
         try {
-            map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+            map.AddItem(mpos(52, 50), "TestItem".hstr());
         }
         catch {
             caught = true;
@@ -4062,7 +3978,7 @@ namespace MapOpsTest
         bool caught = false;
 
         try {
-            map.AddItem(mpos(52, 50), "TestItem2".hstr(), 1);
+            map.AddItem(mpos(52, 50), "TestItem2".hstr());
         }
         catch {
             caught = true;
@@ -4093,7 +4009,7 @@ namespace MapOpsTest
         Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(51, 50), mdir(0), props);
         if (observer is null || receiver is null) return -3;
 
-        Item item = map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+        Item item = map.AddItem(mpos(52, 50), "TestItem".hstr());
         if (item is null) return -4;
 
         ident itemId = item.Id;
@@ -4128,7 +4044,7 @@ namespace MapOpsTest
         Critter observer = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0), props);
         if (observer is null) return -3;
 
-        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr());
         if (item is null) return -4;
 
         ident itemId = item.Id;
@@ -4137,7 +4053,7 @@ namespace MapOpsTest
 
         observer.OnItemOnMapChanged.Subscribe(OnReentrantItemOnMapChanged);
 
-        item.Count = item.Count + 1;
+        item.LightDistance = item.LightDistance + 1;
 
         if (ReentrantItemChangedCalls != 1) return -5;
         if (!ReentrantItemChangedSawOnMap) return -6;
@@ -4163,7 +4079,7 @@ namespace MapOpsTest
         Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(53, 50), mdir(0), props);
         if (observer1 is null || observer2 is null || receiver is null) return -3;
 
-        Item item = map.AddItem(mpos(52, 50), "TestItem".hstr(), 1);
+        Item item = map.AddItem(mpos(52, 50), "TestItem".hstr());
         if (item is null) return -4;
 
         ident itemId = item.Id;
@@ -4174,7 +4090,7 @@ namespace MapOpsTest
         observer1.OnItemOnMapChanged.Subscribe(OnReentrantItemOnMapChanged);
         observer2.OnItemOnMapChanged.Subscribe(OnReentrantItemOnMapChanged);
 
-        item.Count = item.Count + 1;
+        item.LightDistance = item.LightDistance + 1;
 
         if (ReentrantItemChangedCalls != 1) return -5;
         if (!ReentrantItemChangedSawOnMap) return -6;
@@ -4199,7 +4115,7 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (cr is null) return -3;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) return -4;
 
         ident itemId = item.Id;
@@ -4232,7 +4148,7 @@ namespace MapOpsTest
         Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (receiver is null) return -3;
 
-        Item item = map.AddItem(mpos(51, 50), "TestItem2".hstr(), 1);
+        Item item = map.AddItem(mpos(51, 50), "TestItem2".hstr());
         if (item is null) return -4;
 
         ident itemId = item.Id;
@@ -4273,8 +4189,8 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (cr is null) return -3;
 
-        Item equipped = cr.AddItem("TestItem".hstr(), 1);
-        Item moving = cr.AddItem("TestItem2".hstr(), 1);
+        Item equipped = cr.AddItem("TestItem".hstr());
+        Item moving = cr.AddItem("TestItem2".hstr());
         if (equipped is null || moving is null) return -4;
 
         cr.ChangeItemSlot(equipped.Id, CritterItemSlot::Main);
@@ -4316,8 +4232,8 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (cr is null) return -3;
 
-        Item equipped = cr.AddItem("TestItem".hstr(), 1);
-        Item moving = cr.AddItem("TestItem2".hstr(), 1);
+        Item equipped = cr.AddItem("TestItem".hstr());
+        Item moving = cr.AddItem("TestItem2".hstr());
         if (equipped is null || moving is null) return -4;
 
         cr.ChangeItemSlot(equipped.Id, CritterItemSlot::Main);
@@ -4358,7 +4274,7 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (cr is null) return -3;
 
-        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr());
         if (item is null) return -4;
 
         item.IsTrigger = true;
@@ -4391,7 +4307,7 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (cr is null) return -3;
 
-        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
+        Item item = map.AddItem(mpos(51, 50), "TestItem".hstr());
         if (item is null) return -4;
 
         item.IsTrigger = true;
@@ -4430,8 +4346,8 @@ namespace MapOpsTest
         Critter cr = map1.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (cr is null) return -3;
 
-        Item firstTrigger = map1.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
-        Item secondTrigger = map1.AddItem(mpos(51, 50), "TestItem2".hstr(), 1);
+        Item firstTrigger = map1.AddItem(mpos(51, 50), "TestItem".hstr());
+        Item secondTrigger = map1.AddItem(mpos(51, 50), "TestItem2".hstr());
         if (firstTrigger is null || secondTrigger is null) return -4;
 
         firstTrigger.IsTrigger = true;
@@ -4474,8 +4390,8 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(50, 50), mdir(0));
         if (cr is null) return -3;
 
-        Item firstTrigger = map.AddItem(mpos(51, 50), "TestItem".hstr(), 1);
-        Item secondTrigger = map.AddItem(mpos(51, 50), "TestItem2".hstr(), 1);
+        Item firstTrigger = map.AddItem(mpos(51, 50), "TestItem".hstr());
+        Item secondTrigger = map.AddItem(mpos(51, 50), "TestItem2".hstr());
         if (firstTrigger is null || secondTrigger is null) return -4;
 
         firstTrigger.IsTrigger = true;
@@ -4803,37 +4719,6 @@ namespace MapOpsTest
         return protos_data;
     }
 
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
-    {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
-        REQUIRE(static_cast<bool>(registrar));
-
-        ProtoItem proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
-        proto.SetStackable(true);
-        proto.GetProperties()->StoreAllData(props_data, str_hashes);
-
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
-
-        writer.write<uint32_t>(uint32_t {0});
-        ignore_unused(str_hashes);
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.write_string_bytes(type_name.as_str());
-        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.write_string_bytes(proto_name);
-        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        if (!props_data.empty()) {
-            writer.write_bytes({props_data.data(), props_data.size()});
-        }
-
-        return protos_data;
-    }
-
     static auto MakeStaticItemProtoBlob(EngineMetadata& proto_engine, hstring type_name, bool set_hidden) -> vector<uint8_t>
     {
         vector<pair<string, function<void(ProtoItem&)>>> item_protos;
@@ -4932,7 +4817,7 @@ namespace MapOpsTest
         critter_protos.emplace_back("TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); });
         auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
-        auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
+        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
         auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
         auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);
@@ -5035,11 +4920,6 @@ TEST_CASE("MapItemOperations")
     SECTION("AddItemInvalidHexThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemInvalidHexThrows", "Invalid hex arg");
-    }
-
-    SECTION("AddItemInvalidCountThrows")
-    {
-        RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemInvalidCountThrows", "Count arg must be positive");
     }
 
     SECTION("AddItemMultiple")
@@ -5586,11 +5466,6 @@ TEST_CASE("MapProtoOverloads")
         RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemByProtoInvalidHexThrows", "Invalid hex arg");
     }
 
-    SECTION("AddItemByProtoInvalidCountThrows")
-    {
-        RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemByProtoInvalidCountThrows", "Count arg must be positive");
-    }
-
     SECTION("AddCritterByProto")
     {
         RUN_FUNC("MapOpsTest::TestMapAddCritterByProto");
@@ -5661,19 +5536,9 @@ TEST_CASE("MapAddWithProperties")
         RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemWithPropertiesInvalidHexThrows", "Invalid hex arg");
     }
 
-    SECTION("AddItemWithPropertiesInvalidCountThrows")
-    {
-        RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemWithPropertiesInvalidCountThrows", "Count arg must be positive");
-    }
-
     SECTION("AddItemWithProtoPropertiesInvalidHexThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemWithProtoPropertiesInvalidHexThrows", "Invalid hex arg");
-    }
-
-    SECTION("AddItemWithProtoPropertiesInvalidCountThrows")
-    {
-        RUN_FUNC_THROWS("MapOpsTest::TestMapAddItemWithProtoPropertiesInvalidCountThrows", "Count arg must be positive");
     }
 
     SECTION("AddCritterWithProperties")

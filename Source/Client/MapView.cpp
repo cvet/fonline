@@ -695,22 +695,22 @@ void MapView::DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, boo
         if (!_isShowMapperHiddenSprites && item->GetAlwaysHideSprite()) {
             return;
         }
-        if (!_engine->Settings->Hex.ShowScen && !is_fast && item->GetIsScenery()) {
+        if (!IsLayerVisible(MapLayers::Scenery) && !is_fast && item->GetIsScenery()) {
             return;
         }
-        if (!_engine->Settings->Hex.ShowItem && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
+        if (!IsLayerVisible(MapLayers::Items) && !is_fast && !item->GetIsScenery() && !item->GetIsWall()) {
             return;
         }
-        if (!_engine->Settings->Hex.ShowWall && !is_fast && item->GetIsWall()) {
+        if (!IsLayerVisible(MapLayers::Walls) && !is_fast && item->GetIsWall()) {
             return;
         }
-        if (!_engine->Settings->Hex.ShowTile && item->GetIsTile() && !item->GetIsRoofTile()) {
+        if (!IsLayerVisible(MapLayers::Tiles) && item->GetIsTile() && !item->GetIsRoofTile()) {
             return;
         }
-        if (!_engine->Settings->Hex.ShowRoof && item->GetIsTile() && item->GetIsRoofTile()) {
+        if (!IsLayerVisible(MapLayers::Roof) && item->GetIsTile() && item->GetIsRoofTile()) {
             return;
         }
-        if (!_engine->Settings->Hex.ShowFast && is_fast) {
+        if (!IsLayerVisible(MapLayers::Fast) && is_fast) {
             return;
         }
         if (_ignorePids.count(item->GetProtoId()) != 0) {
@@ -719,6 +719,9 @@ void MapView::DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, boo
     }
     else {
         if (item->GetAlwaysHideSprite()) {
+            return;
+        }
+        if (!IsLayerVisible(MapLayers::Roof) && item->GetIsTile() && item->GetIsRoofTile()) {
             return;
         }
     }
@@ -3356,6 +3359,14 @@ void MapView::SetScrollCheck(bool enabled)
     }
 }
 
+void MapView::SetVisibleLayers(MapLayers layers) noexcept
+{
+    if (_visibleLayers != layers) {
+        _visibleLayers = layers;
+        _rebuildMap = true;
+    }
+}
+
 void MapView::AddCritterToField(ptr<CritterHexView> cr)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3675,7 +3686,7 @@ void MapView::DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_mapperMode && !_engine->Settings->Hex.ShowCrit) {
+    if (_mapperMode && !IsLayerVisible(MapLayers::Critters)) {
         return;
     }
 

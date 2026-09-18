@@ -40,7 +40,7 @@ def test_ninja_knows_the_managed_archive_producer_before_bootstrap(tmp_path: Pat
         "         'System.Native', 'System.Globalization.Native', 'minipal']\n"
         "for name in names:\n"
         f"    subprocess.run([{shutil.which('ar')!r}, 'rcs', str(library / f'lib{{name}}.a'), str(obj)], check=True)\n"
-        "(workspace / f'READY_test-runtime_{triplet}_mono_runtime_corelib_libs_native_sfx_nogl').touch()\n"
+        "(workspace / f'READY_test-runtime_{triplet}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators').touch()\n"
         "with (workspace / 'invocations.jsonl').open('a') as output:\n"
         "    output.write(json.dumps({'configuration': configuration, 'triplet': triplet}) + '\\n')\n"
     )

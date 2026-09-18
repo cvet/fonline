@@ -419,71 +419,7 @@ FO_SCRIPT_API bool Server_Critter_IsSee(ptr<Critter> self, ptr<Item> item)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Critter_CountItem(ptr<Critter> self, hstring protoId)
-{
-    return self->CountInvItemByPid(protoId);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Critter_CountItem(ptr<Critter> self, ptr<ProtoItem> proto)
-{
-    return self->CountInvItemByPid(proto->GetProtoId());
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid)
-{
-    if (!pid) {
-        throw ScriptException("Proto id arg is zero");
-    }
-
-    int32_t count = self->CountInvItemByPid(pid);
-
-    if (count == 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> proto)
-{
-    int32_t count = self->CountInvItemByPid(proto->GetProtoId());
-
-    if (count == 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid, int32_t count)
-{
-    if (!pid) {
-        throw ScriptException("Proto id arg is zero");
-    }
-
-    if (count <= 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
-{
-    if (count <= 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
@@ -494,26 +430,20 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> se
     if (!self->GetEngine()->GetProtoItem(pid)) {
         throw ScriptException("Invalid proto", pid);
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(pid, nullptr);
+    return self->GetEngine()->CrMngr.AddItemToCritter(self, item, true);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(proto->GetProtoId(), nullptr);
+    return self->GetEngine()->CrMngr.AddItemToCritter(self, item, true);
 }
 
 ///@ ExportMethod

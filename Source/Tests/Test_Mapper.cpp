@@ -195,7 +195,7 @@ namespace MapperMergeTest
 
         // Moving clears the selection, so the delete right after it operates on an unselected entity
         Game.MoveEntity(added, mpos(13, 13));
-        Game.SetEntityProperty(added, "Count", "3");
+        Game.SetEntityProperty(added, "LightDistance", "3");
         Game.SelectEntity(added, true);
         if (Game.GetSelectedEntity() is null) return -3;
 
@@ -426,8 +426,6 @@ namespace MapperMergeTest
         int before = maps[currentIndex].GetItems().length();
         Item clone = item.Clone();
         clone.Finish();
-        Item countedClone = item.Clone(2);
-        countedClone.Finish();
         if (maps[currentIndex].GetItems().length() != before) return -3;
 
         return 0;
@@ -458,7 +456,6 @@ namespace MapperMergeTest
         cr.StopMove();
 
         // The critter carries nothing, so every inventory query must answer empty rather than fail
-        if (cr.CountItem("MapperMergeTileA".hstr()) != 0) return -1;
         if (!cr.GetItems().isEmpty()) return -2;
         if (cr.GetItem("MapperMergeTileA".hstr()) !is null) return -3;
 
@@ -476,10 +473,9 @@ namespace MapperMergeTest
         if (cr.GetBonePos("Head".hstr(), boneOffset)) return -21;
 
         ProtoItem tileProto = Game.GetProtoItem("MapperMergeTileA".hstr());
-        if (cr.CountItem(tileProto) != 0) return -11;
         if (cr.GetItem(tileProto) !is null) return -12;
-        if (cr.GetItem(ItemProperty::Count, 1) !is null) return -13;
-        if (!cr.GetItems(ItemProperty::Count, 1).isEmpty()) return -14;
+        if (cr.GetItem(ItemProperty::LightDistance, 1) !is null) return -13;
+        if (!cr.GetItems(ItemProperty::LightDistance, 1).isEmpty()) return -14;
 
         cr.MoveToHex(mpos(8, 8), ipos(0, 0), 10);
         cr.MoveToHex(mpos(8, 8), 0, ipos(0, 0), 10);
@@ -925,16 +921,16 @@ namespace MapperMergeTest
         return count;
     }
 
-    // Describes a survivor independently of authoring order; the survivor keeps its own data, so Count
+    // Describes a survivor independently of authoring order; the survivor keeps its own data, so LightDistance
     // fingerprints which item won the path-dependent race and the id pins which one survived
     struct SurvivorDesc
     {
         int64_t Id;
         mpos Origin;
         vector<mpos> Covered;
-        int32_t Count;
+        int32_t LightDistance;
 
-        auto operator==(const SurvivorDesc& other) const -> bool { return Id == other.Id && Origin == other.Origin && Covered == other.Covered && Count == other.Count; }
+        auto operator==(const SurvivorDesc& other) const -> bool { return Id == other.Id && Origin == other.Origin && Covered == other.Covered && LightDistance == other.LightDistance; }
     };
 
     static auto CollectSurvivors(ptr<MapView> map, hstring proto_id) -> vector<SurvivorDesc>
@@ -943,7 +939,7 @@ namespace MapperMergeTest
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == proto_id) {
-                survivors.emplace_back(SurvivorDesc {item->GetId().underlying_value(), item->GetHex(), CollectMeshHexes(item), item->GetCount()});
+                survivors.emplace_back(SurvivorDesc {item->GetId().underlying_value(), item->GetHex(), CollectMeshHexes(item), item->GetLightDistance()});
             }
         }
 
@@ -962,8 +958,8 @@ TEST_CASE("MapperMultihexMeshMerge")
     hstring tile_a = mapper->Hashes.to_hashed_string(TILE_A);
     hstring tile_b = mapper->Hashes.to_hashed_string(TILE_B);
 
-    REQUIRE(mapper->GetProtoItem(tile_a) != nullptr);
-    REQUIRE(mapper->GetProtoItem(tile_b) != nullptr);
+    REQUIRE(mapper->GetProtoItem(tile_a));
+    REQUIRE(mapper->GetProtoItem(tile_b));
     REQUIRE(mapper->GetProtoItem(tile_a)->GetMultihexGeneration() == MultihexGenerationType::SameSibling);
 
     SECTION("Coalesces an adjacent block into one multihex-mesh item")
@@ -975,7 +971,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         }
 
         auto map = mapper->LoadMapFromText("CoalesceMap", "CoalesceMap.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
@@ -985,7 +981,7 @@ TEST_CASE("MapperMultihexMeshMerge")
                 survivor = item;
             }
         }
-        REQUIRE(survivor != nullptr);
+        REQUIRE(survivor);
         CHECK(survivor->IsNonEmptyMultihexMesh());
 
         auto covered = CollectMeshHexes(survivor);
@@ -1006,7 +1002,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(33, TILE_A, 5, 5);
 
         auto map = mapper->LoadMapFromText("NormalizeMap", "NormalizeMap.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
@@ -1015,7 +1011,7 @@ TEST_CASE("MapperMultihexMeshMerge")
                 survivor = item;
             }
         }
-        REQUIRE(survivor != nullptr);
+        REQUIRE(survivor);
 
         auto covered = CollectMeshHexes(survivor);
         REQUIRE(covered.size() == 4);
@@ -1039,7 +1035,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         }
 
         auto map = mapper->LoadMapFromText("IdempotentMap", "IdempotentMap.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
@@ -1048,7 +1044,7 @@ TEST_CASE("MapperMultihexMeshMerge")
                 survivor = item;
             }
         }
-        REQUIRE(survivor != nullptr);
+        REQUIRE(survivor);
 
         auto origin_before = survivor->GetHex();
         auto covered_before = CollectMeshHexes(survivor);
@@ -1070,7 +1066,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(51, TILE_B, 6, 5);
 
         auto map = mapper->LoadMapFromText("CrossProtoMap", "CrossProtoMap.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         CHECK(CountItemsOfProto(map, tile_a) == 1);
         CHECK(CountItemsOfProto(map, tile_b) == 1);
@@ -1085,11 +1081,11 @@ TEST_CASE("MapperMultihexMeshMerge")
         // Neither tile is clean and their data differs, so they stay apart: merging two non-clean items requires
         // identical data
         string body;
-        body += MakeItemBlock(60, TILE_A, 5, 5, "Count = 7");
-        body += MakeItemBlock(61, TILE_A, 6, 5, "Count = 9");
+        body += MakeItemBlock(60, TILE_A, 5, 5, "LightDistance = 7");
+        body += MakeItemBlock(61, TILE_A, 6, 5, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("ModifiedPairMap", "ModifiedPairMap.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 2);
 
@@ -1108,10 +1104,10 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(70, TILE_A, 5, 5);
         body += MakeItemBlock(71, TILE_A, 6, 5);
         body += MakeItemBlock(72, TILE_A, 7, 5);
-        body += MakeItemBlock(73, TILE_A, 8, 5, "Count = 7");
+        body += MakeItemBlock(73, TILE_A, 8, 5, "LightDistance = 7");
 
         auto map = mapper->LoadMapFromText("CleanPlusModifiedMap", "CleanPlusModifiedMap.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
@@ -1121,7 +1117,7 @@ TEST_CASE("MapperMultihexMeshMerge")
                 survivor = item;
             }
         }
-        REQUIRE(survivor != nullptr);
+        REQUIRE(survivor);
         CHECK(survivor->IsNonEmptyMultihexMesh());
         CHECK(CollectMeshHexes(survivor).size() == 4);
     }
@@ -1137,7 +1133,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(73, TILE_A, 21, 20);
 
         auto map = mapper->LoadMapFromText("DisjointMap", "DisjointMap.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 2);
 
@@ -1157,18 +1153,18 @@ TEST_CASE("MapperMultihexMeshMerge")
         // A naive flood-fill would merge this line too but pick a different survivor: here clean middle tiles
         // bridge two modified ends and the clean proto data wins, which is exactly what must not change
         string body;
-        body += MakeItemBlock(200, TILE_A, 5, 5, "Count = 3");
+        body += MakeItemBlock(200, TILE_A, 5, 5, "LightDistance = 3");
         body += MakeItemBlock(201, TILE_A, 6, 5);
         body += MakeItemBlock(202, TILE_A, 7, 5);
-        body += MakeItemBlock(203, TILE_A, 8, 5, "Count = 9");
+        body += MakeItemBlock(203, TILE_A, 8, 5, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("ModChainAsc", "ModChainAsc.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}, {8, 5}});
     }
 
@@ -1176,16 +1172,16 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         string body;
         body += MakeItemBlock(210, TILE_A, 5, 5);
-        body += MakeItemBlock(211, TILE_A, 6, 5, "Count = 4");
+        body += MakeItemBlock(211, TILE_A, 6, 5, "LightDistance = 4");
         body += MakeItemBlock(212, TILE_A, 7, 5);
 
         auto map = mapper->LoadMapFromText("CleanModClean", "CleanModClean.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}});
     }
 
@@ -1194,18 +1190,18 @@ TEST_CASE("MapperMultihexMeshMerge")
         // The same chain with the id order reversed, so the per-step merge direction differs: an identical result
         // is what proves the optimization stayed insensitive to authoring order
         string body;
-        body += MakeItemBlock(220, TILE_A, 5, 5, "Count = 3");
+        body += MakeItemBlock(220, TILE_A, 5, 5, "LightDistance = 3");
         body += MakeItemBlock(223, TILE_A, 6, 5);
         body += MakeItemBlock(222, TILE_A, 7, 5);
-        body += MakeItemBlock(221, TILE_A, 8, 5, "Count = 9");
+        body += MakeItemBlock(221, TILE_A, 8, 5, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("ModChainModLowIds", "ModChainModLowIds.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}, {8, 5}});
     }
 
@@ -1214,22 +1210,22 @@ TEST_CASE("MapperMultihexMeshMerge")
         // Two tiles share authored data and merge while the third differs with no clean tile to bridge it, which
         // a pure proto-adjacency flood-fill would over-merge into one mesh
         string body;
-        body += MakeItemBlock(230, TILE_A, 5, 5, "Count = 5");
-        body += MakeItemBlock(231, TILE_A, 6, 5, "Count = 5");
-        body += MakeItemBlock(232, TILE_A, 7, 5, "Count = 8");
+        body += MakeItemBlock(230, TILE_A, 5, 5, "LightDistance = 5");
+        body += MakeItemBlock(231, TILE_A, 6, 5, "LightDistance = 5");
+        body += MakeItemBlock(232, TILE_A, 7, 5, "LightDistance = 8");
 
         auto map = mapper->LoadMapFromText("ModXModXModY", "ModXModXModY.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto survivors = CollectSurvivors(map, tile_a);
         REQUIRE(survivors.size() == 2);
 
         CHECK(survivors[0].Origin == mpos {5, 5});
-        CHECK(survivors[0].Count == 5);
+        CHECK(survivors[0].LightDistance == 5);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}});
 
         CHECK(survivors[1].Origin == mpos {7, 5});
-        CHECK(survivors[1].Count == 8);
+        CHECK(survivors[1].LightDistance == 8);
         CHECK(survivors[1].Covered == vector<mpos> {{7, 5}});
     }
 
@@ -1248,7 +1244,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         }
 
         auto map = mapper->LoadMapFromText("LargeBlockMap", "LargeBlockMap.fomap", MakeMapText(body, 64));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         // Current behavior: an adjacency-connected block collapses into a single multihex-mesh item
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
@@ -1259,7 +1255,7 @@ TEST_CASE("MapperMultihexMeshMerge")
                 survivor = item;
             }
         }
-        REQUIRE(survivor != nullptr);
+        REQUIRE(survivor);
 
         auto covered = CollectMeshHexes(survivor);
         CHECK(covered.size() == numeric_cast<size_t>(block) * block);
@@ -1278,7 +1274,7 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     hstring tile_u = mapper->Hashes.to_hashed_string(TILE_U);
 
-    REQUIRE(mapper->GetProtoItem(tile_u) != nullptr);
+    REQUIRE(mapper->GetProtoItem(tile_u));
     REQUIRE(mapper->GetProtoItem(tile_u)->GetMultihexGeneration() == MultihexGenerationType::AnyUnique);
 
     SECTION("Non-adjacent clean tiles merge into one mesh despite no adjacency")
@@ -1289,13 +1285,13 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         body += MakeItemBlock(302, TILE_U, 5, 25);
 
         auto map = mapper->LoadMapFromText("U_NonAdjacentClean", "U_NonAdjacentClean.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto survivors = CollectSurvivors(map, tile_u);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 300); // lowest id wins
         CHECK(survivors[0].Origin == mpos {3, 3});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         // hex_less is y-major: (3,3) then (20,20) then (5,25)
         CHECK(survivors[0].Covered == vector<mpos> {{3, 3}, {20, 20}, {5, 25}});
     }
@@ -1304,13 +1300,13 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
     {
         string body;
         body += MakeItemBlock(310, TILE_U, 2, 2);
-        body += MakeItemBlock(311, TILE_U, 10, 2, "Count = 7");
+        body += MakeItemBlock(311, TILE_U, 10, 2, "LightDistance = 7");
         body += MakeItemBlock(312, TILE_U, 2, 10);
-        body += MakeItemBlock(313, TILE_U, 25, 25, "Count = 7");
-        body += MakeItemBlock(314, TILE_U, 18, 4, "Count = 9");
+        body += MakeItemBlock(313, TILE_U, 25, 25, "LightDistance = 7");
+        body += MakeItemBlock(314, TILE_U, 18, 4, "LightDistance = 9");
 
         auto map = mapper->LoadMapFromText("U_MixedScatter", "U_MixedScatter.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto survivors = CollectSurvivors(map, tile_u);
         REQUIRE(survivors.size() == 3);
@@ -1318,19 +1314,19 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         // Clean group (310 + 312)
         CHECK(survivors[0].Id == 310);
         CHECK(survivors[0].Origin == mpos {2, 2});
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{2, 2}, {2, 10}});
 
-        // Count == 7 group (311 + 313)
+        // LightDistance == 7 group (311 + 313)
         CHECK(survivors[1].Id == 311);
         CHECK(survivors[1].Origin == mpos {10, 2});
-        CHECK(survivors[1].Count == 7);
+        CHECK(survivors[1].LightDistance == 7);
         CHECK(survivors[1].Covered == vector<mpos> {{10, 2}, {25, 25}});
 
-        // Lone Count == 9 tile (314)
+        // Lone LightDistance == 9 tile (314)
         CHECK(survivors[2].Id == 314);
         CHECK(survivors[2].Origin == mpos {18, 4});
-        CHECK(survivors[2].Count == 9);
+        CHECK(survivors[2].LightDistance == 9);
         CHECK(survivors[2].Covered == vector<mpos> {{18, 4}});
     }
 
@@ -1342,13 +1338,13 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         body += MakeItemBlock(325, TILE_U, 7, 5);
 
         auto map = mapper->LoadMapFromText("U_ShuffledIds", "U_ShuffledIds.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto survivors = CollectSurvivors(map, tile_u);
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 320); // lowest id, even though it was authored second and sits at (6,5)
         CHECK(survivors[0].Origin == mpos {5, 5}); // origin normalized to the hex_less-smallest covered hex
-        CHECK(survivors[0].Count == 0);
+        CHECK(survivors[0].LightDistance == 0);
         CHECK(survivors[0].Covered == vector<mpos> {{5, 5}, {6, 5}, {7, 5}});
     }
 
@@ -1362,7 +1358,7 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         body += MakeItemBlock(342, TILE_U, 6, 3);
 
         auto map = mapper->LoadMapFromText("U_CrossStrategy", "U_CrossStrategy.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto u_survivors = CollectSurvivors(map, tile_u);
         REQUIRE(u_survivors.size() == 1);
@@ -1377,11 +1373,11 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
         string body;
         body += MakeItemBlock(350, TILE_U, 2, 2);
         body += MakeItemBlock(351, TILE_U, 9, 9);
-        body += MakeItemBlock(352, TILE_U, 4, 12, "Count = 4");
-        body += MakeItemBlock(353, TILE_U, 20, 1, "Count = 4");
+        body += MakeItemBlock(352, TILE_U, 4, 12, "LightDistance = 4");
+        body += MakeItemBlock(353, TILE_U, 20, 1, "LightDistance = 4");
 
         auto map = mapper->LoadMapFromText("U_Idempotent", "U_Idempotent.fomap", MakeMapText(body));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
 
         auto before = CollectSurvivors(map, tile_u);
         size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
@@ -1416,14 +1412,14 @@ TEST_CASE("MapperLoadMapResolvesNameAndPath")
     SECTION("Loads by directory-qualified path despite a same-stem location sibling")
     {
         auto map = mapper->LoadMap("Gambell/ShadowedMap");
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
         CHECK(map->GetProtoId() == expected_proto);
     }
 
     SECTION("Loads by bare declared map name")
     {
         auto map = mapper->LoadMap("ShadowedMap");
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
         CHECK(map->GetProtoId() == expected_proto);
     }
 }
@@ -1469,12 +1465,12 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
     // the inspector only lists property lines for a selected entity, so without this it draws an empty frame
     string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
     auto map = mapper->LoadMapFromText("PanelMap", "PanelMap.fomap", MakeMapText(body));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
 
     mapper->ShowMap(map.as_ptr());
     mapper->SelectAll();
     REQUIRE_FALSE(mapper->SelectedEntities.empty());
-    REQUIRE(mapper->GetInspectorEntity() != nullptr);
+    REQUIRE(mapper->GetInspectorEntity());
 
     // Walk the inspector's property lines and commit an edit so the parse/apply path runs too
     for (int32_t line = 0; line < 4; line++) {
@@ -1602,7 +1598,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
     body += MakeCritterBlock(13, CRITTER_A, 11, 5);
 
     auto map = mapper->LoadMapFromText("SelectionMap", "SelectionMap.fomap", MakeMapText(body));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
     // Tiles are not authored in map text - the mapper places them, which is also what marks them as roof
@@ -1617,28 +1613,20 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         CHECK(all_layers >= 6);
 
         // Each layer switched off must cost exactly the entities that belong to it
-        settings.Hex.ShowCrit = false;
+        mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Critters);
         mapper->SelectAll();
         CHECK(mapper->SelectedEntities.size() < all_layers);
 
-        settings.Hex.ShowScen = false;
-        settings.Hex.ShowWall = false;
-        settings.Hex.ShowTile = false;
-        settings.Hex.ShowRoof = false;
+        mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Scenery, MapLayers::Walls, MapLayers::Tiles, MapLayers::Roof);
         mapper->SelectAll();
         size_t items_only = mapper->SelectedEntities.size();
         CHECK(items_only < all_layers);
 
-        settings.Hex.ShowItem = false;
+        mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Items);
         mapper->SelectAll();
         CHECK(mapper->SelectedEntities.empty());
 
-        settings.Hex.ShowItem = true;
-        settings.Hex.ShowScen = true;
-        settings.Hex.ShowWall = true;
-        settings.Hex.ShowTile = true;
-        settings.Hex.ShowRoof = true;
-        settings.Hex.ShowCrit = true;
+        mapper->VisibleLayers = MapLayers::All;
     }
 
     SECTION("PerKindSelectionSwitchesGateTheSameWalk")
@@ -1786,7 +1774,7 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
     mapper->SettingsWindowVisible = true;
 
     auto map = mapper->LoadMapFromText("ControlsMap", "ControlsMap.fomap", MakeMapText(MakeItemBlock(11, TILE_A, 5, 5) + MakeCritterBlock(12, CRITTER_A, 6, 6)));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
     mapper->SelectAll();
 
@@ -1879,9 +1867,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         press("Controls", "Scroll check", draw_controls);
 
         // The folded groups carry the layer toggles the renderer reads
-        bool show_items_before = settings.Hex.ShowItem;
+        bool show_items_before = is_enum_set(mapper->VisibleLayers, MapLayers::Items);
         press("Controls", "Items", draw_controls);
-        CHECK(settings.Hex.ShowItem != show_items_before);
+        CHECK(is_enum_set(mapper->VisibleLayers, MapLayers::Items) != show_items_before);
 
         for (string_view layer_label : {"Scenery", "Walls", "Critters", "Tiles", "Roof", "Fast"}) {
             press("Controls", layer_label, draw_controls);
@@ -1893,9 +1881,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         // The workspace layer buttons rebuild the map, and its tab list is what switches the panel mode
         auto draw_workspace = [&mapper] { mapper->DrawWorkspaceWindowImGui(); };
 
-        bool workspace_items_before = settings.Hex.ShowItem;
+        bool workspace_items_before = is_enum_set(mapper->VisibleLayers, MapLayers::Items);
         press("Workspace", "Items", draw_workspace);
-        CHECK(settings.Hex.ShowItem != workspace_items_before);
+        CHECK(is_enum_set(mapper->VisibleLayers, MapLayers::Items) != workspace_items_before);
 
         for (string_view layer_button : {"Scenery", "Walls", "Critters", "Tiles", "Roof", "Fast"}) {
             INFO(layer_button);
@@ -1920,7 +1908,7 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
 
         // Picking another loaded map out of the browser list is what switches the shown map
         auto other_map = mapper->LoadMapFromText("OtherControlsMap", "OtherControlsMap.fomap", MakeMapText(MakeItemBlock(13, TILE_A, 4, 4)));
-        REQUIRE(other_map != nullptr);
+        REQUIRE(other_map);
         // The list labels a map by its own name and marks the current one with a leading asterisk
         string other_map_label = string {other_map->GetName()};
         press_child("Content", {"##LoadedMaps"}, other_map_label, draw_content);
@@ -1982,10 +1970,10 @@ TEST_CASE("MapperEditorOperations")
 
     string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7) + MakeItemBlock(12, TILE_A, 9, 9);
     auto map = mapper->LoadMapFromText("EditorMap", "EditorMap.fomap", MakeMapText(body));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
 
     mapper->ShowMap(map.as_ptr());
-    REQUIRE(mapper->GetCurMap() != nullptr);
+    REQUIRE(mapper->GetCurMap());
 
     SECTION("PanelModesAndCursorModesSwitch")
     {
@@ -2119,7 +2107,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     ParticleEditorManager particle_editor {mapper.as_ptr()};
 
     auto preview_map = mapper->LoadMapFromText("PreviewMap", "PreviewMap.fomap", MakeMapText(MakeItemBlock(30, TILE_A, 5, 5)));
-    REQUIRE(preview_map != nullptr);
+    REQUIRE(preview_map);
     mapper->ShowMap(preview_map.as_ptr());
 
     REQUIRE_NOTHROW(particle_editor.Initialize());
@@ -2236,7 +2224,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 
     // Switching away from the previewed map and then unloading it must take the placed sprite with it
     auto second_map = mapper->LoadMapFromText("PreviewMapB", "PreviewMapB.fomap", MakeMapText(MakeItemBlock(31, TILE_A, 6, 6)));
-    REQUIRE(second_map != nullptr);
+    REQUIRE(second_map);
     REQUIRE_NOTHROW(particle_editor.OnCurrentMapChanging(second_map.as_ptr()));
     mapper->ShowMap(second_map.as_ptr());
     REQUIRE_NOTHROW(particle_editor.OnMapUnloading(preview_map.as_ptr()));
@@ -2401,7 +2389,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 
     string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
     auto map = mapper->LoadMapFromText("InputMap", "InputMap.fomap", MakeMapText(body));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
@@ -2589,7 +2577,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         }
 
         auto dense_map = mapper->LoadMapFromText("DenseMap", "DenseMap.fomap", MakeMapText(dense));
-        REQUIRE(dense_map != nullptr);
+        REQUIRE(dense_map);
         mapper->ShowMap(dense_map.as_ptr());
 
         vector<float32_t> zooms {1.0f, 2.0f, 0.5f, 1.0f};
@@ -2767,7 +2755,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
     body += MakeCritterBlock(21, CRITTER_A, 10, 10);
 
     auto map = mapper->LoadMapFromText("LightMap", "LightMap.fomap", MakeMapText(body));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
     ptr<MapView> map_ptr = map.as_ptr();
@@ -2956,7 +2944,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     mapper->InitIface();
 
     auto map = mapper->LoadMapFromText("SaveMap", "SaveMap.fomap", MakeMapText(MakeItemBlock(11, TILE_B, 6, 6)));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
     SECTION("SavingIntoASubDirectoryWritesTheFile")
@@ -3010,7 +2998,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     SECTION("SavingAnUnloadedMapIsRejected")
     {
         auto other = mapper->LoadMapFromText("OtherMap", "OtherMap.fomap", MakeMapText(MakeItemBlock(12, TILE_A, 7, 7)));
-        REQUIRE(other != nullptr);
+        REQUIRE(other);
 
         // The engine's only owning reference lives in LoadedMaps, so unloading destroys the view outright. Hold
         // an own reference across it, or the rejection below reads freed memory instead of exercising the guard
@@ -3043,7 +3031,7 @@ TEST_CASE("MapperConsoleCommands")
     SECTION("MapLifecycleCommandsRunAgainstAFreshMap")
     {
         REQUIRE_NOTHROW(mapper->ParseCommand("*new"));
-        REQUIRE(mapper->GetCurMap() != nullptr);
+        REQUIRE(mapper->GetCurMap());
 
         REQUIRE_NOTHROW(mapper->ParseCommand("*size 40 40"));
         REQUIRE_NOTHROW(mapper->ParseCommand("*reverse-light"));
@@ -3072,7 +3060,7 @@ TEST_CASE("MapperConsoleCommands")
     SECTION("AnimationCommandsWalkTheCrittersOfALoadedMap")
     {
         auto map = mapper->LoadMapFromText("ConsoleMap", "ConsoleMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 5, 5)));
-        REQUIRE(map != nullptr);
+        REQUIRE(map);
         mapper->ShowMap(map.as_ptr());
 
         REQUIRE_NOTHROW(mapper->ParseCommand("@1 2"));
@@ -3103,7 +3091,7 @@ TEST_CASE("MapperScriptApiCoverage")
 
     string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
     auto map = mapper->LoadMapFromText("ScriptApiMap", "ScriptApiMap.fomap", MakeMapText(body));
-    REQUIRE(map != nullptr);
+    REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
     auto run_script = [&mapper](string_view name) {

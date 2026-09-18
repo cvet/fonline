@@ -1007,7 +1007,7 @@ TEST_CASE("ModelBoneLookup")
     ptr<ModelBone> root_ptr = &root;
     CHECK(FindModelBone(root_ptr, root_name) == &root);
     CHECK(FindModelBone(root_ptr, child_name) == root.Children.back());
-    CHECK(FindModelBone(root_ptr, missing_name) == nullptr);
+    CHECK_FALSE(FindModelBone(root_ptr, missing_name));
 
     const ModelBone& const_root = root;
     ptr<const ModelBone> const_root_ptr = &const_root;

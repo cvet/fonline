@@ -53,18 +53,15 @@ public:
     auto operator=(AudioManager&&) noexcept = delete;
     ~AudioManager();
 
-    void IndexFiles();
-    // The resource paths of every indexed sound, for a caller that resolves its own naming conventions
     [[nodiscard]] auto GetSoundNames() const noexcept -> const_span<string> { return _soundNames; }
-    // The handle names the sound while it plays, and zero means there is nothing playing to name: the device
-    // is silent, the sound was out of earshot, or the resource could not be played. A caller that only starts
-    // a sound ignores it
+    [[nodiscard]] auto GetMusicVolume() const noexcept -> int32_t { return _musicVolume; }
+    [[nodiscard]] auto GetSoundVolume() const noexcept -> int32_t { return _soundVolume; }
+
+    void IndexFiles();
+    void SetMusicVolume(int32_t volume) noexcept { _musicVolume = volume; }
+    void SetSoundVolume(int32_t volume) noexcept { _soundVolume = volume; }
     auto PlaySound(string_view name) -> uint32_t;
-    // Attenuation scales the mixed volume, pan runs from -1 at the left ear to 1 at the right one; how far a
-    // sound carries and how hard it leans is game policy, so the caller decides both
     auto PlaySound(string_view name, float32_t attenuation, float32_t pan) -> uint32_t;
-    // Places a sound that is already playing. Answers false once that sound has finished, which is how a
-    // caller following it learns to stop
     auto UpdateSound(uint32_t sound_id, float32_t attenuation, float32_t pan) -> bool;
     auto PlayMusic(string_view fname, timespan repeat_time) -> bool;
     void StopSounds();
@@ -86,6 +83,8 @@ private:
     ptr<AudioSettings> _settings;
     ptr<FileSystem> _resources;
     ptr<IAppAudio> _audio;
+    int32_t _musicVolume;
+    int32_t _soundVolume;
     bool _isActive {};
     int32_t _streamingPortion {};
     uint32_t _soundIdCounter {};

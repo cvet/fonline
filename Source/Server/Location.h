@@ -70,6 +70,7 @@ public:
     void RestoreMap(ptr<Map> map);
     void AddMap(ptr<Map> map);
     void RemoveMap(ptr<Map> map);
+    void ClearAllAssociations() noexcept;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

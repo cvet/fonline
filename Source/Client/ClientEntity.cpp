@@ -45,10 +45,28 @@ ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const Prope
 
     _name = GetTypeName();
 
+    // The engine is borrowed, not owned: it owns the property registrars, protos, hashes and views this entity
+    // reads, so no entity may outlive it. This count is what proves that in ~ClientEngine
+    _engine->_liveEntityCount.fetch_add(1, std::memory_order_relaxed);
+
     if (_id) {
         _engine->RegisterEntity(this);
         _registered = true;
     }
+}
+
+ClientEntity::~ClientEntity()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Usually retired through DestroySelf, but the last owner (a script handle to a received item) may release it instead, and the
+    // registry holds borrows, so that release must take the entry with it or a lookup by id returns freed memory
+    if (_registered) {
+        _engine->UnregisterEntity(this);
+        _registered = false;
+    }
+
+    _engine->_liveEntityCount.fetch_sub(1, std::memory_order_acq_rel);
 }
 
 void ClientEntity::SetId(ident_t id, bool register_entity)

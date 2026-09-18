@@ -101,8 +101,8 @@ namespace ClientServerIntegrationServer
         cr.TransferToMap(map, mpos(10, 10));
 
         // Inventory and map items each take their own send path to the owning client
-        cr.AddItem("UnitTestSharedItem".hstr(), 3);
-        map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr(), 1);
+        cr.AddItem("UnitTestSharedItem".hstr());
+        map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr());
 
         // A second critter on the same map arrives at the client as a foreign critter, which is a different
         // send path from the controlled one, and moving it drives the position updates
@@ -120,7 +120,7 @@ namespace ClientServerIntegrationServer
         npc.DetachFromCritter();
 
         // Both remaining detached-item messages: the action context item and the slot-move item
-        Item npcItem = npc.AddItem("UnitTestSharedItem".hstr(), 1);
+        Item npcItem = npc.AddItem("UnitTestSharedItem".hstr());
         npc.Action(CritterAction::DropItem, 0, npcItem);
         npc.ChangeItemSlot(npcItem.Id, CritterItemSlot::Main);
 
@@ -165,10 +165,10 @@ namespace ClientServerIntegrationServer
 
         if (step == 0) {
             // Adding an item and pushing it out onto the map both send item messages to the owning client
-            Item added = cr.AddItem("UnitTestSharedItem".hstr(), 2);
+            Item added = cr.AddItem("UnitTestSharedItem".hstr());
 
             if (crMapCover !is null) {
-                Game.MoveItem(added, 1, crMapCover, mpos(10, 10));
+                Game.MoveItem(added, crMapCover, mpos(10, 10));
             }
         }
         else if (step == 2) {
@@ -727,7 +727,6 @@ namespace ClientServerIntegrationClient
         Game.GetDistance(Chosen.Hex, Chosen);
 
         // The inventory side of the same surface
-        Chosen.CountItem("UnitTestSharedItem".hstr());
         Chosen.GetItem("UnitTestSharedItem".hstr());
         Chosen.GetItems();
         Chosen.GetBodyAngle();
@@ -1597,7 +1596,7 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
         auto map_proto = client->GetProtoMap(client->Hashes.to_hashed_string("UnitTestSharedMap"));
         REQUIRE(map_proto);
 
-        isize32 screen_size {client->Settings->View.ScreenWidth, client->Settings->View.ScreenHeight};
+        isize32 screen_size = client->SprMngr.GetScreenSize();
 
         auto load_view = [&](bool with_removal) {
             auto map_view = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), screen_size);

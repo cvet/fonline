@@ -4,8 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Reflection.Metadata;
-using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
 
 public static class ManagedLoadContextHost
@@ -76,24 +74,11 @@ public static class ManagedLoadContextHost
         {
             for (int i = 0; i < assemblyPaths.Length; i++) {
                 string path = Path.GetFullPath(assemblyPaths[i]);
-                string ? assemblyName;
 
-                try {
-                    // Read through a stream rather than AssemblyName.GetAssemblyName, which memory-maps the
-                    // file: WebAssembly has no mmap, and only the simple name is needed here
-                    using FileStream stream = File.OpenRead(path);
-                    using PEReader peReader = new PEReader(stream, PEStreamOptions.PrefetchMetadata);
-
-                    if (!peReader.HasMetadata) {
-                        continue;
-                    }
-
-                    MetadataReader metadataReader = peReader.GetMetadataReader();
-                    assemblyName = metadataReader.GetString(metadataReader.GetAssemblyDefinition().Name);
-                }
-                catch (BadImageFormatException) {
-                    continue;
-                }
+                // The baker packs only managed assemblies named after the assembly they define, so the file name is
+                // the simple name. Reading it from metadata would need AssemblyName.GetAssemblyName, which memory-maps
+                // the file where WebAssembly has no mmap, or System.Reflection.Metadata with its dependency chain
+                string assemblyName = Path.GetFileNameWithoutExtension(path);
 
                 if (string.IsNullOrEmpty(assemblyName)) {
                     throw new InvalidOperationException("Managed assembly has no simple name: " + path);

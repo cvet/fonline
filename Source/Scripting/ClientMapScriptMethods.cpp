@@ -197,6 +197,18 @@ FO_SCRIPT_API void Client_Map_SetManualScroll(ptr<MapView> self, ScrollDirection
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API MapLayers Client_Map_GetVisibleLayers(ptr<MapView> self)
+{
+    return self->GetVisibleLayers();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetVisibleLayers(ptr<MapView> self, MapLayers layers)
+{
+    self->SetVisibleLayers(layers);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetExtraScrollOffset(ptr<MapView> self, fpos32 offset)
 {
     self->SetExtraScrollOffset(offset);

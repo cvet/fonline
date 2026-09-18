@@ -337,8 +337,8 @@ re-validates its own subject internally and promises the caller nothing.
 The remainder split by what the caller is:
 
 - **A test re-proves and asserts in the same breath.** The fixture has to survive for the rest of the test to
-  mean anything, so a one-line `Testing.KeepCovered(cr)` — whose body is `Invariant.Verify(await Sync.Widen(cr),
-  ...)` — states that and fails loudly when it does not. The analyzer proves the helper's own contract from that
+  mean anything, so a one-line `Testing.KeepCovered(cr)` — whose body widens, then `Invariant.Verify`s the
+  answer — states that and fails loudly when it does not. The analyzer proves the helper's own contract from that
   body, so no annotation is needed anywhere. Two shapes were worth doing at the helper instead of the call site:
   a thin test wrapper that forwards to production work re-proves once at its end and closes every call site it
   has (nine of them closed 305 sites).

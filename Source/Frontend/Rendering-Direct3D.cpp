@@ -145,6 +145,7 @@ private:
 struct Direct3D_Renderer::Context
 {
     nptr<GlobalSettings> Settings {};
+    nptr<const AppScreenState> Screen {};
     bool RenderDebug {};
     bool VSync {};
     nptr<SDL_Window> SdlWindow {};
@@ -330,7 +331,7 @@ static auto ConvertCullMode(CullModeType cull_mode) -> D3D11_CULL_MODE
     FO_UNREACHABLE_PLACE();
 }
 
-void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -342,6 +343,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
     logging::write("Used DirectX rendering");
 
     _ctx->Settings = &settings;
+    _ctx->Screen = screen;
     _ctx->RenderDebug = settings.Render.RenderDebug;
     _ctx->VSync = settings.Render.VSync;
     _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
@@ -560,13 +562,13 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
     // Back buffer view
     nptr<ID3D11Texture2D> back_buf {};
     auto d3d_get_back_buf = _ctx->SwapChain->GetBuffer(0, IID_PPV_ARGS(back_buf.get_pp()));
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_get_back_buf), "Direct3D swap chain GetBuffer failed while creating the main render target", d3d_get_back_buf, settings.View.ScreenWidth, settings.View.ScreenHeight);
-    FO_VERIFY_AND_THROW(back_buf, "Direct3D swap chain GetBuffer returned a null back buffer", settings.View.ScreenWidth, settings.View.ScreenHeight);
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_get_back_buf), "Direct3D swap chain GetBuffer failed while creating the main render target", d3d_get_back_buf, screen->Size.width, screen->Size.height);
+    FO_VERIFY_AND_THROW(back_buf, "Direct3D swap chain GetBuffer returned a null back buffer", screen->Size.width, screen->Size.height);
     auto back_buf_holder = MakeComObjectHolder(back_buf);
     auto d3d_create_back_buf_rt_view = _ctx->D3DDevice->CreateRenderTargetView(back_buf.get(), nullptr, _ctx->MainRenderTarget.get_pp());
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_back_buf_rt_view), "Direct3D CreateRenderTargetView failed for the swap-chain back buffer", d3d_create_back_buf_rt_view, settings.View.ScreenWidth, settings.View.ScreenHeight);
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_back_buf_rt_view), "Direct3D CreateRenderTargetView failed for the swap-chain back buffer", d3d_create_back_buf_rt_view, screen->Size.width, screen->Size.height);
 
-    _ctx->BackBufSize = {settings.View.ScreenWidth, settings.View.ScreenHeight};
+    _ctx->BackBufSize = screen->Size;
 
     // One pixel staging texture
     D3D11_TEXTURE2D_DESC one_pix_staging_desc;
@@ -990,7 +992,7 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     }
     else {
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->View.ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->View.ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.width) / screen_aspect);
 
@@ -998,8 +1000,8 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         vp_oy = (_ctx->BackBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
-        screen_width = _ctx->Settings->View.ScreenWidth;
-        screen_height = _ctx->Settings->View.ScreenHeight;
+        screen_width = _ctx->Screen->Size.width;
+        screen_height = _ctx->Screen->Size.height;
 
         _ctx->CurRenderTarget = _ctx->MainRenderTarget;
         _ctx->CurDepthStencil = nullptr;
@@ -1317,7 +1319,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     vert_size = sizeof(Vertex2D);
 #endif
 
-    if (VertexBuf == nullptr || upload_vertices > VertexBufSize) {
+    if (!VertexBuf || upload_vertices > VertexBufSize) {
         ReleaseComObjectSlot(VertexBuf);
 
         VertexBufSize = upload_vertices + 1024;
@@ -1361,7 +1363,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     // Fill index buffer
     auto upload_indices = custom_indices_size.value_or(IndCount);
 
-    if (IndexBuf == nullptr || upload_indices > IndexBufSize) {
+    if (!IndexBuf || upload_indices > IndexBufSize) {
         ReleaseComObjectSlot(IndexBuf);
 
         IndexBufSize = upload_indices + 1024;
@@ -1472,7 +1474,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
     // Fill constant buffers
     auto setup_cbuffer = [this](auto&& buf, auto&& buf_handle) {
-        if (buf_handle == nullptr) {
+        if (!buf_handle) {
             D3D11_BUFFER_DESC cbuf_desc = {};
             cbuf_desc.ByteWidth = sizeof(buf);
             cbuf_desc.Usage = D3D11_USAGE_DYNAMIC;

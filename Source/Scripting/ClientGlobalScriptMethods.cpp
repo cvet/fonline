@@ -135,6 +135,12 @@ FO_SCRIPT_API GamepadState Client_Game_GetGamepadState(ptr<ClientEngine> client)
     return client->SprMngr.GetInput()->GetGamepadState();
 }
 
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API isize32 Client_Game_ScreenSize(ptr<ClientEngine> client)
+{
+    return client->SprMngr.GetScreenSize();
+}
+
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsFullscreen(ptr<ClientEngine> client)
 {
@@ -330,9 +336,39 @@ FO_SCRIPT_API void Client_Game_DrawMiniMap(ptr<ClientEngine> client, int32_t zoo
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_RefreshAlwaysOnTop(ptr<ClientEngine> client)
+FO_SCRIPT_API bool Client_Game_IsAlwaysOnTop(ptr<ClientEngine> client)
 {
-    client->SprMngr.SetAlwaysOnTop(client->Settings->Render.AlwaysOnTop);
+    return client->SprMngr.IsAlwaysOnTop();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetAlwaysOnTop(ptr<ClientEngine> client, bool enable)
+{
+    client->SprMngr.SetAlwaysOnTop(enable);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetMusicVolume(ptr<ClientEngine> client)
+{
+    return client->AudioMngr.GetMusicVolume();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetMusicVolume(ptr<ClientEngine> client, int32_t volume)
+{
+    client->AudioMngr.SetMusicVolume(volume);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetSoundVolume(ptr<ClientEngine> client)
+{
+    return client->AudioMngr.GetSoundVolume();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetSoundVolume(ptr<ClientEngine> client, int32_t volume)
+{
+    client->AudioMngr.SetSoundVolume(volume);
 }
 
 ///@ ExportMethod
@@ -1519,10 +1555,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    int32_t l = std::clamp(pos.x, 0, client->Settings->View.ScreenWidth);
-    int32_t t = std::clamp(pos.y, 0, client->Settings->View.ScreenHeight);
-    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->View.ScreenWidth);
-    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->View.ScreenHeight);
+    int32_t l = std::clamp(pos.x, 0, client->SprMngr.GetScreenSize().width);
+    int32_t t = std::clamp(pos.y, 0, client->SprMngr.GetScreenSize().height);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->SprMngr.GetScreenSize().width);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->SprMngr.GetScreenSize().height);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1546,10 +1582,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 
     rt->SetCustomDrawEffect(effect);
 
-    int32_t l = std::clamp(pos.x, 0, client->Settings->View.ScreenWidth);
-    int32_t t = std::clamp(pos.y, 0, client->Settings->View.ScreenHeight);
-    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->View.ScreenWidth);
-    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->View.ScreenHeight);
+    int32_t l = std::clamp(pos.x, 0, client->SprMngr.GetScreenSize().width);
+    int32_t t = std::clamp(pos.y, 0, client->SprMngr.GetScreenSize().height);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->SprMngr.GetScreenSize().width);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->SprMngr.GetScreenSize().height);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1562,14 +1598,14 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    frect32 from = frect32(std::clamp(fromX, 0, client->Settings->View.ScreenWidth), //
-        std::clamp(fromY, 0, client->Settings->View.ScreenHeight), //
-        std::clamp(fromW, 0, client->Settings->View.ScreenWidth - fromX), //
-        std::clamp(fromH, 0, client->Settings->View.ScreenHeight - fromY));
-    irect32 to = irect32(std::clamp(toX, 0, client->Settings->View.ScreenWidth), //
-        std::clamp(toY, 0, client->Settings->View.ScreenHeight), //
-        std::clamp(toW, 0, client->Settings->View.ScreenWidth - toX), //
-        std::clamp(toH, 0, client->Settings->View.ScreenHeight - toY));
+    frect32 from = frect32(std::clamp(fromX, 0, client->SprMngr.GetScreenSize().width), //
+        std::clamp(fromY, 0, client->SprMngr.GetScreenSize().height), //
+        std::clamp(fromW, 0, client->SprMngr.GetScreenSize().width - fromX), //
+        std::clamp(fromH, 0, client->SprMngr.GetScreenSize().height - fromY));
+    irect32 to = irect32(std::clamp(toX, 0, client->SprMngr.GetScreenSize().width), //
+        std::clamp(toY, 0, client->SprMngr.GetScreenSize().height), //
+        std::clamp(toW, 0, client->SprMngr.GetScreenSize().width - toX), //
+        std::clamp(toH, 0, client->SprMngr.GetScreenSize().height - toY));
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }

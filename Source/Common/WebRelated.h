@@ -37,6 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
+struct AppScreenState;
 struct WebSettings;
 
 namespace WebRelated
@@ -44,8 +45,8 @@ namespace WebRelated
     inline constexpr string_view_nt CanvasSelector = "#canvas";
 
     void ApplyApplicationHints() noexcept;
-    void ApplyWindowSettings(WebSettings& settings);
-    void ApplyCanvasLayout(WebSettings& settings) noexcept;
+    void ApplyWindowSettings(WebSettings& settings, AppScreenState& screen);
+    void ApplyCanvasLayout(WebSettings& settings, const AppScreenState& screen) noexcept;
     void SetupClipboard();
     void SyncClipboardToSystem(string_view text);
     void InitializePersistentData();

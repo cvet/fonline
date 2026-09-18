@@ -16,13 +16,49 @@ internal static class ScriptEntryNames
                 return DescribeContinuation(continuation);
             }
 
-            return DescribeMethod(handler.Method);
+            return DescribeDelegate(handler);
         }
         if (entry is ScriptSynchronizationContext.PostedContinuation posted) {
             return DescribeContinuation(posted);
         }
 
         return entry != null ? entry.GetType().Name : "null";
+    }
+
+    // An adapter is plumbing, not the work it runs: RemoteCallScriptFuncs wraps every async remote call in the
+    // Action the engine invokes, so the method behind the delegate is that one adapter for all of them and the
+    // handler for none. The wrapped handler is named first, because it is the script code an overrun asks about
+    private static string DescribeDelegate(Delegate handler)
+    {
+        Delegate? wrapped = FindWrappedHandler(handler);
+
+        if (wrapped == null) {
+            return DescribeMethod(handler.Method);
+        }
+
+        return DescribeMethod(wrapped.Method) + " (via " + DescribeMethod(handler.Method) + ")";
+    }
+
+    // A wrapper is a compiler-generated lambda whose closure carries one delegate and nothing else it could be
+    // running instead. Anything looser would rename an ordinary handler that merely captured a callback beside
+    // the state it works on
+    private static Delegate? FindWrappedHandler(Delegate handler)
+    {
+        object? target = handler.Target;
+
+        if (!IsGeneratedName(handler.Method.Name) || target == null ||
+            !target.GetType().IsDefined(typeof(CompilerGeneratedAttribute))) {
+            return null;
+        }
+
+        FieldInfo[] captured =
+            target.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+        if (captured.Length != 1 || !typeof(Delegate).IsAssignableFrom(captured[0].FieldType)) {
+            return null;
+        }
+
+        return captured[0].GetValue(target) as Delegate;
     }
 
     private static string DescribeContinuation(ScriptSynchronizationContext.PostedContinuation continuation)

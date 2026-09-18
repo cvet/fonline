@@ -652,14 +652,14 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("resolves setting groups and serializes their configured values")
     {
-        ConfigFile config {"Common.DebugBuild = true\nProject.DebugFlag = false\n"};
+        ConfigFile config {"Project.DebugBuild = true\nProject.DebugFlag = false\n"};
         rig.Settings.ApplyConfigFile(config, "");
         rig.AddSourceFile("Scripts/TestSettings.fos", R"(
 namespace TestSettings
 {
 #if CLIENT
-///@ Setting Client bool Common.DebugBuild
-///@ Setting Client bool Common . DebugBuild
+///@ Setting Client bool Project.DebugBuild
+///@ Setting Client bool Project . DebugBuild
 ///@ Setting Client bool Project.DebugFlag
 #endif
 }
@@ -705,11 +705,11 @@ namespace TestSettings
 
         reader.verify_end();
 
-        auto debug_build_value = rig.Settings.FindSettingValue("Common.DebugBuild");
+        auto debug_build_value = rig.Settings.FindSettingValue("Project.DebugBuild");
         auto debug_flag_value = rig.Settings.FindSettingValue("Project.DebugFlag");
         REQUIRE(debug_build_value);
         REQUIRE(debug_flag_value);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Common.DebugBuild", "bool", *debug_build_value}) == 2);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugBuild", "bool", *debug_build_value}) == 2);
         CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugFlag", "bool", *debug_flag_value}) == 1);
     }
 
@@ -1011,8 +1011,8 @@ namespace TestRefTypeProps
 
         const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
         REQUIRE(route_snapshot_type.IsRefType);
-        REQUIRE(route_snapshot_type.RefType != nullptr);
-        REQUIRE(route_snapshot_type.RefType->FieldsRegistrar != nullptr);
+        REQUIRE(route_snapshot_type.RefType);
+        REQUIRE(route_snapshot_type.RefType->FieldsRegistrar);
         auto steps_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Steps");
         auto tags_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Tags");
         auto note_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Note");
@@ -1161,10 +1161,10 @@ namespace TestNestedRefTypeProps
         const auto& beta_type = meta.GetBaseType("Beta");
         REQUIRE(alpha_type.IsRefType);
         REQUIRE(beta_type.IsRefType);
-        REQUIRE(alpha_type.RefType != nullptr);
-        REQUIRE(beta_type.RefType != nullptr);
-        REQUIRE(alpha_type.RefType->FieldsRegistrar != nullptr);
-        REQUIRE(beta_type.RefType->FieldsRegistrar != nullptr);
+        REQUIRE(alpha_type.RefType);
+        REQUIRE(beta_type.RefType);
+        REQUIRE(alpha_type.RefType->FieldsRegistrar);
+        REQUIRE(beta_type.RefType->FieldsRegistrar);
 
         auto dependency_prop = alpha_type.RefType->FieldsRegistrar->FindProperty("Dependency");
         REQUIRE(static_cast<bool>(dependency_prop));

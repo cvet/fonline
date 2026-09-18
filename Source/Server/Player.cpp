@@ -60,13 +60,29 @@ Player::~Player()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!IsEngineShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!_controlledCr.load(std::memory_order_relaxed), "Player still controls a critter during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(!_viewMap, "Player still has view map context during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(!_viewMapTarget, "Player still has view map target during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(!_sendIgnoreEntity.load(std::memory_order_relaxed), "Player still has send-ignore entity during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(!_sendIgnoreProperty.load(std::memory_order_relaxed), "Player still has send-ignore property during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_controlledCr.load(std::memory_order_relaxed), "Player still controls a critter during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_viewMap, "Player still has view map context during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_viewMapTarget, "Player still has view map target during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_sendIgnoreEntity.load(std::memory_order_relaxed), "Player still has send-ignore entity during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_sendIgnoreProperty.load(std::memory_order_relaxed), "Player still has send-ignore property during destruction", GetId());
+}
+
+void Player::ClearAllAssociations() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    {
+        scoped_lock locker {_controlledCrLinkLocker};
+
+        _controlledCr.store(nullptr, std::memory_order_release);
     }
+
+    _viewMap.reset();
+    _viewMapTarget = nullptr;
+    _sendIgnoreEntity.store(nullptr, std::memory_order_release);
+    _sendIgnoreProperty.store(nullptr, std::memory_order_release);
 }
 
 auto Player::GetName() const noexcept -> string_view

@@ -133,7 +133,7 @@ public:
     [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine> { return this; }
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
-    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress->load(); }
+    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress.load(); }
     [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
@@ -249,8 +249,6 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterSendInitialInfo, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemStackChanged, ptr<Item> /*item*/, int32_t /*countDiff*/, nptr<Item> /*absorbedItem*/);
-    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInit, ptr<Item> /*item*/, bool /*firstTime*/);
@@ -262,7 +260,8 @@ public:
 private:
     std::atomic_bool _started {false};
     std::atomic_bool _startingError {false};
-    shared_ptr<std::atomic_bool> _shutdownInProgress {safe_alloc::make_shared<std::atomic_bool>(false)};
+    std::atomic_bool _shutdownInProgress {false};
+    std::atomic<int32_t> _liveEntityCount {};
 
 public:
     EntityManager EntityMngr;
@@ -358,7 +357,6 @@ private:
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
     void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);

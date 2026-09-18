@@ -15,7 +15,11 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 ## Current test suites
 
-Current count: **100** `Test_*.cpp` suites.
+Current count: **113** `Test_*.cpp` suites.
+
+`Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
+retain their result across another thread's final release and that an older entity cannot unregister
+a successor with the same id.
 
 The configured executable contains the suites for its enabled scripting backends. AngelScript-only translation
 units are selected only when `FO_ANGELSCRIPT_SCRIPTING` is enabled; `Test_ManagedScriptBaker.cpp` is selected only

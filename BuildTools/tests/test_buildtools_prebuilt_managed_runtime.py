@@ -78,6 +78,14 @@ def test_windows_target_without_a_prebuilt_runtime_is_refused_off_windows(tmp_pa
         _buildtools.setup_mono("windows", "x64", "Release", env)
 
 
+def test_mono_cmake_args_enable_overridable_allocators(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_buildtools.os, "name", "nt")
+    assert _buildtools.resolve_mono_cmake_args() == [f"/p:CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}"]
+    monkeypatch.setattr(_buildtools.os, "name", "posix")
+    assert _buildtools.resolve_mono_cmake_args() == [f"-p:CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}"]
+    assert _buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE == "-DENABLE_OVERRIDABLE_ALLOCATORS=1"
+
+
 def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
     # The suffix is the cache key for an already-prepared host, so a rename that reaches only one of
     # the two places leaves runners serving a runtime built the old way
@@ -88,6 +96,7 @@ def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
         _buildtools.MONO_ANDROID_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_APPLE_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_LINUX_SOURCE_MARKER_SUFFIX,
+        _buildtools.MONO_WINDOWS_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_SUBSET_MARKER_SUFFIX,
     ):
         assert f"READY_${{FO_MONO_RUNTIME_VERSION}}_${{FO_MONO_TRIPLET}}{suffix})" in stage, suffix
@@ -146,9 +155,10 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     def reject_clone(*args, **kwargs):
         raise AssertionError("source patch invalidation must retain the cloned source")
 
-    def build(_command, path, **kwargs):
+    def build(command, path, **kwargs):
         calls.append("build")
         assert path == runtime and kwargs["target_os"] == target
+        assert f"{'/p:' if os.name == 'nt' else '-p:'}CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}" in command
         out = runtime / "artifacts/obj/mono" / triplet / "out/lib"
         out.mkdir(parents=True)
         (out / "libmonosgen-2.0.a").write_text("patched runtime", encoding="utf-8")
@@ -488,6 +498,7 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
         assert runtime_root == runtime
         assert target_os == "linux"
         assert "list(REMOVE_ITEM fo_zlib_compile_options" in wrapper.read_text(encoding="utf-8")
+        assert f"{'/p:' if os.name == 'nt' else '-p:'}CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}" in args
         calls.append(args)
 
     monkeypatch.setattr(_buildtools, "run_marker_step", run_build_only)

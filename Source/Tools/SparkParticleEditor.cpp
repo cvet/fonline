@@ -391,7 +391,7 @@ SparkParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> sett
     RawResources {raw_resources},
     EffectMngr {settings, baked_resources, &GetApp()->Render},
     GameTime {settings},
-    ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateSparkParticleEditorTextureLoader(baked_resources, LoadedTextures)},
+    ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateSparkParticleEditorTextureLoader(baked_resources, LoadedTextures), [settings]() FO_DEFERRED { return settings->Render.DrawWireframe; }},
     Particle {ParticleMngr.CreateParticle(strex(asset_path).change_file_extension("spk"))}
 {
     FO_STACK_TRACE_ENTRY();

@@ -42,7 +42,9 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        _renderer.Init(*settings, nullptr);
+        _screen.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
+        _screen.Fullscreen = settings->Render.Fullscreen;
+        _renderer.Init(*settings, &_screen, nullptr);
     }
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override { return _renderTarget; }
@@ -91,6 +93,7 @@ public:
 
 private:
     Null_Renderer _renderer;
+    AppScreenState _screen {};
     nptr<RenderTexture> _renderTarget {};
 };
 

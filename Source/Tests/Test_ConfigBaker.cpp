@@ -94,13 +94,11 @@ static auto MakeCompleteConfigBakerConfig() -> string
 {
     string config;
 
-#define FIXED_SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
-#define VARIABLE_SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
+#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"
-#undef FIXED_SETTING
-#undef VARIABLE_SETTING
+#undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
 
@@ -151,7 +149,10 @@ TEST_CASE("ConfigBaker")
         string temp_dir = MakeConfigBakerTempDir();
         REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs::write_file(config_path, MakeCompleteConfigBakerConfig()));
+        REQUIRE(fs::write_file(config_path,
+            MakeCompleteConfigBakerConfig() +
+                "[ResourcePack]\nName = Core\nInputDirs = core\n"
+                "[ResourcePack]\nName = Art\nInputDirs = art\nClientOnly = True\n"));
 
         TestRig rig;
         AddConfigBakerMetadata(rig);
@@ -164,6 +165,13 @@ TEST_CASE("ConfigBaker")
         REQUIRE(rig.Outputs.contains("(Root).fomain-client"));
         string server_config = rig.GetOutputText("(Root).fomain-server");
         string client_config = rig.GetOutputText("(Root).fomain-client");
+
+        // A packaged application has no other source for its pack list, and the sections close the config
+        string pack_declarations = "[ResourcePack]\nName=Core\n[ResourcePack]\nName=Art\nClientOnly=1\n";
+        CHECK(server_config.ends_with(pack_declarations));
+        CHECK(client_config.ends_with(pack_declarations));
+        CHECK(server_config.find("InputDirs") == string::npos);
+
         CHECK(server_config.find("Common.GameName=FOnline\n") != string::npos);
         CHECK(client_config.find("Common.GameName=FOnline\n") != string::npos);
         CHECK(server_config.find("ServerNetwork.ClientPingTime=10000\n") != string::npos);
