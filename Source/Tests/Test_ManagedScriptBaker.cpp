@@ -827,7 +827,7 @@ TEST_CASE("ManagedScriptBaker")
             {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
             {"Property",
                 {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "int8", "ManagedInt8", "Mutable"}, {"Critter", "Server", "uint8", "ManagedUInt8", "Mutable"}, {"Critter", "Server", "int32", "ManagedInt32", "Mutable"}, {"Critter", "Server", "uint32", "ManagedUInt32", "Mutable"}, {"Critter", "Server", "int64", "ManagedInt64", "Mutable"}, {"Critter", "Server", "uint64", "ManagedUInt64", "Mutable"}, {"Critter", "Server", "float32", "ManagedFloat32", "Mutable"}, {"Critter", "Server", "float64", "ManagedFloat64", "Mutable"}, {"Critter", "Server", "bool", "ManagedBool", "Mutable"}, {"Critter", "Server", "CritterCondition", "ManagedEnum", "Mutable"}, {"Critter", "Server", "bool", "ManagedProbe", "Component"},
-                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
+                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "mpos", "ManagedHex", "Mutable"}, {"Critter", "Server", "ucolor", "ManagedTint", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
         }));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
@@ -986,6 +986,9 @@ TEST_CASE("ManagedScriptBaker")
 
     CHECK(server_entities.find("bool HasManagedProbe\n    {\n        get\n        {\n            return global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<CritterCondition>(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<mpos>(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetPropertyValue<mpos>(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<ucolor>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr,\n                value)") != string::npos);
@@ -1054,14 +1057,17 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("length = (int)__result[1];") != string::npos);
     CHECK(server_entities.find("return (uint)__result[0];") != string::npos);
     CHECK(server_entities.find("public static void GetHexInterval(mpos fromHex, mpos toHex, ref ipos hexOffset)") != string::npos);
-    CHECK(server_entities.find("object?[] __args = new object?[]\n        {\n            fromHex,\n            toHex,\n            hexOffset,\n        };") != string::npos);
+    CHECK(server_entities.find("Unsafe.WriteUnaligned(ref __frame[") != string::npos);
+    CHECK(server_entities.find("object?[] __args = new object?[]\n        {\n            fromHex,\n            toHex,\n            hexOffset,\n        };") == string::npos);
     CHECK(server_entities.find("\"GetHexInterval\"") == string::npos);
-    CHECK(server_entities.find("hexOffset = (ipos)__result;") != string::npos);
+    CHECK(server_entities.find("hexOffset = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<ipos>(ref __frame[") != string::npos);
     CHECK(server_entities.find("public static GameOnManagedTestEvent OnManagedTest") != string::npos);
     CHECK(server_entities.find("private static GameOnManagedTestEvent? __event_OnManagedTest;") != string::npos);
     CHECK(server_entities.find("new GameOnManagedTestEvent(IntPtr.Zero)") != string::npos);
 
     string server_abi = ReadTextFile(script_dir / "ServerAbi.gen.cs");
+    CHECK(server_abi.find("global::FOnline.Native.RegisterWrapperFactory<Critter>(static nativePtr => new Critter(nativePtr));") != string::npos);
+    CHECK(server_abi.find("global::FOnline.Native.RegisterWrapperFactory<Game>") == string::npos);
     CHECK(server_abi.find("static partial void BindGeneratedAbi()") != string::npos);
     CHECK(server_abi.find("global::FOnline.Native.BindAbi(") != string::npos);
     CHECK(server_abi.find("internal const int GeneratorIdentity = ") != string::npos);
@@ -1115,11 +1121,24 @@ TEST_CASE("ManagedScriptBaker")
 
     string server_types = ReadTextFile(script_dir / "ServerTypes.gen.cs");
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_voidAsync();") != string::npos);
+    CHECK(server_types.find("internal static class CallbackAdapters") != string::npos);
+    CHECK(server_types.find("internal static void Adapt_Callback_void(global::System.Delegate handler, ref byte frame, int frameSize)") != string::npos);
+    CHECK(server_types.find("internal static void Adapt_Callback_void_Critter(global::System.Delegate handler, ref byte frame, int frameSize)") != string::npos);
+    CHECK(server_types.find("if (handler is Callback_void_Critter typed) {") != string::npos);
+    CHECK(server_types.find("if (handler is Callback_void_CritterAsync typedAsync) {") != string::npos);
+    CHECK(server_types.find("if (handler is global::System.Action<Critter> action) {") != string::npos);
+    CHECK(server_types.find("if (handler is global::System.Func<Critter, global::System.Threading.Tasks.Task> asyncFunc) {") != string::npos);
+    CHECK(server_types.find("global::FOnline.Native.WrapEntityNotNull<Critter>((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, 0)))") != string::npos);
+    CHECK(server_types.find("global::FOnline.Native.InvokeCallback(handler, __args);") != string::npos);
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_bool") == string::npos);
     CHECK(server_types.find("public partial struct hstring") != string::npos);
     CHECK(server_types.find("public System.IntPtr Value;") != string::npos);
     CHECK(server_types.find("LayoutKind.Sequential, Size = 8") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
+    CHECK(server_types.find("public ulong Value;") == string::npos);
+    CHECK(server_types.find("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]\npublic partial struct mpos") != string::npos);
+    CHECK(server_types.find("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]\npublic partial struct ucolor") != string::npos);
+    CHECK(server_types.find("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]\npublic partial struct ipos") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {
         string types = ReadTextFile(script_dir / fs::make_path(strex("{}Types.gen.cs", target).str()));

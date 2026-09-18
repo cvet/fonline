@@ -336,6 +336,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
     _settingValues = other._settingValues;
     _bakingMode = other._bakingMode;
     _customSettings = other._customSettings;
+    _customSettingsGeneration++;
     _emptySetting = other._emptySetting;
 
 #define SETTING_GROUP(group, ...)
@@ -405,6 +406,7 @@ void GlobalSettings::SetCustomSetting(string_view name, any_t value)
 
     _settingValues[string(name)] = value;
     _customSettings[string(name)] = std::move(value);
+    _customSettingsGeneration++;
 }
 
 void GlobalSettings::SetSettingValue(string_view name, string_view value)
@@ -464,6 +466,7 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 #undef SETTING_GROUP_END
 
     _customSettings[name] = any_t(value);
+    _customSettingsGeneration++;
 }
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)
@@ -553,6 +556,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     default:
         _customSettings[setting_name] = any_t(string(value));
         _settingValues[setting_name] = string(value);
+        _customSettingsGeneration++;
         break;
     }
 
@@ -834,23 +838,22 @@ auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAcce
 #define SETTING_GROUP_END(group)
 #define SETTING(type, group, setting_name, ...) \
     do { \
-        NumericSettingAccess access; \
-        if constexpr (std::is_same_v<type, bool>) { \
-            access.ReadBool = [](ptr<const GlobalSettings> settings) { return settings->group.setting_name; }; \
+        if constexpr (std::is_arithmetic_v<type>) { \
+            NumericSettingAccess access; \
+            if constexpr (std::is_same_v<type, bool>) { \
+                access.ReadBool = [](ptr<const GlobalSettings> settings) { return settings->group.setting_name; }; \
+            } \
+            else if constexpr (std::is_integral_v<type> && std::is_signed_v<type>) { \
+                access.ReadSigned = [](ptr<const GlobalSettings> settings) -> int64_t { return numeric_cast<int64_t>(settings->group.setting_name); }; \
+            } \
+            else if constexpr (std::is_integral_v<type>) { \
+                access.ReadUnsigned = [](ptr<const GlobalSettings> settings) -> uint64_t { return numeric_cast<uint64_t>(settings->group.setting_name); }; \
+            } \
+            else { \
+                access.ReadFloat = [](ptr<const GlobalSettings> settings) -> float64_t { return numeric_cast<float64_t>(settings->group.setting_name); }; \
+            } \
+            result.emplace(#group "." #setting_name, access); \
         } \
-        else if constexpr (std::is_integral_v<type> && std::is_signed_v<type>) { \
-            access.ReadSigned = [](ptr<const GlobalSettings> settings) -> int64_t { return numeric_cast<int64_t>(settings->group.setting_name); }; \
-        } \
-        else if constexpr (std::is_integral_v<type> && std::is_unsigned_v<type>) { \
-            access.ReadUnsigned = [](ptr<const GlobalSettings> settings) -> uint64_t { return numeric_cast<uint64_t>(settings->group.setting_name); }; \
-        } \
-        else if constexpr (std::is_floating_point_v<type>) { \
-            access.ReadFloat = [](ptr<const GlobalSettings> settings) -> float64_t { return numeric_cast<float64_t>(settings->group.setting_name); }; \
-        } \
-        else { \
-            break; \
-        } \
-        result.emplace(#group "." #setting_name, access); \
     } while (false)
 #include "Settings.inc"
 #undef SETTING

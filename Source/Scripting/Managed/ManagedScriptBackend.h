@@ -52,6 +52,9 @@ public:
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> nptr<Entity>;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
     [[nodiscard]] auto GetAliveFlagObject() const -> void*;
+    // Lookups that never change after load (wrapper classes, callback adapters) plus dispatch counters; the
+    // caches are logically constant, so a const backend hands them out mutable
+    [[nodiscard]] auto GetCaches() const -> nptr<struct ManagedBackendCaches>;
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
@@ -86,6 +89,7 @@ private:
     uint32_t _loadScopeGcHandle {};
     uint32_t _aliveFlagGcHandle {};
     unique_nptr<struct ManagedAbiRuntimeState> _abi {};
+    unique_nptr<struct ManagedBackendCaches> _caches {};
 };
 
 FO_END_NAMESPACE

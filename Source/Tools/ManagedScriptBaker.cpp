@@ -160,6 +160,8 @@ static void AppendEventAccessors(ostringstream& out, string_view owner_type_name
 static void AppendEntityClass(ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, const ManagedAbiManifest& abi, string_view native_owner_name = {}, bool is_fixed_type = false, bool data_only = false);
 static void AppendComponentClasses(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc);
 static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMetadata& meta);
+static void AppendCallbackAdapters(ostringstream& out, const vector<pair<string, ComplexTypeDesc>>& callbacks);
+static auto CollectWrapperFactoryClasses(const EngineMetadata& meta) -> vector<string>;
 static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& meta, string_view target_name);
 static void AppendEmptyDerivedEntity(ostringstream& out, string_view class_name, string_view base_name, bool always_covered = false);
 static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string;
@@ -171,7 +173,7 @@ static auto MakeSortedEnums(const EngineMetadata& meta) -> vector<pair<string, m
 static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> vector<pair<string, const EntityTypeDesc*>>;
 static void WriteTextFileIfChanged(const std::filesystem::path& file_path, string_view content, string_view error_message);
 static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_view target_name, string_view suffix, string_view content);
-static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi);
+static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes);
 static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>;
 static void BakeManagedRuntimePayload(const BakingContext& context, const vector<ManagedAssemblyIdentity>& pack_assemblies);
 static auto ReadManagedAssemblyIdentityFrom(string_view assembly_path, const_span<uint8_t> image) -> ManagedAssemblyIdentity;
@@ -414,7 +416,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
     FO_STACK_TRACE_ENTRY();
 
     ManagedAbiManifest abi = BuildManagedAbiManifest(meta, target_name);
-    WriteGeneratedAbiFile(project_dir, target_name, abi);
+    WriteGeneratedAbiFile(project_dir, target_name, abi, CollectWrapperFactoryClasses(meta));
 
     unordered_map<string, ComplexTypeDesc> callbacks;
     CollectCallbacks(meta, callbacks);
@@ -472,8 +474,11 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             out << "\n";
         }
 
+        AppendCallbackAdapters(out, sorted_callbacks);
+
         for (const auto& type : MakeSortedBaseTypes(meta)) {
             if (type->IsStruct && type->StructLayout) {
+                out << "[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]\n";
                 out << "public partial struct " << EscapeCsIdentifier(type->Name) << "\n";
                 out << "{\n";
 
@@ -922,30 +927,53 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "    {\n";
 
                     vector<string> invoke_args;
+                    vector<string> boxed_args;
                     size_t event_arg_index = 0;
 
                     if (!desc->IsGlobal) {
                         out << CS_INDENT << "        " << EscapeCsIdentifier(type_name) << " entity = global::FOnline.Native.WrapEntityNotNull<" << EscapeCsIdentifier(type_name) << ">(entityPtr);\n";
                         invoke_args.emplace_back("entity");
+                        boxed_args.emplace_back("entity");
                     }
 
                     for (size_t i = 0; i < event.Args.size(); i++) {
                         string arg_type = MakeCsTypeName(event.Args[i].Type);
                         string arg_name = strex("__a{}", event_arg_index).str();
                         out << CS_INDENT << "        " << arg_type << " " << arg_name << " = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << arg_type << ">(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << abi_event->Args[i].Offset << "));\n";
-                        invoke_args.emplace_back(arg_name);
+                        invoke_args.emplace_back(event.Args[i].Type.IsMutable ? strex("ref {}", arg_name).str() : arg_name);
+                        boxed_args.emplace_back(arg_name);
                         event_arg_index++;
                     }
 
                     string invoke_list = JoinCsCommaList(invoke_args);
+                    string boxed_list = JoinCsCommaList(boxed_args);
                     out << CS_INDENT << "        if (handler is " << EscapeCsIdentifier(delegate_name) << " typedHandler) {\n";
                     out << CS_INDENT << "            typedHandler(" << invoke_list << ");\n";
+
+                    for (size_t i = 0; i < event.Args.size(); i++) {
+                        if (!event.Args[i].Type.IsMutable) {
+                            continue;
+                        }
+
+                        out << CS_INDENT << "            global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << abi_event->Args[i].Offset << "), " << strex("__a{}", i).str() << ");\n";
+                    }
+
                     out << CS_INDENT << "            return (int)EventResult.ContinueChain;\n";
                     out << CS_INDENT << "        }\n";
                     out << CS_INDENT << "        if (handler is " << EscapeCsIdentifier(result_delegate_name) << " resultHandler) {\n";
-                    out << CS_INDENT << "            return (int)resultHandler(" << invoke_list << ");\n";
+                    out << CS_INDENT << "            EventResult __typedResult = resultHandler(" << invoke_list << ");\n";
+
+                    for (size_t i = 0; i < event.Args.size(); i++) {
+                        if (!event.Args[i].Type.IsMutable) {
+                            continue;
+                        }
+
+                        out << CS_INDENT << "            global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << abi_event->Args[i].Offset << "), " << strex("__a{}", i).str() << ");\n";
+                    }
+
+                    out << CS_INDENT << "            return (int)__typedResult;\n";
                     out << CS_INDENT << "        }\n";
-                    out << CS_INDENT << "        object?[] __args = new object?[] { " << invoke_list << " };\n";
+                    out << CS_INDENT << "        object?[] __args = new object?[] { " << boxed_list << " };\n";
                     out << CS_INDENT << "        return (int)global::FOnline.Native.InvokeEvent(handler, hasExplicitResult, __args);\n";
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "    catch (Exception ex)\n";
@@ -2654,6 +2682,163 @@ static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& 
     }
 }
 
+// One adapter per callback signature the ABI frame can carry: it reads handles and fixed values from the frame and
+// invokes the delegate directly; a delegate shape it does not recognize takes the boxed Native.InvokeCallback path
+static void AppendCallbackAdapters(ostringstream& out, const vector<pair<string, ComplexTypeDesc>>& callbacks)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    out << "internal static class CallbackAdapters\n";
+    out << "{\n";
+
+    bool first = true;
+
+    for (const auto& [name, type] : callbacks) {
+        FO_VERIFY_AND_THROW(type.CallbackArgs, "Callback type has no argument list");
+        const ComplexTypeDesc& ret = type.CallbackArgs->front();
+        const_span<ComplexTypeDesc> args = span(*type.CallbackArgs).subspan(1);
+        ManagedAbiCallbackLayout layout = BuildManagedAbiCallbackLayout(ret, args);
+
+        if (!layout.Supported) {
+            continue;
+        }
+
+        if (!first) {
+            out << "\n";
+        }
+
+        first = false;
+
+        string key = MakeManagedAbiCallbackKey(ret, args);
+        string ret_type = MakeCsTypeName(ret);
+        vector<string> arg_types;
+        vector<string> arg_names;
+
+        out << CS_INDENT << "internal static void Adapt_" << key << "(global::System.Delegate handler, ref byte frame, int frameSize)\n";
+        out << CS_INDENT << "{\n";
+        out << CS_INDENT << "    global::FOnline.Invariant.Verify(frameSize == " << layout.FrameSize << ", \"Callback frame size must match the generated layout\");\n";
+
+        for (size_t i = 0; i < args.size(); i++) {
+            string arg_type = MakeCsTypeName(args[i]);
+            string arg_name = strex("__a{}", i).str();
+            const ManagedAbiSlot& slot = layout.Args[i];
+            string slot_ref = strex("ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, {})", slot.Offset).str();
+
+            if (slot.Kind == ManagedAbiValueKind::Handle) {
+                string_view wrap = args[i].BaseType.IsRefType ? "WrapRefNotNull" : "WrapEntityNotNull";
+                out << CS_INDENT << "    " << arg_type << " " << arg_name << " = global::FOnline.Native." << wrap << "<" << arg_type << ">((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(" << slot_ref << "));\n";
+            }
+            else {
+                out << CS_INDENT << "    " << arg_type << " " << arg_name << " = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << arg_type << ">(" << slot_ref << ");\n";
+            }
+
+            arg_types.emplace_back(arg_type);
+            arg_names.emplace_back(arg_name);
+        }
+
+        string invoke_list = JoinCsCommaList(arg_names);
+        string system_args = JoinCsCommaList(arg_types);
+        string system_args_prefix = args.empty() ? string {} : system_args + ", ";
+
+        auto write_result = [&](string_view variable) -> string {
+            if (!ret) {
+                return {};
+            }
+
+            return strex("global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned({}, {});", strex("ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, {})", layout.ResultOffset).str(), variable).str();
+        };
+
+        auto append_branch = [&](string_view delegate_type, string_view variable, string_view call_statement) {
+            out << CS_INDENT << "    if (handler is " << delegate_type << " " << variable << ") {\n";
+            out << CS_INDENT << "        using global::FOnline.ScriptSynchronizationContext context = global::FOnline.ScriptSynchronizationContext.Enter(false);\n";
+            out << CS_INDENT << "        try {\n";
+            out << CS_INDENT << "            " << call_statement << "\n";
+
+            if (ret) {
+                out << CS_INDENT << "            " << write_result("__r") << "\n";
+            }
+
+            out << CS_INDENT << "        }\n";
+            out << CS_INDENT << "        catch (Exception ex) {\n";
+            out << CS_INDENT << "            global::FOnline.ScriptExceptions.Record(ex, false);\n";
+            out << CS_INDENT << "            throw;\n";
+            out << CS_INDENT << "        }\n";
+            out << CS_INDENT << "        return;\n";
+            out << CS_INDENT << "    }\n";
+        };
+
+        if (ret) {
+            append_branch(EscapeCsIdentifier(name), "typed", strex("{} __r = typed({});", ret_type, invoke_list).str());
+            append_branch(strex("global::System.Func<{}{}>", system_args_prefix, ret_type).str(), "func", strex("{} __r = func({});", ret_type, invoke_list).str());
+        }
+        else {
+            append_branch(EscapeCsIdentifier(name), "typed", strex("typed({});", invoke_list).str());
+            append_branch(EscapeCsIdentifier(name + "Async"), "typedAsync", strex("global::FOnline.Native.CompleteCallbackTask(typedAsync({}));", invoke_list).str());
+            append_branch(args.empty() ? string("global::System.Action") : strex("global::System.Action<{}>", system_args).str(), "action", strex("action({});", invoke_list).str());
+            append_branch(strex("global::System.Func<{}global::System.Threading.Tasks.Task>", system_args_prefix).str(), "asyncFunc", strex("global::FOnline.Native.CompleteCallbackTask(asyncFunc({}));", invoke_list).str());
+        }
+
+        if (args.empty()) {
+            out << CS_INDENT << "    object?[] __args = global::System.Array.Empty<object?>();\n";
+        }
+        else {
+            out << CS_INDENT << "    object?[] __args = new object?[] { " << invoke_list << " };\n";
+        }
+
+        if (ret) {
+            out << CS_INDENT << "    " << ret_type << " __boxedResult = global::FOnline.Native.UnboxArg<" << ret_type << ">(global::FOnline.Native.InvokeCallback(handler, __args));\n";
+            out << CS_INDENT << "    " << write_result("__boxedResult") << "\n";
+        }
+        else {
+            out << CS_INDENT << "    global::FOnline.Native.InvokeCallback(handler, __args);\n";
+        }
+
+        out << CS_INDENT << "}\n";
+    }
+
+    out << "}\n\n";
+}
+
+// Every generated class with a native-pointer constructor, mirroring what the Entities and Types files emit; the
+// ABI bind stub registers a factory for each, so Native.WrapEntity / WrapRef construct without reflection
+static auto CollectWrapperFactoryClasses(const EngineMetadata& meta) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> result;
+
+    for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
+        if (desc->IsGlobal) {
+            continue;
+        }
+
+        if (desc->HasAbstract) {
+            result.emplace_back(strex("Abstract{}", type_name).str());
+        }
+
+        result.emplace_back(type_name);
+
+        if (desc->HasProtos) {
+            result.emplace_back(strex("Proto{}", type_name).str());
+        }
+        if (desc->HasStatics) {
+            result.emplace_back(strex("Static{}", type_name).str());
+        }
+    }
+
+    for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetFixedTypes())) {
+        result.emplace_back(type_name);
+    }
+
+    for (const auto& type : MakeSortedBaseTypes(meta)) {
+        if (type->IsRefType && type->RefType && !type->RefType->FieldsRegistrar) {
+            result.emplace_back(type->Name);
+        }
+    }
+
+    return result;
+}
+
 // as one non-generic overload per distinct simple property value type; overload resolution then picks
 // the match from the supplied setter method group with no explicit type argument
 static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMetadata& meta)
@@ -2765,13 +2950,13 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
         const BaseTypeDesc* value_base = nullptr;
 
         for (const auto& type : meta.GetBaseTypes() | std::views::values) {
-            if (MakeCsTypeName(type) == value_type && (type.IsPrimitive || type.IsEnum)) {
+            if (MakeCsTypeName(type) == value_type && (type.IsPrimitive || type.IsEnum || type.IsHashedString || (IsManagedAbiBlittableStruct(type) && !HasManagedAbiHashedStringField(type)))) {
                 value_base = &type;
                 break;
             }
         }
 
-        if (value_base == nullptr) {
+        if (value_base == nullptr || value_base->Size > MANAGED_ABI_PROPERTY_ADAPTER_STORAGE) {
             continue;
         }
 
@@ -3423,7 +3608,7 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
     string property_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
     const BaseTypeDesc& base_type = prop->GetBaseType();
-    bool use_scalar_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum);
+    bool use_scalar_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum || base_type.IsHashedString || (IsManagedAbiBlittableStruct(base_type) && !HasManagedAbiHashedStringField(base_type)));
     bool use_integer_bridge = use_scalar_bridge && !is_static && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
 
     if (!member_names.emplace(property_name).second) {
@@ -4733,7 +4918,7 @@ static void WriteTextFileIfChanged(const std::filesystem::path& file_path, strin
     }
 }
 
-static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi)
+static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4744,6 +4929,11 @@ static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, stri
     out << CS_INDENT << "static partial void BindGeneratedAbi()\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    global::FOnline.Native.BindAbi(" << abi.Hash << "UL, " << abi.Methods.size() << ", " << abi.Events.size() << ", " << abi.Settings.size() << ", " << abi.InnerEntries.size() << ");\n";
+
+    for (const string& class_name : wrapper_classes) {
+        out << CS_INDENT << "    global::FOnline.Native.RegisterWrapperFactory<" << EscapeCsIdentifier(class_name) << ">(static nativePtr => new " << EscapeCsIdentifier(class_name) << "(nativePtr));\n";
+    }
+
     out << CS_INDENT << "}\n";
     out << "}\n\n";
     out << "internal static class ManagedAbi\n";

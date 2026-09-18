@@ -143,13 +143,16 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
-`Test_ManagedScriptBaker` pins the generated scalar-property route: primitive and enum accessors and component
+`Test_ManagedScriptBaker` pins the generated scalar-property route: primitive, enum, and blittable-struct accessors and component
 presence checks must use the indexed unboxed bridge, while complex properties retain conversion. It also pins
 dense ABI ids (no name-based `CallMethod`/`FireEvent`/`GetInnerEntityAt` on generated hot paths), `EnumToInt32`
 instead of `Convert.ToInt32`, typed numeric/bool settings, inner-entity `FillInnerEntities`, scalar event
-`AdaptInvoke`, and bake identity: generated API files including `*Abi.gen.cs` participate in the stamp so a
+`AdaptInvoke`, blittable-struct method frames (`GetHexInterval` through `CallMethodIndexed`), sequential struct
+layout attributes, generated `CallbackAdapters.Adapt_<key>` methods for frame-capable callback signatures (typed,
+async, `Action`/`Func` and boxed-fallback branches) with no adapter for string/collection signatures, wrapper factory
+registrations in the ABI bind stub (none for the static `Game`), and bake identity: generated API files including `*Abi.gen.cs` participate in the stamp so a
 generator-only change cannot ship new C# with a skipped DLL. For live
-Mono validation, exercise every primitive width, enum values, virtual getters, rewriting setters and caught
+Mono validation, exercise every primitive width, enum values, blittable structs, virtual getters, rewriting setters and caught
 native errors, and measure warmed generated property, method, setting and GetAsInt calls with `GC.GetAllocatedBytesForCurrentThread()`.
 Callbacks and first writes to prototype-backed storage may have their own allocation costs, so warm storage
 before measuring and keep callback behavior checks separate from the allocation assertion. Inner-entity tests

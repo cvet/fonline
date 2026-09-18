@@ -44,8 +44,8 @@
 #include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
-#include "Settings.h"
 #include "RemoteCallWire.h"
+#include "Settings.h"
 
 #if FO_WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -386,6 +386,9 @@ struct ManagedDataAccessor;
 struct ManagedNativeValue;
 struct ManagedEventSubscription;
 struct ManagedAssemblyResource;
+struct ManagedWrapperClassEntry;
+struct ManagedBackendCaches;
+struct ManagedCallbackPlan;
 
 // Static free-function forward declarations, ordered high-level -> low-level
 
@@ -507,8 +510,14 @@ static void SetSettingValueFromString(MonoString* name, string value);
 // Property getter/setter callback bridge
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*;
 static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend, MonoString* owner_type, MonoString* property_name, bool require_virtual, bool require_marshalable_value) -> ptr<const Property>;
-static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call);
-static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call);
+static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& ret, vector<ComplexTypeDesc> args) -> shared_ptr<ManagedCallbackPlan>;
+static auto FindCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view key) -> nptr<MonoMethod>;
+static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
+static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
+static void DispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
+static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
+static auto NativeGetAndResetTypedCallbackDispatches() -> int64_t;
+static auto NativeGetAndResetBoxedCallbackDispatches() -> int64_t;
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call);
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data);
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>;
@@ -530,6 +539,8 @@ static void AppendAlignedRawValue(vector<uint8_t>& data, const T& value, size_t 
 
 // Managed object creation and native<->managed values
 static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstring& value) -> MonoObject*;
+static void WriteManagedHstring(uint8_t dest[sizeof(hstring::hash_t)], const hstring& value);
+static auto ReadManagedHstring(const void* src) -> hstring;
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*;
 static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, string_view owner_type_name, ptr<const Property> prop) -> MonoObject*;
 static void InvokeManagedConstructor(MonoClass* klass, MonoObject* obj, int32_t args_count, void** args, string_view context);
@@ -588,6 +599,7 @@ static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> s
 
 // Type/class and metadata resolution
 static auto FindFOnlineClass(ptr<const ManagedScriptBackend> backend, string_view class_name) -> MonoClass*;
+static auto ResolveWrapperClass(ptr<const ManagedScriptBackend> backend, string_view type_name) -> const ManagedWrapperClassEntry&;
 static auto GetPrimitiveClass(const BaseTypeDesc& type) -> MonoClass*;
 static auto GetValueClass(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& type) -> MonoClass*;
 static auto FindFieldInHierarchy(MonoClass* klass, const char* field_name) -> MonoClassField*;
@@ -902,6 +914,10 @@ struct ManagedAbiSettingRuntime
     ManagedAbiValueKind Kind {};
     bool UsesTypedBridge {};
     nptr<const NumericSettingAccess> Builtin {};
+    // Parsed copy of a project custom setting, valid while the custom map generation it was parsed at holds
+    bool CustomCached {};
+    uint64_t CustomGeneration {};
+    array<uint8_t, sizeof(uint64_t)> CustomValue {};
 };
 
 struct ManagedAbiInnerRuntime
@@ -927,6 +943,32 @@ struct ManagedAssemblyResource
     string ResourcePath {};
     string FileName {};
     vector<uint8_t> Data {};
+};
+
+struct ManagedWrapperClassEntry
+{
+    nptr<MonoClass> Class {};
+    nptr<MonoMethod> PointerCtor {};
+};
+
+// Backend-scoped lookups fixed for the load: wrapper classes by type name and callback adapters by signature key
+// (a miss is cached too), plus the dispatch counters the interop tests read
+struct ManagedBackendCaches
+{
+    unordered_map<string, ManagedWrapperClassEntry> WrapperClasses {};
+    unordered_map<string, nptr<MonoMethod>> CallbackAdapters {};
+    uint64_t TypedCallbackDispatches {};
+    uint64_t BoxedCallbackDispatches {};
+};
+
+// Built once per callback registration: the native signature, the frame layout it maps to and the generated adapter
+// that reads that frame; a null adapter means the signature stays on the boxed path
+struct ManagedCallbackPlan
+{
+    ComplexTypeDesc Ret {};
+    vector<ComplexTypeDesc> Args {};
+    ManagedAbiCallbackLayout Layout {};
+    nptr<MonoMethod> Adapter {};
 };
 
 // Static free-function definitions (same order as the declarations above)
@@ -1957,7 +1999,7 @@ static auto ResolveManagedScalarProperty(void* entity_ptr, int32_t prop_index, i
 
     auto [entity, prop] = ResolveManagedGenericProperty(entity_ptr, prop_index, require_mutable);
     const BaseTypeDesc& base_type = prop->GetBaseType();
-    FO_VERIFY_AND_THROW(!prop->IsNullable() && (base_type.IsPrimitive || base_type.IsEnum), "Managed property requires a non-nullable scalar", prop->GetName());
+    FO_VERIFY_AND_THROW(!prop->IsNullable() && (base_type.IsPrimitive || base_type.IsEnum || base_type.IsHashedString || (IsManagedAbiBlittableStruct(base_type) && !HasManagedAbiHashedStringField(base_type))), "Managed property requires a non-nullable fixed value", prop->GetName());
     FO_VERIFY_AND_THROW(size > 0 && numeric_cast<size_t>(size) == prop->GetBaseSize(), "Managed scalar property size mismatch", prop->GetName(), size);
     return {entity, prop};
 }
@@ -1973,7 +2015,10 @@ static auto NativeGetPropertyValue(void* entity_ptr, int32_t prop_index, void* v
 
         entity->ValidateAccess();
 
-        if (prop->IsVirtual()) {
+        if (prop->GetBaseType().IsHashedString) {
+            WriteManagedHstring(static_cast<uint8_t*>(value), entity->GetProperties()->GetValue<hstring>(prop));
+        }
+        else if (prop->IsVirtual()) {
             PropertyRawData prop_data = GetPropertyRawData(entity, prop);
             FO_VERIFY_AND_THROW(prop_data.GetSize() == prop->GetBaseSize(), "Managed scalar property data size mismatch", prop->GetName());
             memory::copy(ptr<void> {value}, prop_data.GetPtr(), prop_data.GetSize());
@@ -2006,7 +2051,13 @@ static auto NativeSetPropertyValue(void* entity_ptr, int32_t prop_index, void* v
         PropertyRawData prop_data;
 
         // Setters may re-enter managed code; own the bytes before invoking them
-        prop_data.Set(ptr<const void> {value}, prop->GetBaseSize());
+        if (prop->GetBaseType().IsHashedString) {
+            prop_data.SetAs(ReadManagedHstring(value).as_hash());
+        }
+        else {
+            prop_data.Set(ptr<const void> {value}, prop->GetBaseSize());
+        }
+
         entity->SetValueFromData(prop, prop_data);
         return nullptr;
     }
@@ -2255,6 +2306,32 @@ static auto NativeFillInnerEntities(void* holder_ptr, int32_t entry_id, void** b
     }
 }
 
+static auto NativeGetAndResetTypedCallbackDispatches() -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto backend = GetActiveBackendOrThrow();
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+    int64_t count = numeric_cast<int64_t>(caches->TypedCallbackDispatches);
+    caches->TypedCallbackDispatches = 0;
+    return count;
+}
+
+static auto NativeGetAndResetBoxedCallbackDispatches() -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto backend = GetActiveBackendOrThrow();
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+    int64_t count = numeric_cast<int64_t>(caches->BoxedCallbackDispatches);
+    caches->BoxedCallbackDispatches = 0;
+    return count;
+}
+
 static auto NativeGetAndResetInnerEntityVisits() -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -2413,7 +2490,7 @@ static auto SettingKindSize(ManagedAbiValueKind kind) -> int32_t
     }
 }
 
-static auto ResolveAbiSetting(ptr<ManagedScriptBackend> backend, int32_t setting_id) -> const ManagedAbiSettingRuntime&
+static auto ResolveAbiSetting(ptr<ManagedScriptBackend> backend, int32_t setting_id) -> ManagedAbiSettingRuntime&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2439,9 +2516,10 @@ static auto NativeGetSettingValue(int32_t setting_id, void* value, int32_t size)
 
     try {
         auto backend = GetActiveBackendOrThrow();
-        const ManagedAbiSettingRuntime& entry = ResolveAbiSetting(backend, setting_id);
+        ManagedAbiSettingRuntime& entry = ResolveAbiSetting(backend, setting_id);
         FO_VERIFY_AND_THROW(entry.UsesTypedBridge, "Managed setting does not use the typed bridge", entry.Name);
         FO_VERIFY_AND_THROW(size == SettingKindSize(entry.Kind), "Managed setting value size mismatch", entry.Name, size, SettingKindSize(entry.Kind));
+        FO_VERIFY_AND_THROW(numeric_cast<size_t>(size) <= entry.CustomValue.size(), "Managed setting value exceeds the typed cell", entry.Name, size);
 
         nptr<GlobalSettings> settings = GetBackendSettings(backend);
         FO_VERIFY_AND_THROW(settings, "Managed settings backend is not available");
@@ -2511,7 +2589,16 @@ static auto NativeGetSettingValue(int32_t setting_id, void* value, int32_t size)
             return nullptr;
         }
 
-        string text = settings->GetCustomSetting(entry.Name);
+        // A project custom setting is text in the custom map; the parsed value is kept in the ABI entry and re-read
+        // only after the map changed, so a warmed read is a generation compare and a copy
+        uint64_t generation = settings->GetCustomSettingsGeneration();
+
+        if (entry.CustomCached && entry.CustomGeneration == generation) {
+            WriteSettingBytes(value, size, entry.CustomValue.data(), numeric_cast<size_t>(size));
+            return nullptr;
+        }
+
+        const string& text = settings->GetCustomSetting(entry.Name);
 
         switch (entry.Kind) {
         case ManagedAbiValueKind::Bool: {
@@ -2574,6 +2661,9 @@ static auto NativeGetSettingValue(int32_t setting_id, void* value, int32_t size)
             throw ScriptSystemException("Unsupported Managed typed setting", entry.Name);
         }
 
+        memory::copy(ptr<void> {entry.CustomValue.data()}, value, numeric_cast<size_t>(size));
+        entry.CustomGeneration = generation;
+        entry.CustomCached = true;
         return nullptr;
     }
     catch (const std::exception& ex) {
@@ -2775,8 +2865,10 @@ static auto NativeFireEventIndexed(int32_t event_id, void* entity_ptr, void* fra
         auto backend = GetActiveBackendOrThrow();
         const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
         FO_VERIFY_AND_THROW(entry.UsesScalarFrame, "Managed event does not use a scalar frame", entry.Owner, entry.Name);
+        FO_VERIFY_AND_THROW(entry.Event, "Managed ABI event descriptor is null", entry.Owner, entry.Name);
         FO_VERIFY_AND_THROW(frame != nullptr, "Managed scalar event frame is null", entry.Owner, entry.Name);
         FO_VERIFY_AND_THROW(frame_size == numeric_cast<int32_t>(entry.FrameSize), "Managed scalar event frame size mismatch", entry.Owner, entry.Name, frame_size, entry.FrameSize);
+        FO_VERIFY_AND_THROW(entry.Args.size() == entry.Event->Args.size(), "Managed event ABI slot count mismatch", entry.Owner, entry.Name);
 
         auto entity = ResolveEntity(backend, entity_ptr);
         Entity* self_entity = entity.get_no_const();
@@ -2987,7 +3079,7 @@ static auto IsManagedScalarProperty(ptr<const Property> prop) -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     const BaseTypeDesc& base_type = prop->GetBaseType();
-    return !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum);
+    return !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum || base_type.IsHashedString || (IsManagedAbiBlittableStruct(base_type) && !HasManagedAbiHashedStringField(base_type)));
 }
 
 static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property_name, MonoObject* getter)
@@ -3034,7 +3126,7 @@ static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property
                 }
 
                 if (adapt) {
-                    array<uint8_t, 8> storage {};
+                    array<uint8_t, MANAGED_ABI_PROPERTY_ADAPTER_STORAGE> storage {};
                     FO_VERIFY_AND_THROW(prop->GetBaseSize() <= storage.size(), "Managed scalar property getter exceeds adapter storage", prop->GetName());
                     void* entity_ptr = entity.get_no_const();
                     void* args[] = {mono_gchandle_get_target(getter_handle), &entity_ptr, storage.data()};
@@ -3101,7 +3193,7 @@ static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property
                 }
 
                 if (adapt) {
-                    array<uint8_t, 8> storage {};
+                    array<uint8_t, MANAGED_ABI_PROPERTY_ADAPTER_STORAGE> storage {};
                     FO_VERIFY_AND_THROW(prop->GetBaseSize() <= storage.size() && prop_data.GetSize() == prop->GetBaseSize(), "Managed scalar property setter size mismatch", prop->GetName());
                     memory::copy(ptr<void> {storage.data()}, prop_data.GetPtr(), prop->GetBaseSize());
                     void* entity_ptr = entity.get_no_const();
@@ -3802,8 +3894,9 @@ static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* at
         func_desc->Args.emplace_back(ArgDesc {.Name = {}, .Type = arg_type});
     }
 
+    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ret, args);
     func_desc->AttributeChecker = [attr_name_str](string_view attribute) -> bool { return attribute == attr_name_str; };
-    func_desc->Call = [backend = backend.as_ptr(), handler_handle, ret, args](FuncCallData& call) { DispatchManagedCallback(backend, handler_handle, ret, args, call); };
+    func_desc->Call = [backend = backend.as_ptr(), handler_handle, plan](FuncCallData& call) { DispatchManagedCallback(backend, handler_handle, *plan, call); };
 
     backend->AdoptPersistentGcHandle(handler_handle);
     release_handler_handle_on_error.release();
@@ -3899,9 +3992,11 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
     backend->AdoptPersistentGcHandle(handler_handle);
     release_handler_handle_on_error.release();
 
+    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ComplexTypeDesc {}, args);
+
     engine->SetRemoteCallHandler(
         name_hashed,
-        [backend = backend.as_ptr(), engine, args, handler_handle, server_side, call_name, max_payload_size, max_collection_size, wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+        [backend = backend.as_ptr(), engine, args, plan, handler_handle, server_side, call_name, max_payload_size, max_collection_size, wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
             FO_VERIFY_AND_THROW(max_payload_size == 0 || data.size() <= max_payload_size, "Remote call payload exceeds structural limit", call_name, data.size(), max_payload_size);
 
             // Attach to the Managed domain up front: building managed List objects for array args (below) invokes mono,
@@ -3973,7 +4068,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
             call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
 
             try {
-                DispatchManagedCallback(backend, handler_handle, ComplexTypeDesc {}, args, call);
+                DispatchManagedCallback(backend, handler_handle, *plan, call);
             }
             catch (const std::exception& ex) {
                 exceptions::report_and_continue(ex);
@@ -4116,6 +4211,8 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::GetInnerEntity", reinterpret_cast<const void*>(NativeGetInnerEntity));
     mono_add_internal_call("FOnline.Native::FillInnerEntitiesInternal", reinterpret_cast<const void*>(NativeFillInnerEntities));
     mono_add_internal_call("FOnline.Native::GetAndResetInnerEntityVisits", reinterpret_cast<const void*>(NativeGetAndResetInnerEntityVisits));
+    mono_add_internal_call("FOnline.Native::GetAndResetTypedCallbackDispatches", reinterpret_cast<const void*>(NativeGetAndResetTypedCallbackDispatches));
+    mono_add_internal_call("FOnline.Native::GetAndResetBoxedCallbackDispatches", reinterpret_cast<const void*>(NativeGetAndResetBoxedCallbackDispatches));
     mono_add_internal_call("FOnline.Native::GetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsInt));
     mono_add_internal_call("FOnline.Native::SetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsInt));
     mono_add_internal_call("FOnline.Native::GetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsAny));
@@ -4243,7 +4340,57 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
     return prop;
 }
 
-static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)
+static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& ret, vector<ComplexTypeDesc> args) -> shared_ptr<ManagedCallbackPlan>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    shared_ptr<ManagedCallbackPlan> plan = safe_alloc::make_shared<ManagedCallbackPlan>();
+    plan->Ret = ret;
+    plan->Args = std::move(args);
+    plan->Layout = BuildManagedAbiCallbackLayout(plan->Ret, plan->Args);
+
+    if (plan->Layout.Supported) {
+        plan->Adapter = FindCallbackAdapter(backend, MakeManagedAbiCallbackKey(plan->Ret, plan->Args));
+    }
+
+    return plan;
+}
+
+static auto FindCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view key) -> nptr<MonoMethod>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+    auto it = caches->CallbackAdapters.find(key);
+
+    if (it != caches->CallbackAdapters.end()) {
+        return it->second;
+    }
+
+    string method_name = strex("Adapt_{}", key).str();
+    nptr<MonoMethod> adapter;
+
+    for (nptr<void> image_ptr : backend->GetImages()) {
+        nptr<MonoImage> image = image_ptr.reinterpret_as<MonoImage>();
+        MonoClass* klass = mono_class_from_name(image.get(), "FOnline", "CallbackAdapters");
+
+        if (klass == nullptr) {
+            continue;
+        }
+
+        if (MonoMethod* method = mono_class_get_method_from_name(klass, method_name.c_str(), 3)) {
+            adapter = method;
+            break;
+        }
+    }
+
+    caches->CallbackAdapters.emplace(string {key}, adapter);
+    return adapter;
+}
+
+static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4251,10 +4398,10 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
     nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
     FO_VERIFY_AND_THROW(engine, "Managed callback dispatch requires an engine context");
 
-    RunManagedScriptEntry(backend, engine, [handler_handle] { return mono_gchandle_get_target(handler_handle); }, [&] { DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call); });
+    RunManagedScriptEntry(backend, engine, [handler_handle] { return mono_gchandle_get_target(handler_handle); }, [&] { DispatchManagedCallbackInContext(backend, handler_handle, plan, call); });
 }
 
-static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)
+static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4267,9 +4414,69 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
     if (mono_gchandle_get_target(handler_handle) == nullptr) {
         throw ScriptSystemException("Managed callback delegate was collected");
     }
-    if (call.ArgsData.size() != args.size()) {
+    if (call.ArgsData.size() != plan.Args.size()) {
         throw ScriptSystemException("Managed callback argument count mismatch");
     }
+
+    if (plan.Adapter) {
+        DispatchManagedCallbackTyped(backend, handler_handle, plan, call);
+    }
+    else {
+        DispatchManagedCallbackBoxed(backend, handler_handle, plan, call);
+    }
+}
+
+// The frame path: handles and fixed values are copied into a stack frame the generated adapter reads, the adapter
+// wraps and invokes the delegate itself, and a fixed-value result comes back in the same frame
+static void DispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+    FO_VERIFY_AND_THROW(plan.Layout.Args.size() == plan.Args.size(), "Managed callback layout does not match its signature");
+
+    array<uint8_t, MANAGED_ABI_SCALAR_FRAME_CAPACITY> frame {};
+
+    for (size_t i = 0; i < plan.Args.size(); i++) {
+        const ManagedAbiSlot& slot = plan.Layout.Args[i];
+        ptr<void> arg_data = call.ArgsData[i];
+
+        if (slot.Kind == ManagedAbiValueKind::Handle) {
+            // Entities travel as Entity*, native ref types as their object pointer; both are one pointer slot
+            const void* handle = *arg_data.reinterpret_as<void*>();
+            uint64_t handle_bits = numeric_cast<uint64_t>(reinterpret_cast<uintptr_t>(handle));
+            memory::copy(frame.data() + slot.Offset, &handle_bits, sizeof(handle_bits));
+        }
+        else {
+            memory::copy(frame.data() + slot.Offset, arg_data.get(), slot.Size);
+        }
+    }
+
+    int32_t frame_size = plan.Layout.FrameSize;
+    void* adapter_args[] = {mono_gchandle_get_target(handler_handle), frame.data(), &frame_size};
+    caches->TypedCallbackDispatches++;
+    (void)InvokeManagedScript(plan.Adapter.get_no_const(), nullptr, adapter_args, "Managed callback failed");
+
+    if (plan.Ret) {
+        FO_VERIFY_AND_THROW(call.RetData, "Managed callback result storage is missing");
+        memory::copy(call.RetData.as_ptr(), frame.data() + plan.Layout.ResultOffset, plan.Layout.Ret.Size);
+    }
+}
+
+// The boxed path: every argument becomes a managed object in a rooted array and Native.InvokeCallback drives the
+// delegate through DynamicInvoke; signatures with strings, collections or by-ref arguments still take it
+static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+    caches->BoxedCallbackDispatches++;
+
+    const ComplexTypeDesc& ret = plan.Ret;
+    const vector<ComplexTypeDesc>& args = plan.Args;
+    MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
     uint32_t args_array_handle = mono_gchandle_new(reinterpret_cast<MonoObject*>(mono_array_new(domain, mono_get_object_class(), args.size())), 0);
     auto free_args_array_handle = scope_exit([args_array_handle]() noexcept { mono_gchandle_free(args_array_handle); });
@@ -4421,7 +4628,6 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
         throw ScriptSystemException("Invalid Managed callback type");
     }
 
-    uint32_t handler_handle = mono_gchandle_new(handler, false);
     ComplexTypeDesc ret = callback->Type.CallbackArgs->front();
     vector<ComplexTypeDesc> args;
 
@@ -4438,17 +4644,13 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
         func_desc->Args.emplace_back(ArgDesc {.Name = {}, .Type = arg_type});
     }
 
-    auto func_desc_borrow = func_desc.as_ptr();
-    func_desc->Call = [backend = ptr<ManagedScriptBackend> {callback->Backend.get_no_const()}, handler_handle, func_desc_borrow](FuncCallData& call) {
-        vector<ComplexTypeDesc> call_args;
-        call_args.reserve(func_desc_borrow->Args.size());
+    ptr<ManagedScriptBackend> backend {callback->Backend.get_no_const()};
+    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ret, std::move(args));
 
-        for (const ArgDesc& arg : func_desc_borrow->Args) {
-            call_args.emplace_back(arg.Type);
-        }
-
-        DispatchManagedCallback(backend, handler_handle, func_desc_borrow->Ret, call_args, call);
-    };
+    // The delegate stays rooted by the bridge handle while this runs, so its own root is taken last: nothing after
+    // it can throw and leave the handle unreleased
+    uint32_t handler_handle = mono_gchandle_new(handler, false);
+    func_desc->Call = [backend, handler_handle, plan](FuncCallData& call) { DispatchManagedCallback(backend, handler_handle, *plan, call); };
     func_desc->AttributeChecker = [](string_view /*attribute*/) -> bool { return true; };
 
     nptr<MonoDomain> domain = callback->Domain;
@@ -4808,24 +5010,18 @@ static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_v
     }
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
-    MonoClass* entity_class = FindFOnlineClass(backend, type_name);
+    const ManagedWrapperClassEntry& wrapper = ResolveWrapperClass(backend, type_name);
     ManagedObjectRoot obj;
-    obj.SetObject(mono_object_new(domain, entity_class));
+    obj.SetObject(mono_object_new(domain, wrapper.Class.get_no_const()));
 
     if (obj.GetObject() == nullptr) {
         throw ScriptSystemException("Can't create Managed entity wrapper", type_name);
     }
 
-    MonoMethod* ctor = mono_class_get_method_from_name(entity_class, ".ctor", 1);
-
-    if (ctor == nullptr) {
-        throw ScriptSystemException("Managed entity wrapper constructor not found", type_name);
-    }
-
     void* entity_ptr = entity.void_cast();
     void* args[] = {&entity_ptr};
     MonoObject* exception = nullptr;
-    mono_runtime_invoke(ctor, obj.GetObject(), args, &exception);
+    mono_runtime_invoke(wrapper.PointerCtor.get_no_const(), obj.GetObject(), args, &exception);
     ThrowIfManagedException(exception, "Managed entity wrapper constructor failed");
     return obj.GetObject();
 }
@@ -4865,16 +5061,18 @@ static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, c
     }
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
-    MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
+    const ManagedWrapperClassEntry& wrapper = ResolveWrapperClass(backend, base_type.Name);
     ManagedObjectRoot obj;
-    obj.SetObject(mono_object_new(domain, klass));
+    obj.SetObject(mono_object_new(domain, wrapper.Class.get_no_const()));
 
     if (obj.GetObject() == nullptr) {
         throw ScriptSystemException("Can't create Managed ref type wrapper", base_type.Name);
     }
 
     void* args[] = {&ref_ptr};
-    InvokeManagedConstructor(klass, obj.GetObject(), 1, args, base_type.Name);
+    MonoObject* exception = nullptr;
+    mono_runtime_invoke(wrapper.PointerCtor.get_no_const(), obj.GetObject(), args, &exception);
+    ThrowIfManagedException(exception, "Managed ref type wrapper constructor failed");
     return obj.GetObject();
 }
 
@@ -6160,6 +6358,32 @@ static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> s
 
 // === Type/class and metadata resolution ===
 
+// A wrapper class and its pointer constructor are looked up once per managed type name: MonoClass and MonoMethod
+// stay valid for the life of the load context, which is the life of the backend
+static auto ResolveWrapperClass(ptr<const ManagedScriptBackend> backend, string_view type_name) -> const ManagedWrapperClassEntry&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+    auto it = caches->WrapperClasses.find(type_name);
+
+    if (it != caches->WrapperClasses.end()) {
+        return it->second;
+    }
+
+    MonoClass* klass = FindFOnlineClass(backend, type_name);
+    FO_VERIFY_AND_THROW(klass != nullptr, "Managed wrapper class not found", type_name);
+    MonoMethod* ctor = mono_class_get_method_from_name(klass, ".ctor", 1);
+    FO_VERIFY_AND_THROW(ctor != nullptr, "Managed wrapper pointer constructor not found", type_name);
+
+    ManagedWrapperClassEntry entry;
+    entry.Class = klass;
+    entry.PointerCtor = ctor;
+    return caches->WrapperClasses.emplace(string {type_name}, entry).first->second;
+}
+
 static auto FindFOnlineClass(ptr<const ManagedScriptBackend> backend, string_view class_name) -> MonoClass*
 {
     FO_STACK_TRACE_ENTRY();
@@ -7092,6 +7316,15 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
 ManagedScriptBackend::ManagedScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
+
+    _caches = safe_alloc::make_unique<ManagedBackendCaches>();
+}
+
+auto ManagedScriptBackend::GetCaches() const -> nptr<ManagedBackendCaches>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _caches.get_no_const();
 }
 
 ManagedScriptBackend::~ManagedScriptBackend()

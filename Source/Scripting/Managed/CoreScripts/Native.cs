@@ -33,6 +33,15 @@ internal struct InnerEntityFillFrame
     private IntPtr Element0;
 }
 
+// A generated wrapper class registers its factory at InitializeEarly, so wrapping a native pointer is one delegate
+// call instead of a reflection-driven Activator.CreateInstance. A class no generator registered keeps the reflection
+// path. The slot holds a delegate to a static lambda and never an entity, so backend teardown has nothing to clear
+internal static class WrapperFactory<T>
+    where T : class
+{
+    internal static Func<IntPtr, T>? Create;
+}
+
 internal static class Native
 {
     // The generated non-nullable members prove the pointer before they wrap it -- a property that reads a
@@ -61,6 +70,12 @@ internal static class Native
             return null;
         }
 
+        Func<IntPtr, T>? create = WrapperFactory<T>.Create;
+
+        if (create != null) {
+            return create(entityPtr);
+        }
+
         return (T)Activator.CreateInstance(typeof(T),
                                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                                            null,
@@ -71,9 +86,16 @@ internal static class Native
     }
 
     internal static T? WrapRef<T>(IntPtr refPtr)
+        where T : class
     {
         if (refPtr == IntPtr.Zero) {
-            return default;
+            return null;
+        }
+
+        Func<IntPtr, T>? create = WrapperFactory<T>.Create;
+
+        if (create != null) {
+            return create(refPtr);
         }
 
         return (T)Activator.CreateInstance(typeof(T),
@@ -83,6 +105,40 @@ internal static class Native
                                                refPtr,
                                            },
                                            null)!;
+    }
+
+    // A callback frame carries a ref-type handle the native side proved before dispatching, so a null here is the
+    // bridge breaking its contract, like a null entity pointer in WrapEntityNotNull
+    internal static T WrapRefNotNull<T>(IntPtr refPtr)
+        where T : class
+    {
+        T? value = WrapRef<T>(refPtr);
+        Invariant.Verify(value != null, "Ref pointer must not be null");
+        return value;
+    }
+
+    internal static void RegisterWrapperFactory<T>(Func<IntPtr, T> create)
+        where T : class
+    {
+        WrapperFactory<T>.Create = create;
+    }
+
+    internal static bool HasWrapperFactory<T>()
+        where T : class
+    {
+        return WrapperFactory<T>.Create != null;
+    }
+
+    // A Task-returning callback is registered as a native void: it continues asynchronously instead of blocking the
+    // script pump, and a deferred fault stays accounted the way InvokeCallback accounts it
+    internal static void CompleteCallbackTask(Task task)
+    {
+        if (task.IsCompleted) {
+            task.GetAwaiter().GetResult();
+        }
+        else {
+            ScriptExceptions.ObserveTask(task);
+        }
     }
 
     [CallableByEngine]
@@ -692,6 +748,14 @@ internal static class Native
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern long GetAndResetInnerEntityVisits();
+
+    // Diagnostic counters of native-to-managed callback dispatches: through a generated typed adapter, or through the
+    // boxed DynamicInvoke path. The interop tests read them; they cost one increment per dispatch
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern long GetAndResetTypedCallbackDispatches();
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern long GetAndResetBoxedCallbackDispatches();
 
     // Generic property accessors by index (mirror AngelScript Entity_GetValueAsInt/SetValueAsInt and
     // Entity_GetValueAsAny/SetValueAsAny); back the generated Entity.GetAs*/SetAs* wrappers.
