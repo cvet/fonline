@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 56
+///@ MigrationRule Version 0 0 57
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;

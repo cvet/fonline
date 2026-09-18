@@ -77,6 +77,7 @@ public:
     void AddCleanupCallback(function<void()> callback);
     void AddPostCleanupCallback(function<void()> callback);
     void IncreaseExceptionCounter() { _exceptionCounter.fetch_add(1); }
+    auto InternUserString(string_view name) -> ptr<const string>;
 
 private:
     static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool;
@@ -93,6 +94,7 @@ private:
     vector<function<void()>> _postCleanupCallbacks {};
     optional<DebuggerEndpointServer> _debuggerEndpointServer {};
     std::atomic_int32_t _exceptionCounter {};
+    set<string> _userStrings {};
 };
 
 FO_END_NAMESPACE

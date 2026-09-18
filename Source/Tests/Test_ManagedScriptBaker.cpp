@@ -1000,7 +1000,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static void Destroy<T>(System.Collections.Generic.List<T>? entities) where T : Entity") != string::npos);
     CHECK(server_entities.find("DestroyEntity(entities[__i]);") != string::npos);
     CHECK(server_entities.find("public static ManagedGlobal AddManagedGlobal()") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\", 0UL)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\", IntPtr.Zero)") != string::npos);
     CHECK(server_entities.find("public static bool HasManagedGlobals()") != string::npos);
     CHECK(server_entities.find("public static System.Collections.Generic.List<ManagedGlobal> GetManagedGlobals()") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetInnerEntityAt(IntPtr.Zero, \"ManagedGlobal\", __i)") != string::npos);
@@ -1087,6 +1087,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_voidAsync();") != string::npos);
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_bool") == string::npos);
     CHECK(server_types.find("public partial struct hstring") != string::npos);
+    CHECK(server_types.find("public System.IntPtr Value;") != string::npos);
+    CHECK(server_types.find("LayoutKind.Sequential, Size = 8") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {

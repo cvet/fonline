@@ -2759,12 +2759,17 @@ static void AppendHstringType(ostringstream& out)
 {
     FO_STACK_TRACE_ENTRY();
 
+    out << "[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 8)]\n";
     out << "public partial struct hstring\n";
     out << "{\n";
-    out << CS_INDENT << "public ulong Value;\n\n";
-    out << CS_INDENT << "public hstring(ulong value)\n";
+    out << CS_INDENT << "public System.IntPtr Value;\n\n";
+    out << CS_INDENT << "public hstring(System.IntPtr value)\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    Value = value;\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public hstring(ulong hash)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    Value = global::FOnline.Native.ResolveHash(hash);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public hstring(string value)\n";
     out << CS_INDENT << "{\n";
@@ -3495,7 +3500,7 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
         unordered_set<string> used_arg_names;
         string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    return global::FOnline.Native.GetHashStr(" << arg_name << ");\n";
+        out << CS_INDENT << "    return global::FOnline.Native.GetHashStrFromHash(" << arg_name << ");\n";
         out << CS_INDENT << "}\n";
     }
     else if (allow_native_bridge && IsManagedBridgeMethod(method)) {
@@ -3971,7 +3976,7 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
         if (!HasMethodSignature(desc.Methods, "GetHashStr", "string", {"ulong"})) {
             out << CS_INDENT << "public static string GetHashStr(ulong value)\n";
             out << CS_INDENT << "{\n";
-            out << CS_INDENT << "    return global::FOnline.Native.GetHashStr(value);\n";
+            out << CS_INDENT << "    return global::FOnline.Native.GetHashStrFromHash(value);\n";
             out << CS_INDENT << "}\n\n";
         }
         if (target_name == "Server" && member_names.emplace("Destroy").second) {
@@ -4073,7 +4078,7 @@ static void AppendEntityHolderAccessors(ostringstream& out, string_view owner_ty
                 out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.CreateInnerEntity(" << entity_ptr << ", \"" << entry_literal << "\", pid.Value);\n";
             }
             else {
-                out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.CreateInnerEntity(" << entity_ptr << ", \"" << entry_literal << "\", 0UL);\n";
+                out << CS_INDENT << "    IntPtr __ptr = global::FOnline.Native.CreateInnerEntity(" << entity_ptr << ", \"" << entry_literal << "\", IntPtr.Zero);\n";
             }
 
             out << CS_INDENT << "    global::FOnline.Invariant.Verify(__ptr != IntPtr.Zero, \"Inner entity creation failed\");\n";

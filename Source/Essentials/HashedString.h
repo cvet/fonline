@@ -41,8 +41,9 @@
 
 FO_BEGIN_NAMESPACE
 
-struct hstring
+class hstring
 {
+public:
     using hash_t = uint64_t;
 
     struct entry
@@ -52,46 +53,32 @@ struct hstring
     };
 
     constexpr hstring() noexcept = default;
-    constexpr explicit hstring(ptr<const entry> static_storage_entry) noexcept :
-        _entry {static_storage_entry}
+    constexpr explicit hstring(ptr<const entry> interned_entry) noexcept :
+        _entry {interned_entry.get()}
     {
     }
-    constexpr hstring(const hstring& other) noexcept :
-        _entry {other._entry}
-    {
-    }
-    constexpr hstring(hstring&& other) noexcept :
-        _entry {other._entry}
-    {
-    }
-    constexpr auto operator=(const hstring& other) noexcept -> hstring&
-    {
-        _entry = other._entry;
-        return *this;
-    }
-    constexpr auto operator=(hstring&& other) noexcept -> hstring&
-    {
-        _entry = other._entry;
-        return *this;
-    }
+    constexpr hstring(const hstring& other) noexcept = default;
+    constexpr hstring(hstring&& other) noexcept = default;
+    constexpr auto operator=(const hstring& other) noexcept -> hstring& = default;
+    constexpr auto operator=(hstring&& other) noexcept -> hstring& = default;
     ~hstring() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    [[nodiscard]] operator string_view() const noexcept { return _entry->str; }
-    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry->hash != 0; }
-    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return _entry->hash == other._entry->hash; }
-    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept -> bool { return _entry->hash < other._entry->hash; }
-    [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->hash; }
-    [[nodiscard]] constexpr auto as_int64() const noexcept -> int64_t { return std::bit_cast<int64_t>(_entry->hash); }
-    [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64_t { return _entry->hash; }
-    [[nodiscard]] auto as_str() const noexcept -> string_view { return _entry->str; }
-    [[nodiscard]] auto as_str_ptr() const noexcept -> ptr<const string> { return &_entry->str; }
-    [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->str.c_str(); }
+    [[nodiscard]] operator string_view() const noexcept { return as_str(); }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry != nullptr; }
+    [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return as_hash() == other.as_hash(); }
+    [[nodiscard]] constexpr auto operator<(const hstring& other) const noexcept -> bool { return as_hash() < other.as_hash(); }
+    [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry != nullptr ? _entry->hash : 0; }
+    [[nodiscard]] constexpr auto as_int64() const noexcept -> int64_t { return std::bit_cast<int64_t>(as_hash()); }
+    [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64_t { return as_hash(); }
+    [[nodiscard]] auto as_str() const noexcept -> string_view { return _entry != nullptr ? string_view {_entry->str} : string_view {}; }
+    [[nodiscard]] auto c_str() const noexcept -> const char* { return _entry != nullptr ? _entry->str.c_str() : ""; }
+    [[nodiscard]] constexpr auto get_entry() const noexcept -> nptr<const entry> { return _entry; }
 
 private:
-    static entry _zero_entry;
-
-    ptr<const entry> _entry {&_zero_entry};
+    // Raw on purpose: the handle's object representation is what the managed runtime blits, so the class stays
+    // trivially copyable; the handle is handed out as nptr through get_entry()
+    const entry* _entry {};
 #if UINTPTR_MAX == UINT32_MAX
     // hstring participates in fixed value-type layouts whose slots are hash-sized
     [[maybe_unused]] uint32_t _padding {};
@@ -100,6 +87,7 @@ private:
 static_assert(sizeof(hstring::hash_t) == 8);
 static_assert(sizeof(hstring) == sizeof(hstring::hash_t));
 static_assert(std::is_standard_layout_v<hstring>);
+static_assert(std::is_trivially_copyable_v<hstring>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.as_hash());
 
 FO_END_NAMESPACE

@@ -1146,9 +1146,8 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_VERIFY_AND_THROW(meta, "Missing engine metadata");
 
     // Register entities
-    auto const_name = [&](const char* name) -> ptr<const string> {
-        hstring hname = meta->Hashes.to_hashed_string(name);
-        return hname.as_str_ptr();
+    auto const_name = [&](const char* name) -> ptr<const string> { //
+        return backend->InternUserString(name);
     };
 
     auto register_base_entity = [&](const char* name) {

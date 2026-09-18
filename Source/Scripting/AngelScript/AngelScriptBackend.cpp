@@ -168,6 +168,13 @@ AngelScriptBackend::~AngelScriptBackend()
     }
 }
 
+auto AngelScriptBackend::InternUserString(string_view name) -> ptr<const string>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return &*_userStrings.emplace(name).first;
+}
+
 auto AngelScriptBackend::GetGameEngine() -> ptr<BaseEngine>
 {
     FO_NO_STACK_TRACE_ENTRY();
