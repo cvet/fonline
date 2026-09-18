@@ -1113,6 +1113,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("return (ushort)__result;") != string::npos);
     CHECK(server_entities.find("public partial class Entity : System.IEquatable<Entity>") != string::npos);
     CHECK(server_entities.find("private readonly bool[]? _backendAlive;") != string::npos);
+    CHECK(server_entities.find("            if (_backendAlive != null && _backendAlive[0]) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
     CHECK(server_entities.find("Entity wrapper belongs to a different managed backend") != string::npos);
     CHECK(server_entities.find("return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue && _backend == other._backend;") != string::npos);
     CHECK(server_entities.find("public static bool operator ==(Entity? left, Entity? right)") != string::npos);

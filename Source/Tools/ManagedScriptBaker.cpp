@@ -2933,11 +2933,15 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "// Strong native reference held for the wrapper's lifetime (paired with the ctor AddRef), so a\n";
     out << CS_INDENT << "// wrapper retained past the entity's destroy keeps it alive-but-destroyed instead of dangling.\n";
     out << CS_INDENT << "// Giving it back on GC finalization is the only path there is, which is why backend teardown\n";
-    out << CS_INDENT << "// runs the collector and waits for it while the engine is still alive.\n";
+    out << CS_INDENT << "// runs the collector and waits for it while the engine is still alive. A wrapper the teardown\n";
+    out << CS_INDENT << "// reported as outstanding is finalized after that engine is gone, so its reference stays unreturned:\n";
+    out << CS_INDENT << "// the entity would release into freed engine memory.\n";
     out << CS_INDENT << "~Entity()\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    if (_entityPtrValue != IntPtr.Zero) {\n";
-    out << CS_INDENT << "        global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
+    out << CS_INDENT << "        if (_backendAlive != null && _backendAlive[0]) {\n";
+    out << CS_INDENT << "            global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
+    out << CS_INDENT << "        }\n\n";
     out << CS_INDENT << "        _entityPtrValue = IntPtr.Zero;\n";
     out << CS_INDENT << "        // Given back after the reference, so an entry the engine still sees means the reference is still held\n";
     out << CS_INDENT << "        global::FOnline.EntityWrapperTracker.Unregister(_trackerId);\n";
