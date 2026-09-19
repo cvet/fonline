@@ -339,8 +339,7 @@ def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
-# Компилируется в исполняемый файл, а не отгружается артефактом, поэтому упаковка встраивает его
-# вместо записи пака; движковая сторона держит то же имя в DataSource.h
+# Compiled into the executable rather than shipped as a pack; DataSource.h owns the same name
 EMBEDDED_PACK_NAME = 'Embedded'
 
 RESOURCE_PACK_MAGIC = 0x53524F46
@@ -470,33 +469,65 @@ def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[
 			else:
 				raise AssertionError('catalog codec is invalid')
 
-		assert len(index) == index_decoded_size, 'decoded catalog size mismatch'
-		records_size = entry_count * RESOURCE_PACK_ENTRY_SIZE
-		assert records_size <= len(index), 'catalog records are truncated'
-		actual_entries: list[str] = []
-		actual_content_hash = fnv1a_64(struct.pack('<I', entry_count))
+			assert len(index) == index_decoded_size, 'decoded catalog size mismatch'
+			records_size = entry_count * RESOURCE_PACK_ENTRY_SIZE
+			assert records_size <= len(index), 'catalog records are truncated'
+			actual_entries: list[str] = []
+			actual_content_hash = fnv1a_64(struct.pack('<I', entry_count))
 
-		for ordinal in range(entry_count):
-			path_offset, path_length, blob_offset, stored_size, decoded_size, codec, source, file_hash = struct.unpack_from(
-				'<IIQQQIIQ', index, ordinal * RESOURCE_PACK_ENTRY_SIZE)
-			assert source == 0, 'base catalog entry has a non-base source'
-			assert codec in (RESOURCE_PACK_CODEC_STORED, RESOURCE_PACK_CODEC_DEFLATE), 'entry codec is invalid'
-			assert records_size <= path_offset <= len(index), 'entry path offset is invalid'
-			assert path_length <= len(index) - path_offset, 'entry path extent is invalid'
-			assert data_offset <= blob_offset <= index_offset, 'entry data offset is invalid'
-			assert stored_size <= index_offset - blob_offset, 'entry data extent is invalid'
-			path_bytes = index[path_offset:path_offset + path_length]
-			path = path_bytes.decode('utf-8')
-			assert path and all(part not in ('', '.', '..') for part in path.split('/')) and ':' not in path and '\0' not in path, 'entry path is invalid'
-			assert not actual_entries or actual_entries[-1] < path, 'entry paths are not strictly sorted'
-			actual_entries.append(path)
-			actual_content_hash = fnv1a_64(struct.pack('<IQQ', path_length, decoded_size, file_hash), actual_content_hash)
-			actual_content_hash = fnv1a_64(path_bytes, actual_content_hash)
+			for ordinal in range(entry_count):
+				path_offset, path_length, blob_offset, stored_size, decoded_size, codec, source, file_hash = struct.unpack_from(
+					'<IIQQQIIQ', index, ordinal * RESOURCE_PACK_ENTRY_SIZE)
+				assert source == 0, 'base catalog entry has a non-base source'
+				assert codec in (RESOURCE_PACK_CODEC_STORED, RESOURCE_PACK_CODEC_DEFLATE), 'entry codec is invalid'
+				assert records_size <= path_offset <= len(index), 'entry path offset is invalid'
+				assert path_length <= len(index) - path_offset, 'entry path extent is invalid'
+				assert data_offset <= blob_offset <= index_offset, 'entry data offset is invalid'
+				assert stored_size <= index_offset - blob_offset, 'entry data extent is invalid'
+				path_bytes = index[path_offset:path_offset + path_length]
+				path = path_bytes.decode('utf-8')
+				assert path and all(part not in ('', '.', '..') for part in path.split('/')) and ':' not in path and '\\' not in path and '\0' not in path, 'entry path is invalid'
+				assert not actual_entries or actual_entries[-1] < path, 'entry paths are not strictly sorted'
+				actual_entries.append(path)
+				actual_content_hash = fnv1a_64(struct.pack('<IQQ', path_length, decoded_size, file_hash), actual_content_hash)
+				actual_content_hash = fnv1a_64(path_bytes, actual_content_hash)
+				assert codec != RESOURCE_PACK_CODEC_STORED or stored_size == decoded_size, 'stored entry size mismatch: ' + path
+				archive.seek(blob_offset)
+				validate_resource_pack_payload(archive, stored_size, decoded_size, codec, file_hash)
 
-		assert actual_entries == list(expected_entries), 'entry list mismatch'
-		assert actual_content_hash == content_hash, 'content checksum mismatch'
+			assert actual_entries == list(expected_entries), 'entry list mismatch'
+			assert actual_content_hash == content_hash, 'content checksum mismatch'
 	except (OSError, UnicodeError, struct.error, zlib.error, AssertionError) as ex:
 		raise AssertionError(f'Resource pack validation failed: {archive_name}: {ex}') from ex
+
+
+def validate_resource_pack_payload(archive: IO[bytes], stored_size: int, decoded_size: int, codec: int, file_hash: int) -> None:
+	decoder = zlib.decompressobj() if codec == RESOURCE_PACK_CODEC_DEFLATE else None
+	remaining = stored_size
+	decoded_total = 0
+	actual_hash = FNV_OFFSET
+	pending = b''
+
+	while remaining or pending:
+		if not pending:
+			pending = archive.read(min(remaining, RESOURCE_ARCHIVE_HASH_CHUNK_BYTES))
+			assert pending, 'entry payload is truncated'
+			remaining -= len(pending)
+
+		if decoder is not None:
+			decoded = decoder.decompress(pending, min(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES, decoded_size - decoded_total + 1))
+			pending = decoder.unconsumed_tail
+			assert not decoder.unused_data, 'entry deflate stream has trailing data'
+		else:
+			decoded, pending = pending, b''
+
+		decoded_total += len(decoded)
+		assert decoded_total <= decoded_size, 'decoded entry exceeds its declared size'
+		actual_hash = fnv1a_64(decoded, actual_hash)
+
+	assert decoder is None or decoder.eof, 'entry deflate stream is incomplete'
+	assert decoded_total == decoded_size, 'decoded entry size mismatch'
+	assert actual_hash == file_hash, 'entry content checksum mismatch'
 
 
 def zip_entry_matches_file(

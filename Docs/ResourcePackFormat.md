@@ -132,9 +132,11 @@ catalog, flushes, appends the footer, and flushes again. It persists the directo
 The writable directory is locked during mutation, through an OS lock rather than a stored selector or
 journal. File writers also exclude other writers before truncation or append.
 
-Readers retain their catalog and captured file bounds while a writer appends. Recovery truncates only bytes
-after the previous committed end. An unfinished or stale patch is removed and recreated under the directory
-lock; it is never truncated underneath readers of a different base generation. On POSIX, readers can retain
+Readers retain their catalog and captured file bounds while a writer appends. With a valid previous commit,
+`ResourcePatchWriter::Begin` truncates only the unfinished suffix after that committed end before appending.
+A patch with no valid commit is removed and recreated under the directory lock. The updater removes a stale
+patch whose base binding differs; the writer also recreates such a patch if a new append is needed.
+A patch is never truncated underneath readers of a different base generation. On POSIX, readers can retain
 an unlinked inode; Windows rejects deletion/replacement while incompatible readers still hold the file.
 
 ## Recovery and validation
@@ -149,6 +151,9 @@ All extent checks subtract only after checking the minuend and widen table multi
 Unknown codecs/sources, noncanonical or duplicate paths and invalid pool references are rejected. Mounting
 does not hash all payloads. Payload corruption is reported when read; received patch blobs are verified
 before publication. Full downloads also verify the physical body hash and complete catalog before promotion.
+The Python packager validates every decoded payload before accepting an archive, including exact stored/
+decoded lengths, complete Deflate streams without trailing bytes, and each `FileContentHash`. It hashes
+and decodes payloads in bounded chunks rather than allocating their declared decoded sizes.
 
 An interrupted append may retransmit its uncommitted addition. Previously committed bytes remain reusable.
 There is no persistent per-resource resume journal or configured patch-size limit. Dead blobs and old

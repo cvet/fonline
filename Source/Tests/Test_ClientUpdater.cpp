@@ -134,4 +134,38 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
     CHECK_FALSE(IsUpdaterFailureReportable(updater.GetResult()));
 }
 
+TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
+{
+    using namespace TestClientUpdater;
+
+    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    string install = PrepareUpdaterBakeOutput();
+    string writable = strex("{}_writable", install).str();
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(writable);
+    });
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
+    settings.ApplyWritableRoot(writable);
+    string resources = GetClientWritableResourceDir(settings);
+    string binaries = GetClientBinaryDir(settings.Common.UserWritablePath);
+
+    for (const string& directory : {resources, binaries}) {
+        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/Missing-backup").str(), "previous"));
+        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/Current-backup").str(), "previous"));
+        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/Current").str(), "current"));
+        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/-backup").str(), "unrelated"));
+    }
+
+    Updater updater {&settings, &GetApp()->MainWindow};
+
+    for (const string& directory : {resources, binaries}) {
+        CHECK(fs::read_file(strex(directory).combine_path("Sub/Missing").str()) == optional<string> {"previous"});
+        CHECK(fs::read_file(strex(directory).combine_path("Sub/Current").str()) == optional<string> {"current"});
+        CHECK_FALSE(fs::exists(strex(directory).combine_path("Sub/Missing-backup").str()));
+        CHECK_FALSE(fs::exists(strex(directory).combine_path("Sub/Current-backup").str()));
+        CHECK(fs::read_file(strex(directory).combine_path("Sub/-backup").str()) == optional<string> {"unrelated"});
+    }
+}
+
 FO_END_NAMESPACE

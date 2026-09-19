@@ -417,8 +417,11 @@ Complete native-file hash checks use `Updater::IsDiskFileHashMatch`, which cache
 the entry. Resource freshness uses the pair's catalog `ContentHash`; a fully downloaded replacement base is
 instead verified against its header `PackHash` before promotion.
 
-Interrupted replacement recovery runs before updater reads, and shared base resolution restores a missing
-writable base from its backup before bootstrap/Core or cache selection can fall back to the installed copy.
+Interrupted replacement recovery scans both writable resource and binary trees recursively before updater
+reads, including names hidden by ordinary resource enumeration. It snapshots file names before renaming or
+removing backups and holds the writable-resource lock through both scans, since the binary root may contain
+the resource tree. Shared base resolution restores a missing writable base from its backup before bootstrap/Core
+or cache selection can fall back to the installed copy.
 A backup with a present live counterpart is obsolete. The updater releases its mounted sources before mutation;
 Windows file sharing can reject a reset while another reader still holds the old pair. POSIX readers retain
 valid old file descriptors across replacement rather than following the new path.

@@ -498,6 +498,20 @@ TEST_CASE("DiskFilePrimitives")
 #endif
     }
 
+    SECTION("RecursiveFileListingIncludesUnfilteredRelativeNames")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_recursive_listing");
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("_Nested/.Hidden/File-backup").str(), "data"));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("~Pending").str(), "data"));
+        vector<string> direct = fs::list_dir_file_names(temp_dir);
+        vector<string> recursive = fs::list_dir_file_names(temp_dir, true);
+        CHECK(std::find(direct.begin(), direct.end(), "~Pending") != direct.end());
+        CHECK(std::find(direct.begin(), direct.end(), "_Nested/.Hidden/File-backup") == direct.end());
+        CHECK(std::find(recursive.begin(), recursive.end(), "~Pending") != recursive.end());
+        CHECK(std::find(recursive.begin(), recursive.end(), "_Nested/.Hidden/File-backup") != recursive.end());
+    }
+
     SECTION("AvailableSpaceAnswersForAnExistingDirectoryOnly")
     {
         string temp_dir = MakeTempTestDir("diskfs_space");

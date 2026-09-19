@@ -2,7 +2,7 @@
 """Measure the .fores resource pack format against ZIP over a real baked tree.
 
 Writes every pack directory under the baked root in both formats, one at a time, and reports what each
-costs: bytes shipped, the bytes a reader must pull to mount, entry count, the stored/deflate split, and
+costs: bytes shipped, encoded catalog bytes, entry count, the stored/deflate split, and
 write time. Answers the shipped-size half of the plan's abort criterion; mount time and resident memory
 need the engine's own readers and are not measured here.
 
@@ -62,8 +62,8 @@ def read_fores_shape(pack_path: Path) -> dict:
 	deflate_bytes = 0
 
 	for entry in range(entry_count):
-		stored_size, decoded_size = struct.unpack_from('<QQ', index, entry * 40 + 16)
-		codec = struct.unpack_from('<I', index, entry * 40 + 32)[0]
+		stored_size, decoded_size = struct.unpack_from('<QQ', index, entry * RESOURCE_PACK_ENTRY_SIZE + 16)
+		codec = struct.unpack_from('<I', index, entry * RESOURCE_PACK_ENTRY_SIZE + 32)[0]
 
 		if codec == RESOURCE_PACK_CODEC_DEFLATE:
 			deflate_count += 1
@@ -73,7 +73,7 @@ def read_fores_shape(pack_path: Path) -> dict:
 			stored_bytes += decoded_size
 
 	return {
-		'mountReadBytes': index_stored_size,
+		'catalogStoredBytes': index_stored_size,
 		'indexDecodedBytes': index_decoded_size,
 		'indexCompressed': index_codec == RESOURCE_PACK_CODEC_DEFLATE,
 		'storedCount': stored_count,
@@ -139,7 +139,7 @@ def diff_against_source(entries: dict[str, bytes], source: Sequence[tuple[str, P
 
 
 def read_zip_directory_size(zip_path: Path) -> int:
-	"""The central directory is what a zip reader pulls to build its file tree, so it is the mount cost."""
+	"""Encoded central-directory size, excluding headers and reader-specific EOCD discovery reads."""
 	size = zip_path.stat().st_size
 	tail_size = min(size, 65536 + ZIP_EOCD_MIN_SIZE)
 
@@ -185,7 +185,7 @@ def measure_pack(job: tuple[str, str, str, int, int, bool]) -> dict:
 
 	result['zipWriteSeconds'] = round(time.perf_counter() - started, 3)
 	result['zipBytes'] = zip_path.stat().st_size
-	result['zipMountReadBytes'] = read_zip_directory_size(zip_path)
+	result['zipCatalogStoredBytes'] = read_zip_directory_size(zip_path)
 
 	if verify:
 		with zipfile.ZipFile(zip_path) as archive:
@@ -202,7 +202,7 @@ def measure_pack(job: tuple[str, str, str, int, int, bool]) -> dict:
 def format_report(results: list[dict]) -> str:
 	measured = [r for r in results if 'skipped' not in r]
 	lines = [
-		'| Pack | Files | Source | .fores | .zip | Delta | Mount read .fores | Mount read .zip | Stored |',
+		'| Pack | Files | Source | .fores | .zip | Delta | Catalog .fores | Catalog .zip | Stored |',
 		'|------|------:|-------:|-------:|-----:|------:|------------------:|----------------:|-------:|',
 	]
 
@@ -218,13 +218,13 @@ def format_report(results: list[dict]) -> str:
 				mib(row['zipBytes']),
 				'+' if delta > 0 else '',
 				mib(delta),
-				kib(row['mountReadBytes']),
-				kib(row['zipMountReadBytes']),
+				kib(row['catalogStoredBytes']),
+				kib(row['zipCatalogStoredBytes']),
 				stored_share,
 			)
 		)
 
-	totals = {key: sum(row[key] for row in measured) for key in ('sourceBytes', 'foresBytes', 'zipBytes', 'mountReadBytes', 'zipMountReadBytes', 'entryCount')}
+	totals = {key: sum(row[key] for row in measured) for key in ('sourceBytes', 'foresBytes', 'zipBytes', 'catalogStoredBytes', 'zipCatalogStoredBytes', 'entryCount')}
 	delta = totals['foresBytes'] - totals['zipBytes']
 	lines.append(
 		'| **Total** | **{}** | **{}** | **{}** | **{}** | **{}{}** | **{}** | **{}** | |'.format(
@@ -234,8 +234,8 @@ def format_report(results: list[dict]) -> str:
 			mib(totals['zipBytes']),
 			'+' if delta > 0 else '',
 			mib(delta),
-			kib(totals['mountReadBytes']),
-			kib(totals['zipMountReadBytes']),
+			kib(totals['catalogStoredBytes']),
+			kib(totals['zipCatalogStoredBytes']),
 		)
 	)
 
@@ -255,8 +255,8 @@ def main() -> int:
 	parser.add_argument('--baked-root', required=True, help='directory holding one subdirectory per pack')
 	parser.add_argument('--out', help='write the measurements as JSON to this path')
 	parser.add_argument('--packs', help='comma-separated pack names, default every subdirectory')
-	parser.add_argument('--compress-level', type=int, default=6, help='zlib level for both formats')
-	parser.add_argument('--min-gain-percent', type=int, default=5, help='the .fores store-instead-of-deflate threshold')
+	parser.add_argument('--compress-level', type=int, choices=range(10), default=6, help='zlib level for both formats')
+	parser.add_argument('--min-gain-percent', type=int, choices=range(101), default=5, help='the .fores store-instead-of-deflate threshold')
 	parser.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) // 2), help='packs measured in parallel')
 	parser.add_argument('--verify', action='store_true', help='read every entry back out of both artifacts and diff names and raw bytes against the source')
 	args = parser.parse_args()

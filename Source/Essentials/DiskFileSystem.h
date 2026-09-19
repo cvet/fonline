@@ -75,7 +75,7 @@ namespace fs
     auto rename(string_view from_path, string_view to_path) noexcept -> bool;
     auto open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
     void iterate_dir(string_view dir, bool recursive, const file_visitor& visitor);
-    auto list_dir_file_names(string_view dir) noexcept -> vector<string>;
+    auto list_dir_file_names(string_view dir, bool recursive = false) noexcept -> vector<string>;
 
     // Stream helpers
     auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool;

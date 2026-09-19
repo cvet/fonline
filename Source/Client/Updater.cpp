@@ -1098,8 +1098,8 @@ void Updater::RecoverInterruptedReplacements() const
             return;
         }
 
-        for (const auto& name : fs::list_dir_file_names(dir)) {
-            if (!name.ends_with(REPLACED_FILE_BACKUP_SUFFIX) || name.size() == REPLACED_FILE_BACKUP_SUFFIX.size()) {
+        for (const string& name : fs::list_dir_file_names(dir, true)) {
+            if (!name.ends_with(REPLACED_FILE_BACKUP_SUFFIX) || strex(name).extract_file_name().str() == REPLACED_FILE_BACKUP_SUFFIX) {
                 continue;
             }
 
@@ -1124,13 +1124,15 @@ void Updater::RecoverInterruptedReplacements() const
     };
 
     string resources_dir = GetClientWritableResourceDir(*_settings);
+    unique_nptr<fs::disk_directory_lock> resource_lock;
 
     if (fs::is_dir(resources_dir)) {
-        fs::disk_directory_lock lock {resources_dir};
-        FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", resources_dir);
+        resource_lock = safe_alloc::make_unique<fs::disk_directory_lock>(resources_dir);
+        FO_VERIFY_AND_THROW(*resource_lock, "Resource directory is being updated", resources_dir);
         recover_in_dir(resources_dir);
     }
 
+    // An installed binary root also contains Resources, so keep its lock through both recursive scans
     if (_binaryDir != resources_dir) {
         recover_in_dir(_binaryDir);
     }

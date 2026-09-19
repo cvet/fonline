@@ -415,16 +415,23 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 Each `[ResourcePack]` becomes one `<Name>.fores` under the target's resource directory, written from the loose baked tree with the per-target file filter applied; the format is [ResourcePackFormat.md](ResourcePackFormat.md). It is the only form packaging writes - zip, bos and dat stay readable at mount time as optional support for foreign or legacy data, but nothing produces them any more. The writer lives in `package.py` rather than in the engine because the file list depends on the packaging target, which the baker does not know. `Baking.CompressLevel` sets the `.fores` deflate level and `Baking.ResourcePackMinCompressGain` the percentage a blob must give back before it is deflated instead of stored as it is. `Embedded` is the one exception: it is compiled into the executable rather than shipped as a file, stays a zip, and uses `Baking.ZipCompressLevel` together with outer distribution zip archives.
 
 `BuildTools/measure_resource_packs.py` writes a baked tree in both formats and reports what each costs -
-shipped bytes, bytes read to mount, the stored/deflate split and write time - so the choice of format stays
+shipped bytes, encoded catalog sizes, the stored/deflate split and write time - so the choice of format stays
 answerable against a real corpus rather than from memory. It takes the baked root as an argument and deletes
 each artifact as it measures it, so it needs no project data and peaks at one pack in two formats. `--verify`
 adds the correctness half: every entry is read back out of the artifact and diffed against the source by name
 in both directions and by raw bytes, and the tool exits non-zero when anything differs.
+The catalog columns (`catalogStoredBytes` / `zipCatalogStoredBytes` in JSON) exclude headers and ZIP EOCD
+discovery reads; they do not measure total mount I/O. Record parsing follows the version-2 48-byte layout.
 
 `BuildTools/analyze_resource_corpus.py` describes the tree itself rather than the artifacts: file and byte
 distribution by size, duplicates within and across packs, compression gain by extension, the largest files, and
-the size of the merged index over every pack raw and deflated. It lays those index bytes out for real, because
-a stand-in buffer deflates to nothing and would report an index several times smaller than one.
+an estimate of the merged index raw and deflated. Required `--packs Base,Override` lists the packs in their
+configured mount order; later packs win duplicate paths. For the runtime cache, pass the configured suffix
+after Embedded. The estimate uses version-2 32-byte pack records and 56-byte entry records, retaining empty
+packs. Digest-derived hash fields model entropy without writing full packs, so the compressed result is
+explicitly an estimate (`estimated: true`), for base-only inputs, not an actual cache artifact measurement.
+Both tools reject compression levels outside 0–9 and gain percentages outside 0–100 before starting workers.
+Pass the shipping compression settings explicitly when comparing release sizes; their exploration default is 6.
 
 Two writers of one binary format is a drift risk, so they are pinned together: `Source/Tests/Test_ResourcePack.cpp` holds a golden vector produced by `package.py` and asserts the engine writer reproduces it byte for byte. The vector is written with compression disabled, so a zlib version difference between Python and the engine cannot break it while the layout stays comparable.
 

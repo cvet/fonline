@@ -117,6 +117,7 @@ def test_resource_pack_round_trips_every_entry(tmp_path: Path) -> None:
     entries = _make_tree(tmp_path)
     data = _write_pack(tmp_path / "Pack.fores", entries)
     header, parsed = _parse(data)
+    _package.validate_resource_pack(tmp_path / "Pack.fores", sorted(name for name, _ in entries))
 
     assert header["version_major"] == _package.RESOURCE_PACK_VERSION_MAJOR
     assert header["entry_count"] == len(entries)
@@ -192,3 +193,51 @@ def test_resource_pack_rejects_noncanonical_paths(tmp_path: Path, name: str) -> 
     source.write_bytes(b"content")
     with pytest.raises(AssertionError):
         _write_pack(tmp_path / "Invalid.fores", [(name, source)])
+
+
+def _pack_with_payload(payload: bytes, codec: int, decoded_size: int, file_hash: int, name: bytes = b"File.bin") -> bytes:
+    index = struct.pack("<IIQQQIIQ", ENTRY_SIZE, len(name), HEADER_SIZE, len(payload), decoded_size, codec, 0, file_hash) + name
+    content_hash = _package.fnv1a_64(struct.pack("<IIQQ", 1, len(name), decoded_size, file_hash) + name)
+    header = bytearray(HEADER_SIZE)
+    struct.pack_into("<IHHQ", header, 0, _package.RESOURCE_PACK_MAGIC, 2, 0, _package.fnv1a_64(payload + index))
+    struct.pack_into("<QQQIIQQQ", header, 16, HEADER_SIZE + len(payload), len(index), len(index), CODEC_STORED, 1, HEADER_SIZE, len(payload), content_hash)
+    struct.pack_into("<Q", header, 72, _package.fnv1a_64(header[:72]))
+    return bytes(header) + payload + index
+
+
+@pytest.mark.parametrize("case", ["stored_size", "stored_hash", "deflate_invalid", "deflate_size", "deflate_hash", "deflate_truncated", "deflate_trailing", "path_backslash"])
+def test_validation_rejects_bad_entries_even_with_valid_pack_checksums(tmp_path: Path, case: str) -> None:
+    raw = b"Resource content" * 32
+    payload = zlib.compress(raw)
+    codec = CODEC_DEFLATE
+    decoded_size = len(raw)
+    file_hash = _package.fnv1a_64(raw)
+    name = b"File.bin"
+    if case.startswith("stored"):
+        codec, payload = CODEC_STORED, raw
+    if case.endswith("size"):
+        decoded_size -= 1
+    elif case.endswith("hash"):
+        file_hash ^= 1
+    elif case == "deflate_invalid":
+        payload = b"invalid zlib stream"
+    elif case == "deflate_truncated":
+        payload = payload[:-1]
+    elif case == "deflate_trailing":
+        payload += b"junk"
+    elif case == "path_backslash":
+        name = b"Sub\\File.bin"
+    archive = tmp_path / "Invalid.fores"
+    archive.write_bytes(_pack_with_payload(payload, codec, decoded_size, file_hash, name))
+    with pytest.raises(AssertionError, match="Resource pack validation failed"):
+        _package.validate_resource_pack(archive, [name.decode()])
+
+
+@pytest.mark.parametrize("raw", [b"", b"x", b"abc" * 1000])
+@pytest.mark.parametrize("codec", [CODEC_STORED, CODEC_DEFLATE])
+def test_payload_validation_streams_across_small_chunks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, raw: bytes, codec: int) -> None:
+    monkeypatch.setattr(_package, "RESOURCE_ARCHIVE_HASH_CHUNK_BYTES", 17)
+    payload = zlib.compress(raw) if codec == CODEC_DEFLATE else raw
+    archive = tmp_path / "Streamed.fores"
+    archive.write_bytes(_pack_with_payload(payload, codec, len(raw), _package.fnv1a_64(raw)))
+    _package.validate_resource_pack(archive, ["File.bin"])

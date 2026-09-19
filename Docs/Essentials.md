@@ -292,7 +292,9 @@ replacement/deletion while readers are open. `fs::sync_parent` persists POSIX di
 
 `fs::available_space` supports admission without preallocating a resumable download. `fs::is_contained_relative_path`
 rejects empty/rooted paths or `..`; `fs::list_dir_file_names` includes names hidden by the ordinary iteration
-filter, including updater temporaries. `fs::make_writable_path` layers relative paths under a user root while
+filter, including updater temporaries. Its optional `recursive` flag returns paths relative to the requested
+root through nested directories, including hidden names, without following directory symlinks.
+`fs::make_writable_path` layers relative paths under a user root while
 leaving absolute inputs unchanged; resource-specific installed-root selection belongs to `FileSystem.h`.
 The mounted view is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md).
 `Compressor.*` owns compression, `NetSockets.*` owns low-level sockets, and `WorkThread.*` owns background workers.

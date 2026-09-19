@@ -3,7 +3,7 @@
 
 Answers the questions a format decision needs and a size total cannot: how files and bytes are distributed
 by size, how much of the tree is duplicated within and across packs, where compression actually pays by
-extension and by size, and how large the merged index over every pack comes out raw and deflated.
+extension and by size, and the estimated size of a base-only merged index in configured pack order.
 
 Reads the tree and writes nothing but its report.
 """
@@ -15,7 +15,6 @@ import multiprocessing
 import os
 import struct
 import sys
-import zlib
 from collections import defaultdict
 from pathlib import Path
 
@@ -25,8 +24,8 @@ from package import RESOURCE_PACK_HEADER_SIZE, RESOURCE_PACK_MIN_COMPRESSED_SIZE
 
 # Buckets a resource actually falls into: sprites and configs at the small end, audio and models at the top
 SIZE_BUCKETS = [1024, 4096, 16384, 65536, 262144, 1048576, 8388608]
-RESOURCE_INDEX_PACK_SIZE = 16
-RESOURCE_INDEX_ENTRY_SIZE = 40
+RESOURCE_INDEX_PACK_SIZE = 32
+RESOURCE_INDEX_ENTRY_SIZE = 56
 
 
 def bucket_label(size: int) -> str:
@@ -65,11 +64,14 @@ def scan_file(job: tuple[str, str, str, int, int]) -> dict:
 	}
 
 
-def collect_jobs(baked_root: Path, compress_level: int, min_gain_percent: int) -> list[tuple[str, str, str, int, int]]:
+def collect_jobs(baked_root: Path, pack_names: list[str], compress_level: int, min_gain_percent: int) -> list[tuple[str, str, str, int, int]]:
 	jobs: list[tuple[str, str, str, int, int]] = []
 
-	# A dot directory beside the packs is the baker's own working state, not content anything ships
-	for pack_dir in sorted(p for p in baked_root.iterdir() if p.is_dir() and not p.name.startswith('.')):
+	for name in pack_names:
+		pack_dir = baked_root / name
+		if not name or name in ('.', '..') or '/' in name or '\\' in name or not pack_dir.is_dir():
+			raise ValueError('Pack must name a baked subdirectory: ' + name)
+
 		for path in sorted(pack_dir.rglob('*')):
 			if path.is_file():
 				jobs.append((str(path), path.relative_to(pack_dir).as_posix(), pack_dir.name, compress_level, min_gain_percent))
@@ -77,20 +79,21 @@ def collect_jobs(baked_root: Path, compress_level: int, min_gain_percent: int) -
 	return jobs
 
 
-def merged_index_size(files: list[dict], compress_level: int, min_gain_percent: int) -> dict:
-	"""The .foindex over every pack, last pack winning a shared path.
+def merged_index_size(files: list[dict], pack_names: list[str], compress_level: int, min_gain_percent: int) -> dict:
+	"""Estimate a base-only version-2 .foindex, with the last configured pack winning a shared path.
 
-	The bytes are laid out for real - records carrying the offsets and sizes the entries would actually hold -
-	because a stand-in buffer of zeros deflates to nothing and would report an index far smaller than one.
+	Offsets and sizes follow the format. Digest-derived identities model hash entropy without building and
+	hashing full packs; compressed size is an estimate, not the size of a publishable cache artifact.
 	"""
-	pack_names = sorted({f['pack'] for f in files})
 	pack_index = {name: i for i, name in enumerate(pack_names)}
 	merged: dict[str, dict] = {}
 	data_offset: dict[str, int] = {name: RESOURCE_PACK_HEADER_SIZE for name in pack_names}
+	pack_digests = {name: hashlib.blake2b(digest_size=8) for name in pack_names}
 
-	for f in files:
+	for f in sorted(files, key=lambda f: (pack_index[f['pack']], f['path'])):
 		f = dict(f, dataOffset=data_offset[f['pack']])
 		data_offset[f['pack']] += f['storedSize']
+		pack_digests[f['pack']].update(f['path'].encode('utf-8') + bytes.fromhex(f['digest']))
 		merged[f['path']] = f
 
 	pool = bytearray()
@@ -98,7 +101,7 @@ def merged_index_size(files: list[dict], compress_level: int, min_gain_percent: 
 
 	for name in pack_names:
 		encoded = name.encode('utf-8')
-		pack_records += struct.pack('<IIQ', RESOURCE_INDEX_PACK_SIZE * len(pack_names) + RESOURCE_INDEX_ENTRY_SIZE * len(merged) + len(pool), len(encoded), 0)
+		pack_records += struct.pack('<IIQQQ', RESOURCE_INDEX_PACK_SIZE * len(pack_names) + RESOURCE_INDEX_ENTRY_SIZE * len(merged) + len(pool), len(encoded), int.from_bytes(pack_digests[name].digest(), 'little'), 0, 0)
 		pool += encoded
 
 	entry_records = bytearray()
@@ -107,7 +110,7 @@ def merged_index_size(files: list[dict], compress_level: int, min_gain_percent: 
 		f = merged[path_name]
 		encoded = path_name.encode('utf-8')
 		entry_records += struct.pack(
-			'<IIIIQQQ',
+			'<IIIIQQQQII',
 			RESOURCE_INDEX_PACK_SIZE * len(pack_names) + RESOURCE_INDEX_ENTRY_SIZE * len(merged) + len(pool),
 			len(encoded),
 			pack_index[f['pack']],
@@ -115,6 +118,9 @@ def merged_index_size(files: list[dict], compress_level: int, min_gain_percent: 
 			f['dataOffset'],
 			f['storedSize'],
 			f['size'],
+			int.from_bytes(bytes.fromhex(f['digest'])[:8], 'little'),
+			0,
+			0,
 		)
 		pool += encoded
 
@@ -122,6 +128,8 @@ def merged_index_size(files: list[dict], compress_level: int, min_gain_percent: 
 	codec, blob = encode_resource_pack_blob(index, compress_level, min_gain_percent)
 
 	return {
+		'estimated': True,
+		'packOrder': pack_names,
 		'entries': len(merged),
 		'packs': len(pack_names),
 		'rawBytes': len(index),
@@ -133,9 +141,10 @@ def merged_index_size(files: list[dict], compress_level: int, min_gain_percent: 
 def main() -> int:
 	parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 	parser.add_argument('--baked-root', required=True, help='directory holding one subdirectory per pack')
+	parser.add_argument('--packs', required=True, help='comma-separated pack names in configured mount order; for the merged cache use the suffix after Embedded')
 	parser.add_argument('--out', help='write the full report as JSON to this path')
-	parser.add_argument('--compress-level', type=int, default=6, help='zlib level to measure the gain at')
-	parser.add_argument('--min-gain-percent', type=int, default=5, help='the store-instead-of-deflate threshold')
+	parser.add_argument('--compress-level', type=int, choices=range(10), default=6, help='zlib level to measure the gain at')
+	parser.add_argument('--min-gain-percent', type=int, choices=range(101), default=5, help='the store-instead-of-deflate threshold')
 	parser.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) // 2), help='files scanned in parallel')
 	parser.add_argument('--top', type=int, default=15, help='how many largest files and extensions to list')
 	args = parser.parse_args()
@@ -146,7 +155,13 @@ def main() -> int:
 		print(f'error: no baked root at {baked_root}', file=sys.stderr)
 		return 1
 
-	jobs = collect_jobs(baked_root, args.compress_level, args.min_gain_percent)
+	pack_names = [name.strip() for name in args.packs.split(',')]
+	if len(set(pack_names)) != len(pack_names):
+		parser.error('--packs must not repeat a pack name')
+	try:
+		jobs = collect_jobs(baked_root, pack_names, args.compress_level, args.min_gain_percent)
+	except ValueError as ex:
+		parser.error(str(ex))
 
 	if not jobs:
 		print('error: no files to analyze', file=sys.stderr)
@@ -188,11 +203,12 @@ def main() -> int:
 	duplicate_bytes = sum(group[0]['size'] * (len(group) - 1) for group in duplicate_groups)
 	cross_pack_groups = [group for group in duplicate_groups if len({f['pack'] for f in group}) > 1]
 
-	index = merged_index_size(files, args.compress_level, args.min_gain_percent)
+	index = merged_index_size(files, pack_names, args.compress_level, args.min_gain_percent)
 
 	ordered_buckets = [f'<{human(limit)}' for limit in SIZE_BUCKETS] + [f'>={human(SIZE_BUCKETS[-1])}']
 
-	print(f'Files {len(files)}, {human(total_size)} raw, {human(total_stored)} stored ({total_stored * 100 / total_size:.1f} %)')
+	stored_percent = total_stored * 100 / total_size if total_size else 0
+	print(f'Files {len(files)}, {human(total_size)} raw, {human(total_stored)} stored ({stored_percent:.1f} %)')
 	print()
 	print('| Size bucket | Files | Bytes | Stored | Deflated |')
 	print('|-------------|------:|------:|-------:|---------:|')
@@ -212,7 +228,7 @@ def main() -> int:
 
 	print()
 	print(f'Duplicates: {duplicate_files} redundant file(s), {human(duplicate_bytes)}, in {len(duplicate_groups)} group(s); {len(cross_pack_groups)} group(s) span packs')
-	print(f'Merged index: {index["entries"]} entries over {index["packs"]} packs, {human(index["rawBytes"])} raw, {human(index["storedBytes"])} stored, deflated {index["deflated"]}')
+	print(f'Estimated merged index: {index["entries"]} entries over {index["packs"]} packs, {human(index["rawBytes"])} raw, {human(index["storedBytes"])} stored, deflated {index["deflated"]}')
 	print()
 	print('| Largest file | Pack | Bytes | Stored |')
 	print('|--------------|------|------:|-------:|')

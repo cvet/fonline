@@ -558,24 +558,32 @@ void fs::iterate_dir(string_view dir, bool recursive, const fs::file_visitor& vi
     recursive_dir_look(dir, "", recursive, visitor);
 }
 
-auto fs::list_dir_file_names(string_view dir) noexcept -> vector<string>
+auto fs::list_dir_file_names(string_view dir, bool recursive) noexcept -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<string> names;
     std::error_code ec;
-    std::filesystem::directory_iterator it {std::filesystem::path {fs::make_path(dir)}, ec};
-    std::filesystem::directory_iterator end;
+    std::filesystem::path root {fs::make_path(dir)};
+    auto collect = [&](auto it) {
+        decltype(it) end;
 
-    // Every step takes the error code, because the throwing increment would reach a noexcept frame
-    while (!ec && it != end) {
-        if (it->is_regular_file(ec) && !ec) {
-            auto u8_str = it->path().filename().u8string();
-            names.emplace_back(u8_str.begin(), u8_str.end());
+        // Every step takes the error code, because the throwing increment would reach a noexcept frame
+        while (!ec && it != end) {
+            if (it->is_regular_file(ec) && !ec) {
+                names.emplace_back(fs::path_to_string(it->path().lexically_relative(root)));
+            }
+
+            ec.clear();
+            it.increment(ec);
         }
+    };
 
-        ec.clear();
-        it.increment(ec);
+    if (recursive) {
+        collect(std::filesystem::recursive_directory_iterator {root, ec});
+    }
+    else {
+        collect(std::filesystem::directory_iterator {root, ec});
     }
 
     return names;
