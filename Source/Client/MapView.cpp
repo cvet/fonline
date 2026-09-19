@@ -749,8 +749,8 @@ void MapView::DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, boo
         }
     }
 
-    mpos draw_hex = _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY());
-    auto mspr = !extra_draw ? item->AddSprite(target_sprites, draw_order, draw_hex, &field->Offset) : item->AddExtraSprite(target_sprites, draw_order, draw_hex, &field->Offset);
+    int8_t sub_layer = item->GetDrawOrderSubLayer();
+    auto mspr = !extra_draw ? item->AddSprite(target_sprites, draw_order, hex, sub_layer, &field->Offset) : item->AddExtraSprite(target_sprites, draw_order, hex, sub_layer, &field->Offset);
     mspr->SetItemOwner(item, extra_draw);
 
     AddSpriteToChain(field, mspr);
@@ -1404,7 +1404,7 @@ void MapView::ShowHex(const ViewField& vf)
             bool on_roof = pattern->InteractWithRoof && field->RoofNum != 0;
             ptr<MapSprite> mspr = _mapSprites.AddSprite(on_roof ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
                 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2}, &field->Offset, //
-                spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
 
             if (on_roof) {
                 mspr->SetElevation(numeric_cast<int16_t>(_engine->Settings->Geometry.MapRoofElevation));
@@ -3691,7 +3691,7 @@ void MapView::DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex)
     }
 
     auto draw_order = cr->IsDead() && !cr->GetDeadDrawNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
-    auto mspr = cr->AddSprite(_mapSprites, draw_order, hex, &field->Offset);
+    auto mspr = cr->AddSprite(_mapSprites, draw_order, hex, 0, &field->Offset);
     AddSpriteToChain(field, mspr);
 }
 
@@ -4108,14 +4108,14 @@ auto MapView::AddFog(mpos hex, DrawOrderType draw_order, nptr<RenderEffect> cust
     return fog;
 }
 
-auto MapView::AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>
+auto MapView::AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int8_t draw_order_sub_layer, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto field = _hexField->GetCellForWriting(hex);
-    ptr<MapSprite> mspr = _mapSprites.AddSprite(draw_order, _mapSize.clamp_pos(hex.x, hex.y + draw_order_hy_offset), //
+    ptr<MapSprite> mspr = _mapSprites.AddSprite(draw_order, hex, //
         {(GameSettings::MAP_HEX_WIDTH / 2) + offset.x, (GameSettings::MAP_HEX_HEIGHT / 2) + offset.y}, &field->Offset, spr, nullptr, //
-        poffset, nullptr, palpha, nullptr, callback);
+        poffset, nullptr, palpha, nullptr, callback, draw_order_sub_layer);
     AddSpriteToChain(field, mspr);
     return mspr;
 }

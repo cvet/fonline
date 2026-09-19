@@ -82,7 +82,16 @@ The per-type *content* validator (`ClientDataValidation.*`, invoked for client p
 
 Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `hash_resolver`.
 
-Client hash storage is filled from local resources at startup (proto packs, script `.hstr()` literals, dialog/text bakers) and from a map's `fomap-bin-client` hash table only when that map loads (`MapView::LoadStaticData`). Critter instance properties are not in the client map-bin. A Common / PublicSync / OwnerSync `hstring` whose string exists only as a map-instance override (or only in the server map-bin) will fail to resolve if it arrives before the matching client hash is registered.
+Each engine fills its hash storage in advance, from its own resources, and a hash that arrives over the wire is resolved against that storage: the message carries the 64-bit hash only, so the receiver never learns the text from it. A client holds exactly these strings before the first message:
+
+- metadata names registered at startup: entity, fixed and base type names, holder entries, remote-call names, migration-rule parts;
+- `fopro-bin-client`: the id of every prototype and fixed-type row the client registers, and every string a client-visible (`Common` or `Client`) hashed property holds in those prototypes: `hstring` values, prototype references, `hstring` dictionary keys and values. A `Server` property is disabled on the client, so it contributes nothing;
+- the animation-info index of the loaded packs: every image path in `SpriteInfo/<Pack>.foinfo` and every model name in `ModelAnimationInfo.foinfo`. Other resources are not interned by indexing: the sound index keeps plain file names;
+- every key part of the text packs of the loaded language;
+- the static `hstring` values of the client script assembly, interned when the assembly initializes;
+- a map's `fomap-bin-client` hash table, the client-visible hashed values of that map's static items with hidden ones included, only when that map loads (`MapView::LoadStaticData`).
+
+Nothing else is there. A map-instance override on a critter or a dynamic item lives only in the server map-bin, a string the server holds only in server code or composes at runtime is in no client source, and a sound or other non-image resource path is known only when a client-visible prototype property names it. Any of them fails to resolve when it arrives in a synced property, a remote-call argument or a synced ref-type value. The server storage is filled the same way from the server's resources, and `ClientDataValidation` rejects a hash a client sends that the server does not hold.
 
 When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers.
 
@@ -96,6 +105,8 @@ The engine recovers from this instead of looping on the disconnect:
 2. The server (`Process_UnresolvedHash`) resolves the reported hash against its own storage, logs it, and — when it can resolve the string — stores it in the persistent `HashReports` database collection (keyed by the string) and remembers it in memory. Hashes the server cannot resolve either are logged once per session and not stored. If a transport reports the close before the server worker reaches already-delivered input, the server checks a hard-disconnected connection for a pending `UnresolvedHash` before cleanup. The server then drops the connection (`HardDisconnect`), since a client that reported a bad hash has already stopped parsing the stream and is reconnecting — this also covers a client that reports without disconnecting itself.
 3. The server broadcasts a newly learned string to all already-connected clients (`NetMessage::HashList`) and, on every handshake, sends the full known set to the connecting client right after `InitData` (`SendAllReportedHashes`). `HashList` is a count followed by length-prefixed strings.
 4. Clients feed each received string through `hash_resolver::to_hashed_string`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
+
+Recovery repairs the next connection, not the read that failed: the first read has already thrown, and on the managed bridge that is a script exception at the property read. It is a diagnostic for a missing string, never a way to deliver one; a value that must resolve on arrival belongs in one of the sources listed above.
 
 The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `hash_storage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
 

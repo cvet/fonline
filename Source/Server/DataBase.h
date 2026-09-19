@@ -104,6 +104,7 @@ public:
     [[nodiscard]] auto GetAllIntIds(hstring collection_name) const -> vector<ident_t>;
     [[nodiscard]] auto GetAllStringIds(hstring collection_name) const -> vector<string>;
     [[nodiscard]] auto Get(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document;
+    [[nodiscard]] auto GetMany(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>;
     [[nodiscard]] auto Valid(hstring collection_name, const DataBaseKey& id) const -> bool;
 
     void Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc);
@@ -169,6 +170,7 @@ public:
     [[nodiscard]] virtual auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping = 0;
     [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> = 0;
     [[nodiscard]] auto GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document;
+    [[nodiscard]] auto GetDocuments(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>;
 
     void InitializeCollections(const DataBaseCollectionSchemas& collection_schemas);
     void InitializeOpLogs();
@@ -189,6 +191,7 @@ protected:
 
     virtual void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) = 0;
     virtual auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document = 0;
+    virtual auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>;
     virtual void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
     virtual void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(hstring collection_name, const DataBaseKey& id) = 0;

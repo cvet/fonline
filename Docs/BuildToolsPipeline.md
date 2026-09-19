@@ -318,7 +318,10 @@ reset first, so a tree published to the cache always comes from a fresh clone ra
 a persistent workspace kept under markers that do not record the current build code. An already ready workspace
 does not consult the cache, and `FO_DOTNET_RUNTIME_ROOT` (a local source tree, not the pinned revision) disables
 it. Concurrent jobs that miss together each build and publish, as they would without the cache; the host's idle
-retention removes a tree nobody has read for its retention period.
+retention removes a tree nobody has read for its retention period. Before a build on a persistent workspace,
+`setup-mono` also removes a bootstrap `.dotnet` whose `sdk/<version>` directory exists without a shared runtime:
+Arcade installs the SDK only while that directory is absent, so an install a cancelled job cut short would
+otherwise fail every later build on the tree with `You must install or update .NET`.
 
 A miss, a failed store and a failed download retry are reported, never raised, and the report must not read as a
 compiler diagnostic. `setup-mono` runs as a Visual Studio custom build step, and MSBuild fails such a step on any

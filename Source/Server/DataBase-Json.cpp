@@ -134,26 +134,24 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        return ReadRecordFile(collection_name, GetCollectionKeyType(collection_name), id);
+    }
 
-        auto json = fs::read_file(path);
+    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    {
+        FO_STACK_TRACE_ENTRY();
 
-        if (!json) {
-            return {};
+        scoped_lock locker {_storageLocker};
+
+        DataBaseKeyType key_type = GetCollectionKeyType(collection_name);
+        vector<AnyData::Document> docs;
+        docs.reserve(ids.size());
+
+        for (const auto& id : ids) {
+            docs.emplace_back(ReadRecordFile(collection_name, key_type, id));
         }
 
-        bson_t bson;
-        bson_error_t error;
-
-        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
-            throw DataBaseException("DbJson bson_init_from_json", path);
-        }
-
-        AnyData::Document doc;
-        BsonToDocument(&bson, doc);
-
-        bson_destroy(&bson);
-        return doc;
+        return docs;
     }
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -277,6 +275,31 @@ protected:
     }
 
 private:
+    AnyData::Document ReadRecordFile(hstring collection_name, DataBaseKeyType key_type, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, key_type));
+        auto json = fs::read_file(path);
+
+        if (!json) {
+            return {};
+        }
+
+        bson_t bson;
+        bson_error_t error;
+
+        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
+            throw DataBaseException("DbJson bson_init_from_json", path);
+        }
+
+        auto destroy_bson = scope_exit([&bson]() noexcept { bson_destroy(&bson); });
+
+        AnyData::Document doc;
+        BsonToDocument(&bson, doc);
+        return doc;
+    }
+
     static auto FormatJsonStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type) -> string
     {
         if (GetDbKeyType(key) != key_type) {

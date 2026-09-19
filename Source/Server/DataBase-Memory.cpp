@@ -95,6 +95,24 @@ protected:
         return it != collection.end() ? it->second.Copy() : AnyData::Document();
     }
 
+    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        scoped_lock locker {_storageLocker};
+
+        const auto& collection = _collections.at(collection_name);
+        vector<AnyData::Document> docs;
+        docs.reserve(ids.size());
+
+        for (const auto& id : ids) {
+            auto it = collection.find(id);
+            docs.emplace_back(it != collection.end() ? it->second.Copy() : AnyData::Document());
+        }
+
+        return docs;
+    }
+
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();

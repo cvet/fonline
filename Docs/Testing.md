@@ -120,6 +120,15 @@ release. When AngelScript is enabled, the fixture compiles its own minimal serve
 against the same in-memory metadata before startup. The fixture uses no embedding-project
 assemblies, resource packs or database files.
 
+`Test_ServerEntityLoading` uses the same self-contained server on the in-memory database and runs for
+every scripting-backend configuration too. It persists a critter with a three-level container tree,
+unloads it and loads it back through `EntityManager::LoadCritter`, then pins the restored hierarchy and
+the number of database requests the load made: one per nesting level, where a read per item would
+cost the size of the tree. A second case deletes one inner item record and checks that only that entry
+is pruned while its siblings from the same batch come back. Two more cases do the same for custom inner
+entities of one holder entry: twelve records restore with one request, and a deleted one is pruned from
+the holder's id list while its siblings stay.
+
 ### Managed core-script regression tests
 
 With a .NET 10 SDK, run the offline console harness:
@@ -677,6 +686,7 @@ Current count: **108** `Test_*.cpp` suites.
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerEntityLifetime.cpp`
+- `Source/Tests/Test_ServerEntityLoading.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`

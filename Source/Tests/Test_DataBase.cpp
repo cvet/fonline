@@ -532,6 +532,63 @@ namespace
         CHECK(committed_content->empty());
     }
 
+    // A backend answers a batch read as it answers the same ids one at a time: in request order, empty for a
+    // missing record, a copy for a repeated id, and all of it counted as one request
+    void CheckBatchReadMatchesSingleReads(DataBase& db, hstring int_collection, hstring string_collection, size_t record_count)
+    {
+        vector<DataBaseKey> int_ids;
+
+        for (size_t i = 0; i < record_count; i++) {
+            DataBaseKey id {ident_t {numeric_cast<int64_t>(1001 + i)}};
+            db.Insert(int_collection, id, MakeDoc({{"value", numeric_cast<int64_t>(i)}}));
+            int_ids.emplace_back(id);
+        }
+
+        // Keys the file and hex encodings rewrite must still come back under the id they were requested by
+        vector<DataBaseKey> string_ids {string("plain"), string("steam:user-123"), string("steam% user/Привет")};
+
+        for (size_t i = 0; i < string_ids.size(); i++) {
+            db.Insert(string_collection, string_ids[i], MakeDoc({{"value", numeric_cast<int64_t>(i)}}));
+        }
+
+        db.WaitCommitChanges();
+
+        vector<DataBaseKey> requested_int_ids(int_ids.rbegin(), int_ids.rend());
+        requested_int_ids.insert(requested_int_ids.begin() + 1, DataBaseKey {ident_t {999999}});
+        requested_int_ids.emplace_back(int_ids.front());
+
+        size_t requests_before = db.GetDbRequestsPerMinute();
+        auto int_docs = db.GetMany(int_collection, requested_int_ids);
+        size_t requests_after = db.GetDbRequestsPerMinute();
+
+        CHECK(requests_after - requests_before == 1);
+        REQUIRE(int_docs.size() == requested_int_ids.size());
+        CHECK(int_docs[1].Empty());
+        REQUIRE_FALSE(int_docs.back().Empty());
+        CHECK(int_docs.back()["value"].AsInt64() == 0);
+
+        for (size_t i = 0; i < requested_int_ids.size(); i++) {
+            auto single_doc = db.Get(int_collection, requested_int_ids[i]);
+            REQUIRE(int_docs[i].Empty() == single_doc.Empty());
+
+            if (!single_doc.Empty()) {
+                CHECK(int_docs[i]["value"].AsInt64() == single_doc["value"].AsInt64());
+            }
+        }
+
+        vector<DataBaseKey> requested_string_ids {string_ids[2], DataBaseKey {string("missing")}, string_ids[0], string_ids[1]};
+        auto string_docs = db.GetMany(string_collection, requested_string_ids);
+
+        REQUIRE(string_docs.size() == 4);
+        REQUIRE_FALSE(string_docs[0].Empty());
+        CHECK(string_docs[0]["value"].AsInt64() == 2);
+        CHECK(string_docs[1].Empty());
+        REQUIRE_FALSE(string_docs[2].Empty());
+        CHECK(string_docs[2]["value"].AsInt64() == 0);
+        REQUIRE_FALSE(string_docs[3].Empty());
+        CHECK(string_docs[3]["value"].AsInt64() == 1);
+    }
+
 #if FO_HAVE_SQLITE
     // Writes straight into the storage file, bypassing the backend, so the key-validation paths can be
     // exercised against data the backend would never have produced itself
@@ -902,6 +959,93 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
     CHECK(db.GetRecordReadCount(target_id) == 1);
 
     db.ClearChanges();
+}
+
+TEST_CASE("DataBaseGetDocumentsKeepsRequestOrderAndReadsEachRecordOnce")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    db.PrimeRecord(collection, ident_t {1001}, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, ident_t {1002}, MakeDoc({{"value", 2}}));
+
+    auto docs = db.GetDocuments(collection, {ident_t {1002}, ident_t {1999}, ident_t {1001}, ident_t {1002}});
+
+    REQUIRE(docs.size() == 4);
+    CHECK(docs[0]["value"].AsInt64() == 2);
+    CHECK(docs[1].Empty());
+    CHECK(docs[2]["value"].AsInt64() == 1);
+    CHECK(docs[3]["value"].AsInt64() == 2);
+    CHECK(db.GetRecordReadCount(ident_t {1001}) == 1);
+    CHECK(db.GetRecordReadCount(ident_t {1002}) == 1);
+    CHECK(db.GetDocuments(collection, {}).empty());
+}
+
+TEST_CASE("DataBaseGetDocumentsAppliesPendingChangesPerRecord")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    db.PrimeRecord(collection, ident_t {1001}, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, ident_t {1002}, MakeDoc({{"value", 2}}));
+    db.Update(collection, ident_t {1001}, "value", numeric_cast<int64_t>(10));
+    db.Delete(collection, ident_t {1002});
+    db.Insert(collection, ident_t {1003}, MakeDoc({{"value", 3}}));
+
+    auto docs = db.GetDocuments(collection, {ident_t {1001}, ident_t {1002}, ident_t {1003}});
+
+    REQUIRE(docs.size() == 3);
+    CHECK(docs[0]["value"].AsInt64() == 10);
+    CHECK(docs[1].Empty());
+    REQUIRE(!docs[2].Empty());
+    CHECK(docs[2]["value"].AsInt64() == 3);
+
+    db.ClearChanges();
+}
+
+TEST_CASE("DataBaseGetDocumentsRereadsOnlyRecordsCommittedDuringRead")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+    ident_t committed_id = ident_t {1001};
+    ident_t blocked_id = ident_t {1002};
+
+    db.PrimeRecord(collection, committed_id, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, blocked_id, MakeDoc({{"value", 2}}));
+    db.StartCommitChanges();
+    db.BlockRecordRead(blocked_id);
+
+    std::promise<vector<AnyData::Document>> docs_promise;
+    auto docs_future = docs_promise.get_future();
+    std::thread reader {[&] {
+        try {
+            docs_promise.set_value(db.GetDocuments(collection, {committed_id, blocked_id}));
+        }
+        catch (...) {
+            docs_promise.set_exception(std::current_exception());
+        }
+    }};
+
+    // The first record is already read when the batch stalls on the second, so its commit lands mid-batch
+    db.WaitUntilBlockedReadEntered();
+    db.Update(collection, committed_id, "value", numeric_cast<int64_t>(10));
+    db.WaitCommitChanges();
+    db.UnblockRecordRead();
+
+    auto docs = docs_future.get();
+    reader.join();
+
+    REQUIRE(docs.size() == 2);
+    CHECK(docs[0]["value"].AsInt64() == 10);
+    CHECK(docs[1]["value"].AsInt64() == 2);
+    CHECK(db.GetRecordReadCount(committed_id) >= 2);
+    CHECK(db.GetRecordReadCount(blocked_id) == 1);
 }
 
 TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
@@ -1789,6 +1933,34 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     CHECK(ids.front() == first_id);
 }
 
+TEST_CASE("MemoryDataBaseBatchReadMatchesSingleReads")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{int_collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
+
+    db.StartCommitChanges();
+    CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 1100);
+}
+
+TEST_CASE("JsonDataBaseBatchReadMatchesSingleReads")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"json-batch-read"};
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{int_collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    auto db = ConnectToDataBase(&settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
+
+    db.StartCommitChanges();
+    CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 30);
+}
+
 TEST_CASE("DataBaseConnectionValidationAndMetrics")
 {
     GlobalSettings settings {false};
@@ -2037,6 +2209,22 @@ TEST_CASE("SQLiteDataBaseRejectsCorruptedStoredKeys")
 
         REQUIRE_THROWS_AS(db.GetAllStringIds(string_collection), DataBaseException);
     }
+}
+
+// More records than one statement binds, so the batch is split and still reads as a single request
+TEST_CASE("SQLiteDataBaseBatchReadMatchesSingleReads")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-batch-read"};
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{int_collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    auto db = ConnectToDataBase(&settings, strex("DbSQLite {}", storage_dir).str(), collection_schemas, {});
+
+    db.StartCommitChanges();
+    CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 1100);
 }
 #endif
 

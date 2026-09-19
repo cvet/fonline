@@ -196,6 +196,9 @@ void InitializeSQLiteRuntime()
     FO_VERIFY_AND_THROW(init_result == SQLITE_OK, "Can't initialize SQLite", init_result);
 }
 
+// Ids one batch read binds to a single `key IN (...)` statement, far below SQLITE_MAX_VARIABLE_NUMBER
+static constexpr size_t SQLITE_BATCH_READ_SIZE = 1000;
+
 class DbSQLite final : public DataBaseImpl
 {
 public:
@@ -282,6 +285,48 @@ protected:
         scoped_lock locker {_storageLocker};
 
         return GetRecordUnlocked(collection_name, id);
+    }
+
+    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        DataBaseKeyType key_type = GetCollectionKeyType(collection_name);
+        vector<AnyData::Document> docs(ids.size());
+        unordered_map<DataBaseKey, size_t> index_by_id;
+
+        for (size_t i = 0; i < ids.size(); i++) {
+            FO_VERIFY_AND_THROW(index_by_id.emplace(ids[i], i).second, "Batch read requested the same record twice", collection_name, FormatSqliteDbKey(ids[i]));
+        }
+
+        scoped_lock locker {_storageLocker};
+
+        VerifyCollection(collection_name);
+
+        for (size_t chunk_start = 0; chunk_start < ids.size(); chunk_start += SQLITE_BATCH_READ_SIZE) {
+            size_t chunk_end = std::min(chunk_start + SQLITE_BATCH_READ_SIZE, ids.size());
+            string placeholders;
+
+            for (size_t i = chunk_start; i < chunk_end; i++) {
+                placeholders += i == chunk_start ? "?" : ", ?";
+            }
+
+            string sql = strex("SELECT key, value FROM {} WHERE key IN ({})", QuoteIdentifier(collection_name.as_str()), placeholders).str();
+            Statement stmt {*this, sql, collection_name};
+
+            for (size_t i = chunk_start; i < chunk_end; i++) {
+                stmt.BindBlob(numeric_cast<int32_t>(i - chunk_start + 1), MakeSqliteKey(ids[i], key_type));
+            }
+
+            while (stmt.Step()) {
+                DataBaseKey id = ParseSqliteKey(stmt.ColumnBlob(0), key_type);
+                auto it = index_by_id.find(id);
+                FO_VERIFY_AND_THROW(it != index_by_id.end(), "Batch read returned a record that was not requested", collection_name, FormatSqliteDbKey(id));
+                docs[it->second] = DecodeRecordValue(collection_name, stmt.ColumnBlob(1));
+            }
+        }
+
+        return docs;
     }
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -663,7 +708,12 @@ private:
             return {};
         }
 
-        auto value = stmt.ColumnBlob(0);
+        return DecodeRecordValue(collection_name, stmt.ColumnBlob(0));
+    }
+
+    [[nodiscard]] static auto DecodeRecordValue(hstring collection_name, const_span<uint8_t> value) -> AnyData::Document
+    {
+        FO_STACK_TRACE_ENTRY();
 
         bson_t bson;
 

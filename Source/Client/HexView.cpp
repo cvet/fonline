@@ -45,14 +45,14 @@ HexView::HexView(ptr<MapView> map) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
+auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
 
     ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    auto mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
+    auto mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid, sub_layer);
 
     _mapSpr = mspr;
     SetupSprite(mspr);
@@ -63,7 +63,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     return _mapSpr;
 }
 
-auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
+auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -75,7 +75,7 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
     auto& entry = _extraMapSpr->emplace_back();
 
     ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second);
+    entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second, sub_layer);
 
     auto map_spr = entry.first;
     FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");

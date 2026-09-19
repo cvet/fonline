@@ -236,6 +236,14 @@ auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyD
     return _impl->GetDocument(collection_name, id);
 }
 
+auto DataBase::GetMany(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->GetDocuments(collection_name, ids);
+}
+
 auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -600,32 +608,75 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto docs = GetDocuments(collection_name, {id});
+    FO_VERIFY_AND_THROW(docs.size() == 1, "Database returned a different number of documents than requested", collection_name, id, docs.size());
+    return std::move(docs.front());
+}
+
+auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
+{
+    FO_STACK_TRACE_ENTRY();
+
     if (!InValidState()) {
         throw DataBaseException("Database backend is in failed state");
     }
 
-    ValidateCollectionKey(collection_name, id);
-    auto storage_id = EncodeBackendDbKey(id, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
+    vector<AnyData::Document> docs(ids.size());
+
+    if (ids.empty()) {
+        return docs;
+    }
+
+    auto key_type = GetCollectionKeyType(collection_name);
+    auto key_escaping = GetStringKeyEscaping();
+    unordered_map<DataBaseKey, size_t> unique_index_by_id;
+    vector<DataBaseKey> unique_ids;
+    vector<DataBaseKey> storage_ids;
+    vector<size_t> doc_unique_index;
+    doc_unique_index.reserve(ids.size());
+
+    for (const auto& id : ids) {
+        auto [it, inserted] = unique_index_by_id.emplace(id, unique_ids.size());
+
+        if (inserted) {
+            ValidateCollectionKey(collection_name, id);
+            storage_ids.emplace_back(EncodeBackendDbKey(id, key_type, key_escaping));
+            unique_ids.emplace_back(id);
+        }
+
+        doc_unique_index.emplace_back(it->second);
+    }
 
     {
         scoped_lock locker {_stateLocker};
 
-        _docReadRetryMarkers.emplace(collection_name, id);
+        for (const auto& id : unique_ids) {
+            _docReadRetryMarkers.emplace(collection_name, id);
+        }
     }
 
-    auto release_reader = scope_exit([&]() noexcept {
+    auto release_readers = scope_exit([&]() noexcept {
         safe_call([&]() {
             scoped_lock locker {_stateLocker};
 
-            _docReadRetryMarkers.erase({collection_name, id});
+            for (const auto& id : unique_ids) {
+                _docReadRetryMarkers.erase({collection_name, id});
+            }
         });
     });
 
-    while (true) {
-        AnyData::Document doc;
+    vector<AnyData::Document> unique_docs(unique_ids.size());
+    vector<size_t> pending_indices(unique_ids.size());
+    std::iota(pending_indices.begin(), pending_indices.end(), size_t {0});
+
+    // A record committed while it was being read loses its marker to the commit thread and is read again, so
+    // every returned document is the stored one with the still-pending operations laid over it
+    while (!pending_indices.empty()) {
+        vector<DataBaseKey> request_ids = vec_transform(pending_indices, [&](size_t index) -> DataBaseKey { return storage_ids[index]; });
+        vector<AnyData::Document> records;
 
         try {
-            doc = GetRecord(collection_name, storage_id);
+            records = GetRecords(collection_name, request_ids);
         }
         catch (const std::exception& ex) {
             exceptions::report_and_continue(ex);
@@ -633,41 +684,88 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
             throw DataBaseException("Database backend failed to get document", ex.what());
         }
 
+        FO_VERIFY_AND_THROW(records.size() == request_ids.size(), "Database backend returned a different number of documents than requested", collection_name, request_ids.size(), records.size());
         RegisterDbRequests(1);
 
-        vector<shared_ptr<CommitOperationData>> pending_ops;
+        vector<size_t> retry_indices;
+        vector<uint8_t> read_completed(unique_ids.size());
+        vector<vector<shared_ptr<CommitOperationData>>> pending_ops(unique_ids.size());
 
         {
             scoped_lock locker {_stateLocker};
 
-            if (_docReadRetryMarkers.erase({collection_name, id}) == 0) {
-                _docReadRetryMarkers.emplace(collection_name, id);
-                continue;
+            for (size_t index : pending_indices) {
+                if (_docReadRetryMarkers.erase({collection_name, unique_ids[index]}) == 0) {
+                    _docReadRetryMarkers.emplace(collection_name, unique_ids[index]);
+                    retry_indices.emplace_back(index);
+                }
+                else {
+                    read_completed[index] = 1;
+                }
             }
 
             for (const auto& pending_op : _pendingCommitOperations) {
-                if (pending_op->CollectionName == collection_name && pending_op->RecordId == id) {
-                    pending_ops.emplace_back(pending_op);
+                if (pending_op->CollectionName != collection_name) {
+                    continue;
+                }
+
+                if (auto it = unique_index_by_id.find(pending_op->RecordId); it != unique_index_by_id.end() && read_completed[it->second] != 0) {
+                    pending_ops[it->second].emplace_back(pending_op);
                 }
             }
         }
 
-        for (const auto& pending_op : pending_ops) {
-            if (pending_op->Type == CommitOperationType::Insert) {
-                doc = pending_op->Doc.Copy();
+        for (size_t i = 0; i < pending_indices.size(); i++) {
+            size_t index = pending_indices[i];
+
+            if (read_completed[index] == 0) {
+                continue;
             }
-            else if (pending_op->Type == CommitOperationType::Update) {
-                for (const auto& [key, value] : pending_op->Doc) {
-                    doc.Assign(key, value.Copy());
+
+            AnyData::Document doc = std::move(records[i]);
+
+            for (const auto& pending_op : pending_ops[index]) {
+                if (pending_op->Type == CommitOperationType::Insert) {
+                    doc = pending_op->Doc.Copy();
+                }
+                else if (pending_op->Type == CommitOperationType::Update) {
+                    for (const auto& [key, value] : pending_op->Doc) {
+                        doc.Assign(key, value.Copy());
+                    }
+                }
+                else if (pending_op->Type == CommitOperationType::Delete) {
+                    doc = {};
                 }
             }
-            else if (pending_op->Type == CommitOperationType::Delete) {
-                doc = {};
-            }
+
+            unique_docs[index] = std::move(doc);
         }
 
-        return doc;
+        pending_indices = std::move(retry_indices);
     }
+
+    vector<size_t> first_doc_position(unique_ids.size(), ids.size());
+
+    for (size_t i = 0; i < ids.size(); i++) {
+        size_t index = doc_unique_index[i];
+
+        if (first_doc_position[index] == ids.size()) {
+            docs[i] = std::move(unique_docs[index]);
+            first_doc_position[index] = i;
+        }
+        else {
+            docs[i] = docs[first_doc_position[index]].Copy();
+        }
+    }
+
+    return docs;
+}
+
+auto DataBaseImpl::GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return vec_transform(ids, [&](const DataBaseKey& id) -> AnyData::Document { return GetRecord(collection_name, id); });
 }
 
 void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)

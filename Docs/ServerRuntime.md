@@ -107,6 +107,8 @@ Major responsibilities:
 
 Startup runs on the `_starter` worker thread, so a failure surfaces asynchronously. If any mandatory init job throws — for example `InitStorageJob()` when the database is unreachable — the starter's exception handler sets `IsStartingError()` and clears the remaining jobs before global exception reporting runs: `IsStarted()` never becomes true, and the worker pool, database connection, and time synchronization are never established. This ordering keeps the host-visible startup-failure flag prompt even when stack-trace collection is slow. Host apps must observe this rather than block forever: `ServerHeadlessApp`, `ServerDaemonApp`, and `ServerServiceApp` wait on `IsQuitRequested() || IsStartingError()` and turn a start error into a non-success quit, instead of leaving the process listening but non-functional (the failure mode behind a Staging incident where a down MongoDB left the headless server half-initialized for hours). `Shutdown()` is correspondingly safe to call on a partially-initialized engine: the worker-pool drain and the database / sync-time flushes are gated on `reached_running_state` (the presence of `_workerPool`, which is created last in `InitMetadataJob` after the DB connect and time-sync), so an aborted startup tears down cleanly instead of dereferencing the null pool (`WorkerPool::Clear` locking a null pool's mutex) or tripping the connected/synchronized invariants. `Source/Tests/Test_ServerEngine.cpp` (`ServerEngineShutdownIsSafeAfterStartupFailure`) pins this by forcing an unrecognized `DbStorage`, asserting the start error, and requiring `Shutdown()` to complete without crashing.
 
+`InitGameLogicJob()` fixes the generated-entity id boundary (`EntityManager::InitEntityIdBoundary()`) as soon as the globals document is loaded, before `OnInit` and before either `OnGenerateWorld` or the "Restore world" load: the next id is drawn above `max(stored LastEntityId, Server.EntityStartId)`, except that a snapshot restore keeps its exact stored boundary. The floor matters for a freshly generated world as much as for a restored one, because static items keep the ids their map file authored and the client indexes them in the same item map as runtime items — `MapView::AddItemInternal()` replaces whatever item already holds an incoming id, so a runtime item that reuses an authored id erases that piece of scenery on the client. `Server.EntityStartId` must therefore stay above every id a map file authors; `Source/Tests/Test_ServerEntityLifetime.cpp` (`ServerGeneratedWorldDrawsEntityIdsAboveTheConfiguredStart`) pins the generated-world half.
+
 The public `Lock()` / `Unlock()` pair is used by tests, tooling, and controlled operations that need a consistent view of server state. `Source/Tests/Test_ServerEngine.cpp` repeatedly waits for server startup, locks the server, performs entity/script checks, and unlocks on scope exit.
 
 The frame path stays lock-free: `GameTimer` publishes its pause flag and accumulated offset as atomics, and the mutex only keeps `Pause()` and `Resume()` exclusive with each other. `WorkerPool` counts anonymous scheduled jobs incrementally rather than scanning its queue, because diagnostics run periodically while the health file is enabled.
@@ -350,6 +352,30 @@ zero and re-taking it the same number of times so the parent context's recursion
 restored exactly. `GetExclusiveRecursionForCurrentThread()` and `GetDescendantHoldCountForCurrentThread()`
 exist for that restoration.
 
+### Widening an already covered entity
+
+`SyncEntities()` releases the context's whole held set before it acquires a new one, and `Release` hands a lock
+with a queued waiter straight to that waiter. A job that re-syncs in the middle of its work would therefore give
+a contended map away to the next job in its queue and park until that job had finished its whole body — a cost
+that grows with every job on the map and is reported as lock wait, not as execution. So a request that keeps
+every held lock and adds only entities this thread already covers through their own parent chain (a critter on a
+held map, an item of a held critter) is taken in place instead: `TryRetainCoveredRequest()` retains each missing
+own lock the way `EnsureEntitySynced()` does, and nothing is released. Each entity still becomes its own explicit
+entry, which is the contract script widening relies on. A request that drops a held lock, or adds an entity
+covered only through the Critter-Player widen link or not covered at all, takes the full release-and-reacquire
+path, which re-proves the link under the acquired cover. `Game.SyncWiden` (`SyncContext::WidenEntities()`) is the
+primitive behind the managed `Sync.Widen` family: it requests the live held set plus the extras natively, so
+widening materializes no snapshot of the held set on the script side and prunes held entries that were destroyed.
+Pinned by `Source/Tests/Test_ServerEntityLifetime.cpp` → `ServerSyncWidenOfCoveredEntityKeepsHeldLocks`, where a
+job queued for the map must not get it while the widening context keeps working.
+
+Retention must also re-prove the ancestor marks of every held owner. A nested transfer can reparent a held
+critter while the outer context still records its old map's descendant hold. If a current ancestor is neither
+held exclusively nor marked by this context, the request takes the full path to rebuild the cover; keeping
+only the critter's own lock would let a foreign job acquire its new map concurrently. This applies even to a
+request identical to the held set, including an empty native widen. Pinned by
+`ServerSyncRetainedCoverRefreshesReparentedAncestors` for both replacement and widening.
+
 ### Storage shape
 
 Per-lock holder counts are a linear inline vector rather than a hash map: entities number in the millions while
@@ -370,7 +396,11 @@ It owns:
 - persistent/non-persistent state through `MakePersistent()` and recursive persistence helpers;
 - entity destruction and inner-entity destruction;
 - custom entity creation/loading/view enumeration;
-- entity document storage through `StoreEntityDoc()` and `LoadEntityDoc()`.
+- entity document storage through `StoreEntityDoc()` and `LoadEntityDoc()` / `LoadEntityDocs()`.
+
+Item trees are restored level by level: `LoadItems()` reads every document of one nesting level with a single `DataBase::GetMany()`, restores and registers those items, then reads all their inner items as the next level and attaches them to their containers in the stored order. Loading a critter's inventory, or a map's items, therefore costs one database request per container nesting level instead of one per item (on Mongo, one query per 1000 items of a level), which is what a player login waits on. A missing inner item is logged, marks the load as failed and is pruned from its container's id list, while its siblings from the same batch are restored.
+
+Custom inner entities follow the same rule per holder entry: `LoadInnerEntitiesEntry()` hands the whole id list of the entry to `LoadCustomEntities()`, which reads it with one `DataBase::GetMany()` and restores each entity through `RestoreCustomEntity()`; `LoadCustomEntity()` is the same path for one id. A missing record is pruned from the holder's id list while the rest of the entry is restored.
 
 Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside a `GameLock` scope, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. Leaving the scope therefore releases the lock completely after the operation.
 

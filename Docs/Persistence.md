@@ -16,13 +16,15 @@ Do not put live credentials, production connection strings, or host-specific rec
 
 - state/metrics: `InValidState()`, `GetDbRequestsPerMinute()`;
 - enumeration: `GetAllIds()`, `GetAllIntIds()`, `GetAllStringIds()`;
-- reads: `Get()`, `Valid()`;
+- reads: `Get()`, `GetMany()`, `Valid()`;
 - writes: `Insert()`, `Update()`, `Delete()`;
 - commit control: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
 - backend snapshot: `CreateSnapshot()` and `RestoreSnapshot(bytes)`;
 - debug UI: `DrawGui()`.
 
 `ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
+
+`GetMany(collection, ids)` reads several records of one collection with one `GetRecords()` call to the backend and returns documents aligned with the requested ids: an empty document for a missing record, the same document for a repeated id. Each document follows the `Get()` contract — the stored record with its still-pending commit operations laid over it — and a record whose commit lands while the batch is being read is read again on its own, the rest of the batch is not. `Get()` is `GetMany()` of one id, so both reads share one code path.
 
 ## Collections and keys
 
@@ -55,6 +57,7 @@ Core types:
 
 Backends can override:
 
+- `GetRecords()` to read several records in one request. Every shipped backend overrides it: Mongo sends one `_id: {$in: [...]}` query per 1000 ids with the batch size and limit set to the chunk, so the answer comes back in one reply and closes the cursor rather than the server's default first batch of 101 documents plus further `getMore` round trips; SQLite runs one `key IN (...)` statement per 1000 ids; Memory and JSON read the whole batch under a single storage lock, JSON still one file per record. The base implementation calls `GetRecord()` per id and exists for a backend that has no cheaper way;
 - `CreateSnapshotData()` and `RestoreSnapshotData()` when the backend can represent its whole content as bytes;
 - `TryReconnect()`;
 - `DrawGui()`;
@@ -163,7 +166,7 @@ Do not add database-specific assumptions to `Entity` or `Properties` unless all 
 
 ## Metrics and diagnostics
 
-`GetDbRequestsPerMinute()` reports recent database request volume using per-second buckets. Backend failures and reconnect attempts are tracked in `DataBaseImpl` state.
+`GetDbRequestsPerMinute()` reports recent database request volume using per-second buckets; a batch read counts as one request per `GetRecords()` call, however many records it carries. Backend failures and reconnect attempts are tracked in `DataBaseImpl` state.
 
 `DrawGui()` is available at both facade and backend levels for debug/inspection UI.
 
