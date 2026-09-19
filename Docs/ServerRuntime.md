@@ -372,7 +372,11 @@ It owns:
 - persistent/non-persistent state through `MakePersistent()` and recursive persistence helpers;
 - entity destruction and inner-entity destruction;
 - custom entity creation/loading/view enumeration;
-- entity document storage through `StoreEntityDoc()` and `LoadEntityDoc()`.
+- entity document storage through `StoreEntityDoc()` and `LoadEntityDoc()` / `LoadEntityDocs()`.
+
+Item trees are restored level by level: `LoadItems()` reads every document of one nesting level with a single `DataBase::GetMany()`, restores and registers those items, then reads all their inner items as the next level and attaches them to their containers in the stored order. Loading a critter's inventory, or a map's items, therefore costs one database request per container nesting level instead of one per item (on Mongo, one query per 1000 items of a level), which is what a player login waits on. A missing inner item is logged, marks the load as failed and is pruned from its container's id list, while its siblings from the same batch are restored.
+
+Custom inner entities follow the same rule per holder entry: `LoadInnerEntitiesEntry()` hands the whole id list of the entry to `LoadCustomEntities()`, which reads it with one `DataBase::GetMany()` and restores each entity through `RestoreCustomEntity()`; `LoadCustomEntity()` is the same path for one id. A missing record is pruned from the holder's id list while the rest of the entry is restored.
 
 Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside a `GameLock` scope, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. Leaving the scope therefore releases the lock completely after the operation.
 

@@ -537,6 +537,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientUpdater.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLifetime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLoading.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
