@@ -352,6 +352,30 @@ zero and re-taking it the same number of times so the parent context's recursion
 restored exactly. `GetExclusiveRecursionForCurrentThread()` and `GetDescendantHoldCountForCurrentThread()`
 exist for that restoration.
 
+### Widening an already covered entity
+
+`SyncEntities()` releases the context's whole held set before it acquires a new one, and `Release` hands a lock
+with a queued waiter straight to that waiter. A job that re-syncs in the middle of its work would therefore give
+a contended map away to the next job in its queue and park until that job had finished its whole body — a cost
+that grows with every job on the map and is reported as lock wait, not as execution. So a request that keeps
+every held lock and adds only entities this thread already covers through their own parent chain (a critter on a
+held map, an item of a held critter) is taken in place instead: `TryRetainCoveredRequest()` retains each missing
+own lock the way `EnsureEntitySynced()` does, and nothing is released. Each entity still becomes its own explicit
+entry, which is the contract script widening relies on. A request that drops a held lock, or adds an entity
+covered only through the Critter-Player widen link or not covered at all, takes the full release-and-reacquire
+path, which re-proves the link under the acquired cover. `Game.SyncWiden` (`SyncContext::WidenEntities()`) is the
+primitive behind the managed `Sync.Widen` family: it requests the live held set plus the extras natively, so
+widening materializes no snapshot of the held set on the script side and prunes held entries that were destroyed.
+Pinned by `Source/Tests/Test_ServerEntityLifetime.cpp` → `ServerSyncWidenOfCoveredEntityKeepsHeldLocks`, where a
+job queued for the map must not get it while the widening context keeps working.
+
+Retention must also re-prove the ancestor marks of every held owner. A nested transfer can reparent a held
+critter while the outer context still records its old map's descendant hold. If a current ancestor is neither
+held exclusively nor marked by this context, the request takes the full path to rebuild the cover; keeping
+only the critter's own lock would let a foreign job acquire its new map concurrently. This applies even to a
+request identical to the held set, including an empty native widen. Pinned by
+`ServerSyncRetainedCoverRefreshesReparentedAncestors` for both replacement and widening.
+
 ### Storage shape
 
 Per-lock holder counts are a linear inline vector rather than a hash map: entities number in the millions while

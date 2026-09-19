@@ -157,13 +157,12 @@ public static partial class Sync
         }
     }
 
-    // Widens the current cover with the given entities instead of replacing it: everything already held
-    // stays held, the extras are added. Fast path: when every extra is already covered, no lock
-    // transition happens at all (cheap probe), which makes Widen safe to call on hot paths and in loops.
-    // Destroyed/destroying extras are dropped by Restore's filtering — the caller re-checks lifecycle
-    // after the call if it continues using them (yield boundary).
+    // Keeps everything held and adds each extra as its own entry; one the held cover already covers is taken in place,
+    // without releasing the held set (Docs/ServerRuntime.md, "Widening an already covered entity"). The keeping happens in the
+    // native widen, where no body here can show it, so the widening entry points state it with [PreservesCover]
     // Lifecycle: strict for requested extras; stale extras fail the call, stale retained cover is pruned, and live survivors remain covered
     [CoverEffect(CoverEffectKind.Extend)]
+    [PreservesCover]
     public static async Task<bool> Widen(List<Entity> extras)
     {
         for (int i = 0; i < extras.Count; i++) {
@@ -172,30 +171,10 @@ public static partial class Sync
             }
         }
 
-        List<Entity> cover = Snapshot();
-        bool changed = false;
-
-        for (int i = 0; i < cover.Count; i++) {
-            if (cover[i].IsDestroyed || cover[i].IsDestroying) {
-                changed = true;
-                break;
-            }
-        }
+        WidenLockable(extras);
 
         for (int i = 0; i < extras.Count; i++) {
-            if (!ContainsReference(cover, extras[i])) {
-                cover.Add(extras[i]);
-                changed = true;
-            }
-        }
-
-        if (changed) {
-            await Restore(cover);
-        }
-
-        List<Entity> widenedCover = Snapshot();
-        for (int i = 0; i < extras.Count; i++) {
-            if (extras[i].IsDestroyed || extras[i].IsDestroying || !ContainsReference(widenedCover, extras[i])) {
+            if (extras[i].IsDestroyed || extras[i].IsDestroying) {
                 return false;
             }
         }
@@ -213,55 +192,32 @@ public static partial class Sync
     // Widens current cover with every live extra while intentionally skipping stale requests.
     // Lifecycle: best-effort; unlike strict Widen, this operation does not prove requested handles live
     [CoverEffect(CoverEffectKind.Extend)]
+    [PreservesCover]
     public static async Task WidenBestEffort(List<Entity> extras)
     {
-        List<Entity> cover = Snapshot();
-        bool changed = false;
-
-        for (int i = 0; i < extras.Count; i++) {
-            Entity extra = extras[i];
-            if (extra.IsDestroyed || extra.IsDestroying) {
-                continue;
-            }
-
-            if (!ContainsReference(cover, extra)) {
-                cover.Add(extra);
-                changed = true;
-            }
-        }
-
-        if (changed) {
-            await Restore(cover);
-        }
+        WidenLockable(extras.FindAll(static extra => !extra.IsDestroyed && !extra.IsDestroying));
     }
 
     // Single-entity best-effort widening overload.
     // Lifecycle: best-effort — a destroyed/destroying extra is intentionally omitted; an explicitly held live extra is a no-op
     [CoverEffect(CoverEffectKind.Extend)]
+    [PreservesCover]
     public static async Task WidenBestEffort(Entity extra)
     {
         if (extra.IsDestroyed || extra.IsDestroying) {
             return;
         }
 
-        List<Entity> cover = Snapshot();
-        if (ContainsReference(cover, extra)) {
-            return;
-        }
-
-        cover.Add(extra);
-        await Restore(cover);
+        WidenLockable(new List<Entity> { extra });
     }
 
-    private static bool ContainsReference(List<Entity> entities, Entity entity)
+    // Prototypes and static map data hold no entity lock, so the native widen is handed only what it can take
+    [CoverEffect(CoverEffectKind.Extend)]
+    private static void WidenLockable(List<Entity> extras)
     {
-        for (int i = 0; i < entities.Count; i++) {
-            if (entities[i] == entity) {
-                return true;
-            }
-        }
-
-        return false;
+        Game.SyncWiden(extras.TrueForAll(static extra => !extra.IsAlwaysCovered)
+                           ? extras
+                           : extras.FindAll(static extra => !extra.IsAlwaysCovered));
     }
 
     // Widens cover with cr and its current map when mapped; retries if cr migrates during acquisition.

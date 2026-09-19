@@ -1541,6 +1541,29 @@ FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server,
     ctx->SyncEntities(syncable);
 }
 
+///@ ExportMethod Async AllowDestroyedEntityArgs
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncWiden(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
+{
+    vector<ptr<ServerEntity>> syncable;
+    syncable.reserve(entities.size());
+
+    for (auto entity : entities) {
+        if (!entity) {
+            throw ScriptException("Entity in array arg is null");
+        }
+
+        // Dropped for the same race Game.Sync drops it for: destroyed after the caller checked it
+        if (entity->IsDestroyed()) {
+            continue;
+        }
+
+        syncable.emplace_back(entity);
+    }
+
+    auto ctx = server->RequireCurrentSyncContext();
+    ctx->WidenEntities(syncable);
+}
+
 ///@ ExportMethod
 FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncRelease(ptr<ServerEngine> server)
 {

@@ -720,6 +720,29 @@ static auto FindLockOwner(ptr<ServerEntity> entity, nptr<EntityLock> lock) noexc
     return owner;
 }
 
+// Retention relies on an ancestor this thread holds exclusively, which alone keeps every other thread out of the
+// subtree; a lock-less link proves nothing of the kind, and the Critter-Player widen link is not a parent chain
+static auto IsCoveredThroughOwnChain(ptr<ServerEntity> entity) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto own_lock = entity->GetEntityLock();
+
+    if (own_lock && own_lock->IsLockedByCurrentThread()) {
+        return true;
+    }
+
+    for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
+        auto parent_lock = parent->GetEntityLock();
+
+        if (parent_lock && parent_lock->IsLockedByCurrentThread()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Recomputing immediately would re-race the same in-flight reparent, so the first attempts yield and later
 // ones sleep briefly, letting the transfer settle. Called with no locks held
 static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
@@ -816,6 +839,10 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
 
     for (auto entity : entities) {
         requested.emplace_back(entity.hold_ref());
+    }
+
+    if (TryRetainCoveredRequest(entities)) {
+        return;
     }
 
     // The cover is computed from lock-free parent reads, which a concurrent reparent can invalidate while
@@ -1018,6 +1045,96 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
         ReleaseLocks();
         BackoffBeforeSyncRetry(attempt);
     }
+}
+
+void SyncContext::WidenEntities(const_span<ptr<ServerEntity>> extras)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ptr<ServerEntity>> request;
+    request.reserve(_heldLockOwners.size() + extras.size());
+
+    for (auto& owner : _heldLockOwners) {
+        if (!owner->IsDestroyed() && !owner->IsDestroying()) {
+            request.emplace_back(owner);
+        }
+    }
+
+    for (auto extra : extras) {
+        request.emplace_back(extra);
+    }
+
+    SyncEntities(request);
+}
+
+auto SyncContext::TryRetainCoveredRequest(const_span<ptr<ServerEntity>> requested) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_heldLocks.empty()) {
+        return false;
+    }
+
+    // A nested transfer can leave this context's ancestor marks on the old chain; retention must not bypass
+    // the full acquisition's re-proof of the current ancestors, even when every requested own lock is held
+    for (auto& owner : _heldLockOwners) {
+        for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
+            auto parent_lock = parent->GetEntityLock();
+
+            if (parent_lock && std::ranges::find(_heldLocks, parent_lock) == _heldLocks.end() && std::ranges::find(_heldDescendantHolds, parent_lock) == _heldDescendantHolds.end()) {
+                return false;
+            }
+        }
+    }
+
+    SyncLockList requested_locks;
+    small_vector<ptr<ServerEntity>, 8> missing;
+
+    for (auto entity : requested) {
+        auto lock = entity->GetEntityLock();
+
+        if (!lock) {
+            continue;
+        }
+
+        requested_locks.emplace_back(lock);
+
+        // The full path re-proves a Critter-Player link under the acquired cover, which retention cannot, so a
+        // partner outside the held set sends the request there
+        if (auto widen = entity->GetSyncWidenEntity()) {
+            auto widen_lock = widen->GetEntityLock();
+
+            if (widen_lock) {
+                if (std::ranges::find(_heldLocks, widen_lock) == _heldLocks.end()) {
+                    return false;
+                }
+
+                requested_locks.emplace_back(widen_lock);
+            }
+        }
+
+        if (std::ranges::find(_heldLocks, lock) != _heldLocks.end()) {
+            continue;
+        }
+        if (!IsCoveredThroughOwnChain(entity)) {
+            return false;
+        }
+
+        missing.emplace_back(entity);
+    }
+
+    // A held lock the request leaves out means the caller replaces the cover rather than widens it
+    for (auto held_lock : _heldLocks) {
+        if (std::ranges::find(requested_locks, held_lock) == requested_locks.end()) {
+            return false;
+        }
+    }
+
+    for (auto entity : missing) {
+        EnsureEntitySyncedImpl(entity);
+    }
+
+    return true;
 }
 
 void SyncContext::SyncEntity(nptr<ServerEntity> entity)

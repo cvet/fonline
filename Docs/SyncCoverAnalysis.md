@@ -101,7 +101,7 @@ reach up to its map. Sibling-to-parent escalation and parent-cover reduction wer
 | `FOSYNC002` | An argument for a `[RequiresCover]` parameter that is neither covered by the caller, received from a `[ProvidesCover]` source, nor re-declared. A provided value is one returned by a provider, handed to a `[ProvidesCover]` parameter earlier in the body (with that parameter's reach), passed through a `[PassesCover]` parameter, taken out of a provided collection, deconstructed from a provided tuple, or chosen by `?:` between provided values and `null`. A body calling `Sync` or an `[AcquiresCover]` helper discharges it. Nothing is owed for a `null` or `default` argument or an omitted optional parameter, nor in a compilation whose `Sync` has no acquisition helpers (a client or mapper target, whose scripts run on one thread). |
 | `FOSYNC003` | An execution-context entry point that does not declare `[RequiresCover]` on the entity the engine already synchronized for it. |
 | `FOSYNC004` | Cover state is probed (`Sync.IsCovered`, `Game.IsEntityLocked`) instead of acquired. |
-| `FOSYNC005` | A raw synchronization primitive is used outside its wrapper: `Game.Sync` / `Game.SyncRelease` outside `Sync`, `Game.Lock` / `Game.Unlock` outside `GameLock`. |
+| `FOSYNC005` | A raw synchronization primitive is used outside its wrapper: `Game.Sync` / `Game.SyncWiden` / `Game.SyncRelease` outside `Sync`, `Game.Lock` / `Game.Unlock` outside `GameLock`. |
 | `FOSYNC009` | Cover for a value is not re-proved after an await that released it. |
 | `FOSYNC010` | The boolean answer of a cover acquisition is discarded -- the call is a whole statement, or assigned to `_` -- instead of read. |
 | `FOSYNC011` | A `Sync` helper changes the held cover -- through the primitive or through another helper whose declared effect changes it -- without declaring a `[CoverEffect]` of its own. |
@@ -114,16 +114,16 @@ code branching on it either works unprotected on one path or silently skips the 
 that nothing migrated, which reaching for the primitive directly drops.
 
 **Which methods those are is declared at the export, not listed in the analyzer.** A C++ script export marks
-itself `FO_COVER_PRIMITIVE` (`Game.Sync`, `Game.SyncRelease`), `FO_COVER_PROBE` (`Game.IsEntityLocked`) or
-`FO_SINGLETON_LOCK` (`Game.Lock`, `Game.Unlock`); codegen carries the marker through `MethodDesc`, and the
-managed baker emits `[CoverPrimitive]`, `[CoverProbe]` or `[SingletonLock]` on the generated method. The
-model's own probe, `Sync.IsCovered`, declares `[CoverProbe]` in C# beside it. Until 2026-09-16 the analyzer
-held these as three arrays of method names, which meant a rename in the engine would have disarmed both rules
-in silence — and unlike the analyzer's own rules, nothing downstream would have reported that silence either.
-Two self-test cases pin the property from both sides: renaming the export keeps the rule firing, and a method
-that merely wears the old name is ordinary code. `Game.TrySyncEntity` deliberately carries no marker: it
-resolves an *id* to a live entity and answers false when the entity is gone, and no `Sync` helper can stand in
-for it, because every one of them takes an entity that may already be dead.
+itself `FO_COVER_PRIMITIVE` (`Game.Sync`, `Game.SyncWiden`, `Game.SyncRelease`), `FO_COVER_PROBE`
+(`Game.IsEntityLocked`) or `FO_SINGLETON_LOCK` (`Game.Lock`, `Game.Unlock`); codegen carries the marker through
+`MethodDesc`, and the managed baker emits `[CoverPrimitive]`, `[CoverProbe]` or `[SingletonLock]` on the
+generated method. The model's own probe, `Sync.IsCovered`, declares `[CoverProbe]` in C# beside it. Until
+2026-09-16 the analyzer held these as three arrays of method names, which meant a rename in the engine would have
+disarmed both rules in silence — and unlike the analyzer's own rules, nothing downstream would have reported that
+silence either. Two self-test cases pin the property from both sides: renaming the export keeps the rule firing,
+and a method that merely wears the old name is ordinary code. `Game.TrySyncEntity` deliberately carries no
+marker: it resolves an *id* to a live entity and answers false when the entity is gone, and no `Sync` helper can
+stand in for it, because every one of them takes an entity that may already be dead.
 
 ### The singleton bucket lock: `GameLock`
 
@@ -264,19 +264,20 @@ scripts and the `Sync` helpers compile into one compilation. So it proves what t
 asserted, and the annotation stays for what no body here shows — a helper that locks and then restores the
 caller's snapshot, and anything compiled elsewhere.
 
-The proofs rest on what the acquisition families actually do, and each one says so on its own declaration
-rather than in its name. `Sync.Lock` hands the native primitive the listed entities and it **replaces** the held
-set with exactly those — `[CoverEffect(CoverEffectKind.Replace)]`. `Sync.Widen` snapshots the held set, adds the
-extras and restores the union, so it **keeps** what it found — `Extend`. `Sync.Restore(snapshot)` puts back
-exactly the snapshot — `Restore`; `Sync.Snapshot` reports it without changing anything; `Sync.Release` drops it.
-Nothing in the analysis recognises `Widen`, `Lock` or `Restore` as words: a helper renamed keeps its meaning, a
-helper added without the attribute has none, and a project that spells its acquisitions differently is read the
-same way. That last property cuts both ways, which is what `FOSYNC011` is for: a helper added to `Sync` without
-the attribute is not merely undeclared, it is **invisible** -- no rule objects, the build stays green, and cover
-silently stops being tracked through it. So a body that reaches the primitive, or another helper whose declared
-effect changes the held set, must declare its own. A helper that only answers a question -- a membership
-comparison, a probe, a collector -- changes nothing and declares nothing, which is why the rule asks what the
-body reaches rather than where it is declared. From the effects:
+The proofs rest on what the acquisition families actually do, and each one says so on its own declaration rather
+than in its name. `Sync.Lock` hands the native primitive the listed entities and it **replaces** the held set
+with exactly those — `[CoverEffect(CoverEffectKind.Replace)]`. `Sync.Widen` asks the native widen to add the
+extras to the held set, so it **keeps** what it found — `Extend`; that keeping happens natively, where its body
+cannot show it, so it also states `[PreservesCover]`. `Sync.Restore(snapshot)` puts back exactly the snapshot —
+`Restore`; `Sync.Snapshot` reports it without changing anything; `Sync.Release` drops it. Nothing in the analysis
+recognises `Widen`, `Lock` or `Restore` as words: a helper renamed keeps its meaning, a helper added without the
+attribute has none, and a project that spells its acquisitions differently is read the same way. That last
+property cuts both ways, which is what `FOSYNC011` is for: a helper added to `Sync` without the attribute is not
+merely undeclared, it is **invisible** -- no rule objects, the build stays green, and cover silently stops being
+tracked through it. So a body that reaches the primitive, or another helper whose declared effect changes the
+held set, must declare its own. A helper that only answers a question -- a membership comparison, a probe, a
+collector -- changes nothing and declares nothing, which is why the rule asks what the body reaches rather than
+where it is declared. From the effects:
 
 - **Preserving is provable.** A body whose every await widens — directly, through `Sync.Restore` of a snapshot
   it took itself, or through another method the same proof covers — cannot take the caller's cover away. A body
