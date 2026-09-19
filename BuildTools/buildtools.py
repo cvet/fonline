@@ -3132,12 +3132,30 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 		reset_marker(layout.clone_marker)
 		reset_marker(layout.built_marker)
 
+	remove_incomplete_runtime_bootstrap(layout.runtime_root)
 	build_mono(os_name, arch, config, env)
 
 	if cache_name:
 		workspace_cache_store_tree(cache_name, layout.workspace / cache_name, layout.output_dir, 'managed runtime')
 
 	log(f'Runtime {layout.publish_triplet} is ready!')
+
+
+def remove_incomplete_runtime_bootstrap(runtime_root: Path) -> None:
+	# Arcade installs its bootstrap SDK only while .dotnet/sdk/<version> is absent, so an install a cancelled job cut
+	# short - the SDK directory there, the shared runtime it needs missing - would fail every build on this tree
+	bootstrap_root = runtime_root / '.dotnet'
+	sdk_dir = bootstrap_root / 'sdk'
+	shared_dir = bootstrap_root / 'shared' / 'Microsoft.NETCore.App'
+
+	if not sdk_dir.is_dir() or not any(path.is_dir() for path in sdk_dir.iterdir()):
+		return
+
+	if shared_dir.is_dir() and any(path.is_dir() for path in shared_dir.iterdir()):
+		return
+
+	log('Remove incomplete runtime bootstrap SDK:', bootstrap_root)
+	remove_path_if_exists(bootstrap_root)
 
 
 def resolve_mono_layout(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> MonoLayout:
