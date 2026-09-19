@@ -464,7 +464,7 @@ namespace TestEngineEnumEdges
         rig.AddSourceFile("Scripts/TestValueType.fos", R"(
 namespace TestValueType
 {
-///@ ValueType Common CoverageValue Layout = hstring - Label + int32 - Count + bool - Enabled
+///@ ValueType Common CoverageValue Layout = hstring - Label + int32 - Count + bool - Enabled + bool - Visible + int16 - Order
 }
 )");
 
@@ -476,7 +476,7 @@ namespace TestValueType
         auto value_type_it = tags.find("ValueType");
 
         REQUIRE(value_type_it != tags.end());
-        CHECK(std::ranges::count(value_type_it->second, vector<string> {"CoverageValue", "Label", "hstring", "Count", "int32", "Enabled", "bool"}) == 1);
+        CHECK(std::ranges::count(value_type_it->second, vector<string> {"CoverageValue", "Label", "hstring", "Count", "int32", "Enabled", "bool", "Visible", "bool", "Order", "int16"}) == 1);
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);

@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 class EngineMetadata;
 
-constexpr int32_t MANAGED_ABI_GENERATOR_IDENTITY = 4;
+constexpr int32_t MANAGED_ABI_GENERATOR_IDENTITY = 7;
 constexpr int32_t MANAGED_ABI_SCALAR_FRAME_CAPACITY = 256;
 constexpr size_t MANAGED_ABI_PROPERTY_ADAPTER_STORAGE = 32;
 // An entity or native ref-type handle travels as a zero-extended 64-bit slot on every pointer width
@@ -71,6 +71,8 @@ struct ManagedAbiSlot
 {
     ManagedAbiValueKind Kind {};
     bool Mutable {};
+    // A handle slot that may legitimately carry null; a null in any other handle slot leaves the frame path
+    bool Nullable {};
     uint16_t Size {};
     uint16_t Offset {};
 };
@@ -139,15 +141,15 @@ struct ManagedAbiCallbackLayout
     uint16_t ResultOffset {};
 };
 
-[[nodiscard]] auto HasManagedAbiHashedStringField(const BaseTypeDesc& type) noexcept -> bool;
-[[nodiscard]] auto IsManagedAbiBlittableStruct(const BaseTypeDesc& type) noexcept -> bool;
 [[nodiscard]] auto IsManagedAbiScalarType(const ComplexTypeDesc& type) noexcept -> bool;
 [[nodiscard]] auto IsManagedAbiFixedValueType(const ComplexTypeDesc& type) noexcept -> bool;
+[[nodiscard]] auto IsManagedAbiFixedPropertyValue(const BaseTypeDesc& type) noexcept -> bool;
 [[nodiscard]] auto ManagedAbiSlotSize(const BaseTypeDesc& type) noexcept -> uint16_t;
 [[nodiscard]] auto ManagedAbiKindFromBaseType(const BaseTypeDesc& type) noexcept -> ManagedAbiValueKind;
 [[nodiscard]] auto ManagedAbiKindFromTypeName(string_view type_name) noexcept -> ManagedAbiValueKind;
 [[nodiscard]] auto IsManagedAbiDynamicRefType(const BaseTypeDesc& type) noexcept -> bool;
-[[nodiscard]] auto IsManagedAbiHandleType(const ComplexTypeDesc& type) noexcept -> bool;
+[[nodiscard]] auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept -> bool;
+[[nodiscard]] auto CollectManagedAbiWrapperClasses(const EngineMetadata& meta) -> vector<string>;
 [[nodiscard]] auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> string;
 [[nodiscard]] auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> ManagedAbiCallbackLayout;
 [[nodiscard]] auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name) -> ManagedAbiManifest;

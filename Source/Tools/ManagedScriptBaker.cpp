@@ -139,18 +139,19 @@ static auto CountMutableArgs(const_span<ArgDesc> args) -> size_t;
 static void AppendObjectArrayDeclaration(ostringstream& out, string_view indent, string_view variable_name, const_span<ArgDesc> args);
 static void AppendNativeCallMethodExpression(ostringstream& out, string_view indent, string_view prefix, int32_t method_id, string_view entity_ptr, string_view object_args_variable, string_view suffix);
 static void AppendIndexedMethodCall(ostringstream& out, string_view indent, const ManagedAbiMethodEntry& method, string_view entity_ptr, const_span<ArgDesc> args, string_view ret);
+static auto MakeCsFrameValueExpression(const ManagedAbiSlot& slot, const ComplexTypeDesc& type, string_view value_name) -> string;
 static void AppendSingleMutableArgAssignment(ostringstream& out, const_span<ArgDesc> args, string_view source_name);
 static void AppendMutableArgAssignments(ostringstream& out, const_span<ArgDesc> args, string_view source_name, size_t source_offset);
 static void AppendMutableEventArgAssignments(ostringstream& out, const_span<ArgDesc> args, string_view source_name);
 static void AppendProperty(ostringstream& out, const string& type_name, const string& property_name, bool writable, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names, optional<string_view> initializer, bool is_ref_type);
-static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, string_view owner_type_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
+static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendSettingProperty(ostringstream& out, string_view indent, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names, nptr<const ManagedAbiSettingEntry> abi_setting);
 static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures, bool async_callbacks, nptr<const ManagedAbiMethodEntry> abi_method);
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool;
 static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names, const ManagedAbiManifest& abi);
 static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, unordered_set<string>& member_names, const ManagedAbiManifest& abi);
 static void AppendDynamicRefTypeProperties(ostringstream& out, ptr<const PropertyRegistrar> registrar, string_view owner_type_name, unordered_set<string>& member_names);
-static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistrar> registrar, string_view owner_type_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
+static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistrar> registrar, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendComponentAccessors(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
 static void AppendEntityHolderAccessors(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, string_view target_name, bool is_static, unordered_set<string>& member_names, const ManagedAbiManifest& abi);
 static void AppendCustomEntityProtoGetters(ostringstream& out, const EngineMetadata& meta);
@@ -160,8 +161,8 @@ static void AppendEventAccessors(ostringstream& out, string_view owner_type_name
 static void AppendEntityClass(ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, const ManagedAbiManifest& abi, string_view native_owner_name = {}, bool is_fixed_type = false, bool data_only = false);
 static void AppendComponentClasses(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc);
 static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMetadata& meta);
-static void AppendCallbackAdapters(ostringstream& out, const vector<pair<string, ComplexTypeDesc>>& callbacks);
-static auto CollectWrapperFactoryClasses(const EngineMetadata& meta) -> vector<string>;
+static void AppendCallbackAdapters(ostringstream& out, const EngineMetadata& meta, string_view target_name, const vector<pair<string, ComplexTypeDesc>>& callbacks);
+static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys, string_view delegate_name, const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args);
 static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& meta, string_view target_name);
 static void AppendEmptyDerivedEntity(ostringstream& out, string_view class_name, string_view base_name, bool always_covered = false);
 static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string;
@@ -416,7 +417,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
     FO_STACK_TRACE_ENTRY();
 
     ManagedAbiManifest abi = BuildManagedAbiManifest(meta, target_name);
-    WriteGeneratedAbiFile(project_dir, target_name, abi, CollectWrapperFactoryClasses(meta));
+    WriteGeneratedAbiFile(project_dir, target_name, abi, CollectManagedAbiWrapperClasses(meta));
 
     unordered_map<string, ComplexTypeDesc> callbacks;
     CollectCallbacks(meta, callbacks);
@@ -474,7 +475,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             out << "\n";
         }
 
-        AppendCallbackAdapters(out, sorted_callbacks);
+        AppendCallbackAdapters(out, meta, target_name, sorted_callbacks);
 
         for (const auto& type : MakeSortedBaseTypes(meta)) {
             if (type->IsStruct && type->StructLayout) {
@@ -707,164 +708,55 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 AppendCsCallableDeclaration(out, "", "public delegate EventResult ", EscapeCsIdentifier(result_delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "", "public delegate global::System.Threading.Tasks.Task<EventResult> ", EscapeCsIdentifier(async_result_delegate_name), event_arg_declarations, ";");
                 out << "\n";
-                out << "public sealed class " << EscapeCsIdentifier(event_type_name) << "\n";
+                // Stateless: subscriptions live on the entity, so every wrapper of it shares them and the wrapper holds none
+                out << "public readonly struct " << EscapeCsIdentifier(event_type_name) << "\n";
                 out << "{\n";
                 out << CS_INDENT << "private readonly IntPtr _entityPtr;\n";
-                out << CS_INDENT << "private readonly Dictionary<(Delegate Handler, IntPtr Backend), IntPtr> _nativeSubscriptions =\n";
-                out << CS_INDENT << "    new Dictionary<(Delegate Handler, IntPtr Backend), IntPtr>();\n";
                 out << "\n";
                 out << CS_INDENT << "internal " << EscapeCsIdentifier(event_type_name) << "(IntPtr entityPtr)\n";
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    _entityPtr = entityPtr;\n";
                 out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(delegate_name)).str(), "EventPriority priority = EventPriority.Normal"}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key)) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
-                out << CS_INDENT << "        " << event_id << ",\n";
-                out << CS_INDENT << "        _entityPtr,\n";
-                out << CS_INDENT << "        handler,\n";
-                out << CS_INDENT << "        false,\n";
-                out << CS_INDENT << "        (int)priority);\n";
-                out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_delegate_name)).str(), "EventPriority priority = EventPriority.Normal"}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key)) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
-                out << CS_INDENT << "        " << event_id << ",\n";
-                out << CS_INDENT << "        _entityPtr,\n";
-                out << CS_INDENT << "        handler,\n";
-                out << CS_INDENT << "        false,\n";
-                out << CS_INDENT << "        (int)priority);\n";
-                out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(result_delegate_name)).str(), "EventPriority priority = EventPriority.Normal"}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key)) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
-                out << CS_INDENT << "        " << event_id << ",\n";
-                out << CS_INDENT << "        _entityPtr,\n";
-                out << CS_INDENT << "        handler,\n";
-                out << CS_INDENT << "        true,\n";
-                out << CS_INDENT << "        (int)priority);\n";
-                out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str(), "EventPriority priority = EventPriority.Normal"}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key)) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
-                out << CS_INDENT << "        " << event_id << ",\n";
-                out << CS_INDENT << "        _entityPtr,\n";
-                out << CS_INDENT << "        handler,\n";
-                out << CS_INDENT << "        true,\n";
-                out << CS_INDENT << "        (int)priority);\n";
-                out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(delegate_name)).str()}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription)) {\n";
-                out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            " << event_id << ",\n";
-                out << CS_INDENT << "            _entityPtr,\n";
-                out << CS_INDENT << "            subscription);\n";
-                out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
-                out << CS_INDENT << "    }\n";
-                out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_delegate_name)).str()}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription)) {\n";
-                out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            " << event_id << ",\n";
-                out << CS_INDENT << "            _entityPtr,\n";
-                out << CS_INDENT << "            subscription);\n";
-                out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
-                out << CS_INDENT << "    }\n";
-                out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(result_delegate_name)).str()}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription)) {\n";
-                out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            " << event_id << ",\n";
-                out << CS_INDENT << "            _entityPtr,\n";
-                out << CS_INDENT << "            subscription);\n";
-                out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
-                out << CS_INDENT << "    }\n";
-                out << CS_INDENT << "}\n\n";
-                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_result_delegate_name)).str()}, "");
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    if (handler == null) {\n";
-                out << CS_INDENT << "        return;\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
-                out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription)) {\n";
-                out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            " << event_id << ",\n";
-                out << CS_INDENT << "            _entityPtr,\n";
-                out << CS_INDENT << "            subscription);\n";
-                out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
-                out << CS_INDENT << "    }\n";
-                out << CS_INDENT << "}\n\n";
+
+                const array<pair<string_view, bool>, 4> handler_kinds {{
+                    {delegate_name, false},
+                    {async_delegate_name, false},
+                    {result_delegate_name, true},
+                    {async_result_delegate_name, true},
+                }};
+
+                for (const auto& [handler_type, has_result] : handler_kinds) {
+                    AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(handler_type)).str(), "EventPriority priority = EventPriority.Normal"}, "");
+                    out << CS_INDENT << "{\n";
+                    out << CS_INDENT << "    if (handler == null) {\n";
+                    out << CS_INDENT << "        return;\n";
+                    out << CS_INDENT << "    }\n\n";
+                    out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
+                    out << CS_INDENT << "    global::FOnline.Native.SubscribeEvent(\n";
+                    out << CS_INDENT << "        " << event_id << ",\n";
+                    out << CS_INDENT << "        _entityPtr,\n";
+                    out << CS_INDENT << "        handler,\n";
+                    out << CS_INDENT << "        " << (has_result ? "true" : "false") << ",\n";
+                    out << CS_INDENT << "        (int)priority);\n";
+                    out << CS_INDENT << "}\n\n";
+                }
+
+                for (const auto& handler_kind : handler_kinds) {
+                    AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(handler_kind.first)).str()}, "");
+                    out << CS_INDENT << "{\n";
+                    out << CS_INDENT << "    if (handler == null) {\n";
+                    out << CS_INDENT << "        return;\n";
+                    out << CS_INDENT << "    }\n\n";
+                    out << CS_INDENT << "    global::FOnline.Native.UnsubscribeEvent(\n";
+                    out << CS_INDENT << "        " << event_id << ",\n";
+                    out << CS_INDENT << "        _entityPtr,\n";
+                    out << CS_INDENT << "        handler);\n";
+                    out << CS_INDENT << "}\n\n";
+                }
+
                 out << CS_INDENT << "public void UnsubscribeAll()\n";
                 out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
-                out << CS_INDENT << "    List<(Delegate Handler, IntPtr Backend)> keys = new List<(Delegate Handler, IntPtr Backend)>();\n\n";
-                out << CS_INDENT << "    foreach (KeyValuePair<(Delegate Handler, IntPtr Backend), IntPtr> entry in _nativeSubscriptions) {\n";
-                out << CS_INDENT << "        if (entry.Key.Backend == backend) {\n";
-                out << CS_INDENT << "            keys.Add(entry.Key);\n";
-                out << CS_INDENT << "        }\n";
-                out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    foreach ((Delegate Handler, IntPtr Backend) key in keys) {\n";
-                out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            " << event_id << ",\n";
-                out << CS_INDENT << "            _entityPtr,\n";
-                out << CS_INDENT << "            _nativeSubscriptions[key]);\n";
-                out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
-                out << CS_INDENT << "    }\n\n";
+                out << CS_INDENT << "    global::FOnline.Native.UnsubscribeAllEvents(" << event_id << ", _entityPtr);\n";
                 out << CS_INDENT << "}\n";
 
                 if (!event.Exported) {
@@ -879,7 +771,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                         out << CS_INDENT << "        global::FOnline.ScalarCallFrame __frame = default;\n";
 
                         for (size_t i = 0; i < event.Args.size(); i++) {
-                            out << CS_INDENT << "        global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << abi_event->Args[i].Offset << "], " << arg_names[i] << ");\n";
+                            const ManagedAbiSlot& slot = abi_event->Args[i];
+                            out << CS_INDENT << "        global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << slot.Offset << "], " << MakeCsFrameValueExpression(slot, event.Args[i].Type, arg_names[i]) << ");\n";
                         }
 
                         out << CS_INDENT << "        EventResult __result = (EventResult)global::FOnline.Native.FireEventIndexed(" << event_id << ", _entityPtr, ref __frame[0], " << abi_event->FrameSize << ");\n";
@@ -920,7 +813,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 if (abi_event->UsesScalarFrame) {
                     out << "\n";
                     out << CS_INDENT << "[global::FOnline.CallableByEngine]\n";
-                    out << CS_INDENT << "internal static int AdaptInvoke(global::System.Delegate handler, bool hasExplicitResult, global::System.IntPtr entityPtr, ref byte frame, int frameSize)\n";
+                    out << CS_INDENT << "internal static void AdaptInvoke(global::System.Delegate handler, bool hasExplicitResult, global::System.IntPtr entityPtr, ref byte frame, int frameSize, ref int result)\n";
                     out << CS_INDENT << "{\n";
                     out << CS_INDENT << "    using global::FOnline.ScriptSynchronizationContext context = global::FOnline.ScriptSynchronizationContext.Enter(hasExplicitResult);\n";
                     out << CS_INDENT << "    try\n";
@@ -939,7 +832,18 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     for (size_t i = 0; i < event.Args.size(); i++) {
                         string arg_type = MakeCsTypeName(event.Args[i].Type);
                         string arg_name = strex("__a{}", event_arg_index).str();
-                        out << CS_INDENT << "        " << arg_type << " " << arg_name << " = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << arg_type << ">(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << abi_event->Args[i].Offset << "));\n";
+                        const ManagedAbiSlot& slot = abi_event->Args[i];
+
+                        if (slot.Kind == ManagedAbiValueKind::Handle) {
+                            // A nullable argument wraps to null; native dispatch never sends null through any other
+                            bool is_ref = event.Args[i].Type.BaseType.IsRefType;
+                            string_view wrap = is_ref ? (slot.Nullable ? "WrapRef" : "WrapRefNotNull") : (slot.Nullable ? "WrapEntity" : "WrapEntityNotNull");
+                            out << CS_INDENT << "        " << MakeCsTypeName(event.Args[i].Type, slot.Nullable) << " " << arg_name << " = global::FOnline.Native." << wrap << "<" << arg_type << ">((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << slot.Offset << ")));\n";
+                        }
+                        else {
+                            out << CS_INDENT << "        " << arg_type << " " << arg_name << " = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << arg_type << ">(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << slot.Offset << "));\n";
+                        }
+
                         invoke_args.emplace_back(event.Args[i].Type.IsMutable ? strex("ref {}", arg_name).str() : arg_name);
                         boxed_args.emplace_back(arg_name);
                         event_arg_index++;
@@ -958,7 +862,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                         out << CS_INDENT << "            global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << abi_event->Args[i].Offset << "), " << strex("__a{}", i).str() << ");\n";
                     }
 
-                    out << CS_INDENT << "            return (int)EventResult.ContinueChain;\n";
+                    out << CS_INDENT << "            result = (int)EventResult.ContinueChain;\n";
+                    out << CS_INDENT << "            return;\n";
                     out << CS_INDENT << "        }\n";
                     out << CS_INDENT << "        if (handler is " << EscapeCsIdentifier(result_delegate_name) << " resultHandler) {\n";
                     out << CS_INDENT << "            EventResult __typedResult = resultHandler(" << invoke_list << ");\n";
@@ -971,15 +876,16 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                         out << CS_INDENT << "            global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << abi_event->Args[i].Offset << "), " << strex("__a{}", i).str() << ");\n";
                     }
 
-                    out << CS_INDENT << "            return (int)__typedResult;\n";
+                    out << CS_INDENT << "            result = (int)__typedResult;\n";
+                    out << CS_INDENT << "            return;\n";
                     out << CS_INDENT << "        }\n";
                     out << CS_INDENT << "        object?[] __args = new object?[] { " << boxed_list << " };\n";
-                    out << CS_INDENT << "        return (int)global::FOnline.Native.InvokeEvent(handler, hasExplicitResult, __args);\n";
+                    out << CS_INDENT << "        result = (int)global::FOnline.Native.InvokeEvent(handler, hasExplicitResult, __args);\n";
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "    catch (Exception ex)\n";
                     out << CS_INDENT << "    {\n";
                     out << CS_INDENT << "        global::FOnline.ScriptExceptions.Record(ex, true);\n";
-                    out << CS_INDENT << "        return (int)EventResult.StopChain;\n";
+                    out << CS_INDENT << "        result = (int)EventResult.StopChain;\n";
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "}\n";
                 }
@@ -2684,159 +2590,166 @@ static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& 
 
 // One adapter per callback signature the ABI frame can carry: it reads handles and fixed values from the frame and
 // invokes the delegate directly; a delegate shape it does not recognize takes the boxed Native.InvokeCallback path
-static void AppendCallbackAdapters(ostringstream& out, const vector<pair<string, ComplexTypeDesc>>& callbacks)
+static void AppendCallbackAdapters(ostringstream& out, const EngineMetadata& meta, string_view target_name, const vector<pair<string, ComplexTypeDesc>>& callbacks)
 {
     FO_STACK_TRACE_ENTRY();
 
     out << "internal static class CallbackAdapters\n";
     out << "{\n";
 
-    bool first = true;
+    set<string> emitted_keys;
 
     for (const auto& [name, type] : callbacks) {
         FO_VERIFY_AND_THROW(type.CallbackArgs, "Callback type has no argument list");
-        const ComplexTypeDesc& ret = type.CallbackArgs->front();
-        const_span<ComplexTypeDesc> args = span(*type.CallbackArgs).subspan(1);
-        ManagedAbiCallbackLayout layout = BuildManagedAbiCallbackLayout(ret, args);
+        AppendCallbackAdapter(out, emitted_keys, name, type.CallbackArgs->front(), span(*type.CallbackArgs).subspan(1));
+    }
 
-        if (!layout.Supported) {
-            continue;
+    // An inbound remote call has no delegate type of its own: its handler is an Action over the calling Player
+    // (server side only) and the wire arguments, so the signature is keyed exactly as the backend keys its plan
+    vector<ptr<const RemoteCallDesc>> inbound_calls;
+
+    for (const auto& call : (*meta.GetInboundRemoteCalls()) | std::views::values) {
+        inbound_calls.emplace_back(&call);
+    }
+
+    std::ranges::sort(inbound_calls, {}, [](ptr<const RemoteCallDesc> call) { return call->Name.as_str(); });
+
+    for (ptr<const RemoteCallDesc> call : inbound_calls) {
+        vector<ComplexTypeDesc> args;
+        args.reserve(call->Args.size() + 1);
+
+        if (target_name == "Server") {
+            args.emplace_back(meta.ResolveComplexType("Player"));
         }
 
-        if (!first) {
-            out << "\n";
+        for (const auto& arg : call->Args) {
+            args.emplace_back(arg.Type);
         }
 
-        first = false;
-
-        string key = MakeManagedAbiCallbackKey(ret, args);
-        string ret_type = MakeCsTypeName(ret);
-        vector<string> arg_types;
-        vector<string> arg_names;
-
-        out << CS_INDENT << "internal static void Adapt_" << key << "(global::System.Delegate handler, ref byte frame, int frameSize)\n";
-        out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    global::FOnline.Invariant.Verify(frameSize == " << layout.FrameSize << ", \"Callback frame size must match the generated layout\");\n";
-
-        for (size_t i = 0; i < args.size(); i++) {
-            string arg_type = MakeCsTypeName(args[i]);
-            string arg_name = strex("__a{}", i).str();
-            const ManagedAbiSlot& slot = layout.Args[i];
-            string slot_ref = strex("ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, {})", slot.Offset).str();
-
-            if (slot.Kind == ManagedAbiValueKind::Handle) {
-                string_view wrap = args[i].BaseType.IsRefType ? "WrapRefNotNull" : "WrapEntityNotNull";
-                out << CS_INDENT << "    " << arg_type << " " << arg_name << " = global::FOnline.Native." << wrap << "<" << arg_type << ">((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(" << slot_ref << "));\n";
-            }
-            else {
-                out << CS_INDENT << "    " << arg_type << " " << arg_name << " = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << arg_type << ">(" << slot_ref << ");\n";
-            }
-
-            arg_types.emplace_back(arg_type);
-            arg_names.emplace_back(arg_name);
-        }
-
-        string invoke_list = JoinCsCommaList(arg_names);
-        string system_args = JoinCsCommaList(arg_types);
-        string system_args_prefix = args.empty() ? string {} : system_args + ", ";
-
-        auto write_result = [&](string_view variable) -> string {
-            if (!ret) {
-                return {};
-            }
-
-            return strex("global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned({}, {});", strex("ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, {})", layout.ResultOffset).str(), variable).str();
-        };
-
-        auto append_branch = [&](string_view delegate_type, string_view variable, string_view call_statement) {
-            out << CS_INDENT << "    if (handler is " << delegate_type << " " << variable << ") {\n";
-            out << CS_INDENT << "        using global::FOnline.ScriptSynchronizationContext context = global::FOnline.ScriptSynchronizationContext.Enter(false);\n";
-            out << CS_INDENT << "        try {\n";
-            out << CS_INDENT << "            " << call_statement << "\n";
-
-            if (ret) {
-                out << CS_INDENT << "            " << write_result("__r") << "\n";
-            }
-
-            out << CS_INDENT << "        }\n";
-            out << CS_INDENT << "        catch (Exception ex) {\n";
-            out << CS_INDENT << "            global::FOnline.ScriptExceptions.Record(ex, false);\n";
-            out << CS_INDENT << "            throw;\n";
-            out << CS_INDENT << "        }\n";
-            out << CS_INDENT << "        return;\n";
-            out << CS_INDENT << "    }\n";
-        };
-
-        if (ret) {
-            append_branch(EscapeCsIdentifier(name), "typed", strex("{} __r = typed({});", ret_type, invoke_list).str());
-            append_branch(strex("global::System.Func<{}{}>", system_args_prefix, ret_type).str(), "func", strex("{} __r = func({});", ret_type, invoke_list).str());
-        }
-        else {
-            append_branch(EscapeCsIdentifier(name), "typed", strex("typed({});", invoke_list).str());
-            append_branch(EscapeCsIdentifier(name + "Async"), "typedAsync", strex("global::FOnline.Native.CompleteCallbackTask(typedAsync({}));", invoke_list).str());
-            append_branch(args.empty() ? string("global::System.Action") : strex("global::System.Action<{}>", system_args).str(), "action", strex("action({});", invoke_list).str());
-            append_branch(strex("global::System.Func<{}global::System.Threading.Tasks.Task>", system_args_prefix).str(), "asyncFunc", strex("global::FOnline.Native.CompleteCallbackTask(asyncFunc({}));", invoke_list).str());
-        }
-
-        if (args.empty()) {
-            out << CS_INDENT << "    object?[] __args = global::System.Array.Empty<object?>();\n";
-        }
-        else {
-            out << CS_INDENT << "    object?[] __args = new object?[] { " << invoke_list << " };\n";
-        }
-
-        if (ret) {
-            out << CS_INDENT << "    " << ret_type << " __boxedResult = global::FOnline.Native.UnboxArg<" << ret_type << ">(global::FOnline.Native.InvokeCallback(handler, __args));\n";
-            out << CS_INDENT << "    " << write_result("__boxedResult") << "\n";
-        }
-        else {
-            out << CS_INDENT << "    global::FOnline.Native.InvokeCallback(handler, __args);\n";
-        }
-
-        out << CS_INDENT << "}\n";
+        AppendCallbackAdapter(out, emitted_keys, {}, ComplexTypeDesc {}, args);
     }
 
     out << "}\n\n";
 }
 
-// Every generated class with a native-pointer constructor, mirroring what the Entities and Types files emit; the
-// ABI bind stub registers a factory for each, so Native.WrapEntity / WrapRef construct without reflection
-static auto CollectWrapperFactoryClasses(const EngineMetadata& meta) -> vector<string>
+// Emits one adapter unless the frame cannot carry the signature or its key is already covered; an empty delegate name
+// means the signature has no generated delegate type, so only the System.Action / System.Func shapes are matched
+static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys, string_view delegate_name, const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<string> result;
+    ManagedAbiCallbackLayout layout = BuildManagedAbiCallbackLayout(ret, args);
 
-    for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
-        if (desc->IsGlobal) {
-            continue;
+    // System.Action and System.Func stop at sixteen arguments
+    bool system_shapes = args.size() <= 16;
+
+    if (!layout.Supported || (delegate_name.empty() && !system_shapes)) {
+        return;
+    }
+
+    string key = MakeManagedAbiCallbackKey(ret, args);
+
+    if (!emitted_keys.emplace(key).second) {
+        return;
+    }
+
+    if (emitted_keys.size() > 1) {
+        out << "\n";
+    }
+
+    string name {delegate_name};
+    string ret_type = MakeCsTypeName(ret);
+    vector<string> arg_types;
+    vector<string> arg_names;
+
+    out << CS_INDENT << "internal static void Adapt_" << key << "(global::System.Delegate handler, ref byte frame, int frameSize)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    global::FOnline.Invariant.Verify(frameSize == " << layout.FrameSize << ", \"Callback frame size must match the generated layout\");\n";
+
+    for (size_t i = 0; i < args.size(); i++) {
+        string arg_type = MakeCsTypeName(args[i]);
+        string arg_name = strex("__a{}", i).str();
+        const ManagedAbiSlot& slot = layout.Args[i];
+        string slot_ref = strex("ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, {})", slot.Offset).str();
+
+        if (slot.Kind == ManagedAbiValueKind::Handle) {
+            string_view wrap = args[i].BaseType.IsRefType ? "WrapRefNotNull" : "WrapEntityNotNull";
+            out << CS_INDENT << "    " << arg_type << " " << arg_name << " = global::FOnline.Native." << wrap << "<" << arg_type << ">((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(" << slot_ref << "));\n";
+        }
+        else {
+            out << CS_INDENT << "    " << arg_type << " " << arg_name << " = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << arg_type << ">(" << slot_ref << ");\n";
         }
 
-        if (desc->HasAbstract) {
-            result.emplace_back(strex("Abstract{}", type_name).str());
+        arg_types.emplace_back(arg_type);
+        arg_names.emplace_back(arg_name);
+    }
+
+    string invoke_list = JoinCsCommaList(arg_names);
+    string system_args = JoinCsCommaList(arg_types);
+    string system_args_prefix = args.empty() ? string {} : system_args + ", ";
+
+    auto write_result = [&](string_view variable) -> string {
+        if (!ret) {
+            return {};
         }
 
-        result.emplace_back(type_name);
+        return strex("global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned({}, {});", strex("ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, {})", layout.ResultOffset).str(), variable).str();
+    };
 
-        if (desc->HasProtos) {
-            result.emplace_back(strex("Proto{}", type_name).str());
+    auto append_branch = [&](string_view delegate_type, string_view variable, string_view call_statement) {
+        out << CS_INDENT << "    if (handler is " << delegate_type << " " << variable << ") {\n";
+        out << CS_INDENT << "        using global::FOnline.ScriptSynchronizationContext context = global::FOnline.ScriptSynchronizationContext.Enter(false);\n";
+        out << CS_INDENT << "        try {\n";
+        out << CS_INDENT << "            " << call_statement << "\n";
+
+        if (ret) {
+            out << CS_INDENT << "            " << write_result("__r") << "\n";
         }
-        if (desc->HasStatics) {
-            result.emplace_back(strex("Static{}", type_name).str());
+
+        out << CS_INDENT << "        }\n";
+        out << CS_INDENT << "        catch (Exception ex) {\n";
+        out << CS_INDENT << "            global::FOnline.ScriptExceptions.Record(ex, false);\n";
+        out << CS_INDENT << "            throw;\n";
+        out << CS_INDENT << "        }\n";
+        out << CS_INDENT << "        return;\n";
+        out << CS_INDENT << "    }\n";
+    };
+
+    if (ret) {
+        if (!name.empty()) {
+            append_branch(EscapeCsIdentifier(name), "typed", strex("{} __r = typed({});", ret_type, invoke_list).str());
+        }
+        if (system_shapes) {
+            append_branch(strex("global::System.Func<{}{}>", system_args_prefix, ret_type).str(), "func", strex("{} __r = func({});", ret_type, invoke_list).str());
+        }
+    }
+    else {
+        if (!name.empty()) {
+            append_branch(EscapeCsIdentifier(name), "typed", strex("typed({});", invoke_list).str());
+            append_branch(EscapeCsIdentifier(name + "Async"), "typedAsync", strex("global::FOnline.Native.CompleteCallbackTask(typedAsync({}));", invoke_list).str());
+        }
+        if (system_shapes) {
+            append_branch(args.empty() ? string("global::System.Action") : strex("global::System.Action<{}>", system_args).str(), "action", strex("action({});", invoke_list).str());
+            append_branch(strex("global::System.Func<{}global::System.Threading.Tasks.Task>", system_args_prefix).str(), "asyncFunc", strex("global::FOnline.Native.CompleteCallbackTask(asyncFunc({}));", invoke_list).str());
         }
     }
 
-    for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetFixedTypes())) {
-        result.emplace_back(type_name);
+    if (args.empty()) {
+        out << CS_INDENT << "    object?[] __args = global::System.Array.Empty<object?>();\n";
+    }
+    else {
+        out << CS_INDENT << "    object?[] __args = new object?[] { " << invoke_list << " };\n";
     }
 
-    for (const auto& type : MakeSortedBaseTypes(meta)) {
-        if (type->IsRefType && type->RefType && !type->RefType->FieldsRegistrar) {
-            result.emplace_back(type->Name);
-        }
+    if (ret) {
+        out << CS_INDENT << "    " << ret_type << " __boxedResult = global::FOnline.Native.UnboxArg<" << ret_type << ">(global::FOnline.Native.InvokeCallback(handler, __args));\n";
+        out << CS_INDENT << "    " << write_result("__boxedResult") << "\n";
+    }
+    else {
+        out << CS_INDENT << "    global::FOnline.Native.InvokeCallback(handler, __args);\n";
     }
 
-    return result;
+    out << CS_INDENT << "}\n";
 }
 
 // as one non-generic overload per distinct simple property value type; overload resolution then picks
@@ -2950,7 +2863,7 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
         const BaseTypeDesc* value_base = nullptr;
 
         for (const auto& type : meta.GetBaseTypes() | std::views::values) {
-            if (MakeCsTypeName(type) == value_type && (type.IsPrimitive || type.IsEnum || type.IsHashedString || (IsManagedAbiBlittableStruct(type) && !HasManagedAbiHashedStringField(type)))) {
+            if (MakeCsTypeName(type) == value_type && IsManagedAbiFixedPropertyValue(type)) {
                 value_base = &type;
                 break;
             }
@@ -3480,6 +3393,25 @@ static void AppendNativeCallMethodExpression(ostringstream& out, string_view ind
     out << indent << "    " << object_args_variable << ")" << suffix << "\n";
 }
 
+// What a frame slot stores for a managed value: the value itself, or for a handle slot the wrapper's native pointer,
+// whose accessor checks the wrapper's backend exactly as a boxed argument is checked
+static auto MakeCsFrameValueExpression(const ManagedAbiSlot& slot, const ComplexTypeDesc& type, string_view value_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (slot.Kind != ManagedAbiValueKind::Handle) {
+        return string {value_name};
+    }
+
+    string_view ptr_member = type.BaseType.IsRefType ? "RefPtr" : "EntityPtr";
+
+    if (slot.Nullable) {
+        return strex("(long)({} == null ? global::System.IntPtr.Zero : {}.{})", value_name, value_name, ptr_member).str();
+    }
+
+    return strex("(long){}.{}", value_name, ptr_member).str();
+}
+
 static void AppendIndexedMethodCall(ostringstream& out, string_view indent, const ManagedAbiMethodEntry& method, string_view entity_ptr, const_span<ArgDesc> args, string_view ret)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3488,7 +3420,7 @@ static void AppendIndexedMethodCall(ostringstream& out, string_view indent, cons
     out << indent << "global::FOnline.ScalarCallFrame __frame = default;\n";
 
     for (size_t i = 0; i < args.size(); i++) {
-        out << indent << "global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << method.Args[i].Offset << "], " << arg_names[i] << ");\n";
+        out << indent << "global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << method.Args[i].Offset << "], " << MakeCsFrameValueExpression(method.Args[i], args[i].Type, arg_names[i]) << ");\n";
     }
 
     out << indent << "global::FOnline.Native.CallMethodIndexed(" << method.Id << ", " << entity_ptr << ", ref __frame[0], " << method.FrameSize << ");\n";
@@ -3501,7 +3433,23 @@ static void AppendIndexedMethodCall(ostringstream& out, string_view indent, cons
         out << indent << arg_names[i] << " = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << MakeCsTypeName(args[i].Type) << ">(ref __frame[" << method.Args[i].Offset << "]);\n";
     }
 
-    if (ret != "void") {
+    if (method.Ret.Kind == ManagedAbiValueKind::Handle) {
+        // The wrapper takes a reference of its own, so a reference the export handed over is given back after it
+        string_view wrap = method.Ret.Nullable ? "WrapEntity" : "WrapEntityNotNull";
+        out << indent << "global::System.IntPtr __handle = (global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref __frame[" << method.ResultOffset << "]);\n";
+        out << indent << ret << (method.Ret.Nullable ? "? " : " ") << "__result = global::FOnline.Native." << wrap << "<" << ret << ">(__handle);\n";
+
+        if (method.PassOwnership) {
+            out << "\n";
+            out << indent << "if (__handle != global::System.IntPtr.Zero) {\n";
+            out << indent << "    global::FOnline.Native.ReleaseEntity(__handle);\n";
+            out << indent << "}\n";
+            out << "\n";
+        }
+
+        out << indent << "return __result;\n";
+    }
+    else if (ret != "void") {
         out << indent << "return global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<" << ret << ">(ref __frame[" << method.ResultOffset << "]);\n";
     }
 }
@@ -3600,7 +3548,7 @@ static void AppendProperty(ostringstream& out, const string& type_name, const st
     out << "\n\n";
 }
 
-static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, string_view owner_type_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names)
+static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3608,15 +3556,14 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
     string property_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
     const BaseTypeDesc& base_type = prop->GetBaseType();
-    bool use_scalar_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && (base_type.IsPrimitive || base_type.IsEnum || base_type.IsHashedString || (IsManagedAbiBlittableStruct(base_type) && !HasManagedAbiHashedStringField(base_type)));
+    bool use_scalar_bridge = !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && IsManagedAbiFixedPropertyValue(base_type);
+    bool use_array_bridge = !prop->IsNullable() && prop->IsArray() && !prop->IsDict() && IsManagedAbiFixedPropertyValue(base_type);
     bool use_integer_bridge = use_scalar_bridge && !is_static && (base_type.IsInt8 || base_type.IsUInt8 || base_type.IsInt16 || base_type.IsUInt16);
 
     if (!member_names.emplace(property_name).second) {
         return;
     }
 
-    string owner_literal = EscapeCsStringLiteral(owner_type_name);
-    string prop_literal = EscapeCsStringLiteral(prop->GetName());
     string entity_ptr = string {MakeTargetPtrExpression(is_static, false)};
 
     out << CS_INDENT << "public ";
@@ -3639,11 +3586,11 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
     else if (use_scalar_bridge) {
         out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
+    else if (use_array_bridge) {
+        out << CS_INDENT << "        return global::FOnline.Native.GetPropertyList<" << MakeCsTypeName(base_type) << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+    }
     else {
-        out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetProperty(\n";
-        out << CS_INDENT << "            \"" << owner_literal << "\",\n";
-        out << CS_INDENT << "            \"" << prop_literal << "\",\n";
-        out << CS_INDENT << "            " << entity_ptr << ");\n";
+        out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetProperty(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
 
     out << CS_INDENT << "    }\n";
@@ -3658,12 +3605,11 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, s
         else if (use_scalar_bridge) {
             out << CS_INDENT << "        global::FOnline.Native.SetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
         }
+        else if (use_array_bridge) {
+            out << CS_INDENT << "        global::FOnline.Native.SetPropertyList<" << MakeCsTypeName(base_type) << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
+        }
         else {
-            out << CS_INDENT << "        global::FOnline.Native.SetProperty(\n";
-            out << CS_INDENT << "            \"" << owner_literal << "\",\n";
-            out << CS_INDENT << "            \"" << prop_literal << "\",\n";
-            out << CS_INDENT << "            " << entity_ptr << ",\n";
-            out << CS_INDENT << "            value);\n";
+            out << CS_INDENT << "        global::FOnline.Native.SetProperty(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
         }
 
         out << CS_INDENT << "    }\n";
@@ -4088,7 +4034,7 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
             if (setter_abi->UsesScalarFrame) {
                 FO_VERIFY_AND_THROW(!setter_abi->Args.empty(), "Managed scalar setter has no argument slot", owner_type_name, setter->Name);
                 out << body_indent << "global::FOnline.ScalarCallFrame __frame = default;\n";
-                out << body_indent << "global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << setter_abi->Args[0].Offset << "], value);\n";
+                out << body_indent << "global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << setter_abi->Args[0].Offset << "], " << MakeCsFrameValueExpression(setter_abi->Args[0], setter->Args.front().Type, "value") << ");\n";
                 out << body_indent << "global::FOnline.Native.CallMethodIndexed(" << setter_abi->Id << ", " << entity_ptr << ", ref __frame[0], " << setter_abi->FrameSize << ");\n";
             }
             else {
@@ -4149,7 +4095,7 @@ static void AppendDynamicRefTypeProperties(ostringstream& out, ptr<const Propert
     }
 }
 
-static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistrar> registrar, string_view owner_type_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names)
+static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistrar> registrar, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4172,7 +4118,7 @@ static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistr
         string prop_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
 
         if (allow_native_bridge && CanUseManagedPropertyBridge(prop)) {
-            AppendNativeProperty(out, prop, owner_type_name, is_static, shadows_entity_base, member_names);
+            AppendNativeProperty(out, prop, is_static, shadows_entity_base, member_names);
         }
         else {
             AppendProperty(out, prop_type, prop_name, force_writable || prop->IsMutable(), is_static, shadows_entity_base, member_names);
@@ -4254,19 +4200,11 @@ static void AppendEventAccessors(ostringstream& out, string_view owner_type_name
     for (const EntityEventDesc& event : desc.Events) {
         string event_type = strex("{}{}Event", owner_type_name, event.Name).str();
         string event_name = EscapeCsIdentifier(event.Name);
-        string backing_name = EscapeCsIdentifier(strex("__event_{}", event.Name).str());
 
         if (!member_names.emplace(event_name).second) {
             continue;
         }
 
-        out << CS_INDENT << "private ";
-
-        if (is_static) {
-            out << "static ";
-        }
-
-        out << event_type << "? " << backing_name << ";\n\n";
         out << CS_INDENT << "public ";
 
         if (is_static) {
@@ -4277,11 +4215,7 @@ static void AppendEventAccessors(ostringstream& out, string_view owner_type_name
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    get\n";
         out << CS_INDENT << "    {\n";
-        out << CS_INDENT << "        if (" << backing_name << " == null) {\n";
-        out << CS_INDENT << "            " << backing_name << " =\n";
-        out << CS_INDENT << "                new " << event_type << "(" << MakeTargetPtrExpression(is_static, false) << ");\n";
-        out << CS_INDENT << "        }\n\n";
-        out << CS_INDENT << "        return " << backing_name << ";\n";
+        out << CS_INDENT << "        return new " << event_type << "(" << MakeTargetPtrExpression(is_static, false) << ");\n";
         out << CS_INDENT << "    }\n";
         out << CS_INDENT << "}\n\n";
     }
@@ -4330,7 +4264,7 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
     }
     // A non-static entity class derives from the Entity base (`: base_name`), so a Name/Id/ProtoId/IsDestroyed
     // property shadows the base member and needs `new`; the static `Game` class has no such base
-    AppendEntityProperties(out, desc.PropRegistrar.get(), owner, {}, is_static, true, false, !is_static, member_names);
+    AppendEntityProperties(out, desc.PropRegistrar.get(), {}, is_static, true, false, !is_static, member_names);
 
     // A prototype is authored data, not a live entity: it carries the type's properties and components and stops
     // there
@@ -4407,7 +4341,7 @@ static void AppendComponentClasses(ostringstream& out, string_view owner_type_na
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "}\n\n";
         // A component class derives from Entity (`: Entity`), so its shadow-named properties need `new`
-        AppendEntityProperties(out, desc.PropRegistrar.get(), owner_type_name, component_name, false, true, false, true, member_names);
+        AppendEntityProperties(out, desc.PropRegistrar.get(), component_name, false, true, false, true, member_names);
         out << "}\n\n";
 
         ignore_unused(prop);

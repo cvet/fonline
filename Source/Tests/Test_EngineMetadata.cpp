@@ -210,9 +210,59 @@ TEST_CASE("EngineMetadata")
     SECTION("NativeValueSizeMismatchDoesNotPublishLayout")
     {
         EngineMetadata meta {[] { }};
-        meta.RegisterValueType("NativeValue", sizeof(int64_t), &CreateNativeValue<int64_t>, &CopyNativeValue<int64_t>);
+        meta.RegisterValueType("NativeValue", sizeof(int64_t));
         CHECK_THROWS(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int32"}}));
         CHECK_NOTHROW(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int64"}}));
+    }
+
+    SECTION("ValueTypeIsAlwaysPlainPackedData")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterRefType("ComplexRecord");
+        meta.RegisterEntityType("Map", true, false, true, true, true);
+
+        // Nothing but primitives, enums, hashed strings and single-field structs gets into a value type
+        meta.RegisterValueType("HoldsString");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsString", {{"Text", "string"}}));
+        meta.RegisterValueType("HoldsRefType");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsRefType", {{"Record", "ComplexRecord"}}));
+        meta.RegisterValueType("HoldsEntity");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsEntity", {{"Owner", "Map"}}));
+
+        // A field that would need padding is rejected, and so is a tail both compilers would pad
+        meta.RegisterValueType("NeedsPadding");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("NeedsPadding", {{"Small", "int8"}, {"Wide", "int32"}}));
+        meta.RegisterValueType("NeedsTailPadding");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("NeedsTailPadding", {{"Wide", "int32"}, {"Small", "bool"}}));
+
+        meta.RegisterValueType("Wrapper");
+        meta.RegisterValueTypeLayout("Wrapper", {{"Value", "hstring"}});
+        meta.RegisterValueType("Pair");
+        meta.RegisterValueTypeLayout("Pair", {{"First", "int32"}, {"Second", "int32"}});
+
+        // A struct of several fields cannot nest, so a value type never grows a layout of its own inside another
+        meta.RegisterValueType("HoldsPair");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsPair", {{"Inner", "Pair"}, {"Tail", "int64"}}));
+
+        meta.RegisterValueType("Plain");
+        meta.RegisterValueTypeLayout("Plain", {{"Tag", "Wrapper"}, {"Name", "hstring"}, {"Count", "int64"}});
+
+        const BaseTypeDesc& plain_type = meta.GetBaseType("Plain");
+        REQUIRE(plain_type.StructLayout);
+        CHECK(plain_type.IsStruct);
+        CHECK_FALSE(plain_type.IsRefType);
+
+        size_t packed_size = 0;
+
+        for (const FieldDesc& field : plain_type.StructLayout->Fields) {
+            CHECK(field.Offset == packed_size);
+            packed_size += field.Type.Size;
+        }
+
+        CHECK(plain_type.Size == packed_size);
+        CHECK(meta.GetBaseType("ComplexRecord").IsRefType);
+        CHECK_FALSE(meta.GetBaseType("ComplexRecord").IsStruct);
     }
 
     SECTION("BuiltinProtoEntityTypesUseDedicatedProtoFlag")
@@ -235,8 +285,9 @@ TEST_CASE("EngineMetadata")
     SECTION("ValueTypeLayoutMatchesNativeTextPackKey")
     {
         EngineMetadata meta {[] { }};
-        meta.RegisterValueType("TextPackName", sizeof(TextPackName), &CreateNativeValue<TextPackName>, &CopyNativeValue<TextPackName>);
-        meta.RegisterValueType("TextPackKey", sizeof(TextPackKey), &CreateNativeValue<TextPackKey>, &CopyNativeValue<TextPackKey>);
+        static_assert(std::is_trivially_copyable_v<TextPackKey>);
+        meta.RegisterValueType("TextPackName", sizeof(TextPackName));
+        meta.RegisterValueType("TextPackKey", sizeof(TextPackKey));
         meta.RegisterValueTypeLayout("TextPackName", {{"Name", "hstring"}});
         meta.RegisterValueTypeLayout("TextPackKey", {{"Collection", "TextPackName"}, {"Key1", "hstring"}, {"Key2", "hstring"}, {"Key3", "hstring"}});
 
@@ -249,18 +300,14 @@ TEST_CASE("EngineMetadata")
         CHECK(text_key_type.Size == sizeof(hstring::hash_t) * 4);
         CHECK(text_key_type.Size == sizeof(TextPackKey));
 
-        REQUIRE(text_key_type.StructLayout->CreateNative);
-        REQUIRE(text_key_type.StructLayout->CopyNative);
-        auto value = text_key_type.StructLayout->CreateNative();
-        ptr<TextPackKey> key = ptr<void>(value.get()).reinterpret_as<TextPackKey>();
-        CHECK(key->Collection == TextPackName {});
-        CHECK(key->Key1 == hstring {});
+        // A value type is plain data: the native twin copies byte for byte into storage laid out by the metadata
+        CHECK(text_key_type.StructLayout->NativeSize == sizeof(TextPackKey));
         TextPackKey source {meta.Hashes.to_hashed_string("native-value-key")};
-        text_key_type.StructLayout->CopyNative(value.get(), &source);
-        CHECK(*key == source);
-        vector<unique_del_ptr<void>> values;
-        values.emplace_back(std::move(value));
-        CHECK(*key == source);
+        array<uint8_t, sizeof(TextPackKey)> storage {};
+        memory::copy(storage.data(), &source, text_key_type.Size);
+        TextPackKey copy;
+        memory::copy(&copy, storage.data(), text_key_type.Size);
+        CHECK(copy == source);
 
         const auto& fields = text_key_type.StructLayout->Fields;
         REQUIRE(fields.size() == 4);

@@ -824,11 +824,12 @@ TEST_CASE("ManagedScriptBaker")
         MakeMetadataBlob({
             {"Entity", {{"ManagedInner", "HasProtos"}, {"ManagedGlobal"}}},
             {"EntityHolder", {{"Server", "Critter", "ManagedInner", "ManagedEntry"}, {"Server", "Game", "ManagedGlobal", "ManagedGlobal"}}},
-            {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
+            {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Critter", "OnManagedTouched", "Critter", "", "other", "int32", "", "power"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
             {"Property",
                 {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "int8", "ManagedInt8", "Mutable"}, {"Critter", "Server", "uint8", "ManagedUInt8", "Mutable"}, {"Critter", "Server", "int32", "ManagedInt32", "Mutable"}, {"Critter", "Server", "uint32", "ManagedUInt32", "Mutable"}, {"Critter", "Server", "int64", "ManagedInt64", "Mutable"}, {"Critter", "Server", "uint64", "ManagedUInt64", "Mutable"}, {"Critter", "Server", "float32", "ManagedFloat32", "Mutable"}, {"Critter", "Server", "float64", "ManagedFloat64", "Mutable"}, {"Critter", "Server", "bool", "ManagedBool", "Mutable"}, {"Critter", "Server", "CritterCondition", "ManagedEnum", "Mutable"}, {"Critter", "Server", "bool", "ManagedProbe", "Component"},
                     {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "mpos", "ManagedHex", "Mutable"}, {"Critter", "Server", "ucolor", "ManagedTint", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
+            {"RemoteCall", {{"ManagedMoveProbe", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedMoveProbeTwin", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedTextProbe", "UnitManaged.cs", "In", "string", "", "text", "Limits", "0", "0"}}},
         }));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
@@ -961,14 +962,16 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("NotImplementedException") == string::npos);
     CHECK(server_entities.find("NotSupportedException") == string::npos);
     CHECK(server_entities.find("public static string ManagedTitle") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Game\",\n                \"ManagedTitle\",\n                IntPtr.Zero)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Game\",\n                \"ManagedTitle\",\n                IntPtr.Zero,\n                value)") != string::npos);
+    // A value no fixed layout carries stays boxed, but travels by registrar index: no owner or property name crosses
+    CHECK(server_entities.find("public static string ManagedTitle\n    {\n        get\n        {\n            return (string)global::FOnline.Native.GetProperty(IntPtr.Zero, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetProperty(IntPtr.Zero, ") != string::npos);
+    CHECK(server_entities.find("\"ManagedTitle\",") == string::npos);
     CHECK(server_entities.find("public static ManagedRoute ManagedRouteValue") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Game\",\n                \"ManagedRouteValue\",\n                IntPtr.Zero)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Game\",\n                \"ManagedRouteValue\",\n                IntPtr.Zero,\n                value)") != string::npos);
+    CHECK(server_entities.find("public static ManagedRoute ManagedRouteValue\n    {\n        get\n        {\n            return (ManagedRoute)global::FOnline.Native.GetProperty(IntPtr.Zero, ") != string::npos);
     CHECK(server_entities.find("public static List<int> ManagedSteps") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Game\",\n                \"ManagedSteps\",\n                IntPtr.Zero)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Game\",\n                \"ManagedSteps\",\n                IntPtr.Zero,\n                value)") != string::npos);
+    // An array of fixed-size values crosses as raw bytes into the list's own storage
+    CHECK(server_entities.find("public static List<int> ManagedSteps\n    {\n        get\n        {\n            return global::FOnline.Native.GetPropertyList<int>(IntPtr.Zero, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetPropertyList<int>(IntPtr.Zero, ") != string::npos);
     CHECK(server_entities.find("public static ushort ManagedNarrowLimit") != string::npos);
     CHECK(server_entities.find("return global::FOnline.Native.GetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
@@ -990,11 +993,10 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("global::FOnline.Native.SetPropertyValue<mpos>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<ucolor>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr,\n                value)") != string::npos);
+    CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries\n    {\n        get\n        {\n            return (Dictionary<hstring, List<hstring>>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetProperty(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Critter\",\n                \"ManagedTextGroups\",\n                _entityPtr)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Critter\",\n                \"ManagedTextGroups\",\n                _entityPtr,\n                value)") != string::npos);
+    CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups\n    {\n        get\n        {\n            return (Dictionary<int, List<string>>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public static List<mpos> TraceHexLine") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.CallMethodBoxed(") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.CallMethodIndexed(") != string::npos);
@@ -1062,8 +1064,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("\"GetHexInterval\"") == string::npos);
     CHECK(server_entities.find("hexOffset = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<ipos>(ref __frame[") != string::npos);
     CHECK(server_entities.find("public static GameOnManagedTestEvent OnManagedTest") != string::npos);
-    CHECK(server_entities.find("private static GameOnManagedTestEvent? __event_OnManagedTest;") != string::npos);
-    CHECK(server_entities.find("new GameOnManagedTestEvent(IntPtr.Zero)") != string::npos);
+    CHECK(server_entities.find("__event_OnManagedTest") == string::npos);
+    CHECK(server_entities.find("return new GameOnManagedTestEvent(IntPtr.Zero);") != string::npos);
 
     string server_abi = ReadTextFile(script_dir / "ServerAbi.gen.cs");
     CHECK(server_abi.find("global::FOnline.Native.RegisterWrapperFactory<Critter>(static nativePtr => new Critter(nativePtr));") != string::npos);
@@ -1077,21 +1079,30 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("NotImplementedException") == string::npos);
     CHECK(server_events.find("private readonly IntPtr _entityPtr;") != string::npos);
     CHECK(server_events.find("private GameOnManagedTestEventHandler? _handlers;") == string::npos);
-    CHECK(server_events.find("private readonly Dictionary<(Delegate Handler, IntPtr Backend), IntPtr> _nativeSubscriptions") != string::npos);
+    // Subscriptions live on the entity: the accessor is a stateless struct, so every wrapper reaches the same ones
+    CHECK(server_events.find("public readonly struct GameOnManagedTestEvent\n") != string::npos);
+    CHECK(server_events.find("_nativeSubscriptions") == string::npos);
     CHECK(server_events.find("public delegate global::System.Threading.Tasks.Task GameOnManagedTestEventHandlerAsync") != string::npos);
     CHECK(server_events.find("public delegate global::System.Threading.Tasks.Task<EventResult> GameOnManagedTestEventHandlerAsyncResult") != string::npos);
     CHECK(server_events.find("public void Subscribe(\n        GameOnManagedTestEventHandlerAsync handler") != string::npos);
     CHECK(server_events.find("public void Subscribe(\n        GameOnManagedTestEventHandlerAsyncResult handler") != string::npos);
     CHECK(server_events.find("public void Unsubscribe(GameOnManagedTestEventHandlerAsyncResult handler)") != string::npos);
     CHECK(server_events.find("{ if (handler == null)") == string::npos);
-    CHECK(server_events.find("global::FOnline.Native.RequireEventAttribute(handler);\n        IntPtr backend = global::FOnline.Native.GetBackend();\n        (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n        if (_nativeSubscriptions.ContainsKey(key))") != string::npos);
-    CHECK(server_events.find("_nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n") != string::npos);
+    CHECK(server_events.find("global::FOnline.Native.RequireEventAttribute(handler);\n        global::FOnline.Native.SubscribeEvent(\n") != string::npos);
     CHECK(server_events.find("\"OnManagedTest\"") == string::npos);
     CHECK(server_events.find("false,\n            (int)priority);") != string::npos);
     CHECK(server_events.find("global::FOnline.Native.UnsubscribeEvent(\n") != string::npos);
+    CHECK(server_events.find("_entityPtr,\n            handler);") != string::npos);
+    CHECK(server_events.find("global::FOnline.Native.UnsubscribeAllEvents(") != string::npos);
     CHECK(server_events.find("FireEventIndexed(") != string::npos);
     CHECK(server_events.find("FireEventBoxed(") != string::npos);
-    CHECK(server_events.find("AdaptInvoke(") != string::npos);
+    CHECK(server_events.find("internal static void AdaptInvoke(global::System.Delegate handler, bool hasExplicitResult, global::System.IntPtr entityPtr, ref byte frame, int frameSize, ref int result)") != string::npos);
+    CHECK(server_events.find("return (int)EventResult") == string::npos);
+
+    // An entity argument rides the event frame as a pointer slot: the adapter wraps it, Fire writes the wrapper's pointer
+    CHECK(server_events.find("Critter __a0 = global::FOnline.Native.WrapEntityNotNull<Critter>((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, 0)));") != string::npos);
+    CHECK(server_events.find("int __a1 = global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<int>(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, 8));") != string::npos);
+    CHECK(server_events.find("global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[0], (long)other.EntityPtr);") != string::npos);
     CHECK(server_events.find("return EventResult.StopChain;") != string::npos);
     CHECK(server_events.find("public delegate void GameOnManagedArrayEventHandler(List<int> values)") != string::npos);
     CHECK(server_events.find("object?[] __args = new object?[]\n            {\n                values,\n            };") != string::npos);
@@ -1130,6 +1141,16 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("if (handler is global::System.Func<Critter, global::System.Threading.Tasks.Task> asyncFunc) {") != string::npos);
     CHECK(server_types.find("global::FOnline.Native.WrapEntityNotNull<Critter>((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, 0)))") != string::npos);
     CHECK(server_types.find("global::FOnline.Native.InvokeCallback(handler, __args);") != string::npos);
+
+    // An inbound remote call gets an adapter over the calling Player plus its wire arguments, once per signature and
+    // without the delegate-type branches it has no type for; a string argument keeps the call on the boxed path
+    string_view rpc_adapter = "internal static void Adapt_Callback_void_Player_int32_mpos(global::System.Delegate handler, ref byte frame, int frameSize)";
+    size_t rpc_adapter_pos = server_types.find(rpc_adapter);
+    CHECK(rpc_adapter_pos != string::npos);
+    CHECK(server_types.find(rpc_adapter, rpc_adapter_pos + 1) == string::npos);
+    CHECK(server_types.find("if (handler is global::System.Action<Player, int, mpos> action) {") != string::npos);
+    CHECK(server_types.find("if (handler is Callback_void_Player_int32_mpos typed) {") == string::npos);
+    CHECK(server_types.find("Adapt_Callback_void_Player_string") == string::npos);
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_bool") == string::npos);
     CHECK(server_types.find("public partial struct hstring") != string::npos);
     CHECK(server_types.find("public System.IntPtr Value;") != string::npos);

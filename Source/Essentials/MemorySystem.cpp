@@ -87,6 +87,22 @@ FO_END_NAMESPACE
 #define CRTDECL
 #endif
 
+#if FO_TRACY
+// Profiling builds count what each thread allocates, for measurements that must not see other threads; release
+// builds carry none of it. The counts describe a thread, not an engine
+static thread_local uint64_t ThreadAllocationCount {};
+static thread_local uint64_t ThreadAllocatedBytes {};
+
+static void TrackTracyAlloc(void* p, size_t size) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    TracyAlloc(p, size);
+    ThreadAllocationCount++;
+    ThreadAllocatedBytes += size;
+}
+#endif
+
 void CRTDECL operator delete(void* p) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -119,7 +135,7 @@ void* CRTDECL operator new(std::size_t size) noexcept(false)
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -137,7 +153,7 @@ void* CRTDECL operator new[](std::size_t size) noexcept(false)
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -155,7 +171,7 @@ void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*/) noex
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -170,7 +186,7 @@ void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*tag*/) no
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpmalloc(size);
 #endif
@@ -257,7 +273,7 @@ void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(fa
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -275,7 +291,7 @@ void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -293,7 +309,7 @@ void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -308,7 +324,7 @@ void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
@@ -435,7 +451,7 @@ static auto mem_malloc(size_t size) noexcept -> nptr<void>
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
     void* p = tracy::rpmalloc(size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpmalloc(size);
@@ -458,7 +474,7 @@ static auto mem_calloc(size_t num, size_t size) noexcept -> nptr<void>
     if (p != nullptr) {
         memory::fill(p, 0, result_size);
     }
-    TracyAlloc(p, result_size);
+    TrackTracyAlloc(p, result_size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpcalloc(num, size);
@@ -475,7 +491,7 @@ static auto mem_realloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>
     tracy::InitRpmalloc();
     TracyFree(ptr.get());
     void* p = tracy::rprealloc(ptr.get(), size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rprealloc(ptr.get(), size);
@@ -505,7 +521,7 @@ static auto mem_aligned_malloc(size_t size, size_t alignment) noexcept -> nptr<v
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
     void* p = tracy::rpaligned_alloc(alignment, size);
-    TracyAlloc(p, size);
+    TrackTracyAlloc(p, size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
     return rpaligned_alloc(alignment, size);
@@ -537,6 +553,21 @@ static void mem_aligned_free(nptr<void> ptr) noexcept
     _aligned_free(ptr.get());
 #else
     free(ptr.get());
+#endif
+}
+
+auto memory::get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_HAVE_RPMALLOC && FO_TRACY
+    count = ThreadAllocationCount;
+    bytes = ThreadAllocatedBytes;
+    return true;
+#else
+    count = 0;
+    bytes = 0;
+    return false;
 #endif
 }
 

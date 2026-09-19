@@ -92,7 +92,7 @@ TEST_CASE("ClientDataValidation")
     meta.RegisterEnumGroup("TestEnumU16", "uint16", {{"None", 0}, {"Value", 1}, {"Top", 65535}});
     meta.RegisterEnumGroup("TestEnumU8", "uint8", {{"None", 0}, {"Value", 1}, {"Top", 255}});
     meta.RegisterValueType("TestStruct");
-    meta.RegisterValueTypeLayout("TestStruct", {{"Number", "float32"}, {"Flag", "bool"}});
+    meta.RegisterValueTypeLayout("TestStruct", {{"Number", "float32"}, {"Flag", "bool"}, {"Spare", "uint8"}, {"Tail", "uint16"}});
     meta.RegisterRefType("TestRefType");
     meta.RegisterRefTypeLayout("TestRefType", {{"Numbers", "int32[]"}, {"Label", "string"}, {"Mode", "TestEnum"}});
     meta.RegisterRefType("EnumRefType");
@@ -119,7 +119,7 @@ TEST_CASE("ClientDataValidation")
         CHECK(GetRemoteCallSimpleValueMinWireSize(string_type) == sizeof(uint32_t));
         CHECK(GetRemoteCallSimpleValueMinWireSize(hstring_type) == sizeof(hstring::hash_t));
         CHECK(GetRemoteCallSimpleValueMinWireSize(ref_type) == sizeof(uint32_t));
-        CHECK(GetRemoteCallSimpleValueMinWireSize(struct_type) == sizeof(float32_t) + sizeof(uint8_t));
+        CHECK(GetRemoteCallSimpleValueMinWireSize(struct_type) == sizeof(float32_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint16_t));
     }
 
     SECTION("Accepts valid nested payload")
@@ -148,6 +148,8 @@ TEST_CASE("ClientDataValidation")
         writer.write<uint16_t>(second_uint16);
         writer.write<float32_t>(3.5f);
         writer.write<uint8_t>(true_bool);
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint16_t>(uint16_t {0});
 
         CHECK_NOTHROW(ValidateInboundRemoteCallData(call, data, meta));
     }
@@ -560,7 +562,7 @@ TEST_CASE("ClientDataValidationFuzz")
     meta.RegisterSide(EngineSideKind::ServerSide);
     meta.RegisterEnumGroup("TestEnum", "int32", {{"None", 0}, {"Value", 1}});
     meta.RegisterValueType("TestStruct");
-    meta.RegisterValueTypeLayout("TestStruct", {{"Number", "float32"}, {"Flag", "bool"}});
+    meta.RegisterValueTypeLayout("TestStruct", {{"Number", "float32"}, {"Flag", "bool"}, {"Spare", "uint8"}, {"Tail", "uint16"}});
     meta.RegisterRefType("TestRefType");
     meta.RegisterRefTypeLayout("TestRefType", {{"Numbers", "int32[]"}, {"Label", "string"}, {"Mode", "TestEnum"}});
 
@@ -594,6 +596,8 @@ TEST_CASE("ClientDataValidationFuzz")
         writer.write<int32_t>(1); // enum value "Value"
         writer.write<float32_t>(2.5f); // struct Number
         writer.write<uint8_t>(uint8_t {1}); // struct Flag
+        writer.write<uint8_t>(uint8_t {0}); // struct Spare
+        writer.write<uint16_t>(uint16_t {0}); // struct Tail
         WriteRefTypePayload(writer, ref_raw);
         return data;
     };

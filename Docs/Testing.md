@@ -143,20 +143,54 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
-`Test_ManagedScriptBaker` pins the generated scalar-property route: primitive, enum, and blittable-struct accessors and component
+`Test_ManagedScriptBaker` pins the generated scalar-property route: primitive, enum, and value-type accessors and component
 presence checks must use the indexed unboxed bridge, while complex properties retain conversion. It also pins
 dense ABI ids (no name-based `CallMethod`/`FireEvent`/`GetInnerEntityAt` on generated hot paths), `EnumToInt32`
 instead of `Convert.ToInt32`, typed numeric/bool settings, inner-entity `FillInnerEntities`, scalar event
-`AdaptInvoke`, blittable-struct method frames (`GetHexInterval` through `CallMethodIndexed`), sequential struct
-layout attributes, generated `CallbackAdapters.Adapt_<key>` methods for frame-capable callback signatures (typed,
+`AdaptInvoke`, value-type method frames (`GetHexInterval` through `CallMethodIndexed`), sequential struct
+layout attributes, indexed boxed property access (`Native.GetProperty(entityPtr, index)`, no names), raw-byte
+`GetPropertyList<T>` / `SetPropertyList<T>` for arrays of fixed values, one adapter per inbound remote-call
+signature, entity arguments as pointer slots in event frames, generated `CallbackAdapters.Adapt_<key>` methods for frame-capable callback signatures (typed,
 async, `Action`/`Func` and boxed-fallback branches) with no adapter for string/collection signatures, wrapper factory
 registrations in the ABI bind stub (none for the static `Game`), and bake identity: generated API files including `*Abi.gen.cs` participate in the stamp so a
 generator-only change cannot ship new C# with a skipped DLL. For live
-Mono validation, exercise every primitive width, enum values, blittable structs, virtual getters, rewriting setters and caught
+Mono validation, exercise every primitive width, enum values, value types (including ones holding `hstring`), virtual getters, rewriting setters and caught
 native errors, and measure warmed generated property, method, setting and GetAsInt calls with `GC.GetAllocatedBytesForCurrentThread()`.
 Callbacks and first writes to prototype-backed storage may have their own allocation costs, so warm storage
 before measuring and keep callback behavior checks separate from the allocation assertion. Inner-entity tests
 assert visit counts linear in n rather than Count+n×At recrawls.
+
+`CoreScripts/InteropProbe.cs` is the reusable interop benchmark; it is engine-owned and measures whatever surface
+the embedding project feeds it. `InteropProbe.Recorder` times batches the caller writes inline (so the measured
+code keeps its own cover and call shape), drops three warm-up batches, subtracts a caller-measured empty-loop
+calibration and reports the spread of batch means - `min`, `p50`, `p95`, `max`, a noise figure and managed bytes
+per call. It never claims the latency of a single call. `InteropProbe.MeasureCallback` covers the other
+direction: the native side (`Native.ProbeCallbackTransport`) drives one fixed adapter from its own timed loop
+over `mono_runtime_invoke`, a classic unmanaged thunk and an `UnmanagedCallersOnly` entry, then over the
+script-entry bookkeeping and the production dispatcher, and finally over each piece of dispatch scaffolding
+alone (nested sync context, entry scope, thread attachment, overrun report). Every batch verifies that the
+handler ran exactly once per native call with intact arguments. The unmanaged entry is taken from
+`RuntimeMethodHandle.GetFunctionPointer`, which needs neither an unsafe context nor a private runtime export.
+Each series also reports the bridge work per call: GC handles taken, classes and methods looked up by name,
+managed objects the native side created and wrappers constructed. They come from per-thread backend counters
+(`Native.ReadInteropCounters`) that are off outside a measured stretch, so production pays one thread-local flag
+test. Native heap allocations per call come from the same stretch in a Tracy build (`memory::get_thread_allocations`),
+the only build that counts them, and read `n/a` elsewhere. `InteropProbe.VerifyTransports` runs one adapter over
+each transport under the conditions a transport has to survive - an enum/bool/int64/struct/`hstring` frame, a
+throwing handler, a collection inside the handler, a nested entry, a native thread of its own, instance and
+virtual targets - and reports every check. A thunk and an `UnmanagedCallersOnly` entry are checked only where the
+runtime compiles code (`RuntimeFeature.IsDynamicCodeCompiled`): an interpreter-only runtime such as the browser has no
+native entry to hand out, and production calls in through `mono_runtime_invoke` there as everywhere. The native-thread
+condition is skipped in the single-threaded browser runtime. The native side calls a thunk and an
+`UnmanagedCallersOnly` entry with the platform default calling convention, as Mono documents for its thunks: that is
+`__stdcall` on Windows x86 and the C convention everywhere else, and a cdecl pointer there corrupts the stack on the
+first call. A client that runs no test suite - a browser or a
+device - is qualified by starting it with `ManagedScript.InteropProbeOnStart = True`: once scripts have started it
+logs one `INTEROP-TRANSPORT` line per check and a closing `INTEROP-TRANSPORT summary: <n> checks, <m> failed, pointer
+size <bytes>, compiled code <bool>` line.
+Latency is not a CI gate: a shared runner's noise exceeds what these series resolve, so the numbers are compared
+by hand on a quiet host, while allocations and delivery counts stay hard assertions. This probe is also the
+qualification run for a runtime upgrade: take the series on the old pin, switch the pin, take them again.
 
 `python -m pytest BuildTools/tests/test_managed_stack_traces.py BuildTools/tests/test_managed_async_callbacks.py`
 checks the canonical managed exception descriptions and callback failure accounting. The stack-trace probes
@@ -173,8 +207,9 @@ FO_MANAGED_CALLBACK_RUNTIME=/path/to/mono/linux.x64.Release \
   python3 -m pytest BuildTools/tests/test_managed_callback_gc_roots.py
 ```
 
-It compiles the canonical `DispatchManagedCallbackInContext` body and managed callback helpers against
-small argument-conversion fixtures. Real Mono collections cover eleven mixed scalar arguments,
+It compiles the canonical `DispatchManagedCallbackInContext` and `DispatchManagedCallbackBoxed` bodies and
+managed callback helpers against small argument-conversion fixtures; the plan carries no generated adapter, so
+every call takes the boxed path, the one whose roots this probe is about. Real Mono collections cover eleven mixed scalar arguments,
 a mutable string with a return value, and cleanup after a boxing exception. The Mono profiler
 checks strong-handle lifetime at the boxing and copy-back boundaries: native conservative stack
 scanning can otherwise keep an unrooted object alive. The same probe runs 10,000 frame-pump scopes
@@ -191,10 +226,11 @@ FO_MANAGED_CALLBACK_BUILD=/path/to/native/build \
   python3 -m pytest BuildTools/tests/test_managed_callback_context.py
 ```
 
-This probe compiles the canonical callback wrapper and `ServerEngine::RunScriptContext` method
-on a small fixture host. Releasing or replacing the callback's cover, including an exceptional
-return, must preserve the caller's context and physical lock while releasing the callback's own
-lock. It records the native link inputs and verifies that they remain unchanged during linking.
+This probe compiles the canonical callback wrapper, `RunManagedScriptEntry` and
+`ServerEngine::RunScriptContext` on a small fixture host. Releasing or replacing the callback's cover,
+including an exceptional return, must preserve the caller's context and physical lock while releasing the
+callback's own lock. A second build runs the callback in the caller's context instead of a script context of
+its own and must fail, so the probe is shown to catch the defect it guards against. It records the native link inputs and verifies that they remain unchanged during linking.
 A running server with real managed remote calls remains the end-to-end acceptance check.
 
 ### Unit tests under sanitizers

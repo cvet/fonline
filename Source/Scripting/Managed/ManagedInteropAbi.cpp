@@ -139,76 +139,6 @@ static auto IsManagedAbiBridgeMethod(const MethodDesc& method) noexcept -> bool
     return std::ranges::all_of(method.Args, [](const ArgDesc& arg) { return CanUseManagedAbiBridge(arg.Type); });
 }
 
-auto HasManagedAbiHashedStringField(const BaseTypeDesc& type) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (type.IsHashedString) {
-        return true;
-    }
-    if (!type.StructLayout) {
-        return false;
-    }
-
-    for (const FieldDesc& field : type.StructLayout->Fields) {
-        if (HasManagedAbiHashedStringField(field.Type)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-auto IsManagedAbiBlittableStruct(const BaseTypeDesc& type) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!type.IsStruct || !type.StructLayout || type.IsHashedString) {
-        return false;
-    }
-    if (type.Size == 0 || type.Size > numeric_cast<size_t>(MANAGED_ABI_SCALAR_FRAME_CAPACITY)) {
-        return false;
-    }
-
-    size_t summed = 0;
-    size_t max_align = 1;
-
-    for (const FieldDesc& field : type.StructLayout->Fields) {
-        const BaseTypeDesc& field_type = field.Type;
-
-        if (field_type.IsHashedString) {
-            if (field_type.Size == 0) {
-                return false;
-            }
-
-            summed += field_type.Size;
-
-            if (field_type.Size > max_align) {
-                max_align = field_type.Size;
-            }
-
-            continue;
-        }
-        if (field_type.IsStruct && !IsManagedAbiBlittableStruct(field_type)) {
-            return false;
-        }
-        if (!field_type.IsStruct && !field_type.IsPrimitive && !field_type.IsEnum) {
-            return false;
-        }
-        if (field_type.Size == 0) {
-            return false;
-        }
-
-        summed += field_type.Size;
-
-        if (field_type.Size > max_align) {
-            max_align = field_type.Size;
-        }
-    }
-
-    return summed == type.Size && max_align != 0 && type.Size % max_align == 0;
-}
-
 auto IsManagedAbiScalarType(const ComplexTypeDesc& type) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -220,7 +150,16 @@ auto IsManagedAbiFixedValueType(const ComplexTypeDesc& type) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return type.Kind == ComplexTypeKind::Simple && (type.BaseType.IsPrimitive || type.BaseType.IsEnum || type.BaseType.IsHashedString || IsManagedAbiBlittableStruct(type.BaseType));
+    return type.Kind == ComplexTypeKind::Simple && IsManagedAbiFixedPropertyValue(type.BaseType);
+}
+
+// A value that crosses as raw bytes. IsStruct is a plain value type by registration (RegisterValueTypeLayout), so
+// it needs no layout check of its own here; anything that holds complex data is a ref type instead
+auto IsManagedAbiFixedPropertyValue(const BaseTypeDesc& type) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return type.IsPrimitive || type.IsEnum || type.IsHashedString || type.IsStruct;
 }
 
 auto ManagedAbiSlotSize(const BaseTypeDesc& type) noexcept -> uint16_t
@@ -243,7 +182,8 @@ auto ManagedAbiSlotSize(const BaseTypeDesc& type) noexcept -> uint16_t
         return type.EnumUnderlyingType ? ManagedAbiSlotSize(*type.EnumUnderlyingType) : uint16_t {4};
     }
 
-    return numeric_cast<uint16_t>(type.Size);
+    // A value wider than the frame is not a layout problem, only one the frame cannot hold; zero keeps it boxed
+    return type.Size <= MANAGED_ABI_SCALAR_FRAME_CAPACITY ? numeric_cast<uint16_t>(type.Size) : uint16_t {0};
 }
 
 auto ManagedAbiKindFromBaseType(const BaseTypeDesc& type) noexcept -> ManagedAbiValueKind
@@ -289,7 +229,7 @@ auto ManagedAbiKindFromBaseType(const BaseTypeDesc& type) noexcept -> ManagedAbi
     if (type.IsHashedString) {
         return ManagedAbiValueKind::HashedString;
     }
-    if (IsManagedAbiBlittableStruct(type)) {
+    if (type.IsStruct) {
         return ManagedAbiValueKind::Struct;
     }
 
@@ -349,7 +289,9 @@ static auto MakeAbiSlot(const ComplexTypeDesc& type, uint16_t offset) -> Managed
     return slot;
 }
 
-static auto PackScalarSlots(const_span<ArgDesc> args, const ComplexTypeDesc& ret, vector<ManagedAbiSlot>& out_args, ManagedAbiSlot& out_ret, uint16_t& frame_size, uint16_t& result_offset) -> bool
+// An entity or native ref-type argument travels by value as its pointer in an 8-byte slot, and so does an entity
+// result; a ref-type result stays boxed, because its ownership rules live in the boxing path
+static auto PackScalarSlots(const_span<ArgDesc> args, bool args_wrapped, const ComplexTypeDesc& ret, bool ret_nullable, vector<ManagedAbiSlot>& out_args, ManagedAbiSlot& out_ret, uint16_t& frame_size, uint16_t& result_offset) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -358,6 +300,17 @@ static auto PackScalarSlots(const_span<ArgDesc> args, const ComplexTypeDesc& ret
     out_args.reserve(args.size());
 
     for (const ArgDesc& arg : args) {
+        if (!arg.Type.IsMutable && IsManagedAbiHandleType(arg.Type, args_wrapped)) {
+            ManagedAbiSlot handle_slot;
+            handle_slot.Kind = ManagedAbiValueKind::Handle;
+            handle_slot.Nullable = arg.Nullable;
+            handle_slot.Size = MANAGED_ABI_HANDLE_SLOT_SIZE;
+            handle_slot.Offset = offset;
+            offset = numeric_cast<uint16_t>(offset + handle_slot.Size);
+            out_args.emplace_back(handle_slot);
+            continue;
+        }
+
         if (!IsManagedAbiFixedValueType(arg.Type)) {
             return false;
         }
@@ -375,7 +328,14 @@ static auto PackScalarSlots(const_span<ArgDesc> args, const ComplexTypeDesc& ret
     result_offset = offset;
     out_ret = {};
 
-    if (ret) {
+    if (ret && !ret.IsMutable && !ret.BaseType.IsRefType && IsManagedAbiHandleType(ret, true)) {
+        out_ret.Kind = ManagedAbiValueKind::Handle;
+        out_ret.Nullable = ret_nullable;
+        out_ret.Size = MANAGED_ABI_HANDLE_SLOT_SIZE;
+        out_ret.Offset = offset;
+        offset = numeric_cast<uint16_t>(offset + out_ret.Size);
+    }
+    else if (ret) {
         if (!IsManagedAbiFixedValueType(ret)) {
             return false;
         }
@@ -449,7 +409,8 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
             entry.IsRefType = is_ref_type;
             entry.IsFactory = is_ref_type && method.Name == "__Factory";
             entry.PassOwnership = method.PassOwnership;
-            entry.UsesScalarFrame = PackScalarSlots(method.Args, method.Ret, entry.Args, entry.Ret, entry.FrameSize, entry.ResultOffset);
+            // Method arguments only travel into native code, so no argument slot is ever wrapped
+            entry.UsesScalarFrame = PackScalarSlots(method.Args, false, method.Ret, method.ReturnNullable, entry.Args, entry.Ret, entry.FrameSize, entry.ResultOffset);
             abi.Methods.emplace_back(std::move(entry));
         }
     };
@@ -466,7 +427,7 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
 
             ManagedAbiSlot unused_ret {};
             uint16_t result_offset = 0;
-            entry.UsesScalarFrame = PackScalarSlots(event.Args, {}, entry.Args, unused_ret, entry.FrameSize, result_offset);
+            entry.UsesScalarFrame = PackScalarSlots(event.Args, true, {}, false, entry.Args, unused_ret, entry.FrameSize, result_offset);
             abi.Events.emplace_back(std::move(entry));
         }
 
@@ -536,9 +497,11 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
             MixHash(abi.Hash, numeric_cast<uint64_t>(static_cast<uint8_t>(slot.Kind)));
             MixHash(abi.Hash, numeric_cast<uint64_t>(slot.Size));
             MixHash(abi.Hash, numeric_cast<uint64_t>(slot.Offset));
+            MixHash(abi.Hash, numeric_cast<uint64_t>(slot.Nullable ? 1 : 0));
         }
 
         MixHash(abi.Hash, numeric_cast<uint64_t>(static_cast<uint8_t>(method.Ret.Kind)));
+        MixHash(abi.Hash, numeric_cast<uint64_t>(method.Ret.Nullable ? 1 : 0));
         MixHash(abi.Hash, numeric_cast<uint64_t>(method.FrameSize));
     }
 
@@ -554,6 +517,7 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
             MixHash(abi.Hash, numeric_cast<uint64_t>(static_cast<uint8_t>(slot.Kind)));
             MixHash(abi.Hash, numeric_cast<uint64_t>(slot.Size));
             MixHash(abi.Hash, numeric_cast<uint64_t>(slot.Offset));
+            MixHash(abi.Hash, numeric_cast<uint64_t>(slot.Nullable ? 1 : 0));
         }
 
         MixHash(abi.Hash, numeric_cast<uint64_t>(event.FrameSize));
@@ -630,6 +594,47 @@ auto FindManagedAbiInnerEntry(const ManagedAbiManifest& abi, string_view owner, 
     return nullptr;
 }
 
+// Every generated class with a native-pointer constructor, mirroring what the Entities and Types files emit: the
+// bind stub registers a managed factory for each, and the backend resolves their constructors once at bind time
+auto CollectManagedAbiWrapperClasses(const EngineMetadata& meta) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> result;
+
+    for (const auto& [type_name, desc] : meta.GetEntityTypes()) {
+        if (desc.IsGlobal) {
+            continue;
+        }
+
+        if (desc.HasAbstract) {
+            result.emplace_back(strex("Abstract{}", type_name).str());
+        }
+
+        result.emplace_back(type_name.as_str());
+
+        if (desc.HasProtos) {
+            result.emplace_back(strex("Proto{}", type_name).str());
+        }
+        if (desc.HasStatics) {
+            result.emplace_back(strex("Static{}", type_name).str());
+        }
+    }
+
+    for (const auto& type_name : meta.GetFixedTypes() | std::views::keys) {
+        result.emplace_back(type_name.as_str());
+    }
+
+    for (const auto& type : meta.GetBaseTypes() | std::views::values) {
+        if (type.IsRefType && type.RefType && !type.RefType->FieldsRegistrar) {
+            result.emplace_back(type.Name);
+        }
+    }
+
+    std::ranges::sort(result);
+    return result;
+}
+
 auto IsManagedAbiDynamicRefType(const BaseTypeDesc& type) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -637,7 +642,7 @@ auto IsManagedAbiDynamicRefType(const BaseTypeDesc& type) noexcept -> bool
     return type.IsRefType && type.RefType && type.RefType->FieldsRegistrar;
 }
 
-auto IsManagedAbiHandleType(const ComplexTypeDesc& type) noexcept -> bool
+auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -647,9 +652,10 @@ auto IsManagedAbiHandleType(const ComplexTypeDesc& type) noexcept -> bool
 
     const BaseTypeDesc& base_type = type.BaseType;
 
-    // An abstract or base-typed entity argument is wrapped by its runtime type, which only the boxing path resolves
+    // A handle that reaches managed code is wrapped by its runtime type, which only the boxing path resolves for an
+    // abstract or base-typed entity; a handle that only travels into native code is a pointer whatever its type
     if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
-        return !base_type.IsAbstractEntity && base_type.Name != "Entity";
+        return !wrapped || (!base_type.IsAbstractEntity && base_type.Name != "Entity");
     }
     if (base_type.IsRefType) {
         return !IsManagedAbiDynamicRefType(base_type);
@@ -696,7 +702,7 @@ auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<Comple
 
         ManagedAbiSlot slot;
 
-        if (IsManagedAbiHandleType(arg)) {
+        if (IsManagedAbiHandleType(arg, true)) {
             slot.Kind = ManagedAbiValueKind::Handle;
             slot.Size = MANAGED_ABI_HANDLE_SLOT_SIZE;
         }

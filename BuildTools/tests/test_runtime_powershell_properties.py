@@ -63,4 +63,5 @@ def test_windows_runtime_properties_pass_powershell_parameter_binding(tmp_path, 
         "/p:UseSharedCompilation=false",
         "/p:RunAnalyzers=false",
         "/p:EnableXlfLocalization=false",
+        "/p:NuGetAudit=false",
     ]
