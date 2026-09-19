@@ -43,6 +43,7 @@
 #include "Client.h"
 #include "DataSerialization.h"
 #include "ImGuiStuff.h"
+#include "ResourcePack.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
@@ -2157,6 +2158,159 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(second_client, server, 2));
     REQUIRE(WaitForLearnedHash(second_client, reported.as_hash(), "integration_test_only_hash"));
     CHECK(GetServerConnectionCount(server) == 2);
+}
+
+TEST_CASE("ClientUpdaterResourcePatchLifecycle")
+{
+    using namespace TestClientServerIntegration;
+
+    string install = PrepareClientUpdaterBakeOutput();
+    string published = MakeTempClientUpdaterBakeDir("published");
+    string writable = MakeTempClientUpdaterBakeDir("writable");
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    });
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    auto write_art = [](string_view directory, const vector<pair<string, string>>& files) {
+        ResourcePackWriter writer {strex(directory).combine_path("Art.fores").str(), {0, 100}};
+
+        for (const auto& [name, content] : files) {
+            writer.AddFile(name, {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
+        }
+
+        writer.Finish();
+    };
+    string unchanged(65536, 'b');
+    write_art(install, {{"Keep.bin", unchanged}, {"Change.txt", "old"}, {"Removed.txt", "removed"}});
+    write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "first update"}});
+    string installed_base = strex(install).combine_path("Art.fores").str();
+    auto original = fs::read_file(installed_base);
+    REQUIRE(original);
+    string writable_resources = strex(writable).combine_path("Resources").str();
+    string patch = strex(writable_resources).combine_path("Art.patch.fores").str();
+    string replacement = strex(writable_resources).combine_path("Art.fores").str();
+
+    auto synchronize = [&](bool in_memory, bool replace_published = false) {
+        uint16_t port = IntegrationTestPort.fetch_add(1);
+        GlobalSettings server_settings = MakeServerTestSettings(port);
+        BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        server_settings.ApplyConfigFile(server_pack_config, "");
+        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
+        auto server = MakeServerEngine(server_settings);
+        auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
+        string error = WaitForServerStart(server);
+        INFO(error);
+        REQUIRE(error.empty());
+
+#if !FO_WINDOWS
+        if (replace_published) {
+            REQUIRE(fs::rename_durable(strex(published).combine_path("Art.fores").str(), strex(published).combine_path("Pinned.fores").str()));
+            write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "replaced after server start"}});
+        }
+#else
+        ignore_unused(replace_published);
+#endif
+
+        GlobalSettings client_settings = MakeClientTestSettings(port);
+        BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        client_settings.ApplyConfigFile(client_pack_config, "");
+        client_settings.ApplyWritableRoot(writable);
+        Updater updater {&client_settings, &GetApp()->MainWindow};
+        REQUIRE(WaitForUpdaterResult(updater));
+        REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);
+        REQUIRE_FALSE(updater.IsAborted());
+        FileSystem resources = GetClientResources(client_settings);
+        CHECK(resources.ReadFileText("Keep.bin") == unchanged);
+        CHECK_FALSE(resources.IsFileExists("Removed.txt"));
+    };
+
+    synchronize(false);
+    REQUIRE(fs::exists(patch));
+    CHECK_FALSE(fs::exists(replacement));
+    CHECK(fs::read_file(installed_base) == original);
+    auto first = fs::read_file(patch);
+    REQUIRE(first);
+    CHECK(first->size() < 1024);
+
+    SECTION("SecondUpdateAppendsAndRetainsTheCommittedPrefix")
+    {
+        write_art(published, {{"Keep.bin", unchanged}, {"Renamed.txt", "first update"}, {"Added.txt", "second update"}});
+        synchronize(true);
+        auto second = fs::read_file(patch);
+        REQUIRE(second);
+        CHECK(second->size() > first->size());
+        CHECK(second->starts_with(*first));
+        ResourcePackSource pair {installed_base, patch};
+        CHECK(pair.IsFileExists("Renamed.txt"));
+        CHECK_FALSE(pair.IsFileExists("Change.txt"));
+        CHECK(pair.GetContentHash() == ResourcePackSource(strex(published).combine_path("Art.fores").str()).GetContentHash());
+    }
+
+    SECTION("LargePatchKeepsAppendingAndRemainsCurrentWithoutReplacingTheBase")
+    {
+        constexpr size_t large_size = 65 * 1024 * 1024;
+
+        {
+            vector<uint8_t> content(large_size, 'n');
+            string intermediate = strex(writable).combine_path("Intermediate.fores").str();
+
+            {
+                ResourcePackWriter writer {intermediate, {0, 100}};
+                writer.AddFile("Keep.bin", {reinterpret_cast<const uint8_t*>(unchanged.data()), unchanged.size()});
+                writer.AddFile("Change.txt", content);
+                writer.Finish();
+            }
+
+            ResourcePackSource target {intermediate};
+            ResourcePatchWriter writer {installed_base, patch, target.GetEntryRefs(), target.GetContentHash()};
+            REQUIRE(writer.GetDownloads().size() == 1);
+            REQUIRE(writer.GetDownloads().front().Path == "Change.txt");
+            writer.Begin();
+            writer.AddEncodedFile(content);
+            writer.Finish();
+        }
+
+        uint64_t size_before = fs::file_size(patch).value();
+        REQUIRE(size_before > large_size);
+        synchronize(false);
+        CHECK_FALSE(fs::exists(replacement));
+        uint64_t size_after = fs::file_size(patch).value();
+        CHECK(size_after > size_before);
+        CHECK(size_after - size_before < 1024);
+        synchronize(true);
+        CHECK(fs::file_size(patch).value() == size_after);
+        CHECK_FALSE(fs::exists(replacement));
+        CHECK(fs::read_file(installed_base) == original);
+    }
+
+#if !FO_WINDOWS
+    SECTION("DiskBackendPinsTheAdvertisedArtifactAcrossReplacement")
+    {
+        write_art(published, {{"Keep.bin", unchanged}, {"Pinned.txt", "advertised before replacement"}});
+        synchronize(false, true);
+        ResourcePackSource pair {installed_base, patch};
+        CHECK(pair.IsFileExists("Pinned.txt"));
+        CHECK_FALSE(pair.IsFileExists("Change.txt"));
+        CHECK(pair.GetContentHash() == ResourcePackSource(strex(published).combine_path("Pinned.fores").str()).GetContentHash());
+        CHECK(pair.GetContentHash() != ResourcePackSource(strex(published).combine_path("Art.fores").str()).GetContentHash());
+    }
+#endif
 }
 
 TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")

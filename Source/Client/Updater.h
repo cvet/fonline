@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+#include "ResourcePack.h"
 
 #include "CacheStorage.h"
 #include "ClientConnection.h"
@@ -110,14 +111,30 @@ private:
         uint64_t RemaningSize {};
         uint64_t Hash {};
         bool IsClientBinary {};
+        bool TryPatch {true};
+        ResourcePackHeader PackHeader {};
+    };
+
+    enum class ResourceRange
+    {
+        None,
+        Catalog,
+        Payload,
     };
 
     void AddText(string_view text);
     void Abort(UpdaterResult result, string_view text);
     void GetNextFile();
     void FinishResourcesUpdate();
+    void RebuildResourceIndex() const;
     auto ReadLocalMetadataVersion() const -> string;
+    void RecoverInterruptedReplacements() const;
+    void RemoveStaleTempPacks() const;
     void RequestUpdateFile(const UpdateFile& update_file);
+    void RequestResourceRange();
+    void FinishResourceRange();
+    void AdvanceResourcePatch();
+    auto IsLocalResourceCurrent(const UpdateFile& file) const -> bool;
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
@@ -127,8 +144,10 @@ private:
     void Net_OnUpdateFileData();
 
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
+    auto IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool;
 
     static auto IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool;
+    static auto IsResourcePackName(string_view file_name) noexcept -> bool;
     static auto GetDiskFileSize(string_view file_path) -> optional<uint64_t>;
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
@@ -145,7 +164,15 @@ private:
     bool _hasMatchingEntries {};
     bool _restartPrompt {};
     vector<UpdateFile> _filesToUpdate {};
-    std::ofstream _tempFile {};
+    vector<UpdateFile> _resourceTargets {};
+    unique_nptr<ResourcePatchWriter> _patchWriter {};
+    ResourceRange _resourceRange {ResourceRange::None};
+    uint64_t _rangeOffset {};
+    uint64_t _rangeSize {};
+    vector<uint8_t> _rangeData {};
+    size_t _patchDownloadIndex {};
+    unique_nptr<fs::disk_directory_lock> _resourceDirectoryLock {};
+    fs::disk_write_file _tempFile {};
     vector<uint8_t> _updateFileBuf {};
     vector<string> _messages {};
     FileSystem _resources {};

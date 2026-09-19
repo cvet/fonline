@@ -43,7 +43,9 @@
 
 FO_BEGIN_NAMESPACE
 
+#if FO_WINDOWS || FO_LINUX || FO_MAC
 static auto make_module_file_name(const string& module_name) noexcept -> string;
+#endif
 
 void platform::info_log(const string& str) noexcept
 {
@@ -213,8 +215,13 @@ auto platform::load_module(const string& module_name) noexcept -> nptr<void>
 
 #if FO_WINDOWS
     return winapi::load_library(make_module_file_name(module_name));
-#else
+#elif FO_LINUX || FO_MAC
     return posix::load_library(make_module_file_name(module_name));
+#else
+    // Android links its runtime into the package and the web build has no module system at all, so there is
+    // nothing to load rather than a loader that fails
+    ignore_unused(module_name);
+    return nullptr;
 #endif
 }
 
@@ -224,8 +231,11 @@ auto platform::load_pinned_module(const string& module_name) noexcept -> nptr<vo
 
 #if FO_WINDOWS
     return winapi::load_pinned_library(make_module_file_name(module_name));
-#else
+#elif FO_LINUX || FO_MAC
     return posix::load_pinned_library(make_module_file_name(module_name));
+#else
+    ignore_unused(module_name);
+    return nullptr;
 #endif
 }
 
@@ -239,7 +249,7 @@ void platform::unload_module(nptr<void> module_handle) noexcept
 
 #if FO_WINDOWS
     winapi::free_library(module_handle);
-#else
+#elif FO_LINUX || FO_MAC
     posix::free_library(module_handle);
 #endif
 }
@@ -250,11 +260,15 @@ auto platform::get_func_addr(nptr<void> module_handle, const string& func_name) 
 
 #if FO_WINDOWS
     return winapi::get_proc_address(module_handle, func_name).get();
-#else
+#elif FO_LINUX || FO_MAC
     return posix::get_symbol_address(module_handle, func_name).get();
+#else
+    ignore_unused(module_handle, func_name);
+    return nullptr;
 #endif
 }
 
+#if FO_WINDOWS || FO_LINUX || FO_MAC
 static auto make_module_file_name(const string& module_name) noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -263,11 +277,12 @@ static auto make_module_file_name(const string& module_name) noexcept -> string
     string_view extension = ".dll";
 #elif FO_MAC
     string_view extension = ".dylib";
-#else
+#elif FO_LINUX
     string_view extension = ".so";
 #endif
 
     return module_name.ends_with(extension) ? module_name : strex(strex::safe_format, "{}{}", module_name, extension).str();
 }
+#endif
 
 FO_END_NAMESPACE

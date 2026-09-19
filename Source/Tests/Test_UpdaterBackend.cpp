@@ -37,6 +37,7 @@
 
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
+#include "ResourcePack.h"
 #include "Test_BakerHelpers.h"
 #include "UpdaterBackend.h"
 
@@ -56,6 +57,7 @@ namespace UpdaterBackendTests
         uint64_t Size {};
         uint64_t Hash {};
         UpdateFileTarget Target {};
+        uint32_t PackHeaderSize {};
     };
 
     static auto ReadDescriptor(const_span<uint8_t> data) -> vector<DescriptorEntry>
@@ -77,6 +79,8 @@ namespace UpdaterBackendTests
             entry.Hash = reader.read<uint64_t>();
             entry.Target = reader.read<UpdateFileTarget>();
             ignore_unused(reader.read<uint32_t>());
+            entry.PackHeaderSize = reader.read<uint32_t>();
+            ignore_unused(reader.read_bytes(entry.PackHeaderSize));
             entries.emplace_back(std::move(entry));
         }
 
@@ -96,22 +100,37 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
 
     string root_dir = MakeTempDir("platform_resource");
     string client_resources_dir = strex(root_dir).combine_path("ClientResources").str();
-    string common_scripts_dir = strex(client_resources_dir).combine_path("Scripts").str();
     string platform_binaries_dir = strex(root_dir).combine_path("PlatformBinaries").str();
     string windows_target_dir = strex(platform_binaries_dir).combine_path("Windows-win64").str();
     auto cleanup = scope_exit([&root_dir]() noexcept { (void)fs::remove_dir_tree(root_dir); });
 
-    REQUIRE(fs::create_directories(common_scripts_dir));
+    REQUIRE(fs::create_directories(client_resources_dir));
     REQUIRE(fs::create_directories(windows_target_dir));
 
     vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
-    constexpr string_view common_scripts = "common-scripts-zip";
+    constexpr string_view common_scripts = "common-scripts-pack";
     constexpr string_view windows_scripts = "windows-target-scripts";
     constexpr string_view windows_runtime = "windows-runtime-dll";
-    REQUIRE(fs::write_file(strex(client_resources_dir).combine_path("Scripts.zip").str(), common_scripts));
-    REQUIRE(fs::write_file(strex(common_scripts_dir).combine_path("Metadata.fometa-client").str(), metadata));
-    REQUIRE(fs::write_file(strex(windows_target_dir).combine_path("Scripts.zip").str(), windows_scripts));
+    string common_pack_path = strex(client_resources_dir).combine_path("Scripts.fores").str();
+    string windows_pack_path = strex(windows_target_dir).combine_path("Scripts.fores").str();
+    {
+        ResourcePackWriter writer {common_pack_path};
+        writer.AddFile("Common.txt", {reinterpret_cast<const uint8_t*>(common_scripts.data()), common_scripts.size()});
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+    {
+        ResourcePackWriter writer {windows_pack_path};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.AddFile("Windows.txt", {reinterpret_cast<const uint8_t*>(windows_scripts.data()), windows_scripts.size()});
+        writer.Finish();
+    }
     REQUIRE(fs::write_file(strex(windows_target_dir).combine_path("Game.dll").str(), windows_runtime));
+
+    ResourcePackHeader common_header;
+    ResourcePackHeader windows_header;
+    REQUIRE(ReadResourcePackHeader(common_pack_path, common_header));
+    REQUIRE(ReadResourcePackHeader(windows_pack_path, windows_header));
 
     auto settings = GlobalSettings(false);
     settings.ApplyDefaultSettings();
@@ -126,22 +145,25 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
 
     auto common_entries = ReadDescriptor(updater_backend.GetUpdateDescriptor("Unknown-target"));
     REQUIRE(common_entries.size() == 1);
-    CHECK(common_entries.front().Name == "Scripts.zip");
-    CHECK(common_entries.front().Hash == HashString(common_scripts));
+    CHECK(common_entries.front().Name == "Scripts.fores");
+    CHECK(common_entries.front().Hash == common_header.PackHash);
     CHECK(common_entries.front().Target == UpdateFileTarget::ClientResources);
+    CHECK(common_entries.front().PackHeaderSize == RESOURCE_PACK_HEADER_SIZE);
 
     auto windows_entries = ReadDescriptor(updater_backend.GetUpdateDescriptor("Windows-win64"));
-    auto scripts_entries = windows_entries | std::views::filter([](const DescriptorEntry& entry) { return entry.Name == "Scripts.zip"; });
+    auto scripts_entries = windows_entries | std::views::filter([](const DescriptorEntry& entry) { return entry.Name == "Scripts.fores"; });
     REQUIRE(std::ranges::distance(scripts_entries) == 1);
     const DescriptorEntry& scripts_entry = *scripts_entries.begin();
-    CHECK(scripts_entry.Size == windows_scripts.size());
-    CHECK(scripts_entry.Hash == HashString(windows_scripts));
+    CHECK(scripts_entry.Size == *fs::file_size(windows_pack_path));
+    CHECK(scripts_entry.Hash == windows_header.PackHash);
     CHECK(scripts_entry.Target == UpdateFileTarget::ClientResources);
+    CHECK(scripts_entry.PackHeaderSize == RESOURCE_PACK_HEADER_SIZE);
 
     auto runtime_entry = std::ranges::find(windows_entries, "Game.dll", &DescriptorEntry::Name);
     REQUIRE(runtime_entry != windows_entries.end());
     CHECK(runtime_entry->Hash == HashString(windows_runtime));
     CHECK(runtime_entry->Target == UpdateFileTarget::ClientBinaries);
+    CHECK(runtime_entry->PackHeaderSize == 0);
 }
 
 FO_END_NAMESPACE
