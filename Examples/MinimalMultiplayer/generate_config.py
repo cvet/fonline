@@ -182,7 +182,7 @@ def parse_settings(path: Path) -> list[Setting]:
     settings: list[Setting] = []
     for source_line in path.read_text(encoding="utf-8-sig").splitlines():
         line = source_line.strip()
-        if not line.startswith(("FIXED_SETTING(", "VARIABLE_SETTING(")):
+        if not line.startswith("SETTING("):
             continue
         end = line.find(");")
         if end == -1:

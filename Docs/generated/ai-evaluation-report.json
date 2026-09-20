@@ -17,9 +17,9 @@
     "query_count": 67,
     "pass_count": 67,
     "success_rate": 1.0,
-    "top_1_rate": 0.835821,
+    "top_1_rate": 0.850746,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.910448,
+    "mean_reciprocal_rank": 0.920398,
     "minimum_success_rate": 1.0
   },
   "passed_task_count": 28,
@@ -1994,12 +1994,12 @@
             "packaging-and-release"
           ],
           "max_rank": 3,
-          "rank": 3,
+          "rank": 1,
           "passed": true,
           "top_document_ids": [
+            "packaging-and-release",
             "android-debugging",
             "client-updater",
-            "packaging-and-release",
             "security-and-secrets",
             "web-debugging"
           ]

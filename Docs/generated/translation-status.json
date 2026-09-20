@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "ea8b09bc9fb4c922b6a4fd931a41d11b6a23f1bc15465790a4da551a40b8eb92",
-      "source_bytes": 30747,
+      "source_sha256": "4f42e1747b0865a7aa2f1039c9a184091e00c8e5813474d83595cd4a2b52bc3b",
+      "source_bytes": 31164,
       "status": "current"
     },
     {
@@ -1392,8 +1392,8 @@
       "english_path": "Docs/en/reference/helper-cli/commands.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/helper-cli/commands.md",
-      "source_sha256": "202589eff1cb599f85f10924527e21f49bf0c2a8237c84e8fe7660fa609de36a",
-      "source_bytes": 46141,
+      "source_sha256": "6aea91191dbd280eac7b426dfe3f5dd09994f709dc5d7a52febc6ccdadb0cdda",
+      "source_bytes": 46524,
       "status": "current"
     },
     {
@@ -1405,7 +1405,7 @@
       "english_path": "Docs/en/reference/helper-cli/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/helper-cli/index.md",
-      "source_sha256": "cb212d690b9801bf3235c982c361f84571ebcc171191c2fb5fef1f1549d0c81a",
+      "source_sha256": "808340a9d43f0004fb672a168a56fe886cc4e06f868295a4382989552f22c3dd",
       "source_bytes": 4913,
       "status": "current"
     },

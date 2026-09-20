@@ -804,18 +804,20 @@ Build an MSI installer from a package-generated WiX definition.
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-createmsi-argument-wix-dir-ab41be5878"></a><code>helper-cli.createmsi.argument.wix_dir</code> | <code>--wix-dir</code> | <code>option</code> | no | <code>1</code> | - | <code>-</code> | directory containing WiX tools; omit to find them on PATH |
 | <a id="entry-helper-cli-createmsi-argument-jsonfile-385f92bb78"></a><code>helper-cli.createmsi.argument.jsonfile</code> | <code>definition.json</code> | <code>positional</code> | yes | <code>1</code> | - | - | bare WiX package definition filename in the working directory |
 
 ### Exact top-level `--help` output
 
 ```text
-usage: createmsi.py [-h] definition.json
+usage: createmsi.py [-h] [--wix-dir directory] definition.json
 
 Build an MSI package from a WiX definition
 
 positional arguments:
-  definition.json  bare WiX package definition filename in the working directory
+  definition.json      bare WiX package definition filename in the working directory
 
 options:
-  -h, --help       show this help message and exit
+  -h, --help           show this help message and exit
+  --wix-dir directory  directory containing WiX tools; omit to find them on PATH
 ```

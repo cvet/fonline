@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"ea8b09bc9fb4c922b6a4fd931a41d11b6a23f1bc15465790a4da551a40b8eb92"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"4f42e1747b0865a7aa2f1039c9a184091e00c8e5813474d83595cd4a2b52bc3b"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -186,6 +186,10 @@ setting. Checked-in `FOnlinePackagingMatrix.fomain` детерминирован
 из `Source/Common/Settings.inc`; `generate_config.py --check` завершается
 ошибкой при расхождении settings и fixture.
 
+Эта fixture и `Examples/MinimalMultiplayer` получают значения по умолчанию из
+текущих объявлений `SETTING(...)`. После изменения схемы настроек пересоздайте
+конфигурации обоих примеров, затем проверьте их актуальность.
+
 В отдельном checkout `Examples/PackagingMatrix` с инициализированным submodule
 `Engine` сконфигурируйте host build и соберите принадлежащую fixture цель
 `RunPackagingChecks`. Эта цель не зарегистрирована как обязательный lane
@@ -253,7 +257,10 @@ evidence. Для Linux support и immutable example-release evidence необх�
 - `Wix` создаёт per-user MSI. На Windows подготовьте закреплённый Engine
   portable toolset WiX v3 командой `buildtools.py prepare-workspace wix`;
   `package.py` ищет `FO_WIX_ROOT`, соседний workspace `wix3`, затем
-  `candle`/`light` в `PATH`. `light` сначала запускает ICE validation и
+  `candle`/`light` в `PATH`. Выбранный каталог передаётся в
+  `createmsi.py --wix-dir`; прямой вызов принимает тот же параметр, включая
+  путь с пробелами как один аргумент. Без него инструменты берутся из `PATH`.
+  `light` сначала запускает ICE validation и
   повторяется один раз с `-sval` только при недоступности Windows Installer
   service; любая другая ошибка linker/ICE и failed fallback остаются
   фатальными. На POSIX packaging host требуется `wixl` версии

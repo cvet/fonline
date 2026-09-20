@@ -960,6 +960,10 @@
           "source_sha256": "f8a42a53ee2cba34cec5d8ac5a39bcb532a7dd700eba6244838507800cfb6214",
           "translation": "Только имя файла определения пакета WiX в рабочем каталоге."
         },
+        "/helpers/@id=helper-cli.createmsi/global_arguments/@id=helper-cli.createmsi.argument.wix_dir/description": {
+          "source_sha256": "1c5781329dfc1b8b5eefdacdf2c88ae30725a57eca28897c31df1d9c784381d1",
+          "translation": "Каталог инструментов WiX; без этого параметра они ищутся в PATH."
+        },
         "/helpers/@id=helper-cli.createmsi/invocation_owner": {
           "source_sha256": "de9c7bd2f5ff89806835337709946357d47e69deb5c29762d0df87de103e362b",
           "translation": "пакет Wix в BuildTools/package.py"

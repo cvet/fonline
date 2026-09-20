@@ -111,11 +111,16 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     ]
     packager = _make_packager(tmp_path, fomain_lines)
     packager.target_output_path = str(staged)
-    workspace_wix = tmp_path / "wix3"
+    workspace_wix = tmp_path / "WiX Toolset"
     monkeypatch.setattr(packager, "ensure_msi_toolset", lambda: str(workspace_wix))
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
 
     captured: dict[str, object] = {}
+
+    def capture_build(generator: createmsi.PackageGenerator, wixdir: str = "") -> None:
+        captured["wixdir"] = wixdir
+
+    monkeypatch.setattr(createmsi.PackageGenerator, "build_package", capture_build)
 
     def fake_run(cmd: list[str], cwd: str | None = None, check: bool = False, env: dict[str, str] | None = None) -> SimpleNamespace:
         captured["cmd"] = cmd
@@ -123,11 +128,13 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
         captured["env"] = env
         # The writable-data marker must exist inside the staged payload at MSI build time
         assert (Path(cwd) / "LF-Client" / "INSTALLED").is_file()
-        # Drive only createmsi's WiX XML generation without requiring wixl or light
+        # Run the packaging CLI through XML generation; only the external WiX tools are replaced
         previous = os.getcwd()
         os.chdir(cwd)
         try:
-            createmsi.PackageGenerator(cmd[-1]).generate_files()
+            with monkeypatch.context() as cli_patch:
+                cli_patch.setattr(sys, "argv", cmd[1:])
+                createmsi.main()
         finally:
             os.chdir(previous)
         return SimpleNamespace(returncode=0)
@@ -139,6 +146,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     # createmsi resolves a bare JSON filename against work_dir
     assert captured["cmd"][-1] == "LastFrontier.wix.json"
     assert captured["cmd"][-3:-1] == ["--wix-dir", str(workspace_wix)]
+    assert captured["wixdir"] == str(workspace_wix)
     assert "/" not in str(captured["cmd"][-1]) and "\\" not in str(captured["cmd"][-1])
     assert captured["cwd"] == str(output_dir)
 

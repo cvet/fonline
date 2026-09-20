@@ -1547,9 +1547,25 @@
       "invocation_owner": "BuildTools/package.py Wix pack",
       "description": "Build an MSI installer from a package-generated WiX definition.",
       "parser_description": "Build an MSI package from a WiX definition",
-      "usage": "usage: createmsi.py [-h] definition.json",
-      "help_output": "usage: createmsi.py [-h] definition.json\n\nBuild an MSI package from a WiX definition\n\npositional arguments:\n  definition.json  bare WiX package definition filename in the working directory\n\noptions:\n  -h, --help       show this help message and exit\n",
+      "usage": "usage: createmsi.py [-h] [--wix-dir directory] definition.json",
+      "help_output": "usage: createmsi.py [-h] [--wix-dir directory] definition.json\n\nBuild an MSI package from a WiX definition\n\npositional arguments:\n  definition.json      bare WiX package definition filename in the working directory\n\noptions:\n  -h, --help           show this help message and exit\n  --wix-dir directory  directory containing WiX tools; omit to find them on PATH\n",
       "global_arguments": [
+        {
+          "id": "helper-cli.createmsi.argument.wix_dir",
+          "destination": "wix_dir",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--wix-dir"
+          ],
+          "metavar": "directory",
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": "",
+          "type": null,
+          "description": "directory containing WiX tools; omit to find them on PATH"
+        },
         {
           "id": "helper-cli.createmsi.argument.jsonfile",
           "destination": "jsonfile",
@@ -1571,8 +1587,8 @@
   "summary": {
     "helper_count": 8,
     "command_count": 16,
-    "global_argument_count": 23,
+    "global_argument_count": 24,
     "command_argument_count": 52
   },
-  "contract_digest": "24bb99f8c2700c1768aa5226b9d63877772c2843c5a87b2ad29aae899d0d585d"
+  "contract_digest": "aec2b08d249c60c78f7fc9160df0f999c2f7c35509996bb49896206b607049f4"
 }

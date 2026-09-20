@@ -456,6 +456,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 
 Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
+<a id="entry-helper-cli-createmsi-argument-wix-dir-ab41be5878"></a>
+- [`entry-helper-cli-createmsi-argument-wix-dir-ab41be5878`](../../en/reference/helper-cli/commands.md#entry-helper-cli-createmsi-argument-wix-dir-ab41be5878)
+
 <a id="entry-helper-cli-createmsi-argument-jsonfile-385f92bb78"></a>
 - [`entry-helper-cli-createmsi-argument-jsonfile-385f92bb78`](../../en/reference/helper-cli/commands.md#entry-helper-cli-createmsi-argument-jsonfile-385f92bb78)
 

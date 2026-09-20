@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"202589eff1cb599f85f10924527e21f49bf0c2a8237c84e8fe7660fa609de36a"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"6aea91191dbd280eac7b426dfe3f5dd09994f709dc5d7a52febc6ccdadb0cdda"} -->
 
 # Команды вспомогательных CLI
 
@@ -806,18 +806,20 @@ options:
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-createmsi-argument-wix-dir-ab41be5878"></a><code>helper-cli.createmsi.argument.wix_dir</code> | <code>--wix-dir</code> | <code>option</code> | нет | <code>1</code> | - | <code>-</code> | Каталог инструментов WiX; без этого параметра они ищутся в PATH. |
 | <a id="entry-helper-cli-createmsi-argument-jsonfile-385f92bb78"></a><code>helper-cli.createmsi.argument.jsonfile</code> | <code>definition.json</code> | <code>positional</code> | да | <code>1</code> | - | - | Только имя файла определения пакета WiX в рабочем каталоге. |
 
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: createmsi.py [-h] definition.json
+usage: createmsi.py [-h] [--wix-dir directory] definition.json
 
 Build an MSI package from a WiX definition
 
 positional arguments:
-  definition.json  bare WiX package definition filename in the working directory
+  definition.json      bare WiX package definition filename in the working directory
 
 options:
-  -h, --help       show this help message and exit
+  -h, --help           show this help message and exit
+  --wix-dir directory  directory containing WiX tools; omit to find them on PATH
 ```

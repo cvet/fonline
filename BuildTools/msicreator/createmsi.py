@@ -593,28 +593,23 @@ class PackageGenerator:
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog='createmsi.py', description='Build an MSI package from a WiX definition')
+    parser.add_argument('--wix-dir', default='', metavar='directory', help='directory containing WiX tools; omit to find them on PATH')
     parser.add_argument('jsonfile', metavar='definition.json', help='bare WiX package definition filename in the working directory')
     return parser
 
 
 def run(args: list[str]) -> None:
-    wixdir = ''
-    if len(args) == 3 and args[0] == '--wix-dir':
-        wixdir = args[1]
-        args = args[2:]
-    if len(args) != 1:
-        sys.exit('createmsi.py [--wix-dir <directory>] <msi definition json>')
-    jsonfile = args[0]
+    parsed_args = create_parser().parse_args(args)
+    jsonfile = parsed_args.jsonfile
     if '/' in jsonfile or '\\' in jsonfile:
         sys.exit('Input file %s must not contain a path segment.' % jsonfile)
     p = PackageGenerator(jsonfile)
     p.generate_files()
-    p.build_package(wixdir)
+    p.build_package(parsed_args.wix_dir)
 
 
 def main() -> None:
-    args = create_parser().parse_args()
-    run([args.jsonfile])
+    run(sys.argv[1:])
 
 if __name__ == '__main__':
     main()

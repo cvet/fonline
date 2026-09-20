@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4788,
-    "current_count": 4788,
+    "entry_count": 4789,
+    "current_count": 4789,
     "missing_count": 0,
     "complete": true
   },
@@ -19562,8 +19562,8 @@
     },
     "helper-cli": {
       "source_model": "Docs/generated/helper-cli.json",
-      "entry_count": 123,
-      "current_count": 123,
+      "entry_count": 124,
+      "current_count": 124,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -20186,6 +20186,12 @@
           "locator": "/helpers/@id=helper-cli.createmsi/global_arguments/@id=helper-cli.createmsi.argument.jsonfile/description",
           "source": "bare WiX package definition filename in the working directory",
           "source_sha256": "f8a42a53ee2cba34cec5d8ac5a39bcb532a7dd700eba6244838507800cfb6214",
+          "status": "current"
+        },
+        {
+          "locator": "/helpers/@id=helper-cli.createmsi/global_arguments/@id=helper-cli.createmsi.argument.wix_dir/description",
+          "source": "directory containing WiX tools; omit to find them on PATH",
+          "source_sha256": "1c5781329dfc1b8b5eefdacdf2c88ae30725a57eca28897c31df1d9c784381d1",
           "status": "current"
         },
         {

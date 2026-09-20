@@ -146,6 +146,8 @@ The packager patches reserved data regions after linking. It embeds resources an
 
 `Examples/PackagingMatrix` is the executable Engine-owned baseline for native package mechanics. It is intentionally separate from the readable starter and multiplayer tutorials because `ConfigBaker` requires every server/client runtime setting to be initialized. Its checked-in `FOnlinePackagingMatrix.fomain` is deterministically generated from `Source/Common/Settings.inc`; `generate_config.py --check` fails when settings and the fixture diverge.
 
+Both this fixture and `Examples/MinimalMultiplayer` derive defaults from the current `SETTING(...)` declarations. After changing the settings schema, regenerate both example configurations before running their freshness checks.
+
 In a standalone checkout of `Examples/PackagingMatrix` with its `Engine`
 submodule initialized, configure the host build and build the fixture-owned
 `RunPackagingChecks` target. This target is not registered as a required
@@ -195,7 +197,7 @@ green landed job and a reviewed external repository commit/tag.
 
 - `Raw` retains the staged portable directory.
 - `Zip` emits a portable archive from that directory.
-- `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. `light` runs ICE validation first and retries once with `-sval` only when the Windows Installer service is unavailable; every other linker/ICE failure and a failed fallback remain fatal. POSIX package hosts require `wixl` 0.102 or newer.
+- `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. It passes the selected directory to `createmsi.py --wix-dir`; direct invocations accept the same option, including paths with spaces as one argument. Omitting it uses the tools on `PATH`. `light` runs ICE validation first and retries once with `-sval` only when the Windows Installer service is unavailable; every other linker/ICE failure and a failed fallback remain fatal. POSIX package hosts require `wixl` 0.102 or newer.
 - `OGL` adds the separately built OpenGL runtime variant.
 - `Lib` selects the library form where the target supports it.
 - `POSTFIX` keeps independently built variants, such as a depot-specific client, from colliding.
