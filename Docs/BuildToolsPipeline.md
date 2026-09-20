@@ -250,11 +250,28 @@ flag variables, because CMake's MSVC defaults put `/Zi` into Debug. Every anchor
 checked before either file is written. The regression configures both project shapes
 in Debug and Release and requires `/Z7` alone on every C command line.
 
+Windows and Android runtimes also answer `IsSupported` of every hardware intrinsic class the JIT does not
+implement with a constant `false`. Mono routes `System.Runtime.Intrinsics.X86`, `.Arm` and `.Wasm` classes to
+its SIMD emitter only on AMD64, ARM64 and WASM (the x86 branch is an upstream TODO). Elsewhere nothing replaces
+the property, so CoreLib's own body, `IsSupported => IsSupported`, runs and recurses until the stack overflows on
+the first vectorized call: the Windows x86 client died that way before its first frame, in the tree before the
+interop work too. The patch adds the answer to the fallback in `src/mono/mono/mini/intrinsics.c` beside the
+existing `IsHardwareAccelerated` one, looks through nested classes such as `Sse2.X64`, and rejects a moved
+anchor. On AMD64 and ARM64 the fallback is only reached with SIMD optimization disabled, where `false` is the
+right answer as well.
+
+Before every runtime build the tree's repo-local tasks mark (`artifacts/obj/tasks/<Config>/build-semaphore.txt`)
+is discarded. dotnet builds those MSBuild tasks once per tree behind that mark, but which task projects the set holds
+depends on the target: the Android ones (`AndroidAppBuilder` and friends) join it only for mobile targets. A tree whose
+first build was for Linux therefore never built them, and the Android native build failed with `MSB4062`
+(`AndroidLibBuilderTask could not be loaded`). Without the mark the task projects rebuild, incrementally.
+
 Browser, Android, Apple, Linux, and Windows source-patch contracts have separate `BUILT` and
 `READY` marker suffixes, synchronized between `buildtools.py` and the CMake runtime
 target. Existing browser caches ending in `_wasmglue` rebuild and republish once
 with the ASM identification patch; Windows caches without `_embedded_debug_info`
-rebuild and republish once with embedded debug information. Both keep the cloned source.
+rebuild and republish once with embedded debug information, and Windows and Android caches
+without `_isa_fallback` once with the `IsSupported` fallback. All keep the cloned source.
 A `FO_MANAGED_RUNTIME_PREBUILT` tree is adopted as given, so it has to be rebuilt
 on Windows to benefit. Change the affected platform's suffix when its patch contract changes,
 so a ready cache cannot bypass new source edits.
@@ -278,6 +295,14 @@ on Windows x64 from a fresh `v10.0.11` clone: `libs.sfx` 25.6 min before and 17.
 CPU-minutes before, 36.6 after), then `ILLinkTrimAssembly` at about 5 CPU-minutes, which stays because
 it shapes the shipped libraries. All 171 class libraries of the runtime pack and
 `System.Private.CoreLib` build byte-identical with and without the properties (SHA-256 compared).
+
+Runtime source builds pass `NuGetAudit=false` as well. The audit reads a live advisory feed, and the
+runtime builds with warnings as errors, so an advisory published after a tag was cut fails the restore
+of that tag from then on: `v10.0.12` stopped restoring on `NU1904` for
+`Microsoft.Native.Quic.MsQuic.Schannel` 2.5.9 (GHSA-92f5-vc22-8j33), a package the tag names and a
+pinned checkout cannot change. The audit guards the runtime repository's own dependency hygiene, not
+what the engine ships: the published tree holds the managed `System.Net.Quic.dll` and never the native
+MsQuic library, and `managed_runtime_payload.py` copies CLR assemblies only.
 
 Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
 target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while

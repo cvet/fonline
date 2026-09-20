@@ -569,7 +569,12 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
     FO_STACK_TRACE_ENTRY();
 
     RequestedClientRuntime requested_runtime {};
-    requested_runtime.Path = ResolveBundledRuntimePath();
+
+    // Only a platform that loads native modules has a runtime beside an executable; an Android or iOS app has
+    // no executable path at all, so resolving one there aborted every mobile client before its first frame
+    if (CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())) {
+        requested_runtime.Path = ResolveBundledRuntimePath();
+    }
 
     for (size_t index = 1; index < args.size(); index++) {
         string_view arg = args.Get(index);

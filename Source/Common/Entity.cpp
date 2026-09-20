@@ -95,6 +95,25 @@ auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
     return false;
 }
 
+auto Entity::GetEventSubscriptions(string_view event_name, uintptr_t subscription_owner) const -> small_vector<uintptr_t, 4>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    small_vector<uintptr_t, 4> subscriptions;
+
+    if (_events) {
+        if (auto it = _events->find(event_name); it != _events->end()) {
+            for (const EventCallbackData& cb : it->second) {
+                if (cb.SubscriptionOwner == subscription_owner) {
+                    subscriptions.emplace_back(cb.SubscriptionPtr);
+                }
+            }
+        }
+    }
+
+    return subscriptions;
+}
+
 auto Entity::FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>
 {
     FO_NO_STACK_TRACE_ENTRY();

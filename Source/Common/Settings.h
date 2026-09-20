@@ -119,6 +119,9 @@ public:
 
     [[nodiscard]] auto GetCustomSetting(string_view name) const -> const any_t&;
     [[nodiscard]] auto FindCustomSetting(string_view name) const -> nptr<const any_t>;
+    // Bumped by every write into the custom-setting map, so a reader that parsed a custom value once can keep the
+    // parsed copy and re-read the text only after the map changed
+    [[nodiscard]] auto GetCustomSettingsGeneration() const noexcept -> uint64_t { return _customSettingsGeneration; }
     [[nodiscard]] auto Save() const -> map<string, string>;
 
     void ApplyConfigAtPath(string_view config_name, string_view config_dir);
@@ -149,7 +152,20 @@ private:
     vector<ResourcePackInfo> _declaredResourcePacks {};
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};
+    uint64_t _customSettingsGeneration {};
     any_t _emptySetting {};
 };
+
+// Typed read of one builtin numeric or bool setting, so the managed bridge skips the format/parse round trip.
+// Settings are immutable, so there is no write half; exactly one Read* member is set, by the declared type
+struct NumericSettingAccess
+{
+    bool (*ReadBool)(ptr<const GlobalSettings>) {};
+    int64_t (*ReadSigned)(ptr<const GlobalSettings>) {};
+    uint64_t (*ReadUnsigned)(ptr<const GlobalSettings>) {};
+    float64_t (*ReadFloat)(ptr<const GlobalSettings>) {};
+};
+
+[[nodiscard]] auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>;
 
 FO_END_NAMESPACE

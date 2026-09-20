@@ -42,18 +42,25 @@ public:
 };
 class ManagedScriptBackend
 {
-public:
-    explicit ManagedScriptBackend(ptr<BaseEngine> engine) : _engine(engine) { }
-    auto GetMetadata() -> nptr<EngineMetadata> { return _engine; }
-private:
-    ptr<BaseEngine> _engine;
 };
-struct ComplexTypeDesc { };
+struct MonoObject;
+static auto mono_gchandle_get_target(uint32_t) -> MonoObject*
+{
+    return nullptr;
+}
 struct FuncCallData
 {
     function<void()> Body;
 };
-static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend>, uint32_t, const ComplexTypeDesc&, const vector<ComplexTypeDesc>&, FuncCallData& call)
+// The plan carries the engine the dispatch resolved once; the rest of it serves the typed and boxed paths
+struct ManagedCallbackPlan
+{
+    nptr<BaseEngine> Engine {};
+};
+static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend>, ptr<BaseEngine>, timespan, timespan, const function<MonoObject*()>&)
+{
+}
+static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend>, uint32_t, const ManagedCallbackPlan&, FuncCallData& call)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -67,7 +74,8 @@ TEST_CASE("ManagedCallbackPreservesCallerSyncContext")
 {
     using namespace ManagedCallbackContextProbe;
     ManagedCallbackContextProbe::ServerEngine server;
-    ManagedScriptBackend backend {&server};
+    ManagedScriptBackend backend;
+    ManagedCallbackPlan plan {&server};
     EntityLock caller_lock;
     EntityLock callback_lock;
     ScopedSyncContext caller;
@@ -99,10 +107,10 @@ TEST_CASE("ManagedCallbackPreservesCallerSyncContext")
     }};
 
     if (should_throw) {
-        CHECK_THROWS_WITH(DispatchManagedCallback(&backend, 0, {}, {}, call), "Requested callback failure");
+        CHECK_THROWS_WITH(DispatchManagedCallback(&backend, 0, plan, call), "Requested callback failure");
     }
     else {
-        CHECK_NOTHROW(DispatchManagedCallback(&backend, 0, {}, {}, call));
+        CHECK_NOTHROW(DispatchManagedCallback(&backend, 0, plan, call));
     }
 
     CHECK(SyncContext::GetCurrentOnThisThread() == caller_context);
@@ -121,14 +129,18 @@ def function_source(source: str, declaration: str) -> str:
 
 
 def render_probe(backend_source: str, server_source: str, *, without_callback_scope: bool = False) -> str:
-    declaration = "static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)"
+    declaration = "static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)"
+    entry_declaration = ("static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, "
+                         "const function<MonoObject*()>& get_entry, const function<void()>& callback)")
     wrapper = function_source(backend_source, declaration)
+    entry = function_source(backend_source, entry_declaration)
     if without_callback_scope:
-        boundary = "engine->RunScriptContext([&] { DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call); });"
-        assert wrapper.count(boundary) == 1
-        wrapper = wrapper.replace(boundary, "DispatchManagedCallbackInContext(backend, handler_handle, ret, args, call);")
+        # The falsification build: the callback runs in the caller's script context instead of one of its own
+        boundary = "timespan lock_wait_duration = engine->RunScriptContext(callback);"
+        assert entry.count(boundary) == 1
+        entry = entry.replace(boundary, "callback();\n    timespan lock_wait_duration {};")
     run_context = function_source(server_source, "auto ServerEngine::RunScriptContext(const function<void()>& callback) -> timespan")
-    return PREFIX + run_context + wrapper + SUFFIX
+    return PREFIX + run_context + entry + wrapper + SUFFIX
 
 
 def sha(path: Path) -> str:
@@ -179,14 +191,22 @@ def build_context_probe(build: Path, output: Path, *, without_callback_scope: bo
     return executable
 
 
-@pytest.fixture(scope="module")
-def callback_context_probe(tmp_path_factory):
+def configured_build() -> Path:
     configured = os.environ.get("FO_MANAGED_CALLBACK_BUILD")
     if sys.platform != "linux" or not configured:
         pytest.skip("FO_MANAGED_CALLBACK_BUILD must select an existing Linux Makefiles unit-test build")
-    build = Path(configured).resolve()
-    output = tmp_path_factory.mktemp("managed-callback-context")
-    return build_context_probe(build, output)
+    return Path(configured).resolve()
+
+
+@pytest.fixture(scope="module")
+def callback_context_probe(tmp_path_factory):
+    return build_context_probe(configured_build(), tmp_path_factory.mktemp("managed-callback-context"))
+
+
+@pytest.fixture(scope="module")
+def callback_context_probe_without_scope(tmp_path_factory):
+    return build_context_probe(configured_build(), tmp_path_factory.mktemp("managed-callback-context-without-scope"),
+                               without_callback_scope=True)
 
 
 def test_callback_preserves_caller_cover(callback_context_probe):
@@ -195,3 +215,12 @@ def test_callback_preserves_caller_cover(callback_context_probe):
     (callback_context_probe.parent / "test.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "All tests passed" in result.stdout
+
+
+def test_callback_scope_is_what_preserves_caller_cover(callback_context_probe_without_scope):
+    # Without its own script context the callback releases the caller's cover, so the probe must catch it
+    result = subprocess.run([str(callback_context_probe_without_scope), "ManagedCallbackPreservesCallerSyncContext",
+                             "--reporter", "compact"],
+                            cwd=callback_context_probe_without_scope.parent, capture_output=True, text=True, timeout=30)
+    (callback_context_probe_without_scope.parent / "test.log").write_text(result.stdout + result.stderr, encoding="utf-8")
+    assert result.returncode != 0, result.stdout + result.stderr

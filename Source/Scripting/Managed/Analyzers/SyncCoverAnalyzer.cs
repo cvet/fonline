@@ -1008,7 +1008,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
     private static bool IsNullValue(ExpressionSyntax expression, SemanticModel semantics,
                                     CancellationToken cancellationToken)
     {
-        Optional < object ? > constant = semantics.GetConstantValue(expression, cancellationToken);
+        Optional<object?> constant = semantics.GetConstantValue(expression, cancellationToken);
         return constant.HasValue && constant.Value == null;
     }
 
@@ -1213,8 +1213,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
                 foreach (InvocationExpressionSyntax candidate in body.DescendantNodes()
                              .OfType<InvocationExpressionSyntax>()) {
-                    if (!AcquiresFor(candidate, parameter, body, semantics, recursion) ||
-                        !RunsOnEveryReturningPath(candidate, body, semantics)) {
+                    if (!RunsOnEveryReturningPath(candidate, body, semantics) ||
+                        !AcquiresFor(candidate, parameter, body, semantics, recursion)) {
                         continue;
                     }
 

@@ -7,9 +7,14 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-public static class Initializator
+public static partial class Initializator
 {
     private static bool InitializedEarly;
+
+    static partial void BindGeneratedAbi();
+
+    // Implemented in its own file, so a host that compiles the initializer without the probe runs none
+    static partial void RunStartupProbes();
 
     [CallableByEngine]
     internal static void InitializeEarly()
@@ -20,6 +25,7 @@ public static class Initializator
         }
 
         InitializedEarly = true;
+        BindGeneratedAbi();
         ValidateAsyncMethods();
         ScriptFuncRegistration.RegisterEngineAttributeFuncs();
         RemoteCallScriptFuncs.RegisterRemoteCalls();
@@ -112,6 +118,8 @@ public static class Initializator
 
             context.Wait(task);
         }
+
+        RunStartupProbes();
     }
 
     // Reflection answers a failure inside the invoked method with an exception of its own, and the name of the

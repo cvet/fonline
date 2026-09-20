@@ -41,9 +41,13 @@
 
 FO_BEGIN_NAMESPACE
 
+struct ManagedAbiRuntimeState;
+struct ManagedBackendCaches;
+
 class ManagedScriptBackend final : public ScriptSystemBackend
 {
 public:
+    ManagedScriptBackend();
     ~ManagedScriptBackend() override;
 
     [[nodiscard]] auto GetDomain() const -> void* { return _domain.get_no_const(); }
@@ -51,6 +55,9 @@ public:
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> nptr<Entity>;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
     [[nodiscard]] auto GetAliveFlagObject() const -> void*;
+    [[nodiscard]] auto GetAbi() const -> nptr<const ManagedAbiRuntimeState>;
+    [[nodiscard]] auto GetAbi() -> nptr<ManagedAbiRuntimeState>;
+    [[nodiscard]] auto GetCaches() const -> nptr<ManagedBackendCaches>;
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
@@ -58,6 +65,8 @@ public:
     void Process() override;
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
     void AdoptPersistentGcHandle(uint32_t gc_handle);
+    void BuildAbiTables();
+    void AddInnerEntityVisits(uint64_t count);
 
 private:
     auto CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>;
@@ -80,6 +89,8 @@ private:
     vector<uint32_t> _persistentGcHandles {};
     uint32_t _loadScopeGcHandle {};
     uint32_t _aliveFlagGcHandle {};
+    unique_nptr<ManagedAbiRuntimeState> _abi {};
+    unique_nptr<ManagedBackendCaches> _caches {};
 };
 
 FO_END_NAMESPACE

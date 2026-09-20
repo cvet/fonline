@@ -12,9 +12,10 @@ Convention and runtime enforcement for nullable values across AngelScript and th
 
 This applies symmetrically on both sides of the script-engine boundary.
 
-The managed indexed scalar-property bridge accepts only non-nullable primitive and enum properties. Its
-unmanaged value buffer has no null representation; nullable and reference-valued properties keep the converting
-bridge described in [Scripting.md](Scripting.md). Both paths retain native entity access and lifetime checks.
+The managed indexed scalar-property bridge accepts only non-nullable primitive, enum, `hstring` and value-type
+properties. Its unmanaged value buffer has no null representation; nullable proto/fixed-type properties and
+reference-valued properties keep the converting bridge described in [Scripting.md](Scripting.md). Both paths
+retain native entity access and lifetime checks. Metadata rejects `Nullable` on primitive and struct properties.
 
 ## Script side: `T?` suffix
 
