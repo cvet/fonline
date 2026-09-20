@@ -23,9 +23,10 @@ application thread, concurrent script execution, parallel lighting/fog/particles
 and threaded Web builds. The sections below say why, and the plan at the end says in what order they are worth
 revisiting.
 
-**No speedup is claimed here.** The frame-time evidence the plan calls for has not been collected yet; what has
-been established is that both modes produce the same pose, and that the serial mode does not enter any of the
-machinery added for the parallel one. See [Measuring it](#measuring-it).
+**No speedup is claimed here.** The frame-time evidence the plan calls for has not been collected yet. What has
+been established is that both modes produce the same pose, that the serial mode does not enter any of the
+machinery added for the parallel one, and that an embedding project's whole player-visible surface walks the
+same in both modes on real content. See [Measuring it](#measuring-it).
 
 ## The execution contract
 
@@ -224,7 +225,8 @@ Run the native tests under ThreadSanitizer where it is available, and apply
 [ThreadSafetyAnalysis.md](ThreadSafetyAnalysis.md) to the scheduler's shared state. Neither proves task lifetime,
 exclusive ownership or callback order on its own. Headless tests cannot establish visual parity: a real renderer
 still has to be inspected for animation, attachments, shadows, particle timing, bounds and hit testing, map
-transitions and GUI previews.
+transitions and GUI previews. An embedding project with a live client harness should also walk one
+player-visible surface twice, once per mode, and compare the two verdicts.
 
 ## Where this goes next
 
