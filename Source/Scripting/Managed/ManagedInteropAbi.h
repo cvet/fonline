@@ -71,7 +71,6 @@ struct ManagedAbiSlot
 {
     ManagedAbiValueKind Kind {};
     bool Mutable {};
-    // A handle slot that may legitimately carry null; a null in any other handle slot leaves the frame path
     bool Nullable {};
     uint16_t Size {};
     uint16_t Offset {};

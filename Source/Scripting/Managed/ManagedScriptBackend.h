@@ -41,6 +41,9 @@
 
 FO_BEGIN_NAMESPACE
 
+struct ManagedAbiRuntimeState;
+struct ManagedBackendCaches;
+
 class ManagedScriptBackend final : public ScriptSystemBackend
 {
 public:
@@ -52,9 +55,9 @@ public:
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> nptr<Entity>;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
     [[nodiscard]] auto GetAliveFlagObject() const -> void*;
-    // Lookups that never change after load (wrapper classes, callback adapters) plus dispatch counters; the
-    // caches are logically constant, so a const backend hands them out mutable
-    [[nodiscard]] auto GetCaches() const -> nptr<struct ManagedBackendCaches>;
+    [[nodiscard]] auto GetAbi() const -> nptr<const ManagedAbiRuntimeState>;
+    [[nodiscard]] auto GetAbi() -> nptr<ManagedAbiRuntimeState>;
+    [[nodiscard]] auto GetCaches() const -> nptr<ManagedBackendCaches>;
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
@@ -63,8 +66,6 @@ public:
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
     void AdoptPersistentGcHandle(uint32_t gc_handle);
     void BuildAbiTables();
-    [[nodiscard]] auto GetAbi() const -> nptr<const struct ManagedAbiRuntimeState>;
-    auto GetAbi() -> nptr<struct ManagedAbiRuntimeState>;
     void AddInnerEntityVisits(uint64_t count);
 
 private:
@@ -88,8 +89,8 @@ private:
     vector<uint32_t> _persistentGcHandles {};
     uint32_t _loadScopeGcHandle {};
     uint32_t _aliveFlagGcHandle {};
-    unique_nptr<struct ManagedAbiRuntimeState> _abi {};
-    unique_nptr<struct ManagedBackendCaches> _caches {};
+    unique_nptr<ManagedAbiRuntimeState> _abi {};
+    unique_nptr<ManagedBackendCaches> _caches {};
 };
 
 FO_END_NAMESPACE

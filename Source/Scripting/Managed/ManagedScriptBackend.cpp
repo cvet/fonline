@@ -411,7 +411,6 @@ struct ManagedAbiEventRuntime;
 struct ManagedAssemblyResource;
 struct ManagedWrapperClassEntry;
 struct ManagedDynamicFieldAccessors;
-struct ManagedBackendCaches;
 struct ManagedCallbackPlan;
 
 // Static free-function forward declarations, ordered high-level -> low-level
