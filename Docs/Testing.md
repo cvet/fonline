@@ -173,6 +173,8 @@ script-entry bookkeeping and the production dispatcher, and finally over each pi
 alone (nested sync context, entry scope, thread attachment, overrun report). Every batch verifies that the
 handler ran exactly once per native call with intact arguments. The unmanaged entry is taken from
 `RuntimeMethodHandle.GetFunctionPointer`, which needs neither an unsafe context nor a private runtime export.
+Native probe modes use `ManagedProbeCallbackMode` in `ManagedScriptBackend.cpp`; its names and explicit numeric
+values match `InteropProbe.CallbackMode`, since the managed/native probe boundary passes the mode as `int32`.
 Each series also reports the bridge work per call: GC handles taken, classes and methods looked up by name,
 managed objects the native side created and wrappers constructed. They come from per-thread backend counters
 (`Native.ReadInteropCounters`) that are off outside a measured stretch, so production pays one thread-local flag

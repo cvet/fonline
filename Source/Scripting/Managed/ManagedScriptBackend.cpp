@@ -116,6 +116,21 @@ constexpr string_view MANAGED_HOST_ASSEMBLY_FILE_NAME = "FOnline.ManagedHost.dll
 constexpr string_view MANAGED_HOST_NAMESPACE = "FOnline.ManagedHost";
 constexpr string_view MANAGED_HOST_CLASS_NAME = "ManagedLoadContextHost";
 
+// Values match InteropProbe.CallbackMode across the managed/native boundary
+enum class ManagedProbeCallbackMode : int32_t
+{
+    RuntimeInvoke = 0,
+    Thunk = 1,
+    UnmanagedCallersOnly = 2,
+    ScriptEntry = 3,
+    FullDispatch = 4,
+    SyncContextOnly = 5,
+    EntryScopeOnly = 6,
+    AttachmentOnly = 7,
+    OverrunReportOnly = 8,
+    DispatchInContext = 9,
+};
+
 // The root domain becomes visible before Mono finishes initializing its core classes. Serialize the
 // check-and-initialize sequence so another engine cannot attach to a partially initialized runtime
 static mutex ManagedRuntimeInitLocker;
@@ -2534,6 +2549,7 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
         };
 
         auto backend = GetActiveBackendOrThrow();
+        ManagedProbeCallbackMode callback_mode = static_cast<ManagedProbeCallbackMode>(mode);
         FO_VERIFY_AND_THROW(handler != nullptr, "Managed probe handler is null");
         FO_VERIFY_AND_THROW(iterations > 0, "Managed probe iteration count must be positive", iterations);
 
@@ -2548,7 +2564,7 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
         void* adapter_args[] = {handler, frame.data(), &frame_size};
         nanotime start_time;
 
-        if (mode == 0) {
+        if (callback_mode == ManagedProbeCallbackMode::RuntimeInvoke) {
             start_time = start_timing();
 
             for (int32_t i = 0; i < iterations; i++) {
@@ -2557,7 +2573,7 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
                 ThrowIfManagedException(exception, "Managed probe adapter failed");
             }
         }
-        else if (mode == 1) {
+        else if (callback_mode == ManagedProbeCallbackMode::Thunk) {
             // The thunk is compiled once outside the timed loop, as a registration would cache it
             ThunkEntry thunk = reinterpret_cast<ThunkEntry>(mono_method_get_unmanaged_thunk(adapter));
             FO_VERIFY_AND_THROW(thunk != nullptr, "Managed probe thunk was not created");
@@ -2569,7 +2585,7 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
                 ThrowIfManagedException(exception, "Managed probe adapter failed");
             }
         }
-        else if (mode == 2) {
+        else if (callback_mode == ManagedProbeCallbackMode::UnmanagedCallersOnly) {
             UcoEntry entry = reinterpret_cast<UcoEntry>(uco_entry);
             FO_VERIFY_AND_THROW(entry != nullptr, "Managed probe unmanaged entry is null");
             start_time = start_timing();
@@ -2578,14 +2594,14 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
                 entry(registration_id, frame.data(), frame_size);
             }
         }
-        else if (mode == 3) {
+        else if (callback_mode == ManagedProbeCallbackMode::ScriptEntry) {
             start_time = start_timing();
 
             for (int32_t i = 0; i < iterations; i++) {
                 (void)InvokeManagedScript(adapter, nullptr, adapter_args, "Managed probe adapter failed");
             }
         }
-        else if (mode == 4 || mode == 9) {
+        else if (callback_mode == ManagedProbeCallbackMode::FullDispatch || callback_mode == ManagedProbeCallbackMode::DispatchInContext) {
             nptr<EngineMetadata> meta = backend->GetMetadata();
             FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
             ComplexTypeDesc int_type = meta->ResolveComplexType("int32");
@@ -2609,8 +2625,7 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
                 FuncCallData call {.Accessor = &MANAGED_DATA_ACCESSOR};
                 call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
 
-                // Mode 9 skips the script-context entry, which isolates what that entry costs
-                if (mode == 4) {
+                if (callback_mode == ManagedProbeCallbackMode::FullDispatch) {
                     DispatchManagedCallback(backend, handler_handle, plan, call);
                 }
                 else {
@@ -2618,7 +2633,7 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
                 }
             }
         }
-        else if (mode >= 5 && mode <= 8) {
+        else if (callback_mode >= ManagedProbeCallbackMode::SyncContextOnly && callback_mode <= ManagedProbeCallbackMode::OverrunReportOnly) {
             // One piece of the dispatch scaffolding alone, with no managed call inside
             nptr<EngineMetadata> meta = backend->GetMetadata();
             nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
@@ -2629,14 +2644,14 @@ static auto NativeProbeCallbackTransport(MonoObject* handler, int32_t mode, int3
             start_time = start_timing();
 
             for (int32_t i = 0; i < iterations; i++) {
-                if (mode == 5) {
+                if (callback_mode == ManagedProbeCallbackMode::SyncContextOnly) {
                     (void)engine->RunScriptContext(empty_callback);
                 }
-                else if (mode == 6) {
+                else if (callback_mode == ManagedProbeCallbackMode::EntryScopeOnly) {
                     ManagedScriptEntryScope entry {adapter};
                     entry.Leave();
                 }
-                else if (mode == 7) {
+                else if (callback_mode == ManagedProbeCallbackMode::AttachmentOnly) {
                     ActiveBackendScope active_backend {backend};
                     ManagedThreadAttachment managed_thread {domain};
                 }
@@ -2670,10 +2685,11 @@ static void NativeProbeTransportScenario(MonoObject* handler, int32_t transport,
 
     try {
         auto backend = GetActiveBackendOrThrow();
+        ManagedProbeCallbackMode callback_mode = static_cast<ManagedProbeCallbackMode>(transport);
         FO_VERIFY_AND_THROW(handler != nullptr, "Managed probe handler is null");
         FO_VERIFY_AND_THROW(iterations > 0, "Managed probe iteration count must be positive", iterations);
-        FO_VERIFY_AND_THROW(transport >= 0 && transport <= 2, "Unknown managed probe transport", transport);
-        FO_VERIFY_AND_THROW(transport != 2 || uco_entry != nullptr, "Managed probe unmanaged entry is null");
+        FO_VERIFY_AND_THROW(callback_mode >= ManagedProbeCallbackMode::RuntimeInvoke && callback_mode <= ManagedProbeCallbackMode::UnmanagedCallersOnly, "Unknown managed probe transport", transport);
+        FO_VERIFY_AND_THROW(callback_mode != ManagedProbeCallbackMode::UnmanagedCallersOnly || uco_entry != nullptr, "Managed probe unmanaged entry is null");
         nptr<EngineMetadata> meta = backend->GetMetadata();
         FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
@@ -2691,7 +2707,7 @@ static void NativeProbeTransportScenario(MonoObject* handler, int32_t transport,
             frame_size = numeric_cast<int32_t>(sizeof(values));
         }
         else {
-            int32_t mode_value = 2;
+            int32_t mode_value = static_cast<int32_t>(ManagedProbeCallbackMode::UnmanagedCallersOnly);
             uint8_t flag = 1;
             int64_t wide = 0x1122334455667788;
             array<int16_t, 2> hex {7, -9};
@@ -2709,8 +2725,8 @@ static void NativeProbeTransportScenario(MonoObject* handler, int32_t transport,
         FO_VERIFY_AND_THROW(handler_handle != 0, "Can't root Managed probe handler");
         auto release_handler_handle = scope_exit([handler_handle]() noexcept { mono_gchandle_free(handler_handle); });
 
-        ThunkEntry thunk = transport == 1 ? reinterpret_cast<ThunkEntry>(mono_method_get_unmanaged_thunk(adapter)) : nullptr;
-        FO_VERIFY_AND_THROW(transport != 1 || thunk != nullptr, "Managed probe thunk was not created");
+        ThunkEntry thunk = callback_mode == ManagedProbeCallbackMode::Thunk ? reinterpret_cast<ThunkEntry>(mono_method_get_unmanaged_thunk(adapter)) : nullptr;
+        FO_VERIFY_AND_THROW(callback_mode != ManagedProbeCallbackMode::Thunk || thunk != nullptr, "Managed probe thunk was not created");
         MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
         int32_t fault_count = 0;
 
@@ -2721,11 +2737,11 @@ static void NativeProbeTransportScenario(MonoObject* handler, int32_t transport,
             for (int32_t i = 0; i < iterations; i++) {
                 MonoObject* exception = nullptr;
 
-                if (transport == 0) {
+                if (callback_mode == ManagedProbeCallbackMode::RuntimeInvoke) {
                     void* adapter_args[] = {mono_gchandle_get_target(handler_handle), frame.data(), &frame_size};
                     (void)mono_runtime_invoke(adapter, nullptr, adapter_args, &exception);
                 }
-                else if (transport == 1) {
+                else if (callback_mode == ManagedProbeCallbackMode::Thunk) {
                     thunk(mono_gchandle_get_target(handler_handle), frame.data(), frame_size, &exception);
                 }
                 else {
