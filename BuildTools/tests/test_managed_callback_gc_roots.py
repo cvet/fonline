@@ -189,7 +189,6 @@ struct ManagedScriptBackend
         return false;
     }
 };
-struct ActiveBackendScope { explicit ActiveBackendScope(ptr<ManagedScriptBackend>) { } };
 static MonoDomain* GetDomainOrThrow(MonoDomain* domain) { return domain; }
 static MonoClass* FindFOnlineClass(ptr<ManagedScriptBackend> backend, const char* name)
 {
@@ -217,7 +216,7 @@ static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend>, uint32_t,
 static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
 
 // Stack-trace bookkeeping is covered separately; this probe exercises callback argument and result roots
-static auto InvokeManagedScript(MonoMethod* method, MonoObject* object, void** args, const char* message) -> MonoObject*
+static auto InvokeManagedScript(ptr<ManagedScriptBackend>, MonoMethod* method, MonoObject* object, void** args, const char* message) -> MonoObject*
 {
     MonoObject* exception = nullptr;
     MonoObject* result = mono_runtime_invoke(method, object, args, &exception);

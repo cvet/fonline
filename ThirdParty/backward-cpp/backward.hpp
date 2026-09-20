@@ -4508,6 +4508,21 @@ private:
 
     // The exception info supplies a trace from exactly where the issue was,
     // no need to skip records
+#if defined(_M_X64) // (FOnline Patch)
+    // A call through a null function pointer leaves no frame of its own: the instruction pointer is zero and
+    // the unwinder has nothing to walk, so the report names no caller at all. The return address the call
+    // pushed is still on top of the stack, so stepping the context back over it recovers the whole chain
+    if (info != nullptr && info->ContextRecord != nullptr && info->ContextRecord->Rip == 0 &&
+        info->ContextRecord->Rsp != 0) {
+      CONTEXT recovered_ctx;
+      memcpy(&recovered_ctx, info->ContextRecord, sizeof(CONTEXT));
+      recovered_ctx.Rip = *reinterpret_cast<DWORD64 *>(recovered_ctx.Rsp);
+      recovered_ctx.Rsp += sizeof(DWORD64);
+      crash_handler(0, &recovered_ctx);
+      return EXCEPTION_CONTINUE_SEARCH;
+    }
+#endif
+
     crash_handler(0, info != nullptr ? info->ContextRecord : nullptr);
     return EXCEPTION_CONTINUE_SEARCH;
   }

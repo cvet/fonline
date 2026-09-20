@@ -2,6 +2,66 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-20 - managed backend binding and Mono worker attachment reconciliation
+
+Scope and source revisions:
+
+- Reconciled documentation branch head
+  `e7dc8e39503d7b2b27d9a54bb3a24c68015e305e` with Engine
+  `origin/master` through `2bece171043304ca6c623dc94aed5b677a983082`.
+- Audited the complete four-commit incoming range from common ancestor
+  `f7b69ee743e918cabfd26a49986eb040816f2a48`: browser-safe finalizer waiting,
+  entry-assembly-to-backend binding, Windows null-function-call stack recovery,
+  and one cached Mono attachment per native worker thread.
+- Preserved `Docs/GeneratedApiAndMetadata.md`, `Docs/Scripting.md`, and
+  `Docs/WebDebugging.md` as legacy route stubs. Their incoming prose was
+  reconciled into the canonical locale-aware pages instead of restoring a
+  second documentation corpus.
+
+Contract and documentation reconciliation:
+
+- Documented `Native.BindBackend` / `UnbindBackend`, explicit backend pointers
+  on Engine-reaching internal calls, the ownership-only boundary of that
+  binding, and why ThreadPool escape still must not call Engine APIs.
+- Documented wrapper identity inside one backend load context,
+  `Native.IsBackendAlive`, pointer-only equality/hash, and the late-finalizer
+  rule after unbinding.
+- Documented cached worker-thread attachments, GC-safe parking between entries,
+  and the Mono-initializing thread exception. The Web guide now records that
+  thread-pool dispatch aborts the single-threaded runtime and that browser
+  finalizers run later as main-thread jobs.
+- Updated the stale `Test_ManagedScriptBaker` expectations that still required
+  removed `_backendAlive` / `_backend` fields after the incoming baker change.
+  This was the only source correction added by the reconciliation.
+- Regenerated native API/reference, public-contract, translation, site/search,
+  AI-evaluation, and AI-delivery artifacts in dependency order. The native API
+  model itself did not change.
+
+Validation:
+
+- Generated checks report 989 methods, 132 properties, 121 events, 266
+  settings, 2,529 explicitly classified symbols, 191/191 current translation
+  pairs, 394 public routes, and 28 AI tasks / 67 retrieval checks at 100 percent
+  success and 0.920 MRR.
+- Aggregate contract diff against the pre-update documentation head reports
+  zero changes across all 17 modeled domains and requires no disposition.
+- The Last Frontier `LF_UnitTests` target rebuilds successfully with Managed
+  scripting enabled. The focused `*Managed*` run passes 1,318 assertions in 15
+  test cases, including the updated baker contract and backend shutdown paths.
+- The focused managed callback, GC-root, Managed C#, Web, metadata, API,
+  reference, localization, site, evaluation, delivery, and public-contract
+  Python suites pass. Full project bake/gameplay validation remains owned by
+  the embedding-project integration after its gitlink is advanced.
+
+Disposition:
+
+- The reusable runtime behavior and generated documentation corpus are
+  reconciled. Publish the Engine documentation branch before the embedding
+  project branch so the project gitlink never points at an unavailable commit.
+- Browser qualification still requires an actual Web build and live browser
+  run; native tests and deterministic documentation checks do not establish
+  that platform acceptance.
+
 ## 2026-09-13 - build, packaging, transport, and allocator reconciliation
 
 Scope and source revisions:

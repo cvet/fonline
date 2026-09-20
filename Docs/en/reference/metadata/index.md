@@ -1008,6 +1008,8 @@ and inner-entity routes. Generated API and ABI files both participate in the
 incremental bake stamp, so a generator-only ABI change cannot reuse an old
 assembly.
 
+The baker also emits entity wrappers whose runtime type belongs to one backend load context. The backend binds each entry assembly through `Native.BindBackend` before its code runs, and Engine-reaching internal calls pass that bound pointer explicitly. A wrapper therefore needs only its native entity pointer for equality and hashing within its generated type; wrappers from different Engine instances are different runtime types. Backend teardown unbinds the assembly, `Native.IsBackendAlive` becomes false, and wrapper access fails with `ObjectDisposedException` before released metadata can be reached. A late finalizer keeps its native reference rather than calling dead Engine state.
+
 When property metadata changes, inspect both the property runtime and the generator inputs/templates. Script-visible nullability or API changes should also update [Scripting](../../explanation/scripting-runtime/), [Script Methods Map](../../reference/script-api/method-ownership.md), and [Nullability.md](../../contributing/coding-contracts/nullability.md) as applicable.
 
 ## Public API relationship

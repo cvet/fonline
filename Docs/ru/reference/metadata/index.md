@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"86bf5dc0127927abe539be336fb30ec7dacc119dc9e160b7af3a6a7e1ed8d68b"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"965fa47d762187bfe24a7dc9e01537ccb140850779816a9484b2c953058ca1e0"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -995,6 +995,8 @@ multi-field nested records и данные с identity должны быть ref
 маршруты inner entities. Generated API и ABI files входят в incremental bake
 stamp, поэтому изменение только generator не может переиспользовать старую
 assembly.
+
+Baker также создаёт entity wrappers, чей runtime type принадлежит одному load context backend. Backend привязывает каждую entry assembly через `Native.BindBackend` до выполнения её кода, а internal calls к Engine явно передают bound pointer. Поэтому внутри generated type wrapper использует для equality и hashing только native pointer entity; wrappers разных экземпляров Engine имеют разные runtime types. При teardown backend отвязывает assembly, `Native.IsBackendAlive` становится false, и access wrapper завершается `ObjectDisposedException` до обращения к освобождённым metadata. Поздний finalizer сохраняет native reference вместо вызова мёртвого состояния Engine.
 
 При изменении property metadata проверяйте одновременно runtime properties и inputs/templates generator. Изменения видимых скриптам nullability или API должны также обновлять [Scripting](../../explanation/scripting-runtime/), [карту script methods](../../reference/script-api/method-ownership.md) и [Nullability](../../contributing/coding-contracts/nullability.md), где это применимо.
 

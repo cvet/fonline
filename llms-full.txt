@@ -3547,7 +3547,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 918d3af3dc18d2200b8f1ee764b55439f848a4dc09d36d1ad47a6dc6e47b3a83
+Content SHA-256: 6bd94b566e814f0455c8e41d2c3562f86edf0ea949cd20d41eb78a37936cc0ef
 
 ---
 layout: default
@@ -3676,7 +3676,7 @@ Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pump
 
 Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
 
-`ConfigureAwait(false)`, `Task.Run`, and manually dispatched ThreadPool work deliberately bypass the Engine synchronization context. They may perform isolated computation, but they must not call Engine APIs. Return to the captured Engine context before touching Engine state.
+`ConfigureAwait(false)`, `Task.Run`, `Task.Factory`, `Parallel`, and manually dispatched ThreadPool work deliberately bypass the Engine synchronization context. They may perform isolated computation, but they must not call Engine APIs. The entry assembly's backend binding can still identify an Engine from such a thread, so this misuse is not guaranteed to fail at every native call; only synchronization-sensitive routes such as server entity access reliably reject it. Embedding projects should ban these escape APIs statically and return to the captured Engine context before touching Engine state.
 
 ## Server entity synchronization
 
@@ -3710,7 +3710,7 @@ Generated entity properties are native-backed. Dynamic ref types are managed DTO
 
 Native ref types are explicit borrowed wrappers. If a project keeps one beyond the call/frame that returned it, follow the generated `__AddRef()`/`__Release()` contract. Factory-backed wrappers start with a reference that must be released after ownership is transferred or detached.
 
-`hstring` is an eight-byte blittable value containing the native intern-entry pointer. Frames and value types copy that pointer unchanged; only property and RPC storage uses the 64-bit hash and converts at the storage boundary. Values are interned through the active backend's Engine metadata, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
+`hstring` is an eight-byte blittable value containing the native intern-entry pointer. Frames and value types copy that pointer unchanged; only property and RPC storage uses the 64-bit hash and converts at the storage boundary. Values are interned through the Engine metadata bound to the entry assembly, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
 
 Arrays of primitives, enums, `hstring`, and registered value types use `GetPropertyList<T>` / `SetPropertyList<T>` and cross as raw bytes. Longer reads retry directly into the final list storage while the same cover remains held. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values, and other structured forms keep the converting bridge, but generated access selects the property by registrar index rather than repeating owner and property names.
 
@@ -3724,15 +3724,21 @@ Managed frames are compact packed buffers, but native code never dereferences an
 
 Native-to-managed callbacks whose signatures contain only fixed values and entity/ref-type handles use generated `CallbackAdapters.Adapt_<key>` methods. One `ManagedCallbackPlan` resolves the adapter during registration; wrapper factories and native wrapper classes are also registered/cached during ABI binding, so dispatch does not repeat reflection or constructor lookup. Unsupported callback shapes retain the boxed `MonoArray`/`DynamicInvoke` path. Entity event subscriptions belong to the native entity rather than to one wrapper: an equal handler is idempotent, any wrapper of that entity can unsubscribe it, and destruction removes the subscriptions.
 
+Each generated entity-wrapper type belongs to one backend load context. Its native pointer is therefore sufficient for equality and hashing within that type; wrappers from different Engine instances are different runtime types. A live wrapper checks `Native.IsBackendAlive` before exposing its pointer. Once shutdown unbinds the entry assembly, later access throws `ObjectDisposedException`, and a late finalizer deliberately keeps its native reference instead of calling released Engine state.
+
 Backend-owned caches are built before hot-path use: managed helper methods, metadata-named classes, dynamic ref-type accessors, wrapper constructors, callback adapters, list factories, and per-event adapters. Typed custom settings keep a parsed cell behind `GlobalSettings::GetCustomSettingsGeneration()`; every custom-setting writer advances the generation, while a warmed read is a generation comparison plus a value copy. `ScriptSynchronizationContext` likewise allocates its continuation queue only on the first post.
 
 ## Runtime loading, isolation, and shutdown
 
-Mono is initialized once for the process. Native Engine threads attach to the root domain through bounded attachment records, including long-lived frame workers and the Web interpreter thread. A backend then creates its own non-collectible `AssemblyLoadContext`; this is the per-engine isolation boundary because the embedded runtime does not provide usable classic AppDomain unload.
+Mono is initialized once for the process. The first managed entry on a native Engine worker attaches that thread to the root domain and caches the attachment for the thread's lifetime. Later entries only switch the attachment GC-unsafe around managed execution and park it GC-safe while native work or locks run; reentrant entries inherit the attachment. The thread that initializes Mono is the exception because `mono_jit_init_version` attaches it implicitly and the initialization scope releases that adopted attachment. A backend then creates its own non-collectible `AssemblyLoadContext`; this is the per-engine isolation boundary because the embedded runtime does not provide usable classic AppDomain unload.
+
+Before any code or type initializer runs from an entry assembly, the backend calls `Native.BindBackend` with its own pointer. Every internal call that needs Engine state passes that bound pointer explicitly, so static constructors, marshalling constructors, callbacks, and continuations identify the correct Engine without thread-local caller state. Binding identifies ownership only; it does not create a script synchronization context or server entity cover.
 
 At startup, baked assemblies are restored into content-hashed subdirectories under the writable `Cache/ManagedAssemblies/` root. Existing byte-identical files are reused, so concurrent in-process engine instances do not rewrite an assembly Mono already loaded. Missing managed assemblies are a supported empty-backend state for tests/tools that do not bake scripts; a configured gameplay project should treat that as a packaging or resource-selection failure.
 
-Shutdown closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references, waits for finalizers, reports remaining entity wrappers (and names them when deep tracking is enabled), then tears down managed globals before native global data. Later posts cannot run against a disposed engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
+Shutdown closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, runs bounded collect/finalizer passes while the Engine and assembly images still exist, reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
+
+The single-threaded browser runtime has neither a usable managed thread pool nor a finalizer thread. Its shutdown therefore performs one inline collect/wait pass; `GC.WaitForPendingFinalizers()` returns immediately, finalizers run later as main-thread jobs, and the interim wrapper count is reported but not verified. Later posts cannot run against a disposed Engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
 
 ## Build and bake workflow
 
@@ -21353,7 +21359,7 @@ For an Android change, also run the narrowest affected native validation target 
 ===== BEGIN DOCUMENT web-debugging =====
 Source: Docs/en/how-to/platforms/web-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/web-debugging.html
-Content SHA-256: 2c537e7cedfd00ebdbb65ec08fa6a6e1490935c3c20f46548b455ceb0cd91b0c
+Content SHA-256: 3e28702dfe9bddf0e371ddc480b8fdad6b36e1088d1fad4daaf61efde68ba179
 
 ---
 layout: default
@@ -21564,6 +21570,8 @@ runtime-invoke path. Set `ManagedScript.InteropProbeOnStart=True` in the query
 string to run the reusable transport checks once scripts start. Qualification
 requires every `INTEROP-TRANSPORT` check and the closing summary to report zero
 failures; the native-thread case is omitted in the single-threaded browser.
+
+Do not queue managed thread-pool work in the browser. This Mono runtime routes it through `mono_main_thread_schedule_background_job`, but the embedding has no `ThreadPool.BackgroundJobHandler`; the first `Task.Run`, `Task.Factory`, `Parallel`, or direct ThreadPool dispatch aborts the module. The runtime also has no finalizer thread. Managed backend shutdown therefore performs one inline collection pass, `GC.WaitForPendingFinalizers()` returns immediately, remaining wrappers are diagnostic rather than a gate, and finalizers run later as main-thread jobs. Project analyzers must keep thread-pool escape APIs out of Web-capable scripts.
 
 ### Persistent data
 
@@ -23895,7 +23903,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: 86bf5dc0127927abe539be336fb30ec7dacc119dc9e160b7af3a6a7e1ed8d68b
+Content SHA-256: 965fa47d762187bfe24a7dc9e01537ccb140850779816a9484b2c953058ca1e0
 
 ---
 layout: default
@@ -24906,6 +24914,8 @@ packed slot layouts, nullability, wrapper factories, callback adapters, settings
 and inner-entity routes. Generated API and ABI files both participate in the
 incremental bake stamp, so a generator-only ABI change cannot reuse an old
 assembly.
+
+The baker also emits entity wrappers whose runtime type belongs to one backend load context. The backend binds each entry assembly through `Native.BindBackend` before its code runs, and Engine-reaching internal calls pass that bound pointer explicitly. A wrapper therefore needs only its native entity pointer for equality and hashing within its generated type; wrappers from different Engine instances are different runtime types. Backend teardown unbinds the assembly, `Native.IsBackendAlive` becomes false, and wrapper access fails with `ObjectDisposedException` before released metadata can be reached. A late finalizer keeps its native reference rather than calling dead Engine state.
 
 When property metadata changes, inspect both the property runtime and the generator inputs/templates. Script-visible nullability or API changes should also update [Scripting](../../explanation/scripting-runtime/), [Script Methods Map](../../reference/script-api/method-ownership.md), and [Nullability.md](../../contributing/coding-contracts/nullability.md) as applicable.
 

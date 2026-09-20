@@ -208,6 +208,8 @@ string to run the reusable transport checks once scripts start. Qualification
 requires every `INTEROP-TRANSPORT` check and the closing summary to report zero
 failures; the native-thread case is omitted in the single-threaded browser.
 
+Do not queue managed thread-pool work in the browser. This Mono runtime routes it through `mono_main_thread_schedule_background_job`, but the embedding has no `ThreadPool.BackgroundJobHandler`; the first `Task.Run`, `Task.Factory`, `Parallel`, or direct ThreadPool dispatch aborts the module. The runtime also has no finalizer thread. Managed backend shutdown therefore performs one inline collection pass, `GC.WaitForPendingFinalizers()` returns immediately, remaining wrappers are diagnostic rather than a gate, and finalizers run later as main-thread jobs. Project analyzers must keep thread-pool escape APIs out of Web-capable scripts.
+
 ### Persistent data
 
 The runtime creates `/PersistentData`, mounts IDBFS, calls `FS.syncfs(true)`, and delays normal startup until initial browser-to-virtual-filesystem hydration completes. The callback currently marks readiness even when `err` is non-null. The audited generic path does not prove automatic write-back after every later modification.

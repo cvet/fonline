@@ -1236,12 +1236,13 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("\"GetSpeed\"") == string::npos);
     CHECK(server_types.find("Native.CallMethod(\n") == string::npos);
     CHECK(server_entities.find("public partial class Entity : System.IEquatable<Entity>") != string::npos);
-    CHECK(server_entities.find("private readonly bool[]? _backendAlive;") != string::npos);
-    CHECK(server_entities.find("            if (_backendAlive != null && _backendAlive[0]) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
-    CHECK(server_entities.find("Entity wrapper belongs to a different managed backend") != string::npos);
-    CHECK(server_entities.find("return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue && _backend == other._backend;") != string::npos);
+    CHECK(server_entities.find("private readonly bool[]? _backendAlive;") == string::npos);
+    CHECK(server_entities.find("private readonly IntPtr _backend;") == string::npos);
+    CHECK(server_entities.find("            if (global::FOnline.Native.IsBackendAlive) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
+    CHECK(server_entities.find("Entity wrapper belongs to a different managed backend") == string::npos);
+    CHECK(server_entities.find("return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue;") != string::npos);
     CHECK(server_entities.find("public static bool operator ==(Entity? left, Entity? right)") != string::npos);
-    CHECK(server_entities.find("return (_backend.GetHashCode() * 397) ^ _entityPtrValue.GetHashCode();") != string::npos);
+    CHECK(server_entities.find("return _entityPtrValue.GetHashCode();") != string::npos);
     CHECK(server_entities.find("public ident Id\n    {\n        get\n        {\n            return new ident(global::FOnline.Native.GetEntityId(_entityPtr));") != string::npos);
 
     std::error_code ec;

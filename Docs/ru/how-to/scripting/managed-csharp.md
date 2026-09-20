@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"918d3af3dc18d2200b8f1ee764b55439f848a4dc09d36d1ad47a6dc6e47b3a83"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"6bd94b566e814f0455c8e41d2c3562f86edf0ea949cd20d41eb78a37936cc0ef"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -125,7 +125,7 @@ Inbound remote-call handlers могут возвращать `void`, `Task` ил
 
 Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `Game.YieldAsync` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
 
-`ConfigureAwait(false)`, `Task.Run` и ручная отправка работы в ThreadPool намеренно обходят Engine synchronization context. Там можно выполнять изолированные вычисления, но нельзя вызывать Engine API. Перед доступом к состоянию движка вернитесь в захваченный Engine context.
+`ConfigureAwait(false)`, `Task.Run`, `Task.Factory`, `Parallel` и ручная отправка работы в ThreadPool намеренно обходят Engine synchronization context. Там можно выполнять изолированные вычисления, но нельзя вызывать Engine API. Привязка entry assembly к backend всё ещё позволяет определить Engine из такого thread, поэтому ошибка не обязана проявляться на каждом native call; надёжно её отклоняют только чувствительные к синхронизации маршруты, например server entity access. Подключающий проект должен статически запрещать эти escape API и возвращаться в захваченный Engine context до обращения к состоянию движка.
 
 ## Серверная синхронизация сущностей
 
@@ -159,7 +159,7 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 
 Native ref types являются явными borrowed wrappers. Если проект хранит один после вызова/frame, следуйте generated контракту `__AddRef()`/`__Release()`. Factory-backed wrapper начинает с reference, которую нужно освободить после передачи владения или detach.
 
-`hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata активного backend и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
+`hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata, привязанные к entry assembly, и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
 
 Массивы primitives, enums, `hstring` и зарегистрированных value types проходят как raw bytes через `GetPropertyList<T>` / `SetPropertyList<T>`. Длинный read повторяется прямо в итоговый storage списка при сохранённом cover. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values и другие structured forms остаются на converting bridge, но generated access выбирает property по registrar index и не передаёт имена owner/property повторно.
 
@@ -173,15 +173,21 @@ Managed frames являются compact packed buffers, но native code не р
 
 Native-to-managed callbacks, сигнатура которых состоит только из fixed values и handles entity/ref type, используют generated методы `CallbackAdapters.Adapt_<key>`. Один `ManagedCallbackPlan` разрешает adapter при регистрации; wrapper factories и native wrapper classes также регистрируются/кэшируются при ABI bind, поэтому dispatch не повторяет reflection и поиск constructor. Неподдерживаемые callback shapes остаются на boxed `MonoArray`/`DynamicInvoke`. Entity event subscriptions принадлежат native entity, а не одному wrapper: equal handler регистрируется идемпотентно, любой wrapper этой entity может его отписать, destruction удаляет subscriptions.
 
+Каждый generated тип entity wrapper принадлежит одному load context backend. Поэтому внутри этого типа для equality и hashing достаточно native pointer; wrappers разных экземпляров Engine имеют разные runtime types. Живой wrapper проверяет `Native.IsBackendAlive` до выдачи pointer. После того как shutdown отвязывает entry assembly, поздний access бросает `ObjectDisposedException`, а поздний finalizer намеренно сохраняет native reference вместо обращения к уже освобождённому состоянию Engine.
+
 Backend-owned caches строятся до hot-path use: managed helper methods, classes по metadata name, accessors dynamic ref type, wrapper constructors, callback adapters, list factories и per-event adapters. Typed custom setting хранит parsed cell за `GlobalSettings::GetCustomSettingsGeneration()`; каждый writer custom settings увеличивает generation, а warmed read выполняет только сравнение generation и копирование value. `ScriptSynchronizationContext` так же создаёт continuation queue только при первом post.
 
 ## Runtime loading, изоляция и shutdown
 
-Mono инициализируется один раз на процесс. Native Engine threads присоединяются к root domain через ограниченные attachment records, включая долгоживущие frame workers и Web interpreter thread. Затем backend создаёт собственный non-collectible `AssemblyLoadContext`; это граница per-engine isolation, потому что embedded runtime не предоставляет пригодный unload classic AppDomain.
+Mono инициализируется один раз на процесс. Первый managed entry на native worker Engine присоединяет thread к root domain и кэширует attachment на весь lifetime thread. Последующие entries только переводят attachment в GC-unsafe на время managed execution и снова паркуют его GC-safe во время native work или ожидания locks; reentrant entries наследуют attachment. Thread, инициализирующий Mono, является исключением: `mono_jit_init_version` присоединяет его неявно, а initialization scope освобождает принятый attachment. Затем backend создаёт собственный non-collectible `AssemblyLoadContext`; это граница per-engine isolation, потому что embedded runtime не предоставляет пригодный unload classic AppDomain.
+
+До выполнения кода или type initializer из entry assembly backend вызывает `Native.BindBackend` со своим pointer. Каждый internal call, которому нужно состояние Engine, явно передаёт этот bound pointer, поэтому static constructors, marshalling constructors, callbacks и continuations определяют правильный Engine без thread-local caller state. Binding определяет только владельца; он не создаёт script synchronization context или server entity cover.
 
 При запуске baked assemblies восстанавливаются в content-hashed подкаталоги writable `Cache/ManagedAssemblies/`. Уже совпадающие по байтам файлы переиспользуются, поэтому параллельные in-process Engine instances не перезаписывают загруженную Mono assembly. Отсутствие managed assemblies допустимо для tests/tools без baked scripts; настроенный gameplay project должен считать его ошибкой package или resource selection.
 
-Shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references, ждёт finalizers, сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем разрушает managed globals до native global data. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
+Shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют, сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
+
+Single-threaded browser runtime не имеет пригодных managed thread pool и finalizer thread. Поэтому browser shutdown выполняет один inline collect/wait pass; `GC.WaitForPendingFinalizers()` возвращает сразу, finalizers позднее выполняются как main-thread jobs, а промежуточное число wrappers сообщается, но не проверяется. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
 
 ## Сборка и baking
 

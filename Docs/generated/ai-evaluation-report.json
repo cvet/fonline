@@ -1450,8 +1450,8 @@
           "passed": true,
           "top_document_ids": [
             "debugging",
-            "managed-csharp-scripting",
             "getting-started",
+            "managed-csharp-scripting",
             "scripting-runtime",
             "testing"
           ]

@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"2c537e7cedfd00ebdbb65ec08fa6a6e1490935c3c20f46548b455ceb0cd91b0c"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"3e28702dfe9bddf0e371ddc480b8fdad6b36e1088d1fad4daaf61efde68ba179"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -207,6 +207,8 @@ Interpreter-only browser runtime вызывает native-to-managed entries че
 string, чтобы reusable transport checks выполнились после запуска скриптов.
 Квалификация требует ноль failures во всех `INTEROP-TRANSPORT` checks и итоговой
 summary; native-thread case отсутствует в single-threaded browser.
+
+Не ставьте managed работу в thread pool браузера. Этот runtime Mono направляет её через `mono_main_thread_schedule_background_job`, но embedding не предоставляет `ThreadPool.BackgroundJobHandler`; первый `Task.Run`, `Task.Factory`, `Parallel` или прямой ThreadPool dispatch завершает module аварийно. Finalizer thread также отсутствует. Поэтому managed backend shutdown выполняет один inline collection pass, `GC.WaitForPendingFinalizers()` возвращает сразу, оставшиеся wrappers являются diagnostics, а не gate, и finalizers позднее выполняются как main-thread jobs. Project analyzers должны исключать thread-pool escape API из Web-capable scripts.
 
 ### Persistent data
 

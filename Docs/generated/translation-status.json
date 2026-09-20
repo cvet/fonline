@@ -729,8 +729,8 @@
       "english_path": "Docs/en/how-to/platforms/web-debugging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/platforms/web-debugging.md",
-      "source_sha256": "2c537e7cedfd00ebdbb65ec08fa6a6e1490935c3c20f46548b455ceb0cd91b0c",
-      "source_bytes": 32670,
+      "source_sha256": "3e28702dfe9bddf0e371ddc480b8fdad6b36e1088d1fad4daaf61efde68ba179",
+      "source_bytes": 33311,
       "status": "current"
     },
     {
@@ -833,8 +833,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "918d3af3dc18d2200b8f1ee764b55439f848a4dc09d36d1ad47a6dc6e47b3a83",
-      "source_bytes": 33474,
+      "source_sha256": "6bd94b566e814f0455c8e41d2c3562f86edf0ea949cd20d41eb78a37936cc0ef",
+      "source_bytes": 35904,
       "status": "current"
     },
     {
@@ -1574,8 +1574,8 @@
       "english_path": "Docs/en/reference/metadata/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/metadata/index.md",
-      "source_sha256": "86bf5dc0127927abe539be336fb30ec7dacc119dc9e160b7af3a6a7e1ed8d68b",
-      "source_bytes": 80500,
+      "source_sha256": "965fa47d762187bfe24a7dc9e01537ccb140850779816a9484b2c953058ca1e0",
+      "source_bytes": 81191,
       "status": "current"
     },
     {
