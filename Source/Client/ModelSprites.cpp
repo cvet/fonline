@@ -174,14 +174,53 @@ void ModelSprite::Stop()
     FO_STACK_TRACE_ENTRY();
 }
 
+auto ModelSprite::PrepareUpdate() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _frameUpdatePrepared = true;
+    _frameCpuPosePrepared = false;
+    _model->PrepareFrameLayout();
+
+    bool direct_draw = IsDirectDraw();
+    _frameAtlasDrawPending = _model->NeedForceDraw() || (!direct_draw && _model->NeedDraw());
+
+    if (!_frameAtlasDrawPending) {
+        return false;
+    }
+
+    // Everything a worker must not touch happens right here: the layout refresh above, the frame resize below, and
+    // the pose inputs the model settles from its controllers. What is left for the batch is the evaluation itself
+    _preparedRenderFrameSize = _factory->SettleModelFrame(this);
+    _model->PrepareSpriteFramePose(true);
+    _frameCpuPosePrepared = true;
+
+    return true;
+}
+
+void ModelSprite::RunPreparedUpdate()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _model->EvaluateFramePose();
+}
+
 auto ModelSprite::Update() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    _model->PrepareFrameLayout();
-    bool direct_draw = IsDirectDraw();
+    // Without a preparation pass this is the original single-pass update, predicate included
+    if (!_frameUpdatePrepared) {
+        _model->PrepareFrameLayout();
 
-    if (_model->NeedForceDraw() || (!direct_draw && _model->NeedDraw())) {
+        bool direct_draw = IsDirectDraw();
+        _frameAtlasDrawPending = _model->NeedForceDraw() || (!direct_draw && _model->NeedDraw());
+    }
+
+    _frameUpdatePrepared = false;
+
+    if (_frameAtlasDrawPending) {
+        _frameAtlasDrawPending = false;
         DrawToAtlas();
     }
 
@@ -414,11 +453,10 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
     return result;
 }
 
-void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
+auto ModelSpriteFactory::SettleModelFrame(ptr<ModelSprite> model_spr) -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
     model_spr->GetModel()->PrepareFrameLayout();
     isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->Render.ModelSpriteMaxTextureWidth, _settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     isize32 render_frame_size = model_spr->_requestedFrameSize.value_or(model_spr->GetModel()->GetDrawSize());
@@ -429,12 +467,36 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         model_spr->GetModel()->SetupFrame(render_frame_size, start_placement.Pivot);
     }
 
+    return render_frame_size;
+}
+
+void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
+
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->Render.ModelSpriteMaxTextureWidth, _settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+
+    // A sprite whose CPU pose was prepared before the frame batch keeps the frame that pose was built against;
+    // settling it again here would move the root under an already evaluated skeleton
+    bool pose_prepared = model_spr->_frameCpuPosePrepared;
+    isize32 render_frame_size = pose_prepared ? model_spr->_preparedRenderFrameSize : SettleModelFrame(model_spr);
+    model_spr->_frameCpuPosePrepared = false;
+
     // The frame size is known from the posed skeleton without any GPU read-back, so the model is posed and measured
     // first; placements merge in root-relative coordinates, or rounding could alternate pivots forever
     optional<ModelSpriteBounds> bounds;
 
     for (size_t size_pass = 0; size_pass < 3; size_pass++) {
-        model_spr->GetModel()->PoseSpriteFrame(size_pass == 0);
+        if (size_pass == 0 && pose_prepared) {
+            // Prepared on the owner, evaluated by the batch, finished here: the same three phases PoseSpriteFrame runs
+            model_spr->GetModel()->FinalizeFramePose();
+        }
+        else {
+            model_spr->GetModel()->PoseSpriteFrame(size_pass == 0);
+        }
+
         bounds = model_spr->_model->GetSpriteBounds();
 
         if (bounds) {

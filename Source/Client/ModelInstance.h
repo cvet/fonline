@@ -134,6 +134,11 @@ public:
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled);
     void PoseSpriteFrame(bool advance_animation);
+    // The same sprite-frame pose, split so the evaluation between them can run on a client worker thread. Prepare
+    // and finalize belong to the application thread; evaluate touches only this hierarchy own pose buffers
+    void PrepareSpriteFramePose(bool advance_animation);
+    void EvaluateFramePose();
+    void FinalizeFramePose();
     void DrawSpriteFrame();
     void DrawInScene(const mat44& proj, float32_t scale);
     void AddMoveOffset(ipos32 offset);
@@ -200,8 +205,10 @@ private:
     void BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
     void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
-    void ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale);
-    void Pose(float32_t scale, bool advance_animation);
+    void PrepareAnimationPose(float32_t elapsed, ipos32 pos, float32_t scale);
+    void EvaluateAnimationPose();
+    void FinalizeAnimationPose();
+    void PrepareFramePose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
     void SnapshotAnimationWorldMatrices();
@@ -241,6 +248,15 @@ private:
     vector<mat44> _worldMatrices {};
     array<vector<uint8_t>, 2> _animationBodyJointMasks {};
     array<vector<uint8_t>, 2> _animationMovementJointMasks {};
+    // Pose inputs the owner settles before an evaluation and the results the finalize phase still needs. They live
+    // on the instance rather than on the stack because the three phases can be separated by a worker batch
+    array<ModelAnimationRuntimePose::TrackInput, 2> _poseBodyTracks {};
+    array<ModelAnimationRuntimePose::TrackInput, 2> _poseMovementTracks {};
+    array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS> _poseProceduralRotations {};
+    size_t _poseProceduralRotationCount {};
+    float32_t _poseElapsed {};
+    float32_t _posePrevTrackPos {};
+    float32_t _poseNewTrackPos {};
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};

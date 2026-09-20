@@ -156,6 +156,8 @@ The stub layer is not a full renderer. It exists so tests and non-graphical flow
 
 ## Rendering abstraction
 
+The renderer is single-owner and stays that way when `Client.WorkerThreads` starts client CPU workers: GPU objects, command recording, uploads, render targets and presentation all belong to the application thread, and SDL documents event polling and GL context selection as main-thread operations. A client worker never reaches any type in this section. See [ClientMultithreading.md](ClientMultithreading.md).
+
 `Source/Frontend/Rendering.h` defines the renderer-facing types:
 
 - `RenderType` — backend family selection.

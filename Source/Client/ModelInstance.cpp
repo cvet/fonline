@@ -1505,7 +1505,7 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
     }
 }
 
-void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale)
+void ModelInstance::PrepareAnimationPose(float32_t elapsed, ipos32 pos, float32_t scale)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1521,12 +1521,14 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         _moveDirAngle += std::clamp(diff * elapsed * 10.0f, -std::abs(diff), std::abs(diff));
     }
 
-    // Advance animation time
-    float32_t prev_track_pos = 0.0f;
-    float32_t new_track_pos = 0.0f;
+    // Advance animation time. The track positions the callbacks compare are kept on the instance because the
+    // callbacks themselves run in the finalize phase, back on the owner
+    _poseElapsed = elapsed;
+    _posePrevTrackPos = 0.0f;
+    _poseNewTrackPos = 0.0f;
 
     if (_bodyAnimController && elapsed >= 0.0f) {
-        prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
+        _posePrevTrackPos = _bodyAnimController->GetTrackPosition(_curTrack);
 
         _bodyAnimController->AdvanceTimeline(elapsed * GetSpeed());
 
@@ -1539,16 +1541,16 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
             }
         }
 
-        new_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
+        _poseNewTrackPos = _bodyAnimController->GetTrackPosition(_curTrack);
 
         if (_animDuration > 0.0f) {
-            _animPosProc = new_track_pos / _animDuration;
+            _animPosProc = _poseNewTrackPos / _animDuration;
 
             if (_animPosProc >= 1.0f) {
                 _animPosProc = std::fmod(_animPosProc, 1.0f);
             }
 
-            _animPosTime = new_track_pos;
+            _animPosTime = _poseNewTrackPos;
 
             if (_animPosTime >= _animDuration) {
                 _animPosTime = std::fmod(_animPosTime, _animDuration);
@@ -1556,18 +1558,39 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         }
     }
 
+    // Everything the evaluation reads is settled here, while the controllers, the animation resolver callbacks and
+    // the shared model information are still the owner own; the evaluation then touches only this pose buffers
     if (_animationRuntimePose) {
-        array<ModelAnimationRuntimePose::TrackInput, 2> body_tracks {};
-        array<ModelAnimationRuntimePose::TrackInput, 2> movement_tracks {};
+        _poseBodyTracks = {};
+        _poseMovementTracks = {};
 
         if (_bodyAnimController) {
-            FillAnimationTrackInputs(&*_bodyAnimController, true, _animationBodyJointMasks, body_tracks);
-            FillAnimationTrackInputs(_moveAnimController ? make_nptr(&*_moveAnimController) : nullptr, _isMoving || _turnAnimPlaying, _animationMovementJointMasks, movement_tracks);
+            FillAnimationTrackInputs(&*_bodyAnimController, true, _animationBodyJointMasks, _poseBodyTracks);
+            FillAnimationTrackInputs(_moveAnimController ? make_nptr(&*_moveAnimController) : nullptr, _isMoving || _turnAnimPlaying, _animationMovementJointMasks, _poseMovementTracks);
         }
 
-        array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS> procedural_rotations {};
-        size_t procedural_rotation_count = FillAnimationProceduralRotations(procedural_rotations);
-        _animationRuntimePose->Evaluate(body_tracks, movement_tracks, _parentMatrix, const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> {procedural_rotations.data(), procedural_rotation_count});
+        _poseProceduralRotations = {};
+        _poseProceduralRotationCount = FillAnimationProceduralRotations(_poseProceduralRotations);
+    }
+
+    // The ground position travels down before the evaluation, because it comes from the root transformation and not
+    // from any posed joint
+    for (size_t i = 0; i != _children.size(); ++i) {
+        auto child = _children[i].as_ptr();
+
+        child->_groundPos = _groundPos;
+        child->PrepareAnimationPose(elapsed, pos, 1.0f);
+    }
+}
+
+void ModelInstance::EvaluateAnimationPose()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Pure CPU work over this hierarchy own buffers and the immutable rig behind them: no controller, no callback,
+    // no particle, no manager and no GPU object is reached from here, which is what lets a worker run it
+    if (_animationRuntimePose) {
+        _animationRuntimePose->Evaluate(_poseBodyTracks, _poseMovementTracks, _parentMatrix, const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> {_poseProceduralRotations.data(), _poseProceduralRotationCount});
         SnapshotAnimationWorldMatrices();
     }
     else {
@@ -1594,13 +1617,23 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     for (size_t i = 0; i != _children.size(); ++i) {
         auto child = _children[i].as_ptr();
 
-        child->_groundPos = _groundPos;
         child->_parentMatrix = GetWorldMatrix(child->_parentJointIndex) * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
-    // Move child animations
+    // A child reads the joint its parent has just posed, so one evaluation owns the whole hierarchy instead of one
+    // job per node
     for (size_t i = 0; i != _children.size(); ++i) {
-        _children[i]->ProcessAnimation(elapsed, pos, 1.0f);
+        _children[i]->EvaluateAnimationPose();
+    }
+}
+
+void ModelInstance::FinalizeAnimationPose()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Children finalize first, exactly where the recursive traversal used to leave them
+    for (size_t i = 0; i != _children.size(); ++i) {
+        _children[i]->FinalizeAnimationPose();
     }
 
     // Placed only after the whole hierarchy is posed: a child-joint effect left one pose behind is a harmless lag
@@ -1622,9 +1655,9 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
             model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
         }
 
-        // Model-attached effects have no update loop of their own, so they advance on the pose's logical delta;
+        // Model-attached effects have no update loop of their own, so they advance on the pose logical delta;
         // frame-layout re-poses pass zero and never advance an effect twice
-        model_particle.Particle->Update(std::max(elapsed, 0.0f));
+        model_particle.Particle->Update(std::max(_poseElapsed, 0.0f));
     }
 
     for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
@@ -1641,13 +1674,13 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     }
 
     // Animation callbacks
-    if (_bodyAnimController && elapsed >= 0.0f && _animDuration > 0.0f) {
+    if (_bodyAnimController && _poseElapsed >= 0.0f && _animDuration > 0.0f) {
         for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
-                float32_t fire_track_pos1 = floorf(prev_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
-                float32_t fire_track_pos2 = floorf(new_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
+                float32_t fire_track_pos1 = floorf(_posePrevTrackPos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
+                float32_t fire_track_pos2 = floorf(_poseNewTrackPos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
 
-                if ((prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1) || (prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2)) {
+                if ((_posePrevTrackPos < fire_track_pos1 && _poseNewTrackPos >= fire_track_pos1) || (_posePrevTrackPos < fire_track_pos2 && _poseNewTrackPos >= fire_track_pos2)) {
                     callback.Callback();
                 }
             }
@@ -2534,11 +2567,20 @@ void ModelInstance::PoseSpriteFrame(bool advance_animation)
 {
     FO_STACK_TRACE_ENTRY();
 
+    PrepareSpriteFramePose(advance_animation);
+    EvaluateFramePose();
+    FinalizeFramePose();
+}
+
+void ModelInstance::PrepareSpriteFramePose(bool advance_animation)
+{
+    FO_STACK_TRACE_ENTRY();
+
     // GetSpriteBounds derives the extent from the posed skeleton and the baked particle box rather than from pixels,
     // so the atlas path sizes the frame from this pose and draws only once, at the final size
     _drawProj = _frameProj;
     _directSceneDraw = false;
-    Pose(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
+    PrepareFramePose(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
 }
 
 void ModelInstance::DrawSpriteFrame()
@@ -2562,11 +2604,16 @@ void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
         _modelMngr->_directSceneDraw = previous_manager_direct_scene;
     });
 
-    Pose(scale, true);
+    PrepareFramePose(scale, true);
+    EvaluateFramePose();
+    FinalizeFramePose();
     DrawPosed(true);
 }
 
-void ModelInstance::Pose(float32_t scale, bool advance_animation)
+// A frame pose runs in three phases so the middle one can be spread across Client.WorkerThreads: the owner settles
+// the inputs, a worker evaluates, the owner finishes. The three in a row are exactly the serial pose this used to be
+
+void ModelInstance::PrepareFramePose(float32_t scale, bool advance_animation)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2592,7 +2639,21 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     _forceDraw = false;
 
     // Move animation
-    ProcessAnimation(dt, _framePivot, scale);
+    PrepareAnimationPose(dt, _framePivot, scale);
+}
+
+void ModelInstance::EvaluateFramePose()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    EvaluateAnimationPose();
+}
+
+void ModelInstance::FinalizeFramePose()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FinalizeAnimationPose();
 
     _spriteBoundsPoseReady = !_directSceneDraw;
 }

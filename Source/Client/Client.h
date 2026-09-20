@@ -62,6 +62,7 @@
 #include "SpriteManager.h"
 #include "TextPack.h"
 #include "VideoClip.h"
+#include "WorkScheduler.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -271,6 +272,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
+    WorkScheduler WorkSched;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     FontManager FontMngr;

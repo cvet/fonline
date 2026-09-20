@@ -65,8 +65,9 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
+    WorkSched("ClientWorker", WorkScheduler::ResolveWorkerCount(settings->Client.WorkerThreads)),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
-    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
+    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes), make_ptr(&WorkSched)),
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
@@ -104,6 +105,15 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 #if FO_MANAGED_SCRIPTING
     InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
 #endif
+
+    // The selected mode is logged with the count actually started, because a report that only echoes the setting
+    // cannot tell an operator whether the client is running serial or parallel
+    if (WorkSched.IsParallel()) {
+        logging::write("Client work threading: {} worker threads", WorkSched.GetWorkerCount());
+    }
+    else {
+        logging::write("Client work threading: serial");
+    }
 
     logging::write("Client compatibility version: {}", Settings->Network.CompatibilityVersion);
 
@@ -234,10 +244,13 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _eventUnsubscriber += (*window->GetOnScreenSizeChanged()) += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
 }
 
+// The mapper edits content on one thread and gains nothing from client workers, so its scheduler is constructed
+// serial whatever Client.WorkerThreads says
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar) :
     BaseEngine(settings, std::move(resources), mapper_registrar),
+    WorkSched("MapperWorker", 0),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
-    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
+    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes), make_ptr(&WorkSched)),
     FontMngr(make_ptr(&SprMngr)),
     ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),

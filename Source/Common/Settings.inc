@@ -229,6 +229,7 @@ SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Screen px per 3D world un
 SETTING(int32_t, Render, ModelSpriteMaxTextureWidth, 2048); // Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(int32_t, Render, ModelSpriteMaxTextureHeight, 2048); // Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(bool, Render, ModelDirectDraw, false); // If true, map 3D models render directly into the scene depth buffer; otherwise they render as cached atlas sprites
+SETTING(int32_t, Render, ParallelSpriteUpdateMinCount, 4); // Minimum number of sprites with prepared CPU work in a frame before Client.WorkerThreads spreads that work; below it the batch costs more than it saves
 SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the per-map scene depth range; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
 SETTING(int32_t, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width
 SETTING(int32_t, Render, EggEllipseHeightExt, 0); // Transparency egg ellipse extra height in pixels added to logical sprite/view height
@@ -369,6 +370,7 @@ SETTING(string, Client, DefaultSplash); // Default splash screen
 SETTING(string, Client, DefaultSplashPack); // Default splash pack
 SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
+SETTING(int32_t, Client, WorkerThreads, 0); // Extra CPU worker threads the client uses for eligible per-frame work: 0 runs everything on the application thread (the default, and the only mode on Web), -1 asks the machine, a positive value is taken as written. Startup only, and independent of the audio, logging and managed-runtime threads
 SETTING(string, Client, Language, "engl"); // Language setting
 SETTING_GROUP_END(Client);
 

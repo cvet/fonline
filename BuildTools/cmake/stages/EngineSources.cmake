@@ -316,6 +316,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/VideoClip.h"
     "${FO_ENGINE_ROOT}/Source/Client/VisualParticles.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/VisualParticles.h"
+    "${FO_ENGINE_ROOT}/Source/Client/WorkScheduler.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/WorkScheduler.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientImGuiScriptMethods.cpp"
@@ -550,6 +552,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TwoDimensionalGrid.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_UpdaterBackend.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkScheduler.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")

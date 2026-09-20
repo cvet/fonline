@@ -12,6 +12,7 @@ Read this page together with:
 - [MapsMovementGeometry.md](MapsMovementGeometry.md) for map positions, path finding, line tracing, and movement contexts.
 - [Networking.md](Networking.md) for command buffers, transports, and property sync.
 - [FrontendAndRendering.md](FrontendAndRendering.md) for platform windows, input, audio, and renderer backends.
+- [ClientMultithreading.md](ClientMultithreading.md) for the runtime `Client.WorkerThreads` option: what a client worker may run, what stays on the application thread, and how the two modes are compared.
 - [WebDebugging.md](WebDebugging.md), [AndroidDebugging.md](AndroidDebugging.md), and [Debugging.md](Debugging.md) for platform-specific validation flows.
 
 ## Source paths inspected
@@ -81,6 +82,7 @@ Major responsibilities:
 - create, register, unregister, and look up client-side entities by id;
 - receive and apply network messages for critters, items, maps, custom entities, time sync, movement, actions, and properties;
 - own client-facing managers such as sprites, effects, fonts, sounds, video playback, resources, cache storage, and render targets;
+- own the client work scheduler (`WorkSched`), which is inert unless `Client.WorkerThreads` asks for workers;
 - raise engine events such as `OnStart`, `OnLoop`, `OnConnected`, `OnDisconnected`, render-map stages, input events, entity in/out events, and map load/unload events.
 
 `ClientEngine` is intentionally broad: it is the composition root where Common-layer data (`Entity`, properties, prototypes, networking buffers) meets Frontend-layer services (`Application`, render, input, audio) and game scripts.
@@ -105,6 +107,20 @@ When changing startup or shutdown behavior, keep script events, manager lifetime
 `ShowUpdaterFailure` (`Source/Client/Updater.cpp`) reports every terminal `UpdaterResult` before it shows the dialog, carrying the result name, the binary update target, the platform and the build. `ServerMissingNativeUpdate` in particular means the server offered no native modules for this client's target — a distribution problem no player can fix by reinstalling, and one we would otherwise hear about only through a screenshot.
 
 `ClientSessionMarker` (`Source/Client/ClientSessionMarker.{h,cpp}`) records how far shutdown got. The runtime writes the marker once the application is initialized, updates it at each stage (`MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`), the host records the stage that happens after the runtime returns (`RuntimeReturned`; the library is never unloaded, so nothing follows it) and clears the file immediately before `exit_app`. A marker still present on the next launch means the previous run never finished, and the runtime reports it — with the stage — once the crash reporter is alive. The file sits in the client's writable root, as does the log: the host resolves the root as its first act and opens `<root>/<exe>.log` for the whole launch, and the runtime appends to the same file. Both halves call the same `ResolveWritableRoot(args)`, which reads no settings at all, so nothing crosses the host/runtime boundary and the two cannot disagree (see [ClientUpdater.md](ClientUpdater.md#installed-vs-portable-writable-data)). The marker path is made absolute even in portable mode, so runtime teardown cannot retarget it if a loaded dependency changes the process working directory. That root is the same one the cache, the resource overlay and the log use, so an installed client whose own directory is read-only still records its shutdown. `Source/Tests/Test_ClientRuntimeApi.cpp` pins the round trip.
+
+## Optional CPU workers
+
+`ClientEngine::WorkSched` is a `WorkScheduler` constructed before every other manager and handed to
+`SpriteManager`, so one embedded client's workers are never another's. `Client.WorkerThreads` decides at startup
+how many exist: `0` (the default) starts none and every eligible stage calls its kernel directly, a positive
+value starts that many, and `-1` asks the machine. The mapper always constructs a serial one. The selected mode
+and the count actually started are logged during construction.
+
+The scheduler runs bounded synchronous batches of independent CPU items and nothing else. Entities, scripts,
+input, the renderer, the sprite and atlas managers and resource publication stay on the application thread in
+both modes. The only stage batched today is the CPU half of a per-frame sprite update, which for a `ModelSprite`
+is the animation pose evaluation. Full contract, the rules a new batch item has to meet, platform support and
+the measurement lanes: [ClientMultithreading.md](ClientMultithreading.md).
 
 ## Server connection and message dispatch
 
@@ -305,6 +321,7 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
+- `SpriteManager::BeginScene` updates the registered sprites. It materializes the live set into a vector first, so a sprite that starts updating another one during its own update cannot rehash the set being walked. A parallel client then runs `Sprite::PrepareUpdate()` over that vector on the application thread, spreads the `Sprite::RunPreparedUpdate()` items that declared CPU-only work across the workers, and finishes with `Sprite::Update()` back on the owner; a serial client skips the split entirely and `Update()` runs its original single-pass body. `Render.ParallelSpriteUpdateMinCount` is the frame's threshold below which the batch is not worth building. See [ClientMultithreading.md](ClientMultithreading.md).
 - `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, and handles Fallout-style animation frame mapping.
 - `AudioManager` indexes the sound resources named by `Audio.SoundFileExtensions`, decodes Ogg Vorbis, and mixes playing sounds into the audio device stream. `PlaySound(path)` plays flat and `PlaySound(path, attenuation, pan)` places the sound; both answer with the handle of the playing sound, which `UpdateSound(sound_id, attenuation, pan)` places again while it plays. `GetSoundNames()` reports the indexed resource paths, exported as `Game.GetSoundNames()`.
 
