@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"4223b4d46283b6b4c7b352ce54944cb7f22821e6add3589167babf8963aed7da"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"86bf5dc0127927abe539be336fb30ec7dacc119dc9e160b7af3a6a7e1ed8d68b"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -193,6 +193,10 @@ Generated files являются build artifacts. Документируйте �
 - `Source/Tools/MetadataBaker.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
+- `Source/Scripting/Managed/ManagedInteropAbi.h`
+- `Source/Scripting/Managed/ManagedInteropAbi.cpp`
+- `Source/Tools/ManagedScriptBaker.cpp`
 - `Source/Tests/Test_Properties.cpp`
 - `PUBLIC_API.md`
 
@@ -974,6 +978,24 @@ Migration rules являются generic remaps `(kind, extra-info, target → r
 
 Layouts fixed value types разделяются native C++, регистрацией AngelScript, Managed generated value mapping и traversal fields metadata. Поэтому `hstring` имеет explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` на каждом поддерживаемом target. На 32-bit targets pointer-backed native handle содержит trailing padding, чтобы сохранить ширину и platform-independent offsets composite types, например `TextPackKey`. Padding не является wire data: serializers передают hash value и разрешают его через hash resolver target engine.
 
+`IsStruct` является invariant, а не подсказкой: value type — это plain packed
+data, которую property storage, remote-call buffers, native code и Managed
+interop могут копировать как bytes. Каждое поле должно быть primitive, enum,
+`hstring` или single-field value type; offsets полей должны быть кратны размерам
+полей, а общий размер не должен иметь tail padding. Native twins обязаны быть
+trivially copyable, generated C# structs используют sequential layout, а Managed
+backend проверяет размер value в Mono до boxing/unboxing. Строки, collections,
+multi-field nested records и данные с identity должны быть ref type.
+
+При включённом Managed scripting `ManagedScriptBaker` выводит из тех же metadata
+единый плотный manifest `ManagedInteropAbi`. Generated `*Abi.gen.cs` привязывает
+его content hash и counts через `Native.BindAbi` во время early initialization;
+несовпадение останавливает startup. Manifest назначает stable indices, layouts
+упакованных slots, nullability, wrapper factories, callback adapters, settings и
+маршруты inner entities. Generated API и ABI files входят в incremental bake
+stamp, поэтому изменение только generator не может переиспользовать старую
+assembly.
+
 При изменении property metadata проверяйте одновременно runtime properties и inputs/templates generator. Изменения видимых скриптам nullability или API должны также обновлять [Scripting](../../explanation/scripting-runtime/), [карту script methods](../../reference/script-api/method-ownership.md) и [Nullability](../../contributing/coding-contracts/nullability.md), где это применимо.
 
 ## Связь с публичным API
@@ -1017,6 +1039,7 @@ python BuildTools/docs_public_api.py --check
 
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `BuildTools/tests/test_docs_api.py`
 - `BuildTools/tests/test_docs_api_diff.py`
 - `BuildTools/tests/test_docs_contract_diff.py`

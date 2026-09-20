@@ -4,7 +4,9 @@ document_id: generated-cmake-options
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"dff586b228d27379f377790c900389a895bb9992743795475b5df72b70c2ce32"} -->
+
 # Параметры проекта CMake
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/cmake/ProjectInterface.json`, затем выполните `python BuildTools/docs_cmake.py --write`.

@@ -4,7 +4,9 @@ document_id: generated-native-extension-index
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-native-extension-index","locale":"ru","source_path":"Docs/en/reference/native-extension/index.md","source_sha256":"93cc25675e4fdd3d6f9e2ae8ee18d8371a3d45e6bec70eed110460a8eca682af"} -->
+
 # Сгенерированный интерфейс нативных расширений
 
 > Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/NativeExtensionInterface.json`, затем выполните `python BuildTools/docs_native_extension.py --write`.

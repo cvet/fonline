@@ -4,7 +4,9 @@ document_id: generated-cli-index
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"37837843a72c7377ea3c89a8b0b65794ab4c5647ddeac1c7b99f6ef8580340d2"} -->
+
 # Сгенерированный справочник CLI BuildTools
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/buildtools.py`, затем выполните `python BuildTools/docs_cli.py --write`.

@@ -4,7 +4,9 @@ document_id: generated-cmake-index
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-cmake-index","locale":"ru","source_path":"Docs/en/reference/cmake/index.md","source_sha256":"ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206"} -->
+
 # Сгенерированный интерфейс проекта CMake
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/cmake/ProjectInterface.json`, затем выполните `python BuildTools/docs_cmake.py --write`.

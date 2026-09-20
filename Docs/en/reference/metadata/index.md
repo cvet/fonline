@@ -193,6 +193,10 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Source/Tools/MetadataBaker.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
+- `Source/Scripting/Managed/ManagedInteropAbi.h`
+- `Source/Scripting/Managed/ManagedInteropAbi.cpp`
+- `Source/Tools/ManagedScriptBaker.cpp`
 - `Source/Tests/Test_Properties.cpp`
 - `PUBLIC_API.md`
 
@@ -986,6 +990,24 @@ Migration rules are generic `(kind, extra-info, target → replacement)` remaps 
 
 Fixed value-type layouts are shared by native C++, AngelScript registration, Managed generated value mapping, and metadata field traversal. `hstring` therefore has an explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` on every supported target. On 32-bit targets the pointer-backed native handle carries trailing padding to preserve that width and keep composite offsets (for example `TextPackKey`) platform-independent. The padding is not wire data: serializers transmit the hash value and resolve it through the target engine's hash resolver.
 
+`IsStruct` is an invariant rather than a hint: a value type is plain packed data
+that property storage, remote-call buffers, native code, and Managed interop may
+copy as bytes. Every field must be a primitive, enum, `hstring`, or a single-field
+value type; field offsets must be multiples of their field sizes and the total
+size must have no tail padding. Native twins are required to be trivially
+copyable and generated C# structs use sequential layout; the Managed backend
+checks Mono's value size before boxing or unboxing. Strings, collections,
+multi-field nested records, and identity-bearing data belong in a ref type.
+
+When Managed scripting is enabled, `ManagedScriptBaker` derives one dense
+`ManagedInteropAbi` manifest from the same metadata. Generated `*Abi.gen.cs`
+binds its content hash and counts through `Native.BindAbi` during early
+initialization; a mismatch stops startup. The manifest assigns stable indices,
+packed slot layouts, nullability, wrapper factories, callback adapters, settings,
+and inner-entity routes. Generated API and ABI files both participate in the
+incremental bake stamp, so a generator-only ABI change cannot reuse an old
+assembly.
+
 When property metadata changes, inspect both the property runtime and the generator inputs/templates. Script-visible nullability or API changes should also update [Scripting](../../explanation/scripting-runtime/), [Script Methods Map](../../reference/script-api/method-ownership.md), and [Nullability.md](../../contributing/coding-contracts/nullability.md) as applicable.
 
 ## Public API relationship
@@ -1029,6 +1051,7 @@ Relevant tests include:
 
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `BuildTools/tests/test_docs_api.py`
 - `BuildTools/tests/test_docs_api_diff.py`
 - `BuildTools/tests/test_docs_contract_diff.py`

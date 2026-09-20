@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"ee4fc03c70ba0d1584f715a26162817a56bc816c5aed3457b61ada8d0f4f24d7"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"2ea91db3c59759901ef6eb45b5cd789faf1b3413c8415c9aa79e57b48d9c07a5"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -102,6 +102,19 @@ Backend сканирует клиентские resource packs и native runtime
 - `Source/Tests/Test_Settings.cpp`
 - `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`
 
+## Владение ресурсами Managed runtime
+
+Mono и native interop shim входят в каждое managed application, а target-specific
+class libraries Managed являются resource data под `ManagedRuntime/`. До запуска
+Mono backend восстанавливает payload в writable content-addressed cache и
+предпочитает его sibling fallback, который используют unpackaged tools. Поэтому
+unpackaged client должен использовать resource bake своего target и pointer
+width: сочетание x86 client с x64 bake заставляет CoreLib читать reflection data
+с неверным stride. Packaging пересобирает каждый client pack с совпадающим target
+runtime, поэтому packaged artifacts уже обеспечивают пару; изменения native
+Mono/shim следуют native compatibility/restart rules, а class-library changes
+доставляются с ресурсами.
+
 ## Двухуровневый запуск клиента
 
 На платформах с self-update host сначала пытается загрузить bundled runtime.
@@ -157,7 +170,9 @@ Restart step (taken on either Case after ReloadRequested) — PromoteStagedReloa
 
 `RunEmbeddedOrLoadedClient` использует условие
 `requested_runtime.ExplicitPath || (!ForceEmbedded && CanSelfUpdateNativeModules(...))`
-как для обычной, так и для headless-цели. Поскольку runtime выбирается раньше
+как для обычной, так и для headless-цели. Неявный bundled path рядом с executable
+вычисляется под тем же capability guard: у Android и iOS нет пригодного
+executable path для загружаемого sibling module. Поскольку runtime выбирается раньше
 обычного чтения конфигурации, `Client.ForceEmbeddedRuntime` должен прийти как
 `--ForceEmbeddedRuntime`; значение только из `.fomain` или SubConfig не влияет на
 этот pre-init выбор.

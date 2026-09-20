@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"73639d4711a8344f9cae073f5082958d1b7972a04999ac1051ca363cac045c2e"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"af04a0f0a2e6f46a2274223642c39a72dbd2ccb4a120ff070ca6628106e86ee7"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -127,6 +127,8 @@ allow-list **auto-settings**. Runtime-only settings (platform/build flags, ра�
 отдельным custom setting и не меняет built-in value. Script
 `SetRuntimeSetting` также отклоняет запись built-in settings как read-only, но
 остаётся доступен для project-owned custom settings.
+
+Managed getters numeric, boolean и enum settings используют typed indexed ABI. Built-in entry читает immutable field `GlobalSettings`, а project entry `///@ Setting` — custom map. Custom value один раз разбирается в typed cell записи ABI и переиспользуется, пока не изменится `GlobalSettings::GetCustomSettingsGeneration()`. Каждый writer custom map (`SetRuntimeSetting`, `SetCustomSetting`, `SetValue`, `CopyFrom`) увеличивает generation. String/list settings сохраняют name-based helpers; оба пути после hash dispatch проверяют полное имя setting, поэтому коллизия hash custom setting не может затенить built-in.
 
 У custom settings есть две формы чтения. Используйте `FindCustomSetting()`, когда отсутствие ключа нормально и должно оставаться в nullable pointer vocabulary. Используйте `GetCustomSetting()` только для совместимости с историческим non-null sentinel behavior: при наличии ключа он возвращает сохраненное значение, иначе `_emptySetting`.
 

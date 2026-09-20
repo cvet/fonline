@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_inventory.py",
   "script_api": {
-    "export_method_declarations": 988,
+    "export_method_declarations": 989,
     "method_file_count": 18,
     "method_files": [
       {
@@ -39,7 +39,7 @@
       },
       {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "export_method_declarations": 92
+        "export_method_declarations": 93
       },
       {
         "path": "Source/Scripting/CommonImGuiScriptMethods.cpp",
@@ -200,7 +200,7 @@
     ]
   },
   "settings": {
-    "declaration_count": 265,
+    "declaration_count": 266,
     "source": "Source/Common/Settings.inc"
   }
 }

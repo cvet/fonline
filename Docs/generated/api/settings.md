@@ -458,6 +458,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-managedscript-generateddir-36d017e3cc"></a>
 - [`symbol-setting-common-managedscript-generateddir-36d017e3cc`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-generateddir-36d017e3cc)
 
+<a id="symbol-setting-common-managedscript-interopprobeonstart-c624d75079"></a>
+- [`symbol-setting-common-managedscript-interopprobeonstart-c624d75079`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-interopprobeonstart-c624d75079)
+
 <a id="symbol-setting-common-managedscript-msbuild-3f0ba2d551"></a>
 - [`symbol-setting-common-managedscript-msbuild-3f0ba2d551`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-msbuild-3f0ba2d551)
 

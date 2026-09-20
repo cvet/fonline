@@ -130,6 +130,11 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 
 The normal result is `app/build/outputs/apk/debug/app-debug.apk`. The current template uses Gradle 9.5.0, Android Gradle Plugin 9.3.0, and Java language level 17; it filters native libraries to the packaged ABI list, leaves ZIP assets uncompressed, and uses legacy JNI library packaging. The manifest requires OpenGL ES 3.0 and declares Internet, network-state, and vibration permissions; touchscreen, gamepad, Bluetooth, USB-host, and PC-style pointer features are optional.
 
+The template `gradlew` is stored executable (`100755`). Its SDL Java glue must
+match `ThirdParty/SDL/android-project/.../org/libsdl/app/`; the dedicated
+`test_android_sdl_java_glue.py` comparison is part of an SDL update because JNI
+methods are registered by exact signature.
+
 The template sets `lint.abortOnError = false`. APK assembly is therefore not a lint, policy, privacy, vulnerability, or store-readiness gate. Add project-owned lint and release checks instead of interpreting `assembleDebug` as production acceptance.
 
 Inspect the generated artifact before installation:
@@ -328,11 +333,16 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | Packaging rejects icon or Java source | real PNG signature, project-relative path, `.java` suffix, unique basename, and no `FOnlineActivity.java` override |
 | Gradle cannot find SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version, and provisioned compile SDK |
 | Gradle dependency resolution fails | generated repositories/dependencies, credentials, dependency locks, proxy/TLS, and repository availability |
+| `./gradlew` says `Permission denied` | the executable bit on the committed template and the copied wrapper; restore the index mode instead of relying on a local `chmod` |
 | Release build is unsigned or debug-signed | complete signing tuple, environment handoff, keystore path/alias, final `apksigner verify`, and certificate digest |
 | Device is not discovered | pairing first, Wireless debugging, `discover`, `adb devices`, same-network reachability, then explicit `--device` |
 | Device is `unauthorized` or install is restricted | unlock device, authorize host, accept installer/security prompt, and device/vendor policy |
 | Update install fails | application id, version code, signing certificate, ABI, storage, and whether a clean uninstall is acceptable for this test |
 | Activity does not start | exact `<application-id>/.FOnlineActivity`, installed package, manifest merge, native library, and full logcat |
+| `System.loadLibrary` aborts with `NoSuchMethodError` for `SDLActivity.nativeSetupJNI` | SDL Java/native glue mismatch; resync the template from the vendored SDL tree and run `test_android_sdl_java_glue.py` |
+| Startup says `Executable path could not be resolved` | the bundled-runtime path was resolved on a mobile target; it must remain behind `CanSelfUpdateNativeModules` |
+| Engine log is absent from logcat | read the app-private `files/<project>.log` from a debug APK with `adb shell run-as <package> cat ...` |
+| Emulator renderer dies before a non-visual probe | emulator Vulkan may lack BGRA8 and GLES may reject the updater path; use `Render.NullRenderer=True` for `ManagedScript.InteropProbeOnStart`, but keep real-device rendering qualification |
 | Content is missing or stale | installed APK hash/path, `lastUpdateTime`, `.asset_revision`, `Metadata.zip`, copy exception, retained cache |
 | Client cannot reach host | typed `server_host` extra, selected LAN address, server bind address, firewall, ports, and compatibility version |
 | Client asks for native update | Android native self-update is unsupported; install a compatible APK instead of retrying the resource updater |

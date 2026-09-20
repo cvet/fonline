@@ -93,6 +93,20 @@ Start here when a combination of options should be rejected or derived before so
 
 Adds bundled engine third-party libraries. The stage comment notes that it installs a `find_package()` interceptor before third-party `AddSubdirectory()` calls so vendored libraries cannot silently reach into the host system.
 
+Managed-runtime source preparation is target-sensitive. Before each source
+build, `buildtools.py` removes the repo-local MSBuild task semaphore so a tree
+first built for desktop cannot skip Android-only task projects and fail later
+with `MSB4062`. It also passes `NuGetAudit=false`: the runtime revision is pinned
+and warnings are errors, so a newly published advisory must not make an unchanged
+tag unrestorable. The shipped payload still contains CLR assemblies, not the
+native packages named only by the runtime repository's restore graph.
+
+The Windows x86 and Android Mono patches return constant `false` for hardware
+intrinsic `IsSupported` properties that their JIT cannot implement. Without the
+fallback, CoreLib's recursive property body can overflow the stack before the
+first frame. Managed-runtime cache markers include this source-patch contract;
+prebuilt runtimes must already contain it.
+
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
 ### `EngineSources.cmake`
@@ -143,7 +157,7 @@ See [Applications](../applications.md).
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Managed C# compilation through the standalone project `ManagedScriptBaker` when `FO_MANAGED_SCRIPTING` is enabled. `CompileManagedScripts` follows `ForceCodeGeneration`, uses the configured managed source directories/references/analyzers, and emits per-pack target assemblies plus `.gen.cs`, `.gen.csproj`, and `.gen.sln` files. Runtime setup and payload preparation are separate targets.
+- Managed C# compilation through the standalone project `ManagedScriptBaker` when `FO_MANAGED_SCRIPTING` is enabled. `CompileManagedScripts` follows `ForceCodeGeneration`, uses the configured managed source directories/references/analyzers, and emits per-pack target assemblies plus API/ABI `.gen.cs`, `.gen.csproj`, and `.gen.sln` files. Runtime setup and payload preparation are separate targets.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.

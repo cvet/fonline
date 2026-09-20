@@ -4,7 +4,9 @@ document_id: generated-cli-commands
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-cli-commands","locale":"ru","source_path":"Docs/en/reference/buildtools/commands.md","source_sha256":"e05ca437217ff4b3889c5acf6f821df66f5fe08ffb95b44d15ad9c98162bbd62"} -->
+
 # Команды BuildTools
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/buildtools.py`, затем выполните `python BuildTools/docs_cli.py --write`.

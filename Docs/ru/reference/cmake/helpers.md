@@ -4,7 +4,9 @@ document_id: generated-cmake-helpers
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-cmake-helpers","locale":"ru","source_path":"Docs/en/reference/cmake/helpers.md","source_sha256":"1b109ad6675a8bed5ed065c5432513316f2681ab7378a63784e5cc571af4779b"} -->
+
 # Проектные helper-команды CMake
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/cmake/ProjectInterface.json`, затем выполните `python BuildTools/docs_cmake.py --write`.

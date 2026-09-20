@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2527 InventorySha256=83fce2d573f640a94c33cc93cbbb2d19358fccda69493c0dfaae20c0878d9ccf
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2529 InventorySha256=621bafec6aee07ca2da7468ef223875bd22ab7d9baedfc9dcf430e7765dbc7c4
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 58
+///@ MigrationRule Version 0 0 60
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -661,30 +661,14 @@ struct MethodDesc
     bool IsSingletonLock {};
 };
 
+// A value type (IsStruct) is plain data: packed fields, no tail padding, and a native twin of the same size that is
+// trivially copyable, so every consumer moves it with memcpy. Anything holding complex data is a ref type instead
 struct StructLayoutDesc
 {
-    using CreateNativeFunc = unique_del_ptr<void> (*)();
-    using CopyNativeFunc = void (*)(ptr<void>, ptr<const void>);
-
-    CreateNativeFunc CreateNative {};
-    CopyNativeFunc CopyNative {};
     size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };
-
-template<typename T>
-auto CreateNativeValue() -> unique_del_ptr<void>
-{
-    auto value = safe_alloc::make_unique<T>();
-    return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
-}
-
-template<typename T>
-void CopyNativeValue(ptr<void> dst, ptr<const void> src)
-{
-    *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>();
-}
 
 struct RefTypeDesc
 {

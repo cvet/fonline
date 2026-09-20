@@ -85,6 +85,11 @@ deliberately tracked at a branch).
    `INTERFACE_INCLUDE_DIRECTORIES`, mark that target `SYSTEM` too; otherwise its
    transitive path can take precedence over a direct system path and let
    dependency-header warnings bypass third-party warning policy.
+   A dependency-owned copy outside `ThirdParty/` changes in the same commit:
+   SDL's Android Java glue under `BuildTools/android-project/` must match the
+   linked SDL exactly or JNI registration can abort in `System.loadLibrary`.
+   `BuildTools/tests/test_android_sdl_java_glue.py` enforces equality with the
+   vendored SDL tree.
 9. Commit each dependency or version pin separately. Use a direct message such
    as `Update SDL to 3.4.10`.
 

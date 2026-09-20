@@ -7128,6 +7128,30 @@
       "release_note": "Mention the SoundManager-to-AudioManager terminology update in documentation notes.",
       "compatibility": "Runtime video and music-pair syntax remain compatible.",
       "owner": "audio-runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.581f2547b0769deb",
+      "baseline_contract_sha256": "2f1cef5731ccb90064b7c19512f0bba2b52b8fc8da0264daae11390c69729707",
+      "current_contract_sha256": "315e1d5e969d4e87938a9fe11cf5095081823dd4514f9eb4744260113b911618",
+      "classification": "compatible",
+      "rationale": "The reviewed native-codegen inventory grows by the additive Game.DivRem method and ManagedScript.InteropProbeOnStart setting; existing stable IDs and signatures are retained.",
+      "migration": "Regenerate managed bindings and fully rebake resources so the generated indexed ABI manifest and assemblies match the selected Engine revision.",
+      "release_note": "List the new DivRem helper and managed interop startup qualification switch with the indexed-ABI release notes.",
+      "compatibility": "Source callers remain compatible, but generated bindings, assemblies, resource packs, and Engine binaries must come from one coordinated revision.",
+      "owner": "scripting-runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.3525d77d47c54e31",
+      "baseline_contract_sha256": "2f1cef5731ccb90064b7c19512f0bba2b52b8fc8da0264daae11390c69729707",
+      "current_contract_sha256": "315e1d5e969d4e87938a9fe11cf5095081823dd4514f9eb4744260113b911618",
+      "classification": "breaking",
+      "rationale": "Metadata compatibility version 0.0 intentionally advances from 58 to 60 for the generated indexed Managed interop ABI and its packed value/handle transport contract.",
+      "migration": "Rebuild Engine applications, regenerate managed API and ABI sources, compile managed assemblies, and fully rebake every resource pack before deployment.",
+      "release_note": "Document compatibility version 60 as the indexed Managed interop transition in the scripting release notes.",
+      "compatibility": "Older binaries, generated managed assemblies, and baked metadata are not mixed with version-60 artifacts; deploy them atomically.",
+      "owner": "scripting-runtime"
     }
   ]
 }

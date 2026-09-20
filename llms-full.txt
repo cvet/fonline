@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 79f8e25cb42333c48d9e2bf3d0aa23e58c5a6c6a5de67b6c09c7e2ea5cf99d25
+Content SHA-256: f21685ce68a227eb7ceefba59f3b78b1f74b7c275aa173b6b4519f05dfc44c4c
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2527**
-- Symbols with source-backed descriptions: **2527**
+- Discovered symbols: **2529**
+- Symbols with source-backed descriptions: **2529**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2527**
+- Explicitly classified symbols: **2529**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3217,7 +3217,7 @@ Do not call the update complete while required evidence is missing. Record an un
 ===== BEGIN DOCUMENT scripting-runtime =====
 Source: Docs/en/explanation/scripting-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/scripting-runtime/
-Content SHA-256: 45fa635d322ab030c073512f705be1fe65bf61cde841f77f36f2226855db2177
+Content SHA-256: b898a1eeda7579880a077faa72320cd3ff8b2065f3c35df03e629fe9d724337a
 
 ---
 layout: default
@@ -3268,6 +3268,7 @@ Read this page together with:
 - `Source/Scripting/Managed/CoreScripts/*.cs`
 - `Source/Scripting/Managed/ManagedScripting.*`
 - `Source/Scripting/Managed/ManagedScriptBackend.*`
+- `Source/Scripting/Managed/ManagedInteropAbi.*`
 - `Source/Scripting/Managed/ManagedRuntime.*`
 - `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
 - `Source/Tools/ManagedScriptBaker.*`
@@ -3458,8 +3459,18 @@ The backend-neutral metadata and native export surface is shared, but language s
 | Suspension | transitive `[[Async]]` and `Game.Yield` | `Task`, `await`, and `Game.YieldAsync` on the backend synchronization context |
 | Synchronization proof | runtime cover operations and AngelScript attribute validation | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks, and Roslyn `FOSYNC` diagnostics |
 | Runtime ownership | AngelScript engine, modules, contexts, and GC | one process-wide Mono runtime plus backend-scoped load contexts, scheduler queues, handles, and managed GC roots |
+| Native interop | registered AngelScript calls and VM contexts | one generated indexed ABI for scalar/value hot paths plus boxed fallback for complex values |
 
 Managed C# is not a renamed version of the removed experimental `Source/Scripting/Mono/` path. It is a complete backend with its own baker, generated bindings, load-context host, analyzers, runtime payload, and platform wiring. See [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) for its full contract. Native scripting remains a placeholder.
+
+The Managed hot path is bound once from a shared `ManagedInteropAbi` manifest.
+Methods, events, settings, and inner-entity operations use dense ids and packed
+frames; entity-like arguments occupy nullable pointer slots, while plain fixed
+values are copied by layout. Callback adapters, wrapper factories, reflection
+lookups, and list factories are prepared at bind time. Complex strings and
+collections retain the boxed path. Event subscriptions are owned by the native
+entity, so an equal subscription is idempotent and can be removed through a
+different wrapper for the same entity.
 
 ## Core script ownership
 
@@ -3493,7 +3504,7 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_AngelScriptBaker.cpp` — AngelScript bytecode/resource baking path.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — bytecode compilation/loading behavior.
 - `Source/Tests/Test_AngelScriptCall.cpp` — native/script call ABI and object-return lifetime.
-- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API, project/assembly construction, attributes, values, properties, remotes, and diagnostics.
+- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API and indexed ABI, packed frames/adapters, project/assembly construction, attributes, values, properties, remotes, and diagnostics.
 - `Source/Scripting/Managed/Tests/` — managed core-library bootstrap and generated-API fixtures.
 - `Source/Scripting/Managed/Analyzers/Tests/` — synchronization-cover analyzer diagnostics.
 - `Source/Tests/Test_ClientDataValidation.cpp` and `Test_NetBuffer.cpp` — inbound remote-call payload validation and framing.
@@ -3534,7 +3545,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 9d456a545a18eec8846e82565194e718c823dd1f8d82a3ff454b26c43d590c67
+Content SHA-256: 918d3af3dc18d2200b8f1ee764b55439f848a4dc09d36d1ad47a6dc6e47b3a83
 
 ---
 layout: default
@@ -3679,19 +3690,39 @@ Managed scripts declare and prove this contract with:
 
 The Roslyn analyzer reports invalid annotations (`FOSYNC001`), unsatisfied transitive cover (`FOSYNC002`), missing entry-point declarations (`FOSYNC003`), cover probing instead of acquisition (`FOSYNC004`), raw synchronization calls outside the helper (`FOSYNC005`), and cover use not re-proved after `await` (`FOSYNC009`). `FOSYNC006` and `FOSYNC007` are retired: use `using GameLock scope = GameLock.Acquire();`, whose `ref struct` scope releases on every path and cannot survive an `await`. Configure the analyzer through `ManagedScript.Analyzers` or `ManagedScript.AnalyzerPackages` and treat its warnings as build failures.
 
+Provider inference first proves that a candidate call executes on every returning
+path and only then traverses its callees. A call hidden in a conditional branch
+cannot establish cover; this order also prevents dense conditional call cycles
+from expanding exponentially. Analyzer self-tests time-bound that graph and still
+require `FOSYNC009` for an uncovered use after `await`.
+
 `Sync.Acquire` expands linked cover in place through `Game.SyncWiden`; it does not release and reacquire the already-held entities. This keeps the native cover continuous while following `[SyncWiden]` relationships and avoids a race window between the two sets.
 
 Attributes state a proof; they do not lock anything. Entry points annotate the entity the Engine already synchronized. Ordinary helpers either acquire the required cover or propagate `[RequiresCover]` to their callers.
 
 ## Values, collections, properties, and lifetime
 
-The bridge converts supported primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments, and return values through Engine metadata. Value-type storage is constructed field by field; it is not a raw byte cast of a C++ aggregate.
+The bridge converts supported primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments, and return values through Engine metadata. A registered value type is plain packed data: every field is a primitive, enum, `hstring`, or single-field value type; every offset is aligned to the field size; the total size has no tail padding; and a native twin is trivially copyable with the same size. Metadata registration rejects every other shape. Generated C# structs use sequential layout, and the backend checks the Mono value size before copying their bytes.
 
 Generated entity properties are native-backed. Dynamic ref types are managed DTOs whose values are materialized from or assigned to native property storage. A getter returns detached structured state; persist a mutation with read-modify-reassign unless the generated member itself is a live wrapper.
 
 Native ref types are explicit borrowed wrappers. If a project keeps one beyond the call/frame that returned it, follow the generated `__AddRef()`/`__Release()` contract. Factory-backed wrappers start with a reference that must be released after ownership is transferred or detached.
 
-`hstring` values carry the native intern-entry pointer as well as the hash. They are interned through the active backend's Engine metadata, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
+`hstring` is an eight-byte blittable value containing the native intern-entry pointer. Frames and value types copy that pointer unchanged; only property and RPC storage uses the 64-bit hash and converts at the storage boundary. Values are interned through the active backend's Engine metadata, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
+
+Arrays of primitives, enums, `hstring`, and registered value types use `GetPropertyList<T>` / `SetPropertyList<T>` and cross as raw bytes. Longer reads retry directly into the final list storage while the same cover remains held. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values, and other structured forms keep the converting bridge, but generated access selects the property by registrar index rather than repeating owner and property names.
+
+### Indexed native interop ABI
+
+`ManagedScriptBaker` and the native backend share `ManagedInteropAbi`: one manifest of dense method, event, setting, and inner-entity ids plus a content hash. Generated `*Abi.gen.cs` bind stubs call `Native.BindAbi` during `Initializator.InitializeEarly`; a hash or count mismatch fails loading before script execution. Generated ABI files participate in the incremental bake stamp, so a generator-only change cannot publish new wrappers with an old assembly.
+
+The indexed path covers primitives, enums, `hstring`, registered value types, and by-value entity/proto/fixed/ref-type handles. Methods use `CallMethodIndexed`, eligible events use `FireEventIndexed`, numeric/bool settings use `GetSettingValue<T>`, and inner entities are collected by one `FillInnerEntities` snapshot instead of `Count` plus repeated indexed lookups. Complex signatures use the corresponding boxed path with the same dense id. Nullability belongs to the manifest: a non-nullable handle slot rejects zero, nullable handles may carry zero, and dynamic ref types, by-ref handles, and abstract/base entity results remain boxed where their runtime type is required.
+
+Managed frames are compact packed buffers, but native code never dereferences an unaligned slot. `BuildManagedAbiNativeFrame` copies inputs and result slots into aligned stack storage, native dispatch works on that storage, and `CopyBackManagedAbiNativeFrame` returns only mutable arguments and the result. Event adapters return `EventResult` through a trailing `ref int`, copy by-ref arguments back after invocation, and avoid boxing the result.
+
+Native-to-managed callbacks whose signatures contain only fixed values and entity/ref-type handles use generated `CallbackAdapters.Adapt_<key>` methods. One `ManagedCallbackPlan` resolves the adapter during registration; wrapper factories and native wrapper classes are also registered/cached during ABI binding, so dispatch does not repeat reflection or constructor lookup. Unsupported callback shapes retain the boxed `MonoArray`/`DynamicInvoke` path. Entity event subscriptions belong to the native entity rather than to one wrapper: an equal handler is idempotent, any wrapper of that entity can unsubscribe it, and destruction removes the subscriptions.
+
+Backend-owned caches are built before hot-path use: managed helper methods, metadata-named classes, dynamic ref-type accessors, wrapper constructors, callback adapters, list factories, and per-event adapters. Typed custom settings keep a parsed cell behind `GlobalSettings::GetCustomSettingsGeneration()`; every custom-setting writer advances the generation, while a warmed read is a generation comparison plus a value copy. `ScriptSynchronizationContext` likewise allocates its continuation queue only on the first post.
 
 ## Runtime loading, isolation, and shutdown
 
@@ -3703,11 +3734,11 @@ Shutdown closes the continuation scheduler and discards queued work before relea
 
 ## Build and bake workflow
 
-The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project, and compiles target assemblies without a full resource bake.
+The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project including `*Abi.gen.cs`, and compiles target assemblies without a full resource bake. The generated API files are part of the assembly stamp.
 
 `BakeResources` and `ForceBakeResources` run the `Managed` baker as part of the selected resource pack. Use the compile target for a fast source/API check and the bake target for the real resource, assembly, runtime-payload, and metadata contract. After a force bake, run an ordinary incremental bake and require it to settle cleanly.
 
-The runtime toolchain is prepared by `SetupManagedRuntime`; `PrepareManagedRuntimePayload` produces the deployable subset and a `runtime.manifest`. Toolchain setup runs with an isolated environment so a workstation's `DOTNET_*`, NuGet, or SDK state does not silently redefine the published runtime. A configured workspace cache stores only a verified published runtime tree under a target/toolchain-specific key; local runtime source checkouts are never shared, incomplete cache hits are rebuilt, and a stale SDK bootstrap that lacks its matching shared runtime is removed before setup retries.
+The runtime toolchain is prepared by `SetupManagedRuntime`; `PrepareManagedRuntimePayload` produces the deployable subset and a `runtime.manifest`. Toolchain setup runs with an isolated environment so a workstation's `DOTNET_*`, NuGet, or SDK state does not silently redefine the published runtime. Runtime source builds disable the live NuGet advisory audit: the pinned source revision, not a later feed update, defines the reproducible dependency set. Before each runtime build, BuildTools removes dotnet's target-dependent repo-local tasks semaphore so switching from a desktop build to Android cannot reuse an incomplete task set. A configured workspace cache stores only a verified published runtime tree under a target/toolchain-specific key; local runtime source checkouts are never shared, incomplete cache hits are rebuilt, and a stale SDK bootstrap that lacks its matching shared runtime is removed before setup retries.
 
 ## Packaging and updating
 
@@ -3723,13 +3754,15 @@ The embedded payload defaults to invariant globalization because `System.Globali
 
 Managed scripting is wired for Windows, Linux, Android, WebAssembly, macOS, and iOS build paths, but an Engine source-capable path is not a project release claim. Qualify every shipped target with the exact project resource pack, assemblies, runtime payload, startup, callbacks, async work, shutdown, packaging, and update route.
 
-Web uses the Mono interpreter plus Engine JavaScript scheduling/entropy glue; keep its interpreter thread attached until teardown. Script PDB resources are loaded there when present so managed stack traces retain source information. Android and Apple targets use target-specific runtime archives and class libraries. Never reuse one target's prepared payload for another target or architecture.
+Web uses the Mono interpreter plus Engine JavaScript scheduling/entropy glue; keep its interpreter thread attached until teardown. Because the interpreter compiles no native entry points, managed callbacks use `mono_runtime_invoke`; thunk and `UnmanagedCallersOnly` probe modes are skipped when `RuntimeFeature.IsDynamicCodeCompiled` is false. Script PDB resources are loaded there when present so managed stack traces retain source information. Android and Apple targets use target-specific runtime archives and class libraries. Never reuse one target's prepared payload for another target or architecture.
 
 MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED_SCRIPTING`: embedded Mono and generated/JIT code cannot satisfy those instruments and otherwise report false failures. AddressSanitizer and the supported undefined/data-flow combinations still require the project's actual managed build and runtime checks.
 
 ## Diagnostics and debugging
 
-The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch.
+The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
+
+`InteropProbe` compares runtime invoke, classic thunk, and `UnmanagedCallersOnly` transports where the runtime supplies them, then measures production dispatch and its synchronization, attachment, and overrun-report components. Each series verifies delivery and arguments and reports GC handles, metadata lookups, managed objects, wrapper construction, and—under Tracy—native allocations per call. Counters are thread-local and disabled outside a measured stretch. Latency is evidence for a quiet-host comparison, not a shared-CI threshold; allocation and delivery counts are hard assertions.
 
 Use the generated solution/project for IDE navigation and Roslyn diagnostics. Debug native startup and P/Invoke at the host process boundary; debug managed behavior with runtime logs and focused callbacks unless the embedding project provides a qualified managed debugger attachment workflow. The AngelScript UDP debugger does not debug C# and its settings should not be presented as a managed debugger.
 
@@ -3745,6 +3778,8 @@ First diagnosis routes:
 | Native API fails after `await` | Entity liveness and reacquired synchronization cover. |
 | Callback cannot be registered | Required marker attribute and exact generated delegate signature. |
 | Package starts with missing framework type | `ManagedRuntime/runtime.manifest` and target-specific pack replacement. |
+| ABI bind fails before module initialization | Stale generated `*Abi.gen.cs`, native manifest/hash mismatch, or a skipped managed rebuild. |
+| A wrapper unsubscribe leaves the callback active | Subscription ownership on the native entity and delegate equality; do not keep wrapper-local event state. |
 
 ## Validation matrix
 
@@ -3756,6 +3791,7 @@ First diagnosis routes:
 | Async scheduler | `test_managed_async_callbacks.py`, backend-isolation/frame-pump tests, and an embedding-project awaited gameplay path. |
 | Entity-cover contract | Roslyn analyzer tests, warning-free managed build, and the owning synchronized server behavior. |
 | Runtime/cache/thread attachment | Managed baker/backend native tests plus repeated multi-instance startup/shutdown. |
+| Indexed ABI, callback adapters, or wrapper caches | `Test_ManagedScriptBaker`, aligned-frame/native backend tests, `InteropProbe.VerifyTransports`, allocation counters, and the exact target runtime. |
 | Package or updater | Runtime-payload and packaging tests, exact target package inspection, startup from the packaged artifact, and update replacement. |
 | Platform claim | Configure/build, target payload, process/device/browser smoke, and project acceptance for that platform. |
 
@@ -4576,7 +4612,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: bcf0897eb1da2bda0ab06f3df723b7625b619c96879a588d9a5e6ee26cbf830b
+Content SHA-256: c0ae9ca65e7a7ef793d1dabbd9b6ffdcdd0566c23e0cd98a6e55a32c8f6cc53f
 
 ---
 layout: default
@@ -4936,6 +4972,26 @@ unchanged tree incremental-clean.
 | Bakers and tools | Baker, metadata/resource packers, mapper/editor tools, asset processors, and tool-side regressions. |
 | Frontend and rendering | Application init, frontend/rendering smoke cases, headless behavior, and renderer-facing contracts. |
 
+Managed interop changes require both generated-shape and live-runtime evidence.
+`Test_ManagedScriptBaker.cpp` pins dense ABI ids, typed settings and scalar/value
+property routes, raw-byte fixed-value arrays, `FillInnerEntities`, generated
+callback adapters and wrapper factories, and inclusion of `*Abi.gen.cs` in the
+bake stamp. The native frame test deliberately passes an unaligned packed buffer
+through `ManagedAbiNativeFrame` and verifies aligned arguments, selective
+mutable/result copy-back, bounds checks, and value preservation.
+
+`CoreScripts/InteropProbe.cs` is the reusable live probe. It compares runtime
+invoke, classic thunk, and `UnmanagedCallersOnly` callback transports where
+dynamic code exists; exercises enum/bool/int64/value/`hstring`, exceptions,
+collections, nested entries, native threads, instance and virtual targets; and
+reports managed bytes plus per-thread native counters for handles, lookups,
+objects, and wrappers. Native allocation counts are available only in Tracy
+builds. Latency is observational rather than a CI threshold, but allocations,
+delivery counts, and transport checks are assertions. On browser and device
+clients set `ManagedScript.InteropProbeOnStart=True` and require the closing
+`INTEROP-TRANSPORT summary` to report zero failures; interpreter-only Web tests
+runtime invoke and skips transports that need compiled code.
+
 ## Validation routing by change type
 
 - Essentials utilities: start with [Essentials.md](../../reference/native/essentials.md) and the essentials tests listed above.
@@ -4944,7 +5000,7 @@ unchanged tree incremental-clean.
 - Bakers/resources: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and the matching baker tests.
 - Runtime entity/map/persistence/networking: [Entity Model](../../explanation/entity-and-property-model/), [Maps and Movement](../../explanation/maps-and-movement.md), [Persistence](../../explanation/persistence/), [Networking](../../explanation/authority-and-networking/), and the focused runtime tests.
 - Client/frontend/server: [Client Runtime](../../explanation/runtime/client.md), [Frontend and Rendering](../../explanation/rendering/), [Server Runtime](../../explanation/runtime/server.md), and the matching integration/smoke tests.
-- Scripting: [Scripting](../../explanation/scripting-runtime/), [Managed C# Scripting](../../how-to/scripting/managed-csharp.md), [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md), [Script Methods Map](../../reference/script-api/method-ownership.md), [Nullability](../coding-contracts/nullability.md), and the script/baker/method tests. Route AngelScript attributes and mutable globals to its dedicated suites; route Managed generation, analyzers, async callbacks, runtime payloads, and packaging to the matching native, Python, and C# suites; route shared server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
+- Scripting: [Scripting](../../explanation/scripting-runtime/), [Managed C# Scripting](../../how-to/scripting/managed-csharp.md), [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md), [Script Methods Map](../../reference/script-api/method-ownership.md), [Nullability](../coding-contracts/nullability.md), and the script/baker/method tests. Route AngelScript attributes and mutable globals to its dedicated suites; route Managed generation, indexed ABI/native-frame transport, analyzers, async callbacks, runtime payloads, and packaging to the matching native, Python, and C# suites; route shared server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
 
 ## Adding or removing tests
 
@@ -11435,7 +11491,7 @@ Prune the compilation database to one command per translation unit before passin
 ===== BEGIN DOCUMENT nullability =====
 Source: Docs/en/contributing/coding-contracts/nullability.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/nullability.html
-Content SHA-256: 95cf505d200719834ffcc408d89734cc6f4d3dcb18f652d2f357c83d0422ae19
+Content SHA-256: ba79255cf2cce8d31b49bf02997ea78d9acc950f4ea846fe2647afb845e6686a
 
 ---
 layout: default
@@ -11619,6 +11675,15 @@ The same applies to the **codegen-generated proto/fixed-type getters** for custo
 ## Runtime enforcement
 
 There are now two complementary runtime gates:
+
+Managed indexed interop applies the same contract to its packed ABI. Scalar and
+plain fixed-value data are non-nullable value slots. Entity, prototype, fixed
+entity, and native reference arguments use pointer-sized handle slots whose
+nullable bit comes from the generated `ManagedInteropAbi` manifest. ABI binding
+rejects a generated/native manifest mismatch before scripts start, while the
+generated wrapper performs the required null check at the call boundary. Do not
+encode optional references as zero-valued fixed data or relax a metadata
+declaration to work around binding failures.
 
 ### Script-side: `asBC_RefCpyChk` on handle assignments
 
@@ -14863,7 +14928,7 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 ===== BEGIN DOCUMENT third-party-maintenance =====
 Source: Docs/en/contributing/third-party/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/third-party/
-Content SHA-256: 3839ff5618e027a2e0ce71b9a242381315ccd50f2f43918e65ab4feeb933ad39
+Content SHA-256: 2ea8479c0b9f7cc61958f1f27b160a6929b303bc5e68dd61f73a9d937b8f2eaf
 
 ---
 layout: default
@@ -14952,6 +15017,11 @@ deliberately tracked at a branch).
    `INTERFACE_INCLUDE_DIRECTORIES`, mark that target `SYSTEM` too; otherwise its
    transitive path can take precedence over a direct system path and let
    dependency-header warnings bypass third-party warning policy.
+   A dependency-owned copy outside `ThirdParty/` changes in the same commit:
+   SDL's Android Java glue under `BuildTools/android-project/` must match the
+   linked SDL exactly or JNI registration can abort in `System.loadLibrary`.
+   `BuildTools/tests/test_android_sdl_java_glue.py` enforces equality with the
+   vendored SDL tree.
 9. Commit each dependency or version pin separately. Use a direct message such
    as `Update SDL to 3.4.10`.
 
@@ -15452,7 +15522,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 0a4ae9021081d7aa5e45cf5dcf9a7b47958b9d03c803d726d27ee3c8ace033ff
+Content SHA-256: dbc5e2f272f5561dc1adff8d19508631a8e4f94a3f90ff044741e0b503debd8e
 
 ---
 layout: default
@@ -16557,7 +16627,7 @@ memory results.
 `ScriptsAndBaking.cmake` also creates script compilation commands:
 
 - `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
-- `CompileManagedScripts` runs the standalone project `ManagedScriptBaker` after `ForceCodeGeneration` when `FO_MANAGED_SCRIPTING` is enabled. It compiles configured `.cs` inputs into resource-pack/target assemblies and generates the `.gen.cs`, `.gen.csproj`, and `.gen.sln` project surface; runtime payload preparation remains a separate packaging stage.
+- `CompileManagedScripts` runs the standalone project `ManagedScriptBaker` after `ForceCodeGeneration` when `FO_MANAGED_SCRIPTING` is enabled. It compiles configured `.cs` inputs into resource-pack/target assemblies and generates the `.gen.cs` surface (including the target `*Abi.gen.cs` binding manifest), `.gen.csproj`, and `.gen.sln`. The generated API files are included in the assembly freshness stamp after generation, so generator-only changes cannot leave a previously compiled DLL current; runtime payload preparation remains a separate packaging stage.
 
 These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
 
@@ -18380,7 +18450,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: ee4fc03c70ba0d1584f715a26162817a56bc816c5aed3457b61ada8d0f4f24d7
+Content SHA-256: 2ea91db3c59759901ef6eb45b5cd789faf1b3413c8415c9aa79e57b48d9c07a5
 
 ---
 layout: default
@@ -18467,6 +18537,19 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `Source/Tests/Test_Settings.cpp`
 - `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`
 
+## Managed runtime resource ownership
+
+Mono and the native interop shim are part of each managed application, while the
+target-specific Managed class libraries are resource data under
+`ManagedRuntime/`. Before Mono starts, the backend restores that payload to the
+writable content-addressed cache and prefers it over a sibling fallback used by
+unpackaged tools. Consequently an unpackaged client must use a resource bake for
+its own target and pointer width: pairing an x86 client with an x64 bake can make
+CoreLib interpret reflection data with the wrong stride. Packaging rebuilds each
+client pack with the matching target runtime, so packaged artifacts already
+enforce this pairing; native Mono/shim changes still follow native compatibility
+and restart rules, while class-library changes travel with resources.
+
 ## Two-layer client startup
 
 The host tries to load the bundled runtime DLL first on self-update platforms; the **embedded** engine
@@ -18525,7 +18608,9 @@ The embedded client (host module hosts the game and the updater itself) runs whe
 
 `RunEmbeddedOrLoadedClient` gates the bundled-DLL-first path on `requested_runtime.ExplicitPath ||
 (!ForceEmbedded && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform()))`, identically for the regular
-and headless clients. `Client.ForceEmbeddedRuntime` is honored from the command line
+and headless clients. The implicit bundled path beside the executable is resolved
+under that same capability guard: Android and iOS have no usable executable path
+for a loadable sibling module. `Client.ForceEmbeddedRuntime` is honored from the command line
 (`--Client.ForceEmbeddedRuntime`) because the host picks the runtime before settings are otherwise resolved;
 a SubConfig/config-only value does not reach this pre-init decision, so launch profiles that must force
 embedded on a standalone client pass it on the command line.
@@ -20853,7 +20938,7 @@ The current native suite does not expose a focused `CritterHexView` root-motion 
 ===== BEGIN DOCUMENT android-debugging =====
 Source: Docs/en/how-to/platforms/android-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/android-debugging.html
-Content SHA-256: 5e585846b0a0eb85be8bc7e3254ce48bfc30278db7c72cca8e79e801f0ff29c4
+Content SHA-256: 90887def74347620feaad9a26dfabebdc4f7d5fc21562cc1384177f55dd0c6a7
 
 ---
 layout: default
@@ -20986,6 +21071,11 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 ```
 
 The normal result is `app/build/outputs/apk/debug/app-debug.apk`. The current template uses Gradle 9.5.0, Android Gradle Plugin 9.3.0, and Java language level 17; it filters native libraries to the packaged ABI list, leaves ZIP assets uncompressed, and uses legacy JNI library packaging. The manifest requires OpenGL ES 3.0 and declares Internet, network-state, and vibration permissions; touchscreen, gamepad, Bluetooth, USB-host, and PC-style pointer features are optional.
+
+The template `gradlew` is stored executable (`100755`). Its SDL Java glue must
+match `ThirdParty/SDL/android-project/.../org/libsdl/app/`; the dedicated
+`test_android_sdl_java_glue.py` comparison is part of an SDL update because JNI
+methods are registered by exact signature.
 
 The template sets `lint.abortOnError = false`. APK assembly is therefore not a lint, policy, privacy, vulnerability, or store-readiness gate. Add project-owned lint and release checks instead of interpreting `assembleDebug` as production acceptance.
 
@@ -21185,11 +21275,16 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | Packaging rejects icon or Java source | real PNG signature, project-relative path, `.java` suffix, unique basename, and no `FOnlineActivity.java` override |
 | Gradle cannot find SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version, and provisioned compile SDK |
 | Gradle dependency resolution fails | generated repositories/dependencies, credentials, dependency locks, proxy/TLS, and repository availability |
+| `./gradlew` says `Permission denied` | the executable bit on the committed template and the copied wrapper; restore the index mode instead of relying on a local `chmod` |
 | Release build is unsigned or debug-signed | complete signing tuple, environment handoff, keystore path/alias, final `apksigner verify`, and certificate digest |
 | Device is not discovered | pairing first, Wireless debugging, `discover`, `adb devices`, same-network reachability, then explicit `--device` |
 | Device is `unauthorized` or install is restricted | unlock device, authorize host, accept installer/security prompt, and device/vendor policy |
 | Update install fails | application id, version code, signing certificate, ABI, storage, and whether a clean uninstall is acceptable for this test |
 | Activity does not start | exact `<application-id>/.FOnlineActivity`, installed package, manifest merge, native library, and full logcat |
+| `System.loadLibrary` aborts with `NoSuchMethodError` for `SDLActivity.nativeSetupJNI` | SDL Java/native glue mismatch; resync the template from the vendored SDL tree and run `test_android_sdl_java_glue.py` |
+| Startup says `Executable path could not be resolved` | the bundled-runtime path was resolved on a mobile target; it must remain behind `CanSelfUpdateNativeModules` |
+| Engine log is absent from logcat | read the app-private `files/<project>.log` from a debug APK with `adb shell run-as <package> cat ...` |
+| Emulator renderer dies before a non-visual probe | emulator Vulkan may lack BGRA8 and GLES may reject the updater path; use `Render.NullRenderer=True` for `ManagedScript.InteropProbeOnStart`, but keep real-device rendering qualification |
 | Content is missing or stale | installed APK hash/path, `lastUpdateTime`, `.asset_revision`, `Metadata.zip`, copy exception, retained cache |
 | Client cannot reach host | typed `server_host` extra, selected LAN address, server bind address, firewall, ports, and compatibility version |
 | Client asks for native update | Android native self-update is unsupported; install a compatible APK instead of retrying the resource updater |
@@ -21256,7 +21351,7 @@ For an Android change, also run the narrowest affected native validation target 
 ===== BEGIN DOCUMENT web-debugging =====
 Source: Docs/en/how-to/platforms/web-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/web-debugging.html
-Content SHA-256: fb869e9d8c65d0fe4f67b270a729008493ca8ace00392bfa04c67cc907d427f8
+Content SHA-256: 2c537e7cedfd00ebdbb65ec08fa6a6e1490935c3c20f46548b455ceb0cd91b0c
 
 ---
 layout: default
@@ -21457,6 +21552,17 @@ An explicit in-game quit is finalized on the next browser frame. The Web client 
 
 Canvas copy events use the Engine clipboard. The runtime requests clipboard-read permission on the first pointer interaction when APIs exist and intercepts non-repeated `Ctrl+V`; it falls back to the Engine clipboard when navigator access fails. Clipboard APIs depend on secure contexts, permissions, focus, and user gestures, and several failures are intentionally swallowed. Test paste/copy visibly instead of treating absence of an exception as success.
 
+### Managed interop
+
+The interpreter-only browser runtime calls native-to-managed entries through
+`mono_runtime_invoke`. It cannot provide a compiled classic thunk or
+`UnmanagedCallersOnly` entry, so those transports are skipped when
+`RuntimeFeature.IsDynamicCodeCompiled` is false; production dispatch remains the
+runtime-invoke path. Set `ManagedScript.InteropProbeOnStart=True` in the query
+string to run the reusable transport checks once scripts start. Qualification
+requires every `INTEROP-TRANSPORT` check and the closing summary to report zero
+failures; the native-thread case is omitted in the single-threaded browser.
+
 ### Persistent data
 
 The runtime creates `/PersistentData`, mounts IDBFS, calls `FS.syncfs(true)`, and delays normal startup until initial browser-to-virtual-filesystem hydration completes. The callback currently marks readiness even when `err` is non-null. The audited generic path does not prove automatic write-back after every later modification.
@@ -21478,6 +21584,11 @@ Use DevTools in this order:
 5. **Performance/memory:** long tasks, frame pacing, heap growth, GPU pressure, resource download/decompression, and background throttling after correctness is established.
 
 Preserve the page URL without secrets, browser/version, OS/GPU, package hash, Engine/project revisions, server config, proxy headers, and reproduction steps. Compare a local raw package with the public origin to isolate hosting from runtime.
+
+For a `RuntimeError: memory access out of bounds`, symbolize each wasm offset
+against the matching `RelWithDebInfo` binary with Emscripten's `emsymbolizer -t
+file -s dwarf <client>.wasm 0x<offset>`. Portable C++ undefined behavior may
+surface only under libc++/Wasm, so treat a native-only success as insufficient.
 
 ## Native updater and redeployment
 
@@ -23129,7 +23240,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: a65bb0127d2b9cec6b8e5377fd67e2aa1175562fb4527a0307501b86ccace166
+Content SHA-256: 3f39ebcac271eff354be4f726a475b5b9be21402040a0a299bfa4beeb09264fb
 
 ---
 layout: default
@@ -23226,6 +23337,20 @@ Start here when a combination of options should be rejected or derived before so
 
 Adds bundled engine third-party libraries. The stage comment notes that it installs a `find_package()` interceptor before third-party `AddSubdirectory()` calls so vendored libraries cannot silently reach into the host system.
 
+Managed-runtime source preparation is target-sensitive. Before each source
+build, `buildtools.py` removes the repo-local MSBuild task semaphore so a tree
+first built for desktop cannot skip Android-only task projects and fail later
+with `MSB4062`. It also passes `NuGetAudit=false`: the runtime revision is pinned
+and warnings are errors, so a newly published advisory must not make an unchanged
+tag unrestorable. The shipped payload still contains CLR assemblies, not the
+native packages named only by the runtime repository's restore graph.
+
+The Windows x86 and Android Mono patches return constant `false` for hardware
+intrinsic `IsSupported` properties that their JIT cannot implement. Without the
+fallback, CoreLib's recursive property body can overflow the stack before the
+first frame. Managed-runtime cache markers include this source-patch contract;
+prebuilt runtimes must already contain it.
+
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
 ### `EngineSources.cmake`
@@ -23276,7 +23401,7 @@ See [Applications](../applications.md).
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Managed C# compilation through the standalone project `ManagedScriptBaker` when `FO_MANAGED_SCRIPTING` is enabled. `CompileManagedScripts` follows `ForceCodeGeneration`, uses the configured managed source directories/references/analyzers, and emits per-pack target assemblies plus `.gen.cs`, `.gen.csproj`, and `.gen.sln` files. Runtime setup and payload preparation are separate targets.
+- Managed C# compilation through the standalone project `ManagedScriptBaker` when `FO_MANAGED_SCRIPTING` is enabled. `CompileManagedScripts` follows `ForceCodeGeneration`, uses the configured managed source directories/references/analyzers, and emits per-pack target assemblies plus API/ABI `.gen.cs`, `.gen.csproj`, and `.gen.sln` files. Runtime setup and payload preparation are separate targets.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
@@ -23712,7 +23837,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: 070aa2a073b73c152ab9459f4c685187ce12acbc5812699c8ca5ef683d84ed68
+Content SHA-256: 7a34074f562be653ee03d8b70f77610e2f122f4ef6a3917782a0b0d66150eb56
 
 ---
 title: Generated Map Format Reference
@@ -23736,7 +23861,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>5bdb39de18314bd98379cb21099ef4a239ce1430482d48e7027f1e384d8b6e8d</code> |
+| Contract digest | <code>7ef999816d8f33c29926a18e931e77f3b65b413ea1d32d3a383565ba4d45f9b2</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -23768,7 +23893,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: 4223b4d46283b6b4c7b352ce54944cb7f22821e6add3589167babf8963aed7da
+Content SHA-256: 86bf5dc0127927abe539be336fb30ec7dacc119dc9e160b7af3a6a7e1ed8d68b
 
 ---
 layout: default
@@ -23965,6 +24090,10 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Source/Tools/MetadataBaker.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
+- `Source/Scripting/Managed/ManagedInteropAbi.h`
+- `Source/Scripting/Managed/ManagedInteropAbi.cpp`
+- `Source/Tools/ManagedScriptBaker.cpp`
 - `Source/Tests/Test_Properties.cpp`
 - `PUBLIC_API.md`
 
@@ -24758,6 +24887,24 @@ Migration rules are generic `(kind, extra-info, target → replacement)` remaps 
 
 Fixed value-type layouts are shared by native C++, AngelScript registration, Managed generated value mapping, and metadata field traversal. `hstring` therefore has an explicit ABI invariant: `sizeof(hstring) == sizeof(hstring::hash_t) == 8` on every supported target. On 32-bit targets the pointer-backed native handle carries trailing padding to preserve that width and keep composite offsets (for example `TextPackKey`) platform-independent. The padding is not wire data: serializers transmit the hash value and resolve it through the target engine's hash resolver.
 
+`IsStruct` is an invariant rather than a hint: a value type is plain packed data
+that property storage, remote-call buffers, native code, and Managed interop may
+copy as bytes. Every field must be a primitive, enum, `hstring`, or a single-field
+value type; field offsets must be multiples of their field sizes and the total
+size must have no tail padding. Native twins are required to be trivially
+copyable and generated C# structs use sequential layout; the Managed backend
+checks Mono's value size before boxing or unboxing. Strings, collections,
+multi-field nested records, and identity-bearing data belong in a ref type.
+
+When Managed scripting is enabled, `ManagedScriptBaker` derives one dense
+`ManagedInteropAbi` manifest from the same metadata. Generated `*Abi.gen.cs`
+binds its content hash and counts through `Native.BindAbi` during early
+initialization; a mismatch stops startup. The manifest assigns stable indices,
+packed slot layouts, nullability, wrapper factories, callback adapters, settings,
+and inner-entity routes. Generated API and ABI files both participate in the
+incremental bake stamp, so a generator-only ABI change cannot reuse an old
+assembly.
+
 When property metadata changes, inspect both the property runtime and the generator inputs/templates. Script-visible nullability or API changes should also update [Scripting](../../explanation/scripting-runtime/), [Script Methods Map](../../reference/script-api/method-ownership.md), and [Nullability.md](../../contributing/coding-contracts/nullability.md) as applicable.
 
 ## Public API relationship
@@ -24801,6 +24948,7 @@ Relevant tests include:
 
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `BuildTools/tests/test_docs_api.py`
 - `BuildTools/tests/test_docs_api_diff.py`
 - `BuildTools/tests/test_docs_contract_diff.py`
@@ -25718,7 +25866,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 79df4ea9bacd682ae9ce88f0e40d9668698030ff362eb00334bd0eba5433837b
+Content SHA-256: 23143aa9870f192b902daeba6827b2e529a849220eb308d0bf50040c7337008e
 
 ---
 title: Generated API Reference
@@ -25735,36 +25883,36 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 988 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 989 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 993 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 265 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 266 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2527 |
-| Symbols with descriptions | 2527 |
+| Addressable symbols | 2529 |
+| Symbols with descriptions | 2529 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2527 |
+| Explicitly classified symbols | 2529 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2526 |
+| <code>experimental</code> | 2528 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2527 stable IDs with SHA-256 <code>83fce2d573f640a94c33cc93cbbb2d19358fccda69493c0dfaae20c0878d9ccf</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2529 stable IDs with SHA-256 <code>621bafec6aee07ca2da7468ef223875bd22ab7d9baedfc9dcf430e7765dbc7c4</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -26103,7 +26251,7 @@ The engine-owned AngelScript [minimal project](../../../../Examples/MinimalProje
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: 73639d4711a8344f9cae073f5082958d1b7972a04999ac1051ca363cac045c2e
+Content SHA-256: af04a0f0a2e6f46a2274223642c39a72dbd2ccb4a120ff070ca6628106e86ee7
 
 ---
 layout: default
@@ -26248,6 +26396,8 @@ accepts only dotted `Group.Name` spelling; an unqualified old name is a distinct
 custom setting and cannot mutate the built-in value. Script
 `SetRuntimeSetting` likewise rejects writes to built-ins as read-only while
 remaining available for project-owned custom settings.
+
+Managed numeric, boolean, and enum setting getters use the typed indexed ABI. A built-in entry reads its immutable `GlobalSettings` field; a project `///@ Setting` entry reads the custom map. A custom value is parsed once into the ABI entry's typed cell and reused while `GlobalSettings::GetCustomSettingsGeneration()` is unchanged. Every custom-map writer (`SetRuntimeSetting`, `SetCustomSetting`, `SetValue`, and `CopyFrom`) increments that generation. String and list settings keep their name-based helpers, and both paths verify the complete setting name after hash dispatch so a colliding custom hash cannot shadow a built-in.
 
 Custom settings have two read shapes. Use `FindCustomSetting()` when missing keys are normal and should stay in the nullable pointer vocabulary. Use `GetCustomSetting()` only for compatibility with the historical non-null sentinel behavior: it returns the stored value when present and `_emptySetting` when absent.
 
@@ -26489,7 +26639,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: ddc5564de226aa66ad9e069bcc50c31a6737cd46c5da6f86df91b538e32b18a5
+Content SHA-256: c2fdee38757ae0b736d7c34fcab357969f08e1f632e4cee9771b70ce33554054
 
 ---
 layout: default
@@ -26883,11 +27033,18 @@ Treat Managed C# failures as four separate layers. Preserve the first failure fr
 1. **Generation** — inspect the generated `.gen.cs`, `.gen.csproj`, and `.gen.sln` beside the configured scripts. A missing or stale native export is a code-generation problem, not a Mono problem.
 2. **Compilation and analysis** — run `CompileManagedScripts` and read the first Roslyn/MSBuild diagnostic. Confirm `ManagedScriptTargetFramework`, `ManagedScriptSourceDirs`, extra sources/references, analyzers, configured assemblies, and the selected .NET SDK. Synchronization diagnostics use the `FOSYNC` ids documented in [Managed C# Scripting](../how-to/scripting/managed-csharp.md).
 3. **Bake and delivery** — verify that each resource pack contains the expected target assembly and ManagedRuntime payload, and that packaging selected the target-specific runtime. Missing assemblies may be tolerated by deliberately minimal Engine fixtures; an embedding project's enabled backend must treat them as a packaging/configuration defect.
-4. **Runtime execution** — use the managed backend log to distinguish assembly/load-context failures, P/Invoke registration, callback signature/invocation, scheduler-context violations, synchronization-cover failures, and GC-root/lifetime defects. Match the content hash and process role before attaching a debugger.
+4. **Runtime execution** — use the managed backend log to distinguish assembly/load-context failures, indexed-ABI bind/hash/count mismatches, P/Invoke registration, callback signature/invocation, scheduler-context violations, synchronization-cover failures, and GC-root/lifetime defects. Generated hot paths report whether the failure came through `CallMethodIndexed`; complex fallback calls retain `CallMethodBoxed`. Both preserve the originating native exception in the active managed entry instead of letting C++ unwind through Mono. Match the content hash and process role before attaching a debugger.
+
+For transport diagnosis without a managed debugger, enable
+`ManagedScript.InteropProbeOnStart` or call the engine-owned `InteropProbe` from a
+controlled test. Its `INTEROP-TRANSPORT` checks separate runtime-invoke/thunk/
+`UnmanagedCallersOnly` availability from production dispatch, wrapper creation,
+lookup, GC-handle, and allocation costs. Treat failed checks as correctness
+defects; compare latency only on the same quiet host and runtime revision.
 
 `AngelScript.DebuggerEnabled` and the `fos` adapter affect only AngelScript. They do not expose C# breakpoints, locals, evaluation, or managed stacks. For live C# stepping, the embedding project must supply and qualify a debugger compatible with the embedded Mono runtime, the exact generated assemblies/symbols, and its target platform. A successful IDE attach is project evidence; it is not an Engine-supported delivery claim until Engine owns a repeatable live acceptance gate.
 
-For deterministic regressions, prefer `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests, and the focused `BuildTools/tests/test_managed_*.py` suite. Use [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for the complete validation matrix and platform/sanitizer limits.
+For deterministic regressions, prefer `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests, and the focused `BuildTools/tests/test_managed_*.py` suite. Add the native aligned-frame and live `InteropProbe` routes when ABI transport changed. Use [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for the complete validation matrix and platform/sanitizer limits.
 
 ## Debugger integration in an embedding project
 

@@ -47,6 +47,7 @@ Read this page together with:
 - `Source/Scripting/Managed/CoreScripts/*.cs`
 - `Source/Scripting/Managed/ManagedScripting.*`
 - `Source/Scripting/Managed/ManagedScriptBackend.*`
+- `Source/Scripting/Managed/ManagedInteropAbi.*`
 - `Source/Scripting/Managed/ManagedRuntime.*`
 - `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
 - `Source/Tools/ManagedScriptBaker.*`
@@ -237,8 +238,18 @@ The backend-neutral metadata and native export surface is shared, but language s
 | Suspension | transitive `[[Async]]` and `Game.Yield` | `Task`, `await`, and `Game.YieldAsync` on the backend synchronization context |
 | Synchronization proof | runtime cover operations and AngelScript attribute validation | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks, and Roslyn `FOSYNC` diagnostics |
 | Runtime ownership | AngelScript engine, modules, contexts, and GC | one process-wide Mono runtime plus backend-scoped load contexts, scheduler queues, handles, and managed GC roots |
+| Native interop | registered AngelScript calls and VM contexts | one generated indexed ABI for scalar/value hot paths plus boxed fallback for complex values |
 
 Managed C# is not a renamed version of the removed experimental `Source/Scripting/Mono/` path. It is a complete backend with its own baker, generated bindings, load-context host, analyzers, runtime payload, and platform wiring. See [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) for its full contract. Native scripting remains a placeholder.
+
+The Managed hot path is bound once from a shared `ManagedInteropAbi` manifest.
+Methods, events, settings, and inner-entity operations use dense ids and packed
+frames; entity-like arguments occupy nullable pointer slots, while plain fixed
+values are copied by layout. Callback adapters, wrapper factories, reflection
+lookups, and list factories are prepared at bind time. Complex strings and
+collections retain the boxed path. Event subscriptions are owned by the native
+entity, so an equal subscription is idempotent and can be removed through a
+different wrapper for the same entity.
 
 ## Core script ownership
 
@@ -272,7 +283,7 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_AngelScriptBaker.cpp` — AngelScript bytecode/resource baking path.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — bytecode compilation/loading behavior.
 - `Source/Tests/Test_AngelScriptCall.cpp` — native/script call ABI and object-return lifetime.
-- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API, project/assembly construction, attributes, values, properties, remotes, and diagnostics.
+- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API and indexed ABI, packed frames/adapters, project/assembly construction, attributes, values, properties, remotes, and diagnostics.
 - `Source/Scripting/Managed/Tests/` — managed core-library bootstrap and generated-API fixtures.
 - `Source/Scripting/Managed/Analyzers/Tests/` — synchronization-cover analyzer diagnostics.
 - `Source/Tests/Test_ClientDataValidation.cpp` and `Test_NetBuffer.cpp` — inbound remote-call payload validation and framing.

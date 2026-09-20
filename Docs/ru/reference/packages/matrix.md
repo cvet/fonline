@@ -4,7 +4,9 @@ document_id: generated-package-matrix
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"26e9fd81c63624a476df71c977e2f1da8f566709990c91b5955ba21a6290c6c2"} -->
+
 # Цели, платформы и наборы пакетов
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/PackageInterface.json` или `BuildTools/package.py`, затем выполните `python BuildTools/docs_package.py --write`.

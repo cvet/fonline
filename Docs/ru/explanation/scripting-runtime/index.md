@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"45fa635d322ab030c073512f705be1fe65bf61cde841f77f36f2226855db2177"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"b898a1eeda7579880a077faa72320cd3ff8b2065f3c35df03e629fe9d724337a"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -47,6 +47,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 - `Source/Scripting/Managed/CoreScripts/*.cs`
 - `Source/Scripting/Managed/ManagedScripting.*`
 - `Source/Scripting/Managed/ManagedScriptBackend.*`
+- `Source/Scripting/Managed/ManagedInteropAbi.*`
 - `Source/Scripting/Managed/ManagedRuntime.*`
 - `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
 - `Source/Tools/ManagedScriptBaker.*`
@@ -218,8 +219,18 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 | Приостановка | транзитивный `[[Async]]` и `Game.Yield` | `Task`, `await` и `Game.YieldAsync` в synchronization context backend |
 | Доказательство синхронизации | runtime cover operations и validation атрибутов AngelScript | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks и Roslyn-диагностики `FOSYNC` |
 | Владение runtime | движок AngelScript, модули, contexts и GC | один Mono runtime процесса плюс load contexts backend, scheduler queues, handles и managed GC roots |
+| Native interop | зарегистрированные AngelScript calls и contexts VM | единый generated indexed ABI для scalar/value hot paths и boxed fallback для complex values |
 
 Managed C# — не переименование удалённого экспериментального пути `Source/Scripting/Mono/`. Это полноценный backend со своим baker, generated bindings, load-context host, analyzers, runtime payload и платформенной интеграцией. Полный контракт приведён в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md). Native scripting остаётся placeholder.
+
+Hot path Managed один раз связывается по общему manifest `ManagedInteropAbi`.
+Methods, events, settings и inner-entity operations используют dense ids и
+packed frames; entity-like arguments занимают nullable pointer slots, а plain
+fixed values копируются по layout. Callback adapters, wrapper factories,
+reflection lookups и list factories подготавливаются при bind. Complex strings
+и collections сохраняют boxed path. Event subscriptions принадлежат native
+entity, поэтому равная подписка idempotent и может быть снята через другой
+wrapper той же entity.
 
 ## Владение core scripts
 
@@ -253,7 +264,7 @@ Managed C# — не переименование удалённого экспе
 - `Source/Tests/Test_AngelScriptBaker.cpp` — путь запекания bytecode и ресурсов AngelScript.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — компиляция и загрузка bytecode.
 - `Source/Tests/Test_AngelScriptCall.cpp` — ABI вызовов native/script и lifetime возвращаемых объектов.
-- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API, построение project/assembly, attributes, values, properties, remotes и diagnostics.
+- `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API и indexed ABI, packed frames/adapters, построение project/assembly, attributes, values, properties, remotes и diagnostics.
 - `Source/Scripting/Managed/Tests/` — bootstrap managed core library и fixtures generated API.
 - `Source/Scripting/Managed/Analyzers/Tests/` — diagnostics analyzer synchronization cover.
 - `Source/Tests/Test_ClientDataValidation.cpp` и `Test_NetBuffer.cpp` — проверка входящего payload remote calls и framing.

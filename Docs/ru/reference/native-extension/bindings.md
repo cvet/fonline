@@ -4,7 +4,9 @@ document_id: generated-native-extension-bindings
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-native-extension-bindings","locale":"ru","source_path":"Docs/en/reference/native-extension/bindings.md","source_sha256":"861ac5093aa606bca0eeea4add7cc3b024c5383cd0deba3e509f35c2f1e6e1bc"} -->
+
 # Правила нативного биндинга
 
 > Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/NativeExtensionInterface.json`, затем выполните `python BuildTools/docs_native_extension.py --write`.

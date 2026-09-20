@@ -181,6 +181,15 @@ The same applies to the **codegen-generated proto/fixed-type getters** for custo
 
 There are now two complementary runtime gates:
 
+Managed indexed interop applies the same contract to its packed ABI. Scalar and
+plain fixed-value data are non-nullable value slots. Entity, prototype, fixed
+entity, and native reference arguments use pointer-sized handle slots whose
+nullable bit comes from the generated `ManagedInteropAbi` manifest. ABI binding
+rejects a generated/native manifest mismatch before scripts start, while the
+generated wrapper performs the required null check at the call boundary. Do not
+encode optional references as zero-valued fixed data or relax a metadata
+declaration to work around binding failures.
+
 ### Script-side: `asBC_RefCpyChk` on handle assignments
 
 The AngelScript compiler emits a new `asBC_RefCpyChk` bytecode (defined in [../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h](../../../../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h), handler in [../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp](../../../../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp)) whenever the destination of a handle write is **non-nullable** (`T` without `?`) and the destination is **user-declared** (not a compiler-generated temporary). It is a drop-in REFCPY variant that raises a *Null assignment to non-nullable handle* exception when the source handle is null. Emission sites are `PerformAssignment` and `CompileInitializationWithAssignment` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../../../../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp); `T?` declarations fall back to the original `asBC_REFCPY` and accept null silently.

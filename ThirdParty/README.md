@@ -36,7 +36,7 @@ Maintenance workflow: [ThirdParty Maintenance](../Docs/en/contributing/third-par
 * android-api [23](https://developer.android.com/tools/releases/platforms)
 * android-ndk [android-ndk-r29](https://developer.android.com/ndk)
 * android-sdk [15859902](https://developer.android.com/tools)
-* dotnet-runtime [v10.0.11](https://github.com/dotnet/runtime)
+* dotnet-runtime [v10.0.12](https://github.com/dotnet/runtime)
 * emscripten [6.0.8](https://github.com/emscripten-core/emscripten)
 * iOS-sdk [26.0](https://developer.apple.com/ios)
 * xwin [0.9.0](https://github.com/Jake-Shadle/xwin)

@@ -4,7 +4,9 @@ document_id: generated-api-events
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"195ff065acd8ee8f40998a1d812a7a5c310e8da48957b7da0ae68ae4e3421b40"} -->
+
 # События движка
 
 > Сгенерированный справочник. Не редактируйте эту страницу вручную. Обновите metadata движка, перегенерируйте `Docs/generated/api.json`, затем запустите `python BuildTools/docs_reference.py --write`.

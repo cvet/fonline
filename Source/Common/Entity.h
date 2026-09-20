@@ -173,6 +173,8 @@ public:
     {
         EventCallback Callback {};
         uintptr_t SubscriptionPtr {};
+        // Who issued SubscriptionPtr: a script backend finds its own subscriptions by it among foreign ones
+        uintptr_t SubscriptionOwner {};
         EventPriority Priority {EventPriority::Normal};
         bool HasExplicitResult {};
     };
@@ -218,6 +220,7 @@ public:
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> nptr<const vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto HasEventCallbacks(string_view event_name) const noexcept -> bool;
+    [[nodiscard]] auto GetEventSubscriptions(string_view event_name, uintptr_t subscription_owner) const -> small_vector<uintptr_t, 4>;
     [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;

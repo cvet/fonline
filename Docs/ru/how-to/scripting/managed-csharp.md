@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"9d456a545a18eec8846e82565194e718c823dd1f8d82a3ff454b26c43d590c67"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"918d3af3dc18d2200b8f1ee764b55439f848a4dc09d36d1ad47a6dc6e47b3a83"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -141,19 +141,39 @@ Managed scripts объявляют и доказывают этот контра
 
 Roslyn analyzer сообщает invalid annotations (`FOSYNC001`), неудовлетворённый transitive cover (`FOSYNC002`), отсутствующие declarations entry point (`FOSYNC003`), probing вместо acquisition (`FOSYNC004`), raw synchronization calls вне helper (`FOSYNC005`) и использование cover без нового доказательства после `await` (`FOSYNC009`). `FOSYNC006` и `FOSYNC007` удалены: используйте `using GameLock scope = GameLock.Acquire();`; его `ref struct` scope освобождает lock на любом пути и не может пережить `await`. Подключите analyzer через `ManagedScript.Analyzers` или `ManagedScript.AnalyzerPackages` и считайте warnings ошибками сборки.
 
+Provider inference сначала доказывает, что candidate call выполняется на каждом
+returning path, и лишь затем обходит его callees. Call внутри conditional branch
+не может доказать cover; такой порядок также не позволяет dense conditional call
+cycles разрастаться экспоненциально. Analyzer self-tests ограничивают этот graph
+по времени и по-прежнему требуют `FOSYNC009` для uncovered use после `await`.
+
 `Sync.Acquire` расширяет связанный cover на месте через `Game.SyncWiden`, не освобождая и не захватывая заново уже покрытые сущности. Нативный cover остаётся непрерывным при проходе по отношениям `[SyncWiden]`, без race window между двумя наборами.
 
 Attributes являются доказательством, а не операцией блокировки. Entry point отмечает entity, которую Engine уже синхронизировал. Обычный helper получает нужный cover или распространяет `[RequiresCover]` на caller.
 
 ## Значения, коллекции, properties и lifetime
 
-Bridge преобразует поддерживаемые primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments и return values через Engine metadata. Storage value type строится по полям; это не raw byte cast C++ aggregate.
+Bridge преобразует поддерживаемые primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments и return values через Engine metadata. Зарегистрированный value type является plain packed data: каждое поле — primitive, enum, `hstring` или single-field value type; offset каждого поля выровнен по его размеру; полный размер не содержит tail padding; native twin trivially copyable и имеет тот же размер. Metadata registration отклоняет остальные формы. Generated C# structs используют sequential layout, а backend проверяет Mono value size до копирования байтов.
 
 Generated entity properties имеют native backing. Dynamic ref types — managed DTO, значения которых материализуются из native property storage или присваиваются туда. Getter возвращает detached structured state; сохраняйте изменение через read-modify-reassign, если generated member сам не является live wrapper.
 
 Native ref types являются явными borrowed wrappers. Если проект хранит один после вызова/frame, следуйте generated контракту `__AddRef()`/`__Release()`. Factory-backed wrapper начинает с reference, которую нужно освободить после передачи владения или detach.
 
-`hstring` хранит вместе с hash указатель на native intern entry. Значение интернируется через Engine metadata активного backend и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
+`hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata активного backend и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
+
+Массивы primitives, enums, `hstring` и зарегистрированных value types проходят как raw bytes через `GetPropertyList<T>` / `SetPropertyList<T>`. Длинный read повторяется прямо в итоговый storage списка при сохранённом cover. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values и другие structured forms остаются на converting bridge, но generated access выбирает property по registrar index и не передаёт имена owner/property повторно.
+
+### Indexed native interop ABI
+
+`ManagedScriptBaker` и native backend используют общий `ManagedInteropAbi`: manifest плотных ids methods, events, settings и inner entities плюс content hash. Generated bind stubs `*Abi.gen.cs` вызывают `Native.BindAbi` из `Initializator.InitializeEarly`; несовпадение hash или count останавливает load до выполнения scripts. Generated ABI files входят в incremental bake stamp, поэтому generator-only change не может опубликовать новые wrappers со старой assembly.
+
+Indexed path покрывает primitives, enums, `hstring`, зарегистрированные value types и by-value handles entity/proto/fixed/ref types. Methods используют `CallMethodIndexed`, подходящие events — `FireEventIndexed`, numeric/bool settings — `GetSettingValue<T>`, а inner entities собираются одним snapshot `FillInnerEntities` вместо `Count` и серии indexed lookups. Complex signatures используют соответствующий boxed path с тем же плотным id. Nullability входит в manifest: non-nullable handle slot отклоняет zero, nullable handle может нести zero, а dynamic ref types, by-ref handles и results abstract/base entity остаются boxed там, где нужен runtime type.
+
+Managed frames являются compact packed buffers, но native code не разыменовывает unaligned slot. `BuildManagedAbiNativeFrame` копирует inputs/result slots в aligned stack storage, native dispatch работает с ним, а `CopyBackManagedAbiNativeFrame` возвращает только mutable arguments и result. Event adapter возвращает `EventResult` через trailing `ref int`, копирует by-ref arguments после вызова и не boxing-ит result.
+
+Native-to-managed callbacks, сигнатура которых состоит только из fixed values и handles entity/ref type, используют generated методы `CallbackAdapters.Adapt_<key>`. Один `ManagedCallbackPlan` разрешает adapter при регистрации; wrapper factories и native wrapper classes также регистрируются/кэшируются при ABI bind, поэтому dispatch не повторяет reflection и поиск constructor. Неподдерживаемые callback shapes остаются на boxed `MonoArray`/`DynamicInvoke`. Entity event subscriptions принадлежат native entity, а не одному wrapper: equal handler регистрируется идемпотентно, любой wrapper этой entity может его отписать, destruction удаляет subscriptions.
+
+Backend-owned caches строятся до hot-path use: managed helper methods, classes по metadata name, accessors dynamic ref type, wrapper constructors, callback adapters, list factories и per-event adapters. Typed custom setting хранит parsed cell за `GlobalSettings::GetCustomSettingsGeneration()`; каждый writer custom settings увеличивает generation, а warmed read выполняет только сравнение generation и копирование value. `ScriptSynchronizationContext` так же создаёт continuation queue только при первом post.
 
 ## Runtime loading, изоляция и shutdown
 
@@ -165,11 +185,11 @@ Shutdown закрывает scheduler continuations и удаляет queued wor
 
 ## Сборка и baking
 
-Generated CMake target `CompileManagedScripts` запускает standalone `<ProjectDevName>_ManagedScriptBaker`. Он зависит от `ForceCodeGeneration`, загружает project configuration, готовит metadata, генерирует managed API/project и компилирует target assemblies без полного resource bake.
+Generated CMake target `CompileManagedScripts` запускает standalone `<ProjectDevName>_ManagedScriptBaker`. Он зависит от `ForceCodeGeneration`, загружает project configuration, готовит metadata, генерирует managed API/project, включая `*Abi.gen.cs`, и компилирует target assemblies без полного resource bake. Generated API files входят в assembly stamp.
 
 `BakeResources` и `ForceBakeResources` запускают baker `Managed` внутри выбранного resource pack. Используйте compile target для быстрой проверки source/API, а bake target — для реального контракта resources, assemblies, runtime payload и metadata. После force bake выполните обычный incremental bake и потребуйте clean settle.
 
-Runtime toolchain готовит `SetupManagedRuntime`; `PrepareManagedRuntimePayload` создаёт deployable subset и `runtime.manifest`. Setup выполняется в изолированном environment, чтобы локальные `DOTNET_*`, NuGet или SDK settings не меняли опубликованный runtime незаметно. Настроенный workspace cache хранит только проверенное published runtime tree под target/toolchain-specific ключом; локальные runtime source checkouts не публикуются, неполный cache hit пересобирается, а stale SDK bootstrap без соответствующего shared runtime удаляется перед повтором setup.
+Runtime toolchain готовит `SetupManagedRuntime`; `PrepareManagedRuntimePayload` создаёт deployable subset и `runtime.manifest`. Setup выполняется в изолированном environment, чтобы локальные `DOTNET_*`, NuGet или SDK settings не меняли опубликованный runtime незаметно. Runtime source build отключает live NuGet advisory audit: reproducible dependency set задаёт pinned source revision, а не более позднее обновление feed. Перед каждым runtime build BuildTools удаляет target-dependent repo-local tasks semaphore dotnet, чтобы переход от desktop build к Android не переиспользовал неполный набор tasks. Настроенный workspace cache хранит только проверенное published runtime tree под target/toolchain-specific ключом; локальные runtime source checkouts не публикуются, неполный cache hit пересобирается, а stale SDK bootstrap без соответствующего shared runtime удаляется перед повтором setup.
 
 ## Packaging и updating
 
@@ -185,13 +205,15 @@ Embedded payload по умолчанию использует invariant globaliz
 
 Managed scripting подключён к build paths Windows, Linux, Android, WebAssembly, macOS и iOS, но Engine source-capable path не является project release claim. Проверяйте каждый shipping target с точным project resource pack, assemblies, runtime payload, startup, callbacks, async work, shutdown, packaging и update route.
 
-Web использует Mono interpreter и Engine JavaScript glue планирования/entropy; interpreter thread остаётся attached до teardown. При наличии загружаются script PDB resources, чтобы managed stack traces сохраняли source information. Android и Apple targets используют target-specific runtime archives и class libraries. Нельзя переиспользовать prepared payload одного target для другого target или architecture.
+Web использует Mono interpreter и Engine JavaScript glue планирования/entropy; interpreter thread остаётся attached до teardown. Поскольку interpreter не компилирует native entry points, managed callbacks используют `mono_runtime_invoke`; probe modes thunk и `UnmanagedCallersOnly` пропускаются, когда `RuntimeFeature.IsDynamicCodeCompiled` равен false. При наличии загружаются script PDB resources, чтобы managed stack traces сохраняли source information. Android и Apple targets используют target-specific runtime archives и class libraries. Нельзя переиспользовать prepared payload одного target для другого target или architecture.
 
 Конфигурации MemorySanitizer и ThreadSanitizer запрещены с `FO_MANAGED_SCRIPTING`: embedded Mono и generated/JIT code не могут удовлетворить этим инструментам и иначе дают ложные failures. AddressSanitizer и поддерживаемые undefined/data-flow combinations всё равно требуют реальных managed build/runtime checks проекта.
 
 ## Диагностика и debugging
 
-Managed backend передаёт фиксированный native context, managed exception text и stack information в общий script error path. Факт создания assemblies не доказывает startup или callback dispatch.
+Managed backend передаёт фиксированный native context, managed exception text и stack information в общий script error path. Факт создания assemblies не доказывает startup или callback dispatch. Для qualification client/device/browser, где нельзя запустить native test suite, задайте `ManagedScript.InteropProbeOnStart = True`: startup логирует строку `INTEROP-TRANSPORT` для каждого условия и финальный summary.
+
+`InteropProbe` сравнивает runtime invoke, classic thunk и `UnmanagedCallersOnly` transports там, где runtime их предоставляет, затем измеряет production dispatch и его части synchronization, attachment и overrun reporting. Каждая серия проверяет delivery/arguments и сообщает GC handles, metadata lookups, managed objects, wrapper construction и — под Tracy — native allocations per call. Counters thread-local и выключены вне measured stretch. Latency служит evidence для сравнения на quiet host, а не shared-CI threshold; allocation и delivery counts остаются hard assertions.
 
 Используйте generated solution/project для IDE navigation и Roslyn diagnostics. Native startup и P/Invoke отлаживайте на границе host process; managed behavior — через runtime logs и focused callbacks, если подключающий проект не поддерживает проверенный managed debugger attach. UDP debugger AngelScript не отлаживает C#, и его settings нельзя выдавать за managed debugger.
 
@@ -207,6 +229,8 @@ Managed backend передаёт фиксированный native context, mana
 | Native API падает после `await` | Liveness entity и заново полученный synchronization cover. |
 | Callback не регистрируется | Обязательный marker attribute и точная generated delegate signature. |
 | Package не находит framework type | `ManagedRuntime/runtime.manifest` и target-specific замена pack. |
+| ABI bind падает до module initialization | Stale generated `*Abi.gen.cs`, несовпадение native manifest/hash или пропущенная managed rebuild. |
+| Unsubscribe через wrapper оставляет callback активным | Ownership subscription на native entity и delegate equality; wrapper-local event state запрещён. |
 
 ## Матрица проверки
 
@@ -218,6 +242,7 @@ Managed backend передаёт фиксированный native context, mana
 | Async scheduler | `test_managed_async_callbacks.py`, tests isolation/frame pump и awaited gameplay path подключающего проекта. |
 | Entity-cover contract | Tests Roslyn analyzer, warning-free managed build и owning synchronized server behavior. |
 | Runtime/cache/thread attachment | Native tests baker/backend и повторный multi-instance startup/shutdown. |
+| Indexed ABI, callback adapters или wrapper caches | `Test_ManagedScriptBaker`, aligned-frame/native backend tests, `InteropProbe.VerifyTransports`, allocation counters и runtime точного target. |
 | Package или updater | Tests runtime payload/packaging, проверка точного target package, startup из artifact и update replacement. |
 | Platform claim | Configure/build, target payload, process/device/browser smoke и project acceptance этой платформы. |
 

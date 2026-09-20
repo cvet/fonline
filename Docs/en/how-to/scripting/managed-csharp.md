@@ -141,19 +141,39 @@ Managed scripts declare and prove this contract with:
 
 The Roslyn analyzer reports invalid annotations (`FOSYNC001`), unsatisfied transitive cover (`FOSYNC002`), missing entry-point declarations (`FOSYNC003`), cover probing instead of acquisition (`FOSYNC004`), raw synchronization calls outside the helper (`FOSYNC005`), and cover use not re-proved after `await` (`FOSYNC009`). `FOSYNC006` and `FOSYNC007` are retired: use `using GameLock scope = GameLock.Acquire();`, whose `ref struct` scope releases on every path and cannot survive an `await`. Configure the analyzer through `ManagedScript.Analyzers` or `ManagedScript.AnalyzerPackages` and treat its warnings as build failures.
 
+Provider inference first proves that a candidate call executes on every returning
+path and only then traverses its callees. A call hidden in a conditional branch
+cannot establish cover; this order also prevents dense conditional call cycles
+from expanding exponentially. Analyzer self-tests time-bound that graph and still
+require `FOSYNC009` for an uncovered use after `await`.
+
 `Sync.Acquire` expands linked cover in place through `Game.SyncWiden`; it does not release and reacquire the already-held entities. This keeps the native cover continuous while following `[SyncWiden]` relationships and avoids a race window between the two sets.
 
 Attributes state a proof; they do not lock anything. Entry points annotate the entity the Engine already synchronized. Ordinary helpers either acquire the required cover or propagate `[RequiresCover]` to their callers.
 
 ## Values, collections, properties, and lifetime
 
-The bridge converts supported primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments, and return values through Engine metadata. Value-type storage is constructed field by field; it is not a raw byte cast of a C++ aggregate.
+The bridge converts supported primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments, and return values through Engine metadata. A registered value type is plain packed data: every field is a primitive, enum, `hstring`, or single-field value type; every offset is aligned to the field size; the total size has no tail padding; and a native twin is trivially copyable with the same size. Metadata registration rejects every other shape. Generated C# structs use sequential layout, and the backend checks the Mono value size before copying their bytes.
 
 Generated entity properties are native-backed. Dynamic ref types are managed DTOs whose values are materialized from or assigned to native property storage. A getter returns detached structured state; persist a mutation with read-modify-reassign unless the generated member itself is a live wrapper.
 
 Native ref types are explicit borrowed wrappers. If a project keeps one beyond the call/frame that returned it, follow the generated `__AddRef()`/`__Release()` contract. Factory-backed wrappers start with a reference that must be released after ownership is transferred or detached.
 
-`hstring` values carry the native intern-entry pointer as well as the hash. They are interned through the active backend's Engine metadata, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
+`hstring` is an eight-byte blittable value containing the native intern-entry pointer. Frames and value types copy that pointer unchanged; only property and RPC storage uses the 64-bit hash and converts at the storage boundary. Values are interned through the active backend's Engine metadata, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
+
+Arrays of primitives, enums, `hstring`, and registered value types use `GetPropertyList<T>` / `SetPropertyList<T>` and cross as raw bytes. Longer reads retry directly into the final list storage while the same cover remains held. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values, and other structured forms keep the converting bridge, but generated access selects the property by registrar index rather than repeating owner and property names.
+
+### Indexed native interop ABI
+
+`ManagedScriptBaker` and the native backend share `ManagedInteropAbi`: one manifest of dense method, event, setting, and inner-entity ids plus a content hash. Generated `*Abi.gen.cs` bind stubs call `Native.BindAbi` during `Initializator.InitializeEarly`; a hash or count mismatch fails loading before script execution. Generated ABI files participate in the incremental bake stamp, so a generator-only change cannot publish new wrappers with an old assembly.
+
+The indexed path covers primitives, enums, `hstring`, registered value types, and by-value entity/proto/fixed/ref-type handles. Methods use `CallMethodIndexed`, eligible events use `FireEventIndexed`, numeric/bool settings use `GetSettingValue<T>`, and inner entities are collected by one `FillInnerEntities` snapshot instead of `Count` plus repeated indexed lookups. Complex signatures use the corresponding boxed path with the same dense id. Nullability belongs to the manifest: a non-nullable handle slot rejects zero, nullable handles may carry zero, and dynamic ref types, by-ref handles, and abstract/base entity results remain boxed where their runtime type is required.
+
+Managed frames are compact packed buffers, but native code never dereferences an unaligned slot. `BuildManagedAbiNativeFrame` copies inputs and result slots into aligned stack storage, native dispatch works on that storage, and `CopyBackManagedAbiNativeFrame` returns only mutable arguments and the result. Event adapters return `EventResult` through a trailing `ref int`, copy by-ref arguments back after invocation, and avoid boxing the result.
+
+Native-to-managed callbacks whose signatures contain only fixed values and entity/ref-type handles use generated `CallbackAdapters.Adapt_<key>` methods. One `ManagedCallbackPlan` resolves the adapter during registration; wrapper factories and native wrapper classes are also registered/cached during ABI binding, so dispatch does not repeat reflection or constructor lookup. Unsupported callback shapes retain the boxed `MonoArray`/`DynamicInvoke` path. Entity event subscriptions belong to the native entity rather than to one wrapper: an equal handler is idempotent, any wrapper of that entity can unsubscribe it, and destruction removes the subscriptions.
+
+Backend-owned caches are built before hot-path use: managed helper methods, metadata-named classes, dynamic ref-type accessors, wrapper constructors, callback adapters, list factories, and per-event adapters. Typed custom settings keep a parsed cell behind `GlobalSettings::GetCustomSettingsGeneration()`; every custom-setting writer advances the generation, while a warmed read is a generation comparison plus a value copy. `ScriptSynchronizationContext` likewise allocates its continuation queue only on the first post.
 
 ## Runtime loading, isolation, and shutdown
 
@@ -165,11 +185,11 @@ Shutdown closes the continuation scheduler and discards queued work before relea
 
 ## Build and bake workflow
 
-The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project, and compiles target assemblies without a full resource bake.
+The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project including `*Abi.gen.cs`, and compiles target assemblies without a full resource bake. The generated API files are part of the assembly stamp.
 
 `BakeResources` and `ForceBakeResources` run the `Managed` baker as part of the selected resource pack. Use the compile target for a fast source/API check and the bake target for the real resource, assembly, runtime-payload, and metadata contract. After a force bake, run an ordinary incremental bake and require it to settle cleanly.
 
-The runtime toolchain is prepared by `SetupManagedRuntime`; `PrepareManagedRuntimePayload` produces the deployable subset and a `runtime.manifest`. Toolchain setup runs with an isolated environment so a workstation's `DOTNET_*`, NuGet, or SDK state does not silently redefine the published runtime. A configured workspace cache stores only a verified published runtime tree under a target/toolchain-specific key; local runtime source checkouts are never shared, incomplete cache hits are rebuilt, and a stale SDK bootstrap that lacks its matching shared runtime is removed before setup retries.
+The runtime toolchain is prepared by `SetupManagedRuntime`; `PrepareManagedRuntimePayload` produces the deployable subset and a `runtime.manifest`. Toolchain setup runs with an isolated environment so a workstation's `DOTNET_*`, NuGet, or SDK state does not silently redefine the published runtime. Runtime source builds disable the live NuGet advisory audit: the pinned source revision, not a later feed update, defines the reproducible dependency set. Before each runtime build, BuildTools removes dotnet's target-dependent repo-local tasks semaphore so switching from a desktop build to Android cannot reuse an incomplete task set. A configured workspace cache stores only a verified published runtime tree under a target/toolchain-specific key; local runtime source checkouts are never shared, incomplete cache hits are rebuilt, and a stale SDK bootstrap that lacks its matching shared runtime is removed before setup retries.
 
 ## Packaging and updating
 
@@ -185,13 +205,15 @@ The embedded payload defaults to invariant globalization because `System.Globali
 
 Managed scripting is wired for Windows, Linux, Android, WebAssembly, macOS, and iOS build paths, but an Engine source-capable path is not a project release claim. Qualify every shipped target with the exact project resource pack, assemblies, runtime payload, startup, callbacks, async work, shutdown, packaging, and update route.
 
-Web uses the Mono interpreter plus Engine JavaScript scheduling/entropy glue; keep its interpreter thread attached until teardown. Script PDB resources are loaded there when present so managed stack traces retain source information. Android and Apple targets use target-specific runtime archives and class libraries. Never reuse one target's prepared payload for another target or architecture.
+Web uses the Mono interpreter plus Engine JavaScript scheduling/entropy glue; keep its interpreter thread attached until teardown. Because the interpreter compiles no native entry points, managed callbacks use `mono_runtime_invoke`; thunk and `UnmanagedCallersOnly` probe modes are skipped when `RuntimeFeature.IsDynamicCodeCompiled` is false. Script PDB resources are loaded there when present so managed stack traces retain source information. Android and Apple targets use target-specific runtime archives and class libraries. Never reuse one target's prepared payload for another target or architecture.
 
 MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED_SCRIPTING`: embedded Mono and generated/JIT code cannot satisfy those instruments and otherwise report false failures. AddressSanitizer and the supported undefined/data-flow combinations still require the project's actual managed build and runtime checks.
 
 ## Diagnostics and debugging
 
-The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch.
+The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
+
+`InteropProbe` compares runtime invoke, classic thunk, and `UnmanagedCallersOnly` transports where the runtime supplies them, then measures production dispatch and its synchronization, attachment, and overrun-report components. Each series verifies delivery and arguments and reports GC handles, metadata lookups, managed objects, wrapper construction, and—under Tracy—native allocations per call. Counters are thread-local and disabled outside a measured stretch. Latency is evidence for a quiet-host comparison, not a shared-CI threshold; allocation and delivery counts are hard assertions.
 
 Use the generated solution/project for IDE navigation and Roslyn diagnostics. Debug native startup and P/Invoke at the host process boundary; debug managed behavior with runtime logs and focused callbacks unless the embedding project provides a qualified managed debugger attachment workflow. The AngelScript UDP debugger does not debug C# and its settings should not be presented as a managed debugger.
 
@@ -207,6 +229,8 @@ First diagnosis routes:
 | Native API fails after `await` | Entity liveness and reacquired synchronization cover. |
 | Callback cannot be registered | Required marker attribute and exact generated delegate signature. |
 | Package starts with missing framework type | `ManagedRuntime/runtime.manifest` and target-specific pack replacement. |
+| ABI bind fails before module initialization | Stale generated `*Abi.gen.cs`, native manifest/hash mismatch, or a skipped managed rebuild. |
+| A wrapper unsubscribe leaves the callback active | Subscription ownership on the native entity and delegate equality; do not keep wrapper-local event state. |
 
 ## Validation matrix
 
@@ -218,6 +242,7 @@ First diagnosis routes:
 | Async scheduler | `test_managed_async_callbacks.py`, backend-isolation/frame-pump tests, and an embedding-project awaited gameplay path. |
 | Entity-cover contract | Roslyn analyzer tests, warning-free managed build, and the owning synchronized server behavior. |
 | Runtime/cache/thread attachment | Managed baker/backend native tests plus repeated multi-instance startup/shutdown. |
+| Indexed ABI, callback adapters, or wrapper caches | `Test_ManagedScriptBaker`, aligned-frame/native backend tests, `InteropProbe.VerifyTransports`, allocation counters, and the exact target runtime. |
 | Package or updater | Runtime-payload and packaging tests, exact target package inspection, startup from the packaged artifact, and update replacement. |
 | Platform claim | Configure/build, target payload, process/device/browser smoke, and project acceptance for that platform. |
 

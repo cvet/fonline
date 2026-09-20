@@ -4,7 +4,9 @@ document_id: generated-api-properties
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-api-properties","locale":"ru","source_path":"Docs/en/reference/script-api/properties.md","source_sha256":"39bf8586418960dcba2928b41661985f472467f1681b554c5c3a270382811e8d"} -->
+
 # Свойства сущностей
 
 > Сгенерированный справочник. Не редактируйте эту страницу вручную. Обновите metadata движка, перегенерируйте `Docs/generated/api.json`, затем запустите `python BuildTools/docs_reference.py --write`.

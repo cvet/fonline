@@ -390,11 +390,18 @@ Treat Managed C# failures as four separate layers. Preserve the first failure fr
 1. **Generation** — inspect the generated `.gen.cs`, `.gen.csproj`, and `.gen.sln` beside the configured scripts. A missing or stale native export is a code-generation problem, not a Mono problem.
 2. **Compilation and analysis** — run `CompileManagedScripts` and read the first Roslyn/MSBuild diagnostic. Confirm `ManagedScriptTargetFramework`, `ManagedScriptSourceDirs`, extra sources/references, analyzers, configured assemblies, and the selected .NET SDK. Synchronization diagnostics use the `FOSYNC` ids documented in [Managed C# Scripting](../how-to/scripting/managed-csharp.md).
 3. **Bake and delivery** — verify that each resource pack contains the expected target assembly and ManagedRuntime payload, and that packaging selected the target-specific runtime. Missing assemblies may be tolerated by deliberately minimal Engine fixtures; an embedding project's enabled backend must treat them as a packaging/configuration defect.
-4. **Runtime execution** — use the managed backend log to distinguish assembly/load-context failures, P/Invoke registration, callback signature/invocation, scheduler-context violations, synchronization-cover failures, and GC-root/lifetime defects. Match the content hash and process role before attaching a debugger.
+4. **Runtime execution** — use the managed backend log to distinguish assembly/load-context failures, indexed-ABI bind/hash/count mismatches, P/Invoke registration, callback signature/invocation, scheduler-context violations, synchronization-cover failures, and GC-root/lifetime defects. Generated hot paths report whether the failure came through `CallMethodIndexed`; complex fallback calls retain `CallMethodBoxed`. Both preserve the originating native exception in the active managed entry instead of letting C++ unwind through Mono. Match the content hash and process role before attaching a debugger.
+
+For transport diagnosis without a managed debugger, enable
+`ManagedScript.InteropProbeOnStart` or call the engine-owned `InteropProbe` from a
+controlled test. Its `INTEROP-TRANSPORT` checks separate runtime-invoke/thunk/
+`UnmanagedCallersOnly` availability from production dispatch, wrapper creation,
+lookup, GC-handle, and allocation costs. Treat failed checks as correctness
+defects; compare latency only on the same quiet host and runtime revision.
 
 `AngelScript.DebuggerEnabled` and the `fos` adapter affect only AngelScript. They do not expose C# breakpoints, locals, evaluation, or managed stacks. For live C# stepping, the embedding project must supply and qualify a debugger compatible with the embedded Mono runtime, the exact generated assemblies/symbols, and its target platform. A successful IDE attach is project evidence; it is not an Engine-supported delivery claim until Engine owns a repeatable live acceptance gate.
 
-For deterministic regressions, prefer `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests, and the focused `BuildTools/tests/test_managed_*.py` suite. Use [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for the complete validation matrix and platform/sanitizer limits.
+For deterministic regressions, prefer `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests, and the focused `BuildTools/tests/test_managed_*.py` suite. Add the native aligned-frame and live `InteropProbe` routes when ABI transport changed. Use [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for the complete validation matrix and platform/sanitizer limits.
 
 ## Debugger integration in an embedding project
 

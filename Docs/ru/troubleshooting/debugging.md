@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"ddc5564de226aa66ad9e069bcc50c31a6737cd46c5da6f86df91b538e32b18a5"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"c2fdee38757ae0b736d7c34fcab357969f08e1f632e4cee9771b70ce33554054"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -390,11 +390,18 @@ Client, server и mapper используют общий UDP discovery port `430
 1. **Generation** — проверьте generated `.gen.cs`, `.gen.csproj` и `.gen.sln` рядом с настроенными скриптами. Отсутствующий или устаревший native export является проблемой code generation, а не Mono.
 2. **Compilation и analysis** — запустите `CompileManagedScripts` и прочитайте первую diagnostic Roslyn/MSBuild. Проверьте `ManagedScriptTargetFramework`, `ManagedScriptSourceDirs`, extra sources/references, analyzers, настроенные assemblies и выбранный .NET SDK. Synchronization diagnostics используют IDs `FOSYNC`, описанные в [Скриптах Managed C#](../how-to/scripting/managed-csharp.md).
 3. **Bake и delivery** — проверьте ожидаемую target assembly и payload ManagedRuntime в каждом resource pack и выбор target-specific runtime упаковщиком. Отсутствующие assemblies допустимы в намеренно минимальных fixtures Engine; проект с включённым backend должен считать это дефектом packaging/configuration.
-4. **Runtime execution** — по логу managed backend различайте ошибки assembly/load-context, регистрацию P/Invoke, signature/invocation callback, нарушение scheduler context, synchronization cover и дефекты GC-root/lifetime. До attach сверяйте content hash и роль процесса.
+4. **Runtime execution** — по логу managed backend различайте ошибки assembly/load-context, несовпадение bind/hash/count indexed ABI, регистрацию P/Invoke, signature/invocation callback, нарушение scheduler context, synchronization cover и дефекты GC-root/lifetime. Generated hot paths сообщают об ошибке через `CallMethodIndexed`, complex fallback calls сохраняют `CallMethodBoxed`. Оба пути сохраняют исходное native exception в активном managed entry и не позволяют C++ unwind пройти через Mono. До attach сверяйте content hash и роль процесса.
+
+Для диагностики transport без managed debugger включите
+`ManagedScript.InteropProbeOnStart` или вызовите engine-owned `InteropProbe` из
+контролируемого теста. Его `INTEROP-TRANSPORT` checks отделяют доступность
+runtime-invoke/thunk/`UnmanagedCallersOnly` от production dispatch, создания
+wrappers, lookups, GC handles и allocations. Failed checks являются дефектами
+корректности; latency сравнивайте только на том же тихом host и runtime revision.
 
 `AngelScript.DebuggerEnabled` и адаптер `fos` влияют только на AngelScript. Они не предоставляют C# breakpoints, locals, evaluation или managed stacks. Для live stepping C# подключающий проект должен предоставить и квалифицировать debugger, совместимый со встроенным Mono runtime, точными generated assemblies/symbols и целевой платформой. Успешный IDE attach является project evidence, но не заявлением поддержки Engine, пока Engine не владеет повторяемым live acceptance gate.
 
-Для детерминированных регрессий предпочитайте `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests и узкий набор `BuildTools/tests/test_managed_*.py`. Полная матрица проверки и ограничения платформ/sanitizers приведены в [Скриптах Managed C#](../how-to/scripting/managed-csharp.md).
+Для детерминированных регрессий предпочитайте `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests и узкий набор `BuildTools/tests/test_managed_*.py`. При изменении ABI transport добавьте native aligned-frame и live `InteropProbe`. Полная матрица проверки и ограничения платформ/sanitizers приведены в [Скриптах Managed C#](../how-to/scripting/managed-csharp.md).
 
 ## Интеграция отладчика во встраивающем проекте
 

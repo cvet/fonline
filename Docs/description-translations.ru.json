@@ -14079,6 +14079,10 @@
           "source_sha256": "6f3475b6d2717497d0c3e36bf36f8aec12c04704f7177deae64016512c5fe31f",
           "translation": "Декодирует первую кодовую точку UTF-8 из заданного текста, записывает число потребленных байтов и возвращает скалярное значение Unicode."
         },
+        "/symbols/@id=script.method.common.Game.DivRem/description": {
+          "source_sha256": "7aa55c9423e8aa595cbc5fd473494e7eb1a0563fcf84d0a383bd50cb399eefde",
+          "translation": "Делит два знаковых целых числа, записывает остаток и возвращает частное."
+        },
         "/symbols/@id=script.method.common.Game.DesktopBuild/description": {
           "source_sha256": "b68f13b813a20241d166ad7e57864e70fbf9fa30569b225834cef05ee7094535",
           "translation": "Сообщает, предназначена ли эта сборка для настольной платформы."
@@ -18478,6 +18482,10 @@
         "/symbols/@id=setting.common.ManagedScript.GeneratedDir/description": {
           "source_sha256": "074d425c006b4246222e111ece975a2cafbe7a8039b80244bb5289676eb4e72a",
           "translation": "Каталог сгенерированных managed-скриптов и файлов проекта; пустое значение выбирает build-каталог GeneratedSource/Managed."
+        },
+        "/symbols/@id=setting.common.ManagedScript.InteropProbeOnStart/description": {
+          "source_sha256": "ab2b12288bf1f7676f37a14f3cd866bcd19c880461436d0958baa3f3bc7822e5",
+          "translation": "Если true, после запуска скриптов один раз проверяется каждый доступный runtime transport native-to-managed с отдельной строкой INTEROP-TRANSPORT на каждую проверку; это квалифицирует клиент, где test suite не запускается, например браузер или устройство."
         },
         "/symbols/@id=setting.common.ManagedScript.MsBuild/description": {
           "source_sha256": "b58d126e674f2f05d81720694ba4a8eb61369ab01e915594ca5286c7ce24eb51",

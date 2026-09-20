@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4786,
-    "current_count": 4786,
+    "entry_count": 4788,
+    "current_count": 4788,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2529,
-      "current_count": 2529,
+      "entry_count": 2531,
+      "current_count": 2531,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -8674,6 +8674,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.common.Game.DivRem/description",
+          "source": "Divides two signed integers, writes the remainder, and returns the quotient",
+          "source_sha256": "7aa55c9423e8aa595cbc5fd473494e7eb1a0563fcf84d0a383bd50cb399eefde",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.common.Game.EncodeUtf8/description",
           "source": "Encodes one Unicode scalar value as a UTF-8 string",
           "source_sha256": "5d1baa130db90fde9edb988a67356a1438e054303c3eec497f0fc2def0ef2e8b",
@@ -15265,6 +15271,12 @@
           "locator": "/symbols/@id=setting.common.ManagedScript.GeneratedDir/description",
           "source": "Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)",
           "source_sha256": "074d425c006b4246222e111ece975a2cafbe7a8039b80244bb5289676eb4e72a",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.InteropProbeOnStart/description",
+          "source": "If true, every native-to-managed transport the runtime can use is checked once scripts start, one INTEROP-TRANSPORT log line per check; qualifies a client no test suite runs on, such as a browser or a device",
+          "source_sha256": "ab2b12288bf1f7676f37a14f3cd866bcd19c880461436d0958baa3f3bc7822e5",
           "status": "current"
         },
         {

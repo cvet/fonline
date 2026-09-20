@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"fb869e9d8c65d0fe4f67b270a729008493ca8ace00392bfa04c67cc907d427f8"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"2c537e7cedfd00ebdbb65ec08fa6a6e1490935c3c20f46548b455ceb0cd91b0c"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -197,6 +197,17 @@ Web main loop устанавливается через `emscripten_set_main_loo
 
 Canvas copy events используют Engine clipboard. Runtime запрашивает clipboard-read permission при первом pointer interaction, если API доступно, и перехватывает неповторный `Ctrl+V`; при ошибке navigator access используется Engine clipboard. Clipboard API зависят от secure contexts, permissions, focus и user gestures, а несколько ошибок намеренно подавляются. Проверяйте paste/copy визуально, а не считайте отсутствие exception успехом.
 
+### Managed interop
+
+Interpreter-only browser runtime вызывает native-to-managed entries через
+`mono_runtime_invoke`. Он не может предоставить compiled classic thunk или
+`UnmanagedCallersOnly` entry, поэтому эти transports пропускаются, когда
+`RuntimeFeature.IsDynamicCodeCompiled` равен false; production dispatch остаётся
+на runtime-invoke path. Задайте `ManagedScript.InteropProbeOnStart=True` в query
+string, чтобы reusable transport checks выполнились после запуска скриптов.
+Квалификация требует ноль failures во всех `INTEROP-TRANSPORT` checks и итоговой
+summary; native-thread case отсутствует в single-threaded browser.
+
 ### Persistent data
 
 Runtime создаёт `/PersistentData`, монтирует IDBFS, вызывает `FS.syncfs(true)` и задерживает обычный startup до завершения начальной загрузки из браузера в virtual filesystem. Сейчас callback отмечает готовность даже при ненулевом `err`. Проверенный generic path не доказывает автоматическую обратную синхронизацию после каждого последующего изменения.
@@ -218,6 +229,11 @@ File logging и asynchronous file-log writing отключены на Web. Ос�
 5. **Performance/memory:** long tasks, frame pacing, heap growth, GPU pressure, download/decompression ресурсов и background throttling после установления корректности.
 
 Сохраняйте page URL без секретов, browser/version, OS/GPU, package hash, revisions Engine/project, server config, proxy headers и шаги воспроизведения. Сравнивайте локальный raw package с public origin, чтобы отделить hosting от runtime.
+
+При `RuntimeError: memory access out of bounds` символизируйте каждый wasm offset
+по совпадающему `RelWithDebInfo` binary через Emscripten `emsymbolizer -t file -s
+dwarf <client>.wasm 0x<offset>`. Undefined behavior portable C++ может проявиться
+только под libc++/Wasm, поэтому успех native build недостаточен.
 
 ## Native updater и повторный deployment
 

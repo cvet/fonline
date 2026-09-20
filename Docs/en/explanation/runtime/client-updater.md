@@ -83,6 +83,19 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `Source/Tests/Test_Settings.cpp`
 - `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`
 
+## Managed runtime resource ownership
+
+Mono and the native interop shim are part of each managed application, while the
+target-specific Managed class libraries are resource data under
+`ManagedRuntime/`. Before Mono starts, the backend restores that payload to the
+writable content-addressed cache and prefers it over a sibling fallback used by
+unpackaged tools. Consequently an unpackaged client must use a resource bake for
+its own target and pointer width: pairing an x86 client with an x64 bake can make
+CoreLib interpret reflection data with the wrong stride. Packaging rebuilds each
+client pack with the matching target runtime, so packaged artifacts already
+enforce this pairing; native Mono/shim changes still follow native compatibility
+and restart rules, while class-library changes travel with resources.
+
 ## Two-layer client startup
 
 The host tries to load the bundled runtime DLL first on self-update platforms; the **embedded** engine
@@ -141,7 +154,9 @@ The embedded client (host module hosts the game and the updater itself) runs whe
 
 `RunEmbeddedOrLoadedClient` gates the bundled-DLL-first path on `requested_runtime.ExplicitPath ||
 (!ForceEmbedded && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform()))`, identically for the regular
-and headless clients. `Client.ForceEmbeddedRuntime` is honored from the command line
+and headless clients. The implicit bundled path beside the executable is resolved
+under that same capability guard: Android and iOS have no usable executable path
+for a loadable sibling module. `Client.ForceEmbeddedRuntime` is honored from the command line
 (`--Client.ForceEmbeddedRuntime`) because the host picks the runtime before settings are otherwise resolved;
 a SubConfig/config-only value does not reach this pre-init decision, so launch profiles that must force
 embedded on a standalone client pass it on the command line.

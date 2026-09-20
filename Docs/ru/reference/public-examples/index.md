@@ -4,7 +4,9 @@ document_id: generated-public-examples-index
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-public-examples-index","locale":"ru","source_path":"Docs/en/reference/public-examples/index.md","source_sha256":"0a939c4cab0d9aa503b6b844df3a87521cda024272d3750b31d9ee0ba2109ea4"} -->
+
 # Сгенерированный реестр публичных репозиториев-примеров
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `Examples/PublicRepositories.json` или управляющий overlay, затем выполните `python BuildTools/docs_examples.py --write`.

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bcf0897eb1da2bda0ab06f3df723b7625b619c96879a588d9a5e6ee26cbf830b"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"c0ae9ca65e7a7ef793d1dabbd9b6ffdcdd0566c23e0cd98a6e55a32c8f6cc53f"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -263,6 +263,27 @@ source discovery/output mapping и запрет runtime `.spk`/`.efk` как в�
 | Bakers/tools | Baking, metadata/resource packs, Mapper/editors и asset processors. |
 | Frontend/rendering | Application init, visible/headless behavior и renderer-facing contracts. |
 
+Изменения Managed interop требуют одновременно свидетельств generated shape и
+live runtime. `Test_ManagedScriptBaker.cpp` фиксирует dense ABI ids, typed
+settings, scalar/value property routes, raw-byte массивы fixed values,
+`FillInnerEntities`, generated callback adapters и wrapper factories, а также
+участие `*Abi.gen.cs` в bake stamp. Native frame test намеренно передаёт
+невыравненный packed buffer через `ManagedAbiNativeFrame` и проверяет alignment
+аргументов, выборочный copy-back mutable/result slots, границы и сохранность
+значений.
+
+`CoreScripts/InteropProbe.cs` является переиспользуемым live probe. Он сравнивает
+runtime invoke, classic thunk и `UnmanagedCallersOnly` callback transports там,
+где есть dynamic code; проверяет enum/bool/int64/value/`hstring`, exceptions,
+collections, nested entries, native threads, instance и virtual targets; и
+сообщает managed bytes вместе с per-thread native counters handles, lookups,
+objects и wrappers. Native allocation counts доступны только в Tracy builds.
+Latency служит наблюдением, а не CI threshold, но allocations, delivery counts и
+transport checks остаются assertions. На browser/device client задайте
+`ManagedScript.InteropProbeOnStart=True` и требуйте ноль failures в завершающем
+`INTEROP-TRANSPORT summary`; interpreter-only Web проверяет runtime invoke и
+пропускает transports, которым нужен compiled code.
+
 ## Маршрутизация проверки по типу изменения
 
 - Essentials: [Essentials](../../reference/native/essentials.md) и соответствующие tests.
@@ -286,7 +307,7 @@ source discovery/output mapping и запрет runtime `.spk`/`.efk` как в�
   [lifecycle/concurrency](../../how-to/scripting/lifecycle-and-concurrency.md),
   [стиль AngelScript](../../how-to/scripting/style-and-refactoring.md),
   [method ownership](../../reference/script-api/method-ownership.md),
-  [nullability](../coding-contracts/nullability.md) и соответствующие suites. Изменения AngelScript направляйте в его attribute/baker suites; Managed generation, analyzers, async callbacks, runtime payload и packaging — в соответствующие native, Python и C# suites; общий server cover/lock contract — в `Test_EntitySync` и затронутые entity/script-method tests.
+  [nullability](../coding-contracts/nullability.md) и соответствующие suites. Изменения AngelScript направляйте в его attribute/baker suites; Managed generation, indexed ABI/native-frame transport, analyzers, async callbacks, runtime payload и packaging — в соответствующие native, Python и C# suites; общий server cover/lock contract — в `Test_EntitySync` и затронутые entity/script-method tests.
 
 ## Добавление и удаление тестов
 

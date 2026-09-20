@@ -58,6 +58,10 @@ Continue with the [canonical English guide](en/how-to/platforms/web-debugging.md
 
 Continue with the [canonical English guide](en/how-to/platforms/web-debugging.md#main-loop-audio-and-input).
 
+### Managed interop
+
+Continue with the [canonical English guide](en/how-to/platforms/web-debugging.md#managed-interop).
+
 ### Persistent data
 
 Continue with the [canonical English guide](en/how-to/platforms/web-debugging.md#persistent-data).

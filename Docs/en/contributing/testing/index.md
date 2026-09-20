@@ -356,6 +356,26 @@ unchanged tree incremental-clean.
 | Bakers and tools | Baker, metadata/resource packers, mapper/editor tools, asset processors, and tool-side regressions. |
 | Frontend and rendering | Application init, frontend/rendering smoke cases, headless behavior, and renderer-facing contracts. |
 
+Managed interop changes require both generated-shape and live-runtime evidence.
+`Test_ManagedScriptBaker.cpp` pins dense ABI ids, typed settings and scalar/value
+property routes, raw-byte fixed-value arrays, `FillInnerEntities`, generated
+callback adapters and wrapper factories, and inclusion of `*Abi.gen.cs` in the
+bake stamp. The native frame test deliberately passes an unaligned packed buffer
+through `ManagedAbiNativeFrame` and verifies aligned arguments, selective
+mutable/result copy-back, bounds checks, and value preservation.
+
+`CoreScripts/InteropProbe.cs` is the reusable live probe. It compares runtime
+invoke, classic thunk, and `UnmanagedCallersOnly` callback transports where
+dynamic code exists; exercises enum/bool/int64/value/`hstring`, exceptions,
+collections, nested entries, native threads, instance and virtual targets; and
+reports managed bytes plus per-thread native counters for handles, lookups,
+objects, and wrappers. Native allocation counts are available only in Tracy
+builds. Latency is observational rather than a CI threshold, but allocations,
+delivery counts, and transport checks are assertions. On browser and device
+clients set `ManagedScript.InteropProbeOnStart=True` and require the closing
+`INTEROP-TRANSPORT summary` to report zero failures; interpreter-only Web tests
+runtime invoke and skips transports that need compiled code.
+
 ## Validation routing by change type
 
 - Essentials utilities: start with [Essentials.md](../../reference/native/essentials.md) and the essentials tests listed above.
@@ -364,7 +384,7 @@ unchanged tree incremental-clean.
 - Bakers/resources: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and the matching baker tests.
 - Runtime entity/map/persistence/networking: [Entity Model](../../explanation/entity-and-property-model/), [Maps and Movement](../../explanation/maps-and-movement.md), [Persistence](../../explanation/persistence/), [Networking](../../explanation/authority-and-networking/), and the focused runtime tests.
 - Client/frontend/server: [Client Runtime](../../explanation/runtime/client.md), [Frontend and Rendering](../../explanation/rendering/), [Server Runtime](../../explanation/runtime/server.md), and the matching integration/smoke tests.
-- Scripting: [Scripting](../../explanation/scripting-runtime/), [Managed C# Scripting](../../how-to/scripting/managed-csharp.md), [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md), [Script Methods Map](../../reference/script-api/method-ownership.md), [Nullability](../coding-contracts/nullability.md), and the script/baker/method tests. Route AngelScript attributes and mutable globals to its dedicated suites; route Managed generation, analyzers, async callbacks, runtime payloads, and packaging to the matching native, Python, and C# suites; route shared server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
+- Scripting: [Scripting](../../explanation/scripting-runtime/), [Managed C# Scripting](../../how-to/scripting/managed-csharp.md), [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), [AngelScript Style and Refactoring](../../how-to/scripting/style-and-refactoring.md), [Script Methods Map](../../reference/script-api/method-ownership.md), [Nullability](../coding-contracts/nullability.md), and the script/baker/method tests. Route AngelScript attributes and mutable globals to its dedicated suites; route Managed generation, indexed ABI/native-frame transport, analyzers, async callbacks, runtime payloads, and packaging to the matching native, Python, and C# suites; route shared server cover/lock behavior to `Test_EntitySync` plus the affected script-method/entity tests.
 
 ## Adding or removing tests
 

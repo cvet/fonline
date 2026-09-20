@@ -111,7 +111,7 @@ public:
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
     void RegisterValueType(string_view name);
-    void RegisterValueType(string_view name, size_t native_size, StructLayoutDesc::CreateNativeFunc create_native, StructLayoutDesc::CopyNativeFunc copy_native);
+    void RegisterValueType(string_view name, size_t native_size);
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     void RegisterRefType(string_view name);
     void RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout);

@@ -4,7 +4,9 @@ document_id: generated-package-cli
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-package-cli","locale":"ru","source_path":"Docs/en/reference/packages/cli.md","source_sha256":"c53b0624724fb0f5fd0ec36193516a9912b1656b9c066f138e670eab78cf9af8"} -->
+
 # Командная строка упаковщика
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/PackageInterface.json` или `BuildTools/package.py`, затем выполните `python BuildTools/docs_package.py --write`.

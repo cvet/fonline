@@ -112,6 +112,7 @@ void capture_native_frames(std::array<native_frame_address, MAX_NATIVE_FRAMES>&,
 std::map<uint32_t, MonoObject*> Roots;
 uint32_t NextRoot = 0;
 uint32_t mono_gchandle_new(MonoObject* object, int) { Roots[++NextRoot] = object; return NextRoot; }
+uint32_t NewManagedGcHandle(MonoObject* object, int pinned) { return mono_gchandle_new(object, pinned); }
 MonoObject* mono_gchandle_get_target(uint32_t handle) { return Roots.at(handle); }
 void mono_gchandle_free(uint32_t handle) { assert(Roots.erase(handle) == 1); }
 void AppendRuntimeNativeFrames(MonoDomain*, std::span<const stack_trace::native_frame_address>, stack_trace::script_layer&) {}

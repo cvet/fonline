@@ -5,7 +5,7 @@ locale: ru
 document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"5e585846b0a0eb85be8bc7e3254ce48bfc30278db7c72cca8e79e801f0ff29c4"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"90887def74347620feaad9a26dfabebdc4f7d5fc21562cc1384177f55dd0c6a7"} -->
 # Сборка, упаковка и отладка FOnline на Android
 
 Это принадлежащая Engine инструкция по сборке Android-клиента, созданию и сборке APK, установке через Wi-Fi ADB, подключению к серверу разработки и разделению ошибок сборки, пакета, устройства и runtime. Она опирается на текущую реализацию BuildTools, шаблон Android-проекта, модель поддержки, грамматику пакетов, settings и границу updater. Встраивающий проект отвечает за идентичность приложения, release-политику, парк устройств, серверный профиль, доставку через магазин и evidence приёмки.
@@ -129,6 +129,11 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 ```
 
 Обычный результат находится в `app/build/outputs/apk/debug/app-debug.apk`. Текущий шаблон использует Gradle 9.5.0, Android Gradle Plugin 9.3.0 и Java language level 17, фильтрует native libraries по списку упакованных ABI, не сжимает ZIP assets и использует legacy JNI library packaging. Manifest требует OpenGL ES 3.0 и объявляет permissions для Internet, network state и vibration; touchscreen, gamepad, Bluetooth, USB host и pointer features уровня PC опциональны.
+
+Шаблон `gradlew` хранится executable (`100755`). Его SDL Java glue должен
+совпадать с `ThirdParty/SDL/android-project/.../org/libsdl/app/`; отдельный
+`test_android_sdl_java_glue.py` сравнивает копии и обязателен при обновлении SDL,
+поскольку JNI methods регистрируются по точной signature.
 
 В шаблоне задано `lint.abortOnError = false`. Поэтому сборка APK не является gate для lint, policy, privacy, vulnerabilities или готовности к магазину. Добавляйте project-owned lint и release checks и не считайте `assembleDebug` production-приёмкой.
 
@@ -328,11 +333,16 @@ CI-матрица Engine намеренно не предоставляет эт
 | Packaging отклоняет icon или Java source | реальная PNG signature, project-relative path, suffix `.java`, уникальный basename и отсутствие override `FOnlineActivity.java` |
 | Gradle не видит SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version и установленный compile SDK |
 | Ошибка Gradle dependency resolution | generated repositories/dependencies, credentials, dependency locks, proxy/TLS и доступность repository |
+| `./gradlew` отвечает `Permission denied` | executable bit committed-шаблона и скопированного wrapper; восстанавливайте mode в index, а не только локальным `chmod` |
 | Release build unsigned или debug-signed | полный signing tuple, environment handoff, keystore path/alias, итоговый `apksigner verify` и certificate digest |
 | Устройство не обнаруживается | сначала pairing, Wireless debugging, `discover`, `adb devices`, доступность в одной сети, затем явный `--device` |
 | Device `unauthorized` или install запрещён | разблокировка устройства, authorization хоста, installer/security prompt и device/vendor policy |
 | Ошибка update install | application id, version code, signing certificate, ABI, storage и допустимость clean uninstall для теста |
 | Activity не запускается | точный `<application-id>/.FOnlineActivity`, installed package, manifest merge, native library и полный logcat |
+| `System.loadLibrary` падает с `NoSuchMethodError` для `SDLActivity.nativeSetupJNI` | несовпадение SDL Java/native glue; синхронизируйте template с vendored SDL tree и запустите `test_android_sdl_java_glue.py` |
+| Startup сообщает `Executable path could not be resolved` | bundled-runtime path вычислялся на mobile target; он должен оставаться под guard `CanSelfUpdateNativeModules` |
+| Engine log отсутствует в logcat | прочитайте app-private `files/<project>.log` из debug APK через `adb shell run-as <package> cat ...` |
+| Renderer эмулятора падает до non-visual probe | Vulkan эмулятора может не иметь BGRA8, а GLES — отвергать updater path; для `ManagedScript.InteropProbeOnStart` используйте `Render.NullRenderer=True`, но rendering квалифицируйте на реальном устройстве |
 | Content отсутствует или устарел | hash/path установленного APK, `lastUpdateTime`, `.asset_revision`, `Metadata.zip`, copy exception, retained cache |
 | Client не достигает host | typed extra `server_host`, выбранный LAN address, server bind address, firewall, ports и compatibility version |
 | Client запрашивает native update | Android native self-update не поддержан; установите совместимый APK вместо повторов resource updater |

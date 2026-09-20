@@ -766,6 +766,18 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(ptr<BaseEngine> engine, sy
     millisecond = time_desc.millisecond;
 }
 
+// Divides two signed integers, writes the remainder, and returns the quotient
+///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividend, int32_t divisor, int32_t& remainder)
+{
+    ignore_unused(engine);
+
+    FO_VERIFY_AND_THROW(divisor != 0, "Division by zero");
+
+    remainder = dividend % divisor;
+    return dividend / divisor;
+}
+
 // Schedules a one-shot time event on this Engine instance after the requested delay and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void> func)

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/nullability.html
 ---
 
 # Nullable-типы
-<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"95cf505d200719834ffcc408d89734cc6f4d3dcb18f652d2f357c83d0422ae19"} -->
+<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"ba79255cf2cce8d31b49bf02997ea78d9acc950f4ea846fe2647afb845e6686a"} -->
 > Документация принадлежит движку. Эта страница задает переиспользуемый
 > контракт компилятора, runtime и native-границы. Анализаторы проекта могут
 > вводить более строгую политику авторинга, но не являются частью контракта
@@ -264,6 +264,15 @@ if (loc == null) { /* recover */ }
 ## Runtime enforcement
 
 Контракт обеспечивают два дополняющих runtime-рубежа.
+
+Indexed interop Managed применяет тот же контракт к упакованному ABI. Скалярные
+и простые fixed-value данные являются non-nullable value slots. Аргументы entity,
+prototype, fixed entity и native reference используют pointer-sized handle slots,
+а допустимость null задаётся сгенерированным manifest `ManagedInteropAbi`. При
+binding несовпадение generated/native manifest отвергается до запуска скриптов,
+а сгенерированный wrapper выполняет требуемую проверку null на границе вызова.
+Не кодируйте optional reference нулевым fixed-значением и не ослабляйте metadata
+declaration ради обхода ошибки binding.
 
 ### Скриптовая сторона: `asBC_RefCpyChk` при записи handle
 

@@ -142,6 +142,8 @@ custom setting and cannot mutate the built-in value. Script
 `SetRuntimeSetting` likewise rejects writes to built-ins as read-only while
 remaining available for project-owned custom settings.
 
+Managed numeric, boolean, and enum setting getters use the typed indexed ABI. A built-in entry reads its immutable `GlobalSettings` field; a project `///@ Setting` entry reads the custom map. A custom value is parsed once into the ABI entry's typed cell and reused while `GlobalSettings::GetCustomSettingsGeneration()` is unchanged. Every custom-map writer (`SetRuntimeSetting`, `SetCustomSetting`, `SetValue`, and `CopyFrom`) increments that generation. String and list settings keep their name-based helpers, and both paths verify the complete setting name after hash dispatch so a colliding custom hash cannot shadow a built-in.
+
 Custom settings have two read shapes. Use `FindCustomSetting()` when missing keys are normal and should stay in the nullable pointer vocabulary. Use `GetCustomSetting()` only for compatibility with the historical non-null sentinel behavior: it returns the stored value when present and `_emptySetting` when absent.
 
 Do not document one embedding project's `.fomain` contents as universal engine behavior. Use project docs for concrete values; use this page for the engine mechanics that consume them.

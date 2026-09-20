@@ -4,7 +4,9 @@ document_id: generated-helper-cli-index
 locale: ru
 generated: true
 ---
+
 <!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"cb212d690b9801bf3235c982c361f84571ebcc171191c2fb5fef1f1549d0c81a"} -->
+
 # Сгенерированный справочник вспомогательных CLI
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/HelperCliInterface.json` или владеющий исполняемый парсер, затем выполните `python BuildTools/docs_helper_cli.py --write`.

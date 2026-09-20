@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"a65bb0127d2b9cec6b8e5377fd67e2aa1175562fb4527a0307501b86ccace166"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"3f39ebcac271eff354be4f726a475b5b9be21402040a0a299bfa4beeb09264fb"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -131,6 +131,20 @@ implementation, runtime resource extensions и baker implementation.
 `AddSubdirectory()`, чтобы vendored libraries не могли незаметно использовать
 систему host.
 
+Подготовка Managed runtime из исходников зависит от target. Перед каждой такой
+сборкой `buildtools.py` удаляет repo-local semaphore задач MSBuild, чтобы дерево,
+впервые собранное для desktop, не пропустило Android-only task projects и позже
+не упало с `MSB4062`. Также передаётся `NuGetAudit=false`: revision runtime
+закреплён, warnings являются errors, и новая advisory не должна делать
+неизменившийся tag невосстановимым. Shipped payload содержит CLR assemblies, а
+не native packages, которые присутствуют лишь в restore graph runtime repo.
+
+Патчи Mono для Windows x86 и Android возвращают constant `false` для свойств
+hardware-intrinsic `IsSupported`, не реализованных их JIT. Без fallback тело
+property CoreLib рекурсивно вызывает себя и может переполнить stack до первого
+кадра. Marker cache Managed runtime включает этот source-patch contract;
+prebuilt runtime уже должен его содержать.
+
 Начинайте здесь при добавлении или удалении bundled dependency либо изменении
 правил изоляции её сборки.
 
@@ -212,7 +226,7 @@ code. Так ожидаемая диагностика negative tests сохра
 - Компиляция Managed C# через standalone project `ManagedScriptBaker` при
   включённом `FO_MANAGED_SCRIPTING`. `CompileManagedScripts` выполняется после
   `ForceCodeGeneration`, использует настроенные managed source dirs/references/analyzers
-  и создаёт target assemblies каждого pack вместе с `.gen.cs`, `.gen.csproj` и
+  и создаёт target assemblies каждого pack вместе с API/ABI `.gen.cs`, `.gen.csproj` и
   `.gen.sln`. Setup runtime и подготовка payload являются отдельными targets.
 - Resource baking через project baker target.
 - Поддержка build-hash/write-hash для baked resources.

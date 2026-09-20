@@ -197,6 +197,17 @@ An explicit in-game quit is finalized on the next browser frame. The Web client 
 
 Canvas copy events use the Engine clipboard. The runtime requests clipboard-read permission on the first pointer interaction when APIs exist and intercepts non-repeated `Ctrl+V`; it falls back to the Engine clipboard when navigator access fails. Clipboard APIs depend on secure contexts, permissions, focus, and user gestures, and several failures are intentionally swallowed. Test paste/copy visibly instead of treating absence of an exception as success.
 
+### Managed interop
+
+The interpreter-only browser runtime calls native-to-managed entries through
+`mono_runtime_invoke`. It cannot provide a compiled classic thunk or
+`UnmanagedCallersOnly` entry, so those transports are skipped when
+`RuntimeFeature.IsDynamicCodeCompiled` is false; production dispatch remains the
+runtime-invoke path. Set `ManagedScript.InteropProbeOnStart=True` in the query
+string to run the reusable transport checks once scripts start. Qualification
+requires every `INTEROP-TRANSPORT` check and the closing summary to report zero
+failures; the native-thread case is omitted in the single-threaded browser.
+
 ### Persistent data
 
 The runtime creates `/PersistentData`, mounts IDBFS, calls `FS.syncfs(true)`, and delays normal startup until initial browser-to-virtual-filesystem hydration completes. The callback currently marks readiness even when `err` is non-null. The audited generic path does not prove automatic write-back after every later modification.
@@ -218,6 +229,11 @@ Use DevTools in this order:
 5. **Performance/memory:** long tasks, frame pacing, heap growth, GPU pressure, resource download/decompression, and background throttling after correctness is established.
 
 Preserve the page URL without secrets, browser/version, OS/GPU, package hash, Engine/project revisions, server config, proxy headers, and reproduction steps. Compare a local raw package with the public origin to isolate hosting from runtime.
+
+For a `RuntimeError: memory access out of bounds`, symbolize each wasm offset
+against the matching `RelWithDebInfo` binary with Emscripten's `emsymbolizer -t
+file -s dwarf <client>.wasm 0x<offset>`. Portable C++ undefined behavior may
+surface only under libc++/Wasm, so treat a native-only success as insufficient.
 
 ## Native updater and redeployment
 

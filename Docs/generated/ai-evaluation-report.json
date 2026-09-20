@@ -358,8 +358,8 @@
             "project-local-dependencies",
             "packaging-and-release",
             "buildtools-readme",
-            "frontend-rendering",
-            "third-party-maintenance"
+            "android-debugging",
+            "frontend-rendering"
           ]
         },
         {
@@ -1468,8 +1468,8 @@
             "generated-api-metadata",
             "debugging",
             "android-debugging",
-            "profiling",
-            "frontend-rendering"
+            "managed-csharp-scripting",
+            "profiling"
           ]
         }
       ],
@@ -1558,7 +1558,7 @@
             "web-debugging",
             "server-runtime",
             "debugging",
-            "public-example-repositories"
+            "testing"
           ]
         }
       ],
@@ -2474,8 +2474,8 @@
             "buildtools-pipeline",
             "generated-api-metadata",
             "managed-csharp-scripting",
-            "buildtools-readme",
-            "debugging"
+            "client-updater",
+            "buildtools-readme"
           ]
         },
         {
@@ -2606,8 +2606,8 @@
             "generated-api-metadata",
             "adr-public-api-stability-contract",
             "generated-api-index",
-            "client-runtime",
-            "baking-pipeline"
+            "android-debugging",
+            "client-runtime"
           ]
         }
       ],

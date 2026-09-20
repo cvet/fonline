@@ -18,6 +18,10 @@ Continue with the [canonical English explanation](en/explanation/runtime/client-
 
 Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#source-paths-inspected).
 
+## Managed runtime resource ownership
+
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#managed-runtime-resource-ownership).
+
 ## Two-layer client startup
 
 Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#two-layer-client-startup).

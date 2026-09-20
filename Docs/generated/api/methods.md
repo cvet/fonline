@@ -949,6 +949,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-desktopbuild-4d04acc2c0"></a>
 - [`symbol-script-method-common-game-desktopbuild-4d04acc2c0`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-desktopbuild-4d04acc2c0)
 
+<a id="symbol-script-method-common-game-divrem-8c67aded19"></a>
+- [`symbol-script-method-common-game-divrem-8c67aded19`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-divrem-8c67aded19)
+
 <a id="symbol-script-method-common-game-encodeutf8-0facf943fc"></a>
 - [`symbol-script-method-common-game-encodeutf8-0facf943fc`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-encodeutf8-0facf943fc)
 
