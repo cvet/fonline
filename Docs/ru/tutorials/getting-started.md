@@ -5,9 +5,7 @@ locale: ru
 document_id: getting-started
 permalink: /Docs/ru/tutorials/getting-started.html
 ---
-
 <!-- docs-translation: {"document_id":"getting-started","locale":"ru","source_path":"Docs/en/tutorials/getting-started.md","source_sha256":"2773347b8ab1cf3e2888aeafb00141e47b3d3749437622ab26cfa3f347d5f6d6"} -->
-
 # Начало работы с движком FOnline
 
 Это первая страница для разработчика, который открыл репозиторий движка и хочет понять, что читать, что собирать и где проходит граница между движком и игрой.

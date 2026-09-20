@@ -98,7 +98,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Player> Server_Critter_GetPlayer(ptr<Critte
 
 // SyncScope: requires self; returns the current parent map handle, but does not cover it for later reads
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
+FO_SCRIPT_API FO_RETURNS_PARENT nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
 {
     auto map = self->GetParent<Map>();
 
@@ -451,79 +451,9 @@ FO_SCRIPT_API bool Server_Critter_IsSee(ptr<Critter> self, ptr<Item> item)
     return self->CheckVisibleItem(item->GetId());
 }
 
-// SyncScope: requires self; counts matching inventory items under self's inventory cover
-///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Critter_CountItem(ptr<Critter> self, hstring protoId)
-{
-    return self->CountInvItemByPid(protoId);
-}
-
-// SyncScope: requires self; counts matching inventory items under self's inventory cover
-///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Critter_CountItem(ptr<Critter> self, ptr<ProtoItem> proto)
-{
-    return self->CountInvItemByPid(proto->GetProtoId());
-}
-
-// SyncScope: requires self; destroys matching inventory items under self's holder cover
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid)
-{
-    if (!pid) {
-        throw ScriptException("Proto id arg is zero");
-    }
-
-    int32_t count = self->CountInvItemByPid(pid);
-
-    if (count == 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
-}
-
-// SyncScope: requires self; destroys matching inventory items under self's holder cover
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> proto)
-{
-    int32_t count = self->CountInvItemByPid(proto->GetProtoId());
-
-    if (count == 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
-}
-
-// SyncScope: requires self; destroys matching inventory item count under self's holder cover
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, hstring pid, int32_t count)
-{
-    if (!pid) {
-        throw ScriptException("Proto id arg is zero");
-    }
-
-    if (count <= 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, pid, count);
-}
-
-// SyncScope: requires self; destroys matching inventory item count under self's holder cover
-///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_DestroyItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
-{
-    if (count <= 0) {
-        return;
-    }
-
-    self->GetEngine()->ItemMngr.SubItemCritter(self, proto->GetProtoId(), count);
-}
-
 // SyncScope: requires self; creates and attaches a new inventory item under self's cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
@@ -534,27 +464,21 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> se
     if (!self->GetEngine()->GetProtoItem(pid)) {
         throw ScriptException("Invalid proto", pid);
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(pid, nullptr);
+    return self->GetEngine()->CrMngr.AddItemToCritter(self, item, true);
 }
 
 // SyncScope: requires self; creates and attaches a new inventory item under self's cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem> proto, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a critter that is being destroyed", self->GetId());
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(proto->GetProtoId(), nullptr);
+    return self->GetEngine()->CrMngr.AddItemToCritter(self, item, true);
 }
 
 // SyncScope: requires self; returned inventory item is covered by self while the cover remains
@@ -686,11 +610,11 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(ptr<Critter> self, ident_t item
         return;
     }
 
-    if (static_cast<size_t>(slot) >= self->GetEngine()->Settings->CritterSlotEnabled.size() || !self->GetEngine()->Settings->CritterSlotEnabled[static_cast<size_t>(slot)]) {
+    if (static_cast<size_t>(slot) >= self->GetEngine()->Settings->Critter.CritterSlotEnabled.size() || !self->GetEngine()->Settings->Critter.CritterSlotEnabled[static_cast<size_t>(slot)]) {
         throw ScriptException("Slot is not allowed");
     }
 
-    bool is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings->CritterSlotMultiItem.size() && self->GetEngine()->Settings->CritterSlotMultiItem[static_cast<size_t>(slot)];
+    bool is_multi_item_allowed = static_cast<size_t>(slot) < self->GetEngine()->Settings->Critter.CritterSlotMultiItem.size() && self->GetEngine()->Settings->Critter.CritterSlotMultiItem[static_cast<size_t>(slot)];
 
     if (is_multi_item_allowed) {
         auto from_slot = item->GetCritterSlot();
@@ -883,7 +807,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     self->StopMoving();
 
     if (speed == 0) {
-        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
         failed_moving->Complete(MovingState::CantMove);
         return failed_moving;
     }
@@ -891,7 +815,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gag_callback_func) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gag_callback_func)), self](ptr<const Item> gag) mutable { return gag_cb->Call(self, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gag_callback_func)), self](ptr<const Item> gag) mutable { return gag_cb->Call(self, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
@@ -922,7 +846,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
             break;
         }
 
-        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
 
         if (state == MovingState::HexBusy) {
             failed_moving->SetBlockHexes(self->GetHex(), hex);
@@ -932,7 +856,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
         return failed_moving;
     }
 
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
+    auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine->StartCritterMoving(self, moving, nullptr);
     return moving;
 }

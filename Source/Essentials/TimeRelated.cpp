@@ -41,9 +41,9 @@ const timespan timespan::zero;
 const nanotime nanotime::zero;
 const synctime synctime::zero;
 
-struct LocalTimeData
+struct local_time_data
 {
-    LocalTimeData()
+    local_time_data()
     {
         auto now = std::chrono::system_clock::now();
         auto t = std::chrono::system_clock::to_time_t(now);
@@ -52,18 +52,18 @@ struct LocalTimeData
         std::tm gtm = *std::gmtime(&lt); // NOLINT(concurrency-mt-unsafe)
         std::time_t gt = std::mktime(&gtm);
         int64_t offset = lt - gt;
-        Offset = std::chrono::seconds(offset);
+        utc_offset = std::chrono::seconds(offset);
     }
 
-    std::chrono::system_clock::duration Offset {};
+    std::chrono::system_clock::duration utc_offset {};
 };
-FO_GLOBAL_DATA(LocalTimeData, LocalTime);
+FO_GLOBAL_DATA(local_time_data, local_time);
 
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 {
     time_desc_t result;
 
-    auto now_sys = std::chrono::system_clock::now() + (local ? LocalTime->Offset : std::chrono::seconds(0));
+    auto now_sys = std::chrono::system_clock::now() + (local ? local_time->utc_offset : std::chrono::seconds(0));
     auto time_sys = now_sys + std::chrono::duration_cast<std::chrono::system_clock::duration>(time_offset.value());
 
     auto ymd_days = std::chrono::floor<std::chrono::days>(time_sys);
@@ -113,19 +113,19 @@ auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, in
     auto days_sys = std::chrono::sys_days {ymd};
     auto time_of_day = std::chrono::hours {hour} + std::chrono::minutes {minute} + std::chrono::seconds {second} + std::chrono::milliseconds {millisecond} + std::chrono::microseconds {microsecond} + std::chrono::nanoseconds {nanosecond};
     auto target_sys = std::chrono::sys_time<std::chrono::nanoseconds> {days_sys + time_of_day};
-    auto now_sys = std::chrono::system_clock::now() + (local ? LocalTime->Offset : std::chrono::seconds(0));
+    auto now_sys = std::chrono::system_clock::now() + (local ? local_time->utc_offset : std::chrono::seconds(0));
     auto delta = target_sys - now_sys;
 
     return std::chrono::duration_cast<steady_time_point::duration>(delta);
 }
 
-TimeMeter::TimeMeter() noexcept :
-    _startTime {nanotime::now()}
+time_meter::time_meter() noexcept :
+    _start_time {nanotime::now()}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-void TimeMeter::Pause() noexcept
+void time_meter::pause() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -133,11 +133,11 @@ void TimeMeter::Pause() noexcept
         return;
     }
 
-    _pausedDuration = GetDuration();
+    _paused_duration = get_duration();
     _paused = true;
 }
 
-void TimeMeter::Resume() noexcept
+void time_meter::resume() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -145,7 +145,7 @@ void TimeMeter::Resume() noexcept
         return;
     }
 
-    _startTime = nanotime::now() - _pausedDuration;
+    _start_time = nanotime::now() - _paused_duration;
     _paused = false;
 }
 

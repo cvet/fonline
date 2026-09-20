@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/native-extensions.html
 ---
 
 # Нативные расширения
-
 <!-- docs-translation: {"document_id":"native-extensions-guide","locale":"ru","source_path":"Docs/en/how-to/native-extensions.md","source_sha256":"6b964a987dc6d4be653e758ec1ce50e9bfc07583eb92592384d1e508c83e1d55"} -->
-
 Нативные расширения позволяют подключающему проекту добавлять код на C++ в FOnline, не перенося игровую логику в репозиторий переиспользуемого движка. Они компилируются из исходного кода в составе общей сборки, проходят через тот же конвейер метаданных и кодогенерации и линкуются с библиотеками выбранных ролей движка.
 
 Это руководство описывает архитектуру, разработку и проверку. Точные актуальные объявления приведены в сгенерированных справочниках [ролей](../reference/native-extension/roles.md), [хуков](../reference/native-extension/hooks.md), [правил биндинга](../reference/native-extension/bindings.md) и в [канонической JSON-модели](../../generated/native-extension.json).

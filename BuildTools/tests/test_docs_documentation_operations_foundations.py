@@ -56,7 +56,7 @@ class DocumentationOperationsFoundationsTests(unittest.TestCase):
         for marker in (
             "Every incoming commit is a candidate contract change",
             "Record the current engine SHA and target branch/ref",
-            "compare all eighteen runtime domains",
+            "compare all seventeen generated contract domains",
             'python -m unittest discover -s BuildTools/tests -p "test_docs_*.py"',
             "authoritative CI expansion",
         ):

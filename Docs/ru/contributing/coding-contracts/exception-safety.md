@@ -7,9 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"2ae86323d62d8fb3d5959157004361ceae162ad815ad970d685dbb4b62ba9a0e"} -->
-
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"98d763e9284ebb8cbf35c33d24638cabfb7b4db6b7b3bc787364143bbaa8abf8"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -21,7 +19,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 Пути выделения памяти движка **завершают процесс при исчерпании памяти, а не
 бросают исключение**:
 
-- `SafeAlloc::MakeRefCounted` / `MakeRaw` / `MakeUnique` / `MakeRawArr`
+- `safe_alloc::make_refcounted` / `MakeRaw` / `MakeUnique` / `MakeRawArr`
   (`Source/Essentials/MemorySystem.h`) используют `nothrow new`, освобождают
   фиксированный резерв, повторяют попытку и вызывают `ReportAndExit`. Так
   создаются все сущности (`Item`, `Critter`, `Map`, `Location`,
@@ -35,7 +33,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
   на основе `SafeAllocator<uint8_t>` до создания объектов Ozz. Каждый
   статически связанный модуль устанавливает собственный адаптер, а vendored
   исходники Ozz остаются идентичны закрепленной upstream-версии.
-- `SafeAlloc::MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` и
+- `safe_alloc::malloc_raw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` и
   выровненные варианты применяют ту же последовательность report, резерв,
   retry, `ReportAndExit` к C-совместимому выделению. Через них подключены SDL,
   Effekseer, spine-cpp, libpng и curl; низкоуровневые rpmalloc-примитивы

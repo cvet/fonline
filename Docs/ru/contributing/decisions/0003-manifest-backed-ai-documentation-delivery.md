@@ -5,9 +5,7 @@ locale: ru
 document_id: adr-manifest-backed-ai-documentation-delivery
 permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
 ---
-
 <!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"0fb099368f5a0607f8385b530b47a210e4c853efdae921fef4aeaddbc282e702"} -->
-
 # ADR-0003: доставка документации для ИИ на основе манифеста
 
 - Статус: принято

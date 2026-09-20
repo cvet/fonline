@@ -7,9 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/thread-safety-analysis.html
 ---
 
 # Анализ потокобезопасности
-
 <!-- docs-translation: {"document_id":"thread-safety-analysis","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/thread-safety-analysis.md","source_sha256":"b92dd0d64ee820868b29fc958040c34b8003dcfd043fd70da65a842de955dc29"} -->
-
 Движок аннотирует обычные mutex с помощью
 [Clang Thread Safety Analysis](https://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
 (TSA), чтобы неправильная работа с блокировками, например обращение к

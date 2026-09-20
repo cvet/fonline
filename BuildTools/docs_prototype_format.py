@@ -45,7 +45,7 @@ ENTRY_ID_PATTERN = re.compile(
     r"^prototype-format\.(section|directive|rule|entity|property)\.[A-Za-z0-9][A-Za-z0-9.-]*$"
 )
 SETTING_PATTERN = re.compile(
-    r"FIXED_SETTING\(vector<string>,\s*Baking,\s*ProtoFileExtensions,\s*(.*?)\);"
+    r"SETTING\(vector<string>,\s*Baking,\s*ProtoFileExtensions,\s*(.*?)\);"
 )
 VALID_STABILITY = {"stable", "experimental", "deprecated", "internal"}
 RUNTIME_SIDES = ("server", "client", "mapper")

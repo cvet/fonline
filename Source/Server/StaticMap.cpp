@@ -229,10 +229,10 @@ auto StaticMap::CreateHexField(msize map_size, bool static_grid) -> unique_ptr<T
     FO_STACK_TRACE_ENTRY();
 
     if (static_grid) {
-        return SafeAlloc::MakeUnique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
 
-    return SafeAlloc::MakeUnique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+    return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
 }
 
 void StaticMap::ApplyItemToField(ptr<StaticItem> item, ptr<Field> field)

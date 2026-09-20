@@ -203,8 +203,8 @@ Audio responsibilities include:
 - mixing audio;
 - locking and unlocking the audio device around critical sections.
 
-For the supported WAV/ACM/Ogg resource profiles, raw-copy delivery, effect and
-music lookup, streaming, repeat, volume, return-value, and audible-validation
+For the supported WAV/Ogg authoring profiles, AudioBaker delivery, effect and
+music lookup, playback handles and spatial updates, repeat, volume, and audible-validation
 contracts, use [Audio](../../how-to/content/audio.md) and its generated
 [audio reference](../../reference/audio/index.md). This page owns the platform
 abstraction; it does not duplicate game-facing audio authoring rules.
@@ -466,7 +466,7 @@ The compiled `RenderType` inventory and selection surface are:
 | `Null` | `Render.NullRenderer` or a headless/stub path | Implemented CPU-only validation backend; no visible GPU output. |
 | `OpenGL` | `Render.ForceOpenGL` or the last automatic GPU choice when compiled | Implemented native OpenGL/OpenGL ES/WebGL backend; render targets are flipped. |
 | `Direct3D` | `Render.ForceDirect3D` or the first automatic Windows choice | Implemented Direct3D 11 backend; render targets are not flipped. |
-| `Metal` | `Render.ForceMetal` | Direct Metal is a placeholder: the enum/platform flag exists, but forcing it throws `NotImplementedException`; there is no `Metal_Renderer`. |
+| `Metal` | `Render.ForceMetal` | Direct Metal is a placeholder: the enum/platform flag exists, but forcing it throws `AppInitException`; there is no `Metal_Renderer`. |
 | `Vulkan` | `Render.ForceVulkan` or the automatic choice before OpenGL when no earlier backend was created | Implemented dynamically loaded Vulkan backend; render targets are not flipped. |
 | `SDLGpu` | `Render.ForceSDLGpu`, optionally with `Render.SDLGpuDriver` | Implemented explicit opt-in SDL_GPU backend over Vulkan/Metal/D3D12 drivers; render targets are not flipped. |
 

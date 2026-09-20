@@ -40,7 +40,7 @@ Particle XML, registered SPARK objects, `SparkQuadRenderer`, editor behavior, ra
 
 FOFNT/BMFont descriptors, font-slot binding, bind-time scaling, text layout, rendering flags, inline colors, and validation are versioned in `FontFormatInterface.json`; `docs_font_format.py` validates parser, resource, enum, atlas, cache, and bundled-descriptor anchors and renders the [font-format reference](../Docs/en/reference/font-format/index.md). Authoring guidance lives in [Font Format And Text Layout](../Docs/en/how-to/content/font-format.md).
 
-WAV/ACM/Ogg delivery, decoder limits, effect identities and numbered variants, exact-path music, repeat timing, frontend mixing, and silent/headless behavior are versioned in `AudioInterface.json`; `docs_audio.py` derives live resource, decoder, frontend, setting, and test evidence and renders the [audio reference](../Docs/en/reference/audio/index.md). Authoring guidance lives in [Audio Resources and Playback](../Docs/en/how-to/content/audio.md).
+WAV/Ogg baking, Vorbis runtime decoding, playback handles and spatial updates, exact-path identity, mixing, and silent/headless behavior are versioned in `AudioInterface.json`; `docs_audio.py` derives live baker, resource, decoder, frontend, setting, and test evidence and renders the [audio reference](../Docs/en/reference/audio/index.md). Authoring guidance lives in [Audio Resources and Playback](../Docs/en/how-to/content/audio.md).
 
 Ogg/Theora delivery, whole-resource decoding, fullscreen queue/input/music
 behavior, embedded playback, rendering, and validation gaps are versioned in
@@ -97,7 +97,7 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs_effect_format.py` validates `EffectFormatInterface.json` against the effect baker, render-effect/runtime/cache/script API, backend conventions, project limits, and tests, then writes/checks `Docs/generated/effect-format.json` plus syntax, render-state, resource, baking, runtime, and validation pages.
 - `docs_image_format.py` validates `ImageFormatInterface.json` against ImageBaker, FOFRM/import sources, stock client factory/sheet/atlas/cache behavior, and tests, then writes/checks `Docs/generated/image-format.json`, canonical English pages under `Docs/en/reference/image-format/`, and compatibility routes under `Docs/generated/image-format/`.
 - `docs_particle_format.py` validates `ParticleFormatInterface.json` against raw-copy settings, SPARK XML/registry/descriptors, the Engine renderer, ParticleEditor, client runtime, script/model integrations, and tests, then writes/checks `Docs/generated/particle-format.json` plus XML, object, renderer, tooling, runtime, integration, and validation pages.
-- `docs_audio.py` validates `AudioInterface.json` against raw-copy settings, resource indexing, WAV/ACM/Ogg decoding, script playback, frontend conversion/mixing, headless behavior, and native-test inventory, then writes/checks `Docs/generated/audio.json` plus format, delivery, decoding, playback, and validation pages.
+- `docs_audio.py` validates `AudioInterface.json` against AudioBaker conversion/passthrough, AudioManager indexing and Vorbis decoding, script playback handles and spatial updates, frontend conversion/mixing, headless behavior, and native-test inventory, then writes/checks `Docs/generated/audio.json` plus format, delivery, decoding, playback, and validation pages.
 - `docs_video.py` validates `VideoInterface.json` against raw-copy settings, Ogg/Theora decoding, fullscreen queue/input/music/drawing, embedded script playback, renderer behavior, dependencies, and native-test inventory, then writes/checks `Docs/generated/video.json` plus format, delivery, decoding, fullscreen, embedded, and validation pages.
 - `docs_ai_control_protocol.py` validates `AiControlProtocol.json` against the reference client and runnable sample, then writes/checks `Docs/generated/ai-control-protocol.json` plus wire, method, command/event, security, and integration/validation pages.
 - `docs_package.py` validates the package documentation model and executable `package.py` parser, then writes/checks `Docs/generated/package.json` plus package reference pages.
@@ -478,12 +478,15 @@ APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace ou
 
 Every client/server resource pack is reopened after it is built — the zips written to disk and the in-memory pack embedded into the executable alike. Packaging verifies the exact entry list and streams every entry through the CRC-checking zip reader, so a damaged resource archive stops the package before it reaches either the downloadable client or the server updater source.
 
-MSI compiler/linker output is inherited by the package process. A failed `candle`, `light`, or `wixl` command
-therefore leaves its native file, ICE, or Windows Installer diagnostic in the build log before packaging exits.
-On Windows, `light` first runs with ICE validation enabled. If and only if that attempt reports the exact
-Windows Installer service-unavailable diagnostic, the creator retries the same link with `-sval`; Windows
-service accounts can therefore produce the required MSI even when the host cannot run ICE. Any authoring,
-linker, or ordinary ICE error still fails immediately, and failure of the fallback link is also fatal.
+MSI compiler/linker failures leave their native file, ICE, or Windows Installer diagnostic in the build log
+before packaging exits. Windows `candle` and `light` promote warnings to errors. The generator suppresses
+ICE91 only: every emitted MSI is explicitly per-user under `LocalAppDataFolder`, which is the exact package
+shape for which that mixed-scope warning is inapplicable. On Windows, the first `light` run keeps its output
+buffered while ICE validation is classified. A successful validated link or a terminal failure then emits that
+output. If and only if the first attempt reports the exact Windows Installer service-unavailable diagnostic,
+the creator retries the same link with `-sval`; a successful retry suppresses the superseded `error` lines so
+MSBuild does not classify the otherwise successful custom target as failed. Any authoring, linker, or ordinary
+ICE error still fails immediately, and failure of the fallback link is also fatal.
 
 An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing
 `restore|store|release --key <sha256> --archive <path>`. Before deflate, `package.py` hashes the stable entry

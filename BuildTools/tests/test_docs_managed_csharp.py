@@ -72,7 +72,7 @@ class ManagedCSharpDocumentationTests(unittest.TestCase):
             "FO_MANAGED_SCRIPTING",
             "CompileManagedScripts",
             "ManagedScriptBaker",
-            "ManagedScriptTargetFramework",
+            "ManagedScript.TargetFramework",
             "[ModuleInit]",
             "Game.YieldAsync",
             "ScriptSynchronizationContext",

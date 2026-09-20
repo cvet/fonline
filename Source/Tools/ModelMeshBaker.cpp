@@ -45,7 +45,7 @@
 extern "C" void* ufbx_malloc(size_t size)
 {
     FO_USING_NAMESPACE();
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator;
     ptr<uint8_t> bytes = allocator.allocate(size);
     return bytes.get();
 }
@@ -53,13 +53,13 @@ extern "C" void* ufbx_malloc(size_t size)
 extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
 {
     FO_USING_NAMESPACE();
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator;
     ptr<uint8_t> new_ptr = allocator.allocate(new_size);
     auto old_data = make_nptr(memory).reinterpret_as<uint8_t>();
 
     if (size_t copy_size = std::min(old_size, new_size); copy_size != 0) {
         FO_STRONG_ASSERT(old_data, "Reallocation requested a copy but the previous block pointer is null");
-        MemCopy(new_ptr, old_data, copy_size);
+        memory::copy(new_ptr, old_data, copy_size);
     }
 
     allocator.deallocate(old_data.get(), old_size);
@@ -69,7 +69,7 @@ extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
 extern "C" void ufbx_free(void* ptr, size_t old_size)
 {
     FO_USING_NAMESPACE();
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator;
     allocator.deallocate(make_nptr(ptr).reinterpret_as<uint8_t>().get(), old_size);
 }
 
@@ -82,7 +82,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        constexpr SafeAllocator<uint8_t> allocator;
+        constexpr safe_allocator<uint8_t> allocator;
         return allocator.allocate(size);
     }
 
@@ -93,7 +93,7 @@ public:
         auto memory = make_nptr(raw_memory).reinterpret_as<uint8_t>();
 
         if (memory) {
-            constexpr SafeAllocator<uint8_t> allocator;
+            constexpr safe_allocator<uint8_t> allocator;
             allocator.deallocate(memory.get(), 0);
         }
     }
@@ -211,7 +211,7 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            WriteLog("Model mesh baking error: {}", ex.what());
+            logging::write("Model mesh baking error: {}", ex.what());
             errors++;
         }
     }
@@ -267,7 +267,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
 
     // Write data
     vector<uint8_t> data;
-    auto writer = DataWriter(data);
+    auto writer = data_writer(data);
 
     WriteModelMeshData(writer, mesh_data, fname);
 
@@ -299,7 +299,7 @@ static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node, string_view fname
         throw ModelMeshBakerException("FBX hierarchy exceeds the safe depth limit at node", fname, MODEL_MESH_MAX_HIERARCHY_DEPTH, fbx_node->name.data);
     }
 
-    auto bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+    auto bone = safe_alloc::make_unique<ModelMeshBoneData>();
 
     bone->Name = fbx_node->name.data;
     bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_parent, FbxValidationContext {.FileName = fname, .ScopeName = "hierarchy", .NodeName = bone->Name, .FieldName = "node_to_parent"});
@@ -525,11 +525,11 @@ static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBone
                     skin_bone = FindBakedModelBone(root_bone, skin_bone_name);
 
                     if (!skin_bone) {
-                        WriteLog("Skin bone '{}' for mesh '{}' not found", skin_bone_name, fbx_node->name.data);
+                        logging::write("Skin bone '{}' for mesh '{}' not found", skin_bone_name, fbx_node->name.data);
                     }
                 }
                 else {
-                    WriteLog("Empty skin bone in fbx cluster for mesh '{}' not found", fbx_node->name.data);
+                    logging::write("Empty skin bone in fbx cluster for mesh '{}' not found", fbx_node->name.data);
                 }
 
                 if (!skin_bone) {

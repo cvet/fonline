@@ -5,9 +5,7 @@ locale: ru
 document_id: mapper-interactive-manual
 permalink: /Docs/ru/how-to/tools/mapper-interactive.html
 ---
-
 <!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"8984833f19d34fa517cfb1e44de7682c5f0b5528a60f586d90a576da06d37202"} -->
-
 # Интерактивное руководство по Mapper
 
 > Руководство движка по штатной интерактивной работе в Mapper. Каталоги карт,

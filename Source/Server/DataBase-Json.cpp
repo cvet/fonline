@@ -52,10 +52,10 @@ public:
 
     explicit DbJson(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _storageDir {fs_make_writable_path(db_settings->UserWritablePath, storage_dir)},
-        _jsonIndent {db_settings->JsonIndent}
+        _storageDir {fs::make_writable_path(db_settings->Common.UserWritablePath, storage_dir)},
+        _jsonIndent {db_settings->DataBase.JsonIndent}
     {
-        fs_create_directories(_storageDir);
+        fs::create_directories(_storageDir);
         StartCommitThread();
     }
 
@@ -72,7 +72,7 @@ protected:
 
         string dir = strex("{}/{}", _storageDir, collection_name).str();
 
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't ensure collection directory", dir);
         }
     }
@@ -87,7 +87,7 @@ protected:
         vector<DataBaseKey> ids;
 
         std::error_code ec;
-        auto dir_path = std::filesystem::path {fs_make_path(strex(_storageDir).combine_path(collection_name))};
+        auto dir_path = std::filesystem::path {fs::make_path(strex(_storageDir).combine_path(collection_name))};
         auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
 
         if (!ec) {
@@ -134,26 +134,24 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        return ReadRecordFile(collection_name, GetCollectionKeyType(collection_name), id);
+    }
 
-        auto json = fs_read_file(path);
+    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    {
+        FO_STACK_TRACE_ENTRY();
 
-        if (!json) {
-            return {};
+        scoped_lock locker {_storageLocker};
+
+        DataBaseKeyType key_type = GetCollectionKeyType(collection_name);
+        vector<AnyData::Document> docs;
+        docs.reserve(ids.size());
+
+        for (const auto& id : ids) {
+            docs.emplace_back(ReadRecordFile(collection_name, key_type, id));
         }
 
-        bson_t bson;
-        bson_error_t error;
-
-        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
-            throw DataBaseException("DbJson bson_init_from_json", path);
-        }
-
-        AnyData::Document doc;
-        BsonToDocument(&bson, doc);
-
-        bson_destroy(&bson);
-        return doc;
+        return docs;
     }
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -166,7 +164,7 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        if (fs_exists(path)) {
+        if (fs::exists(path)) {
             throw DataBaseException("DbJson File exists for inserting", path);
         }
 
@@ -189,19 +187,19 @@ protected:
 
         string dir = strex(path).extract_dir().str();
 
-        if (!dir.empty() && !fs_create_directories(dir)) {
+        if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file", path);
         }
 
         string tmp_path = strex("{}.tmp", path).str();
 
-        if (!fs_write_file(tmp_path, pretty_json_dump)) {
-            fs_remove_file(tmp_path);
+        if (!fs::write_file(tmp_path, pretty_json_dump)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't write file", path);
         }
 
-        if (!fs_rename(tmp_path, path)) {
-            fs_remove_file(tmp_path);
+        if (!fs::rename(tmp_path, path)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't commit file", path);
         }
     }
@@ -216,7 +214,7 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        auto json = fs_read_file(path);
+        auto json = fs::read_file(path);
 
         if (!json) {
             throw DataBaseException("DbJson Can't open file for reading", path);
@@ -246,19 +244,19 @@ protected:
 
         string dir = strex(path).extract_dir().str();
 
-        if (!dir.empty() && !fs_create_directories(dir)) {
+        if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file for writing", path);
         }
 
         string tmp_path = strex("{}.tmp", path).str();
 
-        if (!fs_write_file(tmp_path, pretty_json_dump)) {
-            fs_remove_file(tmp_path);
+        if (!fs::write_file(tmp_path, pretty_json_dump)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't write file", path);
         }
 
-        if (!fs_rename(tmp_path, path)) {
-            fs_remove_file(tmp_path);
+        if (!fs::rename(tmp_path, path)) {
+            fs::remove_file(tmp_path);
             throw DataBaseException("DbJson Can't commit file", path);
         }
     }
@@ -271,12 +269,37 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        if (!fs_remove_file(path)) {
+        if (!fs::remove_file(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
         }
     }
 
 private:
+    AnyData::Document ReadRecordFile(hstring collection_name, DataBaseKeyType key_type, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, key_type));
+        auto json = fs::read_file(path);
+
+        if (!json) {
+            return {};
+        }
+
+        bson_t bson;
+        bson_error_t error;
+
+        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
+            throw DataBaseException("DbJson bson_init_from_json", path);
+        }
+
+        auto destroy_bson = scope_exit([&bson]() noexcept { bson_destroy(&bson); });
+
+        AnyData::Document doc;
+        BsonToDocument(&bson, doc);
+        return doc;
+    }
+
     static auto FormatJsonStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type) -> string
     {
         if (GetDbKeyType(key) != key_type) {
@@ -309,7 +332,7 @@ private:
 auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     InitializeBsonMemory();
-    return SafeAlloc::MakeUnique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
+    return safe_alloc::make_unique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE

@@ -5,9 +5,7 @@ locale: ru
 document_id: mapper-tools
 permalink: /Docs/ru/how-to/tools/mapper.html
 ---
-
-<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"7606963147a4cae58cca5cc8a5fa96be221b048b710ecb5a532a82e636f72dab"} -->
-
+<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"58433e86f26e8a222da9dd4c255a24779b6138319d234b87644d0c6946611713"} -->
 # Инструменты Mapper
 
 > Документация движка по переиспользуемым API жизненного цикла Mapper,
@@ -55,7 +53,7 @@ overlay inputs делают captures сравнимыми, но не обеща�
 - скриптовыми методами `Game.*` на стороне Mapper;
 - внеэкранным режимом хоста `Render.HeadlessWindow`;
 - управлением камерой, оверлеями, видимостью и прокруткой для автоматизации;
-- чтением TGA-снимков и диагностикой атласов из render target Mapper;
+- чтением PNG-снимков и TGA-диагностикой атласов из render target Mapper;
 - независимым от подсистемы предпросмотром частиц и редактором исходников
   SPARK.
 
@@ -319,8 +317,8 @@ runtime-атласа. Точные цвета и правила времени �
    target;
 4. считывает RGBA-пиксели из этой цели;
 5. переворачивает строки, если render texture сообщает инвертированную высоту;
-6. нормализует выходной путь и записывает через общий для движка помощник
-   `ImageWriter::WriteSimplePng`.
+6. нормализует относительный выходной путь внутри `Common.UserWritablePath` и
+   записывает через общий для движка помощник `ImageWriter::WriteSimplePng`.
 
 Метод захватывает рисование скриптового интерфейса Mapper, уже находящееся в
 цели карты, но не более поздние меню и окна ImGui уровня приложения.

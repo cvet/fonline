@@ -22,12 +22,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-critter-changedir-67a8092053"></a>
 - [`symbol-script-method-client-critter-changedir-67a8092053`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-changedir-67a8092053)
 
-<a id="symbol-script-method-client-critter-countitem-4ee2c4b446f28b4f-2d11f58568"></a>
-- [`symbol-script-method-client-critter-countitem-4ee2c4b446f28b4f-2d11f58568`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-countitem-4ee2c4b446f28b4f-2d11f58568)
-
-<a id="symbol-script-method-client-critter-countitem-76cf1cb69552d1b1-95ab60b6de"></a>
-- [`symbol-script-method-client-critter-countitem-76cf1cb69552d1b1-95ab60b6de`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-countitem-76cf1cb69552d1b1-95ab60b6de)
-
 <a id="symbol-script-method-client-critter-getalpha-c633168d06"></a>
 - [`symbol-script-method-client-critter-getalpha-c633168d06`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getalpha-c633168d06)
 
@@ -378,6 +372,18 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-getitem-773250f0c8"></a>
 - [`symbol-script-method-client-game-getitem-773250f0c8`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getitem-773250f0c8)
 
+<a id="symbol-script-method-client-game-getmusicvolume-3f6ca7e326"></a>
+- [`symbol-script-method-client-game-getmusicvolume-3f6ca7e326`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getmusicvolume-3f6ca7e326)
+
+<a id="symbol-script-method-client-game-getping-3cd76df249"></a>
+- [`symbol-script-method-client-game-getping-3cd76df249`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getping-3cd76df249)
+
+<a id="symbol-script-method-client-game-getsoundnames-4adafd67d4"></a>
+- [`symbol-script-method-client-game-getsoundnames-4adafd67d4`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getsoundnames-4adafd67d4)
+
+<a id="symbol-script-method-client-game-getsoundvolume-4387d3e6c6"></a>
+- [`symbol-script-method-client-game-getsoundvolume-4387d3e6c6`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getsoundvolume-4387d3e6c6)
+
 <a id="symbol-script-method-client-game-getspritesize-15077f6fce"></a>
 - [`symbol-script-method-client-game-getspritesize-15077f6fce`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspritesize-15077f6fce)
 
@@ -410,6 +416,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-game-hascurplayer-b03cc14539"></a>
 - [`symbol-script-method-client-game-hascurplayer-b03cc14539`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-hascurplayer-b03cc14539)
+
+<a id="symbol-script-method-client-game-isalwaysontop-b2caf43278"></a>
+- [`symbol-script-method-client-game-isalwaysontop-b2caf43278`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-isalwaysontop-b2caf43278)
 
 <a id="symbol-script-method-client-game-iscacheentry-856880e9bf"></a>
 - [`symbol-script-method-client-game-iscacheentry-856880e9bf`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-iscacheentry-856880e9bf)
@@ -465,8 +474,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-playparticlewithseed-33df2b15ba"></a>
 - [`symbol-script-method-client-game-playparticlewithseed-33df2b15ba`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-playparticlewithseed-33df2b15ba)
 
-<a id="symbol-script-method-client-game-playsound-1d723f4b19"></a>
-- [`symbol-script-method-client-game-playsound-1d723f4b19`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-playsound-1d723f4b19)
+<a id="symbol-script-method-client-game-playsound-1aa5e922f54f38a5-698b6f823d"></a>
+- [`symbol-script-method-client-game-playsound-1aa5e922f54f38a5-698b6f823d`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-playsound-1aa5e922f54f38a5-698b6f823d)
+
+<a id="symbol-script-method-client-game-playsound-fac885e1d1fb5d17-8c2e5d6dd1"></a>
+- [`symbol-script-method-client-game-playsound-fac885e1d1fb5d17-8c2e5d6dd1`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-playsound-fac885e1d1fb5d17-8c2e5d6dd1)
 
 <a id="symbol-script-method-client-game-playsprite-d4c7215e5b"></a>
 - [`symbol-script-method-client-game-playsprite-d4c7215e5b`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-playsprite-d4c7215e5b)
@@ -498,9 +510,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-pushdrawscissor-e19a5b2658"></a>
 - [`symbol-script-method-client-game-pushdrawscissor-e19a5b2658`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-pushdrawscissor-e19a5b2658)
 
-<a id="symbol-script-method-client-game-refreshalwaysontop-2ed66fa6b0"></a>
-- [`symbol-script-method-client-game-refreshalwaysontop-2ed66fa6b0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-refreshalwaysontop-2ed66fa6b0)
-
 <a id="symbol-script-method-client-game-removecacheentry-e6f81795d3"></a>
 - [`symbol-script-method-client-game-removecacheentry-e6f81795d3`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-removecacheentry-e6f81795d3)
 
@@ -515,6 +524,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-game-savetext-99aced2aa3"></a>
 - [`symbol-script-method-client-game-savetext-99aced2aa3`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-savetext-99aced2aa3)
+
+<a id="symbol-script-method-client-game-screensize-fb665af6e6"></a>
+- [`symbol-script-method-client-game-screensize-fb665af6e6`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-screensize-fb665af6e6)
+
+<a id="symbol-script-method-client-game-setalwaysontop-47b7aca50a"></a>
+- [`symbol-script-method-client-game-setalwaysontop-47b7aca50a`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setalwaysontop-47b7aca50a)
 
 <a id="symbol-script-method-client-game-setcachedata-34c4e9183aea7e54-277390802d"></a>
 - [`symbol-script-method-client-game-setcachedata-34c4e9183aea7e54-277390802d`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setcachedata-34c4e9183aea7e54-277390802d)
@@ -540,6 +555,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-setmousepos-5a79d57ce3"></a>
 - [`symbol-script-method-client-game-setmousepos-5a79d57ce3`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setmousepos-5a79d57ce3)
 
+<a id="symbol-script-method-client-game-setmusicvolume-0a58ee1873"></a>
+- [`symbol-script-method-client-game-setmusicvolume-0a58ee1873`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setmusicvolume-0a58ee1873)
+
 <a id="symbol-script-method-client-game-setparticlescale-40a599ce60"></a>
 - [`symbol-script-method-client-game-setparticlescale-40a599ce60`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setparticlescale-40a599ce60)
 
@@ -548,6 +566,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-game-setscreenkeyboard-bfc416ab93"></a>
 - [`symbol-script-method-client-game-setscreenkeyboard-bfc416ab93`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setscreenkeyboard-bfc416ab93)
+
+<a id="symbol-script-method-client-game-setsoundvolume-45493f3dd5"></a>
+- [`symbol-script-method-client-game-setsoundvolume-45493f3dd5`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setsoundvolume-45493f3dd5)
 
 <a id="symbol-script-method-client-game-setspritetime-a88d9658c0"></a>
 - [`symbol-script-method-client-game-setspritetime-a88d9658c0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setspritetime-a88d9658c0)
@@ -606,6 +627,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-togglefullscreen-5d7b50617b"></a>
 - [`symbol-script-method-client-game-togglefullscreen-5d7b50617b`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-togglefullscreen-5d7b50617b)
 
+<a id="symbol-script-method-client-game-updatesound-4023093ac6"></a>
+- [`symbol-script-method-client-game-updatesound-4023093ac6`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-updatesound-4023093ac6)
+
 <a id="group-method-client-imgui-2791b47759"></a>
 - [`group-method-client-imgui-2791b47759`](../../en/reference/script-api/methods.md#group-method-client-imgui-2791b47759)
 
@@ -626,11 +650,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 Continue with the [canonical reference](../../en/reference/script-api/methods.md).
 
-<a id="symbol-script-method-client-item-clone-43d6383393a16fcc-ad699ff368"></a>
-- [`symbol-script-method-client-item-clone-43d6383393a16fcc-ad699ff368`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-clone-43d6383393a16fcc-ad699ff368)
-
-<a id="symbol-script-method-client-item-clone-9b8dad54da3da661-110bd1c30c"></a>
-- [`symbol-script-method-client-item-clone-9b8dad54da3da661-110bd1c30c`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-clone-9b8dad54da3da661-110bd1c30c)
+<a id="symbol-script-method-client-item-clone-66a65b1f11"></a>
+- [`symbol-script-method-client-item-clone-66a65b1f11`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-clone-66a65b1f11)
 
 <a id="symbol-script-method-client-item-finish-1f467d98ac"></a>
 - [`symbol-script-method-client-item-finish-1f467d98ac`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-finish-1f467d98ac)
@@ -783,6 +804,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-getitemsonhex-ca81df60b2"></a>
 - [`symbol-script-method-client-map-getitemsonhex-ca81df60b2`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getitemsonhex-ca81df60b2)
 
+<a id="symbol-script-method-client-map-getmanualscroll-2ce16a5c20"></a>
+- [`symbol-script-method-client-map-getmanualscroll-2ce16a5c20`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getmanualscroll-2ce16a5c20)
+
 <a id="symbol-script-method-client-map-getpath-11a78e57794a1f73-b9e79282da"></a>
 - [`symbol-script-method-client-map-getpath-11a78e57794a1f73-b9e79282da`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getpath-11a78e57794a1f73-b9e79282da)
 
@@ -803,6 +827,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-map-getvisiblehexes-f304ec4403"></a>
 - [`symbol-script-method-client-map-getvisiblehexes-f304ec4403`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblehexes-f304ec4403)
+
+<a id="symbol-script-method-client-map-getvisiblelayers-be4054caf4"></a>
+- [`symbol-script-method-client-map-getvisiblelayers-be4054caf4`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblelayers-be4054caf4)
 
 <a id="symbol-script-method-client-map-isautoscrolling-323a5198de"></a>
 - [`symbol-script-method-client-map-isautoscrolling-323a5198de`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-isautoscrolling-323a5198de)
@@ -852,6 +879,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-sethiddenroof-6abaff8914"></a>
 - [`symbol-script-method-client-map-sethiddenroof-6abaff8914`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-sethiddenroof-6abaff8914)
 
+<a id="symbol-script-method-client-map-setmanualscroll-1e8fd79f50"></a>
+- [`symbol-script-method-client-map-setmanualscroll-1e8fd79f50`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-setmanualscroll-1e8fd79f50)
+
 <a id="symbol-script-method-client-map-setscreensize-a9d374f794"></a>
 - [`symbol-script-method-client-map-setscreensize-a9d374f794`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-setscreensize-a9d374f794)
 
@@ -864,12 +894,18 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-settransparentegg-d4f73ea0d2898f79-41e0f52244"></a>
 - [`symbol-script-method-client-map-settransparentegg-d4f73ea0d2898f79-41e0f52244`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-settransparentegg-d4f73ea0d2898f79-41e0f52244)
 
+<a id="symbol-script-method-client-map-setvisiblelayers-876540cf37"></a>
+- [`symbol-script-method-client-map-setvisiblelayers-876540cf37`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-setvisiblelayers-876540cf37)
+
 <a id="group-method-common-game-ab04446c71"></a>
 - [`group-method-common-game-ab04446c71`](../../en/reference/script-api/methods.md#group-method-common-game-ab04446c71)
 
 ## <code>Game</code> (common)
 
 Continue with the [canonical reference](../../en/reference/script-api/methods.md).
+
+<a id="symbol-script-method-common-game-androidbuild-a75d36c965"></a>
+- [`symbol-script-method-common-game-androidbuild-a75d36c965`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-androidbuild-a75d36c965)
 
 <a id="symbol-script-method-common-game-breakintodebugger-34d79d0fc0"></a>
 - [`symbol-script-method-common-game-breakintodebugger-34d79d0fc0`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-breakintodebugger-34d79d0fc0)
@@ -901,8 +937,17 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-counttimeevent-e41a67022275199d-1d6389e759"></a>
 - [`symbol-script-method-common-game-counttimeevent-e41a67022275199d-1d6389e759`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-e41a67022275199d-1d6389e759)
 
+<a id="symbol-script-method-common-game-currentlanguage-a1c00a74fa"></a>
+- [`symbol-script-method-common-game-currentlanguage-a1c00a74fa`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-currentlanguage-a1c00a74fa)
+
+<a id="symbol-script-method-common-game-debugbuild-6af1aae67f"></a>
+- [`symbol-script-method-common-game-debugbuild-6af1aae67f`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-debugbuild-6af1aae67f)
+
 <a id="symbol-script-method-common-game-decodeutf8-5d3b2bf6cb"></a>
 - [`symbol-script-method-common-game-decodeutf8-5d3b2bf6cb`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-decodeutf8-5d3b2bf6cb)
+
+<a id="symbol-script-method-common-game-desktopbuild-4d04acc2c0"></a>
+- [`symbol-script-method-common-game-desktopbuild-4d04acc2c0`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-desktopbuild-4d04acc2c0)
 
 <a id="symbol-script-method-common-game-encodeutf8-0facf943fc"></a>
 - [`symbol-script-method-common-game-encodeutf8-0facf943fc`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-encodeutf8-0facf943fc)
@@ -973,6 +1018,15 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-getunixtime-baec98680c"></a>
 - [`symbol-script-method-common-game-getunixtime-baec98680c`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-getunixtime-baec98680c)
 
+<a id="symbol-script-method-common-game-gitbranch-50a317b86f"></a>
+- [`symbol-script-method-common-game-gitbranch-50a317b86f`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-gitbranch-50a317b86f)
+
+<a id="symbol-script-method-common-game-gitcommit-5da5965d98"></a>
+- [`symbol-script-method-common-game-gitcommit-5da5965d98`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-gitcommit-5da5965d98)
+
+<a id="symbol-script-method-common-game-iosbuild-e79423bc59"></a>
+- [`symbol-script-method-common-game-iosbuild-e79423bc59`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-iosbuild-e79423bc59)
+
 <a id="symbol-script-method-common-game-imgui-997493473a"></a>
 - [`symbol-script-method-common-game-imgui-997493473a`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-imgui-997493473a)
 
@@ -982,8 +1036,23 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-isresourcepresent-2f93a412e0"></a>
 - [`symbol-script-method-common-game-isresourcepresent-2f93a412e0`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-isresourcepresent-2f93a412e0)
 
+<a id="symbol-script-method-common-game-linuxbuild-98d372437e"></a>
+- [`symbol-script-method-common-game-linuxbuild-98d372437e`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-linuxbuild-98d372437e)
+
 <a id="symbol-script-method-common-game-log-139feaf8dc"></a>
 - [`symbol-script-method-common-game-log-139feaf8dc`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-log-139feaf8dc)
+
+<a id="symbol-script-method-common-game-macosbuild-c65e2c0e95"></a>
+- [`symbol-script-method-common-game-macosbuild-c65e2c0e95`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-macosbuild-c65e2c0e95)
+
+<a id="symbol-script-method-common-game-mapdircount-f02a717523"></a>
+- [`symbol-script-method-common-game-mapdircount-f02a717523`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-mapdircount-f02a717523)
+
+<a id="symbol-script-method-common-game-maphexagonal-001982bd00"></a>
+- [`symbol-script-method-common-game-maphexagonal-001982bd00`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-maphexagonal-001982bd00)
+
+<a id="symbol-script-method-common-game-mapsquare-61d2674e9e"></a>
+- [`symbol-script-method-common-game-mapsquare-61d2674e9e`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-mapsquare-61d2674e9e)
 
 <a id="symbol-script-method-common-game-openlink-a07dae2ec6"></a>
 - [`symbol-script-method-common-game-openlink-a07dae2ec6`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-openlink-a07dae2ec6)
@@ -1096,6 +1165,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-stoptimeevent-be90949683fff93d-74d536c84f"></a>
 - [`symbol-script-method-common-game-stoptimeevent-be90949683fff93d-74d536c84f`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-stoptimeevent-be90949683fff93d-74d536c84f)
 
+<a id="symbol-script-method-common-game-tabletbuild-36fcbe38fb"></a>
+- [`symbol-script-method-common-game-tabletbuild-36fcbe38fb`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-tabletbuild-36fcbe38fb)
+
 <a id="symbol-script-method-common-game-tracehexline-8955c6e7c8318b5a-098901f26e"></a>
 - [`symbol-script-method-common-game-tracehexline-8955c6e7c8318b5a-098901f26e`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-tracehexline-8955c6e7c8318b5a-098901f26e)
 
@@ -1107,6 +1179,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-common-game-unpacktime-d44cf634db"></a>
 - [`symbol-script-method-common-game-unpacktime-d44cf634db`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-unpacktime-d44cf634db)
+
+<a id="symbol-script-method-common-game-webbuild-e56afff00e"></a>
+- [`symbol-script-method-common-game-webbuild-e56afff00e`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-webbuild-e56afff00e)
+
+<a id="symbol-script-method-common-game-windowsbuild-ed0c6ecb5a"></a>
+- [`symbol-script-method-common-game-windowsbuild-ed0c6ecb5a`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-windowsbuild-ed0c6ecb5a)
 
 <a id="group-method-common-imgui-fead77be1b"></a>
 - [`group-method-common-imgui-fead77be1b`](../../en/reference/script-api/methods.md#group-method-common-imgui-fead77be1b)
@@ -1905,6 +1983,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-mapper-game-getselectedentity-2b2346345e"></a>
 - [`symbol-script-method-mapper-game-getselectedentity-2b2346345e`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-getselectedentity-2b2346345e)
 
+<a id="symbol-script-method-mapper-game-getvisiblemaplayers-63d70e9cdf"></a>
+- [`symbol-script-method-mapper-game-getvisiblemaplayers-63d70e9cdf`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-getvisiblemaplayers-63d70e9cdf)
+
 <a id="symbol-script-method-mapper-game-ismapperhexoverlayvisible-286bc35688"></a>
 - [`symbol-script-method-mapper-game-ismapperhexoverlayvisible-286bc35688`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-ismapperhexoverlayvisible-286bc35688)
 
@@ -1962,6 +2043,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-mapper-game-setmapperzoom-bdd933c596"></a>
 - [`symbol-script-method-mapper-game-setmapperzoom-bdd933c596`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-setmapperzoom-bdd933c596)
 
+<a id="symbol-script-method-mapper-game-setmousescroll-51df414507"></a>
+- [`symbol-script-method-mapper-game-setmousescroll-51df414507`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-setmousescroll-51df414507)
+
+<a id="symbol-script-method-mapper-game-setvisiblemaplayers-77de5efe9f"></a>
+- [`symbol-script-method-mapper-game-setvisiblemaplayers-77de5efe9f`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-setvisiblemaplayers-77de5efe9f)
+
 <a id="symbol-script-method-mapper-game-showmap-5ceb662d58"></a>
 - [`symbol-script-method-mapper-game-showmap-5ceb662d58`](../../en/reference/script-api/methods.md#symbol-script-method-mapper-game-showmap-5ceb662d58)
 
@@ -1999,11 +2086,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-critter-action-991e7faca3"></a>
 - [`symbol-script-method-server-critter-action-991e7faca3`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-action-991e7faca3)
 
-<a id="symbol-script-method-server-critter-additem-6ec8ddf0df24ef8b-d0f7d80350"></a>
-- [`symbol-script-method-server-critter-additem-6ec8ddf0df24ef8b-d0f7d80350`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-additem-6ec8ddf0df24ef8b-d0f7d80350)
+<a id="symbol-script-method-server-critter-additem-6029176d1f44719d-0a5a968002"></a>
+- [`symbol-script-method-server-critter-additem-6029176d1f44719d-0a5a968002`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-additem-6029176d1f44719d-0a5a968002)
 
-<a id="symbol-script-method-server-critter-additem-ec4fbc5515e08a6f-b7bb98e595"></a>
-- [`symbol-script-method-server-critter-additem-ec4fbc5515e08a6f-b7bb98e595`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-additem-ec4fbc5515e08a6f-b7bb98e595)
+<a id="symbol-script-method-server-critter-additem-e8b1d5e540061d17-8f320e8d05"></a>
+- [`symbol-script-method-server-critter-additem-e8b1d5e540061d17-8f320e8d05`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-additem-e8b1d5e540061d17-8f320e8d05)
 
 <a id="symbol-script-method-server-critter-attachtocritter-f0b91cebd9"></a>
 - [`symbol-script-method-server-critter-attachtocritter-f0b91cebd9`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-attachtocritter-f0b91cebd9)
@@ -2013,24 +2100,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-critter-changemovingspeed-70a6123348"></a>
 - [`symbol-script-method-server-critter-changemovingspeed-70a6123348`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-changemovingspeed-70a6123348)
-
-<a id="symbol-script-method-server-critter-countitem-4ee2c4b446f28b4f-4f38ead1d7"></a>
-- [`symbol-script-method-server-critter-countitem-4ee2c4b446f28b4f-4f38ead1d7`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-countitem-4ee2c4b446f28b4f-4f38ead1d7)
-
-<a id="symbol-script-method-server-critter-countitem-76cf1cb69552d1b1-413c731dbf"></a>
-- [`symbol-script-method-server-critter-countitem-76cf1cb69552d1b1-413c731dbf`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-countitem-76cf1cb69552d1b1-413c731dbf)
-
-<a id="symbol-script-method-server-critter-destroyitem-26ca271deb00c7af-35750ea85b"></a>
-- [`symbol-script-method-server-critter-destroyitem-26ca271deb00c7af-35750ea85b`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-destroyitem-26ca271deb00c7af-35750ea85b)
-
-<a id="symbol-script-method-server-critter-destroyitem-978a393a4a080f2f-7cb3511851"></a>
-- [`symbol-script-method-server-critter-destroyitem-978a393a4a080f2f-7cb3511851`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-destroyitem-978a393a4a080f2f-7cb3511851)
-
-<a id="symbol-script-method-server-critter-destroyitem-bfe9277442704d41-4d80388b29"></a>
-- [`symbol-script-method-server-critter-destroyitem-bfe9277442704d41-4d80388b29`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-destroyitem-bfe9277442704d41-4d80388b29)
-
-<a id="symbol-script-method-server-critter-destroyitem-d9df41ed759d2571-33a26bb8f3"></a>
-- [`symbol-script-method-server-critter-destroyitem-d9df41ed759d2571-33a26bb8f3`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-destroyitem-d9df41ed759d2571-33a26bb8f3)
 
 <a id="symbol-script-method-server-critter-detachallcritters-501bcdc666"></a>
 - [`symbol-script-method-server-critter-detachallcritters-501bcdc666`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-detachallcritters-501bcdc666)
@@ -2201,6 +2270,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-entity-counttimeevent-e41a67022275199d-775719831e"></a>
 - [`symbol-script-method-server-entity-counttimeevent-e41a67022275199d-775719831e`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-e41a67022275199d-775719831e)
 
+<a id="symbol-script-method-server-entity-getrefcount-faed3efae7"></a>
+- [`symbol-script-method-server-entity-getrefcount-faed3efae7`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-getrefcount-faed3efae7)
+
 <a id="symbol-script-method-server-entity-ispersistent-91b84cf787"></a>
 - [`symbol-script-method-server-entity-ispersistent-91b84cf787`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-ispersistent-91b84cf787)
 
@@ -2301,6 +2373,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-callstaticitemfunction-fe9136fa13"></a>
 - [`symbol-script-method-server-game-callstaticitemfunction-fe9136fa13`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-callstaticitemfunction-fe9136fa13)
 
+<a id="symbol-script-method-server-game-cloneitem-d5a9c56e8c"></a>
+- [`symbol-script-method-server-game-cloneitem-d5a9c56e8c`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-cloneitem-d5a9c56e8c)
+
 <a id="symbol-script-method-server-game-createcritter-151d7b0fa45c079e-2c01809985"></a>
 - [`symbol-script-method-server-game-createcritter-151d7b0fa45c079e-2c01809985`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createcritter-151d7b0fa45c079e-2c01809985)
 
@@ -2312,6 +2387,15 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-createcritter-e8d3f028fa79075f-d74fd8ff8e"></a>
 - [`symbol-script-method-server-game-createcritter-e8d3f028fa79075f-d74fd8ff8e`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createcritter-e8d3f028fa79075f-d74fd8ff8e)
+
+<a id="symbol-script-method-server-game-createitem-27766bb940021b1f-7912ac04b0"></a>
+- [`symbol-script-method-server-game-createitem-27766bb940021b1f-7912ac04b0`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-27766bb940021b1f-7912ac04b0)
+
+<a id="symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904"></a>
+- [`symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904)
+
+<a id="symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4"></a>
+- [`symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4)
 
 <a id="symbol-script-method-server-game-createlocation-03c25a496a41709a-6204559682"></a>
 - [`symbol-script-method-server-game-createlocation-03c25a496a41709a-6204559682`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createlocation-03c25a496a41709a-6204559682)
@@ -2406,11 +2490,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-destroyentity-fb63c8afbe"></a>
 - [`symbol-script-method-server-game-destroyentity-fb63c8afbe`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-destroyentity-fb63c8afbe)
 
-<a id="symbol-script-method-server-game-destroyitem-81454288b8dbf6b1-6db2bde75b"></a>
-- [`symbol-script-method-server-game-destroyitem-81454288b8dbf6b1-6db2bde75b`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-destroyitem-81454288b8dbf6b1-6db2bde75b)
-
-<a id="symbol-script-method-server-game-destroyitem-9161ec2a1d9e60a9-ff2f6cebf8"></a>
-- [`symbol-script-method-server-game-destroyitem-9161ec2a1d9e60a9-ff2f6cebf8`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-destroyitem-9161ec2a1d9e60a9-ff2f6cebf8)
+<a id="symbol-script-method-server-game-destroyitem-0b435116da"></a>
+- [`symbol-script-method-server-game-destroyitem-0b435116da`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-destroyitem-0b435116da)
 
 <a id="symbol-script-method-server-game-destroyitems-1ec43800ef"></a>
 - [`symbol-script-method-server-game-destroyitems-1ec43800ef`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-destroyitems-1ec43800ef)
@@ -2586,20 +2667,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-loginplayertotempsession-4cbba890d1"></a>
 - [`symbol-script-method-server-game-loginplayertotempsession-4cbba890d1`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loginplayertotempsession-4cbba890d1)
 
-<a id="symbol-script-method-server-game-moveitem-01b24a3b95a72d0e-c8c0d72763"></a>
-- [`symbol-script-method-server-game-moveitem-01b24a3b95a72d0e-c8c0d72763`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitem-01b24a3b95a72d0e-c8c0d72763)
-
 <a id="symbol-script-method-server-game-moveitem-2ed0d82a6f587a26-07f79236fb"></a>
 - [`symbol-script-method-server-game-moveitem-2ed0d82a6f587a26-07f79236fb`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitem-2ed0d82a6f587a26-07f79236fb)
 
 <a id="symbol-script-method-server-game-moveitem-883528ad0763e772-329ac73c01"></a>
 - [`symbol-script-method-server-game-moveitem-883528ad0763e772-329ac73c01`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitem-883528ad0763e772-329ac73c01)
-
-<a id="symbol-script-method-server-game-moveitem-9956c3b95ef7bc5f-213060915d"></a>
-- [`symbol-script-method-server-game-moveitem-9956c3b95ef7bc5f-213060915d`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitem-9956c3b95ef7bc5f-213060915d)
-
-<a id="symbol-script-method-server-game-moveitem-9eccef0918f1fa83-842301d89b"></a>
-- [`symbol-script-method-server-game-moveitem-9eccef0918f1fa83-842301d89b`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitem-9eccef0918f1fa83-842301d89b)
 
 <a id="symbol-script-method-server-game-moveitem-c26f82c316789816-b4954c35ca"></a>
 - [`symbol-script-method-server-game-moveitem-c26f82c316789816-b4954c35ca`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitem-c26f82c316789816-b4954c35ca)
@@ -2631,6 +2703,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-syncrelease-6d0a4cb877"></a>
 - [`symbol-script-method-server-game-syncrelease-6d0a4cb877`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-syncrelease-6d0a4cb877)
 
+<a id="symbol-script-method-server-game-syncwiden-27498323eb"></a>
+- [`symbol-script-method-server-game-syncwiden-27498323eb`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-syncwiden-27498323eb)
+
 <a id="symbol-script-method-server-game-systemcall-5f9bd54717eb40b8-a4e00783af"></a>
 - [`symbol-script-method-server-game-systemcall-5f9bd54717eb40b8-a4e00783af`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-systemcall-5f9bd54717eb40b8-a4e00783af)
 
@@ -2653,11 +2728,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 Continue with the [canonical reference](../../en/reference/script-api/methods.md).
 
-<a id="symbol-script-method-server-item-additem-4fb12d5afc16cf97-3bc6145e7f"></a>
-- [`symbol-script-method-server-item-additem-4fb12d5afc16cf97-3bc6145e7f`](../../en/reference/script-api/methods.md#symbol-script-method-server-item-additem-4fb12d5afc16cf97-3bc6145e7f)
+<a id="symbol-script-method-server-item-additem-bfe6263d4ff550ad-b0c10b8f0d"></a>
+- [`symbol-script-method-server-item-additem-bfe6263d4ff550ad-b0c10b8f0d`](../../en/reference/script-api/methods.md#symbol-script-method-server-item-additem-bfe6263d4ff550ad-b0c10b8f0d)
 
-<a id="symbol-script-method-server-item-additem-7cfa2f0fd27518f9-b94fb774ad"></a>
-- [`symbol-script-method-server-item-additem-7cfa2f0fd27518f9-b94fb774ad`](../../en/reference/script-api/methods.md#symbol-script-method-server-item-additem-7cfa2f0fd27518f9-b94fb774ad)
+<a id="symbol-script-method-server-item-additem-c6fbcb98959420b1-984dc04df3"></a>
+- [`symbol-script-method-server-item-additem-c6fbcb98959420b1-984dc04df3`](../../en/reference/script-api/methods.md#symbol-script-method-server-item-additem-c6fbcb98959420b1-984dc04df3)
 
 <a id="symbol-script-method-server-item-getcritter-c897759eb6"></a>
 - [`symbol-script-method-server-item-getcritter-c897759eb6`](../../en/reference/script-api/methods.md#symbol-script-method-server-item-getcritter-c897759eb6)
@@ -2742,17 +2817,17 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-addcritter-ab45ffd3c807403c-c01df852b3"></a>
 - [`symbol-script-method-server-map-addcritter-ab45ffd3c807403c-c01df852b3`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-addcritter-ab45ffd3c807403c-c01df852b3)
 
-<a id="symbol-script-method-server-map-additem-2d1b78e701c59093-666abb8cac"></a>
-- [`symbol-script-method-server-map-additem-2d1b78e701c59093-666abb8cac`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-2d1b78e701c59093-666abb8cac)
+<a id="symbol-script-method-server-map-additem-3b5f3b7a0ad0569d-097fa6b144"></a>
+- [`symbol-script-method-server-map-additem-3b5f3b7a0ad0569d-097fa6b144`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-3b5f3b7a0ad0569d-097fa6b144)
 
-<a id="symbol-script-method-server-map-additem-66143f02aa67f0a1-b8b921ec67"></a>
-- [`symbol-script-method-server-map-additem-66143f02aa67f0a1-b8b921ec67`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-66143f02aa67f0a1-b8b921ec67)
+<a id="symbol-script-method-server-map-additem-4c836c86ebb331f9-8f6c243342"></a>
+- [`symbol-script-method-server-map-additem-4c836c86ebb331f9-8f6c243342`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-4c836c86ebb331f9-8f6c243342)
 
-<a id="symbol-script-method-server-map-additem-ceb12274c8e146ea-ba78718ee7"></a>
-- [`symbol-script-method-server-map-additem-ceb12274c8e146ea-ba78718ee7`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-ceb12274c8e146ea-ba78718ee7)
+<a id="symbol-script-method-server-map-additem-93da72a5ec69c371-9f72818a50"></a>
+- [`symbol-script-method-server-map-additem-93da72a5ec69c371-9f72818a50`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-93da72a5ec69c371-9f72818a50)
 
-<a id="symbol-script-method-server-map-additem-db03aa08dd7b9ba1-a810386245"></a>
-- [`symbol-script-method-server-map-additem-db03aa08dd7b9ba1-a810386245`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-db03aa08dd7b9ba1-a810386245)
+<a id="symbol-script-method-server-map-additem-dd69e509a0195144-3941876f15"></a>
+- [`symbol-script-method-server-map-additem-dd69e509a0195144-3941876f15`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-additem-dd69e509a0195144-3941876f15)
 
 <a id="symbol-script-method-server-map-blockhex-33ad7baabc"></a>
 - [`symbol-script-method-server-map-blockhex-33ad7baabc`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-blockhex-33ad7baabc)

@@ -1965,9 +1965,6 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-itemproperty-corner-f0304f37db"></a>
 - [`symbol-script-enum-value-itemproperty-corner-f0304f37db`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-corner-f0304f37db)
 
-<a id="symbol-script-enum-value-itemproperty-count-f6b9bd025e"></a>
-- [`symbol-script-enum-value-itemproperty-count-f6b9bd025e`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-count-f6b9bd025e)
-
 <a id="symbol-script-enum-value-itemproperty-critterid-bd77ad2c7d"></a>
 - [`symbol-script-enum-value-itemproperty-critterid-bd77ad2c7d`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-critterid-bd77ad2c7d)
 
@@ -1992,8 +1989,8 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-itemproperty-drawmultihexmesh-fd658ef9cc"></a>
 - [`symbol-script-enum-value-itemproperty-drawmultihexmesh-fd658ef9cc`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-drawmultihexmesh-fd658ef9cc)
 
-<a id="symbol-script-enum-value-itemproperty-draworderoffsethexy-603ca62ccb"></a>
-- [`symbol-script-enum-value-itemproperty-draworderoffsethexy-603ca62ccb`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-draworderoffsethexy-603ca62ccb)
+<a id="symbol-script-enum-value-itemproperty-drawordersublayer-6a1c0c9f7a"></a>
+- [`symbol-script-enum-value-itemproperty-drawordersublayer-6a1c0c9f7a`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-drawordersublayer-6a1c0c9f7a)
 
 <a id="symbol-script-enum-value-itemproperty-elevation-fa2ee215d5"></a>
 - [`symbol-script-enum-value-itemproperty-elevation-fa2ee215d5`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-elevation-fa2ee215d5)
@@ -2090,9 +2087,6 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 <a id="symbol-script-enum-value-itemproperty-shootthru-bc731b7dca"></a>
 - [`symbol-script-enum-value-itemproperty-shootthru-bc731b7dca`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-shootthru-bc731b7dca)
-
-<a id="symbol-script-enum-value-itemproperty-stackable-59c0ba3260"></a>
-- [`symbol-script-enum-value-itemproperty-stackable-59c0ba3260`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-stackable-59c0ba3260)
 
 <a id="symbol-script-enum-value-itemproperty-static-8e7c73113d"></a>
 - [`symbol-script-enum-value-itemproperty-static-8e7c73113d`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-static-8e7c73113d)
@@ -2453,6 +2447,40 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-locationproperty-none-83f012bd1c"></a>
 - [`symbol-script-enum-value-locationproperty-none-83f012bd1c`](../../en/reference/script-api/types.md#symbol-script-enum-value-locationproperty-none-83f012bd1c)
 
+<a id="symbol-script-enum-maplayers-9e454cccaa"></a>
+- [`symbol-script-enum-maplayers-9e454cccaa`](../../en/reference/script-api/types.md#symbol-script-enum-maplayers-9e454cccaa)
+
+### <code>MapLayers</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-enum-value-maplayers-all-e351f0435f"></a>
+- [`symbol-script-enum-value-maplayers-all-e351f0435f`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-all-e351f0435f)
+
+<a id="symbol-script-enum-value-maplayers-critters-86ac227379"></a>
+- [`symbol-script-enum-value-maplayers-critters-86ac227379`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-critters-86ac227379)
+
+<a id="symbol-script-enum-value-maplayers-fast-767ac1632c"></a>
+- [`symbol-script-enum-value-maplayers-fast-767ac1632c`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-fast-767ac1632c)
+
+<a id="symbol-script-enum-value-maplayers-items-560302d64c"></a>
+- [`symbol-script-enum-value-maplayers-items-560302d64c`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-items-560302d64c)
+
+<a id="symbol-script-enum-value-maplayers-none-4d5c93bbb7"></a>
+- [`symbol-script-enum-value-maplayers-none-4d5c93bbb7`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-none-4d5c93bbb7)
+
+<a id="symbol-script-enum-value-maplayers-roof-9a674610ce"></a>
+- [`symbol-script-enum-value-maplayers-roof-9a674610ce`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-roof-9a674610ce)
+
+<a id="symbol-script-enum-value-maplayers-scenery-df49ed27b4"></a>
+- [`symbol-script-enum-value-maplayers-scenery-df49ed27b4`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-scenery-df49ed27b4)
+
+<a id="symbol-script-enum-value-maplayers-tiles-99d5d934ac"></a>
+- [`symbol-script-enum-value-maplayers-tiles-99d5d934ac`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-tiles-99d5d934ac)
+
+<a id="symbol-script-enum-value-maplayers-walls-d918a01742"></a>
+- [`symbol-script-enum-value-maplayers-walls-d918a01742`](../../en/reference/script-api/types.md#symbol-script-enum-value-maplayers-walls-d918a01742)
+
 <a id="symbol-script-enum-mapproperty-cbf22f8d2d"></a>
 - [`symbol-script-enum-mapproperty-cbf22f8d2d`](../../en/reference/script-api/types.md#symbol-script-enum-mapproperty-cbf22f8d2d)
 
@@ -2680,6 +2708,28 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 <a id="symbol-script-enum-value-renderprimitivetype-trianglestrip-a4efe1c6ce"></a>
 - [`symbol-script-enum-value-renderprimitivetype-trianglestrip-a4efe1c6ce`](../../en/reference/script-api/types.md#symbol-script-enum-value-renderprimitivetype-trianglestrip-a4efe1c6ce)
+
+<a id="symbol-script-enum-scrolldirection-84a219b51c"></a>
+- [`symbol-script-enum-scrolldirection-84a219b51c`](../../en/reference/script-api/types.md#symbol-script-enum-scrolldirection-84a219b51c)
+
+### <code>ScrollDirection</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-enum-value-scrolldirection-down-67665322b3"></a>
+- [`symbol-script-enum-value-scrolldirection-down-67665322b3`](../../en/reference/script-api/types.md#symbol-script-enum-value-scrolldirection-down-67665322b3)
+
+<a id="symbol-script-enum-value-scrolldirection-left-99e791ee87"></a>
+- [`symbol-script-enum-value-scrolldirection-left-99e791ee87`](../../en/reference/script-api/types.md#symbol-script-enum-value-scrolldirection-left-99e791ee87)
+
+<a id="symbol-script-enum-value-scrolldirection-none-e53cfba89e"></a>
+- [`symbol-script-enum-value-scrolldirection-none-e53cfba89e`](../../en/reference/script-api/types.md#symbol-script-enum-value-scrolldirection-none-e53cfba89e)
+
+<a id="symbol-script-enum-value-scrolldirection-right-9ba078593b"></a>
+- [`symbol-script-enum-value-scrolldirection-right-9ba078593b`](../../en/reference/script-api/types.md#symbol-script-enum-value-scrolldirection-right-9ba078593b)
+
+<a id="symbol-script-enum-value-scrolldirection-up-b4b90c1b53"></a>
+- [`symbol-script-enum-value-scrolldirection-up-b4b90c1b53`](../../en/reference/script-api/types.md#symbol-script-enum-value-scrolldirection-up-b4b90c1b53)
 
 <a id="symbol-script-enum-transparenteggslot-7c45432993"></a>
 - [`symbol-script-enum-transparenteggslot-7c45432993`](../../en/reference/script-api/types.md#symbol-script-enum-transparenteggslot-7c45432993)
@@ -3122,8 +3172,8 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-ref-field-client-mapspriteholder-draworder-199f5cc044"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-draworder-199f5cc044`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-draworder-199f5cc044)
 
-<a id="symbol-script-ref-field-client-mapspriteholder-draworderhyoffset-e1bf12c154"></a>
-- [`symbol-script-ref-field-client-mapspriteholder-draworderhyoffset-e1bf12c154`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-draworderhyoffset-e1bf12c154)
+<a id="symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070"></a>
+- [`symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070)
 
 <a id="symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43)

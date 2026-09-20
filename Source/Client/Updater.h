@@ -54,28 +54,32 @@ enum class UpdaterResult : uint8_t
     PlatformUnsupported = 2, // Compat outdated and CanSelfUpdateNativeModules() == false (Web / iOS / Android)
     ServerMissingNativeUpdate = 3, // Compat outdated but server has no binaries for our target — config bug
     UpdaterOutdated = 4, // FO_UPDATER_VERSION mismatch; protocol is unusable
-    Failed = 5, // Any other failure: connection, disk, etc
+    Failed = 5, // Any other failure of this client: disk, bad data, etc
     MetadataMismatch = 6, // Resources are in sync with the descriptor, yet the server runs another metadata version
+    ConnectionFailed = 7, // Server unreachable or the connection dropped mid-update; an environment state, not a client defect
 };
 
-extern auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
-extern auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
-extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
-extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
+auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
+auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
+auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
+auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
 // Where this client keeps the binaries it may replace itself: the writable root when it has one, and
 // the executable's own directory otherwise
-extern auto GetClientBinaryDir(string_view user_writable_path) -> string;
-extern auto GetClientRuntimeLivePath() -> string;
-extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
+auto GetClientBinaryDir(string_view user_writable_path) -> string;
+auto GetClientRuntimeLivePath() -> string;
+auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
 // Empty without a writable root: the binaries then sit next to the exe and are replaced in place
-extern auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<string>;
-extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
-extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
-extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
-extern auto GetCurrentClientRuntimeLibraryName() -> string;
-extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
-extern void ShowUpdaterFailure(UpdaterResult result);
-extern auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
+auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<string>;
+auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
+auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
+auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
+auto GetCurrentClientRuntimeLibraryName() -> string;
+void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
+// Whether a terminal result says this client is broken. A server that is down, restarting or
+// unreachable from the player's network is not, so it is deliberately kept out of the crash reporter
+auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool;
+void ShowUpdaterFailure(UpdaterResult result);
+auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
 
 class Updater final
 {
@@ -109,7 +113,7 @@ private:
     };
 
     void AddText(string_view text);
-    void Abort(string_view text);
+    void Abort(UpdaterResult result, string_view text);
     void GetNextFile();
     void FinishResourcesUpdate();
     auto ReadLocalMetadataVersion() const -> string;
@@ -147,7 +151,7 @@ private:
     FileSystem _resources {};
     GameTimer _gameTime;
     EffectManager _effectMngr;
-    HashStorage _hashStorage {};
+    hash_storage _hashStorage {};
     SpriteManager _sprMngr;
     FontManager _fontMngr;
     nanotime _startTime {};

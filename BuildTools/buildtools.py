@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
+import io
+import json
 import os
 import platform
 import re
@@ -16,6 +19,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import tokenize
 import urllib.parse
 import urllib.request
 import zipfile
@@ -207,6 +211,7 @@ DOWNLOAD_TIMEOUT_SEC = 900
 # prepared workspaces, which are built once and then downloaded whole
 DOWNLOAD_MIRROR_VAR = 'FO_DOWNLOAD_MIRROR'
 WORKSPACE_CACHE_VAR = 'FO_WORKSPACE_CACHE'
+WORKSPACE_CACHE_GZIP_LEVEL = 1
 CI_TOKEN_VAR = 'FO_CI_TOKEN'
 CI_CA_VAR = 'FO_CI_CA'
 
@@ -311,8 +316,17 @@ ANDROID_REQUIRED_SDK_PACKAGES = (
 )
 
 
+MSBUILD_DIAGNOSTIC_SHAPE = re.compile(r'\b(error|warning)((?:\s+[^:\s]*)?)\s*:', re.IGNORECASE)
+
+
 def log(*parts: object) -> None:
 	print('[BuildTools]', *parts, flush=True)
+
+
+def describe_failure(ex: BaseException) -> str:
+	# MSBuild fails a custom build step on any output line shaped '... error <code>: ...' whatever the command returns, and
+	# urllib renders a missing cache entry exactly so ('HTTP Error 404: Not Found'), so that colon is never printed
+	return MSBUILD_DIAGNOSTIC_SHAPE.sub(r'\1\2 -', f'{type(ex).__name__} - {ex}')
 
 
 class TerminalProgress:
@@ -889,7 +903,7 @@ def workspace_cache_fetch(name: str, target_path: Path) -> bool:
 		log('Workspace cache hit:', name)
 		return True
 	except OSError as ex:
-		log(f'Workspace cache miss for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache miss for {name} ({describe_failure(ex)})')
 		remove_path_if_exists(target_path)
 		return False
 
@@ -904,7 +918,7 @@ def workspace_cache_store(name: str, source_path: Path) -> None:
 		upload_url(url, source_path)
 		log('Workspace cache filled:', name)
 	except OSError as ex:
-		log(f'Workspace cache store failed for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache store failed for {name} ({describe_failure(ex)})')
 
 
 def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path, label: str) -> None:
@@ -913,11 +927,11 @@ def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path,
 
 	try:
 		log(f'Pack {label} for the workspace cache:', archive_path)
-		with tarfile.open(archive_path, 'w:gz') as archive:
+		with tarfile.open(archive_path, 'w:gz', compresslevel=WORKSPACE_CACHE_GZIP_LEVEL) as archive:
 			archive.add(source_path, arcname=source_path.name)
 		workspace_cache_store(name, archive_path)
 	except (OSError, tarfile.TarError) as ex:
-		log(f'Workspace cache pack failed for {name} ({type(ex).__name__}: {ex})')
+		log(f'Workspace cache pack failed for {name} ({describe_failure(ex)})')
 	finally:
 		remove_path_if_exists(archive_path)
 
@@ -937,7 +951,7 @@ def download_file(url: str, target_path: Path, label: str) -> None:
 				raise
 
 			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
-			log(f'Download {label} failed ({type(ex).__name__}: {ex}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			log(f'Download {label} failed ({describe_failure(ex)}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
 			remove_path_if_exists(target_path)
 			time.sleep(delay)
 
@@ -952,7 +966,8 @@ def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = N
 	if branch_name is not None:
 		command.extend(['--branch', branch_name])
 	command.append(str(target_path))
-	run(command)
+	# A reset connection mid-clone leaves a partial checkout that git refuses to clone into, so drop it before retrying
+	run_with_retry(command, label=f'Clone {repo_url}', on_retry=lambda: remove_path_if_exists(target_path))
 
 
 def resolve_visual_studio_2022_dev_cmd() -> Path | None:
@@ -996,7 +1011,9 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 	# Private compilers avoid generator dependency paths retained from deleted runtime checkouts.
 	# PowerShell treats -p as an ambiguous script parameter; /p passes through to MSBuild
 	property_prefix = '/p:' if os.name == 'nt' else '-p:'
-	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false']
+	# Analyzers and generator translations change nothing the runtime publishes, which builds byte-identical without
+	# them, and they are much of the library compile time; the runtime's own source build turns analyzers off the same way
+	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false', f'{property_prefix}RunAnalyzers=false', f'{property_prefix}EnableXlfLocalization=false']
 	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
 	# unrelated runtime projects the same output filename, breaking generators and task publishing
 	# The nested runtime selects its own host toolchain. Outer MSBuild search paths may name optional
@@ -1097,7 +1114,7 @@ def restore_workspace_cache_tree(
 		shutil.move(str(source), str(destination))
 		return True
 	except (OSError, tarfile.TarError) as ex:
-		log(f'Cached {label} archive is unusable ({type(ex).__name__}: {ex})')
+		log(f'Cached {label} archive is unusable ({describe_failure(ex)})')
 		remove_path_if_exists(destination)
 		return False
 	finally:
@@ -2497,17 +2514,42 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
 
 
-# CoreLib reaches the OS through the interop shims on every non-Windows platform (Interop.Sys is
-# libSystem.Native), so the runtime alone is not a working runtime and libs.native must be built with it
-MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native'
+# CoreLib reaches the OS through libs.native on every non-Windows platform, and libs.sfx builds the class libraries
+# for the target from CoreLib's revision: the SDK's own shared framework matches the build host and another release
+MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native+libs.sfx'
 
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
-# subset or source patches change: an unchanged marker leaves a prepared host on the old runtime
-MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_nogl'
-MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue'
+# subset, cmake args, or source patches change: an unchanged marker leaves a prepared host on the old runtime
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators'
+MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
+MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info'
+MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
+
+# Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
+MONO_WORKSPACE_CACHE_FORMAT = 1
+
+# Target toolchains the runtime build compiles the published archives with, beyond the host's own
+MONO_TARGET_TOOLCHAIN_PINS = {
+	'browser': ('FO_EMSCRIPTEN_VERSION',),
+	'android': ('FO_ANDROID_NDK_VERSION', 'FO_ANDROID_SDK_VERSION', 'FO_ANDROID_NATIVE_API_LEVEL_NUMBER'),
+	'ios': ('FO_IOS_SDK',),
+	'iossimulator': ('FO_IOS_SDK',),
+}
+
+
+class MonoLayout(NamedTuple):
+	dotnet_runtime_arch: str
+	runtime_triplet: str
+	publish_triplet: str
+	workspace: Path
+	runtime_root: Path
+	output_dir: Path
+	clone_marker: Path
+	built_marker: Path
+	ready_marker: Path
 
 
 def resolve_mono_runtime_subset(os_name: str) -> str:
@@ -2532,7 +2574,16 @@ def resolve_mono_marker_suffix(os_name: str) -> str:
 	if os_name == 'linux':
 		return MONO_LINUX_SOURCE_MARKER_SUFFIX
 
+	if os_name == 'windows':
+		return MONO_WINDOWS_SOURCE_MARKER_SUFFIX
+
 	return MONO_SUBSET_MARKER_SUFFIX
+
+
+def resolve_mono_cmake_args() -> list[str]:
+	# Without ENABLE_OVERRIDABLE_ALLOCATORS, mono_set_allocator_vtable still returns TRUE and is a no-op
+	property_prefix = '/p:' if os.name == 'nt' else '-p:'
+	return [f'{property_prefix}CMakeArgs={MONO_OVERRIDABLE_ALLOCATORS_CMAKE}']
 
 
 PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
@@ -2643,6 +2694,82 @@ def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
 	)
 	path.write_text(text.replace(anchor, anchor + patch, 1), encoding='utf-8')
 	log('Patched', path, '- preserved the zlib-ng warning level')
+
+
+MONO_WINDOWS_DEBUG_INFO_PATCH_MARKER = '(FOnline Patch) C and C++ objects embed their debug info (/Z7)'
+
+
+def patch_runtime_windows_embedded_debug_info(runtime_root: Path) -> None:
+	# /Zi leaves debug info in a compiler PDB that the published static archives do not carry, so every consumer
+	# link reports LNK4099 per object and loses the runtime's symbols. MASM keeps /Zi, which embeds it already
+	marker = MONO_WINDOWS_DEBUG_INFO_PATCH_MARKER
+	config_flags = (
+		f'  # {marker}\n'
+		'  foreach(fo_flags_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_RELWITHDEBINFO)\n'
+		'    string(REPLACE "/Zi" "/Z7" ${fo_flags_var} "${${fo_flags_var}}")\n'
+		'  endforeach()\n'
+	)
+	patches = (
+		(runtime_root / 'eng' / 'native' / 'configurecompiler.cmake', (
+			(
+				'  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX,ASM_MASM>:/Zi>) # enable debugging information\n',
+				config_flags
+				+ '  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Z7>) # enable debugging information\n'
+				'  add_compile_options($<$<COMPILE_LANGUAGE:ASM_MASM>:/Zi>)\n',
+			),
+		)),
+		(runtime_root / 'src' / 'mono' / 'CMakeLists.txt', (
+			('  if(CMAKE_BUILD_TYPE STREQUAL "Release")\n', config_flags + '  if(CMAKE_BUILD_TYPE STREQUAL "Release")\n'),
+			(
+				'    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Zi>) # enable debugging information\n',
+				'    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Z7>) # enable debugging information\n',
+			),
+		)),
+	)
+	patched_texts = []
+
+	# Every anchor is proven before any file is written, so a moved upstream source leaves both files untouched
+	for path, replacements in patches:
+		text = path.read_text(encoding='utf-8')
+
+		if marker in text:
+			log('Already patched', path)
+			continue
+
+		for needle, replacement in replacements:
+			if text.count(needle) != 1:
+				raise SystemExit(f'Cannot patch the Windows runtime debug information format, unique anchor not found in {path}: {needle.strip()}')
+
+			text = text.replace(needle, replacement, 1)
+
+		patched_texts.append((path, text))
+
+	for path, text in patched_texts:
+		path.write_text(text, encoding='utf-8')
+		log('Patched', path, '- C and C++ objects embed their debug info')
+
+
+def patch_runtime_browser_asm_compiler(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'CMakeLists.txt'
+	text = path.read_text(encoding='utf-8')
+	marker = '(FOnline Patch) Generic ASM uses the already identified Emscripten C compiler'
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = 'elseif(HOST_WASM)\n    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	patch = (
+		'elseif(HOST_WASM)\n'
+		f'    # {marker}\n'
+		'    set (CMAKE_ASM_COMPILER_ID "${CMAKE_C_COMPILER_ID}")\n'
+		'    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	)
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the browser Mono ASM compiler ID, unique anchor not found in {path}')
+
+	path.write_text(text.replace(anchor, patch, 1), encoding='utf-8')
+	log('Patched', path, '- inherited the Emscripten C compiler ID for ASM')
 
 
 def patch_runtime_android_sources(runtime_root: Path) -> None:
@@ -2971,19 +3098,7 @@ def copy_interop_shim_libraries(runtime_root: Path, output_lib_dir: Path, os_nam
 
 
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
-	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
-	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
-	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent
-	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
-	runtime_triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
-	publish_triplet = f'{os_name}.{arch}.{config}'
-	workspace = Path(env['FO_WORKSPACE'])
-	runtime_root = workspace / 'runtime'
-	runtime_version = env['FO_DOTNET_RUNTIME'].replace('/', '_').replace('\\', '_')
-	clone_marker = workspace / f'CLONED_{runtime_version}'
-	marker_suffix = resolve_mono_marker_suffix(os_name)
-	built_marker = workspace / f'BUILT_{runtime_version}_{runtime_triplet}{marker_suffix}'
-	ready_marker = workspace / f'READY_{runtime_version}_{publish_triplet}{marker_suffix}'
+	layout = resolve_mono_layout(os_name, arch, config, env)
 
 	# A published runtime tree stands in for the source build. It is what makes a Windows target
 	# reachable from a Linux host at all: dotnet/runtime builds with the host's own toolchain and has
@@ -2991,14 +3106,87 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	prebuilt_root = env.get('FO_MANAGED_RUNTIME_PREBUILT', '')
 
 	if prebuilt_root:
-		adopt_prebuilt_mono(Path(prebuilt_root), workspace, publish_triplet, ready_marker)
-		log(f'Runtime {publish_triplet} is ready (prebuilt)!')
+		adopt_prebuilt_mono(Path(prebuilt_root), layout.workspace, layout.publish_triplet, layout.ready_marker)
+		log(f'Runtime {layout.publish_triplet} is ready (prebuilt)!')
 		return
 
 	if os_name == 'windows' and os.name != 'nt':
 		raise SystemExit(
-			f'Managed runtime for {publish_triplet} cannot be built on this host: dotnet/runtime has no Windows cross-target. '
+			f'Managed runtime for {layout.publish_triplet} cannot be built on this host: dotnet/runtime has no Windows cross-target. '
 			'Build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree')
+
+	# The runtime build takes most of a CI build job and nothing the cache name leaves out changes its output, so a job
+	# takes a tree another job published. A local FO_DOTNET_RUNTIME_ROOT is not the pinned source and is never shared
+	cache_name = ''
+
+	if not layout.ready_marker.exists() and os.environ.get(WORKSPACE_CACHE_VAR) and not env.get('FO_DOTNET_RUNTIME_ROOT'):
+		cache_name = build_mono_workspace_cache_name(os_name, arch, config, env)
+
+		if restore_mono_workspace_cache(cache_name, layout):
+			layout.ready_marker.touch()
+			log(f'Runtime {layout.publish_triplet} is ready (cached)!')
+			return
+
+		# What is published to the cache comes from a fresh clone and build, never from a source or object tree an
+		# earlier build left under markers that do not record the current build code
+		reset_marker(layout.clone_marker)
+		reset_marker(layout.built_marker)
+
+	remove_incomplete_runtime_bootstrap(layout.runtime_root)
+	build_mono(os_name, arch, config, env)
+
+	if cache_name:
+		workspace_cache_store_tree(cache_name, layout.workspace / cache_name, layout.output_dir, 'managed runtime')
+
+	log(f'Runtime {layout.publish_triplet} is ready!')
+
+
+def remove_incomplete_runtime_bootstrap(runtime_root: Path) -> None:
+	# Arcade installs its bootstrap SDK only while .dotnet/sdk/<version> is absent, so an install a cancelled job cut
+	# short - the SDK directory there, the shared runtime it needs missing - would fail every build on this tree
+	bootstrap_root = runtime_root / '.dotnet'
+	sdk_dir = bootstrap_root / 'sdk'
+	shared_dir = bootstrap_root / 'shared' / 'Microsoft.NETCore.App'
+
+	if not sdk_dir.is_dir() or not any(path.is_dir() for path in sdk_dir.iterdir()):
+		return
+
+	if shared_dir.is_dir() and any(path.is_dir() for path in shared_dir.iterdir()):
+		return
+
+	log('Remove incomplete runtime bootstrap SDK:', bootstrap_root)
+	remove_path_if_exists(bootstrap_root)
+
+
+def resolve_mono_layout(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> MonoLayout:
+	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
+	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
+	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent
+	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
+	runtime_triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
+	publish_triplet = f'{os_name}.{arch}.{config}'
+	workspace = Path(env['FO_WORKSPACE'])
+	runtime_version = env['FO_DOTNET_RUNTIME'].replace('/', '_').replace('\\', '_')
+	marker_suffix = resolve_mono_marker_suffix(os_name)
+
+	return MonoLayout(
+		dotnet_runtime_arch=dotnet_runtime_arch,
+		runtime_triplet=runtime_triplet,
+		publish_triplet=publish_triplet,
+		workspace=workspace,
+		runtime_root=workspace / 'runtime',
+		output_dir=workspace / 'output' / 'mono' / publish_triplet,
+		clone_marker=workspace / f'CLONED_{runtime_version}',
+		built_marker=workspace / f'BUILT_{runtime_version}_{runtime_triplet}{marker_suffix}',
+		ready_marker=workspace / f'READY_{runtime_version}_{publish_triplet}{marker_suffix}',
+	)
+
+
+def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
+	# Everything reachable from here is part of the workspace cache key (resolve_mono_workspace_cache_identity), so
+	# code that shapes the published tree belongs here and code that does not stays out
+	layout = resolve_mono_layout(os_name, arch, config, env)
+	runtime_root = layout.runtime_root
 
 	def clone_runtime() -> None:
 		if runtime_root.exists():
@@ -3014,10 +3202,13 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		patch_runtime_sources(runtime_root)
 
-	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
+	run_marker_step(layout.clone_marker, 'Prepare runtime source', clone_runtime)
 
 	def build_runtime() -> None:
 		patch_runtime_zlib_warning_level(runtime_root)
+
+		if os_name == 'browser':
+			patch_runtime_browser_asm_compiler(runtime_root)
 
 		if os_name == 'linux':
 			patch_runtime_linux_signal_actions(runtime_root)
@@ -3032,24 +3223,23 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 			patch_runtime_android_sources(runtime_root)
 			patch_runtime_android_x86_atomics(runtime_root)
 
-		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name)], runtime_root, target_os=os_name)
+		if os_name == 'windows':
+			patch_runtime_windows_embedded_debug_info(runtime_root)
 
-	run_marker_step(built_marker, 'Build runtime', build_runtime)
+		run_runtime_build(['-os', os_name, '-arch', layout.dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name), *resolve_mono_cmake_args()], runtime_root, target_os=os_name)
+
+	run_marker_step(layout.built_marker, 'Build runtime', build_runtime)
 
 	def publish_runtime() -> None:
-		output_dir = workspace / 'output' / 'mono' / publish_triplet
-		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / runtime_triplet / 'out'
+		output_dir = layout.output_dir
+		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / layout.runtime_triplet / 'out'
 		if not input_dir.is_dir():
 			raise SystemExit(f'Files not found: {input_dir}')
-		shared_framework_root = runtime_root / '.dotnet' / 'shared' / 'Microsoft.NETCore.App'
-		if not shared_framework_root.is_dir():
-			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
-		shared_framework_dirs = sorted((path for path in shared_framework_root.iterdir() if path.is_dir()), key=lambda path: runtime_framework_version_key(path.name))
-		if not shared_framework_dirs:
-			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
-
-		shared_framework_dir = shared_framework_dirs[-1]
-		corelib_path = runtime_root / 'artifacts' / 'bin' / 'mono' / runtime_triplet / 'IL' / 'System.Private.CoreLib.dll'
+		class_library_dir = resolve_runtime_pack_class_library_dir(runtime_root, os_name, layout.dotnet_runtime_arch, config)
+		class_libraries = sorted(path for path in class_library_dir.glob('*.dll') if path.name != 'System.Private.CoreLib.dll')
+		if not class_libraries:
+			raise SystemExit(f'Target class libraries not found: {class_library_dir}')
+		corelib_path = runtime_root / 'artifacts' / 'bin' / 'mono' / layout.runtime_triplet / 'IL' / 'System.Private.CoreLib.dll'
 		if not corelib_path.is_file():
 			raise SystemExit(f'Mono System.Private.CoreLib not found: {corelib_path}')
 
@@ -3059,27 +3249,28 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		netcoreapp_dir = output_dir / 'lib' / 'netcoreapp'
 		ensure_empty_dir(netcoreapp_dir)
-		for assembly_path in shared_framework_dir.glob('*.dll'):
+		log('Copy class libraries from', class_library_dir)
+		for assembly_path in class_libraries:
 			shutil.copy2(assembly_path, netcoreapp_dir / assembly_path.name)
 		shutil.copy2(corelib_path, netcoreapp_dir / corelib_path.name)
 
-		copy_interop_shim_libraries(runtime_root, output_dir / 'lib', os_name, dotnet_runtime_arch, config)
+		copy_interop_shim_libraries(runtime_root, output_dir / 'lib', os_name, layout.dotnet_runtime_arch, config)
 
 		if os_name == 'browser':
-			copy_browser_runtime_glue(runtime_root, output_dir / 'lib', os_name, dotnet_runtime_arch, config)
+			copy_browser_runtime_glue(runtime_root, output_dir / 'lib', os_name, layout.dotnet_runtime_arch, config)
 
-	run_marker_step(ready_marker, f'Publish runtime {publish_triplet}', publish_runtime)
-
-	log(f'Runtime {publish_triplet} is ready!')
+	run_marker_step(layout.ready_marker, f'Publish runtime {layout.publish_triplet}', publish_runtime)
 
 
-def runtime_framework_version_key(version: str) -> tuple[int, int, int, bool, tuple[tuple[bool, int | str], ...]]:
-	match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?', version)
-	if not match:
-		raise SystemExit(f'Invalid shared framework version: {version}')
-	suffix = match.group(4)
-	parts = tuple((not part.isdigit(), int(part) if part.isdigit() else part) for part in suffix.split('.')) if suffix else ()
-	return int(match.group(1)), int(match.group(2)), int(match.group(3)), suffix is None, parts
+def resolve_runtime_pack_class_library_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
+	# libs.sfx places the target's class libraries in its runtime pack, named by dotnet's portable RID
+	# (eng/RuntimeIdentifier.props spells the Windows OS 'win'); the target framework folder is the only one
+	rid = f'{"win" if os_name == "windows" else os_name}-{arch}'
+	lib_root = runtime_root / 'artifacts' / 'bin' / f'microsoft.netcore.app.runtime.{rid}' / config / 'runtimes' / rid / 'lib'
+	framework_dirs = sorted(path for path in lib_root.glob('net*') if path.is_dir()) if lib_root.is_dir() else []
+	if len(framework_dirs) != 1:
+		raise SystemExit(f'Expected one target framework folder of the {rid} runtime pack, found {len(framework_dirs)}: {lib_root}')
+	return framework_dirs[0]
 
 
 def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: str, ready_marker: Path) -> None:
@@ -3094,6 +3285,196 @@ def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: s
 	log('Copy prebuilt runtime from', source_dir, 'to', output_dir)
 	copy_directory(source_dir, output_dir, dirs_exist_ok=True)
 	ready_marker.touch()
+
+
+def build_mono_workspace_cache_name(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> str:
+	identity = resolve_mono_workspace_cache_identity(os_name, arch, config, env)
+
+	# Printed because a key that differs between two jobs otherwise shows up only as a silent rebuild
+	for part in identity:
+		log('- managed runtime cache key part:', part)
+
+	digest = hashlib.sha256('\n'.join(identity).encode('utf-8')).hexdigest()
+	runtime_version = re.sub(r'[^A-Za-z0-9._-]+', '-', env['FO_DOTNET_RUNTIME'])
+	return f'managed-runtime-{runtime_version}-{os_name}.{arch}.{config}-{digest[:32]}.tar.gz'
+
+
+def resolve_mono_workspace_cache_identity(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> list[str]:
+	# Anything that might change the published tree is a part: a spurious miss costs one runtime build, while a stale
+	# hit ships a runtime built some other way
+	build_code = fingerprint_module_functions(Path(__file__).read_text(encoding='utf-8'), ('build_mono',))
+	identity = [
+		f'format={MONO_WORKSPACE_CACHE_FORMAT}',
+		f'runtime={env["FO_DOTNET_RUNTIME"]}',
+		f'target={os_name}.{arch}.{config}',
+		f'subset={resolve_mono_runtime_subset(os_name)}',
+		f'marker={resolve_mono_marker_suffix(os_name)}',
+		f'build-code={build_code}',
+	]
+	identity.extend(f'{name}={env.get(name, "")}' for name in MONO_TARGET_TOOLCHAIN_PINS.get(os_name, ()))
+	identity.extend(describe_mono_host_toolchain())
+	return identity
+
+
+def describe_mono_host_toolchain() -> list[str]:
+	# dotnet/runtime compiles the archives with the host's toolchain and an engine link consumes them with its own:
+	# MSVC's linker has to be at least as new as the compiler, and a Linux archive references its glibc's symbol versions
+	identity = [f'host={sys.platform}-{platform.machine().lower()}']
+
+	if os.name == 'nt':
+		identity.append(f'msvc={resolve_msvc_tools_version()}')
+		identity.append(f'windows-sdk={resolve_windows_sdk_version()}')
+		return identity
+
+	if sys.platform.startswith('linux'):
+		try:
+			os_release = platform.freedesktop_os_release()
+			identity.append(f'os={os_release.get("ID", "")}-{os_release.get("VERSION_ID", "")}')
+		except OSError:
+			identity.append('os=unknown')
+
+		identity.append('libc=' + '-'.join(platform.libc_ver()))
+
+	if sys.platform == 'darwin':
+		identity.append(f'xcode={describe_host_command(["xcodebuild", "-version"])}')
+
+	identity.extend(f'{name}={os.environ[name]}' for name in ('CC', 'CXX', 'CLR_CC', 'CLR_CXX') if os.environ.get(name))
+
+	# The runtime's init-compiler picks a clang by version among those on PATH, so every candidate is recorded
+	identity.extend(f'{compiler}={describe_host_command([compiler, "--version"])}' for compiler in find_host_clang_compilers())
+	return identity
+
+
+def resolve_msvc_tools_version() -> str:
+	# Which installation compiles the runtime depends on the VS 2022 environment and on the runtime's own vswhere query,
+	# so the default toolset of every installation with C++ tools is recorded
+	program_files_x86 = os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')
+	vswhere = Path(program_files_x86) / 'Microsoft Visual Studio' / 'Installer' / 'vswhere.exe'
+	query = [str(vswhere), '-all', '-prerelease', '-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '-format', 'json']
+
+	try:
+		installations = json.loads(subprocess.run(query, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, check=True).stdout)
+	except (OSError, subprocess.SubprocessError, ValueError):
+		return 'unknown'
+
+	toolsets = sorted(
+		f'{installation.get("installationVersion", "")}:'
+		f'{read_first_line(Path(installation.get("installationPath", "")) / "VC" / "Auxiliary" / "Build" / "Microsoft.VCToolsVersion.default.txt")}'
+		for installation in installations if isinstance(installation, dict))
+	return ','.join(toolsets) or 'unknown'
+
+
+def resolve_windows_sdk_version() -> str:
+	include_root = Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) / 'Windows Kits' / '10' / 'Include'
+	versions = [path.name for path in include_root.glob('10.*') if path.is_dir()] if include_root.is_dir() else []
+	return max(versions, key=lambda name: tuple(int(part) for part in name.split('.') if part.isdigit()), default='unknown')
+
+
+def find_host_clang_compilers() -> list[str]:
+	names: set[str] = set()
+
+	for directory in os.environ.get('PATH', '').split(os.pathsep):
+		try:
+			entries = os.listdir(directory) if directory else []
+		except OSError:
+			continue
+
+		names.update(entry for entry in entries if re.fullmatch(r'clang(-\d+)?', entry) and shutil.which(entry))
+
+	return sorted(names)
+
+
+def describe_host_command(command: Sequence[str]) -> str:
+	try:
+		result = subprocess.run(list(command), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, check=False)
+	except (OSError, subprocess.SubprocessError):
+		return 'unavailable'
+
+	lines = result.stdout.strip().splitlines()
+	return lines[0].strip() if result.returncode == 0 and lines else 'unavailable'
+
+
+def fingerprint_module_functions(source: str, roots: Sequence[str]) -> str:
+	digest = hashlib.sha256()
+
+	for name, code in collect_module_dependencies(source, roots).items():
+		digest.update(name.encode('utf-8') + b'\0' + code.encode('utf-8') + b'\0')
+
+	return digest.hexdigest()
+
+
+def collect_module_dependencies(source: str, roots: Sequence[str]) -> dict[str, str]:
+	# Every module-level function, class and constant the roots reach by name, with its code: an edit there changes the
+	# result and an edit anywhere else in the module does not. Comments are dropped, since they change no behaviour
+	module = ast.parse(source)
+	definitions: dict[str, ast.stmt] = {}
+
+	for node in module.body:
+		if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+			definitions[node.name] = node
+		elif isinstance(node, ast.Assign):
+			definitions.update((target.id, node) for target in node.targets if isinstance(target, ast.Name))
+		elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+			definitions[node.target.id] = node
+
+	missing = [root for root in roots if root not in definitions]
+	assert not missing, f'Module does not define {missing}'
+
+	reached: set[str] = set()
+	pending = list(roots)
+
+	while pending:
+		name = pending.pop()
+
+		if name in reached or name not in definitions:
+			continue
+
+		reached.add(name)
+		pending.extend(child.id for child in ast.walk(definitions[name]) if isinstance(child, ast.Name))
+
+	comment_columns = {
+		token.start[0]: token.start[1]
+		for token in tokenize.generate_tokens(io.StringIO(source).readline)
+		if token.type == tokenize.COMMENT
+	}
+	lines = source.splitlines()
+	result: dict[str, str] = {}
+
+	for name in sorted(reached):
+		node = definitions[name]
+		decorators = getattr(node, 'decorator_list', [])
+		first_row = min([node.lineno, *(decorator.lineno for decorator in decorators)])
+		code_lines = []
+
+		for row in range(first_row, (node.end_lineno or node.lineno) + 1):
+			line = lines[row - 1]
+
+			if row in comment_columns:
+				line = line[:comment_columns[row]]
+
+				if not line.strip():
+					continue
+
+			code_lines.append(line.rstrip())
+
+		result[name] = '\n'.join(code_lines)
+
+	return result
+
+
+def restore_mono_workspace_cache(cache_name: str, layout: MonoLayout) -> bool:
+	cached_path = layout.workspace / cache_name
+	ensure_dir(layout.workspace)
+
+	if not workspace_cache_fetch(cache_name, cached_path):
+		return False
+
+	log('Unpack cached managed runtime:', cached_path)
+	return restore_workspace_cache_tree(cached_path, layout.output_dir.parent, layout.output_dir.name, 'managed runtime', is_published_mono_tree)
+
+
+def is_published_mono_tree(tree: Path) -> bool:
+	return (tree / 'include' / 'mono-2.0').is_dir() and (tree / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').is_file()
 
 
 def discover_clang_format() -> str:

@@ -47,7 +47,7 @@ namespace TexDumpArtifacts
         std::error_code ec;
 
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(".", ec)) {
-            string name = fs_path_to_string(entry.path().filename());
+            string name = fs::path_to_string(entry.path().filename());
 
             if (name.starts_with("TexDump_") && entry.is_directory(ec)) {
                 dirs.emplace(std::move(name));
@@ -61,7 +61,7 @@ namespace TexDumpArtifacts
     {
         for (const string& dir : CollectDumpDirs()) {
             if (!present_before.contains(dir)) {
-                (void)fs_remove_dir_tree(dir);
+                (void)fs::remove_dir_tree(dir);
             }
         }
     }

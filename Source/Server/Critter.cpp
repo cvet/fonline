@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
+auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
 
 Critter::Critter(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
@@ -61,22 +61,53 @@ Critter::~Critter()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!IsEngineShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!_player.load(std::memory_order_relaxed), "Server critter still has player during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Server critter has inventory items during destruction", GetId(), _invItems.size());
-        FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Server critter has attached critters during destruction", GetId(), _attachedCritters.size());
-        FO_VERIFY_AND_CONTINUE(!_globalMapGroup, "Server critter still has global map group during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMe.empty(), "Server critter has reverse visible critters during destruction", GetId(), _visibleCrWhoSeeMe.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCr.empty(), "Server critter has visible critters during destruction", GetId(), _visibleCr.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMeMap.empty(), "Server critter has reverse visible critter map entries during destruction", GetId(), _visibleCrWhoSeeMeMap.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrMap.empty(), "Server critter has visible critter map entries during destruction", GetId(), _visibleCrMap.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrModes.empty(), "Server critter has visible critter modes during destruction", GetId(), _visibleCrModes.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrGroup1.empty(), "Server critter has visible critter group1 entries during destruction", GetId(), _visibleCrGroup1.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrGroup2.empty(), "Server critter has visible critter group2 entries during destruction", GetId(), _visibleCrGroup2.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrGroup3.empty(), "Server critter has visible critter group3 entries during destruction", GetId(), _visibleCrGroup3.size());
-        FO_VERIFY_AND_CONTINUE(_visibleItems.empty(), "Server critter has visible items during destruction", GetId(), _visibleItems.size());
-        FO_VERIFY_AND_CONTINUE(_lockMapTransfers == 0, "Server critter has locked map transfers during destruction", GetId(), _lockMapTransfers);
+    FO_VERIFY_AND_CONTINUE(!_player.load(std::memory_order_relaxed), "Server critter still has player during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Server critter has inventory items during destruction", GetId(), _invItems.size());
+    FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Server critter has attached critters during destruction", GetId(), _attachedCritters.size());
+    FO_VERIFY_AND_CONTINUE(!_globalMapGroup, "Server critter still has global map group during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMe.empty(), "Server critter has reverse visible critters during destruction", GetId(), _visibleCrWhoSeeMe.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCr.empty(), "Server critter has visible critters during destruction", GetId(), _visibleCr.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMeMap.empty(), "Server critter has reverse visible critter map entries during destruction", GetId(), _visibleCrWhoSeeMeMap.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrMap.empty(), "Server critter has visible critter map entries during destruction", GetId(), _visibleCrMap.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrModes.empty(), "Server critter has visible critter modes during destruction", GetId(), _visibleCrModes.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrGroup1.empty(), "Server critter has visible critter group1 entries during destruction", GetId(), _visibleCrGroup1.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrGroup2.empty(), "Server critter has visible critter group2 entries during destruction", GetId(), _visibleCrGroup2.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrGroup3.empty(), "Server critter has visible critter group3 entries during destruction", GetId(), _visibleCrGroup3.size());
+    FO_VERIFY_AND_CONTINUE(_visibleItems.empty(), "Server critter has visible items during destruction", GetId(), _visibleItems.size());
+    FO_VERIFY_AND_CONTINUE(_lockMapTransfers == 0, "Server critter has locked map transfers during destruction", GetId(), _lockMapTransfers);
+}
+
+void Critter::ClearAllAssociations() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    // The player link is the only owning one here; the rest borrow entities the entity manager owns
+    nptr<Player> player;
+
+    {
+        scoped_lock locker {_playerLinkLocker};
+
+        player = nptr<Player> {_player.exchange(nullptr, std::memory_order_acq_rel)};
     }
+
+    if (player) {
+        player->Release();
+    }
+
+    _invItems.clear();
+    _attachedCritters.clear();
+    _globalMapGroup.reset();
+    _visibleCrWhoSeeMe.clear();
+    _visibleCr.clear();
+    _visibleCrWhoSeeMeMap.clear();
+    _visibleCrMap.clear();
+    _visibleCrModes.clear();
+    _visibleCrGroup1.clear();
+    _visibleCrGroup2.clear();
+    _visibleCrGroup3.clear();
+    _visibleItems.clear();
 }
 
 auto Critter::GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&
@@ -150,7 +181,7 @@ auto Critter::IsMoving() const noexcept -> bool
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _moving != nullptr;
+    return !!_moving;
 }
 
 auto Critter::GetMovingUid() const noexcept -> uint32_t
@@ -318,16 +349,16 @@ auto Critter::CheckFind(CritterFindType find_type) const noexcept -> bool
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::NonDead) && IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::NonDead) && IsDead()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::Dead) && !IsDead()) {
         return false;
     }
 
@@ -570,7 +601,7 @@ void Critter::MoveAttachedCritters()
     }
 
     // Callbacks time
-    auto this_ref_holder = refcount_ptr<Critter>::from_add_ref(this);
+    auto this_ref_holder = refcount_ptr<Critter>::from_addref(this);
     auto map_ref_holder = map;
     auto dir = GetDir();
 
@@ -1091,21 +1122,6 @@ auto Critter::HasItems() const noexcept -> bool
     return !_invItems.empty();
 }
 
-auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-
-    for (ptr<Item> item : _invItems) {
-        if (item->GetProtoId() == item_pid) {
-            return item;
-        }
-    }
-
-    return nullptr;
-}
-
 auto Critter::GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1115,31 +1131,20 @@ auto Critter::GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>
     auto proto = _engine->GetProtoItem(item_pid);
     FO_VERIFY_AND_THROW(proto, "Item proto not found", item_pid);
 
-    if (proto->GetStackable()) {
-        for (auto& item : _invItems) {
-            if (item->GetProtoId() == item_pid) {
+    // Prefer an item actually in the Inventory slot over one equipped elsewhere
+    nptr<Item> another_slot;
+
+    for (auto& item : _invItems) {
+        if (item->GetProtoId() == item_pid) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item.get();
             }
+
+            another_slot = item.get();
         }
     }
-    else {
-        // Non-stackable: prefer an item actually in the Inventory slot over one equipped elsewhere
-        nptr<Item> another_slot;
 
-        for (auto& item : _invItems) {
-            if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get();
-                }
-
-                another_slot = item.get();
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>
@@ -1155,22 +1160,6 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>
     }
 
     return it->as_nptr();
-}
-
-auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    int32_t count = 0;
-
-    for (ptr<const Item> item : _invItems) {
-        if (item->GetProtoId() == pid) {
-            count += item->GetCount();
-        }
-    }
-
-    return count;
 }
 
 auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>

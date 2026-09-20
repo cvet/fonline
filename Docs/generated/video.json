@@ -312,7 +312,7 @@
       "name": "No container-audio decode",
       "stability": "experimental",
       "requirement": "Do not rely on an audio stream embedded in the Ogg video; author audio as a separate client music resource when needed.",
-      "rationale": "VideoClip links Theora packet decoding only, while fullscreen pairing starts SoundManager music from the path after a vertical bar.",
+      "rationale": "VideoClip links Theora packet decoding only, while fullscreen pairing starts AudioManager music from the path after a vertical bar.",
       "source": [
         {
           "path": "Source/Client/VideoClip.cpp",
@@ -325,7 +325,7 @@
           "path": "Source/Client/Client.cpp",
           "anchors": [
             "split('|')",
-            "SndMngr.PlayMusic(names[1]"
+            "AudioMngr.PlayMusic(names[1]"
           ]
         }
       ]
@@ -406,15 +406,15 @@
       "name": "Separate music pairing",
       "stability": "experimental",
       "requirement": "Use video-path|music-path to stop current music and start a separate one-shot music resource alongside the video; additional separators are not a playlist.",
-      "rationale": "PlayVideo splits the request, loads the first component, and uses only names[1] for SoundManager music.",
+      "rationale": "PlayVideo splits the request, loads the first component, and uses only names[1] for AudioManager music.",
       "source": [
         {
           "path": "Source/Client/Client.cpp",
           "anchors": [
             "split('|')",
-            "SndMngr.StopMusic()",
+            "AudioMngr.StopMusic()",
             "names[1].empty()",
-            "SndMngr.PlayMusic(names[1], timespan::zero)"
+            "AudioMngr.PlayMusic(names[1], timespan::zero)"
           ]
         }
       ]
@@ -431,7 +431,7 @@
           "anchors": [
             "if (_video->Clip.IsStopped())",
             "_video.reset()",
-            "SndMngr.StopMusic()"
+            "AudioMngr.StopMusic()"
           ]
         }
       ]
@@ -717,5 +717,5 @@
       "experimental": 34
     }
   },
-  "contract_digest": "d7ae03dfdb79ca2a61ab6fd9c07a5fd15f3f2c016954653d3d6bee327e360e68"
+  "contract_digest": "e71428249d2e234edc19b825ca4b70363179c0570a9b8dccf304bea729c04d29"
 }

@@ -142,7 +142,7 @@ The embedded client (host module hosts the game and the updater itself) runs whe
 `RunEmbeddedOrLoadedClient` gates the bundled-DLL-first path on `requested_runtime.ExplicitPath ||
 (!ForceEmbedded && CanSelfUpdateNativeModules(GetCurrentUpdatePlatform()))`, identically for the regular
 and headless clients. `Client.ForceEmbeddedRuntime` is honored from the command line
-(`--ForceEmbeddedRuntime`) because the host picks the runtime before settings are otherwise resolved;
+(`--Client.ForceEmbeddedRuntime`) because the host picks the runtime before settings are otherwise resolved;
 a SubConfig/config-only value does not reach this pre-init decision, so launch profiles that must force
 embedded on a standalone client pass it on the command line.
 
@@ -578,6 +578,8 @@ headless variant. The splash UI (`Application::MainWindow`) is shared throughout
 user always sees indication of what is happening. The terminal state is exposed via
 `Updater::GetResult()` returning `UpdaterResult` (see header).
 
+`UpdaterResult::ConnectionFailed` distinguishes an unreachable or restarting server from a client self-update defect. Both an initial connect failure and a disconnect while files remain in flight end in this state. `ShowUpdaterFailure` always logs the terminal result and gives the player offline/restart guidance, while `IsUpdaterFailureReportable()` suppresses a crash report so a routine server outage does not generate one report per client. Other updater failures remain reportable; `MetadataMismatch`, for example, indicates a deployment defect even though its player guidance also says to retry later.
+
 `CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())` decides whether the binary
 self-update step is even attempted: Windows / Linux / macOS are eligible; Web / iOS / Android
 currently require manual client updates because the platform either bundles the runtime
@@ -591,6 +593,7 @@ instead of looping back to the game which would only reject the connection again
 | Symptom | First signal |
 |---------|--------------|
 | Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
+| Server is down, restarting, or unreachable | message box `Can't connect to the server. It may be offline or restarting, please try again later.`, log `Client updater: connection failed` followed by terminal result `ConnectionFailed`; deliberately no crash report |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |

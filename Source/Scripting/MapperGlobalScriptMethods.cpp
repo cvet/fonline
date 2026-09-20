@@ -91,7 +91,30 @@ static auto RequireCurMapperMap(ptr<MapperEngine> mapper_ptr) -> ptr<MapView>
     return map;
 }
 
-// Creates an item from the supplied prototype id on a valid hex of the currently shown Mapper map and returns its editable client view
+// Returns the map layers currently visible in the Mapper viewport
+///@ ExportMethod
+FO_SCRIPT_API MapLayers Mapper_Game_GetVisibleMapLayers(ptr<MapperEngine> mapper)
+{
+    return mapper->VisibleLayers;
+}
+
+// Replaces the map layers visible in the Mapper viewport and applies the visibility state
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetVisibleMapLayers(ptr<MapperEngine> mapper, MapLayers layers)
+{
+    mapper->VisibleLayers = layers;
+    mapper->PushLayerVisibility();
+}
+
+// Configures whether edge-driven mouse scrolling is enabled in fullscreen and windowed Mapper modes
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SetMouseScroll(ptr<MapperEngine> mapper, bool inFullscreen, bool inWindow)
+{
+    mapper->FullscreenMouseScroll = inFullscreen;
+    mapper->WindowedMouseScroll = inWindow;
+}
+
+// Creates an item from the supplied prototype id on a valid hex of the currently shown Mapper map
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstring pid, mpos hex)
 {
@@ -432,7 +455,7 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mappe
     for (const auto& map_file_header : map_files) {
         string ext = strex(map_file_header.GetPath()).get_file_extension();
 
-        if (std::ranges::find(mapper->Settings->ProtoFileExtensions, ext) == mapper->Settings->ProtoFileExtensions.end()) {
+        if (std::ranges::find(mapper->Settings->Baking.ProtoFileExtensions, ext) == mapper->Settings->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -948,14 +971,14 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
                 auto row = make_ptr(row_buf.data());
                 auto top_row = make_ptr(pixels.data() + top);
                 auto bottom_row = make_ptr(pixels.data() + bottom);
-                MemCopy(row, top_row, row_bytes);
-                MemCopy(top_row, bottom_row, row_bytes);
-                MemCopy(bottom_row, row, row_bytes);
+                memory::copy(row, top_row, row_bytes);
+                memory::copy(top_row, bottom_row, row_bytes);
+                memory::copy(bottom_row, row, row_bytes);
             }
         }
     }
 
-    string path = fs_make_writable_path(mapper->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path());
     ImageWriter::WriteSimplePng(path, size, pixels);
 }
 

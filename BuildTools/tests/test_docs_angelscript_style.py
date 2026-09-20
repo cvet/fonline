@@ -95,11 +95,11 @@ class AngelScriptStyleDocumentationTests(unittest.TestCase):
             'Preprocessor::Define(preprocessor_context.get(), "SERVER 1")',
             'Preprocessor::Define(preprocessor_context.get(), "CLIENT 1")',
             'Preprocessor::Define(preprocessor_context.get(), "MAPPER 1")',
-            "IsScriptNamespaceAllowed(ns_view, _settings->MutableGlobalsAllowedNamespaces)",
+            "IsScriptNamespaceAllowed(ns_view, _settings->AngelScript.MutableGlobalsAllowedNamespaces)",
         ):
             self.assertIn(contract, backend)
 
-        self.assertIn("FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces)", settings)
+        self.assertIn("SETTING(vector<string>, AngelScript, MutableGlobalsAllowedNamespaces)", settings)
         self.assertIn("matched as prefixes", settings)
         self.assertIn('TEST_CASE("AngelScript mutable globals are disallowed")', baker_tests)
         self.assertIn('ContainsSubstring("mutable global variable")', baker_tests)

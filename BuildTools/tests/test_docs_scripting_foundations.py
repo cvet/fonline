@@ -73,8 +73,8 @@ class DocumentationScriptingFoundationsTests(unittest.TestCase):
         ):
             self.assertIn(marker, guide)
         for marker in (
-            "reader.VerifyEnd();",
-            "reader.VerifyPayloadCount",
+            "reader.verify_end();",
+            "reader.verify_payload_count",
             "Negative array size",
             "Negative dict size",
         ):

@@ -148,6 +148,29 @@ def test_workspace_tree_is_not_packed_without_a_configured_cache(
 	_buildtools.workspace_cache_store_tree('emscripten.tar.gz', tmp_path / 'cache.tar.gz', source, 'SDK')
 
 
+def test_workspace_tree_uses_fast_gzip_for_critical_path_cache_fill(
+	tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	source = make_emscripten_tree(tmp_path)
+	archive_path = tmp_path / 'cache.tar.gz'
+	calls: list[tuple[str, int | None]] = []
+	real_open = tarfile.open
+
+	def capture_open(name: Path, mode: str, **kwargs: int) -> tarfile.TarFile:
+		calls.append((mode, kwargs.get('compresslevel')))
+		return real_open(name, mode, **kwargs)
+
+	monkeypatch.setattr(_buildtools.tarfile, 'open', capture_open)
+	monkeypatch.setattr(_buildtools, 'workspace_cache_store', lambda *_args: None)
+	monkeypatch.setenv(_buildtools.WORKSPACE_CACHE_VAR, 'https://ci.example/cache/workspaces')
+
+	_buildtools.workspace_cache_store_tree('emscripten.tar.gz', archive_path, source, 'SDK')
+
+	assert calls == [('w:gz', _buildtools.WORKSPACE_CACHE_GZIP_LEVEL)]
+	assert _buildtools.WORKSPACE_CACHE_GZIP_LEVEL == 1
+	assert not archive_path.exists()
+
+
 @pytest.mark.parametrize('cache_payload', [b'not a tar archive', None])
 def test_emscripten_workspace_cache_miss_or_corruption_builds_and_stores(
 	tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cache_payload: bytes | None,

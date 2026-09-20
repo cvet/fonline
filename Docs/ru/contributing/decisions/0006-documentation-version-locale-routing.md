@@ -5,9 +5,7 @@ locale: ru
 document_id: adr-documentation-version-locale-routing
 permalink: /Docs/ru/contributing/decisions/0006-documentation-version-locale-routing.html
 ---
-
 <!-- docs-translation: {"document_id":"adr-documentation-version-locale-routing","locale":"ru","source_path":"Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md","source_sha256":"6a90c2be548426ba6e0bbd4644cf0c2eec7798b74a5fc5927dc6e7d81f0b8962"} -->
-
 # ADR-0006: версия, локали и стабильные маршруты документации
 
 - Статус: принято

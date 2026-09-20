@@ -7,9 +7,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 ---
 
 # Карты, движение и геометрия
-
 <!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"f0422fc0390b1453f5a5cc5de4c5ff3342086419f91c8c70e3de256ae7f7fdd1"} -->
-
 Этот документ описывает переиспользуемые примитивы координат карты, движения, поиска пути, трассировки линий и загрузки карт, которыми пользуются клиентская и серверная среды выполнения и инструменты.
 
 Синтаксис разделов `.fomap`, идентичность и владение размещёнными объектами, обратимый цикл Mapper, зависящий от стороны baking и материализацию содержимого в runtime см. в [формате карт](../how-to/content/map-format.md). Эта страница отвечает за семантику геометрии и движения.

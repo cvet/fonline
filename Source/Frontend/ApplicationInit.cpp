@@ -39,8 +39,6 @@
 #include "FileSystem.h"
 #include "WebRelated.h"
 
-#include "SDL3/SDL_system.h"
-
 FO_BEGIN_NAMESPACE
 
 // File the installer drops next to the exe to mark an installed (non-portable) build. The portable
@@ -49,7 +47,7 @@ static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
 
 static unique_nptr<Application> App {};
 
-extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
+void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing);
@@ -106,14 +104,14 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     // Fork the process if requested
     if (std::ranges::any_of(args, [](nptr<const char> arg) { return arg && string_view(arg.get()) == "--fork"; })) {
-        Platform::ForkProcess();
+        platform::fork_process();
     }
 
     // Create global data as soon as possible
-    CreateGlobalData();
+    global_data::create();
 
     // Write log and show message box on exception
-    SetupExceptionCallback(IsEnumSet(flags, AppInitFlags::ShowMessageOnException));
+    SetupExceptionCallback(is_enum_set(flags, AppInitFlags::ShowMessageOnException));
 
     // Tracy
 #if FO_TRACY
@@ -122,26 +120,26 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     // Logging. The writable root is resolved from the command line and the installer marker alone, so
     // the log opens at its final location before anything is read from disk
-    LogToFile(fs_make_writable_path(ResolveWritableRoot(args), GetExeLogFileName()), IsEnumSet(flags, AppInitFlags::AppendLogFile));
+    logging::to_file(fs::make_writable_path(ResolveWritableRoot(args), GetExeLogFileName()), is_enum_set(flags, AppInitFlags::AppendLogFile));
 
-    if (IsEnumSet(flags, AppInitFlags::DisableLogTags)) {
-        LogDisableTags();
+    if (is_enum_set(flags, AppInitFlags::DisableLogTags)) {
+        logging::disable_tags();
     }
 
-    WriteLog("Starting {}", FO_NICE_NAME);
+    logging::write("Starting {}", FO_NICE_NAME);
 
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
 
-    WriteLog("Version: {}", settings.GameVersion);
+    logging::write("Version: {}", settings.Common.GameVersion);
 
     // Disable message box on exception if headless window is used
-    if (IsEnumSet(flags, AppInitFlags::ShowMessageOnException) && settings.HeadlessWindow) {
+    if (is_enum_set(flags, AppInitFlags::ShowMessageOnException) && settings.Render.HeadlessWindow) {
         SetupExceptionCallback(false);
     }
 
     // Switch logging to a dedicated worker thread once the user setting is known
-    if (settings.AsyncLogWrite) {
-        SetAsyncLogWriting(true);
+    if (settings.Common.AsyncLogWrite) {
+        logging::set_async_writing(true);
     }
 
     // Diagnostic self-test: with logging, the exception callback and the async-log mode all live, verify
@@ -152,16 +150,16 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     ApplicationInitHook(flags, settings);
 
     // Prebake resources
-    if (!settings.Packaged && IsEnumSet(flags, AppInitFlags::PrebakeResources)) {
-        WriteLog("Prebake resources");
+    if (!settings.Common.Packaged && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
+        logging::write("Prebake resources");
         PrebakeResources(settings);
     }
 
     // Application frontend initialization
-    App = SafeAlloc::MakeUnique<Application>(std::move(settings), flags);
+    App = safe_alloc::make_unique<Application>(std::move(settings), flags);
 
     // Request quit on bad alloc
-    SetBadAllocCallback([]() FO_DEFERRED { GetApp()->RequestQuit(); });
+    memory::set_bad_alloc_callback([]() FO_DEFERRED { GetApp()->RequestQuit(); });
 
     // Request quit on interrupt signals
     SetupSignals();
@@ -174,11 +172,11 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetExceptionCallback([show_message_on_exception](string_view message, const CatchedStackTraceData& st, bool fatal_error) FO_DEFERRED {
-        WriteLogMessage(LogType::Error, message, &st);
+    exceptions::set_callback([show_message_on_exception](string_view message, const stack_trace::catched_data& st, bool fatal_error) FO_DEFERRED {
+        logging::write_message(logging::type::error, message, &st);
 
         if (fatal_error) {
-            WriteLogMessage(LogType::Error, "Shutdown!");
+            logging::write_message(logging::type::error, "Shutdown!");
 
 #if FO_WEB
             if (IsAppInitialized()) {
@@ -188,7 +186,7 @@ static void SetupExceptionCallback(bool show_message_on_exception)
         }
 
         if (show_message_on_exception || (!IsPackaged() && (fatal_error || !IsAppInitialized()))) {
-            Application::ShowErrorMessage(message, FormatStackTrace(st), fatal_error);
+            Application::ShowErrorMessage(message, stack_trace::format(st), fatal_error);
         }
     });
 }
@@ -241,9 +239,9 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             auto dir = std::filesystem::current_path();
 
             while (true) {
-                string config_path = fs_path_to_string(dir / FO_MAIN_CONFIG);
+                string config_path = fs::path_to_string(dir / FO_MAIN_CONFIG);
 
-                if (fs_exists(config_path) && !fs_is_dir(config_path)) {
+                if (fs::exists(config_path) && !fs::is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
                     config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
                     break;
@@ -259,7 +257,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             }
         }
 
-        WriteLog("Apply config {}", strex(config_to_apply_dir).combine_path(config_to_apply));
+        logging::write("Apply config {}", strex(config_to_apply_dir).combine_path(config_to_apply));
         settings.ApplyConfigAtPath(config_to_apply, config_to_apply_dir);
 
         // Apply sub config
@@ -286,12 +284,12 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         }
 
         if (auto_find_config && sub_configs_to_apply.empty()) {
-            sub_configs_to_apply.emplace_back(settings.UnpackagedSubConfig);
+            sub_configs_to_apply.emplace_back(settings.Common.UnpackagedSubConfig);
         }
 
         for (const auto& sub_config_name : sub_configs_to_apply) {
             if (!sub_config_name.empty() && sub_config_name != "NONE") {
-                WriteLog("Apply sub config {}", sub_config_name);
+                logging::write("Apply sub config {}", sub_config_name);
                 settings.ApplySubConfigSection(sub_config_name);
             }
         }
@@ -304,17 +302,17 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     // cache, log and update write - lands where this process is allowed to write
     settings.ApplyWritableRoot(ResolveWritableRoot(args));
 
-    if (!settings.UserWritablePath.empty()) {
+    if (!settings.Common.UserWritablePath.empty()) {
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
         // resource writer never fail on a missing parent directory
-        fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources));
-        fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
-        WriteLog("Writable data path: {}", settings.UserWritablePath);
+        fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources));
+        fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.ClientResources));
+        logging::write("Writable data path: {}", settings.Common.UserWritablePath);
     }
 
-    string cache_dir = fs_make_writable_path(settings.UserWritablePath, settings.CacheResources);
+    string cache_dir = fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources);
 
-    if (fs_is_dir(cache_dir)) {
+    if (fs::is_dir(cache_dir)) {
         auto cache = CacheStorage(cache_dir);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
@@ -337,9 +335,9 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
     string root = FindWritablePathArg(args);
 
     if (root.empty()) {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
 
-        if (!exe_path.has_value() || !fs_exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
+        if (!exe_path.has_value() || !fs::exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
             return "";
         }
 
@@ -349,17 +347,10 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
     // An explicit "*" asks for the same per-user directory the marker selects, which is how a launcher
     // requests it without knowing the per-OS path
     if (root == "*") {
-        // Android keeps no usable HOME, and its writable root is only reachable through the JNI bridge
-        // that SDL owns, so it is asked there; everywhere else the Essentials lookup applies
-#if FO_ANDROID
-        const char* internal_storage = SDL_GetAndroidInternalStoragePath();
-        string base = internal_storage != nullptr ? string(internal_storage) : string();
-#else
-        string base = Platform::GetUserDataBase();
-#endif
+        string base = platform::get_user_data_base();
 
         if (base.empty()) {
-            WriteLog(LogType::Warning, "Installed layout requested but no user data dir found; writing to the working directory");
+            logging::write(logging::type::warning, "Installed layout requested but no user data dir found; writing to the working directory");
             return "";
         }
 
@@ -368,10 +359,10 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
         root = strex(base).combine_path(FO_NICE_NAME).str();
     }
 
-    root = fs_resolve_path(root);
+    root = fs::resolve_path(root);
 
-    if (!fs_create_directories(root)) {
-        WriteLog(LogType::Warning, "Can't create writable path '{}'; writing to the working directory", root);
+    if (!fs::create_directories(root)) {
+        logging::write(logging::type::warning, "Can't create writable path '{}'; writing to the working directory", root);
         return "";
     }
 
@@ -386,7 +377,7 @@ static auto FindWritablePathArg(CommandLineArgs args) -> string
     for (size_t i = 0; i + 1 < args.size(); i++) {
         string_view arg = strex(args.Get(i)).trim().strv();
 
-        if (arg == "-UserWritablePath" || arg == "--UserWritablePath" || arg == "-Common.UserWritablePath" || arg == "--Common.UserWritablePath") {
+        if (arg == "-Common.UserWritablePath" || arg == "--Common.UserWritablePath") {
             string_view value = strex(args.Get(i + 1)).trim().strv();
 
             if (!value.empty() && !CommandLineArgs::IsOption(value)) {
@@ -403,20 +394,19 @@ static void PrebakeResources(BakingSettings& settings)
     FO_STACK_TRACE_ENTRY();
 
     using BakeResourcesFunc = bool (*)(void*);
-    auto bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
-
-    nptr<void> baker_dll = nullptr;
-    auto unload_baker_dll = scope_exit([&]() noexcept { Platform::UnloadModule(baker_dll); });
+    auto bake_resources = platform::get_func_addr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
 
     strex lib_name = strex("{}_BakerLib", FO_DEV_NAME);
 
     if (bake_resources == nullptr) {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
         string lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
-        baker_dll = Platform::LoadModule(lib_path);
+        // Never unloaded: like every engine library it carries statically linked runtimes whose process-wide
+        // callbacks cannot be withdrawn, so unmapping it would leave them pointing at nothing
+        nptr<void> baker_dll = platform::load_pinned_module(lib_path);
 
         if (baker_dll) {
-            bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(baker_dll, "FO_BakeResources");
+            bake_resources = platform::get_func_addr<BakeResourcesFunc>(baker_dll, "FO_BakeResources");
         }
     }
 
@@ -429,8 +419,8 @@ static void PrebakeResources(BakingSettings& settings)
         }
     }
     else {
-        if (fs_exists(settings.BakeOutput) && fs_is_dir(settings.BakeOutput)) {
-            if (!settings.IgnoreMissingBakerWarning) {
+        if (fs::exists(settings.Baking.BakeOutput) && fs::is_dir(settings.Baking.BakeOutput)) {
+            if (!settings.Baking.IgnoreMissingBakerWarning) {
                 Application::ShowErrorMessage(strex("Warning! {} not found. Resources may be out of date", lib_name), "", false);
             }
         }
@@ -444,7 +434,7 @@ auto GetExeLogFileName() -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto exe_path = Platform::GetExePath()) {
+    if (auto exe_path = platform::get_exe_path()) {
         return strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension());
     }
 

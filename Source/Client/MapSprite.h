@@ -232,11 +232,11 @@ public:
     [[nodiscard]] auto GetActiveSprites() const noexcept -> const_span<unique_ptr<MapSprite>> { return _activeSprites; }
     [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>;
 
-    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>;
+    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback, int8_t sub_layer) noexcept -> ptr<MapSprite>;
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
 
-    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;
+    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t;
 
 private:
     void GrowPool() noexcept;
@@ -252,8 +252,8 @@ private:
 };
 
 // Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
-class MapSpriteHolder : public RefCounted<MapSpriteHolder>
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
+class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
 public:
     MapSpriteHolder() = default;
@@ -282,8 +282,8 @@ public:
     bool NoLight {};
     // Manual draw-order slot used when ProtoId is empty
     DrawOrderType DrawOrder {DrawOrderType::Item};
-    // Vertical hex offset applied to draw-order sorting when ProtoId is empty
-    int32_t DrawOrderHyOffset {};
+    // Fine ordering within DrawOrder used when ProtoId is empty
+    int8_t DrawOrderSubLayer {};
     // Manual corner classification used for lighting and egg appearance when ProtoId is empty
     CornerType Corner {};
     // Manual switch that suppresses egg appearance when ProtoId is empty

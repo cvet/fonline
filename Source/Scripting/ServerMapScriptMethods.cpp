@@ -66,7 +66,7 @@ FO_SCRIPT_API void Server_Map_SetupScriptEx(ptr<Map> self, hstring initFunc)
 
 // SyncScope: requires self; returns parent location, but does not cover it for later reads
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Location> Server_Map_GetLocation(ptr<Map> self)
+FO_SCRIPT_API FO_RETURNS_PARENT ptr<Location> Server_Map_GetLocation(ptr<Map> self)
 {
     auto loc = self->GetLocation();
     return loc;
@@ -74,7 +74,7 @@ FO_SCRIPT_API ptr<Location> Server_Map_GetLocation(ptr<Map> self)
 
 // SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -82,17 +82,14 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, nullptr);
     return item;
 }
 
 // SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, int32_t count)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -100,17 +97,14 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), nullptr);
     return item;
 }
 
 // SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, int32_t count, readonly_map<ItemProperty, int32_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring protoId, readonly_map<ItemProperty, int32_t> props)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -118,34 +112,26 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
+
+    auto proto = self->GetEngine()->GetProtoItem(protoId);
+
+    if (!proto) {
+        throw ScriptException("Invalid item proto id arg", protoId);
     }
 
-    if (!props.empty()) {
-        auto proto = self->GetEngine()->GetProtoItem(protoId);
+    Properties props_ = proto->GetProperties()->Copy();
 
-        if (!proto) {
-            throw ScriptException("Invalid item proto id arg", protoId);
-        }
-
-        Properties props_ = proto->GetProperties()->Copy();
-
-        for (const auto& [key, value] : props) {
-            props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
-        }
-
-        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, &props_);
-        return item;
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, &props_);
     return item;
 }
 
 // SyncScope: requires self; creates and attaches a new map item under the map cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, int32_t count, readonly_map<ItemProperty, int32_t> props)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoItem> proto, readonly_map<ItemProperty, int32_t> props)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a map that is being destroyed", self->GetId());
@@ -153,22 +139,14 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
+
+    Properties props_ = proto->GetProperties()->Copy();
+
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    if (!props.empty()) {
-        Properties props_ = proto->GetProperties()->Copy();
-
-        for (const auto& [key, value] : props) {
-            props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
-        }
-
-        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, &props_);
-        return item;
-    }
-
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
+    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), &props_);
     return item;
 }
 
@@ -705,10 +683,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritterOnHex(ptr<Map
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
+        if (cr->GetValueAsInt(prop) == propertyValue) {
             return cr;
         }
     }
@@ -776,18 +753,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPlayerCritterCount(ptr<Map> self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterFindType findType)
 {
-    vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
-
-    critters.reserve(map_critters.size());
-
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType)) {
-            critters.emplace_back(cr);
-        }
-    }
-
-    return critters;
+    return self->GetCritters(findType);
 }
 
 // SyncScope: requires self; returns the map's current spectator Players. A spectator is an independent Player
@@ -806,13 +772,13 @@ FO_SCRIPT_API vector<ptr<Player>> Server_Map_GetSpectatorPlayers(ptr<Map> self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, hstring pid, CritterFindType findType)
 {
+    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
     for (ptr<Critter> cr : map_critters) {
-        if ((!pid || cr->GetProtoId() == pid) && cr->CheckFind(findType)) {
+        if (!pid || cr->GetProtoId() == pid) {
             critters.emplace_back(cr);
         }
     }
@@ -824,13 +790,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, ptr<ProtoCritter> proto, CritterFindType findType)
 {
+    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
     critters.reserve(map_critters.size());
 
     for (ptr<Critter> cr : map_critters) {
-        if (cr->GetProtoId() == proto->GetProtoId() && cr->CheckFind(findType)) {
+        if (cr->GetProtoId() == proto->GetProtoId()) {
             critters.emplace_back(cr);
         }
     }
@@ -843,13 +809,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    span<ptr<Critter>> map_critters = self->GetCritters();
+    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
     vector<ptr<Critter>> critters;
 
     critters.reserve(map_critters.size());
 
     for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
+        if (cr->GetValueAsInt(prop) == propertyValue) {
             critters.emplace_back(cr);
         }
     }
@@ -882,10 +848,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPat
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
+        if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
             critters.emplace_back(cr);
         }
     }
@@ -898,10 +863,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
-        if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
+        if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
             critters.emplace_back(cr);
         }
     }
@@ -914,12 +878,11 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeePath(ptr<Map> self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
-    span<ptr<Critter>> map_critters = self->GetCritters();
 
-    for (ptr<Critter> cr : map_critters) {
+    for (ptr<Critter> cr : self->GetCritters(findType)) {
         mpos hex = cr->GetHex();
 
-        if (cr->CheckFind(findType) && GeometryHelper::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
+        if (GeometryHelper::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.emplace_back(cr);
         }
     }
@@ -963,7 +926,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gagCallabck) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallabck))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallabck))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, ipos16 {}, std::move(gag_callback));
@@ -988,7 +951,7 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, m
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gagCallabck) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallabck)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallabck)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, ipos16 {}, std::move(gag_callback));
@@ -1019,7 +982,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonl
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gagCallback) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     auto output = self->GetEngine()->MapMngr.FindPathToAny(self, nullptr, fromHex, targetHexes, 0, std::move(gag_callback));
@@ -1051,7 +1014,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, read
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gagCallback) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallback)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallback)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     auto output = self->GetEngine()->MapMngr.FindPathToAny(self, cr, cr->GetHex(), targetHexes, cr->GetMultihex(), std::move(gag_callback));

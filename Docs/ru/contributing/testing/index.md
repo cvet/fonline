@@ -7,9 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-
 <!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bcf0897eb1da2bda0ab06f3df723b7625b619c96879a588d9a5e6ee26cbf830b"} -->
-
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.

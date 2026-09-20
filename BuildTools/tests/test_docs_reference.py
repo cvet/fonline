@@ -162,8 +162,8 @@ def _model() -> dict[str, object]:
             declared_target="server",
             group="Test",
             type="string",
-            setting_kind="variable",
-            mutability="runtime-variable",
+            setting_kind="read-only",
+            mutability="read-only",
             default_values=[],
             command_line_redacted_by_default=True,
             redaction_rule="test rule",
@@ -338,9 +338,9 @@ class DocumentationReferenceTests(unittest.TestCase):
         self.assertEqual(len(anchors), model["summary"]["symbol_count"])
         self.assertFalse(any(line.endswith(" ") for line in rendered.splitlines()))
         self.assertIn("## Scope contract", english_index)
-        self.assertIn("2523 stable IDs", english_index)
+        self.assertIn("2527 stable IDs", english_index)
         self.assertIn("## Контракт области", russian_index)
-        self.assertIn("2523 стабильных ID", russian_index)
+        self.assertIn("2527 стабильных ID", russian_index)
         self.assertNotIn("The complete current inventory", russian_index)
 
     def test_engine_russian_pages_pin_hashes_and_use_semantic_overlay(self) -> None:

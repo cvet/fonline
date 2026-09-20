@@ -186,9 +186,9 @@ public:
 
     template<typename T>
         requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto Read(const HashResolver& hash_resolver) -> hstring
+    [[nodiscard]] auto Read(const hash_resolver& hashes) -> hstring
     {
-        return ReadHashedString(hash_resolver);
+        return ReadHashedString(hashes);
     }
 
     void ReadPropsData(vector<vector<uint8_t>>& props_data);
@@ -196,7 +196,7 @@ public:
     auto ReadMsg() -> NetMessage;
 
 private:
-    [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;
+    [[nodiscard]] auto ReadHashedString(const hash_resolver& hashes) -> hstring;
     [[nodiscard]] auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
     void FinishMessageRead();
 

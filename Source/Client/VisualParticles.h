@@ -60,7 +60,7 @@ struct ParticleSpriteFrame
 class ParticleSystem final
 {
     friend class ParticleManager;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ParticleSystem(const ParticleSystem&) = delete;
@@ -115,7 +115,7 @@ class ParticleManager final
     friend class ParticleSystem;
 
 public:
-    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider = nullptr);
+    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider = nullptr);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;

@@ -5,9 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"c1b10dcf969eafe04ea0e2198bcef6e3fcdf933d80d8cbf82ec4a5a08097e1c1"} -->
-
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"ddc5564de226aa66ad9e069bcc50c31a6737cd46c5da6f86df91b538e32b18a5"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -19,7 +17,7 @@ permalink: /Docs/ru/troubleshooting/debugging.html
 - Выбирайте native debugger для crashes, native exceptions, memory, threads или
   mixed stack, чей владеющий frame находится в C++.
 - Выбирайте AngelScript debugger для live stepping и переменных скрипта. Текущий
-  контракт Engine требует `Script.DebuggerEnabled`, предоставляет TCP endpoint
+  контракт Engine требует `AngelScript.DebuggerEnabled`, предоставляет TCP endpoint
   на выбираемом для процесса порту из `43000..44999` и использует UDP-порт
   `43001` для discovery; проект владеет настройкой editor и политикой remote access.
 - Для Managed C# начинайте с diagnostics Roslyn/MSBuild, generated `.gen.sln`,
@@ -50,7 +48,7 @@ Attach является диагностическим свидетельств�
 Engine отвечает за:
 
 - семантику конфигураций сборки, флаги символов компилятора и linker, варианты sanitizer и генерируемые application targets;
-- `IsRunInDebugger`, `BreakIntoDebugger`, захват и разрешение нативного стека, exception callbacks, crash handlers и диагностический self-test;
+- `is_run_in_debugger`, `break_into_debugger`, захват и разрешение нативного стека, exception callbacks, crash handlers и диагностический self-test;
 - смешанные слои стека AngelScript/native и текущий runtime endpoint отладчика;
 - diagnostics baker/runtime Managed C#, владение generated project и граница между logging Engine и внешним managed-debugger tooling;
 - файлы MSVC Natvis/NatJMC, подключённые к сгенерированным solutions;
@@ -103,7 +101,7 @@ Engine отвечает за:
 |---|---|---|
 | Native assertion, C++ exception, signal, SEH failure или lifecycle invariant | Соответствующие нативные символы, исходный лог, затем минимальная нативная цель под отладчиком | Сфокусированный случай `Source/Tests/Test_*.cpp`, если граница переиспользуема. |
 | Ошибка компиляции, binding, remote call или nullability в скрипте | [Scripting Runtime](../explanation/scripting-runtime/) и [Testing](../contributing/testing/) до живого подключения | Минимальная compile/bake fixture или owning test; attach нужен только для вопросов о состоянии выполнения. |
-| Breakpoint, stepping, script stack или local value AngelScript | Development-конфигурация с `Script.DebuggerEnabled = True`, затем профиль подключения `fos` | Проверенная остановка в нужном процессе и нужной ревизии исходников. |
+| Breakpoint, stepping, script stack или local value AngelScript | Development-конфигурация с `AngelScript.DebuggerEnabled = True`, затем профиль подключения `fos` | Проверенная остановка в нужном процессе и нужной ревизии исходников. |
 | Ошибка compiler/analyzer Managed C# | Первая diagnostic `CompileManagedScripts`, generated `.gen.csproj`/`.gen.sln` и настроенный набор source/reference/analyzer | Воспроизведите с теми же `ManagedScriptTargetFramework`, SDK, assemblies и generated API. |
 | Ошибка load, callback, async или lifetime Managed C# | Лог managed baker/runtime и узкий `Test_ManagedScriptBaker` либо `test_managed_*.py` | Сверьте content-hashed assemblies, runtime payload, backend load scope, target role и continuation context до interactive attach. |
 | Смешанное исключение script/native | Сначала unified trace в логе Engine, затем нативный отладчик | Сохранить origin throw и catch site; изолировать переиспользуемую границу нативным тестом. |
@@ -148,7 +146,7 @@ Engine отвечает за:
 
 ### macOS
 
-Используйте LLDB с соответствующими executable, libraries и debug data. `IsRunInDebugger` проверяет `P_TRACED` через `sysctl`, а `BreakIntoDebugger` использует `__builtin_debugtrap`. Исходники Engine поддерживают диагностику нативных символов и стеков, но репозиторий сейчас не заявляет проверенный editor profile macOS или lane crash artifacts.
+Используйте LLDB с соответствующими executable, libraries и debug data. `is_run_in_debugger` проверяет `P_TRACED` через `sysctl`, а `break_into_debugger` использует `__builtin_debugtrap`. Исходники Engine поддерживают диагностику нативных символов и стеков, но репозиторий сейчас не заявляет проверенный editor profile macOS или lane crash artifacts.
 
 ### Ограничения sanitizer и платформ
 
@@ -197,17 +195,17 @@ Engine записывает crash diagnostics в свой лог. Сейчас �
 
 ## Обнаружение отладчика и переход в отладчик
 
-`IsRunInDebugger()` кэширует результат при первом вызове в процессе:
+`is_run_in_debugger()` кэширует результат при первом вызове в процессе:
 
 - Windows использует `IsDebuggerPresent()`;
 - Linux читает `TracerPid` из `/proc/self/status`;
 - macOS запрашивает `KERN_PROC_PID` и проверяет `P_TRACED`.
 
-`BreakIntoDebugger()` выполняет `DebugBreak`, `__builtin_debugtrap` или `SIGTRAP`, только если закэшированный результат истинен. Поскольку exception handling задаёт этот вопрос во время ранней инициализации процесса, запуск вне нативного отладчика с последующим attach не гарантирует активацию Engine-triggered breaks.
+`break_into_debugger()` выполняет `DebugBreak`, `__builtin_debugtrap` или `SIGTRAP`, только если закэшированный результат истинен. Поскольку exception handling задаёт этот вопрос во время ранней инициализации процесса, запуск вне нативного отладчика с последующим attach не гарантирует активацию Engine-triggered breaks.
 
 Когда отладчик обнаружен при запуске, Engine не устанавливает обработку fatal signals/SEH через backward-cpp. Это позволяет нативному отладчику получить fault напрямую, но означает, что обычный out-of-debugger fatal crash-to-log path не является ожидаемым evidence такого запуска. Сохраните отдельный запуск без отладчика, если проверяется сам crash-log контракт.
 
-Отладчик AngelScript не зависит от `IsRunInDebugger`; подключение адаптера `fos` не делает процесс осведомлённым о нативном отладчике.
+Отладчик AngelScript не зависит от `is_run_in_debugger`; подключение адаптера `fos` не делает процесс осведомлённым о нативном отладчике.
 
 ## Визуализаторы Visual Studio
 
@@ -267,8 +265,8 @@ Engine захватывает ограниченный массив нативн
 | `ResolveStackTrace(st)` | Разрешить и объединить все захваченные кадры. |
 | `FormatStackTrace(st)` | Создать читаемый смешанный trace. |
 | `SafeWriteStackTrace(st)` | Записать через low-allocation crash/log path с fallback на адреса. |
-| `ClearResolvedStackTraceCache()` | Очистить process-wide разрешённые нативные entries. |
-| `GetResolvedStackTraceCacheSize()` | Получить текущий размер cache для тестов и диагностики. |
+| `stack_trace::clear_resolved_cache()` | Очистить process-wide разрешённые нативные entries. |
+| `stack_trace::get_resolved_cache_size()` | Получить текущий размер cache для тестов и диагностики. |
 | `SetScriptStackTraceProvider(provider)` | Установить или удалить provider скриптового слоя. |
 | `HasScriptStackTraceProvider()` | Проверить регистрацию provider в тестах. |
 
@@ -316,15 +314,15 @@ Server-to-client movement содержит `offset_time`, поэтому кли�
 
 ### Включение и стоимость runtime
 
-Устанавливайте `Script.DebuggerEnabled = True` только в development config или command-line override. Значение по умолчанию равно `False`. При включении `AngelScriptBackend` сохраняет line cues, отключает bytecode optimization, создаёт endpoint и устанавливает line callback в script contexts.
+Устанавливайте `AngelScript.DebuggerEnabled = True` только в development config или command-line override. Значение по умолчанию равно `False`. При включении `AngelScriptBackend` сохраняет line cues, отключает bytecode optimization, создаёт endpoint и устанавливает line callback в script contexts.
 
-Это меняет характеристики сборки и выполнения скриптов и добавляет обработку каждой строки. Не включайте отладчик в production, benchmarks или acceptance runs, претендующих на обычную script performance. Compile-time define AngelScript `AS_DEBUG` следует нативным Debug-конфигурациям и не связан с runtime-setting `Script.DebuggerEnabled`.
+Это меняет характеристики сборки и выполнения скриптов и добавляет обработку каждой строки. Не включайте отладчик в production, benchmarks или acceptance runs, претендующих на обычную script performance. Compile-time define AngelScript `AS_DEBUG` следует нативным Debug-конфигурациям и не связан с runtime-setting `AngelScript.DebuggerEnabled`.
 
 ### Контракт endpoint и discovery
 
 Runtime:
 
-- привязывает TCP к `Script.DebuggerBindHost`, стандартное значение Engine равно `127.0.0.1`;
+- привязывает TCP к `AngelScript.DebuggerBindHost`, стандартное значение Engine равно `127.0.0.1`;
 - выбирает порт из `43000..44999`, начиная с `process_id % 2000`;
 - объявляет newline-delimited JSON protocol версии `1`;
 - отвечает на UDP probe `fos-debug-discover-v1` на порту `43001`;
@@ -352,7 +350,7 @@ Runtime:
 
 ### Граница безопасности
 
-У debugger protocol нет authentication, authorization, confidentiality или integrity protection. Discovery также раскрывает роль процесса и attach endpoint. Сохраняйте `Script.DebuggerBindHost = 127.0.0.1`, если иной bind не разрешён явной временной проверкой trusted network.
+У debugger protocol нет authentication, authorization, confidentiality или integrity protection. Discovery также раскрывает роль процесса и attach endpoint. Сохраняйте `AngelScript.DebuggerBindHost = 127.0.0.1`, если иной bind не разрешён явной временной проверкой trusted network.
 
 Никогда не открывайте TCP `43000..44999` или UDP `43001` в публичный Internet, недоверенную LAN, production pod/service или shared CI runner. Для remote work оставляйте Engine на loopback, используйте принадлежащий оператору authenticated transport и настраивайте явный локальный endpoint. Не передавайте credentials в debugger config или log evidence.
 
@@ -375,7 +373,7 @@ Client, server и mapper используют общий UDP discovery port `430
 
 ### Устранение неполадок attach
 
-1. Подтвердите, что выбранный процесс действительно получил `Script.DebuggerEnabled = True`; одно имя compound launch не включает endpoint.
+1. Подтвердите, что выбранный процесс действительно получил `AngelScript.DebuggerEnabled = True`; одно имя compound launch не включает endpoint.
 2. Подтвердите наличие в логе строк TCP endpoint и UDP discovery port.
 3. Проверьте, что bind остаётся loopback, если remote exposure не прошло явную проверку.
 4. Если discovery ничего не находит, используйте записанный в логе прямой TCP endpoint и проверьте local firewall/extension-host UDP.
@@ -394,7 +392,7 @@ Client, server и mapper используют общий UDP discovery port `430
 3. **Bake и delivery** — проверьте ожидаемую target assembly и payload ManagedRuntime в каждом resource pack и выбор target-specific runtime упаковщиком. Отсутствующие assemblies допустимы в намеренно минимальных fixtures Engine; проект с включённым backend должен считать это дефектом packaging/configuration.
 4. **Runtime execution** — по логу managed backend различайте ошибки assembly/load-context, регистрацию P/Invoke, signature/invocation callback, нарушение scheduler context, synchronization cover и дефекты GC-root/lifetime. До attach сверяйте content hash и роль процесса.
 
-`Script.DebuggerEnabled` и адаптер `fos` влияют только на AngelScript. Они не предоставляют C# breakpoints, locals, evaluation или managed stacks. Для live stepping C# подключающий проект должен предоставить и квалифицировать debugger, совместимый со встроенным Mono runtime, точными generated assemblies/symbols и целевой платформой. Успешный IDE attach является project evidence, но не заявлением поддержки Engine, пока Engine не владеет повторяемым live acceptance gate.
+`AngelScript.DebuggerEnabled` и адаптер `fos` влияют только на AngelScript. Они не предоставляют C# breakpoints, locals, evaluation или managed stacks. Для live stepping C# подключающий проект должен предоставить и квалифицировать debugger, совместимый со встроенным Mono runtime, точными generated assemblies/symbols и целевой платформой. Успешный IDE attach является project evidence, но не заявлением поддержки Engine, пока Engine не владеет повторяемым live acceptance gate.
 
 Для детерминированных регрессий предпочитайте `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests и узкий набор `BuildTools/tests/test_managed_*.py`. Полная матрица проверки и ограничения платформ/sanitizers приведены в [Скриптах Managed C#](../how-to/scripting/managed-csharp.md).
 
@@ -426,8 +424,8 @@ Client, server и mapper используют общий UDP discovery port `430
 
 Поддерживаемый профиль AngelScript дополнительно фиксирует:
 
-- как `Script.DebuggerEnabled = True` применяется к нужному процессу;
-- политику loopback для `Script.DebuggerBindHost`;
+- как `AngelScript.DebuggerEnabled = True` применяется к нужному процессу;
+- политику loopback для `AngelScript.DebuggerBindHost`;
 - discovery port/timeout или выбор explicit endpoint;
 - выбор multi-instance и политику duplicate filenames;
 - версию adapter, происхождение dependencies/artifact и маршрут установки;
@@ -474,8 +472,8 @@ Package layout и rollout updater принадлежат [Packaging and Release]
 
 `BuildTools/ExternalProjectEvidence.json` закрепляет оба снимка проектов. Текущее evidence показывает:
 
-- Last Frontier хранит нативные launch-профили Windows/Linux, явный профиль `fos` attach, compounds с запуском через `--Script.DebuggerEnabled True`, loopback base bind и проверяемый static workflow validator. Его Linux pipeline также исполняет crash self-test modes Engine. Это сильные проектные практики, но они остаются project-owned.
-- FOnline TLA независимо содержит нативные профили Windows/Linux и `fos` compounds. В закреплённой ревизии сами compounds не включают `Script.DebuggerEnabled`, а base config отключает отладчик и привязывает его к `0.0.0.0`. Это полезное negative compatibility evidence, а не рекомендуемый шаблон.
+- Last Frontier хранит нативные launch-профили Windows/Linux, явный профиль `fos` attach, compounds с запуском через `--AngelScript.DebuggerEnabled True`, loopback base bind и проверяемый static workflow validator. Его Linux pipeline также исполняет crash self-test modes Engine. Это сильные проектные практики, но они остаются project-owned.
+- FOnline TLA независимо содержит нативные профили Windows/Linux и `fos` compounds. В закреплённой ревизии сами compounds не включают `AngelScript.DebuggerEnabled`, а base config отключает отладчик и привязывает его к `0.0.0.0`. Это полезное negative compatibility evidence, а не рекомендуемый шаблон.
 
 Переиспользуемые правила заново выведены из исходников Engine. Никогда не копируйте имена targets Last Frontier в документацию Engine, не продвигайте wildcard bind TLA и не выводите live attach coverage из статического launch file. Изменение ревизии проекта требует повторной проверки всех указанных файлов до обновления evidence decision.
 
@@ -483,7 +481,7 @@ Package layout и rollout updater принадлежат [Packaging and Release]
 
 | Наблюдение | Вероятный слой | Следующее действие |
 |---|---|---|
-| Breakpoints пустые и строк endpoint нет | Endpoint не включён или startup завершился ошибкой | Проверьте effective `Script.DebuggerEnabled`, затем startup logs и доступность портов. |
+| Breakpoints пустые и строк endpoint нет | Endpoint не включён или startup завершился ошибкой | Проверьте effective `AngelScript.DebuggerEnabled`, затем startup logs и доступность портов. |
 | Discovery пуст, но TCP endpoint записан | Проблема UDP/firewall/extension host | Подключитесь к точному записанному `tcp://127.0.0.1:<port>` endpoint. |
 | Останавливается неверный client/server/mapper | Выбор multi-instance | Выберите объявленные role и `<pid>:<port>`; не автоматизируйте первый ответ. |
 | Breakpoint срабатывает в другом одноимённом файле | Коллизия basename | Переименуйте один `.fos`; текущие Engine breakpoints индексируются по basename. |
@@ -500,9 +498,9 @@ Package layout и rollout updater принадлежат [Packaging and Release]
 Повторно проверяйте эту страницу в том же change при изменении:
 
 - имён configurations, `expr_DebugInfo`, `expr_DebugBuild`, symbol/linker flags, sanitizer wiring, PIE/LTO или output layout;
-- `IsRunInDebugger`, `BreakIntoDebugger`, capture/resolution/cache стека, exception callbacks, crash handlers, logging flush, alternate signal stacks или режимов `FO_SELFTEST_CRASH`;
+- `is_run_in_debugger`, `break_into_debugger`, capture/resolution/cache стека, exception callbacks, crash handlers, logging flush, alternate signal stacks или режимов `FO_SELFTEST_CRASH`;
 - Engine или third-party Natvis/NatJMC и их подключения CMake;
-- `Script.DebuggerEnabled`, `Script.DebuggerBindHost`, line cues/optimization AngelScript, настройки context, портов/protocol/commands/events endpoint, breakpoint keys, stack/locals или security boundary;
+- `AngelScript.DebuggerEnabled`, `AngelScript.DebuggerBindHost`, line cues/optimization AngelScript, настройки context, портов/protocol/commands/events endpoint, breakpoint keys, stack/locals или security boundary;
 - diagnostics managed baker, layout generated project, analyzer ids, logging assembly/load-context, scheduler checks callbacks, identity runtime payload или заявления поддержки managed debugger;
 - схемы adapter, discovery/transport, DAP capability mapping, поставки dependency/toolchain, тестов или публикации;
 - файлов launch/evidence проекта, указанных в `ExternalProjectEvidence.json`.

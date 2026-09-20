@@ -162,7 +162,7 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
 
 def _raw_copy_extensions(settings_text: str) -> list[str]:
     match = re.search(
-        r"FIXED_SETTING\(vector<string>,\s*Baking,\s*RawCopyFileExtensions,"
+        r"SETTING\(vector<string>,\s*Baking,\s*RawCopyFileExtensions,"
         r"(?P<values>.*?)\);",
         settings_text,
         re.DOTALL,
@@ -211,7 +211,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         (
             "strex(video_name).split('|')",
             "Resources.ReadFile(names.front())",
-            "SndMngr.PlayMusic(names[1]",
+            "AudioMngr.PlayMusic(names[1]",
             "SprMngr.DrawTexture(_video->Tex, false)",
             "OnRenderIface.Fire()",
             "ProcessVideo()",

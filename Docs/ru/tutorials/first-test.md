@@ -5,9 +5,7 @@ locale: ru
 document_id: first-test-tutorial
 permalink: /Docs/ru/tutorials/first-test.html
 ---
-
 <!-- docs-translation: {"document_id":"first-test-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-test.md","source_sha256":"a6a04fc38189630334396b16f1cc9e37436fbb7de3b9f8aa74e57a1c62a23f0d"} -->
-
 # Первый автоматизированный тест
 
 Расширьте исполняемые проверки из трёх слоёв в примере

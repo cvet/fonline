@@ -5,9 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"7d73e13e64d5b281f8ae7443be22d14928e40f9228d5bc42d173191fe60e4e47"} -->
-
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"73639d4711a8344f9cae073f5082958d1b7972a04999ac1051ca363cac045c2e"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -83,7 +81,7 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 
 ## Runtime settings
 
-`Source/Common/Settings.inc` является центральным декларативным файлом для групп и отдельных settings. `Settings.h` предоставляет:
+`Source/Common/Settings.inc` является центральным декларативным файлом для групп и отдельных settings. Каждый built-in setting адресуется полным именем `Group.Name`, меняется только при построении startup snapshot в `GlobalSettings` и затем доступен как `const`. Live state принадлежит своему runtime owner, а не записывается обратно в settings. `Settings.h` предоставляет:
 
 - `ResourcePackInfo` - имя, входные каталоги и файлы, include/exclude glob patterns, side flags и список bakers;
 - `SubConfigInfo` - именованные config overlays и карты settings;
@@ -124,9 +122,11 @@ sub-config, не сокращая его до delta. Каждое имя обя�
 allow-list **auto-settings**. Runtime-only settings (platform/build flags, размер
 монитора, command-line/git/compatibility values и разрешённый `Common.UserWritablePath`)
 должны оставаться в этом allow-list. Settings, используемые только
-`BuildTools/package.py`, проверяются как обычные settings. Поиск setting
-принимает dotted (`Group.Name`) и bare (`Name`) формы, поэтому каждое bare-имя
-должно оставаться глобально уникальным.
+`BuildTools/package.py`, проверяются как обычные settings. Built-in lookup
+принимает только dotted-форму `Group.Name`; старое unqualified имя становится
+отдельным custom setting и не меняет built-in value. Script
+`SetRuntimeSetting` также отклоняет запись built-in settings как read-only, но
+остаётся доступен для project-owned custom settings.
 
 У custom settings есть две формы чтения. Используйте `FindCustomSetting()`, когда отсутствие ключа нормально и должно оставаться в nullable pointer vocabulary. Используйте `GetCustomSetting()` только для совместимости с историческим non-null sentinel behavior: при наличии ключа он возвращает сохраненное значение, иначе `_emptySetting`.
 
@@ -226,7 +226,7 @@ Installed clients сохраняют read-only base resources, смонтиро�
 - Потребление runtime resources: `Source/Client/ResourceManager.*` и соответствующая runtime documentation.
 - Выбор particle source, компиляция `.spark`/`.efkproj` и runtime consumption `.spk`/`.efk`: `Source/Tools/ParticleBaker.*`, `Source/Client/ParticleRuntime.*`, `Source/Client/VisualParticles.*` и [формат и runtime частиц](../../how-to/content/particle-format.md).
 - Выбор font descriptor для raw-copy и runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*` и [форматы шрифтов и компоновка текста](../../how-to/content/font-format.md).
-- Audio raw-copy, sound indexing, decoder dispatch и client playback: `Baking.RawCopyFileExtensions`, `Audio.*`, `Source/Tools/RawCopyBaker.*`, `Source/Client/ResourceManager.cpp`, `Source/Client/SoundManager.*` и [Audio](../../how-to/content/audio.md).
+- Audio baking, sound indexing, Vorbis decoding и client playback: `Baking.AudioVorbisQuality`, `Audio.SoundFileExtensions`, `Audio.*`, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*` и [Audio](../../how-to/content/audio.md).
 - Video raw-copy, exact-path loading, Ogg/Theora decode, fullscreen/embedded client playback и владение memory: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*` и [Video](../../how-to/content/video.md).
 - Генерация resource packs: [Конвейер baking](../../explanation/content-pipeline/baking.md) и `Source/Tools/*Baker.*`.
 

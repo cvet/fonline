@@ -5,9 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"448977a83f89afef36c586ecafd5e39e413bc82667a6ae6a0b0a7cf0f672604c"} -->
-
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"02fec7d1e91cb642270cc878717aa5995c9ded7632c053bf64194103c8c0a28e"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -78,6 +76,7 @@ python BuildTools/docs_inventory.py --check
 
 - `Source/Tests/Test_AnyData.cpp`
 - `Source/Tests/Test_ApplicationHeadless.cpp`
+- `Source/Tests/Test_ClientEntityLifetime.cpp`
 - `Source/Tests/Test_Common.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
@@ -85,6 +84,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_Geometry.cpp`
 - `Source/Tests/Test_LineTracer.cpp`
 - `Source/Tests/Test_MapLoader.cpp`
+- `Source/Tests/Test_MapSprite.cpp`
 - `Source/Tests/Test_Movement.cpp`
 - `Source/Tests/Test_PathFinding.cpp`
 - `Source/Tests/Test_Properties.cpp`
@@ -99,6 +99,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_ClientUpdater.cpp`
 - `Source/Tests/Test_DataBase.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
@@ -111,6 +112,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEntityLoading.cpp`
 - `Source/Tests/Test_ServerEntityLifetime.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
@@ -131,6 +133,7 @@ python BuildTools/docs_inventory.py --check
 ### Baker и инструменты
 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_BakerSetup.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
@@ -169,6 +172,7 @@ procedural, skeleton-compatibility и Ozz покрывают производс�
 
 ### Тесты рендеринга и frontend
 
+- `Source/Tests/Test_AudioManager.cpp`
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` - прогоняет подготовленные legacy- и modern-эффекты Effekseer через реальные callbacks Sprite/Ring нативной среды выполнения и проверяет детерминированную топологию нескольких экземпляров, геометрию FOnline, UV атласа, все три режима Z-sort, разбиение Ring по бюджету индексов и повторное применение масштаба на уровне facade без respawn или сброса времени.
 - `Source/Tests/Test_ImGui.cpp`
 - `Source/Tests/Test_ModelSpriteLayout.cpp`

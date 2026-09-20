@@ -95,7 +95,7 @@ void EntityLock::Acquire(uint64_t ticket)
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && _sharedHolders.empty() && !HasForeignDescendantHolder(this_thread)) {
         _ownerThread.store(this_thread, std::memory_order_release);
         _recursionCount = 1;
-        TSanAcquire(this);
+        tsan_acquire(this);
         return;
     }
 
@@ -112,14 +112,14 @@ void EntityLock::Acquire(uint64_t ticket)
     // Looped because `atomic::wait` may return spuriously: the notification is best-effort and the standard
     // allows a wake before the value changes
     int32_t state = WaitEntry::STATE_WAITING;
-    TimeMeter wait_time;
+    time_meter wait_time;
 
     while (state == WaitEntry::STATE_WAITING) {
         entry_it->State.wait(WaitEntry::STATE_WAITING, std::memory_order_acquire);
         state = entry_it->State.load(std::memory_order_acquire);
     }
 
-    timespan lock_wait_duration = wait_time.GetDuration();
+    timespan lock_wait_duration = wait_time.get_duration();
 
     locker.lock();
     _waitQueue.erase(entry_it);
@@ -132,7 +132,7 @@ void EntityLock::Acquire(uint64_t ticket)
     FO_STRONG_ASSERT(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
     auto owner_thread = _ownerThread.load(std::memory_order_acquire);
     FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
-    TSanAcquire(this);
+    tsan_acquire(this);
 
     SyncContext::RecordLockWait(lock_wait_duration);
 }
@@ -164,7 +164,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
     // released together once the writer finishes
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && !HasWaitingExclusive()) {
         _sharedHolders.emplace(this_thread, 1);
-        TSanAcquire(this);
+        tsan_acquire(this);
         return;
     }
 
@@ -177,14 +177,14 @@ void EntityLock::AcquireShared(uint64_t ticket)
     locker.unlock();
 
     int32_t state = WaitEntry::STATE_WAITING;
-    TimeMeter wait_time;
+    time_meter wait_time;
 
     while (state == WaitEntry::STATE_WAITING) {
         entry_it->State.wait(WaitEntry::STATE_WAITING, std::memory_order_acquire);
         state = entry_it->State.load(std::memory_order_acquire);
     }
 
-    timespan lock_wait_duration = wait_time.GetDuration();
+    timespan lock_wait_duration = wait_time.get_duration();
 
     locker.lock();
     _waitQueue.erase(entry_it);
@@ -196,7 +196,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
 
     FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Shared entity lock waiter woke up in a non-granted state", ticket, state);
     // GrantWaiters recorded this thread in `_sharedHolders` before waking it
-    TSanAcquire(this);
+    tsan_acquire(this);
     SyncContext::RecordLockWait(lock_wait_duration);
 }
 
@@ -232,7 +232,7 @@ void EntityLock::Release() noexcept
         return;
     }
 
-    TSanRelease(this);
+    tsan_release(this);
     _ownerThread.store(std::thread::id {}, std::memory_order_release);
     GrantWaiters();
 }
@@ -256,7 +256,7 @@ void EntityLock::ReleaseShared() noexcept
     FO_STRONG_ASSERT(it != _sharedHolders.end(), "Shared entity lock release without holder entry", _sharedHolders.size());
 
     if (--it->second == 0) {
-        TSanRelease(this);
+        tsan_release(this);
         _sharedHolders.erase(it);
 
         // A queued exclusive waiter can only proceed once the last reader has left
@@ -297,14 +297,14 @@ void EntityLock::RegisterDescendantHold(uint64_t ticket)
     locker.unlock();
 
     int32_t state = WaitEntry::STATE_WAITING;
-    TimeMeter wait_time;
+    time_meter wait_time;
 
     while (state == WaitEntry::STATE_WAITING) {
         entry_it->State.wait(WaitEntry::STATE_WAITING, std::memory_order_acquire);
         state = entry_it->State.load(std::memory_order_acquire);
     }
 
-    timespan lock_wait_duration = wait_time.GetDuration();
+    timespan lock_wait_duration = wait_time.get_duration();
 
     locker.lock();
     _waitQueue.erase(entry_it);
@@ -473,7 +473,7 @@ auto EntityLock::TryAcquire() -> bool
 
     _ownerThread.store(this_thread, std::memory_order_release);
     _recursionCount = 1;
-    TSanAcquire(this);
+    tsan_acquire(this);
     return true;
 }
 
@@ -526,7 +526,7 @@ void EntityLock::CommitEnsureOp(bool is_exclusive) noexcept
         else {
             _ownerThread.store(this_thread, std::memory_order_release);
             _recursionCount = 1;
-            TSanAcquire(this);
+            tsan_acquire(this);
         }
     }
     else if (owner_thread == this_thread || _descendantHolders.contains(this_thread)) {
@@ -586,21 +586,21 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
         return "not-held";
     };
 
-    WriteLog("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity != nullptr ? entity->GetName() : string_view {}, entity != nullptr ? entity->GetId() : ident_t {}, entity != nullptr && entity->IsDestroyed());
+    logging::write("SyncDiag access-without-sync: entity '{}' id={} destroyed={}", entity ? entity->GetName() : string_view {}, entity ? entity->GetId() : ident_t {}, entity && entity->IsDestroyed());
 
     for (auto walk = try_hold_entity(entity); walk; walk = walk->GetParentRaw()) {
-        WriteLog("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
+        logging::write("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
-    auto widen = entity != nullptr ? entity->GetSyncWidenEntity() : nullptr;
+    auto widen = entity ? entity->GetSyncWidenEntity() : nullptr;
 
     for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
-        WriteLog("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
+        logging::write("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
     // The offending call site. An uncovered access is always a bug to fix, and script-side catch
     // handlers otherwise swallow the exception before its stack is ever reported
-    safe_call([] { WriteLog("SyncDiag   stack:\n{}", FormatStackTrace(GetStackTrace())); });
+    safe_call([] { logging::write("SyncDiag   stack:\n{}", stack_trace::format(stack_trace::get())); });
 }
 
 // Single-threaded logic runs every job on one worker, so no cover can ever be contended and the whole
@@ -609,7 +609,7 @@ auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return entity && entity->GetEngine()->Settings->SingleThreadedLogic;
+    return entity && entity->GetEngine()->Settings->Server.SingleThreadedLogic;
 }
 
 // One pass is authoritative because a reparent holds the entity's own lock, so a cover cannot flap mid-walk.
@@ -636,7 +636,7 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
         for (auto current = try_hold_entity(start); current; current = current->GetParentRaw()) {
             auto lock = current->GetEntityLock();
 
-            if (lock == nullptr || lock->IsLockedByCurrentThread()) {
+            if (!lock || lock->IsLockedByCurrentThread()) {
                 return true;
             }
         }
@@ -718,6 +718,29 @@ static auto FindLockOwner(ptr<ServerEntity> entity, nptr<EntityLock> lock) noexc
     }
 
     return owner;
+}
+
+// Retention relies on an ancestor this thread holds exclusively, which alone keeps every other thread out of the
+// subtree; a lock-less link proves nothing of the kind, and the Critter-Player widen link is not a parent chain
+static auto IsCoveredThroughOwnChain(ptr<ServerEntity> entity) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto own_lock = entity->GetEntityLock();
+
+    if (own_lock && own_lock->IsLockedByCurrentThread()) {
+        return true;
+    }
+
+    for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
+        auto parent_lock = parent->GetEntityLock();
+
+        if (parent_lock && parent_lock->IsLockedByCurrentThread()) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // Recomputing immediately would re-race the same in-flight reparent, so the first attempts yield and later
@@ -818,6 +841,10 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
         requested.emplace_back(entity.hold_ref());
     }
 
+    if (TryRetainCoveredRequest(entities)) {
+        return;
+    }
+
     // The cover is computed from lock-free parent reads, which a concurrent reparent can invalidate while
     // AcquireLocks waits, so the held set is verified afterwards and recomputed if anything escaped
     for (int32_t attempt = 0;; attempt++) {
@@ -857,13 +884,13 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                 for (auto entity : snapshot) {
                     auto widen = entity->GetSyncWidenEntity();
 
-                    if (widen == nullptr) {
+                    if (!widen) {
                         continue;
                     }
 
                     auto widen_lock = widen->GetEntityLock();
 
-                    if (widen_lock == nullptr) {
+                    if (!widen_lock) {
                         continue;
                     }
 
@@ -898,7 +925,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
             for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
                 auto parent_lock = parent->GetEntityLock();
 
-                if (parent_lock == nullptr) {
+                if (!parent_lock) {
                     continue;
                 }
                 if (std::ranges::find(new_locks, parent_lock) != new_locks.end()) {
@@ -926,7 +953,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
         for (auto& entity : requested) {
             auto own_lock = entity->GetEntityLock();
 
-            if (own_lock == nullptr) {
+            if (!own_lock) {
                 continue;
             }
 
@@ -955,10 +982,10 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
             // legitimately have replaced it with the parent, and demanding the own lock would exhaust the budget
             auto widen = entity->GetSyncWidenEntity();
 
-            if (widen != nullptr) {
+            if (widen) {
                 auto widen_lock = widen->GetEntityLock();
 
-                if (widen_lock != nullptr) {
+                if (widen_lock) {
                     bool widen_covered = held_contains(widen_lock);
 
                     if (!widen_covered) {
@@ -992,7 +1019,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                 for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
                     auto parent_lock = parent->GetEntityLock();
 
-                    if (parent_lock != nullptr && !marked(parent_lock)) {
+                    if (parent_lock && !marked(parent_lock)) {
                         all_covered = false;
                         break;
                     }
@@ -1018,6 +1045,96 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
         ReleaseLocks();
         BackoffBeforeSyncRetry(attempt);
     }
+}
+
+void SyncContext::WidenEntities(const_span<ptr<ServerEntity>> extras)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ptr<ServerEntity>> request;
+    request.reserve(_heldLockOwners.size() + extras.size());
+
+    for (auto& owner : _heldLockOwners) {
+        if (!owner->IsDestroyed() && !owner->IsDestroying()) {
+            request.emplace_back(owner);
+        }
+    }
+
+    for (auto extra : extras) {
+        request.emplace_back(extra);
+    }
+
+    SyncEntities(request);
+}
+
+auto SyncContext::TryRetainCoveredRequest(const_span<ptr<ServerEntity>> requested) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_heldLocks.empty()) {
+        return false;
+    }
+
+    // A nested transfer can leave this context's ancestor marks on the old chain; retention must not bypass
+    // the full acquisition's re-proof of the current ancestors, even when every requested own lock is held
+    for (auto& owner : _heldLockOwners) {
+        for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
+            auto parent_lock = parent->GetEntityLock();
+
+            if (parent_lock && std::ranges::find(_heldLocks, parent_lock) == _heldLocks.end() && std::ranges::find(_heldDescendantHolds, parent_lock) == _heldDescendantHolds.end()) {
+                return false;
+            }
+        }
+    }
+
+    SyncLockList requested_locks;
+    small_vector<ptr<ServerEntity>, 8> missing;
+
+    for (auto entity : requested) {
+        auto lock = entity->GetEntityLock();
+
+        if (!lock) {
+            continue;
+        }
+
+        requested_locks.emplace_back(lock);
+
+        // The full path re-proves a Critter-Player link under the acquired cover, which retention cannot, so a
+        // partner outside the held set sends the request there
+        if (auto widen = entity->GetSyncWidenEntity()) {
+            auto widen_lock = widen->GetEntityLock();
+
+            if (widen_lock) {
+                if (std::ranges::find(_heldLocks, widen_lock) == _heldLocks.end()) {
+                    return false;
+                }
+
+                requested_locks.emplace_back(widen_lock);
+            }
+        }
+
+        if (std::ranges::find(_heldLocks, lock) != _heldLocks.end()) {
+            continue;
+        }
+        if (!IsCoveredThroughOwnChain(entity)) {
+            return false;
+        }
+
+        missing.emplace_back(entity);
+    }
+
+    // A held lock the request leaves out means the caller replaces the cover rather than widens it
+    for (auto held_lock : _heldLocks) {
+        if (std::ranges::find(requested_locks, held_lock) == requested_locks.end()) {
+            return false;
+        }
+    }
+
+    for (auto entity : missing) {
+        EnsureEntitySyncedImpl(entity);
+    }
+
+    return true;
 }
 
 void SyncContext::SyncEntity(nptr<ServerEntity> entity)
@@ -1093,7 +1210,7 @@ void FO_TSA_NO_ANALYSIS SyncContext::EnsureEntitySyncedImpl(ptr<ServerEntity> en
     for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
         auto parent_lock = parent->GetEntityLock();
 
-        if (parent_lock == nullptr || parent_lock == lock) {
+        if (!parent_lock || parent_lock == lock) {
             continue; // no lock, or shares `entity`'s lock — not a separate ancestor
         }
         if (std::ranges::find(_heldLocks, parent_lock) != _heldLocks.end()) {
@@ -1532,7 +1649,7 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
         }
 
         if (round % 10000 == 0) {
-            WriteLog("Fair lock re-acquire is spinning: round {} over {} ops", round, ops.size());
+            logging::write("Fair lock re-acquire is spinning: round {} over {} ops", round, ops.size());
         }
 
         // Park on the contended op alone (blocking, FIFO ticket), holding nothing
@@ -1602,7 +1719,7 @@ auto SyncContext::GetOutermostOnThisThread() noexcept -> nptr<SyncContext>
         return nullptr;
     }
 
-    while (ctx->_previousContext != nullptr) {
+    while (ctx->_previousContext) {
         ctx = ctx->_previousContext;
     }
 

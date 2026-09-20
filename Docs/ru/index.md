@@ -5,9 +5,7 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-
 <!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673"} -->
-
 # Документация движка FOnline
 
 Это главная страница пользовательской документации переиспользуемого движка

@@ -207,9 +207,6 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 <a id="entry-map-format-property-item-corner-2fc84611d3"></a>
 - [`entry-map-format-property-item-corner-2fc84611d3`](../../en/reference/map-format/properties.md#entry-map-format-property-item-corner-2fc84611d3)
 
-<a id="entry-map-format-property-item-count-c8d9491eed"></a>
-- [`entry-map-format-property-item-count-c8d9491eed`](../../en/reference/map-format/properties.md#entry-map-format-property-item-count-c8d9491eed)
-
 <a id="entry-map-format-property-item-critterid-dc464b8aed"></a>
 - [`entry-map-format-property-item-critterid-dc464b8aed`](../../en/reference/map-format/properties.md#entry-map-format-property-item-critterid-dc464b8aed)
 
@@ -234,8 +231,8 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 <a id="entry-map-format-property-item-drawmultihexmesh-0d21d19dbe"></a>
 - [`entry-map-format-property-item-drawmultihexmesh-0d21d19dbe`](../../en/reference/map-format/properties.md#entry-map-format-property-item-drawmultihexmesh-0d21d19dbe)
 
-<a id="entry-map-format-property-item-draworderoffsethexy-8567fed9a4"></a>
-- [`entry-map-format-property-item-draworderoffsethexy-8567fed9a4`](../../en/reference/map-format/properties.md#entry-map-format-property-item-draworderoffsethexy-8567fed9a4)
+<a id="entry-map-format-property-item-drawordersublayer-4265fda1d4"></a>
+- [`entry-map-format-property-item-drawordersublayer-4265fda1d4`](../../en/reference/map-format/properties.md#entry-map-format-property-item-drawordersublayer-4265fda1d4)
 
 <a id="entry-map-format-property-item-elevation-014687bbb5"></a>
 - [`entry-map-format-property-item-elevation-014687bbb5`](../../en/reference/map-format/properties.md#entry-map-format-property-item-elevation-014687bbb5)
@@ -329,9 +326,6 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 
 <a id="entry-map-format-property-item-shootthru-ed59c49bff"></a>
 - [`entry-map-format-property-item-shootthru-ed59c49bff`](../../en/reference/map-format/properties.md#entry-map-format-property-item-shootthru-ed59c49bff)
-
-<a id="entry-map-format-property-item-stackable-9eccb8c5a3"></a>
-- [`entry-map-format-property-item-stackable-9eccb8c5a3`](../../en/reference/map-format/properties.md#entry-map-format-property-item-stackable-9eccb8c5a3)
 
 <a id="entry-map-format-property-item-static-4744c22757"></a>
 - [`entry-map-format-property-item-static-4744c22757`](../../en/reference/map-format/properties.md#entry-map-format-property-item-static-4744c22757)

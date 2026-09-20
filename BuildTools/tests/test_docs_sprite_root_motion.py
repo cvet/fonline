@@ -59,8 +59,8 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
 
         self.assertIn("int16_t NextX {};", header)
         self.assertIn("int16_t NextY {};", header)
-        self.assertIn("writer.Write<int16_t>(bake_shot->NextX);", baker)
-        self.assertIn("writer.Write<int16_t>(bake_shot->NextY);", baker)
+        self.assertIn("writer.write<int16_t>(bake_shot->NextX);", baker)
+        self.assertIn("writer.write<int16_t>(bake_shot->NextY);", baker)
         self.assertIn("frame.NextOffset.x = reader.GetLEInt16();", resource)
         self.assertIn("frame.NextOffset.y = reader.GetLEInt16();", resource)
         self.assertIn('strex("next_x_{}", frm)', baker)

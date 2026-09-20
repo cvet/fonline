@@ -280,7 +280,7 @@ public:
                 }
 
                 auto main_texture_size = main_tex_buf->MainTexSize;
-                MemCopy(main_texture_size, size_data, 4 * sizeof(float32_t));
+                memory::copy(main_texture_size, size_data, 4 * sizeof(float32_t));
             }
         }
 
@@ -298,21 +298,21 @@ auto Null_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<Null_Texture>(size, linear_filtered, with_depth);
+    return safe_alloc::make_unique<Null_Texture>(size, linear_filtered, with_depth);
 }
 
 auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<Null_DrawBuffer>(is_static);
+    return safe_alloc::make_unique<Null_DrawBuffer>(is_static);
 }
 
 auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<Null_Effect>(usage, name, loader);
+    return safe_alloc::make_unique<Null_Effect>(usage, name, loader);
 }
 
 auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
@@ -365,16 +365,16 @@ auto Null_Renderer::IsRenderTargetFlipped() const -> bool
     return false;
 }
 
-void Null_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void Null_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(window);
+    ignore_unused(settings, window);
 
-    FO_VERIFY_AND_THROW(settings.ScreenWidth > 0, "Settings screen width must be positive");
-    FO_VERIFY_AND_THROW(settings.ScreenHeight > 0, "Settings screen height must be positive");
+    FO_VERIFY_AND_THROW(screen->Size.width > 0, "Screen width must be positive");
+    FO_VERIFY_AND_THROW(screen->Size.height > 0, "Screen height must be positive");
 
-    _viewPortRect = {0, 0, settings.ScreenWidth, settings.ScreenHeight};
+    _viewPortRect = {0, 0, screen->Size.width, screen->Size.height};
     _currentRenderTarget = nullptr;
     _scissorEnabled = false;
     _scissorRect = {};

@@ -92,6 +92,7 @@ public:
     [[nodiscard]] auto HasCritters() const noexcept -> bool;
     [[nodiscard]] auto GetCritters() noexcept -> span<ptr<Critter>>;
     [[nodiscard]] auto GetCritters() const noexcept -> const_span<ptr<Critter>>;
+    [[nodiscard]] auto GetCritters(CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<ptr<const Critter>>;
     [[nodiscard]] auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<ptr<Critter>>;
@@ -136,6 +137,7 @@ public:
     void VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir);
     auto CheckGagItems(mpos hex, int32_t radius, const function<bool(ptr<const Item>)>& gag_callback) const -> bool;
     auto CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_callback) const -> bool;
+    void ClearAllAssociations() noexcept;
 
     // Runs while this map is being finished
     ///@ ExportEvent

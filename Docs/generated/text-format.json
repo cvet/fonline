@@ -232,7 +232,7 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->BakeLanguages);",
+            "BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);",
             "const string& default_lang = bake_languages.Languages.front();"
           ]
         },
@@ -316,7 +316,7 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "WriteLog(LogType::Warning, \"Unsupported language: {}. Skip\", lang_name);"
+            "logging::write(logging::type::warning, \"Unsupported language: {}. Skip\", lang_name);"
           ]
         }
       ]
@@ -515,7 +515,7 @@
         {
           "path": "Source/Tools/ProtoTextBaker.cpp",
           "anchors": [
-            "WriteLog(LogType::Warning, \"Unsupported language {} in proto {}\", proto_text.first, pid);"
+            "logging::write(logging::type::warning, \"Unsupported language {} in proto {}\", proto_text.first, pid);"
           ]
         }
       ]
@@ -531,7 +531,7 @@
         "client",
         "mapper"
       ],
-      "behavior": "Returns the current Engine Language setting as a strong LanguageName wrapper.",
+      "behavior": "Returns the engine instance's current language as a strong LanguageName wrapper; the configured Client.Language value is only the startup default.",
       "missing_behavior": "Not applicable.",
       "stability": "experimental",
       "source": [
@@ -539,7 +539,7 @@
           "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
           "anchors": [
             "FO_SCRIPT_API LanguageName Common_Game_GetLanguage",
-            "engine->Settings->Language"
+            "engine->GetCurLangName()"
           ]
         }
       ]
@@ -609,7 +609,7 @@
           "path": "Source/Client/Client.cpp",
           "anchors": [
             "auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&",
-            "if (lang_name.empty() || lang_name == Settings->Language)",
+            "if (lang_name.empty() || lang_name == GetCurLangName())",
             "lang_pack.LoadFromResources(Resources, lang_name);",
             "_langPackCache.emplace_back"
           ]
@@ -678,7 +678,7 @@
         "client",
         "mapper"
       ],
-      "behavior": "Loads langName into the current client pack and writes the Language setting.",
+      "behavior": "Loads langName into the current client pack and updates the engine-owned current-language state without mutating the configured Client.Language setting.",
       "missing_behavior": "The Engine does not validate the identifier, apply another fallback, or invoke a project GUI refresh callback.",
       "stability": "experimental",
       "source": [
@@ -692,7 +692,7 @@
           "path": "Source/Client/Client.cpp",
           "anchors": [
             "void ClientEngine::ChangeLanguage(string_view lang_name)",
-            "Settings->Language = lang_name;"
+            "SetCurLangName(lang_name);"
           ]
         }
       ]
@@ -704,14 +704,14 @@
       "sides": [
         "server"
       ],
-      "behavior": "The server loads one pack for Settings.Language and exposes presence and count queries.",
+      "behavior": "The server loads one pack from the configured Client.Language startup value and exposes presence and count queries.",
       "missing_behavior": "There is no server script Game.GetText overload in the Engine API.",
       "stability": "experimental",
       "source": [
         {
           "path": "Source/Server/Server.cpp",
           "anchors": [
-            "_defaultLang.LoadFromResources(Resources, Settings->Language);"
+            "_defaultLang.LoadFromResources(Resources, Settings->Client.Language);"
           ]
         },
         {
@@ -758,7 +758,7 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "if (mode == FormatMode::Draw && !IsEnumSet(flags, FontFlag::NoColorize))"
+            "if (mode == FormatMode::Draw && !is_enum_set(flags, FontFlag::NoColorize))"
           ]
         }
       ]
@@ -890,5 +890,5 @@
       "experimental": 40
     }
   },
-  "contract_digest": "80ed40f35a558a8a45189c0f267066579a507a44ed72c94206ef41c83640a196"
+  "contract_digest": "85212eb8b0cd9addf3004e707478457679e362084025b40e5d28b97cc0745e87"
 }

@@ -111,19 +111,7 @@ public:
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
     void RegisterValueType(string_view name);
-    template<typename T>
-    void RegisterValueType(string_view name)
-    {
-        RegisterValueType(name);
-        auto& layout = _structLayouts.at(string(name));
-        layout.NativeSize = sizeof(T);
-        layout.CreateNative = []() -> unique_del_ptr<void> {
-            auto value = SafeAlloc::MakeUnique<T>();
-            return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
-        };
-        layout.CopyNative = [](ptr<void> dst, ptr<const void> src) { *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>(); };
-    }
-
+    void RegisterValueType(string_view name, size_t native_size, StructLayoutDesc::CreateNativeFunc create_native, StructLayoutDesc::CopyNativeFunc copy_native);
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     void RegisterRefType(string_view name);
     void RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout);
@@ -138,13 +126,12 @@ public:
     void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
-    void RegisterPropertyMigrationBeforeVersion(string_view entity_type, string_view target, string_view version_property, string_view before_version);
     void RegisterProtos(const FileSystem& resources);
     void RegisterAnimationInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void FinalizeRegistration();
 
-    mutable HashStorage Hashes {};
+    mutable hash_storage Hashes {};
 
 private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;
@@ -189,27 +176,26 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
     [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui> { return _imgui; }
+    [[nodiscard]] auto IsStartingUp() const noexcept -> bool { return _startingUp; }
+    [[nodiscard]] auto GetCurLangName() const noexcept -> const string& { return _curLangName; }
+    [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;
 
     // Scripts run single-threaded while the engine comes up and hold nobody back, so the responsiveness
     // budget that reports an overrunning call does not apply to them until it is serving
-    [[nodiscard]] auto IsStartingUp() const noexcept -> bool { return _startingUp; }
     void SetStartingUp(bool starting_up) noexcept { _startingUp = starting_up; }
-
+    void SetCurLangName(string_view lang_name) { _curLangName = lang_name; }
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
-    [[nodiscard]] auto CaptureRandomState() const -> random_generator::state_data;
+    auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
-    virtual void Shutdown() { }
     void FrameAdvance();
 
+    virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
     virtual auto RunScriptContext(const function<void()>& callback) -> timespan;
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
-    [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
-    // Dispatch an inbound remote call to its registered handler. Normally invoked by the derived engine when a call
-    // arrives over the network; also callable in-process (e.g
     void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
 
     ptr<GlobalSettings> Settings;
@@ -226,6 +212,7 @@ protected:
 
 private:
     refcount_ptr<ScriptImGui> _imgui;
+    string _curLangName {};
     std::atomic_bool _startingUp {false};
     mutable mutex _randomGeneratorLocker {};
     mutable random_generator _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {};

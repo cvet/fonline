@@ -298,7 +298,7 @@ Supported labels and fields follow ADR 0002:
 
 Generation rejects unknown selectors, stale scope pins, multiple scope declarations, overlapping exact/family declarations, missing replacements, self-replacements, invalid examples, duplicate fields, and incomplete lifecycle metadata. An exact declaration may deliberately override the one scope declaration. Contract provenance is stored separately from declaration provenance, so readers can distinguish `experimental (scope)`, exact classifications, and an unclassified default.
 
-The current checked classification applies revision-pinned `experimental` status to all 2,472 native-codegen symbols since `2022.1.0.wip`, with the development-only `Game.BreakIntoDebugger` exact override remaining `internal`. The scope's count and inventory digest force owner review for every future symbol-set change. Broad `stable` and lifecycle-specific `deprecated` promises remain release-policy and owner review work.
+The current checked classification applies revision-pinned `experimental` status to all 2,527 native-codegen symbols since `2022.1.0.wip`, with the development-only `Game.BreakIntoDebugger` exact override remaining `internal`. The scope's count and inventory digest force owner review for every future symbol-set change. Broad `stable` and lifecycle-specific `deprecated` promises remain release-policy and owner review work.
 
 Adding or editing `ApiContract` tags must not change the runtime compatibility hash. The focused API tests compare hashes with and without valid contract metadata.
 
@@ -587,7 +587,7 @@ stock client's WAV, ACM, and Ogg Vorbis delivery, decoding, streaming, mixing,
 repeat, and playback surface. `BuildTools/AudioInterface.json` owns stable
 format, delivery, decoding, playback, and validation records.
 `BuildTools/docs_audio.py` validates those records against RawCopyBaker,
-ResourceManager, SoundManager, script methods, settings, and live source
+ResourceManager, AudioManager, script methods, settings, and live source
 anchors, then emits [generated/audio.json](../../../generated/audio.json), six canonical
 English pages, and durable pages at the former `Docs/generated/audio/*.md`
 routes.

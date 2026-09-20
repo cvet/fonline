@@ -27,8 +27,8 @@ class DocumentationRuntimeFoundationsTests(unittest.TestCase):
         ):
             self.assertIn(marker, guide)
         for marker in (
-            "static void Load(string_view name, string_view file_name",
-            "static auto EnumerateMaps(string_view file_name, const string& buf)",
+            "void Load(string_view name, string_view file_name",
+            "auto EnumerateMaps(string_view file_name, const string& buf)",
         ):
             self.assertIn(marker, loader)
 

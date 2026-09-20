@@ -66,7 +66,7 @@ class DocumentationBackupRecoveryTests(unittest.TestCase):
             "InitializeOpLogs()",
             "RestorePendingChanges()",
             "Empty oplog path in settings",
-            'strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog")',
+            'strex(_settings->DataBase.OpLogPath).replace(".oplog", "-committed.oplog")',
             "Pending database insert replay conflict",
             "StartPanic",
             "osfile::sync_file(_fd)",
@@ -75,7 +75,7 @@ class DocumentationBackupRecoveryTests(unittest.TestCase):
         self.assertIn("return ::fsync(fd) == 0;", posix)
         self.assertIn("::_commit(fd)", winapi)
         self.assertIn('strex("{}.tmp", path)', json_backend)
-        self.assertIn("fs_rename(tmp_path, path)", json_backend)
+        self.assertIn("fs::rename(tmp_path, path)", json_backend)
         self.assertIn('strex("{}/Storage.sqlite", _storageDir)', sqlite_backend)
         self.assertIn('Execute("PRAGMA journal_mode = WAL"', sqlite_backend)
         self.assertIn('Execute("PRAGMA synchronous = NORMAL"', sqlite_backend)

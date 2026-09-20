@@ -20,12 +20,12 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>e8c73e0037798d72a8c7d1af0cfd975cd8a7aa000109e378477bac3e9dc7a1e9</code> |
+| Contract digest | <code>5bdb39de18314bd98379cb21099ef4a239ce1430482d48e7027f1e384d8b6e8d</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 8 | Sections and control directives. |
-| [Properties](properties.md) | 109 | Engine-owned Map, Critter, and Item properties. |
+| [Properties](properties.md) | 107 | Engine-owned Map, Critter, and Item properties. |
 | [Baking](baking.md) | 4 | Ownership and server/client materialization. |
 | [Validation](validation.md) | 17 | Source-backed requirements and limitations. |
 

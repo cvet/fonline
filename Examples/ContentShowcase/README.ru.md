@@ -3,9 +3,7 @@ permalink: /Examples/ContentShowcase/README.ru.html
 locale: ru
 document_id: content-showcase-readme
 ---
-
 <!-- docs-translation: {"document_id":"content-showcase-readme","locale":"ru","source_path":"Examples/ContentShowcase/README.md","source_sha256":"261a3d5784dcc49490fcace8099a099f907244f11015c869dcac90fb776dad34"} -->
-
 # Демонстрация контента FOnline
 
 Автономный презентационный проект FOnline, который показывает конвейер

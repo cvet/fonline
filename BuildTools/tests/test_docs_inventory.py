@@ -30,8 +30,8 @@ class DocumentationInventoryTests(unittest.TestCase):
             (root / "Source/Tests/Test_Alpha.cpp").write_text("// test\n", encoding="utf-8")
             (root / "Source/Tests/Test_Beta.cpp").write_text("// test\n", encoding="utf-8")
             (root / "Source/Common/Settings.inc").write_text(
-                "FIXED_SETTING(bool, Test, Fixed, false);\n"
-                "VARIABLE_SETTING(string, Test, Variable, \"\");\n",
+                "SETTING(bool, Test, First, false);\n"
+                "SETTING(string, Test, Second, \"\");\n",
                 encoding="utf-8",
             )
 

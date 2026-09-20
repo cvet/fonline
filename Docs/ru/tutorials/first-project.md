@@ -5,9 +5,7 @@ locale: ru
 document_id: legacy-tutorial-entry
 permalink: /Docs/ru/tutorials/first-project.html
 ---
-
 <!-- docs-translation: {"document_id":"legacy-tutorial-entry","locale":"ru","source_path":"Docs/en/tutorials/first-project.md","source_sha256":"b136193f90ed0307bac291d22ffd2e28c37645d533293a2df113015126567758"} -->
-
 # Первый headless-проект FOnline
 
 В этом руководстве запускается принадлежащий движку минимальный проект без

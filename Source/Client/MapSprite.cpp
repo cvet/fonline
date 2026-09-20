@@ -303,18 +303,20 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
     mspr->_extraChainParent = last_spr;
 }
 
-auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t
+auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Bit layout: [group 16][primary 24][secondary 16][sub-layer 8]
+    // Bit layout: [group 8][primary 24][secondary 16][layer 8][sub-layer 8]; the sub-layer only orders sprites of
+    // one layer on one hex, so an item's own DrawOrderSubLayer can put it over a wall run drawn on the same cell
     uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
     bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
     uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
     uint64_t secondary = hex.x;
-    uint64_t sub_layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
+    uint64_t layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
+    uint64_t sub = numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min());
 
-    return (group << 48) | (primary << 24) | (secondary << 8) | sub_layer;
+    return (group << 56) | (primary << 32) | (secondary << 16) | (layer << 8) | sub;
 }
 
 void MapSpriteList::GrowPool() noexcept
@@ -324,11 +326,11 @@ void MapSpriteList::GrowPool() noexcept
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
     for (int32_t i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
-        _spritesPool.emplace_back(SafeAlloc::MakeUnique<MapSprite>());
+        _spritesPool.emplace_back(safe_alloc::make_unique<MapSprite>());
     }
 }
 
-auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback, int8_t sub_layer) noexcept -> ptr<MapSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -343,7 +345,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_index = static_cast<uint32_t>(_activeSprites.size());
     mspr->_globalPos = ++_globalCounter;
     mspr->_drawOrder = draw_order;
-    mspr->_drawOrderPos = MakeDrawOrderPos(draw_order, hex);
+    mspr->_drawOrderPos = MakeDrawOrderPos(draw_order, hex, sub_layer);
     mspr->_hex = hex;
     mspr->_hexOffset = hex_offset;
     mspr->_pHexOffset = phex_offset;

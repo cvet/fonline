@@ -41,7 +41,7 @@
   "outputs": {
     "runtime_extensions": ["fofnt", "fnt"],
     "authoring_sidecar_extensions": ["bmfc"],
-    "raw_copy_extensions": ["fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"],
+    "raw_copy_extensions": ["fofnt", "bmfc", "fnt", "ogv", "json", "ini"],
     "raw_copy_passthrough": true,
     "fofnt_max_version": 2,
     "fofnt_keys": ["Version", "Image", "LineHeight", "YAdvance", "End", "Letter", "PositionX", "PositionY", "Width", "Height", "OffsetX", "OffsetY", "XAdvance"],
@@ -162,7 +162,7 @@
       "stability": "experimental",
       "requirement": "Start each glyph record with Letter and one valid UTF-8 codepoint after the first apostrophe.",
       "rationale": "The parser decodes exactly one codepoint to select the glyph map entry; later duplicate records overwrite earlier metrics.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"Letter\"", "utf8::Decode(letter_pos, letter_len)", "font_data.Letters[letter]"]}]
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"Letter\"", "utf8::decode(letter_pos, letter_len)", "font_data.Letters[letter]"]}]
     },
     {
       "id": "font-format.fofnt.position-x",
@@ -446,7 +446,7 @@
       "stability": "experimental",
       "requirement": "Author every required Unicode codepoint; invalid UTF-8 and absent glyphs consume no glyph width and render no fallback symbol.",
       "rationale": "The layout maps invalid sequences to codepoint zero and unknown codepoints to zero advance, while drawing skips missing map entries.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["utf8::Decode", "utf8::IsValid(letter) ? letter : 0", "it == font->Letters.end()"]}]
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["utf8::decode", "utf8::is_valid(letter) ? letter : 0", "it == font->Letters.end()"]}]
     },
     {
       "id": "font-format.layout.measurement",

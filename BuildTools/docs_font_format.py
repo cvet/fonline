@@ -166,7 +166,7 @@ def _quoted_values(text: str) -> list[str]:
 
 def _derive_raw_copy_extensions(settings_text: str) -> list[str]:
     match = re.search(
-        r"FIXED_SETTING\(vector<string>,\s*Baking,\s*RawCopyFileExtensions,"
+        r"SETTING\(vector<string>,\s*Baking,\s*RawCopyFileExtensions,"
         r"(?P<values>.*?)\);",
         settings_text,
         re.DOTALL,

@@ -5,9 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-
 <!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"fb869e9d8c65d0fe4f67b270a729008493ca8ace00392bfa04c67cc907d427f8"} -->
-
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.

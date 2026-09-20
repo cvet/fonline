@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/release/backup-and-recovery.html
 ---
 
 # Резервное копирование и восстановление
-
 <!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"713a72447d6b5557f13815104d957372dae7cdc87820b332ee8827f55ec4991b"} -->
-
 Этот runbook определяет переиспользуемую границу резервного копирования, восстановления и disaster recovery для сервера FOnline. Используйте его вместе с [Persistence](../../explanation/persistence/) для механики хранилища, [Release Operations](operations.md) для управления процессом и [Engine Upgrade Guide](../migration/engine-upgrade.md), когда долговечные данные переходят между ревизиями Engine или игры.
 
 ## Решение о восстановлении

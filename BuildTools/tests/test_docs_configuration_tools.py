@@ -103,13 +103,15 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
 
     def test_tools_reference_covers_every_registered_builtin_baker(self) -> None:
         baker_source = self._text("Source/Tools/Baker.cpp")
-        registered = set(re.findall(r"MakeUnique<([A-Za-z]+Baker)>", baker_source))
+        registered = set(re.findall(r"safe_alloc::make_unique<([A-Za-z]+Baker)>", baker_source))
         expected = {
             "AngelScriptBaker",
+            "AudioBaker",
             "ConfigBaker",
             "EffectBaker",
             "ImageBaker",
             "MapBaker",
+            "ManagedScriptBaker",
             "MetadataBaker",
             "ModelInfoBaker",
             "ModelMeshBaker",
@@ -146,8 +148,8 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
 
     def test_complete_localization_and_ci_gate_are_current(self) -> None:
         model = docs_localization.generate_localization_status(ENGINE_ROOT)
-        self.assertEqual(model["summary"]["required_document_count"], 197)
-        self.assertEqual(model["summary"]["current_translation_count"], 197)
+        self.assertEqual(model["summary"]["required_document_count"], 191)
+        self.assertEqual(model["summary"]["current_translation_count"], 191)
         self.assertEqual(model["summary"]["missing_translation_count"], 0)
         self.assertTrue(model["summary"]["complete"])
 

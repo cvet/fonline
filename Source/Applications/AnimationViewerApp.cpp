@@ -109,10 +109,10 @@ static void AnimationViewerEntry([[maybe_unused]] void* data)
         if (!Data->Engine) {
             try {
                 auto settings = make_ptr(&GetApp()->Settings);
-                Data->Engine = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
+                Data->Engine = safe_alloc::make_refcounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
 
                 auto engine = GetEngine();
-                Data->Viewer = SafeAlloc::MakeUnique<AnimationViewer>(engine, &engine->SprMngr, &engine->ResMngr, &engine->GameTime);
+                Data->Viewer = safe_alloc::make_unique<AnimationViewer>(engine, &engine->SprMngr, &engine->ResMngr, &engine->GameTime);
 
                 // The window is the whole application here: it starts open and
                 // fills the viewport instead of floating inside an empty frame
@@ -120,7 +120,7 @@ static void AnimationViewerEntry([[maybe_unused]] void* data)
                 Data->Viewer->SetFillViewport(true);
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
                 GetApp()->RequestQuit();
                 GetApp()->EndFrame();
                 return;
@@ -131,13 +131,13 @@ static void AnimationViewerEntry([[maybe_unused]] void* data)
             DrawViewerFrame();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         GetApp()->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -173,7 +173,7 @@ int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -193,10 +193,10 @@ int main(int argc, char** argv) // Handled by SDL
             Data->Engine.reset();
         }
 
-        ExitApp(true);
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -207,15 +207,15 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (settings.Packaged) {
+    if (settings.Common.Packaged) {
         FileSystem resources;
-        resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
-        resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetMapperResourcePacks());
         return resources;
     }
     else {
         FileSystem resources;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(&settings));
+        resources.AddCustomSource(safe_alloc::make_unique<BakerDataSource>(&settings));
         return resources;
     }
 }

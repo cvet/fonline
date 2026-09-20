@@ -49,7 +49,7 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
     ignore_unused(user_data);
 
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator;
     ptr<uint8_t> bytes = allocator.allocate(sz);
     return bytes.get();
 }
@@ -66,7 +66,7 @@ static void ImGuiFree(void* raw_mem, void* user_data)
         return;
     }
 
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator;
     allocator.deallocate(bytes.get(), 0);
 }
 
@@ -77,7 +77,7 @@ static void ImGuiLogError(ImGuiContext* ctx, void* user_data, const char* msg) n
     ignore_unused(user_data);
 
     const ImGuiWindow* window = ctx != nullptr ? ctx->CurrentWindow : nullptr;
-    WriteLog(LogType::Error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
+    logging::write(logging::type::error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
 }
 
 void ImGuiExt::Init()

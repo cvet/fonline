@@ -290,9 +290,9 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        CHECK(fog.GetPoints()[0].PointOffset != nullptr);
+        CHECK(fog.GetPoints()[0].PointOffset);
         CHECK(*fog.GetPoints()[0].PointOffset == ipos32 {100, 0});
-        CHECK(fog.GetPoints()[2].PointOffset != nullptr);
+        CHECK(fog.GetPoints()[2].PointOffset);
         CHECK(*fog.GetPoints()[2].PointOffset == ipos32 {100, 50});
     }
 
@@ -358,7 +358,7 @@ TEST_CASE("FogOfWar")
         fogs.emplace_back();
 
         for (const auto& p : fogs.front().GetPoints()) {
-            REQUIRE(p.PointOffset != nullptr);
+            REQUIRE(p.PointOffset);
             auto offset = *p.PointOffset;
             CHECK((offset == ipos32 {11, 22} || offset == ipos32 {33, 44}));
         }
@@ -370,7 +370,7 @@ TEST_CASE("FogOfWar")
         bool base_draw_offset_seen = false;
 
         for (const auto& p : fogs.front().GetPoints()) {
-            REQUIRE(p.PointOffset != nullptr);
+            REQUIRE(p.PointOffset);
             auto offset = *p.PointOffset;
             if (offset == ipos32 {77, 88}) {
                 draw_offset_seen = true;

@@ -279,16 +279,6 @@ AddStaticThirdPartyLibrary(Theora
     APPEND_TO FO_CLIENT_LIBS
     INCLUDE_DIRS "${FO_THEORA_DIR}/include")
 
-# Acm
-SetValue(FO_ACM_DIR "${FO_ENGINE_ROOT}/ThirdParty/Acm")
-SetValue(FO_ACM_SOURCE
-    "${FO_ACM_DIR}/acmstrm.cpp"
-    "${FO_ACM_DIR}/acmstrm.h")
-AddStaticThirdPartyLibrary(AcmDecoder
-    SOURCE_LIST FO_ACM_SOURCE
-    APPEND_TO FO_CLIENT_LIBS
-    INCLUDE_DIRS "${FO_ACM_DIR}")
-
 # GLM
 StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
@@ -476,6 +466,12 @@ if(FO_BUILD_SERVER_LIB)
         ENABLE_UNINSTALL OFF
         ENABLE_EXAMPLES OFF
         USE_BUNDLED_UTF8PROC ON)
+
+    # MemorySanitizer does not intercept glibc strlcpy, so every string libbson copies with it reads as uninitialized;
+    # the strncpy fallback is intercepted
+    if(CMAKE_BUILD_TYPE MATCHES "^San_Memory")
+        SetCacheValues(BSON_HAVE_STRLCPY 0)
+    endif()
 
     if(NOT FO_DISABLE_MONGO)
         StatusMessage("+ MongoDB")
@@ -758,17 +754,19 @@ if(FO_MANAGED_SCRIPTING)
     file(STRINGS "${FO_ENGINE_ROOT}/ThirdParty/dotnet-runtime" FO_MONO_RUNTIME_VERSION LIMIT_COUNT 1)
     string(REPLACE "/" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
     string(REPLACE "\\" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
-    # Keep in sync with buildtools.py so subset and source patches invalidate only their platforms
+    # Keep in sync with buildtools.py so subset, cmake args, and source patches invalidate only their platforms
     if(FO_WEB)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_wasmglue)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_wasmglue_asm_id)
     elseif(FO_ANDROID)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_android_sources)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_android_sources)
     elseif(FO_MAC OR FO_IOS)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_apple_sources_v2)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_apple_sources_v2)
     elseif(FO_LINUX)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl_linux_signal_actions)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_linux_signal_actions)
+    elseif(FO_WINDOWS)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info)
     else()
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_nogl)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators)
     endif()
 
     # dotnet/runtime's own paths sit close to MAX_PATH, and the default location adds the build
@@ -890,6 +888,12 @@ if(FO_MANAGED_SCRIPTING)
 
         # Xcode adds a configuration subdirectory to search paths; published Mono archives have none
         if(FO_MAC OR FO_IOS)
+            SetValue(runtimeLib "${runtimeArchive}")
+        endif()
+
+        # The Android runtime publishes its shared library beside the archive, and a bare name links the shared
+        # one, which hides the eglib symbols the allocator readback reads; the archive is what every host links
+        if(FO_ANDROID)
             SetValue(runtimeLib "${runtimeArchive}")
         endif()
 

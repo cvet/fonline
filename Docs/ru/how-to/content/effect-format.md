@@ -5,9 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-
 <!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"6c1d1e311816be8c4049c69ba79b24e3c7beab13bccbedca344196cfcbcacb01"} -->
-
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл

@@ -383,7 +383,7 @@
       "stability": "internal",
       "requirement": "Each of one or GameSettings::MAP_DIR_COUNT directions stores exactly the common frame count; the resolved logical root offset is serialized on every concrete frame after mesh padding and cropping.",
       "rationale": "Per-frame offsets preserve screen placement when polygon geometry changes the serialized canvas independently for each direction and animation frame.",
-      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1", "for (uint8_t dir = 0; dir < dirs; dir++)", "writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"]}]
+      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1", "for (uint8_t dir = 0; dir < dirs; dir++)", "writer.write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"]}]
     },
     {
       "id": "image-format.baking.frame-record",
@@ -391,7 +391,7 @@
       "stability": "internal",
       "requirement": "Each frame starts with a shared flag; a concrete record stores signed int16 draw offset, uint16 cropped dimensions, signed int16 NextX/NextY, exact RGBA8 pixels, a mesh kind, and mesh vertices and indices plus logical source size and origin when the kind is Mesh. A shared record stores one earlier-frame index.",
       "rationale": "The record preserves logical placement and lighting coordinates while avoiding transparent texture rows and submitting indexed silhouettes; repeated frames still reuse the original payload.",
-      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["writer.Write<bool>(shot.Shared)", "writer.Write<int16_t>(bake_shot->NextX)", "writer.Write<uint16_t>(shot.SharedIndex)", "bake_shot->Width) * bake_shot->Height * 4"]}]
+      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["writer.write<bool>(shot.Shared)", "writer.write<int16_t>(bake_shot->NextX)", "writer.write<uint16_t>(shot.SharedIndex)", "bake_shot->Width) * bake_shot->Height * 4"]}]
     },
     {
       "id": "image-format.baking.sprite-info-index",
@@ -411,7 +411,7 @@
       "requirement": "Resolve and validate the complete SpriteMesh setting group for every image bake, including when SpriteMesh.Enabled is false: AlphaThreshold is 0..254, MaxTriangles is positive, and AreaSavingsWeight is finite and non-negative. When enabled, build deterministic alpha-thresholded candidates within that triangle budget, score saved original-frame area against submitted triangles, retain only validated coverage, crop selected mesh canvases to exact geometry bounds, and preserve the logical root through the serialized frame offset.",
       "rationale": "The opt-in path reduces transparent overdraw and texture area without clipping visible pixels or changing gameplay placement; unsafe or unprofitable candidates remain quads and empty masks remain explicit empty geometry.",
       "source": [
-        {"path": "Source/Common/Settings.inc", "anchors": ["FIXED_SETTING(bool, SpriteMesh, Enabled", "FIXED_SETTING(int32_t, SpriteMesh, AlphaThreshold", "FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles", "FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight"]},
+        {"path": "Source/Common/Settings.inc", "anchors": ["SETTING(bool, SpriteMesh, Enabled", "SETTING(int32_t, SpriteMesh, AlphaThreshold", "SETTING(int32_t, SpriteMesh, MaxTriangles", "SETTING(float32_t, SpriteMesh, AreaSavingsWeight"]},
         {"path": "Source/Tools/SpriteMeshing.cpp", "anchors": ["auto ResolveSpriteMeshBakeConfig", "auto BuildSpriteMesh", "saved_area_ratio * config.AreaSavingsWeight - numeric_cast<float64_t>(triangle_count)", "SpriteMeshKind::Empty"]},
         {"path": "Source/Tools/ImageBaker.cpp", "anchors": ["CropSpriteFrameToMeshBounds", "TranslateSpriteMesh", "mesh.Kind == SpriteMeshKind::Mesh"]}
       ]
@@ -422,7 +422,7 @@
       "stability": "experimental",
       "requirement": "Selected files bake asynchronously; each exception is logged, and any nonzero error count ends the Image baker with ImageBakerException.",
       "rationale": "A full scan reports all independently failing image resources in one run without silently succeeding.",
-      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["run_async(GetAsyncMode(), task_name", "WriteLog(\"Image baking error: {}\"", "throw ImageBakerException(\"Errors during images baking\", errors)"]}]
+      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["run_async(GetAsyncMode(), task_name", "logging::write(\"Image baking error: {}\"", "throw ImageBakerException(\"Errors during images baking\", errors)"]}]
     }
   ],
   "runtime_rules": [

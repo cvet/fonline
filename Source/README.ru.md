@@ -5,9 +5,7 @@ permalink: /Source/README.ru.html
 locale: ru
 document_id: source-readme
 ---
-
 <!-- docs-translation: {"document_id":"source-readme","locale":"ru","source_path":"Source/README.md","source_sha256":"f386f4c9f5f293ab0378eb7f6327993123f09f0144e488d7c85136f00e26618a"} -->
-
 # Дерево исходного кода FOnline Engine
 
 - `Applications/` - точки входа исполняемых файлов для генерируемых целей сборки.

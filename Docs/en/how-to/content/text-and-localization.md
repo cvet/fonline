@@ -198,14 +198,14 @@ signatures. The important behavioral contract is:
 | `Game.GetText(langName, key)` | client, mapper | Use the current pack when `langName` is empty or current; otherwise load/cache that language and return its first variant. No runtime fallback is applied for an absent non-empty language. |
 | `Game.GetTextCount(key)` | server, client, mapper | Return variant count, or zero when absent. |
 | `Game.IsTextPresent(key)` | server, client, mapper | Return whether at least one variant exists. |
-| `Game.ChangeLanguage(langName)` | client, mapper | Replace the current pack and write `Client.Language`. |
+| `Game.ChangeLanguage(langName)` | client, mapper | Replace the current runtime pack; the immutable startup setting is unchanged. |
 
-The client loads `Client.Language` during startup. `Game.ChangeLanguage` does
+The client loads `Client.Language` during startup, then owns the current language as live engine state exposed by `Game.CurrentLanguage` / `Game.GetLanguage()`. `Game.ChangeLanguage` does
 not validate the identifier and does not invoke a game GUI refresh callback.
 An embedding project owns its allowed-language selector, persistence policy,
 and refresh/rebuild sequence.
 
-The server loads one pack for `Settings.Language`. It exposes only presence and
+The server loads one pack from the startup `Client.Language` setting and then owns the same current-language state. It exposes only presence and
 count queries to scripts; there is no server-side script `Game.GetText`
 overload in the Engine contract.
 

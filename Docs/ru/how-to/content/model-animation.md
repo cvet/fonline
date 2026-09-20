@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/content/model-animation.html
 ---
 
 # Метаданные и длительность анимаций моделей
-
 <!-- docs-translation: {"document_id":"model-animation","locale":"ru","source_path":"Docs/en/how-to/content/model-animation.md","source_sha256":"87210fa5e304b04865797e03928507322f11ac2dd143fea378d35c4e81a41886"} -->
-
 Это руководство описывает переиспользуемый контракт FOnline, который преобразует исходные анимации моделей и пары `(state, action)` в клиентский runtime rig и общие метаданные эффективного цикла. Оно следует текущим реализациям source loader, converter, `ModelInfoBaker`, клиентского lookup, регистрации общих метаданных, script exports и тестов движка. Подключающий проект может определять свои имена моделей, правила использования animation enum, игровое время и fallback policy, но не должен повторно реализовывать lookup движка или разбирать приватные baked payloads.
 
 ## Статус контракта

@@ -38,7 +38,7 @@
   },
   "file_selection": {
     "setting": "Baking.ProtoFileExtensions",
-    "setting_anchor": "FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions",
+    "setting_anchor": "SETTING(vector<string>, Baking, ProtoFileExtensions",
     "output_pattern": "<pack>.fopro-bin-<side>",
     "runtime_sides": ["server", "client", "mapper"],
     "nested_sections_skipped": true,
@@ -130,7 +130,7 @@
       "description": "Directories and conventional extension names do not select a prototype type; the section does.",
       "source": {
         "path": "Source/Tools/ProtoBaker.cpp",
-        "anchors": ["Settings->ProtoFileExtensions", "filtered_files.emplace_back"]
+        "anchors": ["Settings->Baking.ProtoFileExtensions", "filtered_files.emplace_back"]
       }
     },
     {

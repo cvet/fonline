@@ -23,7 +23,7 @@ remediation. Both selected every owning document, met the per-family production
 task-success target, and produced no unsupported safety, migration,
 compatibility, or release claim. The AI quality exit gate is complete.
 
-The current source contains 27 tasks, 65 retrieval checks, and 92 answer
+The current source contains 28 tasks, 67 retrieval checks, and 97 answer
 checks. Its static retrieval threshold is 100 percent: every checked query must
 find an expected owner within the declared maximum rank.
 

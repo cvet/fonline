@@ -8,9 +8,13 @@ internal static class Native
     public static readonly System.Collections.Generic.List<string> RegisteredFunctions = new();
     public static readonly System.Collections.Generic.List<string> RegisteredRemoteCalls = new();
     public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result,
-                                                Delegate handler) => RegisteredFunctions.Add(name);
-    public static void RegisterRemoteCallHandler(string name, int parameters,
-                                                 Delegate handler) => RegisteredRemoteCalls.Add(name);
+                                                Delegate handler) => RegisteredFunctions.Add(name + ":" + attribute);
+    public static readonly System.Collections.Generic.List<Delegate> RegisteredRemoteCallHandlers = new();
+    public static void RegisterRemoteCallHandler(string name, int parameters, Delegate handler)
+    {
+        RegisteredRemoteCalls.Add(name);
+        RegisteredRemoteCallHandlers.Add(handler);
+    }
     public static int FallbackCalls;
     public static bool InvokeScriptFunc(string name, object?[] args)
     {
@@ -20,7 +24,15 @@ internal static class Native
     public static void Log(string text)
     {
     }
-    public static void RunScriptContinuation(Action continuation) => continuation();
+    public static void ReportException(Exception exception)
+    {
+    }
+    public static string LastContinuationName = "";
+    public static void RunScriptContinuation(Action continuation)
+    {
+        LastContinuationName = ScriptEntryNames.Describe(continuation);
+        continuation();
+    }
     public static object GetProperty(string owner, string property, IntPtr entity) => throw new NotSupportedException();
     public static void SetProperty(string owner, string property, IntPtr entity,
                                    object value) => throw new NotSupportedException();
@@ -38,18 +50,6 @@ public static partial class Game
     public static void Log(string text) => Native.Log(text);
 }
 
-public enum GameProperty
-{
-    Value
-}
-public enum ModifierEvent
-{
-    Value
-}
-public enum ModifierScope
-{
-    Value
-}
 public enum CritterProperty
 {
     Strength = 7
@@ -101,9 +101,9 @@ public partial struct ucolor
 {
     public uint value;
 }
-public static class Settings
+public static partial class Game
 {
-    public static int Geometry_MapDirCount { get; set; } = 6;
+    public static int MapDirCount { get; set; } = 6;
 }
 public partial struct hdir
 {

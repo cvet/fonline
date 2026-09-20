@@ -71,32 +71,29 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 
 // SyncScope: requires self; creates and attaches a new inner item under the container cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
+    if (!self->GetEngine()->GetProtoItem(pid)) {
+        throw ScriptException("Invalid proto", pid);
     }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(pid, nullptr);
+    return self->AddItemToContainer(item, stackId);
 }
 
 // SyncScope: requires self; creates and attaches a new inner item under the container cover
 ///@ ExportMethod
-FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
     }
-    if (count <= 0) {
-        throw ScriptException("Count arg must be positive", count);
-    }
 
-    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
-    return item;
+    auto item = self->GetEngine()->ItemMngr.CreateItem(proto->GetProtoId(), nullptr);
+    return self->AddItemToContainer(item, stackId);
 }
 
 // SyncScope: requires self; returns inner item handles covered by self while the cover remains
@@ -110,7 +107,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item>
 
 // SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
+FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
     auto map = ResolveItemMap(self);
 
@@ -119,7 +116,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
 
 // SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
+FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 {
     auto map = ResolveItemMapPosition(self, hex);
 
@@ -128,7 +125,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 
 // SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
+FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 {
     auto cr = ResolveItemCritter(self);
 

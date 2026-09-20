@@ -302,8 +302,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/RenderTarget.h"
     "${FO_ENGINE_ROOT}/Source/Client/ResourceManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ResourceManager.h"
-    "${FO_ENGINE_ROOT}/Source/Client/SoundManager.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/SoundManager.h"
+    "${FO_ENGINE_ROOT}/Source/Client/AudioManager.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/AudioManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.h"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.cpp"
@@ -358,6 +358,8 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.h"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
@@ -398,6 +400,8 @@ AppendList(FO_BAKER_SOURCE
 
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_BAKER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.cpp"
         "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.h"
         "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.cpp")
 endif()
@@ -455,6 +459,8 @@ AppendList(FO_SOURCE_META_FILES
 AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
@@ -496,6 +502,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Logging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MapSprite.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimation.cpp"
@@ -527,8 +534,11 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientDataValidation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEntityLifetime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientUpdater.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLifetime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLoading.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"

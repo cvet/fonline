@@ -54,9 +54,6 @@
       "fofnt",
       "bmfc",
       "fnt",
-      "acm",
-      "ogg",
-      "wav",
       "ogv",
       "json",
       "ini"
@@ -334,7 +331,7 @@
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "key == \"Letter\"",
-            "utf8::Decode(letter_pos, letter_len)",
+            "utf8::decode(letter_pos, letter_len)",
             "font_data.Letters[letter]"
           ]
         }
@@ -916,8 +913,8 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "utf8::Decode",
-            "utf8::IsValid(letter) ? letter : 0",
+            "utf8::decode",
+            "utf8::is_valid(letter) ? letter : 0",
             "it == font->Letters.end()"
           ]
         }
@@ -1253,5 +1250,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "fbbd65366de988ee1d0d93b5ae07d9f96feb9de9da930cfb8db6433548957975"
+  "contract_digest": "e33164f542401b7620f44ee7ca7dfb62ed0014c0f88b18116103cf78830627ad"
 }

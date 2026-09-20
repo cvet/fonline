@@ -220,7 +220,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1093
+        "line": 1134
       }
     },
     {
@@ -240,7 +240,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1094
+        "line": 1135
       }
     },
     {
@@ -260,7 +260,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1095
+        "line": 1136
       }
     },
     {
@@ -279,7 +279,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1096
+        "line": 1137
       }
     }
   ],
@@ -556,7 +556,7 @@
       "description": "Identifier of the attachment master; zero when the critter is not attached",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 369
+        "line": 363
       }
     },
     {
@@ -583,7 +583,7 @@
       "description": "Current life-state condition used by animation, filtering, and gameplay queries",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 383
+        "line": 377
       }
     },
     {
@@ -609,7 +609,7 @@
       "description": "Classifies the critter as player-controllable independently of its current online state",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 357
+        "line": 351
       }
     },
     {
@@ -694,7 +694,7 @@
       "description": "Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 394
+        "line": 388
       }
     },
     {
@@ -721,7 +721,7 @@
       "description": "Current facing direction on the map grid",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 328
+        "line": 322
       }
     },
     {
@@ -750,7 +750,7 @@
       "description": "Vertical rendering elevation of the critter",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 325
+        "line": 319
       }
     },
     {
@@ -805,7 +805,7 @@
       "description": "Server-assigned identifier shared by members of the same current global-map trip",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 316
+        "line": 310
       }
     },
     {
@@ -832,7 +832,7 @@
       "description": "Origin hex currently occupied by the critter on its map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 319
+        "line": 313
       }
     },
     {
@@ -859,7 +859,7 @@
       "description": "Sub-hex map-space offset used by movement interpolation and rendering",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 322
+        "line": 316
       }
     },
     {
@@ -888,7 +888,7 @@
       "description": "Hides the current client map sprite without removing the critter's map presence",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 372
+        "line": 366
       }
     },
     {
@@ -920,7 +920,7 @@
       "description": "Server initialization function called after the critter-init event for a newly created or restored critter",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 310
+        "line": 304
       }
     },
     {
@@ -946,7 +946,7 @@
       "description": "Reports that this critter currently follows another critter as an attachment",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 366
+        "line": 360
       }
     },
     {
@@ -973,7 +973,7 @@
       "description": "Reports that this critter is the locally chosen critter on the current client",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 360
+        "line": 354
       }
     },
     {
@@ -1000,7 +1000,7 @@
       "description": "Client-side connection state reported for a player-controlled critter",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 363
+        "line": 357
       }
     },
     {
@@ -1028,7 +1028,7 @@
       "description": "Persistent identifiers of the items directly held in the critter's inventory",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 331
+        "line": 325
       }
     },
     {
@@ -1056,7 +1056,7 @@
       "description": "RGBA color emitted by the critter's client-side light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 409
+        "line": 403
       }
     },
     {
@@ -1084,7 +1084,7 @@
       "description": "Radius in hexes reached by the critter's client-side light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 403
+        "line": 397
       }
     },
     {
@@ -1112,7 +1112,7 @@
       "description": "Bit mask controlling global, inverse, and direction-blocking behavior of the light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 406
+        "line": 400
       }
     },
     {
@@ -1140,7 +1140,7 @@
       "description": "Signed percentage intensity of the critter's client-side light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 400
+        "line": 394
       }
     },
     {
@@ -1168,7 +1168,7 @@
       "description": "Enables a client-side map light source centered on this critter",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 397
+        "line": 391
       }
     },
     {
@@ -1197,7 +1197,7 @@
       "description": "Maximum map-view distance in hexes used by server visibility processing",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 389
+        "line": 383
       }
     },
     {
@@ -1224,7 +1224,7 @@
       "description": "Identifier of the map currently containing the critter; zero while it is on the global map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 313
+        "line": 307
       }
     },
     {
@@ -1252,7 +1252,7 @@
       "description": "Fixed-size client values passed to the 3D model layer and animation resolver",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 352
+        "line": 346
       }
     },
     {
@@ -1282,7 +1282,7 @@
       "description": "Sprite or 3D model resource used to present the critter",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 334
+        "line": 328
       }
     },
     {
@@ -1309,7 +1309,7 @@
       "description": "Current server movement speed published for active movement",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 375
+        "line": 369
       }
     },
     {
@@ -1336,7 +1336,7 @@
       "description": "Radius in hexes occupied by the critter in movement, pathfinding, and distance checks",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 337
+        "line": 331
       }
     },
     {
@@ -1365,7 +1365,7 @@
       "description": "Vertical pixel adjustment applied to the critter name label",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 386
+        "line": 380
       }
     },
     {
@@ -1394,7 +1394,7 @@
       "description": "3D model scale in thousandths; zero selects the default scale of 1000",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 340
+        "line": 334
       }
     },
     {
@@ -1423,7 +1423,7 @@
       "description": "Optional first visibility-event distance in hexes; zero disables this distance group",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 343
+        "line": 337
       }
     },
     {
@@ -1452,7 +1452,7 @@
       "description": "Optional second visibility-event distance in hexes; zero disables this distance group",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 346
+        "line": 340
       }
     },
     {
@@ -1481,7 +1481,7 @@
       "description": "Optional third visibility-event distance in hexes; zero disables this distance group",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 349
+        "line": 343
       }
     },
     {
@@ -1508,7 +1508,7 @@
       "description": "Visibility detail mode assigned to this critter from the current client's viewpoint",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 378
+        "line": 372
       }
     },
     {
@@ -1535,7 +1535,7 @@
       "description": "Prevents the item sprite from being drawn at runtime and hides it by default in Mapper",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 203
+        "line": 197
       }
     },
     {
@@ -1564,7 +1564,7 @@
       "description": "Enables ColorizeColor tinting for the item's map sprite",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 293
+        "line": 287
       }
     },
     {
@@ -1593,7 +1593,7 @@
       "description": "RGBA tint applied when Colorize is enabled; alpha also supplies the default sprite opacity",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 238
+        "line": 232
       }
     },
     {
@@ -1676,36 +1676,7 @@
       "description": "Wall-corner orientation used by map lighting and transparent-foreground behavior",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 170
-      }
-    },
-    {
-      "id": "map-format.property.Item.Count",
-      "receiver": "Item",
-      "name": "Count",
-      "type": "int32",
-      "nullable": false,
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "skipped_sides": [],
-      "authorable": true,
-      "excluded_reason": null,
-      "mutability": "mutable",
-      "persistent": true,
-      "flags": [
-        "Mutable",
-        "PublicSync",
-        "Persistent",
-        "CoreProperty"
-      ],
-      "stability": "internal",
-      "description": "Positive quantity represented by this item; non-stackable items must have a value of one",
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 161
+        "line": 164
       }
     },
     {
@@ -1844,7 +1815,7 @@
       "description": "Disables transparent-foreground egg processing for the item's map sprite",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 173
+        "line": 167
       }
     },
     {
@@ -1871,7 +1842,7 @@
       "description": "Renders the item in a flat map pass instead of the normal depth-sorted item pass",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 272
+        "line": 266
       }
     },
     {
@@ -1898,7 +1869,7 @@
       "description": "Draws repeated item sprites on footprint hexes generated by MultihexLines",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 187
+        "line": 181
       }
     },
     {
@@ -1925,13 +1896,13 @@
       "description": "Draws repeated item sprites on the explicit MultihexMesh hexes",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 190
+        "line": 184
       }
     },
     {
-      "id": "map-format.property.Item.DrawOrderOffsetHexY",
+      "id": "map-format.property.Item.DrawOrderSubLayer",
       "receiver": "Item",
-      "name": "DrawOrderOffsetHexY",
+      "name": "DrawOrderSubLayer",
       "type": "int8",
       "nullable": false,
       "runtime_sides": [
@@ -1949,10 +1920,10 @@
         "CoreProperty"
       ],
       "stability": "internal",
-      "description": "Signed Y-hex offset used only when calculating the item's sprite draw order",
+      "description": "Fine ordering inside the item's primary draw-order layer",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 275
+        "line": 269
       }
     },
     {
@@ -2065,7 +2036,7 @@
       "description": "Server visibility flag that suppresses a dynamic item from client views while set",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 195
+        "line": 189
       }
     },
     {
@@ -2094,7 +2065,7 @@
       "description": "Hides the current client map sprite without removing the item's map presence",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 198
+        "line": 192
       }
     },
     {
@@ -2183,7 +2154,7 @@
       "description": "Marks a blocking item as conditionally passable through the map gag callback",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 288
+        "line": 282
       }
     },
     {
@@ -2210,7 +2181,7 @@
       "description": "Selects roof rendering instead of ground-tile rendering when IsTile is enabled",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 264
+        "line": 258
       }
     },
     {
@@ -2237,7 +2208,7 @@
       "description": "Classifies the item as scenery for Mapper filtering and flat-render lighting rules",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 255
+        "line": 249
       }
     },
     {
@@ -2264,7 +2235,7 @@
       "description": "Classifies the item as a ground or roof tile rendered in a tile layer",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 261
+        "line": 255
       }
     },
     {
@@ -2293,7 +2264,7 @@
       "description": "Includes the item in map trigger lookup and movement-trigger processing",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 249
+        "line": 243
       }
     },
     {
@@ -2320,7 +2291,7 @@
       "description": "Classifies the item as a wall for Mapper filtering and map presentation",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 258
+        "line": 252
       }
     },
     {
@@ -2349,7 +2320,7 @@
       "description": "RGBA color emitted by the item's light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 235
+        "line": 229
       }
     },
     {
@@ -2378,7 +2349,7 @@
       "description": "Radius in hexes reached by the item's light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 229
+        "line": 223
       }
     },
     {
@@ -2407,7 +2378,7 @@
       "description": "Bit mask controlling global, inverse, and direction-blocking behavior of the light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 232
+        "line": 226
       }
     },
     {
@@ -2436,7 +2407,7 @@
       "description": "Signed percentage intensity of the item's light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 226
+        "line": 220
       }
     },
     {
@@ -2465,7 +2436,7 @@
       "description": "Enables a map light source centered on this item",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 223
+        "line": 217
       }
     },
     {
@@ -2494,7 +2465,7 @@
       "description": "Allows map light propagation through every hex occupied by the item",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 218
+        "line": 212
       }
     },
     {
@@ -2548,7 +2519,7 @@
       "description": "Mapper coalescing strategy used to build MultihexMesh from compatible item placements",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 184
+        "line": 178
       }
     },
     {
@@ -2575,7 +2546,7 @@
       "description": "Direction and step-count pairs that trace additional footprint hexes from each mesh origin",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 178
+        "line": 172
       }
     },
     {
@@ -2602,7 +2573,7 @@
       "description": "Explicit map hexes that share this item's footprint and optional repeated sprite",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 181
+        "line": 175
       }
     },
     {
@@ -2631,7 +2602,7 @@
       "description": "Allows movement through every hex occupied by the item",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 208
+        "line": 202
       }
     },
     {
@@ -2660,7 +2631,7 @@
       "description": "Prevents the client from applying normal item highlight presentation",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 280
+        "line": 274
       }
     },
     {
@@ -2689,7 +2660,7 @@
       "description": "Prevents ambient map lighting from tinting the item's sprite",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 285
+        "line": 279
       }
     },
     {
@@ -2718,7 +2689,7 @@
       "description": "Pixel offset applied to the item's map sprite from its origin hex",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 167
+        "line": 161
       }
     },
     {
@@ -2775,7 +2746,7 @@
       "description": "Sprite resource used to present the item in inventory interfaces",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 252
+        "line": 246
       }
     },
     {
@@ -2805,7 +2776,7 @@
       "description": "Sprite resource used to render the item on a map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 164
+        "line": 158
       }
     },
     {
@@ -2834,34 +2805,7 @@
       "description": "Allows projectile traces through every hex occupied by the item",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 213
-      }
-    },
-    {
-      "id": "map-format.property.Item.Stackable",
-      "receiver": "Item",
-      "name": "Stackable",
-      "type": "bool",
-      "nullable": false,
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "skipped_sides": [],
-      "authorable": true,
-      "excluded_reason": null,
-      "mutability": "read-only",
-      "persistent": true,
-      "flags": [
-        "Persistent",
-        "CoreProperty"
-      ],
-      "stability": "internal",
-      "description": "Allows equal items to merge into one entity whose Count is greater than one",
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 158
+        "line": 207
       }
     },
     {
@@ -2920,7 +2864,7 @@
       "description": "Server callback invoked when a critter interacts with this static item",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 243
+        "line": 237
       }
     },
     {
@@ -2947,7 +2891,7 @@
       "description": "Zero-based ground- or roof-tile draw layer selected for a tile item",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 267
+        "line": 261
       }
     },
     {
@@ -2979,7 +2923,7 @@
       "description": "Server callback invoked when a critter enters or leaves this trigger item",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 246
+        "line": 240
       }
     },
     {
@@ -3007,7 +2951,7 @@
       "description": "Persistent identifiers of the non-player critters owned by this map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 435
+        "line": 429
       }
     },
     {
@@ -3092,7 +3036,7 @@
       "description": "Channel-major RGB values for the map's corresponding daylight color keyframes",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 472
+        "line": 466
       }
     },
     {
@@ -3121,7 +3065,7 @@
       "description": "Map-specific daylight color keyframe times expressed in minutes of the day cycle",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 469
+        "line": 463
       }
     },
     {
@@ -3178,7 +3122,7 @@
       "description": "Map-local day-time override value, conventionally expressed in minutes and interpreted by game scripts",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 464
+        "line": 458
       }
     },
     {
@@ -3205,7 +3149,7 @@
       "description": "Current client-side global daylight color supplied through SetDayColors for scripts and effects",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 478
+        "line": 472
       }
     },
     {
@@ -3232,7 +3176,7 @@
       "description": "Current daylight capacity percentage for light sources flagged as global, clamped to 0 through 100",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 484
+        "line": 478
       }
     },
     {
@@ -3264,7 +3208,7 @@
       "description": "Server initialization function called after the map-init event for a newly created or restored map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 426
+        "line": 420
       }
     },
     {
@@ -3292,7 +3236,7 @@
       "description": "Persistent identifiers of the dynamic items placed directly on this map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 438
+        "line": 432
       }
     },
     {
@@ -3320,7 +3264,7 @@
       "description": "Identifier of the location that owns this map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 429
+        "line": 423
       }
     },
     {
@@ -3348,7 +3292,7 @@
       "description": "Zero-based position of this map in its owning location's map list",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 432
+        "line": 426
       }
     },
     {
@@ -3375,7 +3319,7 @@
       "description": "Current client-side map tint supplied through SetDayColors and consumed by map rendering",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 475
+        "line": 469
       }
     },
     {
@@ -3402,7 +3346,7 @@
       "description": "Current daylight capacity percentage for ordinary map light sources, clamped to 0 through 100",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 481
+        "line": 475
       }
     },
     {
@@ -3431,7 +3375,7 @@
       "description": "Identifiers of the baked static items this map instance has dropped; removal is one-way for the life of the instance",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 441
+        "line": 435
       }
     },
     {
@@ -3458,7 +3402,7 @@
       "description": "Axial-coordinate rectangle that bounds map scrolling; a zero rectangle leaves the full map available",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 453
+        "line": 447
       }
     },
     {
@@ -3485,7 +3429,7 @@
       "description": "Rounded client viewport offset in map-space pixels",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 450
+        "line": 444
       }
     },
     {
@@ -3512,7 +3456,7 @@
       "description": "Width and height of the map grid in hexes",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 444
+        "line": 438
       }
     },
     {
@@ -3539,7 +3483,7 @@
       "description": "Current client map-sprite zoom factor",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 456
+        "line": 450
       }
     },
     {
@@ -3566,7 +3510,7 @@
       "description": "Target zoom factor toward which the client map view is interpolating",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 459
+        "line": 453
       }
     },
     {
@@ -3593,7 +3537,7 @@
       "description": "Authoring work hex used as the initial Mapper view center",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 447
+        "line": 441
       }
     }
   ],
@@ -3603,19 +3547,19 @@
     "ownership_count": 4,
     "supported_ownership_count": 3,
     "rule_count": 17,
-    "property_count": 109,
-    "authorable_property_count": 88,
+    "property_count": 107,
+    "authorable_property_count": 86,
     "excluded_property_count": 21,
     "properties_by_receiver": {
       "Critter": 35,
-      "Item": 52,
+      "Item": 50,
       "Map": 22
     },
     "authorable_properties_by_receiver": {
       "Critter": 21,
-      "Item": 52,
+      "Item": 50,
       "Map": 15
     }
   },
-  "contract_digest": "e8c73e0037798d72a8c7d1af0cfd975cd8a7aa000109e378477bac3e9dc7a1e9"
+  "contract_digest": "5bdb39de18314bd98379cb21099ef4a239ce1430482d48e7027f1e384d8b6e8d"
 }

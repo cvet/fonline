@@ -24,13 +24,15 @@ Do not put live credentials, production connection strings, or host-specific rec
 
 - state/metrics: `InValidState()`, `GetDbRequestsPerMinute()`;
 - enumeration: `GetAllIds()`, `GetAllIntIds()`, `GetAllStringIds()`;
-- reads: `Get()`, `Valid()`;
+- reads: `Get()`, `GetMany()`, `Valid()`;
 - writes: `Insert()`, `Update()`, `Delete()`;
 - commit control: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
 - backend snapshot: `CreateSnapshot()` and `RestoreSnapshot(bytes)`;
 - debug UI: `DrawGui()`.
 
 `ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
+
+`GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with pending commit operations overlaid; only a record committed during the batch read is fetched again. `Get()` itself uses the same path for one id.
 
 ## Collections and keys
 
@@ -63,6 +65,7 @@ Core types:
 
 Backends can override:
 
+- `GetRecords()` for a batched read. Mongo uses `_id: {$in: [...]}` chunks of at most 1000 ids with matching batch size/limit, SQLite uses one `key IN (...)` statement per 1000 ids, and Memory/JSON read the batch under one storage lock. The base implementation falls back to one `GetRecord()` per id;
 - `CreateSnapshotData()` and `RestoreSnapshotData()` when the backend can represent its whole content as bytes;
 - `TryReconnect()`;
 - `DrawGui()`;
@@ -173,7 +176,7 @@ Do not add database-specific assumptions to `Entity` or `Properties` unless all 
 
 ## Metrics and diagnostics
 
-`GetDbRequestsPerMinute()` reports recent database request volume using per-second buckets. Backend failures and reconnect attempts are tracked in `DataBaseImpl` state.
+`GetDbRequestsPerMinute()` reports recent database request volume using per-second buckets; a batch counts once per backend `GetRecords()` call, regardless of its record count. Backend failures and reconnect attempts are tracked in `DataBaseImpl` state.
 
 `DrawGui()` is available at both facade and backend levels for debug/inspection UI.
 

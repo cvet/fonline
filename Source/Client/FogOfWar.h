@@ -105,8 +105,8 @@ private:
     bool _lastEnabled {true};
     bool _transitionActive {};
     bool _collapsingToOff {}; // the active transition shrinks to center and clears the fog when it completes
-    unique_ptr<ipos32> _drawOffset {SafeAlloc::MakeUnique<ipos32>()};
-    unique_ptr<ipos32> _baseDrawOffset {SafeAlloc::MakeUnique<ipos32>()};
+    unique_ptr<ipos32> _drawOffset {safe_alloc::make_unique<ipos32>()};
+    unique_ptr<ipos32> _baseDrawOffset {safe_alloc::make_unique<ipos32>()};
     Origin _lastOrigin {};
     int32_t _lastDistance {};
     int32_t _lastRadius {};

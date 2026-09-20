@@ -5,9 +5,7 @@ locale: ru
 document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
-
 <!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"5e585846b0a0eb85be8bc7e3254ce48bfc30278db7c72cca8e79e801f0ff29c4"} -->
-
 # Сборка, упаковка и отладка FOnline на Android
 
 Это принадлежащая Engine инструкция по сборке Android-клиента, созданию и сборке APK, установке через Wi-Fi ADB, подключению к серверу разработки и разделению ошибок сборки, пакета, устройства и runtime. Она опирается на текущую реализацию BuildTools, шаблон Android-проекта, модель поддержки, грамматику пакетов, settings и границу updater. Встраивающий проект отвечает за идентичность приложения, release-политику, парк устройств, серверный профиль, доставку через магазин и evidence приёмки.

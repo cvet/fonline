@@ -5,9 +5,7 @@ locale: ru
 document_id: applications-entry-points
 permalink: /Docs/ru/reference/applications.html
 ---
-
 <!-- docs-translation: {"document_id":"applications-entry-points","locale":"ru","source_path":"Docs/en/reference/applications.md","source_sha256":"4c94d7f50df1bbd67bee33dc0baac378598eb461680d78be58c9f761dfe970d4"} -->
-
 # Приложения и точки входа
 
 Этот документ сопоставляет точки входа приложений в `Source/Applications/` и их wiring в BuildTools.

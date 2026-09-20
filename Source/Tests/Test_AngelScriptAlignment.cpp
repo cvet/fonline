@@ -249,7 +249,7 @@ namespace AlignTest
         {
             auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-            auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
+            auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
             FileSystem compiler_resources;
@@ -257,7 +257,7 @@ namespace AlignTest
 
             auto script_blob = MakeScriptBinary(compiler_resources);
 
-            auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
+            auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
             runtime_source->AddFile("AlignTest.fos-bin-server", script_blob);
 
@@ -283,7 +283,7 @@ namespace AlignTest
             return "ServerEngine startup timed out";
         }
 
-        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources()); }
+        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
     };
 
     // Mirrors AddPropertyToClass: anything stored as a reference aligns like a pointer, while inline value types
@@ -361,7 +361,7 @@ TEST_CASE("AngelScriptValueAlignment")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // Script-class member layout: every member must sit on a correctly aligned byte offset across
     // the base class, both inheritance levels and the mixin-including class
@@ -375,17 +375,17 @@ TEST_CASE("AngelScriptValueAlignment")
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-        REQUIRE(as_engine != nullptr);
+        REQUIRE(as_engine);
 
         // Script classes live in the script module, not in the engine's registered-type scope
         REQUIRE(as_engine->GetModuleCount() >= 1);
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
-        REQUIRE(script_module != nullptr);
+        REQUIRE(script_module);
 
         for (string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
             INFO(class_decl);
             nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
-            REQUIRE(class_type != nullptr);
+            REQUIRE(class_type);
             CheckClassMemberAlignment(as_engine, class_type);
         }
     }
@@ -437,14 +437,14 @@ TEST_CASE("AngelScriptNativeCallNormalizesBoolArgument")
     auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
     nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-    REQUIRE(as_engine != nullptr);
+    REQUIRE(as_engine);
     REQUIRE(as_engine->GetModuleCount() >= 1);
 
     nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
-    REQUIRE(script_module != nullptr);
+    REQUIRE(script_module);
 
     nptr<AngelScript::asIScriptFunction> concat_bool = script_module->GetFunctionByDecl("string AlignTest::ConcatBool(bool)");
-    REQUIRE(concat_bool != nullptr);
+    REQUIRE(concat_bool);
 
     // The VM writes one byte for a bool and leaves the rest of its stack DWORD as it found it, so the slot is
     // filled here the way a reused slot arrives: the low byte carries the bool, the bytes above it carry litter

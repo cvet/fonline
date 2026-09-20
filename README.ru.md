@@ -5,9 +5,7 @@ locale: ru
 document_id: repository-home
 permalink: /README.ru.html
 ---
-
 <!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"f63eff04305974ea21a14693ddadad7104661b92d679ed3debad338eee92633b"} -->
-
 # FOnline Engine
 
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)

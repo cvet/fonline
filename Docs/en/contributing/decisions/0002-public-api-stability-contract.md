@@ -50,7 +50,7 @@ Native-codegen symbols use a separate `///@ ApiContract <selector> <label> ...` 
 
 Without a valid scope contract, unannotated symbols remain `internal (default)`. A valid scope contract applies its reviewed label only while both inventory pins match; any symbol addition, removal, or stable-ID change fails generation until an owner updates the pins. An exact symbol declaration may override the scope, while overlapping exact/family declarations remain invalid. An explicit `internal` tag records a reviewed decision without promoting the symbol. `stable`/`experimental` require `Since`; `deprecated` requires deprecation version, live replacement, and removal target.
 
-Contract tags are not a shortcut around owner review. The current scope declaration classifies all 2,472 generated symbols as revision-pinned `experimental` since `2022.1.0.wip`, then keeps the development-only `Game.BreakIntoDebugger` helper explicitly `internal`. This makes the integration surface usable and change-tracked without claiming any broad `stable` compatibility promise.
+Contract tags are not a shortcut around owner review. The current scope declaration classifies all 2,527 generated symbols as revision-pinned `experimental` since `2022.1.0.wip`, then keeps the development-only `Game.BreakIntoDebugger` helper explicitly `internal`. This makes the integration surface usable and change-tracked without claiming any broad `stable` compatibility promise.
 
 ### Contract domains
 

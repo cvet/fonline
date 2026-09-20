@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/migration/engine-upgrade.html
 ---
 
 # Обновление Engine во встраивающем проекте
-
 <!-- docs-translation: {"document_id":"engine-upgrade-guide","locale":"ru","source_path":"Docs/en/how-to/migration/engine-upgrade.md","source_sha256":"c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4"} -->
-
 Это руководство задаёт повторяемую процедуру обновления Engine в игровом
 репозитории. Она охватывает интеграцию исходников, сгенерированные контракты,
 контент, сохранения, сеть, client runtime и документацию.

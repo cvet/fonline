@@ -5,9 +5,7 @@ locale: ru
 document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
-
 <!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"7677cbe13a997e201531807611dbd70830341ebe3aa65d594090a3090abad56f"} -->
-
 # Форматы изображений и спрайтов
 
 FOnline запекает авторские и устаревшие изображения в компактный клиентский

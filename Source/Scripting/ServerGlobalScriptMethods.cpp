@@ -293,7 +293,58 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
     return item ? item.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires item + current item parent + destination critter
+// Creates an item from the supplied prototype id and returns it with synchronization cover
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, hstring protoId)
+{
+    if (!server->GetProtoItem(protoId)) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
+
+    return server->ItemMngr.CreateItem(protoId, nullptr);
+}
+
+// Creates an item from the supplied prototype descriptor and returns it with synchronization cover
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, ptr<ProtoItem> proto)
+{
+    return server->ItemMngr.CreateItem(proto->GetProtoId(), nullptr);
+}
+
+// Creates an item with integer property overrides applied before OnItemInit and returns it with synchronization cover
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, hstring protoId, readonly_map<ItemProperty, int32_t> props)
+{
+    auto proto = server->GetProtoItem(protoId);
+
+    if (!proto) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
+
+    // The properties are applied before OnItemInit, so init handlers see them
+    Properties item_props = proto->GetProperties()->Copy();
+
+    for (const auto& [key, value] : props) {
+        item_props.SetValueAsIntProps(static_cast<int32_t>(key), value);
+    }
+
+    return server->ItemMngr.CreateItem(protoId, &item_props);
+}
+
+// Clones the complete live item and returns the new item with synchronization cover
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CloneItem(ptr<ServerEngine> server, ptr<Item> item)
+{
+    ValidateEntityAccess(item);
+
+    if (item->IsDestroying()) {
+        throw ScriptException("Cannot clone an item that is being destroyed", item->GetId());
+    }
+
+    return server->ItemMngr.CloneItem(item);
+}
+
+// Moves the complete item to the destination critter and returns it, or null if the move removes it
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> toCr)
 {
@@ -301,23 +352,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
     ValidateEntityAccess(item->GetParentRaw());
     ValidateEntityAccess(toCr);
 
-    return server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
-}
-
-// SyncScope: requires item + current item parent + destination critter
-///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Critter> toCr)
-{
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(item->GetParentRaw());
-    ValidateEntityAccess(toCr);
-
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    auto moved_item = server->ItemMngr.MoveItem(item, count, toCr);
-    return moved_item;
+    return server->ItemMngr.MoveItem(item, toCr);
 }
 
 // SyncScope: requires item + current item parent + destination map
@@ -332,27 +367,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
         throw ScriptException("Invalid hexex args");
     }
 
-    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
-    return moved_item;
-}
-
-// SyncScope: requires item + current item parent + destination map
-///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Map> toMap, mpos toHex)
-{
-    if (!toMap->GetSize().is_valid_pos(toHex)) {
-        throw ScriptException("Invalid hexex args");
-    }
-
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(item->GetParentRaw());
-    ValidateEntityAccess(toMap);
-
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    auto moved_item = server->ItemMngr.MoveItem(item, count, toMap, toHex);
+    auto moved_item = server->ItemMngr.MoveItem(item, toMap, toHex);
     return moved_item;
 }
 
@@ -364,23 +379,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
     ValidateEntityAccess(item->GetParentRaw());
     ValidateEntityAccess(toCont);
 
-    return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
-}
-
-// SyncScope: requires item + current item parent + destination container item
-///@ ExportMethod
-FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Item> toCont, any_t stackId = any_t {})
-{
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(item->GetParentRaw());
-    ValidateEntityAccess(toCont);
-
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    auto moved_item = server->ItemMngr.MoveItem(item, count, toCont, stackId);
-    return moved_item;
+    return server->ItemMngr.MoveItem(item, toCont, stackId);
 }
 
 // SyncScope: requires destination critter + every item and its current parent
@@ -406,7 +405,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
+        server->ItemMngr.MoveItem(item, toCr);
     }
 }
 
@@ -437,7 +436,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
+        server->ItemMngr.MoveItem(item, toMap, toHex);
     }
 }
 
@@ -464,7 +463,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
+        server->ItemMngr.MoveItem(item, toCont, stackId);
     }
 }
 
@@ -503,25 +502,6 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
         ValidateEntityAccess(item->GetParentRaw());
 
         server->ItemMngr.DestroyItem(item);
-    }
-}
-
-// SyncScope: requires item + current item parent when item is non-null; full-count destroy removes the item subtree
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> item, int32_t count)
-{
-    if (item && count > 0) {
-        ValidateEntityAccess(item);
-        ValidateEntityAccess(item->GetParentRaw());
-
-        int32_t cur_count = item->GetCount();
-
-        if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item);
-        }
-        else {
-            item->SetCount(cur_count - count);
-        }
     }
 }
 
@@ -1549,7 +1529,7 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
     ignore_unused(server);
 
     auto prefix = command.substr(0, command.find(' '));
-    return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
+    return SystemCall(command, [&prefix](string_view line) { logging::write("{} : {}\n", prefix, line); });
 }
 
 // SyncScope: external process call only; requires no entity cover but must not run under unrelated entity locks
@@ -1587,7 +1567,7 @@ FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t e
 
 // SyncScope: replaces current cover with entity plus engine auto-widen partners
 ///@ ExportMethod Async
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
     small_vector<ptr<ServerEntity>, 3> syncable;
@@ -1601,7 +1581,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 
 // SyncScope: replaces current cover with both entities plus engine auto-widen partners
 ///@ ExportMethod Async AllowDestroyedEntityArgs
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
 {
     auto ctx = server->RequireCurrentSyncContext();
     small_vector<ptr<ServerEntity>, 3> syncable;
@@ -1619,7 +1599,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 
 // SyncScope: replaces current cover with all entities plus engine auto-widen partners
 ///@ ExportMethod Async AllowDestroyedEntityArgs
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
 {
     auto ctx = server->RequireCurrentSyncContext();
     small_vector<ptr<ServerEntity>, 3> syncable;
@@ -1641,7 +1621,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 
 // SyncScope: replaces current cover with all non-null entities plus engine auto-widen partners
 ///@ ExportMethod Async AllowDestroyedEntityArgs
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
     vector<ptr<ServerEntity>> syncable;
     syncable.reserve(entities.size());
@@ -1664,10 +1644,34 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<np
     ctx->SyncEntities(syncable);
 }
 
+// Widens the current synchronization cover in place to include the supplied live entities
+///@ ExportMethod Async AllowDestroyedEntityArgs
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncWiden(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
+{
+    vector<ptr<ServerEntity>> syncable;
+    syncable.reserve(entities.size());
+
+    for (auto entity : entities) {
+        if (!entity) {
+            throw ScriptException("Entity in array arg is null");
+        }
+
+        // Dropped for the same race Game.Sync drops it for: destroyed after the caller checked it
+        if (entity->IsDestroyed()) {
+            continue;
+        }
+
+        syncable.emplace_back(entity);
+    }
+
+    auto ctx = server->RequireCurrentSyncContext();
+    ctx->WidenEntities(syncable);
+}
+
 // SyncScope: releases the full held set — the entity cover AND any singleton Game.Lock entries
 // (SyncContext::Release drains both buckets); a Game.Lock taken before this call needs no Unlock after it
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_SyncRelease(ptr<ServerEngine> server)
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncRelease(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ctx->Release();
@@ -1684,7 +1688,7 @@ FO_SCRIPT_API vector<ptr<ServerEntity>> Server_Game_GetHeldSyncEntities(ptr<Serv
 
 // SyncScope: sync-safe probe; returns whether entity is covered without emitting diagnostics
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
+FO_SCRIPT_API FO_COVER_PROBE bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ignore_unused(ctx);
@@ -1693,7 +1697,7 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<Ser
 
 // SyncScope: locks the Game singleton bucket; do not call Game.Sync while this lock is held
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
+FO_SCRIPT_API FO_SINGLETON_LOCK void Server_Game_Lock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ctx->LockSingleton(server->GetEntityLock());
@@ -1701,7 +1705,7 @@ FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 
 // SyncScope: unlocks the Game singleton bucket; entity cover is unchanged
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_Unlock(ptr<ServerEngine> server)
+FO_SCRIPT_API FO_SINGLETON_LOCK void Server_Game_Unlock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
     ctx->UnlockSingleton(server->GetEntityLock());
@@ -1713,7 +1717,7 @@ FO_SCRIPT_API int64_t Server_Game_GetProcessMemoryUsage(ptr<ServerEngine> server
 {
     ignore_unused(server);
 
-    return static_cast<int64_t>(Platform::GetProcessMemoryUsage());
+    return static_cast<int64_t>(platform::get_process_memory_usage());
 }
 
 // SyncScope: allocator metric read only; no entity cover is required
@@ -1722,7 +1726,7 @@ FO_SCRIPT_API int64_t Server_Game_GetAllocatorMemoryUsage(ptr<ServerEngine> serv
 {
     ignore_unused(server);
 
-    return static_cast<int64_t>(AllocatorGetInUseBytes());
+    return static_cast<int64_t>(memory::get_in_use_bytes());
 }
 
 // SyncScope: registry count only; no entity cover is required

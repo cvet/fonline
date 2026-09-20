@@ -42,9 +42,9 @@ class DebuggingDocumentationTests(unittest.TestCase):
             "Debug symbols are not debug semantics",
             "Late attach can observe process state, but it does not refresh",
             "The Engine writes crash diagnostics to its log.",
-            "The AngelScript debugger is independent of `IsRunInDebugger`",
+            "The AngelScript debugger is independent of `is_run_in_debugger`",
             "not a production-distributed editor product",
-            "the compounds do not themselves enable `Script.DebuggerEnabled`",
+            "the compounds do not themselves enable `AngelScript.DebuggerEnabled`",
         ):
             self.assertIn(contract, guide)
 
@@ -65,7 +65,7 @@ class DebuggingDocumentationTests(unittest.TestCase):
             self.assertIn(contract, init)
 
         for contract in (
-            "std::call_once(RunInDebuggerOnce",
+            "std::call_once(run_in_debugger_once",
             "::IsDebuggerPresent()",
             'line.starts_with("TracerPid:")',
             "P_TRACED",
@@ -91,17 +91,17 @@ class DebuggingDocumentationTests(unittest.TestCase):
         exception_test = self._read("Source/Tests/Test_ExceptionHandling.cpp")
 
         for contract in (
-            "BirthNativeFrames",
-            "ScriptLayers",
-            "ClearResolvedStackTraceCache()",
-            "GetResolvedStackTraceCacheSize()",
+            "birth_native_frames",
+            "script_layers",
+            "clear_resolved_cache()",
+            "get_resolved_cache_size()",
         ):
             self.assertIn(contract, stack_h)
-        self.assertIn("SafeWriteStackTrace", base_logging_h)
-        self.assertIn("FindLayerNativeAnchor", stack_cpp)
-        self.assertIn('frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native"', stack_cpp)
-        self.assertIn("CaptureNativeStackFrames(ctx_ext->BirthNativeFrames", context)
-        self.assertIn("SetScriptStackTraceProvider", context)
+        self.assertIn("safe_write_stack_trace", base_logging_h)
+        self.assertIn("find_layer_native_anchor", stack_cpp)
+        self.assertIn('frame.type == stack_trace::frame::frame_type::script ? "Script" : "Native"', stack_cpp)
+        self.assertIn("stack_trace::capture_native_frames(ctx_ext->BirthNativeFrames", context)
+        self.assertIn("stack_trace::set_script_provider", context)
         self.assertIn("FO_MEMORY_SANITIZER", exception_cpp)
         self.assertIn("HAS_NATIVE_TRACE 0", exception_cpp)
 
@@ -127,10 +127,10 @@ class DebuggingDocumentationTests(unittest.TestCase):
         backend = self._read("Source/Scripting/AngelScript/AngelScriptBackend.cpp")
         endpoint = self._read("Source/Scripting/AngelScript/AngelScriptDebugger.cpp")
 
-        self.assertIn("FIXED_SETTING(bool, Script, DebuggerEnabled, false)", settings)
-        self.assertIn('FIXED_SETTING(string, Script, DebuggerBindHost, "127.0.0.1")', settings)
-        self.assertIn("asEP_BUILD_WITHOUT_LINE_CUES, !_settings->DebuggerEnabled", backend)
-        self.assertIn("asEP_OPTIMIZE_BYTECODE, !_settings->DebuggerEnabled", backend)
+        self.assertIn("SETTING(bool, AngelScript, DebuggerEnabled, false)", settings)
+        self.assertIn('SETTING(string, AngelScript, DebuggerBindHost, "127.0.0.1")', settings)
+        self.assertIn("asEP_BUILD_WITHOUT_LINE_CUES, !_settings->AngelScript.DebuggerEnabled", backend)
+        self.assertIn("asEP_OPTIMIZE_BYTECODE, !_settings->AngelScript.DebuggerEnabled", backend)
 
         for contract in (
             "ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN = 2000",
@@ -144,7 +144,7 @@ class DebuggingDocumentationTests(unittest.TestCase):
             'command == "stackTrace"',
             'command == "variables"',
             'command == "disconnect"',
-            "FrameType::Script",
+            "stack_trace::frame::frame_type::script",
             "extract_file_name()",
         ):
             self.assertIn(contract, endpoint)

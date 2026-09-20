@@ -7,9 +7,7 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"5ea157746d9ac5839d7c0209c905160bca4b177c830f8c2142a6cee8c187a7fa"} -->
-
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"89c780854daf52c6093640e8fcb18eadb7b93e89a4a3e4ae049439aaccb34ba3"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
@@ -26,13 +24,15 @@ permalink: /Docs/ru/explanation/persistence/
 
 - состояние и метрики: `InValidState()`, `GetDbRequestsPerMinute()`;
 - перечисление: `GetAllIds()`, `GetAllIntIds()`, `GetAllStringIds()`;
-- чтение: `Get()`, `Valid()`;
+- чтение: `Get()`, `GetMany()`, `Valid()`;
 - запись: `Insert()`, `Update()`, `Delete()`;
 - управление commit: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
 - снимок backend: `CreateSnapshot()` и `RestoreSnapshot(bytes)`;
 - отладочный интерфейс: `DrawGui()`.
 
 `ConnectToDataBase()` создаёт фасад из настроек, данных подключения, схем коллекций и panic callback.
+
+`GetMany(collection, ids)` читает несколько записей одной коллекции одним backend-вызовом `GetRecords()` и возвращает документы в порядке запрошенных ids: отсутствующей записи соответствует пустой документ, повторному id — тот же результат. Каждый документ следует контракту `Get()` с наложенными pending commit operations; отдельно перечитывается только запись, commit которой завершился во время batch read. Сам `Get()` использует тот же путь для одного id.
 
 ## Коллекции и ключи
 
@@ -65,6 +65,7 @@ permalink: /Docs/ru/explanation/persistence/
 
 Backend может переопределять:
 
+- `GetRecords()` для batch read. Mongo использует chunks `_id: {$in: [...]}` максимум по 1000 ids с согласованными batch size/limit, SQLite — один `key IN (...)` statement на 1000 ids, Memory/JSON читают batch под одним storage lock. Базовая реализация вызывает `GetRecord()` для каждого id;
 - `CreateSnapshotData()` и `RestoreSnapshotData()`, когда backend умеет представить всё своё содержимое байтами;
 - `TryReconnect()`;
 - `DrawGui()`;
@@ -175,7 +176,7 @@ Persistence хранит документы; состояние сущности
 
 ## Метрики и диагностика
 
-`GetDbRequestsPerMinute()` сообщает недавнее число запросов к базе через посекундные bucket. Ошибки backend и попытки reconnect учитываются в состоянии `DataBaseImpl`.
+`GetDbRequestsPerMinute()` сообщает недавнее число запросов к базе через посекундные bucket; batch считается один раз на backend-вызов `GetRecords()`, независимо от числа записей. Ошибки backend и попытки reconnect учитываются в состоянии `DataBaseImpl`.
 
 `DrawGui()` доступен на уровнях фасада и backend для отладки и проверки.
 

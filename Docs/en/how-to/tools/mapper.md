@@ -45,7 +45,7 @@ The engine owns:
 - mapper-side `Game.*` script methods;
 - the `Render.HeadlessWindow` off-screen host mode;
 - camera, overlay, visibility, and scroll controls used by automation;
-- TGA screenshot and atlas-diagnostic readback from mapper render targets;
+- PNG screenshot and TGA atlas-diagnostic readback from mapper render targets;
 - the backend-neutral particle preview and the SPARK source editor.
 
 An embedding project owns:
@@ -232,8 +232,8 @@ Single-process batching is preferred when many maps share one resource set becau
 3. calls `DrawMapperFrame()` to refresh the intermediate main render target;
 4. reads RGBA pixels from that target;
 5. flips rows when the render texture reports inverted height;
-6. normalizes the output path and writes through the engine-shared
-   `ImageWriter::WriteSimplePng` helper.
+6. normalizes the relative output path below `Common.UserWritablePath` and
+   writes through the engine-shared `ImageWriter::WriteSimplePng` helper.
 
 It captures mapper script-interface drawing that is already in the map target,
 but not the later application-level ImGui menu and tool windows.

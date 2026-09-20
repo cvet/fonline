@@ -17,7 +17,7 @@ An embedding project owns concrete target names, executable paths, working direc
 - Choose a native debugger for crashes, native exceptions, memory, threads, or
   a mixed stack whose owning frame is C++.
 - Choose the AngelScript debugger for live script stepping and variables. The
-  current Engine contract requires `Script.DebuggerEnabled`, exposes a TCP
+  current Engine contract requires `AngelScript.DebuggerEnabled`, exposes a TCP
   endpoint on a process-selected port in `43000..44999`, and uses UDP port
   `43001` for discovery; the project owns editor wiring and remote-access policy.
 - For Managed C#, start with Roslyn/MSBuild diagnostics, the generated `.gen.sln`,
@@ -48,7 +48,7 @@ A readable stack is not proof that the executable, symbols, and source came from
 The Engine owns:
 
 - build-configuration semantics, compiler/linker symbol flags, sanitizer variants, and generated application targets;
-- `IsRunInDebugger`, `BreakIntoDebugger`, native stack capture/resolution, exception callbacks, crash handlers, and the diagnostic self-test;
+- `is_run_in_debugger`, `break_into_debugger`, native stack capture/resolution, exception callbacks, crash handlers, and the diagnostic self-test;
 - mixed AngelScript/native stack layers and the current runtime debugger endpoint;
 - Managed C# baker/runtime diagnostics, generated project ownership, and the boundary between Engine logging and external managed-debugger tooling;
 - MSVC Natvis/NatJMC files attached to generated solutions;
@@ -101,7 +101,7 @@ The current contract was re-derived from:
 |---|---|---|
 | Native assertion, C++ exception, signal, SEH failure, or lifecycle invariant | Matching native symbols, original log, then the smallest native target under a debugger | Focused `Source/Tests/Test_*.cpp` case when the boundary is reusable. |
 | Script compile, binding, remote-call, or nullability failure | [Scripting Runtime](../explanation/scripting-runtime/) and [Testing](../contributing/testing/) before live attach | Minimal compile/bake fixture or owning test; use attach only for execution-state questions. |
-| AngelScript breakpoint, stepping, script stack, or local value | Development config with `Script.DebuggerEnabled = True`, then a `fos` attach profile | Verified breakpoint/stop at the intended process and source revision. |
+| AngelScript breakpoint, stepping, script stack, or local value | Development config with `AngelScript.DebuggerEnabled = True`, then a `fos` attach profile | Verified breakpoint/stop at the intended process and source revision. |
 | Managed C# compiler/analyzer failure | First diagnostic in `CompileManagedScripts`, generated `.gen.csproj`/`.gen.sln`, and the configured source/reference/analyzer set | Reproduce with the same `ManagedScriptTargetFramework`, SDK, assemblies, and generated API. |
 | Managed C# load, callback, async, or lifetime failure | Managed baker/runtime log plus a focused `Test_ManagedScriptBaker` or `test_managed_*.py` case | Match content-hashed assemblies, runtime payload, backend load scope, target role, and continuation context before interactive attach. |
 | Mixed script/native exception | Engine log's unified trace first, native debugger second | Preserve throw origin and catch site; isolate the reusable boundary in a native test. |
@@ -146,7 +146,7 @@ When a crash occurred outside the debugger, retain the Engine log before attempt
 
 ### macOS
 
-Use LLDB with the matching executable, libraries, and debug data. `IsRunInDebugger` checks `P_TRACED` through `sysctl`, and `BreakIntoDebugger` uses `__builtin_debugtrap`. The Engine source is capable of native symbol/stack diagnostics, but the repository does not currently claim a checked macOS editor profile or crash-artifact lane.
+Use LLDB with the matching executable, libraries, and debug data. `is_run_in_debugger` checks `P_TRACED` through `sysctl`, and `break_into_debugger` uses `__builtin_debugtrap`. The Engine source is capable of native symbol/stack diagnostics, but the repository does not currently claim a checked macOS editor profile or crash-artifact lane.
 
 ### Sanitizer and platform limits
 
@@ -195,17 +195,17 @@ Do not describe a platform's default crash reporter as an Engine-owned guarantee
 
 ## Debugger detection and debugger breaks
 
-`IsRunInDebugger()` is process-cached on its first call:
+`is_run_in_debugger()` is process-cached on its first call:
 
 - Windows uses `IsDebuggerPresent()`;
 - Linux reads `TracerPid` from `/proc/self/status`;
 - macOS queries `KERN_PROC_PID` and tests `P_TRACED`.
 
-`BreakIntoDebugger()` emits `DebugBreak`, `__builtin_debugtrap`, or `SIGTRAP` only when that cached result is true. Because exception handling asks this question during early process initialization, launching outside a native debugger and attaching later is not guaranteed to make Engine-triggered breaks active.
+`break_into_debugger()` emits `DebugBreak`, `__builtin_debugtrap`, or `SIGTRAP` only when that cached result is true. Because exception handling asks this question during early process initialization, launching outside a native debugger and attaching later is not guaranteed to make Engine-triggered breaks active.
 
 When a debugger is detected at startup, the Engine does not install backward-cpp fatal signal/SEH handling. This lets the native debugger receive the fault directly, but it also means the normal out-of-debugger fatal crash-to-log path is not the evidence to expect from that run. Preserve one non-debugger crash run when the crash-log contract itself is under test.
 
-The AngelScript debugger is independent of `IsRunInDebugger`; attaching the `fos` adapter does not make the process native-debugger-aware.
+The AngelScript debugger is independent of `is_run_in_debugger`; attaching the `fos` adapter does not make the process native-debugger-aware.
 
 ## Visual Studio Visualizers
 
@@ -265,8 +265,8 @@ Simple traces with no native birth anchors place script frames before the native
 | `ResolveStackTrace(st)` | Resolve and interleave all captured frames. |
 | `FormatStackTrace(st)` | Produce the human-readable mixed trace. |
 | `SafeWriteStackTrace(st)` | Write through the low-allocation crash/log path with address fallback. |
-| `ClearResolvedStackTraceCache()` | Clear process-wide resolved native entries. |
-| `GetResolvedStackTraceCacheSize()` | Inspect the current cache size for tests/diagnostics. |
+| `stack_trace::clear_resolved_cache()` | Clear process-wide resolved native entries. |
+| `stack_trace::get_resolved_cache_size()` | Inspect the current cache size for tests/diagnostics. |
 | `SetScriptStackTraceProvider(provider)` | Install or clear the higher-layer script provider. |
 | `HasScriptStackTraceProvider()` | Observe provider registration in tests. |
 
@@ -314,15 +314,15 @@ Server-to-client movement includes an `offset_time`, allowing the client to fast
 
 ### Enablement and runtime cost
 
-Set `Script.DebuggerEnabled = True` only in a development config or command-line override. The default is `False`. When enabled, `AngelScriptBackend` retains line cues, disables bytecode optimization, creates the endpoint, and installs a line callback on script contexts.
+Set `AngelScript.DebuggerEnabled = True` only in a development config or command-line override. The default is `False`. When enabled, `AngelScriptBackend` retains line cues, disables bytecode optimization, creates the endpoint, and installs a line callback on script contexts.
 
-This changes script build/execution characteristics and adds line-processing overhead. Do not enable it in production, benchmarks, or acceptance runs that claim normal script performance. The AngelScript compile-time `AS_DEBUG` define follows native Debug configurations and is separate from the runtime `Script.DebuggerEnabled` setting.
+This changes script build/execution characteristics and adds line-processing overhead. Do not enable it in production, benchmarks, or acceptance runs that claim normal script performance. The AngelScript compile-time `AS_DEBUG` define follows native Debug configurations and is separate from the runtime `AngelScript.DebuggerEnabled` setting.
 
 ### Endpoint and discovery contract
 
 The runtime:
 
-- binds TCP to `Script.DebuggerBindHost`, whose Engine default is `127.0.0.1`;
+- binds TCP to `AngelScript.DebuggerBindHost`, whose Engine default is `127.0.0.1`;
 - selects one port in `43000..44999`, starting from `process_id % 2000`;
 - advertises a newline-delimited JSON protocol version `1`;
 - answers UDP probe `fos-debug-discover-v1` on port `43001`;
@@ -350,7 +350,7 @@ The source editor uses normal one-based lines; the adapter and endpoint translat
 
 ### Security boundary
 
-The debugger protocol has no authentication, authorization, confidentiality, or integrity protection. Discovery also reveals a process role and attach endpoint. Keep `Script.DebuggerBindHost = 127.0.0.1` unless an explicit, temporary, trusted-network review permits a different bind.
+The debugger protocol has no authentication, authorization, confidentiality, or integrity protection. Discovery also reveals a process role and attach endpoint. Keep `AngelScript.DebuggerBindHost = 127.0.0.1` unless an explicit, temporary, trusted-network review permits a different bind.
 
 Never expose TCP `43000..44999` or UDP `43001` to the public Internet, an untrusted LAN, a production pod/service, or a shared CI runner. For remote work, keep the Engine bound to loopback and use an authenticated transport owned by the operator, then configure an explicit local endpoint. Do not pass credentials in debugger config or log evidence.
 
@@ -373,7 +373,7 @@ Use unique script filenames across debugger-relevant source roots. Because the E
 
 ### Attach troubleshooting
 
-1. Confirm the selected process actually received `Script.DebuggerEnabled = True`; a compound launch name alone does not enable it.
+1. Confirm the selected process actually received `AngelScript.DebuggerEnabled = True`; a compound launch name alone does not enable it.
 2. Confirm the log contains both the TCP endpoint and UDP discovery port lines.
 3. Verify the bind remains loopback unless remote exposure was explicitly reviewed.
 4. When discovery finds nothing, use the logged direct TCP endpoint and check local firewall/extension-host UDP behavior.
@@ -392,7 +392,7 @@ Treat Managed C# failures as four separate layers. Preserve the first failure fr
 3. **Bake and delivery** — verify that each resource pack contains the expected target assembly and ManagedRuntime payload, and that packaging selected the target-specific runtime. Missing assemblies may be tolerated by deliberately minimal Engine fixtures; an embedding project's enabled backend must treat them as a packaging/configuration defect.
 4. **Runtime execution** — use the managed backend log to distinguish assembly/load-context failures, P/Invoke registration, callback signature/invocation, scheduler-context violations, synchronization-cover failures, and GC-root/lifetime defects. Match the content hash and process role before attaching a debugger.
 
-`Script.DebuggerEnabled` and the `fos` adapter affect only AngelScript. They do not expose C# breakpoints, locals, evaluation, or managed stacks. For live C# stepping, the embedding project must supply and qualify a debugger compatible with the embedded Mono runtime, the exact generated assemblies/symbols, and its target platform. A successful IDE attach is project evidence; it is not an Engine-supported delivery claim until Engine owns a repeatable live acceptance gate.
+`AngelScript.DebuggerEnabled` and the `fos` adapter affect only AngelScript. They do not expose C# breakpoints, locals, evaluation, or managed stacks. For live C# stepping, the embedding project must supply and qualify a debugger compatible with the embedded Mono runtime, the exact generated assemblies/symbols, and its target platform. A successful IDE attach is project evidence; it is not an Engine-supported delivery claim until Engine owns a repeatable live acceptance gate.
 
 For deterministic regressions, prefer `Source/Tests/Test_ManagedScriptBaker.cpp`, managed core/analyzer tests, and the focused `BuildTools/tests/test_managed_*.py` suite. Use [Managed C# Scripting](../how-to/scripting/managed-csharp.md) for the complete validation matrix and platform/sanitizer limits.
 
@@ -424,8 +424,8 @@ A maintained native profile records:
 
 A maintained AngelScript profile additionally records:
 
-- how `Script.DebuggerEnabled = True` is applied to the intended process;
-- loopback `Script.DebuggerBindHost` policy;
+- how `AngelScript.DebuggerEnabled = True` is applied to the intended process;
+- loopback `AngelScript.DebuggerBindHost` policy;
 - discovery port/timeout or explicit endpoint selection;
 - multi-instance selection and duplicate-filename policy;
 - adapter version, dependency/artifact provenance, and installation route;
@@ -472,8 +472,8 @@ Package layout and updater rollout are owned by [Packaging and Release](../how-t
 
 `BuildTools/ExternalProjectEvidence.json` pins both project snapshots. Current evidence shows:
 
-- Last Frontier keeps Windows/Linux native launch profiles, an explicit `fos` attach profile, compounds that launch with `--Script.DebuggerEnabled True`, a loopback base bind, and a checked static workflow validator. Its Linux pipeline also exercises Engine crash self-test modes. These are strong project practices but remain project-owned.
-- FOnline TLA independently carries Windows/Linux native profiles and `fos` compounds. At the pinned revision, the compounds do not themselves enable `Script.DebuggerEnabled`, while its base config disables the debugger and binds it to `0.0.0.0`. This is useful negative compatibility evidence, not a template to promote.
+- Last Frontier keeps Windows/Linux native launch profiles, an explicit `fos` attach profile, compounds that launch with `--AngelScript.DebuggerEnabled True`, a loopback base bind, and a checked static workflow validator. Its Linux pipeline also exercises Engine crash self-test modes. These are strong project practices but remain project-owned.
+- FOnline TLA independently carries Windows/Linux native profiles and `fos` compounds. At the pinned revision, the compounds do not themselves enable `AngelScript.DebuggerEnabled`, while its base config disables the debugger and binds it to `0.0.0.0`. This is useful negative compatibility evidence, not a template to promote.
 
 Reusable rules were re-derived from Engine source. Never copy Last Frontier target names into Engine docs, never promote TLA's wildcard bind, and never infer live attach coverage from a static launch file. A project revision change requires re-verifying the complete cited files before updating the evidence decision.
 
@@ -481,7 +481,7 @@ Reusable rules were re-derived from Engine source. Never copy Last Frontier targ
 
 | Observation | Likely layer | Next action |
 |---|---|---|
-| Breakpoints are hollow and no endpoint lines exist | Endpoint not enabled or startup failed | Verify effective `Script.DebuggerEnabled`, then inspect startup logs and port availability. |
+| Breakpoints are hollow and no endpoint lines exist | Endpoint not enabled or startup failed | Verify effective `AngelScript.DebuggerEnabled`, then inspect startup logs and port availability. |
 | Discovery is empty but TCP endpoint is logged | UDP/firewall/extension-host issue | Attach to the exact logged `tcp://127.0.0.1:<port>` endpoint. |
 | Wrong client/server/mapper stops | Multi-instance selection | Select the advertised role and `<pid>:<port>`; avoid first-response automation. |
 | Breakpoint stops in another file with the same name | Basename collision | Rename one `.fos` file; current Engine breakpoints are basename-keyed. |
@@ -498,9 +498,9 @@ Reusable rules were re-derived from Engine source. Never copy Last Frontier targ
 Re-audit this page in the same change when modifying:
 
 - configuration names, `expr_DebugInfo`, `expr_DebugBuild`, symbol/linker flags, sanitizer wiring, PIE/LTO, or output layout;
-- `IsRunInDebugger`, `BreakIntoDebugger`, stack capture/resolution/cache, exception callbacks, crash handlers, logging flush, alternate signal stacks, or `FO_SELFTEST_CRASH` modes;
+- `is_run_in_debugger`, `break_into_debugger`, stack capture/resolution/cache, exception callbacks, crash handlers, logging flush, alternate signal stacks, or `FO_SELFTEST_CRASH` modes;
 - Engine or third-party Natvis/NatJMC files and their CMake attachment;
-- `Script.DebuggerEnabled`, `Script.DebuggerBindHost`, AngelScript line cues/optimization, context setup, endpoint ports/protocol/commands/events, breakpoint keys, stack/locals, or security boundary;
+- `AngelScript.DebuggerEnabled`, `AngelScript.DebuggerBindHost`, AngelScript line cues/optimization, context setup, endpoint ports/protocol/commands/events, breakpoint keys, stack/locals, or security boundary;
 - Managed baker diagnostics, generated project layout, analyzer ids, assembly/load-context logging, callback scheduler checks, runtime payload identity, or managed-debugger support claims;
 - adapter schema, discovery/transport, DAP capability mapping, dependency/toolchain delivery, tests, or publication;
 - project launch/evidence files cited by `ExternalProjectEvidence.json`.

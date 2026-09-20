@@ -7,9 +7,7 @@ permalink: /Docs/ru/reference/scripting/remote-calls.html
 ---
 
 # Удалённые вызовы
-
 <!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"0296d8b306436a22e69b8791166421dd04b7ff33a69a3f2fd0d351b31c7659ab"} -->
-
 > Документация движка. Эта страница определяет переиспользуемый контракт удалённых вызовов FOnline. Каждый подключающий проект владеет конкретными вызовами, правилами авторизации, сгенерированным каталогом вызовов и политикой совместимости.
 
 ## Назначение

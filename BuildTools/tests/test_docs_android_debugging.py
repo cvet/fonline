@@ -100,12 +100,12 @@ class AndroidDebuggingDocumentationTests(unittest.TestCase):
         manifest = self._read("BuildTools/android-project/app/src/main/AndroidManifest.xml")
 
         for setting in (
-            'FIXED_SETTING(string, Android, PackageName, "com.fonline.app")',
-            "FIXED_SETTING(int32_t, Android, VersionCode, 1)",
-            "FIXED_SETTING(int32_t, Android, MinSdk, 23)",
-            "FIXED_SETTING(int32_t, Android, TargetSdk, 35)",
-            "FIXED_SETTING(int32_t, Android, CompileSdk, 35)",
-            'FIXED_SETTING(string, Android, ScreenOrientation, "landscape")',
+            'SETTING(string, Android, PackageName, "com.fonline.app")',
+            "SETTING(int32_t, Android, VersionCode, 1)",
+            "SETTING(int32_t, Android, MinSdk, 23)",
+            "SETTING(int32_t, Android, TargetSdk, 35)",
+            "SETTING(int32_t, Android, CompileSdk, 35)",
+            'SETTING(string, Android, ScreenOrientation, "landscape")',
         ):
             self.assertIn(setting, settings)
 

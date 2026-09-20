@@ -242,7 +242,7 @@ void CritterHexView::NextAnim()
 
 #if FO_ENABLE_3D
     if (_model) {
-        constexpr auto anim_flags = CombineEnum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
+        constexpr auto anim_flags = combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
         _model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), 0.0f, anim_flags);
     }
     else
@@ -334,7 +334,7 @@ void CritterHexView::RefreshView(bool no_smooth)
                 _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), 0.0f, anim_flags);
             }
             else {
-                anim_flags = CombineEnum(anim_flags, ModelAnimFlags::Freeze);
+                anim_flags = combine_enum(anim_flags, ModelAnimFlags::Freeze);
                 float32_t frozen_time = GetCondition() == CritterCondition::Dead ? 1.0f : 0.0f;
                 _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), frozen_time, anim_flags);
             }
@@ -348,7 +348,7 @@ void CritterHexView::RefreshView(bool no_smooth)
                 auto moving = GetMoving();
                 FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
 
-                if (moving->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings->RunAnimStartSpeed)) {
+                if (moving->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings->Render.RunAnimStartSpeed)) {
                     action_anim = CritterActionAnim::Walk;
                 }
                 else {
@@ -453,7 +453,7 @@ void CritterHexView::RefreshModel()
             }
         }
         else {
-            BreakIntoDebugger();
+            break_into_debugger();
 
             _spr = _engine->ResMngr.GetCritterDummyFrames();
         }
@@ -935,7 +935,7 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
     if (IsMapSpriteValid()) {
         irect32 rect = GetViewRect();
         pos = _map->MapToScreenPos({rect.x + rect.width / 2, rect.y});
-        pos.y += _engine->Settings->NameOffset + GetNameOffset();
+        pos.y += _engine->Settings->CritterView.NameOffset + GetNameOffset();
         return true;
     }
 

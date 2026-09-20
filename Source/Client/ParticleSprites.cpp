@@ -172,8 +172,8 @@ void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 
     const RenderSettings& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
-    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
-    mat44 local_to_world = glm::scale(mat44 {1.0f}, vec3 {settings.ModelProjFactor, settings.ModelProjFactor, settings.ModelProjFactor});
+    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    mat44 local_to_world = glm::scale(mat44 {1.0f}, vec3 {settings.Render.ModelProjFactor, settings.Render.ModelProjFactor, settings.Render.ModelProjFactor});
 
     mat44 proj_base = scene_ortho * cam_view * local_to_world;
     mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
@@ -189,11 +189,12 @@ void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
     _particle->Draw();
 }
 
-ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver) :
+ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<hash_resolver> hashes) :
     _sprMngr {spr_mngr},
     _settings {settings},
     _particleMngr {settings, effect_mngr, &spr_mngr->GetRender(), spr_mngr->GetResources(), game_time, //
-        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); }, //
+        [this, hashes](string_view path) mutable FO_DEFERRED { return LoadTexture(hashes->to_hashed_string(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED { return spr_mngr->IsDrawWireframe(); }, //
         [spr_mngr]() mutable FO_DEFERRED {
             nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
@@ -233,8 +234,8 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
     atlas_rect.height = numeric_cast<float32_t>(layout.DrawSize.height) / numeric_cast<float32_t>(atlas->GetSize().height);
 
     bool draw_in_scene = particle->GetDrawInScene();
-    auto particle_value = SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle));
-    return SafeAlloc::MakeShared<ParticleSprite>(_sprMngr, layout.DrawSize, layout.Offset, atlas, std::move(atlas_allocation), atlas_rect, this, std::move(particle_value), draw_in_scene);
+    auto particle_value = safe_alloc::make_unique<ParticleSystem>(std::move(*particle));
+    return safe_alloc::make_shared<ParticleSprite>(_sprMngr, layout.DrawSize, layout.Offset, atlas, std::move(atlas_allocation), atlas_rect, this, std::move(particle_value), draw_in_scene);
 }
 
 auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
@@ -252,8 +253,8 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
             result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
         }
         else {
-            BreakIntoDebugger();
-            WriteLog("Texture '{}' not found", path);
+            break_into_debugger();
+            logging::write("Texture '{}' not found", path);
             _loadedParticleTextures[path] = nullptr;
         }
     }

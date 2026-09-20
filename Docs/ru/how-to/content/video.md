@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/content/video.html
 ---
 
 # Видеоресурсы и воспроизведение
-
 <!-- docs-translation: {"document_id":"video-guide","locale":"ru","source_path":"Docs/en/how-to/content/video.md","source_sha256":"ff9a3082fb14e50d2f5b9683a4142dc78d416e9725ffe315cb1f6cb310fd3c83"} -->
-
 > Документация, принадлежащая движку. В этом руководстве описаны привязанный
 > к ревизии декодер Ogg/Theora и примитивы показа из `cvet/fonline`. Игра
 > отвечает за каталог роликов, триггеры, получателей, правила пропуска,

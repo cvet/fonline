@@ -180,7 +180,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            WriteLog("Effect baking error: {}", ex.what());
+            logging::write("Effect baking error: {}", ex.what());
             errors++;
         }
     }
@@ -398,7 +398,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         vector<uint8_t> data(spirv.size() * sizeof(uint32_t));
 
         if (!data.empty()) {
-            MemCopy(data.data(), spirv.data(), data.size());
+            memory::copy(data.data(), spirv.data(), data.size());
         }
 
         _context->WriteData(strex("{}-spv", fname_wo_ext), data);
@@ -409,7 +409,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         vector<uint8_t> data(sdl_spirv.size() * sizeof(uint32_t));
 
         if (!data.empty()) {
-            MemCopy(data.data(), sdl_spirv.data(), data.size());
+            memory::copy(data.data(), sdl_spirv.data(), data.size());
         }
 
         _context->WriteData(strex("{}-spv_sdl", fname_wo_ext), data);

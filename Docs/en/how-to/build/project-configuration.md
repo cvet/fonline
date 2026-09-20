@@ -85,12 +85,12 @@ Baking.ClientResources = Resources
 Baking.PlatformBinaries = PlatformBinaries
 Baking.CacheResources = Cache
 
-Script.ManagedScriptAssemblies = MyGame
-Script.ManagedScriptProjectName = MyGame
-Script.ManagedScriptTargetFramework = net10.0
-Script.ManagedScriptMsBuild = dotnet msbuild
-Script.ManagedScriptDirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
-Script.ManagedScriptAnalyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
+ManagedScript.Assemblies = MyGame
+ManagedScript.ProjectName = MyGame
+ManagedScript.TargetFramework = net10.0
+ManagedScript.MsBuild = dotnet msbuild
+ManagedScript.Dirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
+ManagedScript.Analyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
 ```
 
 Unknown names become project custom settings and are available through `GetCustomSetting` / `FindCustomSetting`. That is intentional for game-owned configuration, but a typo in a built-in setting can therefore look valid. Add a focused project test for every content ID, port/profile, prototype name, path, or custom setting that affects startup or gameplay.
@@ -129,13 +129,14 @@ IncludePatterns = *
 Bakers = Managed
 ```
 
-Choose the backend deliberately. An AngelScript pack bakes `.fos` modules through `AngelScriptBaker`; a Managed pack compiles the configured top-level `.cs` sources and generated API into target-specific assemblies. The Managed pack must include the Engine CoreScripts and project sources selected by `Script.ManagedScriptDirs`; keep its assembly, analyzer, extra-source/reference, and generated-directory settings aligned with the same build. See [Managed C# Scripting](../scripting/managed-csharp.md) for the complete backend contract.
+Choose the backend deliberately. An AngelScript pack bakes `.fos` modules through `AngelScriptBaker`; a Managed pack compiles the configured top-level `.cs` sources and generated API into target-specific assemblies. The Managed pack must include the Engine CoreScripts and project sources selected by `ManagedScript.Dirs`; keep its assembly, analyzer, extra-source/reference, and generated-directory settings aligned with the same build. See [Managed C# Scripting](../scripting/managed-csharp.md) for the complete backend contract.
 
 The accepted fields are:
 
 | Field | Meaning |
 |---|---|
 | `Name` | Required pack identity and generated resource entry |
+| `ConfigDir` | Derived owning-config directory used to resolve relative inputs; not authored in the section |
 | `InputDirs` | Space-separated directories, relative to the owning config |
 | `InputFiles` | Space-separated explicit files, also config-relative |
 | `IncludePatterns` | Optional input glob allowlist |

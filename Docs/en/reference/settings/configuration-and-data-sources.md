@@ -89,7 +89,7 @@ The parser stores owned strings internally and returns `string_view` values from
 
 ## Runtime settings
 
-`Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. `Settings.h` exposes:
+`Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. Every built-in setting is addressed by its full `Group.Name`, is mutable only while `GlobalSettings` constructs the startup snapshot, and is exposed as `const` afterwards. Live state belongs to its runtime owner rather than being written back into settings. `Settings.h` exposes:
 
 - `ResourcePackInfo` — name, input directories/files, include/exclude glob patterns, side flags, and baker list.
 - `SubConfigInfo` — named config overlays and setting maps.
@@ -136,9 +136,11 @@ which is populated from applied config keys plus the baking-mode
 **auto-settings** allow-list. Runtime-only settings (platform/build flags,
 monitor size, command-line/git/compatibility values, and the resolved
 `Common.UserWritablePath`) must remain in that allow-list. Settings consumed only
-by `BuildTools/package.py` are validated as ordinary settings. Setting lookup
-accepts dotted (`Group.Name`) and bare (`Name`) spellings, so every bare name must
-stay globally unique.
+by `BuildTools/package.py` are validated as ordinary settings. Built-in lookup
+accepts only dotted `Group.Name` spelling; an unqualified old name is a distinct
+custom setting and cannot mutate the built-in value. Script
+`SetRuntimeSetting` likewise rejects writes to built-ins as read-only while
+remaining available for project-owned custom settings.
 
 Custom settings have two read shapes. Use `FindCustomSetting()` when missing keys are normal and should stay in the nullable pointer vocabulary. Use `GetCustomSetting()` only for compatibility with the historical non-null sentinel behavior: it returns the stored value when present and `_emptySetting` when absent.
 
@@ -242,7 +244,7 @@ Related consumers are covered by resource, client, server, script, and baker tes
 - Runtime resource consumption: `Source/Client/ResourceManager.*` plus owning runtime docs.
 - Particle source selection, `.spark`/`.efkproj` compilation, and `.spk`/`.efk` runtime consumption: `Source/Tools/ParticleBaker.*`, `Source/Client/ParticleRuntime.*`, `Source/Client/VisualParticles.*`, and [Particle Format And Runtime](../../how-to/content/particle-format.md).
 - Font descriptor raw-copy selection and runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
-- Audio raw-copy selection, sound indexing, decoder dispatch, and client playback: `Baking.RawCopyFileExtensions`, `Audio.*`, `Source/Tools/RawCopyBaker.*`, `Source/Client/ResourceManager.cpp`, `Source/Client/SoundManager.*`, and [Audio](../../how-to/content/audio.md).
+- Audio baking, sound indexing, Vorbis decoding, and client playback: `Baking.AudioVorbisQuality`, `Audio.SoundFileExtensions`, `Audio.*`, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*`, and [Audio](../../how-to/content/audio.md).
 - Video raw-copy selection, exact-path loading, Ogg/Theora decode, fullscreen/embedded client playback, and memory ownership: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*`, and [Video](../../how-to/content/video.md).
 - Resource-pack generation: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and `Source/Tools/*Baker.*`.
 

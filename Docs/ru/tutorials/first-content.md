@@ -5,9 +5,7 @@ locale: ru
 document_id: first-content-tutorial
 permalink: /Docs/ru/tutorials/first-content.html
 ---
-
-<!-- docs-translation: {"document_id":"first-content-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-content.md","source_sha256":"a0a9fe220acacb221721f0bf121f77fad810f1b290dee6ffb7242fcaac04301d"} -->
-
+<!-- docs-translation: {"document_id":"first-content-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-content.md","source_sha256":"670fd7312d9b562cec599887b320c340e04b5c83f1cf3a931cc310a78daafc27"} -->
 # Первое изменение контента
 
 Измените локализованный текст прототипа и подтвердите результат запекания в
@@ -41,7 +39,6 @@ permalink: /Docs/ru/tutorials/first-content.html
 $Name = TutorialSupply
 $Text engl = "Emergency cache"
 $Text russ = "Аварийный контейнер"
-Stackable = True
 ```
 
 `Baking.BakeLanguages = engl russ` делает английский базой нормализации этого

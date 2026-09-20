@@ -37,6 +37,8 @@ Treat the current Engine source and generated contract models as authoritative. 
 - `Source/Tools/ConfigBaker.cpp`
 - `Source/Tools/RawCopyBaker.h`
 - `Source/Tools/RawCopyBaker.cpp`
+- `Source/Tools/AudioBaker.h`
+- `Source/Tools/AudioBaker.cpp`
 - `Source/Tools/ImageBaker.h`
 - `Source/Tools/ImageBaker.cpp`
 - `Source/Tools/SpriteMeshing.h`
@@ -81,6 +83,7 @@ Treat the current Engine source and generated contract models as authoritative. 
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
@@ -126,8 +129,8 @@ Reconciliation runs once per bake over the outputs the bakers already produced. 
 
 Current target responsibilities:
 
-- `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-ForceBaking False`.
-- `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-ForceBaking True`.
+- `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-Baking.ForceBaking False`.
+- `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-Baking.ForceBaking True`.
 - Both standard targets apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and use the default subconfig `NONE`.
 - Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
 - `CompileAngelScript` and `CompileManagedScripts` depend on `ForceCodeGeneration`, so metadata and generated code cannot lag behind either script backend or a bake invocation.
@@ -140,7 +143,7 @@ AddBakingTarget(Game_PublicResources
     COMMENT "Bake public resources")
 ```
 
-The full signature is `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`. `SUB_CONFIG` defaults to `NONE`, `COMMENT` defaults to `Bake resources`, and `FORCE` changes `-ForceBaking` from `False` to `True`. Unknown arguments and keywords without values fail at configure time. The embedding project owns the additional target name and the referenced subconfig.
+The full signature is `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`. `SUB_CONFIG` defaults to `NONE`, `COMMENT` defaults to `Bake resources`, and `FORCE` changes `-Baking.ForceBaking` from `False` to `True`. Unknown arguments and keywords without values fail at configure time. The embedding project owns the additional target name and the referenced subconfig.
 
 The actual final target names that depend on these commands are project/preset-dependent. Do not document one embedding project's target names as universal engine behavior.
 
@@ -388,7 +391,7 @@ During output discovery it visits resource packs in configured order so a later 
 
 ## Embedding-project pack design
 
-`Source/Common/Settings.h` and `Settings.cpp` define the reusable `[ResourcePack]` fields: `Name`, `InputDirs`, `InputFiles`, `IncludePatterns`, `ExcludePatterns`, `ServerOnly`, `ClientOnly`, `MapperOnly`, and `Bakers`. A name is mandatory, at most one side-only flag may be true, relative inputs resolve from the declaring config directory, and the configured section order is preserved.
+`Source/Common/Settings.h` and `Settings.cpp` define the reusable `[ResourcePack]` state: authored `Name`, `InputDirs`, `InputFiles`, `IncludePatterns`, `ExcludePatterns`, `ServerOnly`, `ClientOnly`, `MapperOnly`, and `Bakers`, plus the derived `ConfigDir` of the declaring file. A name is mandatory, at most one side-only flag may be true, relative inputs resolve from `ConfigDir`, and the configured section order is preserved.
 
 Mature projects and the independent TLA codebase converge on a few useful practices. They are recommendations, not extra Engine syntax:
 
@@ -411,6 +414,7 @@ For the exact project-configuration grammar and precedence rules, see [Configure
 | `Metadata` | `MetadataBaker` | 1 | always |
 | `Config` | `ConfigBaker` | 2 | always |
 | `RawCopy` | `RawCopyBaker` | 4 | always |
+| `Audio` | `AudioBaker` | 4 | always |
 | `Image` | `ImageBaker` | 4 | always |
 | `Effect` | `EffectBaker` | 4 | always |
 | `Text` | `TextBaker` | 4 | always |
@@ -598,12 +602,13 @@ For `.fomap` section order, placement IDs, ownership references, static/dynamic 
 
 Bitmap-font descriptors also have no dedicated baker. `RawCopyBaker` copies runtime `.fofnt` and AngelCode text `.fnt` descriptors, while `.bmfc` is only an authoring sidecar that may be shipped for source provenance; the descriptor's referenced PNG/TGA image is baked separately by `ImageBaker`. `FontManager` validates and binds the descriptor at client startup. Use [Font Formats And Text Layout](../../how-to/content/font-format.md) and its generated [font-format reference](../../reference/font-format/index.md) for exact syntax, resource relationships, layout/rendering semantics, diagnostics, and visible validation.
 
-Audio also uses raw-copy delivery rather than a dedicated baker. Runtime `.wav`,
-`.acm`, and `.ogg` bytes keep their relative paths and are decoded by the
-client. Use [Audio](../../how-to/content/audio.md) and the generated
-[audio reference](../../reference/audio/index.md) for accepted format profiles,
-effect-name indexing, music paths, repeat/mixing behavior, diagnostics, and the
-required audible client gate.
+Audio has a dedicated baker. Authored PCM/IEEE-float `.wav` is normalized to
+signed 16-bit PCM and encoded as Vorbis, while authored `.ogg` is verified and
+passed through without changing its logical path. Runtime playback therefore
+uses one Vorbis decoder and does not accept legacy ACM. Use
+[Audio](../../how-to/content/audio.md) and the generated
+[audio reference](../../reference/audio/index.md) for accepted profiles,
+playback handles, spatial updates, mixing, diagnostics, and audible validation.
 
 Video also has no dedicated baker or transcoder. Runtime `.ogv` bytes are copied
 unchanged and loaded by exact client resource path into the experimental
@@ -1108,6 +1113,7 @@ Baker behavior is covered by focused tests in `Source/Tests/`:
 - `Test_ConfigBaker.cpp`
 - `Test_MetadataBaker.cpp`
 - `Test_RawCopyBaker.cpp`
+- `Test_AudioBaker.cpp`
 - `Test_ImageBaker.cpp`
 - `Test_EffectBaker.cpp`
 - `Test_ProtoBaker.cpp`
@@ -1137,7 +1143,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 - Map parsing/baking/materialization: update `BuildTools/MapFormatInterface.json`, [Map Format](../../how-to/content/map-format.md), regenerate its model/reference, run `test_docs_map_format.py`, include it in the aggregate contract diff, run the affected map unit tests, and rebake an embedding project.
 - Image import, FOFRM composition, baked sprite records, or stock client loading/atlas/cache behavior: update `BuildTools/ImageFormatInterface.json`, [Image And Sprite Formats](../../how-to/content/image-format.md), regenerate its model/reference, run `test_docs_image_format.py`, include it in the aggregate contract diff, run focused image/atlas tests, and rebake plus visibly inspect an affected embedding project.
 - Font descriptor delivery, `Baking.RawCopyFileExtensions`, FOFNT/BMFont parsing, binding, layout, or rendering: update `BuildTools/FontFormatInterface.json`, [Font Formats And Text Layout](../../how-to/content/font-format.md), regenerate its model/reference, run `test_docs_font_format.py`, include it in the aggregate contract diff, run native tests, and rebake plus visibly inspect an affected embedding project.
-- Audio raw-copy delivery, WAV/ACM/Ogg decoding, `SoundManager`, sound-name indexing, script playback, settings, or frontend mixing: update `BuildTools/AudioInterface.json`, [Audio](../../how-to/content/audio.md), regenerate its model/reference, run `test_docs_audio.py`, include it in the aggregate contract diff, run native tests, and rebake plus audibly inspect an affected embedding project on every claimed platform.
+- Audio baking, WAV/Ogg validation and conversion, `AudioManager`, sound-name indexing, playback handles, spatial updates, settings, or frontend mixing: update `BuildTools/AudioInterface.json`, [Audio](../../how-to/content/audio.md), regenerate its model/reference, run `test_docs_audio.py`, include it in the aggregate contract diff, run native tests, and rebake plus audibly inspect an affected embedding project on every claimed platform.
 - Video raw-copy delivery, Ogg/Theora decoding, `VideoClip`, fullscreen queue/input/music/drawing, or script-owned playback: update `BuildTools/VideoInterface.json`, [Video](../../how-to/content/video.md), regenerate its model/reference, run `test_docs_video.py`, include it in the aggregate contract diff, run native tests, and rebake plus visibly inspect an affected embedding project on every claimed platform.
 - Effect parsing/baking/resources/runtime selection: update `BuildTools/EffectFormatInterface.json`, [Effect Format](../../how-to/content/effect-format.md), regenerate its model/reference, run `test_docs_effect_format.py`, include it in the aggregate contract diff, run focused effect-baker tests, and validate affected backends in a visible embedding-project scene.
 - AngelScript bake behavior: update `Source/Tools/AngelScriptBaker.*`, the AngelScript tests, and [Scripting](../scripting-runtime/).

@@ -51,8 +51,8 @@ class DocumentationQualityFoundationsTests(unittest.TestCase):
         status = json.loads((ROOT / generated["path"]).read_text(encoding="utf-8"))
         workflow = (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
         self.assertEqual(catalog["enforcement"], "complete")
-        self.assertEqual(status["summary"]["entry_count"], 4979)
-        self.assertEqual(status["summary"]["current_count"], 4979)
+        self.assertEqual(status["summary"]["entry_count"], 4786)
+        self.assertEqual(status["summary"]["current_count"], 4786)
         self.assertEqual(status["summary"]["missing_count"], 0)
         self.assertTrue(status["summary"]["complete"])
         for domain in (
@@ -89,6 +89,7 @@ class DocumentationQualityFoundationsTests(unittest.TestCase):
             "bash": ("normative", "bash-parse"),
             "cmake": ("normative", "cmake-parse"),
             "cpp": ("normative", "c-family-parse"),
+            "csharp": ("normative", "c-family-parse"),
             "glsl": ("normative", "c-family-parse"),
             "ini": ("normative", "ini-parse"),
             "json": ("normative", "json-parse"),
@@ -107,7 +108,7 @@ class DocumentationQualityFoundationsTests(unittest.TestCase):
             self.assertIn(f"`{harness}`", guide)
         self.assertIn("documentation-snippets:", workflow)
         self.assertIn("BuildTools/docs_snippets.py --check --external", workflow)
-        self.assertIn("lexical structure, not C++ or AngelScript type", guide)
+        self.assertIn("lexical structure, not C++, C#, or AngelScript type", guide)
 
     def test_ai_evaluation_threshold_counts_and_ranking_are_explicit(self) -> None:
         source = json.loads((ROOT / "Docs/ai-evaluation.json").read_text(encoding="utf-8"))
@@ -123,9 +124,9 @@ class DocumentationQualityFoundationsTests(unittest.TestCase):
         browser_search = (ROOT / "assets/js/docs.js").read_text(encoding="utf-8")
 
         self.assertEqual(source["minimum_retrieval_success_rate"], 1.0)
-        self.assertEqual((len(tasks), query_count, answer_count), (27, 65, 92))
+        self.assertEqual((len(tasks), query_count, answer_count), (28, 67, 97))
         self.assertTrue(all(count >= 2 for count in category_counts.values()))
-        self.assertIn("27 tasks, 65 retrieval checks, and 92 answer", guide)
+        self.assertIn("28 tasks, 67 retrieval checks, and 97 answer", guide)
         self.assertIn("threshold is 100 percent", guide)
         self.assertIn("(effective_token_count * 3 + 4) // 5", python_search)
         self.assertIn("prefix_matches == 32", python_search)

@@ -176,6 +176,7 @@ private:
 struct SDLGpu_Renderer::Context
 {
     nptr<GlobalSettings> Settings {};
+    nptr<const AppScreenState> Screen {};
     bool VSync {};
     nptr<SDL_Window> SdlWindow {};
     nptr<SDL_GPUDevice> Device {};
@@ -581,29 +582,30 @@ static void CreateBackbufferProxy(ptr<SDLGpu_Renderer::Context> ctx, isize32 siz
 
 SDLGpu_Renderer::SDLGpu_Renderer() = default;
 
-void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void SDLGpu_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>();
+    _ctx = safe_alloc::make_unique<Context>();
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     _ctx->Settings = &settings;
-    _ctx->VSync = settings.VSync;
+    _ctx->Screen = screen;
+    _ctx->VSync = settings.Render.VSync;
     _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
 
     // Device
     constexpr SDL_GPUShaderFormat requested_formats = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL;
-    auto gpu_driver_name = make_ptr(&settings.SDLGpuDriver);
-    _ctx->Device = SDL_CreateGPUDevice(requested_formats, settings.RenderDebug, gpu_driver_name->empty() ? nullptr : gpu_driver_name->c_str());
+    auto gpu_driver_name = make_ptr(&settings.Render.SDLGpuDriver);
+    _ctx->Device = SDL_CreateGPUDevice(requested_formats, settings.Render.RenderDebug, gpu_driver_name->empty() ? nullptr : gpu_driver_name->c_str());
 
     if (!_ctx->Device) {
-        throw AppInitException("SDL_CreateGPUDevice failed", SDL_GetError(), settings.SDLGpuDriver);
+        throw AppInitException("SDL_CreateGPUDevice failed", SDL_GetError(), settings.Render.SDLGpuDriver);
     }
 
-    WriteLog("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
+    logging::write("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
 
     // Shader format: prefer the SPIR-V flavor (Vulkan), fall back to MSL (Metal)
     SDL_GPUShaderFormat device_formats = SDL_GetGPUShaderFormats(_ctx->Device.get());
@@ -631,7 +633,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             FO_VERIFY_AND_THROW(swapchain_params_ok, "SDL_SetGPUSwapchainParameters failed", SDL_GetError());
         }
         else {
-            WriteLog("SDL_GPU immediate present mode is not supported, VSync stays enabled");
+            logging::write("SDL_GPU immediate present mode is not supported, VSync stays enabled");
         }
     }
 
@@ -667,7 +669,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     AppRender::MAX_ATLAS_HEIGHT = 4096;
 
     // Backbuffer proxy: all backbuffer rendering goes here and Present() blits it to the swapchain
-    CreateBackbufferProxy(_ctx, {settings.ScreenWidth, settings.ScreenHeight});
+    CreateBackbufferProxy(_ctx, screen->Size);
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
@@ -773,7 +775,7 @@ auto SDLGpu_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto sdl_tex = SafeAlloc::MakeUnique<SDLGpu_Texture>(size, linear_filtered, with_depth, _ctx);
+    auto sdl_tex = safe_alloc::make_unique<SDLGpu_Texture>(size, linear_filtered, with_depth, _ctx);
 
     SDL_GPUTextureCreateInfo tex_info = {};
     tex_info.type = SDL_GPU_TEXTURETYPE_2D;
@@ -811,7 +813,7 @@ auto SDLGpu_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto sdl_dbuf = SafeAlloc::MakeUnique<SDLGpu_DrawBuffer>(is_static, _ctx);
+    auto sdl_dbuf = safe_alloc::make_unique<SDLGpu_DrawBuffer>(is_static, _ctx);
 
     return std::move(sdl_dbuf);
 }
@@ -821,7 +823,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto sdl_effect = SafeAlloc::MakeUnique<SDLGpu_Effect>(usage, name, loader, _ctx);
+    auto sdl_effect = safe_alloc::make_unique<SDLGpu_Effect>(usage, name, loader, _ctx);
 
     // The SDL_GPU backend consumes the SDL-convention baked flavors (per-stage descriptor sets), not the native
     // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver
@@ -988,7 +990,7 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     }
     else {
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.width) / screen_aspect);
 
@@ -996,8 +998,8 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         vp_oy = (_ctx->BackBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
-        screen_width = _ctx->Settings->ScreenWidth;
-        screen_height = _ctx->Settings->ScreenHeight;
+        screen_width = _ctx->Screen->Size.width;
+        screen_height = _ctx->Screen->Size.height;
     }
 
     _ctx->CurRenderTarget = new_render_target;
@@ -1193,7 +1195,7 @@ auto SDLGpu_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     auto mapped = MapTransferBuffer(_ctx, transfer_buf, false);
-    MemCopy(result.data(), mapped, read_size);
+    memory::copy(result.data(), mapped, read_size);
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
     return result;
@@ -1219,7 +1221,7 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     auto transfer_buf = EnsureTransferBuffer(_ctx, _ctx->UploadTransferBuf, _ctx->UploadTransferBufSize, upload_size, false);
 
     auto mapped = MapTransferBuffer(_ctx, transfer_buf, true);
-    MemCopy(mapped, data.data(), upload_size);
+    memory::copy(mapped, data.data(), upload_size);
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
     auto copy_pass = EnsureCopyPass(_ctx);
@@ -1338,17 +1340,17 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     if (vertices_data_size != 0) {
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
-            MemCopy(mapped_bytes, Vertices3D.data(), vertices_data_size);
+            memory::copy(mapped_bytes, Vertices3D.data(), vertices_data_size);
         }
         else {
-            MemCopy(mapped_bytes, Vertices.data(), vertices_data_size);
+            memory::copy(mapped_bytes, Vertices.data(), vertices_data_size);
         }
 #else
-        MemCopy(mapped_bytes, Vertices.data(), vertices_data_size);
+        memory::copy(mapped_bytes, Vertices.data(), vertices_data_size);
 #endif
     }
     if (indices_data_size != 0) {
-        MemCopy(mapped_bytes.get() + vertices_data_size, Indices.data(), indices_data_size);
+        memory::copy(mapped_bytes.get() + vertices_data_size, Indices.data(), indices_data_size);
     }
 
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
@@ -1573,14 +1575,14 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         auto main_texture_size = main_tex_buf->MainTexSize;
         auto main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     // Derived buffers are per-draw: if the draw throws before the end-of-function reset, clear them here so

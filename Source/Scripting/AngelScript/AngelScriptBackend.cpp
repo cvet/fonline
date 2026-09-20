@@ -63,17 +63,6 @@ static constexpr uint32_t AS_BYTECODE_CONTAINER_MAGIC = 0x464F4132; // 'FOA2'
 
 // Configuration the bytecode was compiled under
 static constexpr uint8_t AS_BYTECODE_CONFIG_MANAGED = 0x01;
-
-[[nodiscard]] static constexpr auto GetScriptBytecodeConfigFlags() noexcept -> uint8_t
-{
-    uint8_t flags = 0;
-
-#if FO_MANAGED_SCRIPTING
-    flags |= AS_BYTECODE_CONFIG_MANAGED;
-#endif
-
-    return flags;
-}
 static constexpr uint8_t AS_BYTECODE_POINTER_SIZE = sizeof(void*);
 static constexpr uint8_t AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
 static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
@@ -131,7 +120,7 @@ static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, const str
         return;
     }
 
-    MemCopy(data.data(), text.data(), text.size());
+    memory::copy(data.data(), text.data(), text.size());
 }
 
 static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) noexcept
@@ -143,7 +132,7 @@ static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) no
     engine->SetUserData(nullptr, AS_PREPROCESSOR_LNT_USER_DATA);
 }
 
-AngelScriptBackend::AngelScriptBackend(ptr<const ScriptSettings> settings) :
+AngelScriptBackend::AngelScriptBackend(ptr<const AngelScriptSettings> settings) :
     _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
@@ -177,6 +166,13 @@ AngelScriptBackend::~AngelScriptBackend()
     for (const auto& cb : _postCleanupCallbacks) {
         cb();
     }
+}
+
+auto AngelScriptBackend::InternUserString(string_view name) -> ptr<const string>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return &*_userStrings.emplace(name).first;
 }
 
 auto AngelScriptBackend::GetGameEngine() -> ptr<BaseEngine>
@@ -235,8 +231,8 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY, 2));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 2));
 
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, !_settings->DebuggerEnabled));
-    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, !_settings->DebuggerEnabled));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, !_settings->AngelScript.DebuggerEnabled));
+    FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, !_settings->AngelScript.DebuggerEnabled));
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
     as_engine->SetEngineUserDataCleanupCallback(CleanupLineNumberTranslator, AS_PREPROCESSOR_LNT_USER_DATA);
@@ -253,13 +249,13 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     RegisterAngelScriptGlobals(as_engine);
     RegisterAngelScriptRemoteCalls(as_engine);
 
-    if (_engine && _settings->DebuggerEnabled) {
+    if (_engine && _settings->AngelScript.DebuggerEnabled) {
         if (!_debuggerEndpointServer) {
             try {
                 _debuggerEndpointServer.emplace(make_ptr(this));
             }
             catch (...) {
-                WriteLog("Can't start AngelScript debugger endpoint server");
+                logging::write("Can't start AngelScript debugger endpoint server");
             }
         }
     }
@@ -280,7 +276,7 @@ void AngelScriptBackend::SendMessage(string_view message) const
         _messageCallback(message);
     }
     else {
-        WriteLog(message);
+        logging::write(message);
     }
 }
 
@@ -305,7 +301,7 @@ public:
 
         _binBuf->resize(_binBuf->size() + size);
         ptr<AngelScript::asBYTE> target = _binBuf->data() + _writePos;
-        MemCopy(target, source, size);
+        memory::copy(target, source, size);
         _writePos += size;
 
         return 0;
@@ -326,7 +322,7 @@ public:
         }
 
         ptr<const AngelScript::asBYTE> source = _binBuf->data() + _readPos;
-        MemCopy(target, source, size);
+        memory::copy(target, source, size);
         _readPos += size;
 
         return 0;
@@ -361,35 +357,37 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 0, "AngelScript engine must not contain modules before loading bytecode", _asEngine->GetModuleCount());
     FO_VERIFY_AND_THROW(!script_bin.empty(), "AngelScript bytecode resource is empty", script_bin_file.GetPath(), _meta->GetSide());
 
-    auto reader = DataReader({script_bin.data(), script_bin.size()});
+    auto reader = data_reader({script_bin.data(), script_bin.size()});
 
-    uint32_t container_magic = reader.Read<uint32_t>();
+    uint32_t container_magic = reader.read<uint32_t>();
 
     if (container_magic != AS_BYTECODE_CONTAINER_MAGIC) {
         throw ScriptException("Incompatible script bytecode container");
     }
 
-    uint8_t source_pointer_size = reader.Read<uint8_t>();
-    uint8_t source_endian_tag = reader.Read<uint8_t>();
-    uint8_t source_config_flags = reader.Read<uint8_t>();
+    uint8_t source_pointer_size = reader.read<uint8_t>();
+    uint8_t source_endian_tag = reader.read<uint8_t>();
+    uint8_t source_config_flags = reader.read<uint8_t>();
 
-    FO_VERIFY_AND_THROW(source_config_flags == GetScriptBytecodeConfigFlags(), "Script bytecode was compiled for a different build configuration", source_config_flags, GetScriptBytecodeConfigFlags());
+    uint8_t flags = 0;
+    flags |= build_condition<FO_MANAGED_SCRIPTING>() ? AS_BYTECODE_CONFIG_MANAGED : uint8_t {0};
+    FO_VERIFY_AND_THROW(source_config_flags == flags, "Script bytecode was compiled for a different build configuration", source_config_flags, flags);
 
     if (source_pointer_size != AS_BYTECODE_POINTER_SIZE) {
-        WriteLog("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
+        logging::write("Loading cross-platform bytecode: compiled with {}-bit pointers, running with {}-bit pointers", source_pointer_size * 8, AS_BYTECODE_POINTER_SIZE * 8);
     }
     if (source_endian_tag != AS_BYTECODE_ENDIAN_TAG) {
-        WriteLog("Loading cross-endian bytecode: source endian tag {}, local endian tag {}", source_endian_tag, AS_BYTECODE_ENDIAN_TAG);
+        logging::write("Loading cross-endian bytecode: source endian tag {}, local endian tag {}", source_endian_tag, AS_BYTECODE_ENDIAN_TAG);
     }
 
-    uint32_t bytecode_size = reader.Read<uint32_t>();
+    uint32_t bytecode_size = reader.read<uint32_t>();
     FO_VERIFY_AND_THROW(bytecode_size != 0, "AngelScript bytecode payload size is zero");
-    const_span<uint8_t> bytecode_data = reader.ReadBytes(bytecode_size);
+    const_span<uint8_t> bytecode_data = reader.read_bytes(bytecode_size);
     vector<AngelScript::asBYTE> buf(bytecode_data.begin(), bytecode_data.end());
 
-    uint32_t lnt_size = reader.Read<uint32_t>();
+    uint32_t lnt_size = reader.read<uint32_t>();
     FO_VERIFY_AND_THROW(lnt_size != 0, "AngelScript bytecode container has an empty line-number table payload", script_bin_file.GetPath());
-    const_span<uint8_t> lnt_bytes = reader.ReadBytes(lnt_size);
+    const_span<uint8_t> lnt_bytes = reader.read_bytes(lnt_size);
     std::vector<uint8_t> lnt_data(lnt_bytes.begin(), lnt_bytes.end());
 
     nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
@@ -445,12 +443,12 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     }
 
     auto records = DeserializeFunctionAttributeRecords(reader);
-    reader.VerifyEnd();
+    reader.verify_end();
 
-    if (string bind_error = BindFunctionAttributeRecords(mod, records, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
+    if (string bind_error = BindFunctionAttributeRecords(mod, records, &_settings->AngelScript.ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptException(bind_error);
     }
-    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
+    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AngelScript.AttributedFunctionDirectCallAllowedNamespaces, &_settings->AngelScript.ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptException(usage_error);
     }
     if (string admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, lnt); !admin_remote_call_error.empty()) {
@@ -618,7 +616,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Preprocessor failed", errors.String);
     }
     else if (!errors.String.empty()) {
-        WriteLog("Preprocessor message: {}", errors.String);
+        logging::write("Preprocessor message: {}", errors.String);
     }
 
     string attribute_errors;
@@ -653,10 +651,10 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Unable to build module", as_result);
     }
 
-    if (string bind_error = BindFunctionAttributeRecords(mod, parsed_attributes, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
+    if (string bind_error = BindFunctionAttributeRecords(mod, parsed_attributes, &_settings->AngelScript.ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptCompilerException("Unable to bind function attributes", bind_error);
     }
-    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
+    if (string usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AngelScript.AttributedFunctionDirectCallAllowedNamespaces, &_settings->AngelScript.ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptCompilerException("Attributed function usage validation failed", usage_error);
     }
     if (string special_attr_error = ValidateSpecialFunctionAttributes(mod, lnt); !special_attr_error.empty()) {
@@ -684,18 +682,18 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     Preprocessor::StoreLineNumberTranslator(lnt.get(), lnt_data);
 
     vector<uint8_t> data;
-    auto writer = DataWriter(data);
-    writer.Write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
-    writer.Write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
-    writer.Write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
-    writer.Write<uint8_t>(GetScriptBytecodeConfigFlags());
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
+    auto writer = data_writer(data);
+    writer.write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
+    writer.write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
+    writer.write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
+    writer.write<uint8_t>(build_condition<FO_MANAGED_SCRIPTING>() ? AS_BYTECODE_CONFIG_MANAGED : uint8_t {0});
+    writer.write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
     if (!buf.empty()) {
-        writer.WriteObjectArray(const_span<AngelScript::asBYTE> {buf.data(), buf.size()});
+        writer.write_object_array(const_span<AngelScript::asBYTE> {buf.data(), buf.size()});
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(lnt_data.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(lnt_data.size()));
     if (!lnt_data.empty()) {
-        writer.WriteBytes({lnt_data.data(), lnt_data.size()});
+        writer.write_bytes({lnt_data.data(), lnt_data.size()});
     }
     SerializeFunctionAttributeRecords(writer, parsed_attributes);
     return data;
@@ -732,7 +730,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
             string_view ns_view = name_space ? string_view {name_space.get()} : string_view {};
 
-            if (IsScriptNamespaceAllowed(ns_view, _settings->MutableGlobalsAllowedNamespaces)) {
+            if (IsScriptNamespaceAllowed(ns_view, _settings->AngelScript.MutableGlobalsAllowedNamespaces)) {
                 continue;
             }
 
@@ -765,7 +763,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
             // Check for special module init functions
             if (func_desc->Call && func_desc->Args.empty() && func_desc->Ret.Kind == ComplexTypeKind::None) {
-                auto func_wrapper = ScriptFunc<void>(unique_del_nptr<ScriptFuncDesc>(MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get()))));
+                auto func_wrapper = ScriptFunc<void>(unique_del_nptr<ScriptFuncDesc>(MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_addref(func.get()))));
 
                 if (string_view raw_init_attr = FindFunctionAttribute(func.get(), "ModuleInit"); !raw_init_attr.empty()) {
                     int32_t priority = 0;
@@ -780,7 +778,7 @@ void AngelScriptBackend::BindRequiredStuff()
     if (HasGameEngine()) {
         auto engine = GetGameEngine();
 
-        auto overrun_report_time = std::chrono::milliseconds(_settings->OverrunReportTime);
+        auto overrun_report_time = std::chrono::milliseconds(_settings->AngelScript.OverrunReportTime);
 
         _contextMngr.emplace(_asEngine, engine, overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer) {

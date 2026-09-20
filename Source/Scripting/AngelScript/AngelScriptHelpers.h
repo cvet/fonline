@@ -112,7 +112,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string;
 auto ReadEnumValueAsInt32(ptr<const void> ptr, const BaseTypeDesc& enum_type) -> int32_t;
 void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32_t value);
-auto GetScriptFuncName(ptr<const AngelScript::asIScriptFunction> func, HashResolver& hash_resolver) -> hstring;
+auto GetScriptFuncName(ptr<const AngelScript::asIScriptFunction> func, hash_resolver& hashes) -> hstring;
 auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_namespaces) noexcept -> bool;
 auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
 auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<uint8_t>;

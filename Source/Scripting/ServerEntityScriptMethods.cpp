@@ -53,6 +53,14 @@ FO_SCRIPT_API void Server_Entity_MakePersistent(ptr<ServerEntity> self, bool per
     self->GetEngine()->EntityMngr.MakePersistent(self, persistent, true);
 }
 
+// A reference-leak diagnostic: every script wrapper and in-flight native pin is counted, so only a difference
+// measured around a controlled sequence of calls means anything
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Entity_GetRefCount(ptr<ServerEntity> self)
+{
+    return self->GetRefCount();
+}
+
 // SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self
 ///@ ExportMethod TimeEventRelated
 FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, ScriptFunc<void, ptr<ScriptSelfEntity>> func)

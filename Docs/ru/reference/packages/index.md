@@ -4,9 +4,7 @@ document_id: generated-package-index
 locale: ru
 generated: true
 ---
-
 <!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"98d0df9937b8e85092267a52784477f03e4b72493bbaba3d6ffbac3b611d6078"} -->
-
 # Сгенерированный интерфейс пакетов
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/PackageInterface.json` или `BuildTools/package.py`, затем выполните `python BuildTools/docs_package.py --write`.

@@ -123,22 +123,22 @@ void ParticlePreviewSubEditor::Initialize()
     _extensions = _particleFactory->GetExtensions();
     _enabled = !_extensions.empty();
 
-    if (!_enabled || _mapper->Settings->ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
+    if (!_enabled || _mapper->Settings->Mapper.ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
         return;
     }
 
     RefreshResources();
-    _resourcePath = _mapper->Settings->ParticlePreviewEffect;
-    _seed = _mapper->Settings->ParticlePreviewSeed;
-    _scale = std::isfinite(_mapper->Settings->ParticlePreviewScale) ? std::clamp(_mapper->Settings->ParticlePreviewScale, 0.01f, 100.0f) : 1.0f;
-    _prewarm = _mapper->Settings->ParticlePreviewPrewarm;
+    _resourcePath = _mapper->Settings->Mapper.ParticlePreviewEffect;
+    _seed = _mapper->Settings->Mapper.ParticlePreviewSeed;
+    _scale = std::isfinite(_mapper->Settings->Mapper.ParticlePreviewScale) ? std::clamp(_mapper->Settings->Mapper.ParticlePreviewScale, 0.01f, 100.0f) : 1.0f;
+    _prewarm = _mapper->Settings->Mapper.ParticlePreviewPrewarm;
     _windowVisible = true;
 
     if (optional<mpos> preview_hex = ResolveHex()) {
         Play(*preview_hex);
     }
     else {
-        WriteLog(LogType::Warning, "Mapper startup particle preview cannot resolve a placement hex for '{}'", _resourcePath);
+        logging::write(logging::type::warning, "Mapper startup particle preview cannot resolve a placement hex for '{}'", _resourcePath);
     }
 }
 
@@ -387,7 +387,7 @@ void ParticlePreviewSubEditor::Play(mpos hex)
     _previewMap = _mapper->GetCurMap().as_ptr();
     _previewHex = hex;
     AttachMapSprite();
-    WriteLog("Mapper particle preview started: '{}' at ({}, {}), seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, _seed, _scale, _prewarm);
+    logging::write("Mapper particle preview started: '{}' at ({}, {}), seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, _seed, _scale, _prewarm);
 }
 
 void ParticlePreviewSubEditor::AttachMapSprite()
@@ -493,7 +493,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     bool had_index = _resourcesIndexed;
-    bool preview_was_active = static_cast<bool>(_previewSprite);
+    bool preview_was_active = !!_previewSprite;
     mpos preview_hex = _previewHex;
     bool selected_resource_changed = force_reload;
 
@@ -525,7 +525,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     if (had_index && (added_count != 0 || modified_count != 0 || removed_count != 0)) {
-        WriteLog("Mapper particle resources reindexed: {} added, {} modified, {} removed", added_count, modified_count, removed_count);
+        logging::write("Mapper particle resources reindexed: {} added, {} modified, {} removed", added_count, modified_count, removed_count);
     }
 }
 
@@ -560,7 +560,7 @@ ParticleEditorManager::ParticleEditorManager(ptr<MapperEngine> mapper)
 #if FO_SPARK_PARTICLES
     _subEditors.emplace_back(CreateSparkParticleSubEditor(mapper));
 #endif
-    _subEditors.emplace_back(SafeAlloc::MakeUnique<ParticlePreviewSubEditor>(mapper));
+    _subEditors.emplace_back(safe_alloc::make_unique<ParticlePreviewSubEditor>(mapper));
 }
 
 ParticleEditorManager::~ParticleEditorManager()
@@ -640,7 +640,7 @@ void ParticleEditorManager::DrawWindows()
             sub_editor->DrawWindows();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }

@@ -42,20 +42,24 @@ The embedding project owns game scripts, its namespace, project-only attributes 
 
 The CMake switch is `FO_MANAGED_SCRIPTING`. It adds the managed runtime, backend, baker, CoreScripts tests, and managed application wiring. `FO_NATIVE_SCRIPTING`, `FO_ANGELSCRIPT_SCRIPTING`, and `FO_MANAGED_SCRIPTING` are independent build options, but a production project should deliberately select one gameplay backend unless it is testing cross-backend invocation.
 
-The `Script.ManagedScript*` settings define the generated project:
+The immutable startup settings in the `ManagedScript` group define the generated project:
 
 | Setting | Contract |
 | --- | --- |
-| `ManagedScriptAssemblies` | Logical entry assemblies to build. |
-| `ManagedScriptProjectName` | Base name for the generated solution and project. |
-| `ManagedScriptTargetFramework` | Target framework passed to the generated SDK-style project. |
-| `ManagedScriptMsBuild` | Command used to build the generated project. |
-| `ManagedScriptDirs` | Source roots scanned for top-level `.cs` files; normally Engine CoreScripts plus project scripts. |
-| `ManagedScriptGeneratedDir` | Optional generated-project directory; empty selects the build tree's `GeneratedSource/Managed`. |
-| `ManagedScriptExtraSources` | Additional `assembly,target,path` inputs. |
-| `ManagedScriptExtraReferences` | Additional `assembly,target,reference` inputs. |
-| `ManagedScriptAnalyzers` | Roslyn analyzer projects included in the generated build. |
-| `ManagedScriptBakerDryRun` | Structural baker mode for tests; it does not prove executable assemblies. |
+| `ManagedScript.Assemblies` | Logical entry assemblies to build. |
+| `ManagedScript.ProjectName` | Base name for the generated solution and project. |
+| `ManagedScript.TargetFramework` | Target framework passed to the generated SDK-style project. |
+| `ManagedScript.MsBuild` | Command used to build the generated project. |
+| `ManagedScript.Dirs` | Source roots scanned for top-level `.cs` files; normally Engine CoreScripts plus project scripts. |
+| `ManagedScript.GeneratedDir` | Optional generated-project directory; empty selects the build tree's `GeneratedSource/Managed`. |
+| `ManagedScript.ExtraSources` | Additional `assembly,target,path` inputs. |
+| `ManagedScript.ExtraReferences` | Additional `assembly,target,reference` inputs. |
+| `ManagedScript.Analyzers` | Roslyn analyzer projects included in the generated build. |
+| `ManagedScript.AnalyzerPackages` | Roslyn analyzer NuGet packages as exact `name,version` pairs. |
+| `ManagedScript.AdditionalFiles` | Analyzer configuration files exposed through MSBuild `AdditionalFiles`. |
+| `ManagedScript.AnalysisLevel` / `AnalysisMode` | Optional SDK analysis-level and analysis-mode overrides. |
+| `ManagedScript.BakerDryRun` | Structural baker mode for tests; it does not prove executable assemblies. |
+| `ManagedScript.DeepTrackEntityWrappers` | Opt-in shutdown diagnostics that name still-live entity wrappers; ordinary live-wrapper counting is always enabled. |
 
 Add a resource pack whose `Bakers` list contains `Managed`. The pack inputs must include Engine `CoreScripts`, the project script roots, and the `///@` metadata sources needed by those scripts. The assembly, target, pack, and metadata selection are one contract: compiling a loose project that differs from the baker input is not Engine validation.
 
@@ -135,7 +139,9 @@ Managed scripts declare and prove this contract with:
 - `CoverReach.Parent`, `Ancestors`, and `DestroyGraph` for transitive requirements;
 - the `Sync` CoreScript helpers as the only normal wrappers around raw `Game.Sync`, `SyncRelease`, `Lock`, and `Unlock`.
 
-The Roslyn analyzer reports invalid annotations (`FOSYNC001`), unsatisfied transitive cover (`FOSYNC002`), missing entry-point declarations (`FOSYNC003`), cover probing instead of acquisition (`FOSYNC004`), raw synchronization calls outside the helper (`FOSYNC005`), leaked singleton locks (`FOSYNC006`), locks held across `await` (`FOSYNC007`), and cover use not re-proved after `await` (`FOSYNC009`). Configure the analyzer through `ManagedScriptAnalyzers` and treat its warnings as build failures.
+The Roslyn analyzer reports invalid annotations (`FOSYNC001`), unsatisfied transitive cover (`FOSYNC002`), missing entry-point declarations (`FOSYNC003`), cover probing instead of acquisition (`FOSYNC004`), raw synchronization calls outside the helper (`FOSYNC005`), and cover use not re-proved after `await` (`FOSYNC009`). `FOSYNC006` and `FOSYNC007` are retired: use `using GameLock scope = GameLock.Acquire();`, whose `ref struct` scope releases on every path and cannot survive an `await`. Configure the analyzer through `ManagedScript.Analyzers` or `ManagedScript.AnalyzerPackages` and treat its warnings as build failures.
+
+`Sync.Acquire` expands linked cover in place through `Game.SyncWiden`; it does not release and reacquire the already-held entities. This keeps the native cover continuous while following `[SyncWiden]` relationships and avoids a race window between the two sets.
 
 Attributes state a proof; they do not lock anything. Entry points annotate the entity the Engine already synchronized. Ordinary helpers either acquire the required cover or propagate `[RequiresCover]` to their callers.
 
@@ -147,7 +153,7 @@ Generated entity properties are native-backed. Dynamic ref types are managed DTO
 
 Native ref types are explicit borrowed wrappers. If a project keeps one beyond the call/frame that returned it, follow the generated `__AddRef()`/`__Release()` contract. Factory-backed wrappers start with a reference that must be released after ownership is transferred or detached.
 
-`hstring` literals are interned through the active backend's Engine metadata. Static managed fields initialize separately in every load context; there is no process-wide hash fallback shared by engine instances.
+`hstring` values carry the native intern-entry pointer as well as the hash. They are interned through the active backend's Engine metadata, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
 
 ## Runtime loading, isolation, and shutdown
 
@@ -155,7 +161,7 @@ Mono is initialized once for the process. Native Engine threads attach to the ro
 
 At startup, baked assemblies are restored into content-hashed subdirectories under the writable `Cache/ManagedAssemblies/` root. Existing byte-identical files are reused, so concurrent in-process engine instances do not rewrite an assembly Mono already loaded. Missing managed assemblies are a supported empty-backend state for tests/tools that do not bake scripts; a configured gameplay project should treat that as a packaging or resource-selection failure.
 
-Shutdown closes the continuation scheduler and discards queued work before releasing backend state. Later posts cannot run against a disposed engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once.
+Shutdown closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references, waits for finalizers, reports remaining entity wrappers (and names them when deep tracking is enabled), then tears down managed globals before native global data. Later posts cannot run against a disposed engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
 
 ## Build and bake workflow
 
@@ -163,11 +169,11 @@ The generated CMake target `CompileManagedScripts` runs the standalone `<Project
 
 `BakeResources` and `ForceBakeResources` run the `Managed` baker as part of the selected resource pack. Use the compile target for a fast source/API check and the bake target for the real resource, assembly, runtime-payload, and metadata contract. After a force bake, run an ordinary incremental bake and require it to settle cleanly.
 
-The runtime toolchain is prepared by `SetupManagedRuntime`; `PrepareManagedRuntimePayload` produces the deployable subset and a `runtime.manifest`. Toolchain setup runs with an isolated environment so a workstation's `DOTNET_*`, NuGet, or SDK state does not silently redefine the published runtime.
+The runtime toolchain is prepared by `SetupManagedRuntime`; `PrepareManagedRuntimePayload` produces the deployable subset and a `runtime.manifest`. Toolchain setup runs with an isolated environment so a workstation's `DOTNET_*`, NuGet, or SDK state does not silently redefine the published runtime. A configured workspace cache stores only a verified published runtime tree under a target/toolchain-specific key; local runtime source checkouts are never shared, incomplete cache hits are rebuilt, and a stale SDK bootstrap that lacks its matching shared runtime is removed before setup retries.
 
 ## Packaging and updating
 
-The prepared runtime contains managed class libraries required by the target, including `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries, and symbols are excluded from the resource payload. Mono and the generated native interop table remain linked into the application.
+The prepared runtime contains only managed class libraries actually referenced by the target assemblies, including `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries, and symbols are excluded from the resource payload. Mono and the generated native interop table remain linked into the application. Target-specific class libraries are resolved from that target's published runtime rather than copied from the host SDK.
 
 The Managed baker places the prepared runtime under `ManagedRuntime/` in the same resource pack as the game assemblies. Client packaging rebuilds that pack from the runtime payload belonging to the exact application target. Server packaging stages one target-specific copy for every distributed client target under `PlatformBinaries/<target>/`; the updater substitutes that copy for the common pack when serving that target. Several native variants may share this updater target while their independently built equivalent CoreLib payloads differ byte-for-byte, so packaging deterministically chooses the least-qualified matching binary entry, normally the default Release build, instead of requiring those payloads to be identical.
 
@@ -179,7 +185,7 @@ The embedded payload defaults to invariant globalization because `System.Globali
 
 Managed scripting is wired for Windows, Linux, Android, WebAssembly, macOS, and iOS build paths, but an Engine source-capable path is not a project release claim. Qualify every shipped target with the exact project resource pack, assemblies, runtime payload, startup, callbacks, async work, shutdown, packaging, and update route.
 
-Web uses the Mono interpreter plus Engine JavaScript scheduling/entropy glue; keep its interpreter thread attached until teardown. Android and Apple targets use target-specific runtime archives and class libraries. Never reuse one target's prepared payload for another target or architecture.
+Web uses the Mono interpreter plus Engine JavaScript scheduling/entropy glue; keep its interpreter thread attached until teardown. Script PDB resources are loaded there when present so managed stack traces retain source information. Android and Apple targets use target-specific runtime archives and class libraries. Never reuse one target's prepared payload for another target or architecture.
 
 MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED_SCRIPTING`: embedded Mono and generated/JIT code cannot satisfy those instruments and otherwise report false failures. AddressSanitizer and the supported undefined/data-flow combinations still require the project's actual managed build and runtime checks.
 
@@ -242,7 +248,7 @@ The Engine guide defines reusable behavior; a project's documentation must say h
 Reconcile this page and its Russian mirror when any of these change:
 
 - `FO_MANAGED_SCRIPTING`, managed CMake targets, toolchain setup, or generated project structure;
-- `Script.ManagedScript*` settings or `ManagedScriptBaker` discovery/output;
+- `ManagedScript.*` settings or `ManagedScriptBaker` discovery/output;
 - CoreScript attributes, marshalling shapes, generated wrappers, events, remote calls, or named invocation;
 - continuation scheduling, thread attachment, load-context isolation, exception accounting, or shutdown;
 - synchronization-cover attributes or analyzer diagnostics;

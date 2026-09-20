@@ -248,6 +248,36 @@ TEST_CASE("ConfigFile")
         CHECK(config.GetSection("ProtoItem").at("$Name") == "One");
     }
 
+    SECTION("ReturnsEveryRepeatedSectionAmongOthersInFileOrder")
+    {
+        // The shape of a baked packaged config; with this many repeats libc++ multimap::find stops inside the name
+        string source = "Common.Packaged = 1\n";
+
+        for (int32_t index = 0; index < 32; index++) {
+            source += strex("[ResourcePack]\nName = Pack{}\n", index);
+
+            if (index % 8 == 0) {
+                source += strex("[Other]\nIndex = {}\n", index);
+            }
+        }
+
+        source += "[SubConfig]\nName = Last\n";
+        ConfigFile config {source};
+        vector<ptr<map<string_view, string_view>>> packs = config.GetSections("ResourcePack");
+
+        REQUIRE(packs.size() == 32);
+
+        for (size_t index = 0; index < packs.size(); index++) {
+            CHECK(packs[index]->at("Name") == strex("Pack{}", index).str());
+        }
+
+        CHECK(config.GetAsStr("ResourcePack", "Name") == "Pack0");
+        CHECK(config.HasKey("Other", "Index"));
+        CHECK(config.GetSection("Other").at("Index") == "0");
+        CHECK(config.GetSections("Other").size() == 4);
+        CHECK(config.GetSections("SubConfig").size() == 1);
+    }
+
     SECTION("AppendsIntoMissingKeyWithoutLeadingSpace")
     {
         ConfigFile config {"[ProtoItem]\nName += Two\n"};

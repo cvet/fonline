@@ -46,9 +46,9 @@ class DocumentationReleaseOperationsTests(unittest.TestCase):
         signals = (ENGINE_ROOT / "Source/Frontend/ApplicationInit.cpp").read_text(encoding="utf-8")
 
         for marker in (
-            'WriteLog("Start server complete!")',
-            'WriteLog("Server stopped!")',
-            "Settings->ShutdownGraceMs",
+            'logging::write("Start server complete!")',
+            'logging::write("Server stopped!")',
+            "Settings->Server.ShutdownGraceMs",
             'WriteHealthFile("Starting...")',
         ):
             self.assertIn(marker, server)
@@ -58,7 +58,7 @@ class DocumentationReleaseOperationsTests(unittest.TestCase):
         self.assertIn("Data->ServerThread.join()", service)
         self.assertIn('wstring path = wstring(L"\\\"").append(buf)', service)
         self.assertIn('append(L" --server-service")', service)
-        self.assertIn("Platform::ForkProcess();", daemon)
+        self.assertIn("platform::fork_process();", daemon)
         self.assertIn("std::signal(SIGTERM, SignalHandler)", signals)
 
     def test_manifest_registers_public_human_release_operations_guide(self) -> None:

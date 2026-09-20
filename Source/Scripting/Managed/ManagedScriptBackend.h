@@ -65,6 +65,9 @@ private:
     void InvokeInitializator(void* assembly, const char* method_name);
     void CreateAliveFlag();
     void ReleaseAliveFlag();
+    void EnableDeepEntityWrapperTracking();
+    void ClearScriptStatics() noexcept;
+    void FinalizeManagedObjects() noexcept;
 
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};

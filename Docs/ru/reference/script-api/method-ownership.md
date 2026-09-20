@@ -7,9 +7,7 @@ permalink: /Docs/ru/reference/script-api/method-ownership.html
 ---
 
 # Карта методов скриптового API
-
 <!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"b6c90ffeebeb1098a6f9e52e719a81735379319a7ca54be7921714d20b5d19ec"} -->
-
 > Документация движка. Эта страница сопоставляет нативные файлы `///@ ExportMethod` в `Source/Scripting/` с их обязанностями в скриптовом интерфейсе. Она дополняет страницу [Скриптовый runtime](../../explanation/scripting-runtime/), но не является полным сгенерированным справочником API.
 
 ## Назначение

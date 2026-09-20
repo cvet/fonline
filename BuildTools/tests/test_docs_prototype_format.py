@@ -64,7 +64,7 @@ class PrototypeFormatDocumentationTests(unittest.TestCase):
             (entry["entity"], entry["name"]): entry for entry in self.model["properties"]
         }
 
-        self.assertTrue(properties[("Item", "Count")]["authorable"])
+        self.assertNotIn(("Item", "Count"), properties)
         self.assertFalse(properties[("Critter", "AttachMaster")]["authorable"])
         self.assertEqual(
             properties[("Critter", "AttachMaster")]["excluded_reason"],

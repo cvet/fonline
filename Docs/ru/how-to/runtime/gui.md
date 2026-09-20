@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/runtime/gui.html
 ---
 
 # Граница интеграции GUI
-
 <!-- docs-translation: {"document_id":"gui-runtime-guide","locale":"ru","source_path":"Docs/en/how-to/runtime/gui.md","source_sha256":"3653ca03d660b95b397878634d01c7e483835c84113363b06266eb7554794996"} -->
-
 > Документация движка. Переиспользуемый Engine владеет примитивами rendering, input, window, resources и script exports. Высокоуровневая GUI object model, screen stack, layout library, generated screens и авторские GUI-форматы принадлежат подключающему проекту.
 
 ## Текущее состояние

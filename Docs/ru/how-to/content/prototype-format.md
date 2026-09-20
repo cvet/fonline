@@ -5,9 +5,7 @@ document_id: prototype-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
-
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"723765e21d6625cdadb17b0eced485514c9a14d98c054ae93db5dfe452395ec6"} -->
-
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"97846f2a1114a47727cb0cef91a84c6d60355233a2bbe9bd709a468349ee747d"} -->
 # Формат прототипов
 
 Прототипы FOnline представляют собой именованные наборы свойств, основанные на метаданных и отдельно запекаемые для сервера, клиента и Mapper. Они задают переиспользуемые значения сущностей по умолчанию и фиксированные определения проекта, но не являются runtime-записями сохранения, записями размещения на карте или игровой таксономией контента.
@@ -85,7 +83,7 @@ permalink: /Docs/ru/how-to/content/prototype-format.html
 # A configuration comment
 [ProtoItem]
 $Name = BaseContainer
-Stackable = false
+NoBlock = true
 
 [ProtoItem]
 $Name = SecureContainer
@@ -94,6 +92,8 @@ NoBlock = false
 ```
 
 Используйте `key = value` для замены, а `key += value` только там, где добавление текста входит в документированное представление свойства. Конечный обратный слеш продолжает логическую строку только тогда, когда перед ним стоит пробел или табуляция; parser обрезает обе физические строки и соединяет их одним пробелом. `#` начинает комментарий вне кавычек и неэкранированного содержимого.
+
+Переиспользуемый Engine больше не определяет `Item.Count`, `Item.Stackable`, overloads move/add/destroy с частичным count и built-in event изменения stack. Игра, которой нужны взаимозаменяемые item stacks, должна объявить собственные count/stackability properties и владеть merge, split, transfer, destruction, synchronization и notifications в project scripts. Не возвращайте удалённые поля в `.fopro` как custom-looking keys, если проект явно не объявил соответствующую metadata.
 
 `ProtoBaker` интерпретирует `$Name` и `$Parent`, а применение свойств пропускает любой ключ с префиксом `$`. `$Text ...` принадлежит отдельному контракту `ProtoTextBaker`; не считайте произвольный `$`-ключ осмысленным только потому, что загрузка свойств его игнорирует. Ключи с префиксом `_` также пропускаются при применении свойств и должны быть зарезервированы для проектных инструментов с явным проектным контрактом. Любой другой ключ обязан разрешаться в метаданные.
 

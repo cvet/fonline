@@ -5,9 +5,7 @@ locale: ru
 document_id: viewer-tools
 permalink: /Docs/ru/how-to/tools/animation-particle-viewers.html
 ---
-
 <!-- docs-translation: {"document_id":"viewer-tools","locale":"ru","source_path":"Docs/en/how-to/tools/animation-particle-viewers.md","source_sha256":"2ccb082eeb8b34a1e0940b9911fd8b71bff462cf34991542439e94aaa81c81d8"} -->
-
 # Просмотр анимации и частиц
 
 > Документация движка по специализированным инструментам AnimationViewer и

@@ -76,7 +76,7 @@ namespace
 
     static auto MakeServerHealthFileName() -> string
     {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
 
         return strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
     }
@@ -84,24 +84,24 @@ namespace
     static auto MakeTempServerResourceDir(string_view name) -> string
     {
         auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs_path_to_string(base);
+        return fs::path_to_string(base);
     }
 
     static void RemoveServerHealthFile(string_view name) noexcept
     {
         std::error_code ec;
-        (void)std::filesystem::remove(std::filesystem::path {fs_make_path(name)}, ec);
+        (void)std::filesystem::remove(std::filesystem::path {fs::make_path(name)}, ec);
     }
 
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
+        auto writer = data_writer(map_data);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         return map_data;
     }
 
@@ -182,24 +182,24 @@ namespace
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -224,18 +224,12 @@ namespace ServerEngineTest
     int ImmediateInitOrder = 0;
     int DeferredInitOrder = 0;
 
-    // Reproduces single-threaded what a concurrent split lands during CreateItem's yield, because CreateItem
-    // runs between SplitItem's count read and its write
-    ident SplitInjectSourceId;
-    int SplitInjectAmount = 0;
-
     [[ModuleInit]]
     void RegisterHooks()
     {
         ImmediateInitOrder = ++ModuleInitOrder;
         Game.OnInit.Subscribe(OnInit);
         Game.OnCritterInit.Subscribe(OnCritterInit);
-        Game.OnItemInit.Subscribe(OnItemInit);
     }
 
     [[ModuleInit(2)]]
@@ -256,25 +250,6 @@ namespace ServerEngineTest
         CritterInitCalls++;
         LastCritterId = cr.Id.value;
         LastCritterFirstTime = firstTime;
-    }
-
-    [[Event]]
-    void OnItemInit(Item item, bool firstTime)
-    {
-        if (SplitInjectAmount != 0) {
-            int amount = SplitInjectAmount;
-            SplitInjectAmount = 0; // fire exactly once
-            Item? src = Game.GetItem(SplitInjectSourceId);
-            if (src !is null) {
-                src.Count += amount; // mutate the source mid-split, before SplitItem's write
-            }
-        }
-    }
-
-    void UnitTestArmSplitInjection(ident sourceId, int amount)
-    {
-        SplitInjectSourceId = sourceId;
-        SplitInjectAmount = amount;
     }
 
     void UnitTestNoop() {}
@@ -453,65 +428,34 @@ namespace ServerEngineInitGateTest
             });
     }
 
-    // The default proto leaves `Stackable` false, but the conservation stress needs the split/merge count
-    // read-modify-write that only a stackable item exercises
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
-    {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
-        proto.SetStackable(true);
-        proto.GetProperties()->StoreAllData(props_data, str_hashes);
-
-        vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
-
-        writer.Write<uint32_t>(uint32_t {0});
-        ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WriteBytes(props_data);
-
-        return protos_data;
-    }
-
     static auto MakeServerTestResources(ServerTestScriptMode script_mode = ServerTestScriptMode::Default) -> FileSystem
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
         auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto stackable_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "UnitTestStackable");
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = script_mode == ServerTestScriptMode::Default ? MakeScriptBinary(compiler_resources) : MakeInitGateScriptBinary(compiler_resources, script_mode);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
         runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);
-        runtime_source->AddFile("UnitTestStackable.fopro-bin-server", stackable_blob);
         runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile(script_mode == ServerTestScriptMode::Default ? "ServerEngineTest.fos-bin-server" : "ServerEngineInitGateTest.fos-bin-server", std::move(script_blob));
 
@@ -539,12 +483,12 @@ namespace ServerEngineInitGateTest
 
     static auto MakeServerEngine(GlobalSettings& settings, optional<ServerSnapshotRestore> restore_snapshot = std::nullopt) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources(), std::move(restore_snapshot));
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources(), std::move(restore_snapshot));
     }
 
     static void CheckServerStartupFailsSafely(GlobalSettings& settings, FileSystem&& resources)
     {
-        auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, std::move(resources));
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
 
         string startup_error = WaitForServerStart(server);
         INFO(startup_error);
@@ -583,8 +527,8 @@ namespace ServerEngineInitGateTest
     static auto CreateStandalonePlayer(ptr<ServerEngine> server, string_view name) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
-        auto player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto player = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
 
         SyncContext ctx;
         ctx.Activate();
@@ -602,7 +546,7 @@ namespace ServerEngineInitGateTest
 
     static auto MakeServerMovementContext(msize map_size, mpos start_hex, nanotime start_time) -> refcount_ptr<MovingContext>
     {
-        return SafeAlloc::MakeRefCounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan {}, start_hex, ipos16 {}, ipos16 {});
+        return safe_alloc::make_refcounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan {}, start_hex, ipos16 {}, ipos16 {});
     }
 
     static auto WaitForUnlockedServerCondition(ptr<ServerEngine> server, bool& locked, const function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
@@ -650,22 +594,23 @@ TEST_CASE("ServerResourcesFollowPackagedSetting")
     }
 
     string temp_dir = MakeTempServerResourceDir("baked_entries");
-    bool removed_before = fs_remove_dir_tree(temp_dir);
+    bool removed_before = fs::remove_dir_tree(temp_dir);
     ignore_unused(removed_before);
 
-    auto cleanup = scope_exit([&temp_dir]() noexcept { fs_remove_dir_tree(temp_dir); });
+    auto cleanup = scope_exit([&temp_dir]() noexcept { fs::remove_dir_tree(temp_dir); });
 
     string baked_dir = strex(temp_dir).combine_path("Baked").str();
     string packaged_dir = strex(temp_dir).combine_path("Packaged").str();
 
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
-    REQUIRE(fs_write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
+    REQUIRE(fs::write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
+    REQUIRE(fs::write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
+    REQUIRE(fs::write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
 
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
-    BakerTests::OverrideSetting(settings.ServerResources, packaged_dir);
-    BakerTests::OverrideSetting(settings.ServerResourceEntries, vector<string> {"ServerPack"});
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, baked_dir);
+    BakerTests::OverrideSetting(settings.Baking.ServerResources, packaged_dir);
+    auto pack_config = ConfigFile("[ResourcePack]\nName = ServerPack\nServerOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
 
     auto resources = GetServerResources(settings);
 
@@ -673,7 +618,7 @@ TEST_CASE("ServerResourcesFollowPackagedSetting")
     CHECK(resources.IsFileExists("payload.txt"));
     CHECK_FALSE(resources.IsFileExists("client-only.txt"));
 
-    BakerTests::OverrideSetting(settings.Packaged, true);
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
 
     FileSystem packaged_resources = GetServerResources(settings);
 
@@ -797,7 +742,7 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-        hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+        hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
         critter = server->CreateCritter(critter_pid, false).hold_ref();
     }
 
@@ -888,7 +833,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         CHECK_FALSE(result.State.has_value());
         CHECK(result.Payload.empty());
         CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
-        CHECK_FALSE(fs_exists(fs_path_to_string(snapshot_root / "delayed" / "Storage.sqlite")));
+        CHECK_FALSE(fs::exists(fs::path_to_string(snapshot_root / "delayed" / "Storage.sqlite")));
     }
 
     SECTION("SuspendedAngelScript")
@@ -896,7 +841,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         {
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-            auto suspend_func = server->FindFunc<void>(server->Hashes.ToHashedString("ServerEngineTest::UnitTestSuspend"));
+            auto suspend_func = server->FindFunc<void>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestSuspend"));
             REQUIRE(suspend_func);
             REQUIRE(suspend_func.Call());
         }
@@ -915,7 +860,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         {
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-            auto event_func = server->FindFunc<void>(server->Hashes.ToHashedString("ServerEngineTest::UnitTestNoop"));
+            auto event_func = server->FindFunc<void>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestNoop"));
             REQUIRE(event_func);
             ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan {}, {}));
         }
@@ -933,7 +878,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         {
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-            auto critter = server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+            auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
             critter->SetMoving(MakeServerMovementContext(SERVER_TEST_MAP_SIZE, SERVER_TEST_MOVE_START_HEX, server->GameTime.GetFrameTime()));
         }
 
@@ -970,7 +915,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", source_storage.generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", source_storage.generic_string()).str());
         auto server = MakeServerEngine(settings);
 
         string startup_error = WaitForServerStart(server);
@@ -981,7 +926,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
             REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
             server->EntityMngr.MakePersistent(location, true, true);
             saved_location_id = location->GetId();
         }
@@ -1005,7 +950,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
         {
             REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-            expected_next_location_id = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"))->GetId();
+            expected_next_location_id = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"))->GetId();
         }
 
         server->Shutdown();
@@ -1016,7 +961,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
     {
         // A state that disagrees with its payload must fail before gameplay hooks run
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
         auto mismatched_state = captured_state;
         mismatched_state.LastEntityId = ident_t {captured_state.LastEntityId.underlying_value() + 1};
         auto server = MakeServerEngine(settings, ServerSnapshotRestore {mismatched_state, captured_payload});
@@ -1032,13 +977,13 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
     {
         // An empty payload is rejected at construction rather than producing an empty world
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", (storage_root / "empty-payload").generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", (storage_root / "empty-payload").generic_string()).str());
         CHECK_THROWS_AS(MakeServerEngine(settings, ServerSnapshotRestore {captured_state, {}}), ServerSnapshotException);
     }
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
         auto server = MakeServerEngine(settings, ServerSnapshotRestore {captured_state, captured_payload});
 
         auto shutdown = scope_exit([&server]() noexcept {
@@ -1063,7 +1008,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
             CHECK(server->Random(-1000000, 1000000) == expected);
         }
 
-        auto next_location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+        auto next_location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
         CHECK(next_location->GetId() == expected_next_location_id);
     }
 }
@@ -1111,7 +1056,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
     REQUIRE(static_cast<bool>(server->GetProtoCritter(critter_pid)));
 
     size_t critter_count = server->EntityMngr.GetCrittersCount();
@@ -1148,7 +1093,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
 TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
 {
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.SingleThreadedLogic, true);
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, true);
     auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -1170,7 +1115,7 @@ TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
     auto cr = server->CreateCritter(critter_pid, false);
     ident_t cr_id = cr->GetId();
 
@@ -1188,7 +1133,7 @@ TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
 TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
 {
     auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1235,10 +1180,10 @@ TEST_CASE("ServerEngineWritesHealthFile")
     auto cleanup_health_file = scope_exit([&health_file_name]() noexcept { RemoveServerHealthFile(health_file_name); });
 
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.WriteHealthFile, true);
-    BakerTests::OverrideSetting(settings.HealthFilePeriodMs, int32_t {5});
+    BakerTests::OverrideSetting(settings.Server.WriteHealthFile, true);
+    BakerTests::OverrideSetting(settings.Server.HealthFilePeriodMs, int32_t {5});
 
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1267,7 +1212,7 @@ TEST_CASE("ServerEngineWritesHealthFile")
     REQUIRE(WaitForUnlockedServerCondition(
         server.get(), locked,
         [&health_file_name, &health_content] {
-            auto content = fs_read_file(health_file_name);
+            auto content = fs::read_file(health_file_name);
 
             if (!content.has_value() || content->find("Server uptime:") == string::npos || content->find("Connections:") == string::npos) {
                 return false;
@@ -1290,7 +1235,7 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     // Shutdown must be safe on an engine whose startup aborted before the worker pool existed; an unrecognized
     // DbStorage reproduces that state deterministically
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
+    BakerTests::OverrideSetting(settings.Server.DbStorage, string {"UnreachableStorageForTest"});
 
     CheckServerStartupFailsSafely(settings);
 }
@@ -1318,7 +1263,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         auto server = MakeServerEngine(settings);
         string startup_error = WaitForServerStart(server);
@@ -1332,11 +1277,11 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
             // Runtime entities are temporary by default, so they have to be marked persistent before the
             // restart has anything to read back
-            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
             server->EntityMngr.MakePersistent(location, true, true);
             location_id = location->GetId();
 
-            auto critter = server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+            auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
             server->EntityMngr.MakePersistent(critter, true, true);
             critter_id = critter->GetId();
         }
@@ -1349,7 +1294,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         auto server = MakeServerEngine(settings);
         string startup_error = WaitForServerStart(server);
@@ -1398,31 +1343,31 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
 
     SECTION("RejectsMissingSeparator")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BrokenCollection"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"BrokenCollection"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsEmptyTrimmedCollectionName")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"   : Int"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"   : Int"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsUnknownKeyType")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BadType:Uuid"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"BadType:Uuid"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsDuplicateCollectionName")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("AcceptsTrimmedCaseInsensitiveKeyTypes")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
 
         auto server = MakeServerEngine(settings);
 
@@ -1438,8 +1383,8 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
-        hstring int_collection = server->Hashes.ToHashedString("TrimmedInt");
-        hstring string_collection = server->Hashes.ToHashedString("TrimmedStr");
+        hstring int_collection = server->Hashes.to_hashed_string("TrimmedInt");
+        hstring string_collection = server->Hashes.to_hashed_string("TrimmedStr");
         ident_t int_id = ident_t {1001};
         string string_id = string {"custom:key"};
 
@@ -1491,7 +1436,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
 
     SECTION("PlayerControlledCritterCanBeUnloaded")
     {
-        hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+        hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
         size_t critter_count = server->EntityMngr.GetCrittersCount();
 
         auto cr = server->CreateCritter(critter_pid, true);
@@ -1510,7 +1455,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
 
     SECTION("MissingProtoThrows")
     {
-        hstring missing_pid = server->Hashes.ToHashedString("MissingUnitTestCritter");
+        hstring missing_pid = server->Hashes.to_hashed_string("MissingUnitTestCritter");
 
         CHECK_THROWS(server->CreateCritter(missing_pid, false));
         CHECK_THROWS(server->CreateCritter(missing_pid, true));
@@ -1538,7 +1483,7 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     int init_calls = 0;
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetInitCalls"), init_calls));
@@ -1552,7 +1497,7 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetManualCalls"), manual_calls));
     CHECK(manual_calls == 1);
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
     auto cr = server->CreateCritter(critter_pid, false);
 
     int critter_init_calls = 0;
@@ -1591,7 +1536,7 @@ TEST_CASE("ServerEngineModuleInitAttributePriorityIsRespected")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     int immediate_init_order = 0;
     int deferred_init_order = 0;
@@ -1624,7 +1569,7 @@ TEST_CASE("ServerEngineAdminRemoteCallsAreAllowlisted")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestResetAdminCallCounter")));
     REQUIRE(server->CallAdminFunc(get_func_name("ServerEngineTest::UnitTestAdminEntry")));
@@ -1659,7 +1604,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     vector<int32_t> values {1, 2, 3};
     auto sum_array_func = server->FindFunc<int32_t, vector<int32_t>>(get_func_name("ServerEngineTest::UnitTestSumArray"));
@@ -1672,7 +1617,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
     REQUIRE(mutate_array_func.Call(values));
     CHECK(values == vector<int32_t> {11, 2, 3, 77});
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
     auto cr = server->CreateCritter(critter_pid, false);
 
     auto critter_id_func = server->FindFunc<int64_t, ptr<Critter>>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
@@ -1687,7 +1632,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
 
     auto matches_hash_func = server->FindFunc<bool, hstring>(get_func_name("ServerEngineTest::UnitTestMatchesHash"));
     REQUIRE(matches_hash_func);
-    REQUIRE(matches_hash_func.Call(server->Hashes.ToHashedString("UnitTestHash")));
+    REQUIRE(matches_hash_func.Call(server->Hashes.to_hashed_string("UnitTestHash")));
     CHECK(matches_hash_func.GetResult());
 
     server->CrMngr.DestroyCritter(cr);
@@ -1721,9 +1666,9 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         });
     });
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     SECTION("CompletesWholeRoute")
     {
@@ -1756,7 +1701,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1805,7 +1750,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1868,7 +1813,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1908,10 +1853,10 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring item_pid = server->Hashes.ToHashedString("TestItem");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
+    hstring item_pid = server->Hashes.to_hashed_string("TestItem");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -1931,7 +1876,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     auto cr_a = server->CreateCritter(critter_pid, false);
     auto cr_b = server->CreateCritter(critter_pid, false);
     auto cr_c = server->CreateCritter(critter_pid, false);
-    auto nested_item = server->ItemMngr.CreateItem(item_pid, 1, nullptr).hold_ref();
+    auto nested_item = server->ItemMngr.CreateItem(item_pid, nullptr).hold_ref();
     ptr<ServerEntity> cr_a_entity = cr_a;
     ptr<ServerEntity> cr_b_entity = cr_b;
     ptr<ServerEntity> nested_item_entity = nested_item.as_ptr();
@@ -1985,12 +1930,12 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
         {
             bool sync_diag_seen = false;
-            SetLogCallback("entity_access_valid_diagnose_test", [&sync_diag_seen](LogType, string_view message, nptr<const CatchedStackTraceData>) {
+            logging::set_callback("entity_access_valid_diagnose_test", [&sync_diag_seen](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
                 if (message.find("SyncDiag access-without-sync") != string_view::npos) {
                     sync_diag_seen = true;
                 }
             });
-            auto clear_log_callback = scope_exit([]() noexcept { SetLogCallback("entity_access_valid_diagnose_test", {}); });
+            auto clear_log_callback = scope_exit([]() noexcept { logging::set_callback("entity_access_valid_diagnose_test", {}); });
 
             CHECK_FALSE(IsEntityAccessValid(cr_b, false));
             CHECK_FALSE(sync_diag_seen);
@@ -2328,10 +2273,10 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring item_pid = server->Hashes.ToHashedString("TestItem");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
+    hstring item_pid = server->Hashes.to_hashed_string("TestItem");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -2394,8 +2339,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
-    auto item_a = server->ItemMngr.AddItemCritter(cr_a, item_pid, 1);
-    REQUIRE(static_cast<bool>(item_a));
+    auto item_a = server->CrMngr.AddItemToCritter(cr_a, server->ItemMngr.CreateItem(item_pid, nullptr), true);
 
     // The widen link must be live in both directions before we test the cover
     REQUIRE(cr_a->GetSyncWidenEntity() == player_a_holder);
@@ -2534,7 +2478,7 @@ TEST_CASE("ServerEngineEntityLinkPinSurvivesConcurrentDetach")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -2609,7 +2553,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
     // Ancestor and descendant locks exclude each other, and this pins that the exclusion never deadlocks or
     // starves: a model that turned it into a cycle would simply never join
     auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2623,9 +2567,9 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool flat_locked = true;
@@ -2700,9 +2644,9 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -2839,245 +2783,6 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     }
 }
 
-// Concurrent MoveItem of stackable units must conserve the total count. High-contention iteration rather than
-// a deterministic interleave, so the lost-update window is hit at all
-
-TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring coin_pid = server->Hashes.ToHashedString("UnitTestStackable");
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&server, &locked]() noexcept {
-        safe_call([&server, &locked] {
-            if (locked) {
-                server->Unlock();
-            }
-        });
-    });
-
-    auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto map = loc->GetMapByIndex(0);
-
-    constexpr int32_t HOLDER_COUNT = 8;
-    constexpr int32_t COINS_PER_HOLDER = 25;
-    constexpr int64_t EXPECTED_TOTAL = int64_t {HOLDER_COUNT} * int64_t {COINS_PER_HOLDER};
-
-    vector<ptr<Critter>> holders;
-    for (int32_t i = 0; i < HOLDER_COUNT; i++) {
-        auto cr = server->CreateCritter(critter_pid, false);
-        cr->SetParent(map); // parent only — keeps the critter (and its inventory) covered via the map
-        auto coins = server->ItemMngr.AddItemCritter(cr, coin_pid, COINS_PER_HOLDER);
-        REQUIRE(coins != nullptr);
-        REQUIRE(coins->GetCount() == COINS_PER_HOLDER);
-        holders.push_back(cr);
-    }
-
-    server->Unlock();
-    locked = false;
-
-    constexpr int32_t MOVER_THREADS = 6;
-    constexpr int32_t MOVES_PER_THREAD = 30000;
-
-    std::atomic<int64_t> moves_done {0};
-    std::atomic<int64_t> move_skips {0};
-
-    auto mover_fn = [&](int32_t tid) {
-        SyncContext ctx;
-        ctx.Activate();
-
-        // Per-thread LCG — deterministic per thread but overlaps other threads' holder pairs so the
-        // covers on shared stacks contend (no Math::Random in engine code; vary the stream by tid)
-        uint64_t rng = numeric_cast<uint64_t>(tid) * 0x9E3779B97F4A7C15ULL + 1U;
-
-        vector<ptr<ServerEntity>> req;
-        req.reserve(2);
-
-        for (int32_t it = 0; it < MOVES_PER_THREAD; it++) {
-            rng = rng * 6364136223846793005ULL + 1442695040888963407ULL;
-            int32_t from = numeric_cast<int32_t>((rng >> 33) % numeric_cast<uint64_t>(HOLDER_COUNT));
-            int32_t step = numeric_cast<int32_t>((rng >> 17) % numeric_cast<uint64_t>(HOLDER_COUNT - 1));
-            int32_t to = (from + 1 + step) % HOLDER_COUNT;
-
-            auto from_cr = holders[numeric_cast<size_t>(from)];
-            auto to_cr = holders[numeric_cast<size_t>(to)];
-
-            try {
-                req.clear();
-                req.emplace_back(from_cr);
-                req.emplace_back(to_cr);
-                ctx.SyncEntities(req);
-
-                auto stack = from_cr->GetInvItemByPid(coin_pid);
-                if (stack != nullptr && stack->GetCount() > 0) {
-                    server->ItemMngr.MoveItem(stack, 1, to_cr);
-                    moves_done.fetch_add(1, std::memory_order_relaxed);
-                }
-                else {
-                    move_skips.fetch_add(1, std::memory_order_relaxed);
-                }
-            }
-            catch (const EntitySyncException&) {
-                move_skips.fetch_add(1, std::memory_order_relaxed);
-            }
-
-            ctx.Release();
-        }
-
-        ctx.Deactivate();
-    };
-
-    vector<std::thread> movers;
-    for (int32_t i = 0; i < MOVER_THREADS; i++) {
-        movers.emplace_back(mover_fn, i);
-    }
-    for (auto& t : movers) {
-        t.join();
-    }
-
-    // Sum the surviving stacks under a single cover — conservation must hold regardless of how the
-    // coins redistributed across holders
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    locked = true;
-
-    vector<ptr<ServerEntity>> sync_holders;
-    sync_holders.reserve(holders.size());
-
-    for (auto cr : holders) {
-        sync_holders.emplace_back(cr);
-    }
-
-    auto ctx = server->RequireCurrentSyncContext();
-    ctx->SyncEntities(sync_holders);
-
-    int64_t total = 0;
-    for (auto cr : holders) {
-        auto stack = cr->GetInvItemByPid(coin_pid);
-        total += (stack != nullptr) ? int64_t {stack->GetCount()} : int64_t {0};
-    }
-
-    INFO("moves_done=" << moves_done.load() << " skips=" << move_skips.load() << " total=" << total << " expected=" << EXPECTED_TOTAL);
-    CHECK(moves_done.load() > 0);
-    CHECK(total == EXPECTED_TOTAL);
-
-    // Detach so item/critter refcounts drop before Shutdown
-    for (auto cr : holders) {
-        cr->SetParent(nullptr);
-    }
-}
-
-// The deterministic counterpart of the stress above: a handler mutates the source stack between SplitItem's
-// count read and its write, pinning both the fresh-read invariant and the post-yield cleanup branch
-
-TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring coin_pid = server->Hashes.ToHashedString("UnitTestStackable");
-    hstring arm_func = server->Hashes.ToHashedString("ServerEngineTest::UnitTestArmSplitInjection");
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&server, &locked]() noexcept {
-        safe_call([&server, &locked] {
-            if (locked) {
-                server->Unlock();
-            }
-        });
-    });
-
-    auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto map = loc->GetMapByIndex(0);
-
-    auto h1 = server->CreateCritter(critter_pid, false);
-    auto h2 = server->CreateCritter(critter_pid, false);
-    h1->SetParent(map);
-    h2->SetParent(map);
-
-    SECTION("source grows mid-split: fresh read conserves the injected units")
-    {
-        auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 20);
-        REQUIRE(source != nullptr);
-
-        // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split
-        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {5}));
-
-        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        REQUIRE(moved != nullptr);
-
-        auto src_after = h1->GetInvItemByPid(coin_pid);
-        auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
-
-        INFO("src=" << src_count << " dst=" << dst_count << " total=" << (src_count + dst_count));
-        // 20 spawned + 5 injected during the split = 25 must survive. Pre-fix: 20 (the +5 was clobbered
-        // by SplitItem writing the stale pre-CreateItem count)
-        CHECK(src_count + dst_count == 25);
-    }
-
-    SECTION("source drained below the split count mid-split: re-validation undoes the move")
-    {
-        auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 2);
-        REQUIRE(source != nullptr);
-
-        // The split product's OnItemInit removes 1 from the source (2 -> 1), so the fresh post-yield
-        // re-validation (count >= GetCount()) trips and the split is undone
-        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {-1}));
-
-        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        CHECK(moved == nullptr); // re-validation cleanup -> nullptr; the move did not happen
-
-        auto src_after = h1->GetInvItemByPid(coin_pid);
-        auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
-
-        INFO("src=" << src_count << " dst=" << dst_count);
-        // 2 spawned - 1 drained = 1 unit total, all on the source; no phantom split on h2. Pre-fix the
-        // stale write would leave src=1 AND a phantom split=1 on h2 (a duplicated unit)
-        CHECK(src_count == 1);
-        CHECK(dst_count == 0);
-    }
-
-    h1->SetParent(nullptr);
-    h2->SetParent(nullptr);
-}
-
 // An ancestor cover grants access to a descendant but must not exclude another thread's own lock on it —
 // isolated here, where ReparentStress only exercises it under noise
 
@@ -3098,9 +2803,9 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -3221,7 +2926,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         EntityLock singleton_lock;
         auto registrar = server->GetPropertyRegistrar("Critter");
         REQUIRE(registrar);
-        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrar, nullptr);
+        auto singleton_owned_entity = safe_alloc::make_refcounted<CustomEntity>(server, ident_t {1}, registrar, nullptr);
         CHECK_FALSE(singleton_owned_entity->GetEntityLock());
         singleton_owned_entity->SetEntityLock(make_nptr(&singleton_lock));
 
@@ -3256,7 +2961,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 {
     auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3270,9 +2975,9 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -3463,7 +3168,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
@@ -3563,9 +3268,9 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
 
         auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-        (void)server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+        (void)server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
         (void)CreateLoggedPlayer(server, "UnitTestGuiPlayer");
-        (void)server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+        (void)server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
 
         shared_ptr<NetworkServerConnection> not_logged_in_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         (void)server->CreateNotLoggedInPlayer(std::move(not_logged_in_connection));

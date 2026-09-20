@@ -3193,7 +3193,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/content/audio.md",
-      "sources": ["BuildTools/AudioInterface.json", "BuildTools/docs_audio.py", "Source/Client/SoundManager.h", "Source/Client/SoundManager.cpp", "Source/Client/ResourceManager.cpp", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Source/Tools/RawCopyBaker.cpp", "Source/Frontend/Application.cpp", "Source/Frontend/ApplicationHeadless.cpp", "Docs/en/reference/audio/index.md"]
+      "sources": ["BuildTools/AudioInterface.json", "BuildTools/docs_audio.py", "Source/Tools/AudioBaker.h", "Source/Tools/AudioBaker.cpp", "Source/Client/AudioManager.h", "Source/Client/AudioManager.cpp", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Source/Frontend/Application.cpp", "Source/Frontend/ApplicationHeadless.cpp", "Docs/en/reference/audio/index.md"]
     },
     "Docs/Audio.md": {
       "id": "legacy-audio-guide-route",
@@ -3225,7 +3225,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/reference/audio/formats.md",
-      "sources": ["BuildTools/AudioInterface.json", "Source/Client/SoundManager.cpp", "Docs/generated/audio.json"]
+      "sources": ["BuildTools/AudioInterface.json", "Source/Tools/AudioBaker.cpp", "Source/Client/AudioManager.cpp", "Docs/generated/audio.json"]
     },
     "Docs/generated/audio/formats.md": {
       "id": "legacy-generated-audio-formats-route",
@@ -3241,7 +3241,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/reference/audio/delivery.md",
-      "sources": ["BuildTools/AudioInterface.json", "Source/Common/Settings.inc", "Source/Tools/RawCopyBaker.cpp", "Source/Client/ResourceManager.cpp", "Docs/generated/audio.json"]
+      "sources": ["BuildTools/AudioInterface.json", "Source/Common/Settings.inc", "Source/Tools/AudioBaker.cpp", "Source/Client/AudioManager.cpp", "Docs/generated/audio.json"]
     },
     "Docs/generated/audio/delivery.md": {
       "id": "legacy-generated-audio-delivery-route",
@@ -3257,7 +3257,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/audio/decoding.md",
-      "sources": ["BuildTools/AudioInterface.json", "Source/Client/SoundManager.cpp", "Source/Frontend/Application.cpp", "Docs/generated/audio.json"]
+      "sources": ["BuildTools/AudioInterface.json", "Source/Client/AudioManager.cpp", "Source/Frontend/Application.cpp", "Docs/generated/audio.json"]
     },
     "Docs/generated/audio/decoding.md": {
       "id": "legacy-generated-audio-decoding-route",
@@ -3273,7 +3273,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "frontend", "state": "current", "disposition": "retain", "target": "Docs/en/reference/audio/playback.md",
-      "sources": ["BuildTools/AudioInterface.json", "Source/Client/SoundManager.cpp", "Source/Client/ResourceManager.cpp", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Source/Frontend/Application.cpp", "Docs/generated/audio.json"]
+      "sources": ["BuildTools/AudioInterface.json", "Source/Client/AudioManager.cpp", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Source/Common/Settings.inc", "Source/Frontend/Application.cpp", "Docs/generated/audio.json"]
     },
     "Docs/generated/audio/playback.md": {
       "id": "legacy-generated-audio-playback-route",
@@ -3289,7 +3289,7 @@
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "quality", "state": "current", "disposition": "retain", "target": "Docs/en/reference/audio/validation.md",
-      "sources": ["BuildTools/AudioInterface.json", "BuildTools/tests/test_docs_audio.py", "Source/Tests/Test_RawCopyBaker.cpp", "Source/Client/SoundManager.cpp", "Source/Frontend/Application.cpp", "Source/Frontend/ApplicationHeadless.cpp", "Docs/generated/audio.json"]
+      "sources": ["BuildTools/AudioInterface.json", "BuildTools/tests/test_docs_audio.py", "Source/Tests/Test_AudioBaker.cpp", "Source/Tests/Test_AudioManager.cpp", "Source/Tools/AudioBaker.cpp", "Source/Client/AudioManager.cpp", "Source/Frontend/Application.cpp", "Source/Frontend/ApplicationHeadless.cpp", "Docs/generated/audio.json"]
     },
     "Docs/generated/audio/validation.md": {
       "id": "legacy-generated-audio-validation-route",

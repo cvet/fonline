@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/build/public-example-repositories.html
 ---
 
 # Публичные репозитории с примерами
-
 <!-- docs-translation: {"document_id":"public-example-repositories","locale":"ru","source_path":"Docs/en/how-to/build/public-example-repositories.md","source_sha256":"faae854133e244465ed0758c64b7d03a90bbe342ca2a9eccf17247ffd699e1cc"} -->
-
 Это руководство определяет, как создаются, проверяются, подготавливаются, выпускаются и поддерживаются совместимыми репозитории с примерами FOnline. Машиночитаемый первоисточник находится в [Examples/PublicRepositories.json](../../../../Examples/PublicRepositories.json), а его проверяемая проекция находится в [сгенерированном реестре](../../reference/public-examples/index.md).
 
 ## Статус контракта

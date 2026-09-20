@@ -40,7 +40,7 @@ NetworkClientConnection::NetworkClientConnection(ptr<ClientNetworkSettings> sett
 {
     FO_STACK_TRACE_ENTRY();
 
-    _incomeBuf.resize(_settings->NetBufferSize);
+    _incomeBuf.resize(_settings->Network.NetBufferSize);
     _isConnecting = true;
 }
 
@@ -115,13 +115,13 @@ void NetworkClientConnection::Disconnect() noexcept
     }
 
     if (_isConnecting) {
-        WriteLog("Can't connect to the server");
+        logging::write("Can't connect to the server");
 
         _isConnecting = false;
     }
 
     if (_isConnected) {
-        WriteLog("Disconnect from the server");
+        logging::write("Disconnect from the server");
 
         _isConnected = false;
     }

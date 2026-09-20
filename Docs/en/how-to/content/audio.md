@@ -8,368 +8,240 @@ permalink: /Docs/en/how-to/content/audio.html
 
 # Audio Resources and Playback
 
-> Engine-owned documentation. This guide describes reusable audio formats,
-> resource delivery, decoding, playback, mixing, and validation in
-> `cvet/fonline`. A game owns its sound catalog, music state machine, ambient and
-> spatial policy, mastering, licenses, and visible/audible acceptance tests.
+> Engine-owned documentation. This guide describes reusable audio baking,
+> runtime decoding, playback, placement, mixing, and validation in
+> `cvet/fonline`. A game owns its sound catalog, concept-to-path mapping, music
+> state machine, spatial policy, mastering, licenses, and audible acceptance.
 
-Use the generated [audio reference](../../reference/audio/index.md) when exact stable
-IDs, source anchors, or machine-readable values matter.
+Use the generated [audio reference](../../reference/audio/index.md) when exact
+stable IDs, source anchors, or machine-readable values matter.
 
 ## Source map
 
-- `Source/Client/SoundManager.*` owns decoder selection, playback state,
-  streaming, repeat, stop, and the sound/music split.
-- `Source/Client/ResourceManager.cpp` builds the effect-name index.
-- `Source/Scripting/ClientGlobalScriptMethods.cpp` exports `Game.PlaySound` and
-  `Game.PlayMusic`.
+- `Source/Tools/AudioBaker.*` accepts authored WAV and Ogg, verifies the input,
+  and emits an Ogg Vorbis payload while preserving the authored resource path.
+- `Source/Client/AudioManager.*` indexes resource paths and owns decoding,
+  streaming, handles, placement, repeat, stop, and live volume state.
+- `Source/Scripting/ClientGlobalScriptMethods.cpp` exports `Game.PlaySound`,
+  `Game.UpdateSound`, and `Game.PlayMusic`.
 - `Source/Frontend/Application.*` owns the SDL audio device, conversion, mixing,
-  and callback synchronization.
-- `Source/Frontend/ApplicationHeadless.cpp` defines the no-audio headless
-  boundary.
-- `Source/Tools/RawCopyBaker.*` delivers authored audio bytes unchanged.
-- `Source/Common/Settings.inc` owns audio and raw-copy settings.
+  and callback synchronization. `ApplicationHeadless.cpp` defines the no-audio
+  headless boundary.
+- `Source/Common/Settings.inc` owns immutable audio startup settings.
+- `Source/Tests/Test_AudioBaker.cpp` and `Test_AudioManager.cpp` execute the
+  focused native contract.
 - `BuildTools/AudioInterface.json` is the checked documentation contract.
 
 ## Supported resources
 
-The stock client recognizes three audio suffixes:
+The authoring boundary accepts two source forms:
 
-| Suffix | Accepted input | Loading model | Recommended use |
+| Authored suffix | Accepted input | Baker result | Runtime decoder |
 |---|---|---|---|
-| `.wav` | Narrow RIFF/WAVE PCM profile, 8-bit unsigned or 16-bit signed | Fully decoded and converted before playback | Short effects and test fixtures |
-| `.acm` | Legacy Interplay/Fallout ACM | Fully decoded as signed 16-bit; mono for effects, stereo for music, 22050 Hz | Compatibility with existing classic assets |
-| `.ogg` | Ogg containing Vorbis audio | Decoded in chunks; short files become fully resident | New music and longer assets |
+| `.wav` | RIFF/WAVE PCM at 8, 16, 24, or 32 bits; IEEE float at 32 bits | Normalized to interleaved signed 16-bit and encoded as Ogg Vorbis | libvorbisfile |
+| `.ogg` | Ogg bitstream containing Vorbis audio | Verified and copied without another lossy pass | libvorbisfile |
 
-These are audio-runtime formats, not generic container promises. In particular:
+There is no ACM runtime path. MP3, FLAC, Opus, AAC, arbitrary SDL formats, and
+Ogg containers carrying a codec other than Vorbis are unsupported.
 
-- compressed WAV is rejected;
-- WAV chunk handling is sequential and intentionally narrower than a general
-  RIFF parser;
-- an Ogg stream must contain Vorbis, not another Ogg-carried codec;
-- MP3, FLAC, Opus, AAC, and arbitrary SDL-supported formats are not accepted by
-  `SoundManager`;
-- an explicit unknown suffix currently bypasses all decoder branches and can
-  return success with an empty queued sound. This is a known limitation, not
-  support for another format; reject such paths during content validation.
-
-`strex::get_file_extension()` lowercases the suffix, so `.OGG` and `.ACM` reach
-the same decoder dispatch. Prefer lowercase authored names for portable,
-reviewable paths.
+The authored suffix identifies the source path, not the bytes after baking. A
+resource named `Sfx/Door.wav` still has that path after baking, but its payload
+is Vorbis. Runtime therefore uses one decoder for both preserved `.wav` paths
+and native `.ogg` paths; it does not dispatch a codec from the suffix.
 
 ## Delivering audio
 
-There is no dedicated audio baker. Add all runtime formats to
-`Baking.RawCopyFileExtensions` and include `RawCopy` in the client resource pack
-that owns them:
+Include the `Audio` baker in every resource pack that owns client audio:
 
 ```ini
-Baking.RawCopyFileExtensions = acm ogg wav
-
 [ResourcePack]
 Name = Sound
 InputDirs = Resources/Sound
 IncludePatterns = **
 ClientOnly = True
-Bakers = RawCopy
+Bakers = Audio
 ```
 
-The default engine setting already includes `acm`, `ogg`, and `wav`; a project
-override must preserve every format it ships. `RawCopyBaker` keeps the resource
-path and bytes unchanged. The client must receive the pack because playback is
-a client responsibility.
+Audio is no longer a `RawCopy` resource family. WAV is converted according to
+`Baking.AudioVorbisQuality`; authored Ogg is validated before passthrough.
+Both routes verify that the output opens as Vorbis. The baker reports encoded
+and passthrough counts plus input/output byte totals.
 
-After client resources load, `ResourceManager.IndexFiles()` indexes all three
-suffixes for effect lookup. The key is the lowercase resource path with only
-the final extension removed.
-
-Avoid two files such as `Sfx/Door.wav` and `Sfx/Door.ogg`. Their normalized
-effect identity collides. The index uses first-in insertion with format order
-WAV, ACM, Ogg, so the WAV entry wins today, but projects should treat duplicate
-stems as an authoring error rather than depending on that precedence.
+`AudioManager.IndexFiles()` records paths with suffixes listed by
+`Audio.SoundFileExtensions` (normally `wav ogg`). The catalog is an inspection
+surface; playback itself receives the exact selected resource path.
 
 ## Playing effects
 
-`Game.PlaySound(name)` is client-side, non-positional playback:
+`Game.PlaySound(path)` returns a non-reused `uint32` lifetime handle:
 
-```angelscript
-bool played = Game.PlaySound("Sfx/DoorOpen.wav");
-verify(played, "Door-open sound could not be started");
+```csharp
+uint sound = Game.PlaySound("Sfx/DoorOpen.wav");
+if (sound == 0) {
+    // No live sound was started.
+}
 ```
 
-The caller's extension is removed before lookup. These calls resolve the same
-effect identity:
-
-```text
-Sfx/DoorOpen
-Sfx/DoorOpen.wav
-SFX/DOOROPEN.ogg
-```
-
-The indexed resource decides which actual format is loaded. Supplying `.ogg`
-does not force Ogg when the same normalized stem points to a WAV.
+Pass the exact baked resource path, including the authored extension and case.
+There is no extension fallback, lowercase stem normalization, or automatic
+concept lookup.
 
 ### Numbered variants
 
-If the base identity does not exist, `PlaySound` searches for a contiguous,
-one-based family:
+The engine does not discover or randomly select numbered variants. If a game
+authors `Footstep_1.wav` through `Footstep_4.wav`, project code must choose one
+and pass its exact path. This keeps catalog and randomization policy outside the
+reusable mixer.
 
-```text
-Sfx/Footstep_1.wav
-Sfx/Footstep_2.wav
-Sfx/Footstep_3.wav
+### Placed playback
+
+Use the overload with attenuation and pan when a sound has a current placement:
+
+```csharp
+uint sound = Game.PlaySound("Sfx/Generator.wav", attenuation, pan);
 ```
 
-Calling `Game.PlaySound("Sfx/Footstep")` selects uniformly from the three. The
-rules are exact:
+- attenuation at or below zero returns handle zero before file I/O;
+- pan is clamped to `-1..1`; negative values attenuate the right channel and
+  positive values attenuate the left;
+- the near channel remains at unity, so panning does not boost into clipping.
 
-1. A base `Sfx/Footstep.*` always wins and disables variant selection.
-2. Numbering starts at `_1`.
-3. Discovery stops at the first missing number.
-4. `_1` and `_3` without `_2` form a one-entry selectable family; `_3` is not
-   discovered.
-5. Each numbered identity must itself be unique across formats.
+When the source or listener moves, update the existing instance:
 
-Validate variant families as authored data. A missing middle file does not
-produce a runtime error because the shorter prefix remains valid.
+```csharp
+bool alive = Game.UpdateSound(sound, attenuation, pan);
+```
 
-### Spatial and gameplay policy
-
-Stock `SoundManager` does not store a world position, radius, listener, pan, or
-per-instance gain. Every active sound is mixed globally into the local client's
-output. A multiplayer game implements spatial policy by deciding which clients
-receive a playback request, whether distance permits it, and which asset or
-volume tier to select.
-
-That policy is not an engine audio-format feature. Keep recipient filtering,
-ambient emitters, occlusion, cooldowns, and gameplay triggers in project code
-and project tests.
+`false` means the handle is zero, audio is inactive, or playback already
+finished. Handles are never reused, so a stale handle cannot target a later
+sound. Distance curves, listener selection, occlusion, and recipient filtering
+remain project policy.
 
 ## Playing music
 
-`Game.PlayMusic(path, repeatTime)` takes an exact resource path:
+`Game.PlayMusic(path, repeatTime)` takes an exact path. An empty path stops the
+current music and returns success. A new track stops existing music before it
+loads the replacement; a failed replacement does not restore the old track.
 
-```angelscript
-bool played = Game.PlayMusic("Music/Exploration.ogg", Time::Milliseconds(1));
-verify(played, "Exploration music could not be started");
-```
-
-Music does not use the normalized effect index. If the path has no extension,
-`SoundManager` appends `.acm` for legacy compatibility.
-
-Only one music group is active. A new call removes all current music before it
-tries to load the replacement. If replacement loading fails, the previous track
-is not restored. Projects that need fallback should validate the target
-resource before the transition or explicitly choose a known fallback after a
-false result.
-
-An empty music name stops current music and returns success:
-
-```angelscript
-Game.PlayMusic("", Time::Milliseconds(0));
-```
+Only one music group is active. Music does not use concept lookup or suffix
+fallback.
 
 ## Repeat timing
 
-A zero `repeatTime` means play once. A nonzero value keeps the sound object and
-restarts it after completion:
+A zero `repeatTime` means play once. A nonzero value retains the playback
+object and restarts it after completion:
 
-- values greater than one millisecond wait for the authored interval;
+- values greater than one millisecond insert that delay;
 - values at or below one millisecond repeat immediately;
-- retained Ogg streams rewind to byte position zero before replay.
+- retained Vorbis streams seek back to byte position zero before replay.
 
-The delay begins after decoded playback reaches the end, not when playback
-starts. It is therefore a gap between iterations, not a target period that
-includes track duration.
+The interval begins after playback reaches the end; it is a gap, not a period
+that includes the track duration.
 
 ## Format details
 
-### WAV
+### WAV authoring
 
-`LoadWav` expects, in order:
+`AudioBaker` walks RIFF chunks in any order, skips unknown chunks, validates
+bounds, and respects odd-byte padding. It requires one usable `fmt ` chunk and
+a non-empty `data` chunk. Supported formats are PCM (`1`) at 8/16/24/32 bits
+and IEEE float (`3`) at 32 bits. Channel count and sample rate must be positive;
+block alignment must match the declared frame shape; truncated frames fail the
+bake.
 
-1. `RIFF`;
-2. RIFF size;
-3. `WAVE`;
-4. `fmt `;
-5. a format block at least 16 bytes long;
-6. optional `fact`;
-7. `data`;
-8. sample bytes.
+Every accepted sample is normalized to signed 16-bit PCM before Vorbis
+encoding. Test the exact source export: metadata layout and malformed format
+fields are authoring errors even if an editor happens to play the file.
 
-The format tag must be `1` (PCM). Only 8- and 16-bit sample widths are mapped.
-Channel count and sample rate are passed to frontend conversion. Because the
-loader does not walk arbitrary RIFF chunks, metadata chunks inserted between
-the expected blocks can make an otherwise valid WAV fail.
+### Ogg Vorbis runtime
 
-For predictable authoring, export plain PCM WAV without extra chunks and test
-the exact delivered file rather than only the editor source.
-
-### ACM
-
-`CACMUnpacker` decodes the complete source. `SoundManager` then supplies the
-legacy playback shape:
-
-- signed 16-bit samples;
-- one channel for `PlaySound`;
-- two channels for `PlayMusic`;
-- 22050 Hz.
-
-Use ACM for compatibility. Prefer Ogg Vorbis or PCM WAV for new assets so the
-source and playback properties are visible to standard tools.
-
-### Ogg Vorbis
-
-The loader uses libvorbisfile callbacks over the engine `FileSystem`. The first
-decode portion is:
-
-- 64 KiB on native targets;
-- 128 KiB on Web.
-
-If that first read reaches end-of-file, the decoder is released and the
-converted sound is fully resident. Longer streams keep `OggStream` and decode
-subsequent portions as the audio callback consumes them.
-
-An Ogg file with no Vorbis data, a bad header, a version mismatch, read failure,
-or decode failure returns false and writes a diagnostic.
+Authored Ogg and generated output are opened with libvorbisfile during baking.
+At runtime `AudioManager` opens every audio resource as Vorbis and decodes an
+initial portion of 64 KiB on native targets or 128 KiB on Web. Short files
+become resident; longer files retain `OggStream` and continue decoding from the
+audio callback.
 
 ## Device conversion and mixing
 
-Decoded data keeps its source format, channel count, and rate only until
-`AppAudio::ConvertAudio`. The SDL frontend converts it to the active output
-device's format. This is why supported WAV rates and channel counts need not
-match one hard-coded device profile.
+`AppAudio::ConvertAudio` converts decoded channels, sample rate, and format to
+the active SDL output device. The callback starts with silence, asks
+`AudioManager` for active data, applies per-instance attenuation and pan, then
+mixes using the live sound or music volume.
 
-The application audio callback:
+`Audio.SoundVolume` and `Audio.MusicVolume` are immutable startup defaults.
+Use `Game.SetSoundVolume` and `Game.SetMusicVolume` for live changes; the
+frontend clamps every mix operation to `0..100`.
 
-1. fills an output buffer with the device's silence value;
-2. asks `SoundManager` for every active sound;
-3. chooses `Audio.SoundVolume` or `Audio.MusicVolume`;
-4. clamps the value to `0..100`;
-5. mixes each converted buffer through SDL.
-
-Adding and removing playback objects holds the audio-stream lock. Native
-extensions must not bypass this synchronization or mutate `SoundManager`
-storage from their own callbacks.
+Play, stop, and placement update operations synchronize through the audio
+device lock. Native extensions must not mutate mixer storage from callbacks.
 
 ## Disabled and headless behavior
 
-`Audio.DisableAudio = true`, an unavailable SDL device, the headless frontend,
-and the stub frontend leave `SoundManager` inactive.
+`Audio.DisableAudio = true`, an unavailable SDL device, and headless/stub
+frontends leave audio inactive. In that state `PlayMusic` is a successful no-op
+and `PlaySound` returns handle zero.
 
-Inactive `PlaySound` and `PlayMusic` calls intentionally report success without
-loading a resource. `PlaySound` also returns success without lookup when
-`Audio.SoundVolume == 0`. This supports silent/headless runs, but it means:
-
-> A true playback result is not a resource-existence check unless real audio is
-> active and, for effects, sound volume is nonzero.
-
-Use baking/resource validation for existence and a visible client for audible
-behavior. Do not use headless test success as proof that a codec, device,
-conversion, mix, or path works.
+These results are not a resource-existence check. Baking proves that a path and
+payload are valid; a visible client with an active device proves conversion,
+callback scheduling, mixing, and audible output.
 
 ## Recommended project practice
 
-1. Use a dedicated client-only `RawCopy` pack for audio.
-2. Prefer Ogg Vorbis for music and long assets, PCM WAV for short effects, and
-   ACM only when preserving legacy content.
-3. Keep one normalized effect stem per resource.
-4. Validate numbered families for contiguous `_1.._N` membership.
-5. Pass exact paths for music and check replacement failures.
-6. Keep server-authoritative gameplay decisions separate from client playback.
-7. Put distance, recipient, cooldown, ambient, and transition policy in one
-   project-owned audio module.
-8. Clamp project UI values to `0..100` even though the mixer also clamps.
-9. Store original masters and redistribution provenance outside baked output.
-10. Test representative assets on every platform the game claims to support.
-
-Avoid loading the same long Ogg repeatedly as a rapid effect. Each request owns
-decoder and converted-buffer state. Use bounded gameplay triggering and choose
-asset lengths appropriate to the expected concurrency.
+1. Put authored WAV/Ogg in a client pack that selects the `Audio` baker.
+2. Keep exact paths in project-owned catalogs; resolve concepts and variants
+   before calling the engine.
+3. Use WAV as an editable/master input and native Ogg when avoiding another
+   lossy encode matters.
+4. Centralize distance curves, listener choice, ambient scheduling, cooldowns,
+   and music transitions in project code.
+5. Keep server-authoritative gameplay decisions separate from local playback.
+6. Store masters, licenses, attribution, and redistribution provenance outside
+   baked output.
+7. Test representative assets and placement motion on every supported platform.
 
 ## Diagnostics
 
-Common failures and their likely causes:
+Treat all `AudioBaker` exceptions as content failures. Typical causes are a
+missing or truncated RIFF chunk, unsupported WAV encoding/width, inconsistent
+block alignment, an empty Ogg, or an Ogg stream without Vorbis.
 
-| Diagnostic or result | Likely cause |
-|---|---|
-| false with no matching effect | No base identity and no `_1` variant in the client index |
-| true but no decoded data for an explicit path | The suffix is not WAV, ACM, or Ogg; the current loader does not reject this case itself |
-| `'RIFF' not found` / `'WAVE' not found` | File is not the expected WAV container |
-| `'fmt ' not found` / `Unknown format2` | Unsupported WAV chunk order |
-| `Compressed files not supported` | WAV format tag is not PCM |
-| `Decode Acm error` | ACM decoder did not produce the expected byte count |
-| `Bitstream does not contain any Vorbis data` | Ogg uses another codec or is corrupt |
-| SDL conversion failure | Source parameters cannot be converted to the active device |
-| true but no sound in headless/silent run | Expected no-op success boundary |
-
-When replacing music, remember that the old track is stopped before the new
-file is loaded. A silent result after a false return is expected transition
-behavior, not evidence that `StopMusic` failed.
+At runtime, Ogg open/decode and device-conversion failures are logged and enter
+the debugger. Handle zero only says that no live effect started; it does not
+replace the baker gate.
 
 ## Validation workflow
 
-Run the checked documentation contract:
+Run documentation and focused native checks:
 
 ```powershell
 python BuildTools\docs_audio.py --check
-python -m unittest BuildTools.tests.test_docs_audio
-python BuildTools\docs_validate.py
-```
-
-Run native tests for raw-copy and broad frontend regressions:
-
-```powershell
+python -m pytest BuildTools\tests\test_docs_audio.py
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
 
-Then validate an embedding project:
+`Test_AudioBaker` covers PCM/float WAV conversion, native Ogg passthrough, and
+invalid inputs. `Test_AudioManager` covers decoder/mixer output, pan, placed
+starts, live updates, handle expiry, and synchronization-relevant behavior.
 
-1. Bake a pack with representative WAV, ACM, and Ogg files.
-2. Confirm the client resource paths and bytes.
-3. Start a visible client with audio enabled and nonzero volumes.
-4. Play one asset per format.
-5. Exercise an absent-base numbered family and a deliberate numbering gap.
-6. Replace valid music with valid and invalid paths.
-7. Check play-once, immediate repeat, and delayed repeat.
-8. Check volume `0`, an in-range value, and `100`.
-9. Inspect logs for every decoder and SDL diagnostic.
-10. Repeat on each claimed native/Web/mobile platform.
-
-The Engine currently has no focused native `SoundManager` codec/playback test
-file. `Test_RawCopyBaker.cpp` proves byte delivery, while documentation tests
-pin parser and runtime source structure. Until focused fixtures exist, audible
-client validation is a required residual gate.
+Then bake the embedding project's real pack. Confirm preserved paths, inspect
+baker counters, and open every output as Vorbis. In a visible client, play a
+WAV-path and native-Ogg-path resource, move a placed sound, replace music,
+exercise immediate/delayed repeats, and test volume endpoints on each claimed
+platform.
 
 ## Project boundary
 
-An embedding project owns:
-
-- the audio resource tree and naming taxonomy;
-- which content properties point to audio;
-- server-to-client recipient and distance logic;
-- ambient scheduling and music-state transitions;
-- concurrency budgets and anti-spam rules;
-- loudness, mastering, accessibility, and user options;
-- source masters, licenses, attribution, and redistribution approval;
-- gameplay and audible acceptance tests.
-
-Do not copy those policies from Last Frontier or another game into engine
-documentation. Reuse only behavior supported by the source-backed contract
-above.
+An embedding project owns catalogs, concepts, variants, server/client routing,
+distance and occlusion policy, ambient and music state, concurrency budgets,
+loudness/accessibility choices, masters, licenses, attribution, and audible
+acceptance. The engine supplies baking, one decoder path, a client mixer,
+handles, and placement parameters.
 
 ## Maintenance
 
-Changes to any of these areas are documentation-bearing:
-
-- accepted extensions or decoder dispatch;
-- WAV, ACM, or Ogg parsing;
-- streaming chunk size or repeat timing;
-- normalized identity or variant selection;
-- script method signatures or return conventions;
-- audio settings, conversion, mixing, or headless behavior;
-- raw-copy defaults or resource indexing.
-
-Update `BuildTools/AudioInterface.json` and this guide, regenerate the model and
-pages, run focused tests and the aggregate contract diff, and record migration
-guidance for any public behavior change in the same change.
+Changes to accepted inputs, baker conversion, preserved paths, Vorbis
+streaming, handles, placement, repeat timing, script signatures, live volume,
+device conversion, package delivery, or headless behavior are
+documentation-bearing. Update `BuildTools/AudioInterface.json` and this guide,
+regenerate the reference, run focused tests and the aggregate contract diff,
+and include migration guidance for public behavior changes.

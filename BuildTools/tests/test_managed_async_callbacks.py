@@ -38,7 +38,7 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        AppDomain.CurrentDomain.UnhandledException += (_, e) => Console.WriteLine("UNHANDLED terminating=" + e.IsTerminating + " recorded=" + Game.GetGlobalExceptionCount() + " " + e.ExceptionObject);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => Console.WriteLine("UNHANDLED terminating=" + e.IsTerminating + " recorded=" + ScriptExceptions.GlobalCount + " " + e.ExceptionObject);
         string boundary = args[0];
         string kind = args[1];
         ownerThread = Environment.CurrentManagedThreadId;
@@ -99,13 +99,13 @@ internal static class Program
             Console.WriteLine("CALLBACK_RESULT " + (Native.InvokeCallback(callback, Array.Empty<object>()) == null ? "null" : "value"));
         }
         Volatile.Write(ref returned, 1);
-        Console.WriteLine("RETURNED stage=" + stage + " recorded=" + Game.GetGlobalExceptionCount());
+        Console.WriteLine("RETURNED stage=" + stage + " recorded=" + ScriptExceptions.GlobalCount);
         if (stage != 1 || Resume.Task.IsCompleted) return 20;
         Resume.SetResult(true);
         if (returnsTask || kind == "void")
         {
-            if (!PumpUntil(() => Game.GetGlobalExceptionCount() == 1)) return 21;
-            Console.WriteLine("TASK_OBSERVED stage=" + stage + " recorded=" + Game.GetGlobalExceptionCount());
+            if (!PumpUntil(() => ScriptExceptions.GlobalCount == 1)) return 21;
+            Console.WriteLine("TASK_OBSERVED stage=" + stage + " recorded=" + ScriptExceptions.GlobalCount);
             return stage == 2 && resumedThread == ownerThread ? 0 : 22;
         }
         Thread.Sleep(5000);
@@ -116,7 +116,7 @@ internal static class Program
 
     private static async Task YieldChild()
     {
-        await Game.YieldAsync(0);
+        await ScriptTask.Delay(0);
     }
 
     private static async Task<int> CaptureYieldChild()
@@ -165,7 +165,7 @@ internal static class Program
         object? result = Native.InvokeCallback((Func<Task<int>>)CaptureExternalChild, Array.Empty<object>());
         worker.Join();
         Console.WriteLine("NESTED_RESULT_EXTERNAL result=" + result + " owner=" + (resumedThread == ownerThread));
-        return result is int value && value == 42 && resumedThread == ownerThread && Game.GetGlobalExceptionCount() == 0 ? 0 : 41;
+        return result is int value && value == 42 && resumedThread == ownerThread && ScriptExceptions.GlobalCount == 0 ? 0 : 41;
     }
 
     private static async Task OuterAsynchronousCallback()
@@ -190,14 +190,14 @@ internal static class Program
         Second.SetResult(true);
         if (!PumpUntil(() => stage == 3)) return 42;
         Console.WriteLine("NESTED_SYNC_IN_ASYNC returned=" + returnedAfterSync + " owner=" + (resumedThread == ownerThread));
-        return returnedAfterSync && resumedThread == ownerThread && Game.GetGlobalExceptionCount() == 0 ? 0 : 43;
+        return returnedAfterSync && resumedThread == ownerThread && ScriptExceptions.GlobalCount == 0 ? 0 : 43;
     }
 
     private static async Task DeferredChild()
     {
         stage = 1;
         await Resume.Task;
-        await Game.YieldAsync(0);
+        await ScriptTask.Delay(0);
         stage = 2;
         resumedThread = Environment.CurrentManagedThreadId;
     }
@@ -219,7 +219,7 @@ internal static class Program
         Game.FireTimer();
         if (!PumpUntil(() => stage == 2)) return 45;
         Console.WriteLine("DETACHED_CHILD result=" + result + " deferred=" + deferred + " owner=" + (resumedThread == ownerThread) + " timers=" + Game.TimerCount);
-        return result is int value && value == 42 && deferred && resumedThread == ownerThread && Game.GetGlobalExceptionCount() == 0 ? 0 : 46;
+        return result is int value && value == 42 && deferred && resumedThread == ownerThread && ScriptExceptions.GlobalCount == 0 ? 0 : 46;
     }
 
     private static int SynchronousShutdown()
@@ -330,7 +330,7 @@ internal static class Program
         Thread second = new(() => Second.SetResult(true));
         second.Start(); second.Join();
         deferred &= stage == 2;
-        if (!PumpUntil(() => Game.GetGlobalExceptionCount() == 1)) return 32;
+        if (!PumpUntil(() => ScriptExceptions.GlobalCount == 1)) return 32;
         Console.WriteLine("NESTED deferred=" + deferred + " stage=" + stage + " owner=" + (resumedThread == ownerThread));
         return deferred && stage == 3 && resumedThread == ownerThread ? 0 : 33;
     }
@@ -349,13 +349,13 @@ internal static class Program
         Native.ShutdownContinuations();
         Second.SetResult(true);
         Native.PumpContinuations();
-        Console.WriteLine("SHUTDOWN stage=" + stage + " recorded=" + Game.GetGlobalExceptionCount());
-        return stage == 0 && Game.GetGlobalExceptionCount() == 0 ? 0 : 34;
+        Console.WriteLine("SHUTDOWN stage=" + stage + " recorded=" + ScriptExceptions.GlobalCount);
+        return stage == 0 && ScriptExceptions.GlobalCount == 0 ? 0 : 34;
     }
 
     private static Task RegisterLateYield()
     {
-        var awaiter = Game.YieldAsync(1).GetAwaiter();
+        var awaiter = ScriptTask.Delay(1).GetAwaiter();
         if (awaiter.IsCompleted) throw new Exception("timer completed before explicit fire");
         Game.FireTimer();
         stage = 1;
@@ -374,20 +374,20 @@ internal static class Program
 
     private static async Task<int> YieldResult()
     {
-        await Game.YieldAsync(1);
+        await ScriptTask.Delay(1);
         return 42;
     }
 
     private static async Task<EventResult> YieldEventResult()
     {
-        await Game.YieldAsync(1);
+        await ScriptTask.Delay(1);
         return EventResult.ContinueChain;
     }
 
     [ModuleInit]
     public static void ModuleYield()
     {
-        if (runModule) Game.YieldAsync(1);
+        if (runModule) ScriptTask.Delay(1);
     }
 
     private static int RejectYield(string boundary)
@@ -461,10 +461,6 @@ namespace FOnline
     public static class ScriptFuncRegistration { public static int Calls; public static void RegisterEngineAttributeFuncs() { Calls++; } }
     public static class RemoteCallScriptFuncs { public static int Calls; public static void RegisterRemoteCalls() { Calls++; } }
 
-    public enum GameProperty { Value }
-    public enum ModifierEvent { Value }
-    public enum ModifierScope { Value }
-    public enum CritterProperty { Value }
     public enum EventResult { ContinueChain, StopChain }
     public readonly struct hstring
     {
@@ -497,12 +493,14 @@ def replace_internal_call(source, declaration, replacement):
 
 
 def build_probe(dotnet, output, probe_source):
-    for name in ("Native.cs", "ScriptInvoke.cs", "Attributes.cs", "Verify.cs", "Async.cs", "ScriptSynchronizationContext.cs", "Initializator.cs"):
+    for name in ("Native.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs", "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs"):
         source = (CORE / name).read_text(encoding="utf-8")
         if name == "Native.cs":
-            # External logging and native continuation entry are the only substituted boundaries
+            # External reporting and native continuation entry are the only substituted boundaries
             source = replace_internal_call(source, "internal static extern void Log(string text);",
                                            'internal static void Log(string text) => Console.WriteLine("ENGINE_RECORDED " + text);')
+            source = replace_internal_call(source, "private static extern void ReportExceptionInternal(string summary, string? nativeError, long[] frames);",
+                                           'private static void ReportExceptionInternal(string summary, string? nativeError, long[] frames) => Log(summary);')
             source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(Action continuation);",
                                            "private static string? RunScriptContinuationInternal(Action continuation) { continuation(); return null; }")
         (output / name).write_text(source, encoding="utf-8")

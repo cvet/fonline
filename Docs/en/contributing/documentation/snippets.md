@@ -38,7 +38,7 @@ result for every block. Normative coverage must be exactly 100 percent.
 | `bash` | `bash-parse` | Static checks plus the real Bash parser in `bash -n` mode |
 | `powershell` | `powershell-parse` | Static checks plus the PowerShell language parser |
 | `cmake` | `cmake-parse` | Complete command invocations, comments, strings, and balanced arguments |
-| `cpp`, `angelscript`, `glsl` | `c-family-parse` | Strings, comments, and balanced parentheses, brackets, and braces |
+| `cpp`, `csharp`, `angelscript`, `glsl` | `c-family-parse` | Strings, comments, and balanced parentheses, brackets, and braces |
 | `ini` | `ini-parse` | Sections, assignments, continuations, and embedded vertex/fragment shader structure |
 | `json` | `json-parse` | Python's strict JSON parser |
 | `python` | `python-parse` | Python AST parser |
@@ -51,7 +51,7 @@ tokens. The replacement is only a parser accommodation; the generated report
 retains `template: true`, so a grammar template cannot be mistaken for a
 tested concrete command.
 
-The C-family harness proves lexical structure, not C++ or AngelScript type
+The C-family harness proves lexical structure, not C++, C#, or AngelScript type
 correctness. A snippet that claims to compile, bake, launch, or produce a
 runtime result still needs the owning source/example test named by its guide.
 The snippet gate prevents malformed documentation from landing; it does not

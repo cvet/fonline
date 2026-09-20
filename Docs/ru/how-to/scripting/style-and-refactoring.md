@@ -5,9 +5,7 @@ locale: ru
 document_id: angelscript-style
 permalink: /Docs/ru/how-to/scripting/style-and-refactoring.html
 ---
-
 <!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"6a874ba5b84269757a273178381088d73c4d5b26c3f5697acd58419a1944411d"} -->
-
 # Стиль AngelScript и рефакторинг
 
 > Документация движка. Это руководство определяет переиспользуемый контракт исходного кода, форматирования, модулей и рефакторинга AngelScript, поддержанный текущими compiler, formatter wrapper, публичными examples и тестами FOnline. Проект игры владеет своей предметной лексикой, каталогом модулей, конкретным formatter layout, генерируемыми форматами проекта, игровой архитектурой и политикой миграций.

@@ -60,9 +60,9 @@ namespace
             uint32_t message_size = 0;
             NetMessage message {};
 
-            MemCopy(&signature, data.data() + offset, sizeof(signature));
-            MemCopy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
-            MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+            memory::copy(&signature, data.data() + offset, sizeof(signature));
+            memory::copy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
+            memory::copy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
 
             size_t message_size_value = numeric_cast<size_t>(message_size);
 
@@ -88,7 +88,7 @@ namespace
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
 
         return settings;
     }
@@ -124,25 +124,6 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int CritterItemTransferInCalls;
-    ident CritterItemTransferInSourceId;
-    ident CritterItemTransferInResultId;
-    int CritterItemTransferInSourceCount;
-    int CritterItemTransferInResultCount;
-    int CritterItemTransferInCount;
-
-    [[Event]]
-    void OnCritterItemTransferIn(Critter cr, Item sourceItem, Item resultItem, int count)
-    {
-        CritterItemTransferInCalls++;
-        CritterItemTransferInSourceId = sourceItem.Id;
-        CritterItemTransferInResultId = resultItem.Id;
-        CritterItemTransferInSourceCount = sourceItem.Count;
-        CritterItemTransferInResultCount = resultItem.Count;
-        CritterItemTransferInCount = count;
-        resultItem.Hidden = true;
-    }
-
     // ========== Critter Inventory Operations ==========
 
     int TestCritterAddAndCountItems()
@@ -150,18 +131,16 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 5);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) return -2;
 
-        int count = cr.CountItem("TestItem".hstr());
-        if (count != 5) return -3;
+        if (cr.GetItems("TestItem".hstr()).length() != 1) return -3;
 
-        // Add more of the same item
-        Item item2 = cr.AddItem("TestItem".hstr(), 3);
-        if (item2 is null) return -4;
+        // Another add of the same prototype is a separate instance
+        Item item2 = cr.AddItem("TestItem".hstr());
+        if (item2 is null || item2.Id == item.Id) return -4;
 
-        count = cr.CountItem("TestItem".hstr());
-        if (count != 8) return -5;
+        if (cr.GetItems("TestItem".hstr()).length() != 2) return -5;
 
         Game.DestroyCritter(cr);
         return 0;
@@ -172,8 +151,8 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        cr.AddItem("TestItem".hstr(), 2);
-        cr.AddItem("TestItem2".hstr(), 3);
+        cr.AddItem("TestItem".hstr());
+        cr.AddItem("TestItem2".hstr());
 
         array<Item> items = cr.GetItems();
         if (items.length() < 2) return -2;
@@ -194,7 +173,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item added = cr.AddItem("TestItem".hstr(), 1);
+        Item added = cr.AddItem("TestItem".hstr());
         if (added is null) return -2;
 
         ident item_id = added.Id;
@@ -212,25 +191,6 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int TestCritterDestroyItems()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        cr.AddItem("TestItem".hstr(), 10);
-
-        // Destroy partial count
-        cr.DestroyItem("TestItem".hstr(), 3);
-        if (cr.CountItem("TestItem".hstr()) != 7) return -2;
-
-        // Destroy all of a proto
-        cr.DestroyItem("TestItem".hstr());
-        if (cr.CountItem("TestItem".hstr()) != 0) return -3;
-
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
     int TestCritterInventoryProtoAndPropertyMethods()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
@@ -240,11 +200,11 @@ namespace ScriptMethodsTest
         ProtoItem? proto2 = Game.GetProtoItem("TestItem2".hstr());
         if (proto1 is null || proto2 is null) return -2;
 
-        Item item1 = cr.AddItem(proto1, 2);
-        Item item2 = cr.AddItem(proto2, 3);
+        Item item1 = cr.AddItem(proto1);
+        Item item2 = cr.AddItem(proto2);
         if (item1 is null || item2 is null) return -3;
 
-        if (cr.CountItem(proto1) != 2) return -4;
+        if (cr.GetItems(proto1).length() != 1) return -4;
         if (cr.GetItem(proto1) is null) return -5;
         if (cr.GetItem(item1.Id) is null) return -6;
 
@@ -255,7 +215,7 @@ namespace ScriptMethodsTest
         Item? hiddenItem = cr.GetItem(ItemProperty::Hidden, 1);
         if (hiddenItem is null || hiddenItem.Id != item1.Id) return -9;
 
-        if (cr.GetItem(ItemProperty::Count, 99) !is null) return -22;
+        if (cr.GetItem(ItemProperty::LightDistance, 99) !is null) return -22;
 
         array<Item> hiddenItems = cr.GetItems(ItemProperty::Hidden, 1);
         if (hiddenItems.isEmpty()) return -10;
@@ -266,41 +226,14 @@ namespace ScriptMethodsTest
         array<Item> missingItems = cr.GetItems("MissingItem".hstr());
         if (!missingItems.isEmpty()) return -12;
 
-        cr.DestroyItem(proto1, 0);
-        if (cr.CountItem(proto1) != 2) return -13;
-
-        cr.DestroyItem("TestItem2".hstr(), 0);
-        if (cr.CountItem(proto2) != 3) return -23;
-
-        cr.DestroyItem(proto1, 1);
-        if (cr.CountItem(proto1) != 1) return -14;
-
-        cr.DestroyItem(proto1);
-        if (cr.CountItem(proto1) != 0) return -15;
+        Game.DestroyItem(item1);
+        if (!cr.GetItems(proto1).isEmpty()) return -15;
         if (cr.GetItem("TestItem".hstr()) !is null) return -8;
 
-        cr.DestroyItem(proto1);
-        cr.DestroyItem("TestItem".hstr());
-
         hstring emptyPid;
-        try {
-            cr.DestroyItem(emptyPid);
-            Game.DestroyCritter(cr);
-            return -16;
-        }
-        catch {
-        }
 
         try {
-            cr.DestroyItem(emptyPid, 1);
-            Game.DestroyCritter(cr);
-            return -17;
-        }
-        catch {
-        }
-
-        try {
-            cr.AddItem(emptyPid, 1);
+            cr.AddItem(emptyPid);
             Game.DestroyCritter(cr);
             return -24;
         }
@@ -335,7 +268,7 @@ namespace ScriptMethodsTest
         cr.ChangeItemSlot(item2.Id, CritterItemSlot::Main);
         if (item2.CritterSlot != CritterItemSlot::Main) return -28;
 
-        Item slotPeer = cr.AddItem("TestItem".hstr(), 1);
+        Item slotPeer = cr.AddItem("TestItem".hstr());
         if (slotPeer is null) return -29;
 
         cr.ChangeItemSlot(slotPeer.Id, CritterItemSlot::Main);
@@ -345,31 +278,15 @@ namespace ScriptMethodsTest
         cr.ChangeItemSlot(slotPeer.Id, CritterItemSlot::Main);
 
         try {
-            cr.AddItem("MissingItem".hstr(), 1);
+            cr.AddItem("MissingItem".hstr());
             Game.DestroyCritter(cr);
             return -18;
         }
         catch {
         }
 
-        try {
-            cr.AddItem("TestItem".hstr(), 0);
-            Game.DestroyCritter(cr);
-            return -19;
-        }
-        catch {
-        }
-
-        try {
-            cr.AddItem(proto2, 0);
-            Game.DestroyCritter(cr);
-            return -20;
-        }
-        catch {
-        }
-
-        cr.DestroyItem(proto2, 100);
-        if (cr.CountItem(proto2) != 0) return -21;
+        Game.DestroyItem(item2);
+        if (!cr.GetItems(proto2).isEmpty()) return -21;
 
         Game.DestroyCritter(cr);
         return 0;
@@ -504,7 +421,7 @@ namespace ScriptMethodsTest
         target.IsSeenBy(observer);
         observer.GetVisibilityMode(target);
 
-        Item groundItem = map.AddItem(mpos(27, 20), "TestItem".hstr(), 1);
+        Item groundItem = map.AddItem(mpos(27, 20), "TestItem".hstr());
         if (groundItem is null) return -19;
         observer.IsSee(groundItem);
 
@@ -702,7 +619,7 @@ namespace ScriptMethodsTest
             return -3;
         }
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) return -4;
 
         cr.Action(CritterAction::DropItem, 0, item);
@@ -786,7 +703,7 @@ namespace ScriptMethodsTest
             return -3;
         }
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) return -4;
 
         cr.SetCondition(CritterCondition::Alive, CritterActionAnim::None, item);
@@ -926,7 +843,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -2;
@@ -967,44 +884,27 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item container = cr.AddItem("TestItem2".hstr(), 1);
+        Item container = cr.AddItem("TestItem2".hstr());
         if (container is null) {
             Game.DestroyCritter(cr);
             return -2;
         }
 
-        Item childByPid = container.AddItem("TestItem".hstr(), 2);
+        Item childByPid = container.AddItem("TestItem".hstr());
         if (childByPid is null) {
             Game.DestroyCritter(cr);
             return -3;
         }
-        if (childByPid.Count != 1) {
-            Game.DestroyCritter(cr);
-            return -4;
-        }
-
-        ProtoItem proto = Game.GetProtoItem("TestStackableItem".hstr());
+        ProtoItem proto = Game.GetProtoItem("TestItem".hstr());
         if (proto is null) {
             Game.DestroyCritter(cr);
             return -5;
         }
 
-        Item childByProto = container.AddItem(proto, 3);
-        if (childByProto is null) {
+        Item childByProto = container.AddItem(proto);
+        if (childByProto is null || childByProto.Id == childByPid.Id) {
             Game.DestroyCritter(cr);
             return -6;
-        }
-        if (childByProto.Count != 3) {
-            Game.DestroyCritter(cr);
-            return -7;
-        }
-
-        try {
-            container.AddItem(proto, 0);
-            Game.DestroyCritter(cr);
-            return -8;
-        }
-        catch {
         }
 
         array<Item> allChildren = container.GetItems();
@@ -1020,14 +920,6 @@ namespace ScriptMethodsTest
             return -10;
         }
 
-        try {
-            container.AddItem("TestItem".hstr(), 0);
-            Game.DestroyCritter(cr);
-            return -11;
-        }
-        catch {
-        }
-
         Game.DestroyCritter(cr);
         return 0;
     }
@@ -1037,7 +929,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 5);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) return -2;
 
         // Global item lookup by id
@@ -1069,7 +961,7 @@ namespace ScriptMethodsTest
         Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item item = cr1.AddItem("TestItem".hstr(), 1);
+        Item item = cr1.AddItem("TestItem".hstr());
         if (item is null) return -2;
 
         ident item_id = item.Id;
@@ -1098,13 +990,13 @@ namespace ScriptMethodsTest
         Critter cr2 = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr1 is null || cr2 is null) return -1;
 
-        Item item = cr1.AddItem("TestItem".hstr(), 1);
+        Item item = cr1.AddItem("TestItem".hstr());
         if (item is null) return -2;
 
         ident orig_id = item.Id;
 
-        // Move item to cr2 (full, since count=1)
-        Item? moved = Game.MoveItem(item, 1, cr2);
+        // Move the whole item to cr2
+        Item? moved = Game.MoveItem(item, cr2);
         if (moved is null) return -3;
 
         // Verify item moved - lookup by original id
@@ -1121,40 +1013,148 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int TestGameMoveItemMergeEvent()
+    ident ReentryMoveItemId;
+    ident ReentryMoveTargetId;
+    int ReentryMoveCalls;
+
+    [[Event]]
+    void OnReentryCritterItemMoved(Critter cr, Item item, CritterItemSlot fromSlot)
     {
-        CritterItemTransferInCalls = 0;
-        CritterItemTransferInSourceId = ident();
-        CritterItemTransferInResultId = ident();
-        CritterItemTransferInSourceCount = 0;
-        CritterItemTransferInResultCount = 0;
-        CritterItemTransferInCount = 0;
+        if (item.Id != ReentryMoveItemId || item.Ownership != ItemOwnership::Nowhere) return;
 
-        Game.OnCritterItemTransferIn.Subscribe(OnCritterItemTransferIn);
+        Critter? target = Game.GetCritter(ReentryMoveTargetId);
+        if (target is null) return;
 
-        Critter sourceCr = Game.CreateCritter("TestCritter".hstr(), false);
-        Critter resultCr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (sourceCr is null || resultCr is null) return -1;
+        ReentryMoveCalls++;
+        Game.MoveItem(item, target);
+    }
 
-        Item sourceItem = sourceCr.AddItem("TestStackableItem".hstr(), 4);
-        Item resultItem = resultCr.AddItem("TestStackableItem".hstr(), 3);
-        if (sourceItem is null || resultItem is null) return -2;
+    int TestGameMoveItemRemovalReentry()
+    {
+        Critter owner = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter receiver = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter interceptor = Game.CreateCritter("TestCritter".hstr(), false);
+        if (owner is null || receiver is null || interceptor is null) return -1;
 
-        ident sourceId = sourceItem.Id;
-        ident resultId = resultItem.Id;
-        Item? moved = Game.MoveItem(sourceItem, 2, resultCr);
+        Item item = owner.AddItem("TestItem".hstr());
+        if (item is null) return -2;
 
-        Game.OnCritterItemTransferIn.Unsubscribe(OnCritterItemTransferIn);
+        ReentryMoveItemId = item.Id;
+        ReentryMoveTargetId = interceptor.Id;
+        ReentryMoveCalls = 0;
 
-        if (moved is null || moved.Id != resultId) return -3;
-        if (CritterItemTransferInCalls != 1) return -4;
-        if (CritterItemTransferInSourceId != sourceId || CritterItemTransferInResultId != resultId) return -5;
-        if (CritterItemTransferInSourceCount != 4 || CritterItemTransferInResultCount != 3 || CritterItemTransferInCount != 2) return -6;
-        if (sourceItem.Count != 2 || resultItem.Count != 5) return -7;
-        if (!resultItem.Hidden) return -8;
+        // The removal event places the detached item elsewhere, so the outer move must not attach it a second time
+        Game.OnCritterItemMoved.Subscribe(OnReentryCritterItemMoved);
+        Item? moved = Game.MoveItem(item, receiver);
+        Game.OnCritterItemMoved.Unsubscribe(OnReentryCritterItemMoved);
+        ReentryMoveItemId = ident();
 
-        Game.DestroyCritter(sourceCr);
-        Game.DestroyCritter(resultCr);
+        if (ReentryMoveCalls != 1) return -3;
+        if (moved !is null) return -4;
+        if (item.Ownership != ItemOwnership::CritterInventory || item.CritterId != interceptor.Id) return -5;
+        if (receiver.GetItems("TestItem".hstr()).length() != 0 || interceptor.GetItems("TestItem".hstr()).length() != 1 || owner.GetItems("TestItem".hstr()).length() != 0) return -6;
+
+        Game.DestroyCritter(owner);
+        Game.DestroyCritter(receiver);
+        Game.DestroyCritter(interceptor);
+        return 0;
+    }
+
+    ident FinishMoveItemId;
+    ident FinishMoveTargetId;
+    bool FinishMoveRefused;
+
+    [[Event]]
+    void OnFinishMoveItem(Item item)
+    {
+        if (item.Id != FinishMoveItemId) return;
+
+        Critter? target = Game.GetCritter(FinishMoveTargetId);
+        if (target is null) return;
+
+        try {
+            Game.MoveItem(item, target);
+        }
+        catch {
+            FinishMoveRefused = true;
+        }
+    }
+
+    int TestGameDestroyingItemIsNotMoved()
+    {
+        Critter owner = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter target = Game.CreateCritter("TestCritter".hstr(), false);
+        if (owner is null || target is null) return -1;
+
+        Item item = owner.AddItem("TestItem".hstr());
+        if (item is null) return -2;
+
+        ident itemId = item.Id;
+        FinishMoveItemId = itemId;
+        FinishMoveTargetId = target.Id;
+        FinishMoveRefused = false;
+
+        Game.OnItemFinish.Subscribe(OnFinishMoveItem);
+        Game.DestroyItem(item);
+        Game.OnItemFinish.Unsubscribe(OnFinishMoveItem);
+        FinishMoveItemId = ident();
+
+        if (!FinishMoveRefused) return -3;
+        if (Game.GetItem(itemId) !is null) return -4;
+        if (target.GetItems("TestItem".hstr()).length() != 0 || owner.GetItems("TestItem".hstr()).length() != 0) return -5;
+
+        Game.DestroyCritter(owner);
+        Game.DestroyCritter(target);
+        return 0;
+    }
+
+    int TestGameCloneItem()
+    {
+        Critter owner = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter receiver = Game.CreateCritter("TestCritter".hstr(), false);
+        if (owner is null || receiver is null) return -1;
+
+        Item source = owner.AddItem("TestItem".hstr());
+        if (source is null) return -2;
+
+        source.LightDistance = 5;
+
+        Item clone = Game.CloneItem(source);
+        if (clone is null || clone.Id == source.Id || clone.LightDistance != 5) return -3;
+        if (clone.Ownership != ItemOwnership::Nowhere || source.Ownership != ItemOwnership::CritterInventory) return -4;
+
+        // The copy is adjusted while detached, so no holder ever observes the copied value
+        clone.LightDistance = 2;
+
+        Item? moved = Game.MoveItem(clone, receiver);
+        if (moved is null || moved.Id != clone.Id) return -6;
+        if (clone.Ownership != ItemOwnership::CritterInventory) return -7;
+        if (receiver.GetItems("TestItem".hstr()).length() != 1 || owner.GetItems("TestItem".hstr()).length() != 1 || source.LightDistance != 5) return -8;
+
+        Item created = Game.CreateItem("TestItem".hstr());
+        if (created is null || created.Ownership != ItemOwnership::Nowhere) return -10;
+
+        Critter stock = Game.CreateCritter("TestCritter".hstr(), false);
+        if (stock is null) return -13;
+
+        Item? placed = Game.MoveItem(created, stock);
+        if (placed is null || placed.Id != created.Id) return -11;
+        if (stock.GetItems("TestItem".hstr()).length() != 1) return -12;
+
+        dict<ItemProperty, int> props = {{ItemProperty::LightDistance, 7}};
+        Item withProps = Game.CreateItem("TestItem".hstr(), props);
+        if (withProps is null || withProps.Ownership != ItemOwnership::Nowhere) return -14;
+        if (withProps.GetAsInt(ItemProperty::LightDistance) != 7) return -15;
+        Game.DestroyItem(withProps);
+
+        Item abandoned = Game.CloneItem(source);
+        ident abandonedId = abandoned.Id;
+        Game.DestroyItem(abandoned);
+        if (Game.GetItem(abandonedId) !is null || owner.GetItems("TestItem".hstr()).length() != 1) return -9;
+
+        Game.DestroyCritter(owner);
+        Game.DestroyCritter(receiver);
+        Game.DestroyCritter(stock);
         return 0;
     }
 
@@ -1163,7 +1163,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) return -2;
 
         ident item_id = item.Id;
@@ -1192,29 +1192,6 @@ namespace ScriptMethodsTest
         return -2;
     }
 
-    int TestGameDestroyItemHandleCountOverload()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        Item item = cr.AddItem("TestStackableItem".hstr(), 4);
-        if (item is null) return -2;
-
-        ident itemId = item.Id;
-
-        Game.DestroyItem(item, 0);
-        if (item.Count != 4) return -3;
-
-        Game.DestroyItem(item, 1);
-        if (item.Count != 3) return -4;
-
-        Game.DestroyItem(item, 3);
-        if (Game.GetItem(itemId) !is null) return -5;
-
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
     int TestItemMapAndNestedOwnership()
     {
         array<hstring> mapPids = {"TestMap".hstr()};
@@ -1228,7 +1205,7 @@ namespace ScriptMethodsTest
         }
 
         mpos groundHex(22, 24);
-        Item groundItem = map.AddItem(groundHex, "TestItem".hstr(), 1);
+        Item groundItem = map.AddItem(groundHex, "TestItem".hstr());
         if (groundItem is null) {
             Game.DestroyLocation(loc);
             return -3;
@@ -1254,13 +1231,13 @@ namespace ScriptMethodsTest
 
         groundItem.RefreshVisibility();
 
-        Item mapContainer = map.AddItem(mpos(23, 24), "TestItem2".hstr(), 1);
+        Item mapContainer = map.AddItem(mpos(23, 24), "TestItem2".hstr());
         if (mapContainer is null) {
             Game.DestroyLocation(loc);
             return -7;
         }
 
-        Item nestedMapItem = mapContainer.AddItem("TestItem".hstr(), 1);
+        Item nestedMapItem = mapContainer.AddItem("TestItem".hstr());
         if (nestedMapItem is null) {
             Game.DestroyLocation(loc);
             return -8;
@@ -1290,14 +1267,14 @@ namespace ScriptMethodsTest
             return -12;
         }
 
-        Item critterContainer = cr.AddItem("TestItem2".hstr(), 1);
+        Item critterContainer = cr.AddItem("TestItem2".hstr());
         if (critterContainer is null) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
             return -13;
         }
 
-        Item nestedCritterItem = critterContainer.AddItem("TestItem".hstr(), 1);
+        Item nestedCritterItem = critterContainer.AddItem("TestItem".hstr());
         if (nestedCritterItem is null) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
@@ -1357,14 +1334,14 @@ namespace ScriptMethodsTest
         array<Item> items = {};
         for (int i = 0; i < 4; i++)
         {
-            Item item = cr.AddItem("TestItem".hstr(), 1);
+            Item item = cr.AddItem("TestItem".hstr());
             if (item is null) return -(i + 2);
             items.insertLast(item);
         }
 
         Game.DestroyItems(items);
 
-        if (cr.CountItem("TestItem".hstr()) != 0) return -10;
+        if (!cr.GetItems("TestItem".hstr()).isEmpty()) return -10;
 
         Game.DestroyCritter(cr);
         return 0;
@@ -1516,7 +1493,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) return -2;
 
         // Item should know its owner
@@ -2415,7 +2392,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -6;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -7;
@@ -2497,7 +2474,7 @@ namespace ScriptMethodsTest
             return -3;
         }
 
-        Item item = cr.AddItem("TestItem".hstr(), 3);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -4;
@@ -2597,28 +2574,28 @@ namespace ScriptMethodsTest
     void TestEntityGetAsIntNonPlainPropertyThrows()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         item.GetAsInt(ItemProperty::MultihexLines);
     }
 
     void TestEntitySetAsIntNonPlainPropertyThrows()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         item.SetAsInt(ItemProperty::MultihexLines, 1);
     }
 
     void TestEntityGetAsAnyNonPlainPropertyThrows()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         item.GetAsAny(ItemProperty::MultihexLines);
     }
 
     void TestEntitySetAsAnyNonPlainPropertyThrows()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         any value = 1;
         item.SetAsAny(ItemProperty::MultihexLines, value);
     }
@@ -2881,7 +2858,7 @@ namespace ScriptMethodsTest
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -3;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -4;
@@ -2914,13 +2891,13 @@ namespace ScriptMethodsTest
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
+        auto writer = data_writer(map_data);
 
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0}); // hashes_count
-        writer.Write<uint32_t>(uint32_t {0}); // cr_count
-        writer.Write<uint32_t>(uint32_t {0}); // item_count
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0}); // hashes_count
+        writer.write<uint32_t>(uint32_t {0}); // cr_count
+        writer.write<uint32_t>(uint32_t {0}); // item_count
 
         return map_data;
     }
@@ -2930,49 +2907,23 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WriteBytes(props_data);
-
-        return protos_data;
-    }
-
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
-    {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
-        proto.SetStackable(true);
-        proto.GetProperties()->StoreAllData(props_data, str_hashes);
-
-        vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
-
-        writer.Write<uint32_t>(uint32_t {0});
-        ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WriteBytes(props_data);
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write_bytes(props_data);
 
         return protos_data;
     }
@@ -2981,32 +2932,30 @@ namespace ScriptMethodsTest
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
-        auto stackable_item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestStackableItem");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptMethodsItem.fopro-bin-server", item_blob);
         runtime_source->AddFile("ScriptMethodsItem2.fopro-bin-server", item2_blob);
-        runtime_source->AddFile("ScriptMethodsStackableItem.fopro-bin-server", stackable_item_blob);
         runtime_source->AddFile("ScriptMethodsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("TestMap.fopro-bin-server", map_blob);
         runtime_source->AddFile("TestMap.fomap-bin-server", fomap_blob);
@@ -3036,7 +2985,7 @@ namespace ScriptMethodsTest
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -3061,7 +3010,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("AddAndCountItems")
     {
@@ -3082,14 +3031,6 @@ TEST_CASE("ServerCritterInventoryOperations")
     SECTION("GetItemById")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterGetItemById"));
-        REQUIRE(func);
-        REQUIRE(func.Call());
-        CHECK(func.GetResult() == 0);
-    }
-
-    SECTION("DestroyItems")
-    {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterDestroyItems"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3125,7 +3066,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("InvokeCollectionResults")
     {
@@ -3229,7 +3170,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetCritterById")
     {
@@ -3277,7 +3218,7 @@ TEST_CASE("ServerGameItemOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("ItemSetupScriptMethods")
     {
@@ -3319,9 +3260,25 @@ TEST_CASE("ServerGameItemOperations")
         CHECK(func.GetResult() == 0);
     }
 
-    SECTION("MoveItemMergeEvent")
+    SECTION("MoveItemRemovalReentry")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemMergeEvent"));
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemRemovalReentry"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("DestroyingItemIsNotMoved")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyingItemIsNotMoved"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("CloneItem")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCloneItem"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3338,14 +3295,6 @@ TEST_CASE("ServerGameItemOperations")
     SECTION("GetItemZeroIdThrows")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetItemZeroIdThrows"));
-        REQUIRE(func);
-        REQUIRE(func.Call());
-        CHECK(func.GetResult() == 0);
-    }
-
-    SECTION("DestroyItemHandleCountOverload")
-    {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyItemHandleCountOverload"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3389,7 +3338,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("Persistence")
     {
@@ -3509,15 +3458,15 @@ TEST_CASE("ServerMiscScriptOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_throwing_func = [&server, &get_func](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(get_func(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(message);

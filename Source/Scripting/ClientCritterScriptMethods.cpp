@@ -217,42 +217,6 @@ FO_SCRIPT_API void Client_Critter_RefreshView(ptr<CritterView> self)
     hex_cr->RefreshView();
 }
 
-// Sums stack counts for visible inventory items with the requested prototype id, or for every item when the id is empty
-///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, hstring protoId)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (!protoId || item->GetProtoId() == protoId) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
-// Sums stack counts for visible inventory items whose prototype matches the supplied prototype
-///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, ptr<ProtoItem> proto)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (item->GetProtoId() == proto->GetProtoId()) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
 // Returns the visible inventory item with this entity id, or null when it is absent
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident_t itemId)
@@ -272,35 +236,21 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstri
     }
 
     auto inv_items = self->GetInvItems();
+    nptr<ItemView> another_slot;
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
 
-            if (item->GetProtoId() == protoId) {
+        if (item->GetProtoId() == protoId) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == protoId) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 // Returns a visible inventory item matching the supplied prototype, preferring the Inventory slot for non-stackable items, or null when absent
@@ -308,35 +258,21 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstri
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<ProtoItem> proto)
 {
     auto inv_items = self->GetInvItems();
+    nptr<ItemView> another_slot;
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
 
-            if (item->GetProtoId() == proto->GetProtoId()) {
+        if (item->GetProtoId() == proto->GetProtoId()) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == proto->GetProtoId()) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 // Returns the first visible inventory item whose integer-convertible property equals the requested value, or null when none match
@@ -436,7 +372,7 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, Critter
         anim_callback.StateAnim = stateAnim;
         anim_callback.ActionAnim = actionAnim;
         anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
-        anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
+        anim_callback.Callback = [self, animCallback = safe_alloc::make_shared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
             if (!self->IsDestroyed()) {
                 animCallback->Call(self);
             }
@@ -594,7 +530,7 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 
 // Applies a local predicted drop, slot move, or optional slot swap and refreshes map action and lighting visuals; it does not send an authoritative server request
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
 {
     auto item = self->GetInvItem(itemId);
     auto swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
@@ -615,12 +551,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
             map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
-        if (item->GetStackable() && itemCount < item->GetCount()) {
-            item->SetCount(item->GetCount() - itemCount);
-        }
-        else {
-            self->DeleteInvItem(item);
-        }
+        self->DeleteInvItem(item);
     }
     else {
         item->SetCritterSlot(toSlot);

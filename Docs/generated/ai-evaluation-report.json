@@ -2473,9 +2473,9 @@
           "top_document_ids": [
             "buildtools-pipeline",
             "generated-api-metadata",
-            "packaging-and-release",
-            "native-essentials",
-            "managed-csharp-scripting"
+            "managed-csharp-scripting",
+            "buildtools-readme",
+            "debugging"
           ]
         },
         {

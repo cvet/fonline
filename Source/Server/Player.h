@@ -85,6 +85,7 @@ public:
     void SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const Property> prop) noexcept;
     void SetViewMap(ptr<Map> map, mpos hex);
     void ResetViewMap() noexcept;
+    void ClearAllAssociations() noexcept;
 
     void Send_LoginSuccess();
     void Send_Moving(ptr<const Critter> from_cr);

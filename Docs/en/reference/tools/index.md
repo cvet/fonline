@@ -101,6 +101,7 @@ Built-in baker implementations:
 - `Source/Tools/MetadataBaker.*` — parses metadata tags and produces metadata resources used by runtime registration.
 - `Source/Tools/ConfigBaker.*` — bakes configuration resources.
 - `Source/Tools/RawCopyBaker.*` — copies selected resources without transformation.
+- `Source/Tools/AudioBaker.*` — validates Ogg/Vorbis and converts supported WAV inputs to the common runtime Vorbis payload while preserving authored paths.
 - `Source/Tools/ImageBaker.*` — imports image/sprite/frame formats including classic Fallout-family formats and PNG/TGA.
 - `Source/Tools/EffectBaker.*` — bakes shader/effect sources and shader stages.
 - `Source/Tools/ParticleBaker.*` — converts native SPARK `.spark` XML to
@@ -114,15 +115,17 @@ Built-in baker implementations:
 - `Source/Tools/ModelMeshBaker.*` - bakes current FBX/OBJ hierarchy, mesh, skinning, material, and animation data when 3D support is enabled; see [Model Format](../../how-to/content/model-format.md).
 - `Source/Tools/ModelInfoBaker.*` - validates and bakes `.fo3d` composition plus the common model-animation duration table when 3D support is enabled; see [Model Format](../../how-to/content/model-format.md) and [Model Animation](../../how-to/content/model-animation.md).
 - `Source/Tools/AngelScriptBaker.*` — compiles/bakes AngelScript bytecode resources when AngelScript support is enabled.
+- `Source/Tools/ManagedScriptBaker.*` — generates the C# API/project and builds target-specific managed assemblies when Managed scripting is enabled.
 
 Model animation tuple, speed, alias, metadata, and typed lookup semantics live in [Model Animation](../../how-to/content/model-animation.md). Per-frame 2D sprite offsets and movement-driven walk/run cycles live in [Sprite Root Motion](../../how-to/content/sprite-root-motion.md). Detailed bake ordering, settings, output writing, and validation live in [Baking Pipeline](../../explanation/content-pipeline/baking.md).
 
 FOFNT and AngelCode BMFont descriptors have no editor or dedicated baker in the Engine. They are authored externally, copied by `RawCopyBaker`, and parsed by the client; referenced images follow the normal image pipeline. See [Font Formats And Text Layout](../../how-to/content/font-format.md) for descriptor syntax, `.bmfc` ownership, binding/layout behavior, and validation.
 
-Audio likewise has no dedicated editor or transcoding baker in the Engine.
-Author WAV/ACM/Ogg externally, copy runtime bytes with `RawCopyBaker`, and use
-[Audio](../../how-to/content/audio.md) for format, naming, playback, and audible-validation
-requirements.
+Audio has no dedicated editor, but it does have `AudioBaker`. Author supported
+WAV or Ogg/Vorbis externally; the baker validates native Ogg, converts WAV to
+the common Vorbis payload, and preserves the authored resource path. Use
+[Audio](../../how-to/content/audio.md) for formats, playback handles, spatial
+updates, mixing, and audible-validation requirements.
 
 Video likewise relies on external authoring. `RawCopyBaker` copies `.ogv`
 without transcoding, and the client decodes Theora in Ogg. Use
@@ -297,7 +300,7 @@ Mapper UI behavior is less directly covered by focused unit tests. Validate thos
 - Particle Preview, SPARK editor, pinned Effekseer editor, and visible review:
   [Particle Authoring Tools](../../how-to/tools/particle-authoring.md).
 - Font descriptor authoring and runtime binding: external bitmap-font tooling, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, [Font Formats And Text Layout](../../how-to/content/font-format.md).
-- Audio authoring and playback: external audio tooling, `Source/Tools/RawCopyBaker.*`, `Source/Client/SoundManager.*`, `Source/Frontend/Application.*`, [Audio](../../how-to/content/audio.md).
+- Audio authoring and playback: external audio tooling, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*`, `Source/Frontend/Application.*`, [Audio](../../how-to/content/audio.md).
 - Video authoring and playback: external video tooling, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*`, [Video](../../how-to/content/video.md).
 - Application target wiring: [Applications](../applications.md) and [BuildTools Pipeline](../cmake-and-buildtools/pipeline.md).
 

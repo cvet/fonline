@@ -69,7 +69,7 @@ class VideoDocumentationTests(unittest.TestCase):
         load = source.index("Resources.ReadFile(names.front())", replace)
         self.assertLess(replace, load)
         self.assertIn("if (_video && enqueue)", source)
-        self.assertIn("SndMngr.StopMusic()", source)
+        self.assertIn("AudioMngr.StopMusic()", source)
         self.assertIn("OnRenderIface.Fire()", source)
         self.assertIn("SprMngr.DrawTexture(_video->Tex, false)", source)
         self.assertTrue(self.model["outputs"]["fullscreen_stretches_to_target"])

@@ -146,6 +146,13 @@ FO_SCRIPT_API GamepadState Client_Game_GetGamepadState(ptr<ClientEngine> client)
     return client->SprMngr.GetInput()->GetGamepadState();
 }
 
+// Returns the current logical screen size
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API isize32 Client_Game_ScreenSize(ptr<ClientEngine> client)
+{
+    return client->SprMngr.GetScreenSize();
+}
+
 // Returns whether the client window is currently fullscreen
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_IsFullscreen(ptr<ClientEngine> client)
@@ -335,7 +342,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DumpAtlases(ptr<ClientEngine> client)
 {
-    client->SprMngr.GetAtlasMngr()->DumpAtlases(client->Settings->UserWritablePath);
+    client->SprMngr.GetAtlasMngr()->DumpAtlases(client->Settings->Common.UserWritablePath);
 }
 
 // Changes the logical screen size and, for a non-virtual window, the native client window size to the supplied dimensions
@@ -356,11 +363,46 @@ FO_SCRIPT_API void Client_Game_DrawMiniMap(ptr<ClientEngine> client, int32_t zoo
     client->DrawMiniMap(zoom, x, y, w, h);
 }
 
-// Reapplies the current AlwaysOnTop setting to the client window
+// Reports whether the client window currently stays above other windows
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_RefreshAlwaysOnTop(ptr<ClientEngine> client)
+FO_SCRIPT_API bool Client_Game_IsAlwaysOnTop(ptr<ClientEngine> client)
 {
-    client->SprMngr.SetAlwaysOnTop(client->Settings->AlwaysOnTop);
+    return client->SprMngr.IsAlwaysOnTop();
+}
+
+// Enables or disables the client window's always-on-top mode
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetAlwaysOnTop(ptr<ClientEngine> client, bool enable)
+{
+    client->SprMngr.SetAlwaysOnTop(enable);
+}
+
+// Returns the live music-volume percentage owned by the audio manager
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetMusicVolume(ptr<ClientEngine> client)
+{
+    return client->AudioMngr.GetMusicVolume();
+}
+
+// Changes the live music-volume percentage without mutating startup settings
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetMusicVolume(ptr<ClientEngine> client, int32_t volume)
+{
+    client->AudioMngr.SetMusicVolume(volume);
+}
+
+// Returns the live sound-effect volume percentage owned by the audio manager
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetSoundVolume(ptr<ClientEngine> client)
+{
+    return client->AudioMngr.GetSoundVolume();
+}
+
+// Changes the live sound-effect volume percentage without mutating startup settings
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetSoundVolume(ptr<ClientEngine> client, int32_t volume)
+{
+    client->AudioMngr.SetSoundVolume(volume);
 }
 
 // Returns the connection's cumulative sent-byte counter narrowed to uint32
@@ -375,6 +417,13 @@ FO_SCRIPT_API uint32_t Client_Game_BytesSend(ptr<ClientEngine> client)
 FO_SCRIPT_API uint32_t Client_Game_BytesReceive(ptr<ClientEngine> client)
 {
     return numeric_cast<uint32_t>(client->GetConnection()->GetBytesReceived());
+}
+
+// Returns the most recently measured client-server round-trip time in milliseconds
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetPing(ptr<ClientEngine> client)
+{
+    return client->GetConnection()->GetPing();
 }
 
 // Finds a live item by nonzero id, searching the chosen inventory first and then visible map/global-map items and critter inventories; returns null when absent or destroyed
@@ -638,11 +687,33 @@ FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<Client
     return sorted_critters;
 }
 
-// Starts a named sound through the client sound resource catalog and returns whether playback was accepted
+// Returns the source-backed audio resource paths indexed by Audio.SoundFileExtensions
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
+FO_SCRIPT_API vector<string> Client_Game_GetSoundNames(ptr<ClientEngine> client)
 {
-    return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
+    auto sound_names = client->AudioMngr.GetSoundNames();
+    return vector<string> {sound_names.begin(), sound_names.end()};
+}
+
+// Starts the exact baked audio resource and returns its non-reused lifetime handle, or zero when no live sound starts
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName)
+{
+    return client->AudioMngr.PlaySound(soundName);
+}
+
+// Starts the exact baked audio resource with initial attenuation and pan and returns its lifetime handle, or zero on failure
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)
+{
+    return client->AudioMngr.PlaySound(soundName, attenuation, pan);
+}
+
+// Updates attenuation and pan for a live sound handle and returns false after that sound has ended
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_UpdateSound(ptr<ClientEngine> client, uint32_t soundId, float32_t attenuation, float32_t pan)
+{
+    return client->AudioMngr.UpdateSound(soundId, attenuation, pan);
 }
 
 // Starts named music with the supplied repeat delay and returns whether playback was accepted; an empty name stops current music and returns true
@@ -650,11 +721,11 @@ FO_SCRIPT_API bool Client_Game_PlaySound(ptr<ClientEngine> client, string_view s
 FO_SCRIPT_API bool Client_Game_PlayMusic(ptr<ClientEngine> client, string_view musicName, timespan repeatTime)
 {
     if (musicName.empty()) {
-        client->SndMngr.StopMusic();
+        client->AudioMngr.StopMusic();
         return true;
     }
 
-    return client->SndMngr.PlayMusic(musicName, repeatTime);
+    return client->AudioMngr.PlayMusic(musicName, repeatTime);
 }
 
 // Starts fullscreen video playback, optionally queueing behind an active video; a nonqueued request replaces playback and clears the queue, and an empty name stops it
@@ -686,11 +757,11 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
 
     clip.SetLooped(looped);
 
-    auto video = SafeAlloc::MakeRefCounted<VideoPlayback>();
+    auto video = safe_alloc::make_refcounted<VideoPlayback>();
 
     video->PlaybackResources.emplace(std::move(clip), std::move(tex));
 
-    video->AddRef();
+    video->addref();
     return video;
 }
 
@@ -997,7 +1068,7 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, K
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::IfaceSprites);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::IfaceSprites);
 }
 
 // Loads a hashed sprite resource into the interface atlas, starts its default animation, and returns a client-local handle, or zero when unresolved
@@ -1011,7 +1082,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadSprite(ptr<ClientEngine> client, hstring 
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::MapSprites);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::MapSprites);
 }
 
 // Loads a hashed sprite resource into the map-sprite atlas, starts its default animation, and returns a client-local handle, or zero when unresolved
@@ -1025,7 +1096,7 @@ FO_SCRIPT_API uint32_t Client_Game_LoadMapSprite(ptr<ClientEngine> client, hstri
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, string_view sprName)
 {
-    return client->AnimLoad(client->Hashes.ToHashedString(sprName), AtlasType::OneImage);
+    return client->AnimLoad(client->Hashes.to_hashed_string(sprName), AtlasType::OneImage);
 }
 
 // Loads a hashed sprite resource as a separate one-image texture, starts its default animation, and returns a client-local handle, or zero when unresolved
@@ -1417,7 +1488,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
         }
     });
 
-    MemFill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
+    memory::fill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
 
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
         client->DrawCritterModelLayers[i] = layers[i];
@@ -1595,10 +1666,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
-    int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
-    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
-    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
+    int32_t l = std::clamp(pos.x, 0, client->SprMngr.GetScreenSize().width);
+    int32_t t = std::clamp(pos.y, 0, client->SprMngr.GetScreenSize().height);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->SprMngr.GetScreenSize().width);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->SprMngr.GetScreenSize().height);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1623,10 +1694,10 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 
     rt->SetCustomDrawEffect(effect);
 
-    int32_t l = std::clamp(pos.x, 0, client->Settings->ScreenWidth);
-    int32_t t = std::clamp(pos.y, 0, client->Settings->ScreenHeight);
-    int32_t r = std::clamp(pos.x + size.width, 0, client->Settings->ScreenWidth);
-    int32_t b = std::clamp(pos.y + size.height, 0, client->Settings->ScreenHeight);
+    int32_t l = std::clamp(pos.x, 0, client->SprMngr.GetScreenSize().width);
+    int32_t t = std::clamp(pos.y, 0, client->SprMngr.GetScreenSize().height);
+    int32_t r = std::clamp(pos.x + size.width, 0, client->SprMngr.GetScreenSize().width);
+    int32_t b = std::clamp(pos.y + size.height, 0, client->SprMngr.GetScreenSize().height);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1640,14 +1711,14 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));
 
-    frect32 from = frect32(std::clamp(fromX, 0, client->Settings->ScreenWidth), //
-        std::clamp(fromY, 0, client->Settings->ScreenHeight), //
-        std::clamp(fromW, 0, client->Settings->ScreenWidth - fromX), //
-        std::clamp(fromH, 0, client->Settings->ScreenHeight - fromY));
-    irect32 to = irect32(std::clamp(toX, 0, client->Settings->ScreenWidth), //
-        std::clamp(toY, 0, client->Settings->ScreenHeight), //
-        std::clamp(toW, 0, client->Settings->ScreenWidth - toX), //
-        std::clamp(toH, 0, client->Settings->ScreenHeight - toY));
+    frect32 from = frect32(std::clamp(fromX, 0, client->SprMngr.GetScreenSize().width), //
+        std::clamp(fromY, 0, client->SprMngr.GetScreenSize().height), //
+        std::clamp(fromW, 0, client->SprMngr.GetScreenSize().width - fromX), //
+        std::clamp(fromH, 0, client->SprMngr.GetScreenSize().height - fromY));
+    irect32 to = irect32(std::clamp(toX, 0, client->SprMngr.GetScreenSize().width), //
+        std::clamp(toY, 0, client->SprMngr.GetScreenSize().height), //
+        std::clamp(toW, 0, client->SprMngr.GetScreenSize().width - toX), //
+        std::clamp(toH, 0, client->SprMngr.GetScreenSize().height - toY));
 
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -1685,18 +1756,18 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
             for (int32_t y = 0; y < size.height / 2; y++) {
                 auto top = numeric_cast<size_t>(y) * width;
                 auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                MemCopy(row_buf_data, pixels_data.get() + top, row_bytes);
-                MemCopy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
-                MemCopy(pixels_data.get() + bottom, row_buf_data, row_bytes);
+                memory::copy(row_buf_data, pixels_data.get() + top, row_bytes);
+                memory::copy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
+                memory::copy(pixels_data.get() + bottom, row_buf_data, row_bytes);
             }
         }
     }
 
-    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(client->Settings->Common.UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw ScriptException("Can't create directory for screenshot", filePath);
         }
     }
@@ -1708,16 +1779,16 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view filePath, string_view text)
 {
-    string path = fs_make_writable_path(client->Settings->UserWritablePath, strex(filePath).format_path());
+    string path = fs::make_writable_path(client->Settings->Common.UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
-        if (!fs_create_directories(dir)) {
+        if (!fs::create_directories(dir)) {
             throw ScriptException("Can't open file for writing", filePath);
         }
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream file {std::filesystem::path {fs::make_path(path)}, std::ios::binary | std::ios::trunc};
 
     if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
@@ -1835,7 +1906,7 @@ FO_SCRIPT_API void Client_Game_ClearForcedMousePos(ptr<ClientEngine> client)
     client->HasForcedMousePos = false;
 }
 
-// Loads the named language pack, makes it current, and updates the client Language setting
+// Loads the named language pack and makes it current without changing the configured startup language
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_ChangeLanguage(ptr<ClientEngine> client, string_view langName)
 {

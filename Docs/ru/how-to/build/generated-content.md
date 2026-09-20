@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 ---
 
 # Работа с генерируемым содержимым
-
 <!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6"} -->
-
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
 проверять generated output, не редактируя его вручную.

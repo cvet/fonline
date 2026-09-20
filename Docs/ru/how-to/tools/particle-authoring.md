@@ -5,9 +5,7 @@ locale: ru
 document_id: particle-authoring-tools
 permalink: /Docs/ru/how-to/tools/particle-authoring.html
 ---
-
 <!-- docs-translation: {"document_id":"particle-authoring-tools","locale":"ru","source_path":"Docs/en/how-to/tools/particle-authoring.md","source_sha256":"9dbc060c7f534201f014e8fe86db20133ec83a55bf01eda4a437a2401535dc8c"} -->
-
 # Инструменты авторинга частиц
 
 > Принадлежащий Engine workflow для Particle Preview, встроенного редактора

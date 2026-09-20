@@ -56,9 +56,16 @@ Item::~Item()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!IsEngineShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
-    }
+    FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
+}
+
+void Item::ClearAllAssociations() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    _innerItems.reset();
 }
 
 auto Item::GetName() const noexcept -> string_view
@@ -134,25 +141,6 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 
     for (auto& item : *_innerItems) {
         if (item->GetId() == item_id) {
-            return item;
-        }
-    }
-
-    return nullptr;
-}
-
-auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-
-    if (!_innerItems) {
-        return nullptr;
-    }
-
-    for (auto& item : *_innerItems) {
-        if (item->GetProtoId() == pid && (stack_id.empty() || item->GetContainerStack() == stack_id)) {
             return item;
         }
     }
@@ -266,21 +254,6 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     // so the cycle is refused before any ownership is written
     FO_VERIFY_AND_THROW(!IsInsideContainer(item), "Container cannot be placed inside itself", GetId(), item->GetId());
 
-    if (item->GetStackable()) {
-        auto item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
-
-        if (item_already) {
-            if (item_already == item) {
-                return item;
-            }
-
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
-            return item_already;
-        }
-    }
-
     if (!_innerItems) {
         _innerItems.emplace();
     }
@@ -338,12 +311,12 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
         auto slot = GetCritterSlot();
         size_t slot_num = static_cast<size_t>(slot);
 
-        if (slot_num >= _engine->Settings->CritterSlotEnabled.size() || !_engine->Settings->CritterSlotEnabled[slot_num]) {
+        if (slot_num >= _engine->Settings->Critter.CritterSlotEnabled.size() || !_engine->Settings->Critter.CritterSlotEnabled[slot_num]) {
             return false;
         }
 
         if (as_public) {
-            if (slot_num >= _engine->Settings->CritterSlotSendData.size() || !_engine->Settings->CritterSlotSendData[slot_num]) {
+            if (slot_num >= _engine->Settings->Critter.CritterSlotSendData.size() || !_engine->Settings->Critter.CritterSlotSendData[slot_num]) {
                 return false;
             }
         }

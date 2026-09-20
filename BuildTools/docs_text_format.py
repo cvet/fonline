@@ -148,11 +148,11 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
 def _extract_setting_defaults(root: Path, settings_path: str) -> dict[str, object]:
     text = (root / settings_path).read_text(encoding="utf-8")
     bake_match = re.search(
-        r'FIXED_SETTING\(vector<string>, Baking, BakeLanguages,\s*(?P<defaults>[^;]+)\);',
+        r'SETTING\(vector<string>, Baking, BakeLanguages,\s*(?P<defaults>[^;]+)\);',
         text,
     )
     client_match = re.search(
-        r'VARIABLE_SETTING\(string, Client, Language,\s*"(?P<default>[^"]+)"\);',
+        r'SETTING\(string, Client, Language,\s*"(?P<default>[^"]+)"\);',
         text,
     )
     if bake_match is None or client_match is None:

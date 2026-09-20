@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 ---
 
 # Конфигурация игрового проекта
-
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"149a85e960e00eee377451040a8d1eeaf3e0243351ad589f4bd82d805f04c311"} -->
-
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"2e1316c8137c8e9dea1ef2c7d8e8c67547d12a5618d6995bb0d0802366468eb6"} -->
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
 [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md), а
@@ -101,12 +99,12 @@ Baking.ClientResources = Resources
 Baking.PlatformBinaries = PlatformBinaries
 Baking.CacheResources = Cache
 
-Script.ManagedScriptAssemblies = MyGame
-Script.ManagedScriptProjectName = MyGame
-Script.ManagedScriptTargetFramework = net10.0
-Script.ManagedScriptMsBuild = dotnet msbuild
-Script.ManagedScriptDirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
-Script.ManagedScriptAnalyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
+ManagedScript.Assemblies = MyGame
+ManagedScript.ProjectName = MyGame
+ManagedScript.TargetFramework = net10.0
+ManagedScript.MsBuild = dotnet msbuild
+ManagedScript.Dirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
+ManagedScript.Analyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
 ```
 
 Неизвестные имена становятся project custom settings и доступны через
@@ -161,13 +159,14 @@ IncludePatterns = *
 Bakers = Managed
 ```
 
-Выбирайте backend явно. Pack AngelScript запекает модули `.fos` через `AngelScriptBaker`; pack Managed компилирует настроенные top-level исходники `.cs` и generated API в target-specific assemblies. Managed pack должен включать Engine CoreScripts и проектные исходники из `Script.ManagedScriptDirs`; согласуйте с той же сборкой настройки assemblies, analyzers, extra sources/references и generated directory. Полный контракт backend описан в [Скриптах Managed C#](../scripting/managed-csharp.md).
+Выбирайте backend явно. Pack AngelScript запекает модули `.fos` через `AngelScriptBaker`; pack Managed компилирует настроенные top-level исходники `.cs` и generated API в target-specific assemblies. Managed pack должен включать Engine CoreScripts и проектные исходники из `ManagedScript.Dirs`; согласуйте с той же сборкой настройки assemblies, analyzers, extra sources/references и generated directory. Полный контракт backend описан в [Скриптах Managed C#](../scripting/managed-csharp.md).
 
 Допустимые fields:
 
 | Field | Значение |
 |---|---|
 | `Name` | Обязательная identity pack и generated resource entry |
+| `ConfigDir` | Вычисляемый каталог владеющего config для разрешения относительных inputs; в секции не задаётся |
 | `InputDirs` | Разделенные пробелами каталоги относительно owning config |
 | `InputFiles` | Разделенные пробелами explicit files, также относительно config |
 | `IncludePatterns` | Необязательный input glob allowlist |

@@ -58,8 +58,8 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
             return file.GetStr();
         }
 
-        BreakIntoDebugger();
-        WriteLog("Effect file '{}' not found", path2);
+        break_into_debugger();
+        logging::write("Effect file '{}' not found", path2);
         return {};
     });
 
@@ -190,7 +190,7 @@ void EffectManager::LoadMinimalEffects()
 
     int32_t effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
@@ -206,7 +206,7 @@ void EffectManager::LoadDefaultEffects()
 
     int32_t effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");

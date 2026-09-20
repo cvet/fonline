@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"7499971886f77612c3126ec7091fbc3123a9d70d4057e7966bdbb856343b8255"} -->
-
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"9d456a545a18eec8846e82565194e718c823dd1f8d82a3ff454b26c43d590c67"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -44,20 +42,24 @@ Managed C# является реализованным скриптовым back
 
 CMake-переключатель — `FO_MANAGED_SCRIPTING`. Он подключает managed runtime, backend, baker, tests CoreScripts и wiring приложений. `FO_NATIVE_SCRIPTING`, `FO_ANGELSCRIPT_SCRIPTING` и `FO_MANAGED_SCRIPTING` являются независимыми build options, но production-проект должен осознанно выбрать один gameplay backend, если он не проверяет cross-backend invocation.
 
-Настройки `Script.ManagedScript*` определяют generated project:
+Immutable startup settings группы `ManagedScript` определяют generated project:
 
 | Настройка | Контракт |
 | --- | --- |
-| `ManagedScriptAssemblies` | Логические entry assemblies для сборки. |
-| `ManagedScriptProjectName` | Базовое имя generated solution и project. |
-| `ManagedScriptTargetFramework` | Target framework generated SDK-style project. |
-| `ManagedScriptMsBuild` | Команда сборки generated project. |
-| `ManagedScriptDirs` | Source roots для top-level `.cs`; обычно Engine CoreScripts и проектные скрипты. |
-| `ManagedScriptGeneratedDir` | Необязательный каталог generated project; пустое значение выбирает `GeneratedSource/Managed` в build tree. |
-| `ManagedScriptExtraSources` | Дополнительные inputs вида `assembly,target,path`. |
-| `ManagedScriptExtraReferences` | Дополнительные references вида `assembly,target,reference`. |
-| `ManagedScriptAnalyzers` | Проекты Roslyn analyzer, включённые в generated build. |
-| `ManagedScriptBakerDryRun` | Структурный режим baker для тестов; он не доказывает наличие исполняемых assemblies. |
+| `ManagedScript.Assemblies` | Логические entry assemblies для сборки. |
+| `ManagedScript.ProjectName` | Базовое имя generated solution и project. |
+| `ManagedScript.TargetFramework` | Target framework generated SDK-style project. |
+| `ManagedScript.MsBuild` | Команда сборки generated project. |
+| `ManagedScript.Dirs` | Source roots для top-level `.cs`; обычно Engine CoreScripts и проектные скрипты. |
+| `ManagedScript.GeneratedDir` | Необязательный каталог generated project; пустое значение выбирает `GeneratedSource/Managed` в build tree. |
+| `ManagedScript.ExtraSources` | Дополнительные inputs вида `assembly,target,path`. |
+| `ManagedScript.ExtraReferences` | Дополнительные references вида `assembly,target,reference`. |
+| `ManagedScript.Analyzers` | Проекты Roslyn analyzer, включённые в generated build. |
+| `ManagedScript.AnalyzerPackages` | NuGet packages Roslyn analyzer в виде точных пар `name,version`. |
+| `ManagedScript.AdditionalFiles` | Файлы конфигурации analyzer, передаваемые как MSBuild `AdditionalFiles`. |
+| `ManagedScript.AnalysisLevel` / `AnalysisMode` | Необязательные overrides analysis level/mode SDK. |
+| `ManagedScript.BakerDryRun` | Структурный режим baker для тестов; он не доказывает наличие исполняемых assemblies. |
+| `ManagedScript.DeepTrackEntityWrappers` | Opt-in shutdown diagnostics с именами живых entity wrappers; обычный счётчик активен всегда. |
 
 Добавьте resource pack с `Managed` в списке `Bakers`. Inputs этого pack должны включать Engine `CoreScripts`, project script roots и источники `///@` metadata, которые нужны этим скриптам. Выбор assembly, target, pack и metadata является единым контрактом: сборка отдельного project, отличающегося от входов baker, не является проверкой движка.
 
@@ -137,7 +139,9 @@ Managed scripts объявляют и доказывают этот контра
 - `CoverReach.Parent`, `Ancestors` и `DestroyGraph` для transitive requirements;
 - CoreScript helpers `Sync` как единственные обычные wrappers над raw `Game.Sync`, `SyncRelease`, `Lock` и `Unlock`.
 
-Roslyn analyzer сообщает invalid annotations (`FOSYNC001`), неудовлетворённый transitive cover (`FOSYNC002`), отсутствующие declarations entry point (`FOSYNC003`), probing вместо acquisition (`FOSYNC004`), raw synchronization calls вне helper (`FOSYNC005`), утёкшие singleton locks (`FOSYNC006`), locks через `await` (`FOSYNC007`) и использование cover без нового доказательства после `await` (`FOSYNC009`). Подключите analyzer через `ManagedScriptAnalyzers` и считайте warnings ошибками сборки.
+Roslyn analyzer сообщает invalid annotations (`FOSYNC001`), неудовлетворённый transitive cover (`FOSYNC002`), отсутствующие declarations entry point (`FOSYNC003`), probing вместо acquisition (`FOSYNC004`), raw synchronization calls вне helper (`FOSYNC005`) и использование cover без нового доказательства после `await` (`FOSYNC009`). `FOSYNC006` и `FOSYNC007` удалены: используйте `using GameLock scope = GameLock.Acquire();`; его `ref struct` scope освобождает lock на любом пути и не может пережить `await`. Подключите analyzer через `ManagedScript.Analyzers` или `ManagedScript.AnalyzerPackages` и считайте warnings ошибками сборки.
+
+`Sync.Acquire` расширяет связанный cover на месте через `Game.SyncWiden`, не освобождая и не захватывая заново уже покрытые сущности. Нативный cover остаётся непрерывным при проходе по отношениям `[SyncWiden]`, без race window между двумя наборами.
 
 Attributes являются доказательством, а не операцией блокировки. Entry point отмечает entity, которую Engine уже синхронизировал. Обычный helper получает нужный cover или распространяет `[RequiresCover]` на caller.
 
@@ -149,7 +153,7 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 
 Native ref types являются явными borrowed wrappers. Если проект хранит один после вызова/frame, следуйте generated контракту `__AddRef()`/`__Release()`. Factory-backed wrapper начинает с reference, которую нужно освободить после передачи владения или detach.
 
-Литералы `hstring` интернируются через Engine metadata активного backend. Static managed fields инициализируются отдельно в каждом load context; нет process-wide hash fallback, общего для экземпляров Engine.
+`hstring` хранит вместе с hash указатель на native intern entry. Значение интернируется через Engine metadata активного backend и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
 
 ## Runtime loading, изоляция и shutdown
 
@@ -157,7 +161,7 @@ Mono инициализируется один раз на процесс. Nativ
 
 При запуске baked assemblies восстанавливаются в content-hashed подкаталоги writable `Cache/ManagedAssemblies/`. Уже совпадающие по байтам файлы переиспользуются, поэтому параллельные in-process Engine instances не перезаписывают загруженную Mono assembly. Отсутствие managed assemblies допустимо для tests/tools без baked scripts; настроенный gameplay project должен считать его ошибкой package или resource selection.
 
-Shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз.
+Shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references, ждёт finalizers, сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем разрушает managed globals до native global data. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
 
 ## Сборка и baking
 
@@ -165,11 +169,11 @@ Generated CMake target `CompileManagedScripts` запускает standalone `<P
 
 `BakeResources` и `ForceBakeResources` запускают baker `Managed` внутри выбранного resource pack. Используйте compile target для быстрой проверки source/API, а bake target — для реального контракта resources, assemblies, runtime payload и metadata. После force bake выполните обычный incremental bake и потребуйте clean settle.
 
-Runtime toolchain готовит `SetupManagedRuntime`; `PrepareManagedRuntimePayload` создаёт deployable subset и `runtime.manifest`. Setup выполняется в изолированном environment, чтобы локальные `DOTNET_*`, NuGet или SDK settings не меняли опубликованный runtime незаметно.
+Runtime toolchain готовит `SetupManagedRuntime`; `PrepareManagedRuntimePayload` создаёт deployable subset и `runtime.manifest`. Setup выполняется в изолированном environment, чтобы локальные `DOTNET_*`, NuGet или SDK settings не меняли опубликованный runtime незаметно. Настроенный workspace cache хранит только проверенное published runtime tree под target/toolchain-specific ключом; локальные runtime source checkouts не публикуются, неполный cache hit пересобирается, а stale SDK bootstrap без соответствующего shared runtime удаляется перед повтором setup.
 
 ## Packaging и updating
 
-Prepared runtime содержит managed class libraries, необходимые target, включая `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries и symbols исключены из resource payload. Mono и generated native interop table остаются linked в application.
+Prepared runtime содержит только managed class libraries, на которые реально ссылаются target assemblies, включая `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries и symbols исключены из resource payload. Mono и generated native interop table остаются linked в application. Target-specific class libraries берутся из published runtime этой цели, а не из host SDK.
 
 Managed baker помещает prepared runtime под `ManagedRuntime/` в тот же resource pack, что игровые assemblies. Client packaging пересобирает этот pack из runtime payload точного application target. Server packaging размещает одну target-specific copy для каждого распространяемого client target под `PlatformBinaries/<target>/`; updater подменяет ею common pack для этого target. Несколько native variants могут разделять один updater target, хотя их независимо собранные эквивалентные CoreLib payloads различаются побайтно, поэтому packaging детерминированно выбирает наименее квалифицированную подходящую binary entry — обычно default Release build — вместо требования byte-identical payloads.
 
@@ -181,7 +185,7 @@ Embedded payload по умолчанию использует invariant globaliz
 
 Managed scripting подключён к build paths Windows, Linux, Android, WebAssembly, macOS и iOS, но Engine source-capable path не является project release claim. Проверяйте каждый shipping target с точным project resource pack, assemblies, runtime payload, startup, callbacks, async work, shutdown, packaging и update route.
 
-Web использует Mono interpreter и Engine JavaScript glue планирования/entropy; interpreter thread остаётся attached до teardown. Android и Apple targets используют target-specific runtime archives и class libraries. Нельзя переиспользовать prepared payload одного target для другого target или architecture.
+Web использует Mono interpreter и Engine JavaScript glue планирования/entropy; interpreter thread остаётся attached до teardown. При наличии загружаются script PDB resources, чтобы managed stack traces сохраняли source information. Android и Apple targets используют target-specific runtime archives и class libraries. Нельзя переиспользовать prepared payload одного target для другого target или architecture.
 
 Конфигурации MemorySanitizer и ThreadSanitizer запрещены с `FO_MANAGED_SCRIPTING`: embedded Mono и generated/JIT code не могут удовлетворить этим инструментам и иначе дают ложные failures. AddressSanitizer и поддерживаемые undefined/data-flow combinations всё равно требуют реальных managed build/runtime checks проекта.
 
@@ -244,7 +248,7 @@ Engine guide задаёт reusable behavior; документация проек
 Сверяйте эту страницу и английский оригинал в том же изменении, когда меняются:
 
 - `FO_MANAGED_SCRIPTING`, managed CMake targets, toolchain setup или структура generated project;
-- настройки `Script.ManagedScript*` либо discovery/output `ManagedScriptBaker`;
+- настройки `ManagedScript.*` либо discovery/output `ManagedScriptBaker`;
 - CoreScript attributes, marshalling shapes, generated wrappers, events, remote calls или named invocation;
 - continuation scheduling, thread attachment, load-context isolation, exception accounting или shutdown;
 - synchronization-cover attributes или diagnostics analyzer;

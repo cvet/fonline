@@ -199,9 +199,6 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-item-corner-d797ec5ae8"></a>
 - [`symbol-script-property-item-corner-d797ec5ae8`](../../en/reference/script-api/properties.md#symbol-script-property-item-corner-d797ec5ae8)
 
-<a id="symbol-script-property-item-count-0ad6448492"></a>
-- [`symbol-script-property-item-count-0ad6448492`](../../en/reference/script-api/properties.md#symbol-script-property-item-count-0ad6448492)
-
 <a id="symbol-script-property-item-critterid-15f2518642"></a>
 - [`symbol-script-property-item-critterid-15f2518642`](../../en/reference/script-api/properties.md#symbol-script-property-item-critterid-15f2518642)
 
@@ -226,8 +223,8 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-item-drawmultihexmesh-839271af07"></a>
 - [`symbol-script-property-item-drawmultihexmesh-839271af07`](../../en/reference/script-api/properties.md#symbol-script-property-item-drawmultihexmesh-839271af07)
 
-<a id="symbol-script-property-item-draworderoffsethexy-9e4f4121a7"></a>
-- [`symbol-script-property-item-draworderoffsethexy-9e4f4121a7`](../../en/reference/script-api/properties.md#symbol-script-property-item-draworderoffsethexy-9e4f4121a7)
+<a id="symbol-script-property-item-drawordersublayer-fd88b170be"></a>
+- [`symbol-script-property-item-drawordersublayer-fd88b170be`](../../en/reference/script-api/properties.md#symbol-script-property-item-drawordersublayer-fd88b170be)
 
 <a id="symbol-script-property-item-elevation-1220a2ce88"></a>
 - [`symbol-script-property-item-elevation-1220a2ce88`](../../en/reference/script-api/properties.md#symbol-script-property-item-elevation-1220a2ce88)
@@ -321,9 +318,6 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 
 <a id="symbol-script-property-item-shootthru-fe1e1a36f5"></a>
 - [`symbol-script-property-item-shootthru-fe1e1a36f5`](../../en/reference/script-api/properties.md#symbol-script-property-item-shootthru-fe1e1a36f5)
-
-<a id="symbol-script-property-item-stackable-95b02125f9"></a>
-- [`symbol-script-property-item-stackable-95b02125f9`](../../en/reference/script-api/properties.md#symbol-script-property-item-stackable-95b02125f9)
 
 <a id="symbol-script-property-item-static-684113af77"></a>
 - [`symbol-script-property-item-static-684113af77`](../../en/reference/script-api/properties.md#symbol-script-property-item-static-684113af77)

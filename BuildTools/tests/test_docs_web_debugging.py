@@ -137,8 +137,9 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "assert not self.has_pack('NoRes'), 'Web package requires resources'",
             "self.patch_embedded(wasm_output_path)",
             "self.patch_config(wasm_output_path)",
-            "'Resources.data'",
-            "'--js-output=' + os.path.join(self.target_output_path, 'Resources.js')",
+            "package_web_resources(Path(self.target_output_path), Path(file_packager_path), preload_files)",
+            "bundle_name = f'Resources-{index}'",
+            "'--js-output=' + bundle_loader_path.as_posix()",
             "'--lz4'",
             "shutil.rmtree(os.path.join(self.target_output_path, self.client_res_dir), True)",
         ):
@@ -187,11 +188,11 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(contract, web)
 
-        self.assertIn('FIXED_SETTING(string, ClientNetwork, WebSocketHost, "localhost")', settings)
-        self.assertIn("FIXED_SETTING(int32_t, Network, WebSocketPort, 4001)", settings)
-        self.assertIn("FIXED_SETTING(bool, Network, SecuredWebSockets, false)", settings)
-        self.assertIn("const string_view host = _settings->WebSocketHost", sockets)
-        self.assertIn("const uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort)", sockets)
+        self.assertIn('SETTING(string, ClientNetwork, WebSocketHost, "localhost")', settings)
+        self.assertIn("SETTING(int32_t, Network, WebSocketPort, 4001)", settings)
+        self.assertIn("SETTING(bool, Network, SecuredWebSockets, false)", settings)
+        self.assertIn("const string_view host = _settings->ClientNetwork.WebSocketHost", sockets)
+        self.assertIn("const uint16_t port = numeric_cast<uint16_t>(_settings->Network.WebSocketPort)", sockets)
         self.assertIn("#if !FO_IOS && !FO_ANDROID && !FO_WEB", sockets)
         self.assertIn("return \"Web-wasm\"", updater)
         self.assertIn("case UpdatePlatform::Web:", updater)

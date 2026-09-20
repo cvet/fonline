@@ -38,7 +38,6 @@ name unchanged:
 $Name = TutorialSupply
 $Text engl = "Emergency cache"
 $Text russ = "Аварийный контейнер"
-Stackable = True
 ```
 
 `Baking.BakeLanguages = engl russ` makes English the normalization base for

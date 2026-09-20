@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto GetServerSettings() -> unordered_set<string>;
-extern auto GetClientSettings() -> unordered_set<string>;
+auto GetServerSettings() -> unordered_set<string>;
+auto GetClientSettings() -> unordered_set<string>;
 
 ConfigBaker::ConfigBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
@@ -81,6 +81,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
         auto client_engine = BakerClientEngine(*_context->BakedFiles);
         const auto& server_game_settings = server_engine.GetGameSettings();
         const auto& client_game_settings = client_engine.GetGameSettings();
+        string pack_declarations = _context->Settings->GetResourcePackDeclarations();
 
         auto resolve_config_settings = [&](string_view sub_config) -> map<string, string> {
             FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
@@ -98,15 +99,11 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             return maincfg.Save();
         };
 
-        // The metadata resource already ships every game setting's root-config value, so the binary config
-        // has to carry only what that baseline cannot express: a sub-config value that differs from it
-        auto root_config_settings = resolve_config_settings("");
-
         // Bootstrap settings are the exception: their consumer runs before the engine applies the metadata
         // baseline, so the delta form would leave them unreadable at the moment they are needed
         unordered_set<string> bootstrap_settings;
 
-        for (const auto& name : _context->Settings->BootstrapGameSettings) {
+        for (const auto& name : _context->Settings->Baking.BootstrapGameSettings) {
             FO_VERIFY_AND_THROW(server_game_settings.contains(name) || client_game_settings.contains(name), "Bootstrap game setting is not a declared game setting", name);
             bootstrap_settings.emplace(name);
         }
@@ -137,11 +134,13 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 auto shortened_value = strvex(value).is_explicit_bool() ? (strvex(value).to_bool() ? "1" : "0") : value;
 
                 if (is_game_only_setting) {
-                    auto root_it = root_config_settings.find(key);
+                    // The metadata resource already ships every game setting from this bake's active
+                    // configuration, so the binary config has to carry only what that exact baseline cannot express
+                    auto metadata_baseline_value = _context->Settings->FindSettingValue(key);
 
                     // The delta is written whatever it says: an empty or false override still has to beat
                     // a metadata baseline that says otherwise, so skip_write must not apply to it
-                    if (root_it == root_config_settings.end() || root_it->second != value) {
+                    if (!metadata_baseline_value || *metadata_baseline_value != value) {
                         server_config_content += strex("{}={}\n", key, shortened_value);
 
                         if (is_client_game_setting) {
@@ -168,20 +167,25 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 }
 
                 if (!is_server_setting && !is_client_setting && !is_game_setting) {
-                    WriteLog("Unknown setting {} = {}", key, value);
+                    logging::write("Unknown setting {} = {}", key, value);
                 }
             }
 
             for (const auto& key : server_settings) {
-                WriteLog("Uninitialized server setting {}", key);
+                logging::write("Uninitialized server setting {}", key);
                 settings_errors++;
             }
             for (const auto& key : client_settings) {
-                WriteLog("Uninitialized client setting {}", key);
+                logging::write("Uninitialized client setting {}", key);
                 settings_errors++;
             }
 
             if (settings_errors == 0) {
+                // A packaged application reads nothing but this config, so the pack list travels in it; sections go last,
+                // since every line after a section header belongs to that section
+                server_config_content += pack_declarations;
+                client_config_content += pack_declarations;
+
                 auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
                     string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
                     _context->WriteData(cfg_name, make_const_span(cfg_content));

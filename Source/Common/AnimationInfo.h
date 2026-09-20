@@ -80,7 +80,7 @@ struct ModelAnimationInfo
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, ModelBounds3D> AnimationBounds {};
 };
 
-auto ReadModelAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, ModelAnimationInfo>;
+auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> unordered_map<hstring, ModelAnimationInfo>;
 
 #endif
 
@@ -92,7 +92,7 @@ struct AnimationInfo
 #endif
 };
 
-auto ReadAnimationInfo(const FileSystem& resources, HashResolver& hash_resolver) -> unordered_map<hstring, AnimationInfo>;
+auto ReadAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> unordered_map<hstring, AnimationInfo>;
 auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<SpriteInfoFileEntry>;
 auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string;
 

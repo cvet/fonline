@@ -56,8 +56,6 @@ auto GetClientShutdownStageName(ClientShutdownStage stage) noexcept -> string_vi
         return "ShutdownHookDone";
     case ClientShutdownStage::RuntimeReturned:
         return "RuntimeReturned";
-    case ClientShutdownStage::RuntimeUnloaded:
-        return "RuntimeUnloaded";
     default:
         return "Unknown";
     }
@@ -69,7 +67,7 @@ auto MakeClientSessionMarkerPath(string_view writable_root) -> string
 
     // Named after the executable, so two clients sharing one root keep their own
     string marker_name = strex("{}{}", strex(GetExeLogFileName()).erase_file_extension(), SessionMarkerExtension).str();
-    return fs_make_writable_path(writable_root, marker_name);
+    return fs::resolve_path(fs::make_writable_path(writable_root, marker_name));
 }
 
 auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<PreviousClientSession>
@@ -79,19 +77,19 @@ auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<Pre
     optional<string> content;
 
     try {
-        if (!fs_exists(marker_path)) {
+        if (!fs::exists(marker_path)) {
             return std::nullopt;
         }
 
-        content = fs_read_file_bounded(marker_path, SessionMarkerMaxSize);
+        content = fs::read_file_bounded(marker_path, SessionMarkerMaxSize);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 
     // The marker is consumed whatever it holds: a file we cannot parse must not be reported on every
     // launch from here on
-    (void)fs_remove_file(marker_path);
+    (void)fs::remove_file(marker_path);
 
     if (!content.has_value()) {
         return std::nullopt;
@@ -112,7 +110,7 @@ auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<Pre
 
         if (key == "Stage") {
             int32_t raw_stage = strex(value).to_int32();
-            session.Stage = static_cast<ClientShutdownStage>(numeric_cast<uint8_t>(std::clamp(raw_stage, 0, static_cast<int32_t>(ClientShutdownStage::RuntimeUnloaded))));
+            session.Stage = static_cast<ClientShutdownStage>(numeric_cast<uint8_t>(std::clamp(raw_stage, 0, static_cast<int32_t>(ClientShutdownStage::RuntimeReturned))));
         }
         else if (key == "Build") {
             session.BuildHash = value;
@@ -130,13 +128,13 @@ void BeginClientSession(string_view marker_path) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    safe_call([&] { (void)fs_create_directories(strex(marker_path).extract_dir().str()); });
+    safe_call([&] { (void)fs::create_directories(strex(marker_path).extract_dir().str()); });
 
     time_desc_t time = nanotime::now().desc(true);
     string started = strex("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", time.year, time.month, time.day, time.hour, time.minute, time.second).str();
     string content = strex("Stage: {}\nBuild: {}\nStarted: {}\n", static_cast<int32_t>(ClientShutdownStage::Running), FO_BUILD_HASH, started).str();
 
-    safe_call([&] { (void)fs_write_file(marker_path, content); });
+    safe_call([&] { (void)fs::write_file(marker_path, content); });
 }
 
 void SetClientShutdownStage(string_view marker_path, ClientShutdownStage stage) noexcept
@@ -146,7 +144,7 @@ void SetClientShutdownStage(string_view marker_path, ClientShutdownStage stage) 
     // Rewritten rather than appended, so the file always states the furthest stage reached and stays
     // one small write even when a shutdown crosses process boundaries
     safe_call([&] {
-        auto previous = fs_read_file_bounded(marker_path, SessionMarkerMaxSize);
+        auto previous = fs::read_file_bounded(marker_path, SessionMarkerMaxSize);
 
         if (!previous.has_value()) {
             return;
@@ -161,7 +159,7 @@ void SetClientShutdownStage(string_view marker_path, ClientShutdownStage stage) 
         }
 
         content += "\n";
-        (void)fs_write_file(marker_path, content);
+        (void)fs::write_file(marker_path, content);
     });
 }
 
@@ -169,7 +167,7 @@ void EndClientSession(string_view marker_path) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    safe_call([&] { (void)fs_remove_file(marker_path); });
+    safe_call([&] { (void)fs::remove_file(marker_path); });
 }
 
 FO_END_NAMESPACE

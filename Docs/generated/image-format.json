@@ -656,7 +656,7 @@
           "anchors": [
             "collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1",
             "for (uint8_t dir = 0; dir < dirs; dir++)",
-            "writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"
+            "writer.write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"
           ]
         }
       ]
@@ -671,9 +671,9 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "writer.Write<bool>(shot.Shared)",
-            "writer.Write<int16_t>(bake_shot->NextX)",
-            "writer.Write<uint16_t>(shot.SharedIndex)",
+            "writer.write<bool>(shot.Shared)",
+            "writer.write<int16_t>(bake_shot->NextX)",
+            "writer.write<uint16_t>(shot.SharedIndex)",
             "bake_shot->Width) * bake_shot->Height * 4"
           ]
         }
@@ -714,10 +714,10 @@
         {
           "path": "Source/Common/Settings.inc",
           "anchors": [
-            "FIXED_SETTING(bool, SpriteMesh, Enabled",
-            "FIXED_SETTING(int32_t, SpriteMesh, AlphaThreshold",
-            "FIXED_SETTING(int32_t, SpriteMesh, MaxTriangles",
-            "FIXED_SETTING(float32_t, SpriteMesh, AreaSavingsWeight"
+            "SETTING(bool, SpriteMesh, Enabled",
+            "SETTING(int32_t, SpriteMesh, AlphaThreshold",
+            "SETTING(int32_t, SpriteMesh, MaxTriangles",
+            "SETTING(float32_t, SpriteMesh, AreaSavingsWeight"
           ]
         },
         {
@@ -750,7 +750,7 @@
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
             "run_async(GetAsyncMode(), task_name",
-            "WriteLog(\"Image baking error: {}\"",
+            "logging::write(\"Image baking error: {}\"",
             "throw ImageBakerException(\"Errors during images baking\", errors)"
           ]
         }
@@ -1110,5 +1110,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "e566e0b777acd21b4440657bb7dec1cbcfd15a53e99c9f128f4d0c303e17753a"
+  "contract_digest": "073a503b709213fadec01e0bfc3d97b784800f9a368d77f862cd89b1c96ec9b0"
 }

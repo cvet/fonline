@@ -83,7 +83,7 @@ Prototype text uses the shared configuration parser:
 # A configuration comment
 [ProtoItem]
 $Name = BaseContainer
-Stackable = false
+NoBlock = true
 
 [ProtoItem]
 $Name = SecureContainer
@@ -92,6 +92,8 @@ NoBlock = false
 ```
 
 Use `key = value` for replacement and `key += value` only where appending text is part of the property's documented representation. A final backslash continues a logical line only when the character before it is a space or tab; the parser trims both physical lines and joins them with one space. `#` starts a comment outside quoted/escaped content.
+
+The reusable Engine no longer defines `Item.Count`, `Item.Stackable`, partial-count move/add/destroy overloads, or a built-in stack-change event. A game that needs fungible item stacks must declare its own count/stackability properties and own merge, split, transfer, destruction, synchronization, and notification rules in project scripts. Do not put the retired fields back into `.fopro` as custom-looking keys unless the project has explicitly declared matching metadata.
 
 `ProtoBaker` interprets `$Name` and `$Parent`, and property application skips every `$`-prefixed key. `$Text ...` belongs to the separate `ProtoTextBaker` contract; do not assume that an arbitrary `$` key has meaning merely because property loading ignores it. Keys beginning with `_` are also ignored by property application and should be reserved for project tooling with an explicit project contract. Every other key must resolve to metadata.
 

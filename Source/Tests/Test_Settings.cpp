@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 static auto MakeTempSettingsDir(string_view name) -> string
 {
     auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    return fs::path_to_string(base);
 }
 
 TEST_CASE("Settings")
@@ -142,6 +142,108 @@ TEST_CASE("Settings")
         CHECK_FALSE(packs[1].ClientOnly);
     }
 
+    SECTION("IgnoreInputDirsFromASubConfigLeaveTheDirectoryOutOfEveryPack")
+    {
+        ConfigFile config {"[SubConfig]\n"
+                           "Name = Shipping\n"
+                           "Baking.IgnoreInputDirs = scripts/tests\n"
+                           "[ResourcePack]\n"
+                           "Name = ScriptPack\n"
+                           "InputDirs = scripts scripts/tests\n"
+                           "[ResourcePack]\n"
+                           "Name = MetadataPack\n"
+                           "InputDirs = scripts/tests scripts\n"
+                           "[ResourcePack]\n"
+                           "Name = ArtPack\n"
+                           "InputDirs = art\n"};
+        string scripts_dir = strex("cfg").combine_path("scripts").str();
+        string tests_dir = strex("cfg").combine_path("scripts/tests").str();
+        string art_dir = strex("cfg").combine_path("art").str();
+
+        GlobalSettings development {false};
+        development.ApplyDefaultSettings();
+        development.ApplyConfigFile(config, "cfg");
+        development.ApplyAutoSettings();
+
+        CHECK(development.GetResourcePacks()[0].InputDirs == vector<string> {scripts_dir, tests_dir});
+        CHECK(development.GetResourcePacks()[1].InputDirs == vector<string> {tests_dir, scripts_dir});
+
+        GlobalSettings shipping {false};
+        shipping.ApplyDefaultSettings();
+        shipping.ApplyConfigFile(config, "cfg");
+        shipping.ApplySubConfigSection("Shipping");
+
+        // Applying twice matters: the second pass must not report the already left out directory as unknown
+        shipping.ApplyAutoSettings();
+        shipping.ApplyAutoSettings();
+
+        REQUIRE(shipping.GetResourcePacks().size() == 3);
+        CHECK(shipping.GetResourcePacks()[0].InputDirs == vector<string> {scripts_dir});
+        CHECK(shipping.GetResourcePacks()[1].InputDirs == vector<string> {scripts_dir});
+        CHECK(shipping.GetResourcePacks()[2].InputDirs == vector<string> {art_dir});
+    }
+
+    SECTION("PackDeclarationsWrittenForAPackagedConfigRestoreEveryPackList")
+    {
+        ConfigFile authored {"[SubConfig]\n"
+                             "Name = Shipping\n"
+                             "Baking.IgnoreInputDirs = scripts/tests\n"
+                             "[ResourcePack]\n"
+                             "Name = Scripts\n"
+                             "InputDirs = scripts scripts/tests\n"
+                             "[ResourcePack]\n"
+                             "Name = ServerData\n"
+                             "InputDirs = server\n"
+                             "ServerOnly = True\n"
+                             "[ResourcePack]\n"
+                             "Name = Art\n"
+                             "InputDirs = art\n"
+                             "ClientOnly = True\n"
+                             "[ResourcePack]\n"
+                             "Name = MapperData\n"
+                             "InputDirs = mapper\n"
+                             "MapperOnly = True\n"};
+
+        GlobalSettings baking {false};
+        baking.ApplyDefaultSettings();
+        baking.ApplyConfigFile(authored, "cfg");
+        baking.ApplySubConfigSection("Shipping");
+        baking.ApplyAutoSettings();
+
+        // What a packaged application sees: the baked settings, the ignored inputs among them, then the pack sections
+        ConfigFile baked {strex("Baking.IgnoreInputDirs=scripts/tests\n{}", baking.GetResourcePackDeclarations()).str()};
+        GlobalSettings packaged {false};
+        packaged.ApplyDefaultSettings();
+        packaged.ApplyConfigFile(baked, "");
+
+        REQUIRE_NOTHROW(packaged.ApplyAutoSettings());
+        CHECK(packaged.GetServerResourcePacks() == baking.GetServerResourcePacks());
+        CHECK(packaged.GetClientResourcePacks() == baking.GetClientResourcePacks());
+        CHECK(packaged.GetMapperResourcePacks() == baking.GetMapperResourcePacks());
+        CHECK(packaged.GetServerResourcePacks() == vector<string> {"Scripts", "ServerData"});
+        CHECK(packaged.GetClientResourcePacks() == vector<string> {"Scripts", "Art"});
+        CHECK(packaged.GetMapperResourcePacks() == vector<string> {"MapperData"});
+        CHECK(std::ranges::all_of(packaged.GetResourcePacks(), [](const ResourcePackInfo& pack) { return pack.InputDirs.empty(); }));
+    }
+
+    SECTION("IgnoredInputDirThatNoPackReadsIsRejected")
+    {
+        ConfigFile config {"[SubConfig]\n"
+                           "Name = Misspelled\n"
+                           "Baking.IgnoreInputDirs = scripts/test\n"
+                           "[ResourcePack]\n"
+                           "Name = ScriptPack\n"
+                           "InputDirs = scripts scripts/tests\n"};
+
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+        settings.ApplyConfigFile(config, "cfg");
+        settings.ApplySubConfigSection("Misspelled");
+
+        CHECK_THROWS_AS(settings.ApplyAutoSettings(), SettingsException);
+        CHECK(settings.GetResourcePacks()[0].InputDirs.size() == 2);
+    }
+
     SECTION("ApplyCommandLineSetsCustomValuesAndImplicitFlags")
     {
         GlobalSettings settings {false};
@@ -168,8 +270,8 @@ TEST_CASE("Settings")
     {
         // Capture the "Set <name> to <value>" lines emitted by the logging pass
         string captured;
-        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured += message; });
-        auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+        logging::set_callback("settings_secret_redaction_test", [&captured](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured += message; });
+        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
@@ -193,7 +295,7 @@ TEST_CASE("Settings")
         // A non-secret name is logged verbatim, and both values are still applied
         CHECK(captured.find("Set Common.GameName to RedactionProbe") != string::npos);
         CHECK(settings.GetCustomSetting("Probe.AccessToken") == "super-secret-value");
-        CHECK(settings.GameName == "RedactionProbe");
+        CHECK(settings.Common.GameName == "RedactionProbe");
     }
 
     SECTION("ApplyCommandLineAppendAccumulatesPerCall")
@@ -207,21 +309,21 @@ TEST_CASE("Settings")
         char* argv[] = {arg0, arg1, arg2};
 
         settings.ApplyCommandLine(CommandLineArgs {3, argv});
-        CHECK(settings.GameName == "Tag");
+        CHECK(settings.Common.GameName == "Tag");
 
         // A second pass over the same object appends again — what the two-pass flow used to do
         settings.ApplyCommandLine(CommandLineArgs {3, argv});
-        CHECK(settings.GameName == "Tag Tag");
+        CHECK(settings.Common.GameName == "Tag Tag");
     }
 
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
         string temp_dir = MakeTempSettingsDir("settings_config");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("main.fomain").str(), string_view {"ExternalValue = $FILE{payload.txt}\n"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("main.fomain").str(), string_view {"ExternalValue = $FILE{payload.txt}\n"}));
 
         GlobalSettings settings {false};
         settings.ApplyConfigAtPath("main.fomain", temp_dir);
@@ -229,7 +331,7 @@ TEST_CASE("Settings")
         CHECK(settings.GetAppliedConfigs().size() == 1);
         CHECK(settings.GetCustomSetting("ExternalValue") == "loaded value");
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("ApplyConfigAtPathThrowsForMissingConfig")
@@ -255,46 +357,61 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("Present") == "value");
     }
 
-    SECTION("RuntimeSettingWritesVariableAndCustomValues")
+    SECTION("RuntimeSettingRejectsEngineSettingsAndKeepsCustomValues")
     {
         GlobalSettings settings {false};
         settings.ApplyDefaultSettings();
 
-        settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "True");
-        CHECK(settings.WindowedMouseScroll);
+        // Every engine setting is read-only at runtime: a configured value is a knob someone turned, and the
+        // system that owns a value which changes while the game runs keeps that value itself
+        bool original_scroll = settings.Hex.WindowedMouseScroll;
+        CHECK_THROWS_AS(settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "True"), SettingsException);
+        CHECK(settings.Hex.WindowedMouseScroll == original_scroll);
         CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Hex.WindowedMouseScroll")));
 
+        // The group is part of the name: a bare short name reaches no engine setting and is kept as a custom
+        // one, which is what lets two groups declare the same short name without one answering for the other
         settings.SetRuntimeSetting("WindowedMouseScroll", "False");
-        CHECK_FALSE(settings.WindowedMouseScroll);
-        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("WindowedMouseScroll")));
+        CHECK(settings.Hex.WindowedMouseScroll == original_scroll);
+        CHECK(settings.GetCustomSetting("WindowedMouseScroll") == "False");
+        CHECK(settings.GetRuntimeSetting("WindowedMouseScroll") == "False");
 
         settings.SetRuntimeSetting("Project.RuntimeValue", "value");
         CHECK(settings.GetCustomSetting("Project.RuntimeValue") == "value");
 
-        string original_game_name = settings.GameName;
+        string original_game_name = settings.Common.GameName;
         CHECK_THROWS_AS(settings.SetRuntimeSetting("Common.GameName", "Changed"), SettingsException);
-        CHECK(settings.GameName == original_game_name);
+        CHECK(settings.Common.GameName == original_game_name);
         CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Common.GameName")));
 
-        string variable_collision = "WindowedMouseScroll";
-        variable_collision.push_back('\0');
-        variable_collision += "Custom";
-        REQUIRE(const_hash(variable_collision.c_str()) == const_hash("WindowedMouseScroll"));
-        settings.SetRuntimeSetting(variable_collision, "True");
-        CHECK_FALSE(settings.WindowedMouseScroll);
-        CHECK(settings.GetCustomSetting(variable_collision) == "True");
-        CHECK(settings.GetRuntimeSetting(variable_collision) == "True");
-        CHECK(settings.GetRuntimeSetting("Hex.WindowedMouseScroll") == settings.GetRuntimeSetting("WindowedMouseScroll"));
+        string name_collision = "Common.GameName";
+        name_collision.push_back('\0');
+        name_collision += "Custom";
+        REQUIRE(const_hash(name_collision.c_str()) == const_hash("Common.GameName"));
+        settings.SetRuntimeSetting(name_collision, "custom");
+        CHECK(settings.Common.GameName == original_game_name);
+        CHECK(settings.GetCustomSetting(name_collision) == "custom");
+        CHECK(settings.GetRuntimeSetting(name_collision) == "custom");
+        CHECK(settings.GetRuntimeSetting("Common.GameName") == settings.Common.GameName);
 
-        string fixed_collision = "Common.GameName";
-        fixed_collision.push_back('\0');
-        fixed_collision += "Custom";
-        settings.SetRuntimeSetting(fixed_collision, "custom");
-        CHECK(settings.GameName == original_game_name);
-        CHECK(settings.GetCustomSetting(fixed_collision) == "custom");
-        CHECK(settings.GetRuntimeSetting(fixed_collision) == "custom");
-        CHECK(settings.GetRuntimeSetting("Common.GameName") == settings.GameName);
-        CHECK(settings.GetRuntimeSetting("GameName") == settings.GameName);
+        // A bare engine-setting name is not the setting either: it writes a custom value instead of throwing
+        settings.SetRuntimeSetting("GameName", "Bare");
+        CHECK(settings.Common.GameName == original_game_name);
+        CHECK(settings.GetRuntimeSetting("GameName") == "Bare");
+    }
+
+    SECTION("ConfigKeyWithoutGroupDoesNotReachTheSetting")
+    {
+        // The dotted key is the whole name of a setting, so an unqualified key is an unknown setting and is
+        // kept as a custom value; that is what leaves the short name free for another group to declare
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+
+        ConfigFile config {"ServerPort = 5555\nNetwork.ServerPort = 4444\n"};
+        settings.ApplyConfigFile(config, "");
+
+        CHECK(settings.Network.ServerPort == 4444);
+        CHECK(settings.GetCustomSetting("ServerPort") == "5555");
     }
 
     SECTION("BakingModeSaveReturnsAppliedSettings")
@@ -325,11 +442,11 @@ TEST_CASE("Settings")
         settings.ApplyConfigFile(config, "cfg");
         settings.ApplySubConfigSection("PublicGame");
 
-        CHECK(settings.UpdateFilesInMemory);
+        CHECK(settings.ServerNetwork.UpdateFilesInMemory);
 
         settings.ApplySubConfigSection("Staging");
 
-        CHECK_FALSE(settings.UpdateFilesInMemory);
+        CHECK_FALSE(settings.ServerNetwork.UpdateFilesInMemory);
     }
 
     SECTION("WritableRootFromCommandLineCreatesTheDirectory")
@@ -337,16 +454,16 @@ TEST_CASE("Settings")
         // An explicit path on the command line is the one source that outranks everything, because it is
         // the only one available before any file has been read
         string root = MakeTempSettingsDir("settings_writable_root");
-        ignore_unused(fs_remove_dir_tree(root));
+        ignore_unused(fs::remove_dir_tree(root));
 
         string root_arg = root;
-        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--UserWritablePath"), root_arg.data()};
+        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--Common.UserWritablePath"), root_arg.data()};
         string resolved = ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()});
 
-        CHECK(resolved == fs_resolve_path(root));
-        CHECK(fs_is_dir(resolved));
+        CHECK(resolved == fs::resolve_path(root));
+        CHECK(fs::is_dir(resolved));
 
-        ignore_unused(fs_remove_dir_tree(root));
+        ignore_unused(fs::remove_dir_tree(root));
     }
 
     SECTION("WritableRootWithoutMarkerStaysInTheWorkingDirectory")
@@ -362,16 +479,16 @@ TEST_CASE("Settings")
         // A root whose parent is a regular file can't be created: the resolver must fail safe rather than
         // brick startup
         string temp_dir = MakeTempSettingsDir("settings_writable_blocker");
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
         string blocker = strex(temp_dir).combine_path("blocker").str();
-        REQUIRE(fs_write_file(blocker, string_view {"x"}));
+        REQUIRE(fs::write_file(blocker, string_view {"x"}));
 
         string blocked_root = strex(blocker).combine_path("sub").str();
-        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--UserWritablePath"), blocked_root.data()};
+        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--Common.UserWritablePath"), blocked_root.data()};
 
         CHECK(ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()}).empty());
 
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        ignore_unused(fs::remove_dir_tree(temp_dir));
     }
 }
 

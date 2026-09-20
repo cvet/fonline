@@ -4,9 +4,7 @@ document_id: generated-helper-cli-commands
 locale: ru
 generated: true
 ---
-
 <!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"202589eff1cb599f85f10924527e21f49bf0c2a8237c84e8fe7660fa609de36a"} -->
-
 # Команды вспомогательных CLI
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/HelperCliInterface.json` или владеющий исполняемый парсер, затем выполните `python BuildTools/docs_helper_cli.py --write`.

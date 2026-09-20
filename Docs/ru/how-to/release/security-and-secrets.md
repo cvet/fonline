@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 ---
 
 # Безопасность и секреты
-
 <!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"e9706130a7c402ab7411b86a4852630d69a1cc997659106c45c58fc9cd20e7e4"} -->
-
 Это руководство определяет переиспользуемые границы FOnline для credentials, подстановки конфигурации, подписи пакетов, CI, диагностики и incident response. Оно не выбирает secret manager, поставщика сертификатов, production account, срок хранения или incident policy для подключающей игры.
 
 Используйте [Project Configuration](../build/project-configuration.md) для общего precedence `.fomain`, [Packaging and Release](packaging.md) для производства артефактов и [Client Updater](../../explanation/runtime/client-updater.md) для границы загружаемого native runtime.

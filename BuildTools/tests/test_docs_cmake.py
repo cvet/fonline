@@ -58,7 +58,7 @@ class DocumentationCMakeTests(unittest.TestCase):
 
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cmake.py")
-        self.assertEqual(model["summary"]["option_count"], 43)
+        self.assertEqual(model["summary"]["option_count"], 44)
         self.assertEqual(model["summary"]["required_option_count"], 9)
         self.assertEqual(model["summary"]["stage_count"], 10)
         self.assertEqual(model["summary"]["helper_count"], 6)
@@ -97,7 +97,7 @@ class DocumentationCMakeTests(unittest.TestCase):
             "set(oneValueArgs SUB_CONFIG COMMENT)",
             'set(BAKING_TARGET_SUB_CONFIG "NONE")',
             'set(BAKING_TARGET_COMMENT "Bake resources")',
-            "COMMAND ${bakeResources} -ForceBaking ${forceBaking}",
+            "COMMAND ${bakeResources} -Baking.ForceBaking ${forceBaking}",
             "DEPENDS ForceCodeGeneration",
             "WORKING_DIRECTORY ${FO_OUTPUT_PATH}",
         ):

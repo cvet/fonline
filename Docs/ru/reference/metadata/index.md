@@ -5,9 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"ee9c3b5bc06cb7835658cc96ca8740d3066e1d1078eb6e27d4dbdb9624be8613"} -->
-
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"4223b4d46283b6b4c7b352ce54944cb7f22821e6add3589167babf8963aed7da"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -301,7 +299,7 @@ Generated `summary` сообщает число symbols по kind и stability, 
 
 Генерация отвергает неизвестные selectors, устаревшие пины scope, несколько scope declarations, пересекающиеся exact/family declarations, отсутствующие replacements, self-replacements, некорректные examples, повторяющиеся fields и неполные lifecycle metadata. Exact declaration может намеренно переопределять единственный scope. Provenance контракта хранится отдельно от provenance объявления, поэтому читатель различает `experimental (scope)`, точные классификации и неклассифицированное значение по умолчанию.
 
-Текущая проверенная классификация применяет привязанный к ревизии статус `experimental` ко всем 2 472 символам native-codegen с версии `2022.1.0.wip`, а exact override вспомогательного метода разработки `Game.BreakIntoDebugger` сохраняет статус `internal`. Count и digest инвентаря scope требуют owner review при каждом будущем изменении набора символов. Широкие обещания `stable` и lifecycle-классификация `deprecated` остаются задачей release policy и owner review.
+Текущая проверенная классификация применяет привязанный к ревизии статус `experimental` ко всем 2 527 символам native-codegen с версии `2022.1.0.wip`, а exact override вспомогательного метода разработки `Game.BreakIntoDebugger` сохраняет статус `internal`. Count и digest инвентаря scope требуют owner review при каждом будущем изменении набора символов. Широкие обещания `stable` и lifecycle-классификация `deprecated` остаются задачей release policy и owner review.
 
 Добавление и изменение тегов `ApiContract` не должно менять runtime compatibility hash. Focused API tests сравнивают hashes с корректными contract metadata и без них.
 
@@ -584,7 +582,7 @@ guide по authoring, binding, layout, diagnostics, project-owned policy slots/g
 decoding, streaming, mixing, repeat и playback formats WAV, ACM и Ogg Vorbis
 в stock client. `BuildTools/AudioInterface.json` владеет стабильными records
 formats, delivery, decoding, playback и validation. `BuildTools/docs_audio.py`
-проверяет их по RawCopyBaker, ResourceManager, SoundManager, script methods,
+проверяет их по RawCopyBaker, ResourceManager, AudioManager, script methods,
 settings и live source anchors, затем создаёт [generated/audio.json](../../../generated/audio.json),
 шесть канонических English pages и durable pages по прежним маршрутам
 `Docs/generated/audio/*.md`.

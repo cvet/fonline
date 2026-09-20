@@ -41,8 +41,8 @@ FO_BEGIN_NAMESPACE
 // atlas dumps. Both take pixels in ucolor's R, G, B, A order and reorder channels if the format needs it
 namespace ImageWriter
 {
-    extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
-    extern void WriteSimplePng(string_view fname, isize32 size, const_span<ucolor> data);
+    void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
+    void WriteSimplePng(string_view fname, isize32 size, const_span<ucolor> data);
 }
 
 FO_END_NAMESPACE

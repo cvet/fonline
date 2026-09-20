@@ -259,7 +259,7 @@ def _render_index(model: dict[str, Any]) -> str:
             str(sum(counts[kind] for kind in TYPE_KINDS)),
             "Entities, enums, value types, reference types, fields, and methods.",
         ),
-        ("[Engine settings](settings.md)", str(counts["setting"]), "Fixed and runtime-variable engine settings."),
+        ("[Engine settings](settings.md)", str(counts["setting"]), "Read-only engine settings grouped by domain."),
         (
             "[Migration rules](migrations.md)",
             str(counts["migration-rule"]),
@@ -719,7 +719,7 @@ RUSSIAN_REPLACEMENTS = {
     "[Script types](types.md)": "[Типы скриптов](types.md)",
     "Entities, enums, value types, reference types, fields, and methods.": "Сущности, enum, value/reference types, поля и методы.",
     "[Engine settings](settings.md)": "[Настройки движка](settings.md)",
-    "Fixed and runtime-variable engine settings.": "Фиксированные и изменяемые во время выполнения настройки движка.",
+    "Read-only engine settings grouped by domain.": "Настройки движка только для чтения, сгруппированные по областям.",
     "[Migration rules](migrations.md)": "[Правила миграции](migrations.md)",
     "Native metadata migration declarations.": "Объявления миграции нативной metadata.",
     "## Model quality": "## Качество модели",

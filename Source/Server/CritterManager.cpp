@@ -60,21 +60,6 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
     ValidateEntityAccess(cr);
     EnsureEntitySynced(item);
 
-    if (item->GetStackable()) {
-        auto item_already = cr->GetInvItemByPid(item->GetProtoId());
-
-        if (item_already) {
-            if (item_already == item) {
-                return item;
-            }
-
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
-            return item_already;
-        }
-    }
-
     if (item->GetOwnership() != ItemOwnership::CritterInventory) {
         item->SetCritterSlot(CritterItemSlot::Inventory);
     }
@@ -197,7 +182,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     }
 
     // Create critter
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto, props);
+    auto cr = safe_alloc::make_refcounted<Critter>(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterCritter(cr);
 
@@ -294,7 +279,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
                 }
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
 
             // A pass that does not strictly reduce the remaining dependencies can never converge, so this exits

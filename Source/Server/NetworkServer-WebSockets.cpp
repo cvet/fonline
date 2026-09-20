@@ -122,17 +122,17 @@ auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, N
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint16_t ws_port = numeric_cast<uint16_t>(settings->WebSocketPort);
+    uint16_t ws_port = numeric_cast<uint16_t>(settings->Network.WebSocketPort);
 
-    if (settings->SecuredWebSockets) {
-        WriteLog("Listen WebSockets (with TLS) connections on port {}", ws_port);
+    if (settings->Network.SecuredWebSockets) {
+        logging::write("Listen WebSockets (with TLS) connections on port {}", ws_port);
 
-        return SafeAlloc::MakeUnique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
+        return safe_alloc::make_unique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
     }
     else {
-        WriteLog("Listen WebSockets (no TLS) connections on port {}", ws_port);
+        logging::write("Listen WebSockets (no TLS) connections on port {}", ws_port);
 
-        return SafeAlloc::MakeUnique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
+        return safe_alloc::make_unique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
     }
 }
 
@@ -157,7 +157,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
         _port = 0;
     }
 
-    if (settings->DisableTcpNagle) {
+    if (settings->Network.DisableTcpNagle) {
         std::error_code no_delay_error;
         raw_socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
@@ -217,10 +217,10 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
     }
     else {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "WebSocket socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
     }
 }
 
@@ -239,7 +239,7 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -306,7 +306,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
-            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, GetAsioErrorText(error));
+            logging::write(logging::type::warning, "WebSocket send failed to {}:{}: {}", _host, _port, GetAsioErrorText(error));
             Disconnect();
         }
     }
@@ -333,10 +333,10 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (Secured) {
-        if (_settings->WssPrivateKey.empty()) {
+        if (_settings->ServerNetwork.WssPrivateKey.empty()) {
             throw GenericException("'WssPrivateKey' not provided");
         }
-        if (_settings->WssCertificate.empty()) {
+        if (_settings->ServerNetwork.WssCertificate.empty()) {
             throw GenericException("'WssCertificate' not provided");
         }
     }
@@ -356,10 +356,10 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
     }
 
     websocketpp::lib::error_code listen_error;
-    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort), listen_error);
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->Network.WebSocketPort), listen_error);
 
     if (listen_error) {
-        throw NetworkServerException("Can't listen for WebSocket connections", settings->WebSocketPort, GetAsioErrorText(listen_error));
+        throw NetworkServerException("Can't listen for WebSocket connections", settings->Network.WebSocketPort, GetAsioErrorText(listen_error));
     }
 
     _server.start_accept();
@@ -387,7 +387,7 @@ void NetworkServer_WebSockets<Secured>::Run()
             break;
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }
@@ -401,7 +401,7 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         auto connection = _server.get_con_from_hdl(hdl);
 
         try {
-            auto ws_connection = SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
+            auto ws_connection = safe_alloc::make_shared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
             ws_connection->Start();
 
             if (TrackConnection(ws_connection)) {
@@ -409,14 +409,14 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
 
             asio::error_code terminate_error;
             connection->terminate(terminate_error);
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -428,7 +428,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
     auto remote_endpoint = connection->get_remote_endpoint();
-    WriteLog(LogType::Warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), GetAsioErrorText(ec));
+    logging::write(logging::type::warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), GetAsioErrorText(ec));
 }
 
 template<bool Secured>
@@ -438,8 +438,8 @@ auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection
 
     auto&& connection = _server.get_con_from_hdl(hdl);
 
-    if (_settings->MaxBufferedInputSize > 0) {
-        connection->set_max_message_size(numeric_cast<size_t>(_settings->MaxBufferedInputSize));
+    if (_settings->ServerNetwork.MaxBufferedInputSize > 0) {
+        connection->set_max_message_size(numeric_cast<size_t>(_settings->ServerNetwork.MaxBufferedInputSize));
     }
 
     connection->select_subprotocol("binary");
@@ -456,8 +456,8 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
     websocketpp::lib::shared_ptr<ssl_context> ctx = websocketpp::lib::make_shared<ssl_context>(ssl_context::tls_server);
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::no_tlsv1 | ssl_context::no_tlsv1_1 | ssl_context::single_dh_use);
     SSL_CTX_set_ecdh_auto(ctx->native_handle(), 1);
-    ctx->use_certificate_chain_file(std::string(_settings->WssCertificate));
-    ctx->use_private_key_file(std::string(_settings->WssPrivateKey), ssl_context::pem);
+    ctx->use_certificate_chain_file(std::string(_settings->ServerNetwork.WssCertificate));
+    ctx->use_private_key_file(std::string(_settings->ServerNetwork.WssPrivateKey), ssl_context::pem);
     return ctx;
 }
 

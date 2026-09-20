@@ -78,7 +78,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         (root / "Source/Common").mkdir(parents=True)
         (root / "Source/example.txt").write_text("source\nfixture-anchor\n", encoding="utf-8")
         (root / "Source/Common/Settings.inc").write_text(
-            'FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro");\n',
+            'SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro");\n',
             encoding="utf-8",
         )
         (root / "CNAME").write_text("fonline.ru\n", encoding="utf-8")
@@ -1000,7 +1000,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             },
             "file_selection": {
                 "setting": "Baking.ProtoFileExtensions",
-                "setting_anchor": "FIXED_SETTING(vector<string>, Baking, ProtoFileExtensions",
+                "setting_anchor": "SETTING(vector<string>, Baking, ProtoFileExtensions",
                 "output_pattern": "<pack>.fopro-bin-<side>",
                 "runtime_sides": ["server", "client", "mapper"],
                 "nested_sections_skipped": True,
@@ -1506,49 +1506,33 @@ class DocumentationValidatorTests(unittest.TestCase):
                     )
         audio_outputs = audio_manifest["outputs"]
         sound_fixture = (
-            f'if (ext.empty()) {{\n    ext = "{audio_outputs["default_extension"]}";\n}}\n'
-            + "\n".join(
-                f'if (ext == "{extension}") {{}}'
-                for extension in audio_outputs["decoder_extensions"]
-            )
-            + "\n#if FO_WEB\n"
+            "#if FO_WEB\n"
             f'_streamingPortion = {hex(audio_outputs["ogg"]["web_stream_chunk_bytes"])};\n'
             "#else\n"
             f'_streamingPortion = {hex(audio_outputs["ogg"]["native_stream_chunk_bytes"])};\n'
             "#endif\n"
-            f'if (WFormatTag != {audio_outputs["wav"]["format_tag"]}) {{}}\n'
-            + "\n".join(
-                f"case {bits}: sound->OriginalFormat = AppAudio::AUDIO_FORMAT_FIXTURE;"
-                for bits in audio_outputs["wav"]["sample_bits"]
-            )
-            + f'\nsound->OriginalRate = {audio_outputs["acm"]["sample_rate"]};\n'
-            + (
-                'WriteLog("Unsupported sound format");\n'
-                if audio_outputs["unsupported_extension_rejected"]
-                else ""
-            )
         )
         settings_fixture = (
-            "FIXED_SETTING(vector<string>, Baking, RawCopyFileExtensions, "
+            "SETTING(vector<string>, Baking, RawCopyFileExtensions, "
             + ", ".join(
                 f'"{extension}"'
                 for extension in audio_outputs["raw_copy_extensions"]
             )
             + ");\n"
-            f'VARIABLE_SETTING(bool, Audio, DisableAudio, {str(audio_outputs["audio_settings"]["DisableAudio"]).lower()})\n'
-            f'VARIABLE_SETTING(int32_t, Audio, SoundVolume, {audio_outputs["audio_settings"]["SoundVolume"]})\n'
-            f'VARIABLE_SETTING(int32_t, Audio, MusicVolume, {audio_outputs["audio_settings"]["MusicVolume"]})\n'
+            + "SETTING(vector<string>, Audio, SoundFileExtensions, "
+            + ", ".join(
+                f'"{extension}"'
+                for extension in audio_outputs["indexed_extensions"]
+            )
+            + ");\n"
+            f'SETTING(bool, Audio, DisableAudio, {str(audio_outputs["audio_settings"]["DisableAudio"]).lower()})\n'
+            f'SETTING(int32_t, Audio, SoundVolume, {audio_outputs["audio_settings"]["SoundVolume"]})\n'
+            f'SETTING(int32_t, Audio, MusicVolume, {audio_outputs["audio_settings"]["MusicVolume"]})\n'
         )
         audio_fixtures = {
-            audio_manifest["sources"]["sound_manager"]: sound_fixture,
-            audio_manifest["sources"]["resource_manager"]: (
-                "sound_extensions = {"
-                + ", ".join(
-                    f'"{extension}"'
-                    for extension in audio_outputs["indexed_extensions"]
-                )
-                + "};\n"
-            ),
+            audio_manifest["sources"]["audio_manager"]: sound_fixture,
+            audio_manifest["sources"]["audio_baker"]: 'AddLoader(nullptr, {"wav"});\n',
+            audio_manifest["sources"]["audio_baker_header"]: 'NATIVE_EXTENSION = "ogg";\n',
             audio_manifest["sources"]["settings"]: settings_fixture,
             audio_manifest["sources"]["application"]: (
                 f'std::clamp(volume, {audio_outputs["mix_volume_range"][0]}, '
@@ -1580,6 +1564,11 @@ class DocumentationValidatorTests(unittest.TestCase):
             parents=True,
             exist_ok=True,
         )
+        for relative_path in audio_outputs["native_test_files"]:
+            native_test_path = root / relative_path
+            native_test_path.parent.mkdir(parents=True, exist_ok=True)
+            if not native_test_path.exists():
+                native_test_path.write_text("// Audio fixture.\n", encoding="utf-8")
         audio_model_path = root / docs_audio.DEFAULT_MODEL
         audio_model_path.write_text(
             docs_audio.render_audio_model(root),

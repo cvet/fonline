@@ -7,9 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-
 <!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"81143cb1f0473e81708756171a139fc03c40a9ab19fd802a186e1fb2113f7bb5"} -->
-
 Этот документ описывает переиспользуемые сетевые слои движка: буферы сообщений, обработку отладочных hash, клиентские и серверные абстракции соединений и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*` или сетевых тестов.

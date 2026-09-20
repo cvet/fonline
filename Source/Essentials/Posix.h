@@ -83,6 +83,8 @@ namespace posix
     auto run_process_capturing_output(const string& command, const function<void(string_view)>& on_output) -> int32_t;
 
     auto load_library(const string& path) noexcept -> nptr<void>;
+    // Loaded with RTLD_NODELETE: dlclose no longer unmaps it, and it stays until the process exits
+    auto load_pinned_library(const string& path) noexcept -> nptr<void>;
     void free_library(nptr<void> module_handle) noexcept;
     // A null module handle searches the default scope, which is how the engine reaches its own exports
     auto get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>;

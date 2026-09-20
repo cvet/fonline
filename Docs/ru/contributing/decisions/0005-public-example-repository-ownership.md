@@ -5,9 +5,7 @@ locale: ru
 document_id: adr-public-example-repository-ownership
 permalink: /Docs/ru/contributing/decisions/0005-public-example-repository-ownership.html
 ---
-
 <!-- docs-translation: {"document_id":"adr-public-example-repository-ownership","locale":"ru","source_path":"Docs/en/contributing/decisions/0005-public-example-repository-ownership.md","source_sha256":"33a49ed21b04fa813cf401b487191fd844c8bf6bb38879593bb509168e26c462"} -->
-
 # ADR-0005: владение публичными репозиториями примеров
 
 - Статус: принято

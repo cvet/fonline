@@ -5,9 +5,7 @@ locale: ru
 document_id: engine-architecture
 permalink: /Docs/ru/explanation/architecture/
 ---
-
 <!-- docs-translation: {"document_id":"engine-architecture","locale":"ru","source_path":"Docs/en/explanation/architecture/index.md","source_sha256":"9d5ce442feb8d6309265dc18acc95f8fdf52b77fbb4ad2ae3227ed5437a52f2d"} -->
-
 # Архитектура движка
 
 Этот документ содержит основанную на исходном коде карту слоёв FOnline. Используйте её, чтобы определить владельца поведения перед переходом к документации конкретной подсистемы.

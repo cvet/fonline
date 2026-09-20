@@ -25,6 +25,10 @@ The executable target uses the embedding project's development-name prefix (`<Pr
 
 The complete source-backed filename list and count are generated in [source-inventory.json](../../Docs/generated/source-inventory.json). [Testing](../../Docs/en/contributing/testing/) provides the maintained ownership groups and validation routing.
 
+`Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
+retain their result across another thread's final release and that an older entity cannot unregister
+a successor with the same id.
+
 After adding, removing, or renaming a `Test_*.cpp` file, regenerate the inventory from the engine root:
 
 The configured executable contains the suites for its enabled scripting backend. AngelScript-only translation
@@ -81,6 +85,7 @@ python BuildTools/docs_inventory.py --check
 
 - `Source/Tests/Test_AnyData.cpp`
 - `Source/Tests/Test_ApplicationHeadless.cpp`
+- `Source/Tests/Test_ClientEntityLifetime.cpp`
 - `Source/Tests/Test_Common.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
@@ -88,6 +93,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_Geometry.cpp`
 - `Source/Tests/Test_LineTracer.cpp`
 - `Source/Tests/Test_MapLoader.cpp`
+- `Source/Tests/Test_MapSprite.cpp`
 - `Source/Tests/Test_Movement.cpp`
 - `Source/Tests/Test_PathFinding.cpp`
 - `Source/Tests/Test_Properties.cpp`
@@ -102,6 +108,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_ClientUpdater.cpp`
 - `Source/Tests/Test_DataBase.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
@@ -114,6 +121,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEntityLoading.cpp`
 - `Source/Tests/Test_ServerEntityLifetime.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
@@ -134,6 +142,7 @@ python BuildTools/docs_inventory.py --check
 ### Bakers and tools
 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_BakerSetup.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
@@ -172,7 +181,11 @@ boundary.
 
 ### Rendering and frontend tests
 
-- `Source/Tests/Test_ImGui.cpp` - pins the backend-less widget activation and
+- `Source/Tests/Test_AudioManager.cpp` — pins the panning law sample by sample, and runs a real
+  baked Ogg through the mixer against a fake audio device to prove a placed sound is mixed where it
+  was placed, that `UpdateSound` moves one that is already playing, and that its handle stops
+  answering once the sound has finished.
+- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget activation and
   window-state harness used by diagnostic-panel coverage.
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` - runs cooked legacy and modern Effekseer
   effects through the native runtime's real Sprite/Ring callbacks and validates deterministic

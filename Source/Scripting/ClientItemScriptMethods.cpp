@@ -74,16 +74,6 @@ FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
     return cloned_item;
 }
 
-// Creates a standalone client-side clone, overrides its stack count, and does not insert it into a map or inventory
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self, int32_t count)
-{
-    auto cloned_item = self->CreateRefClone();
-    cloned_item->SetCount(count);
-    cloned_item->AddRef();
-    return cloned_item;
-}
-
 static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
 {
     FO_STACK_TRACE_ENTRY();

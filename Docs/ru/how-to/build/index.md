@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/build/
 ---
 
 # Процесс сборки
-
 <!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"e1cfaa86333e84c0584be14aa417263aa6b5c56053cf43f7bd8b10b4f551f32b"} -->
-
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
 

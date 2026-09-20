@@ -97,7 +97,7 @@ class ModelAnimationDocumentationTests(unittest.TestCase):
         self.assertIn("engine->GetAnimationInfo(modelName)", common_methods)
         self.assertIn("return model->GetAnimDuration(stateAnim, actionAnim);", client_methods)
         self.assertIn('TEST_CASE("ModelAnimationInfoLookup")', common_tests)
-        self.assertIn('CHECK(server->Hashes.CheckHashedString("Critters/Test.fo3d"));', common_tests)
+        self.assertIn('CHECK(server->Hashes.check_hashed_string("Critters/Test.fo3d"));', common_tests)
         self.assertIn("if (missingAction.milliseconds != 0)", common_tests)
         self.assertIn("if (missingModel.milliseconds != 0)", common_tests)
 

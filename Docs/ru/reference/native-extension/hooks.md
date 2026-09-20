@@ -4,9 +4,7 @@ document_id: generated-native-extension-hooks
 locale: ru
 generated: true
 ---
-
 <!-- docs-translation: {"document_id":"generated-native-extension-hooks","locale":"ru","source_path":"Docs/en/reference/native-extension/hooks.md","source_sha256":"0a4cb39b7625651e4fefc05935b925b6766a54d21d0257f4c7a698456da85f71"} -->
-
 # Хуки движка
 
 > Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/NativeExtensionInterface.json`, затем выполните `python BuildTools/docs_native_extension.py --write`.

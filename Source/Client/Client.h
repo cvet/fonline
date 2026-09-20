@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "AudioManager.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
 #include "CritterHexView.h"
@@ -58,7 +59,6 @@
 #include "ResourceManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
 #include "VideoClip.h"
@@ -75,7 +75,7 @@ struct VideoPlaybackResources
 
 // Script-owned controller for a video clip and render texture created by Game.CreateVideoPlayback and advanced by Game.DrawVideoPlayback
 ///@ ExportRefType Client RefCounted Export = Stopped
-class VideoPlayback : public RefCounted<VideoPlayback>
+class VideoPlayback : public refcounted<VideoPlayback>
 {
 public:
     optional<VideoPlaybackResources> PlaybackResources {};
@@ -88,6 +88,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem;
 class ClientEngine : public BaseEngine, public AnimationResolver
 {
     friend class ClientScriptSystem;
+    friend class ClientEntity;
 
 public:
     explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window); // For client
@@ -119,7 +120,6 @@ public:
     [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation; }
     [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap; }
     [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap; }
-    void Shutdown() override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
     void ProcessScheduledCallbacks();
@@ -144,11 +144,13 @@ public:
     void CritterLookTo(ptr<CritterHexView> cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
-    auto GetEntity(ident_t id) -> nptr<ClientEntity>;
+    auto GetEntity(ident_t id) -> refcount_nptr<ClientEntity>;
     void RegisterEntity(ptr<ClientEntity> entity);
     void UnregisterEntity(ptr<ClientEntity> entity);
 
     void DrawMiniMap(int32_t zoom, int32_t x, int32_t y, int32_t w, int32_t h);
+
+    void Shutdown() override;
 
     // Runs once after client initialization completes
     ///@ ExportEvent
@@ -335,7 +337,7 @@ public:
     SpriteManager SprMngr;
     FontManager FontMngr;
     ResourceManager ResMngr;
-    SoundManager SndMngr;
+    AudioManager AudioMngr;
     CacheStorage Cache;
 
     ipos32 MousePos {};
@@ -446,7 +448,9 @@ protected:
     TextPack _curLang {make_ptr(&Hashes)};
     vector<pair<string, TextPack>> _langPackCache {};
 
-    unordered_map<ident_t, ptr<ClientEntity>> _allEntities {};
+    atomic_mutex _allEntitiesLocker {};
+    unordered_map<ident_t, ptr<ClientEntity>> _allEntities FO_TSA_GUARDED_BY(_allEntitiesLocker) {};
+    std::atomic<int32_t> _liveEntityCount {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
     refcount_nptr<PlayerView> _curPlayer {};
     refcount_nptr<LocationView> _curLocation {};

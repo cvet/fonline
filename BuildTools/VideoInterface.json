@@ -238,7 +238,7 @@
       "name": "No container-audio decode",
       "stability": "experimental",
       "requirement": "Do not rely on an audio stream embedded in the Ogg video; author audio as a separate client music resource when needed.",
-      "rationale": "VideoClip links Theora packet decoding only, while fullscreen pairing starts SoundManager music from the path after a vertical bar.",
+      "rationale": "VideoClip links Theora packet decoding only, while fullscreen pairing starts AudioManager music from the path after a vertical bar.",
       "source": [
         {
           "path": "Source/Client/VideoClip.cpp",
@@ -246,7 +246,7 @@
         },
         {
           "path": "Source/Client/Client.cpp",
-          "anchors": ["split('|')", "SndMngr.PlayMusic(names[1]"]
+          "anchors": ["split('|')", "AudioMngr.PlayMusic(names[1]"]
         }
       ]
     }
@@ -309,11 +309,11 @@
       "name": "Separate music pairing",
       "stability": "experimental",
       "requirement": "Use video-path|music-path to stop current music and start a separate one-shot music resource alongside the video; additional separators are not a playlist.",
-      "rationale": "PlayVideo splits the request, loads the first component, and uses only names[1] for SoundManager music.",
+      "rationale": "PlayVideo splits the request, loads the first component, and uses only names[1] for AudioManager music.",
       "source": [
         {
           "path": "Source/Client/Client.cpp",
-          "anchors": ["split('|')", "SndMngr.StopMusic()", "names[1].empty()", "SndMngr.PlayMusic(names[1], timespan::zero)"]
+          "anchors": ["split('|')", "AudioMngr.StopMusic()", "names[1].empty()", "AudioMngr.PlayMusic(names[1], timespan::zero)"]
         }
       ]
     },
@@ -326,7 +326,7 @@
       "source": [
         {
           "path": "Source/Client/Client.cpp",
-          "anchors": ["if (_video->Clip.IsStopped())", "_video.reset()", "SndMngr.StopMusic()"]
+          "anchors": ["if (_video->Clip.IsStopped())", "_video.reset()", "AudioMngr.StopMusic()"]
         }
       ]
     },

@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4790,
-    "current_count": 4790,
+    "entry_count": 4786,
+    "current_count": 4786,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2525,
-      "current_count": 2525,
+      "entry_count": 2529,
+      "current_count": 2529,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -4333,13 +4333,6 @@
           "translation_source_locator": "/symbols/@id=script.property.Item.Corner/description"
         },
         {
-          "locator": "/symbols/@id=script.enum-value.ItemProperty.Count/description",
-          "source": "Positive quantity represented by this item; non-stackable items must have a value of one",
-          "source_sha256": "c78ee980dcbe70e4abd56ae705d04b0e83e9e1770d37722775660c83e77e6ddb",
-          "status": "current",
-          "translation_source_locator": "/symbols/@id=script.property.Item.Count/description"
-        },
-        {
           "locator": "/symbols/@id=script.enum-value.ItemProperty.CritterId/description",
           "source": "Identifier of the owning critter while Ownership is CritterInventory; zero otherwise",
           "source_sha256": "13163e321142cdc5a2132d01d1196e72b7881953b23a53297d7b9456720b3d56",
@@ -4396,11 +4389,10 @@
           "translation_source_locator": "/symbols/@id=script.property.Item.DrawMultihexMesh/description"
         },
         {
-          "locator": "/symbols/@id=script.enum-value.ItemProperty.DrawOrderOffsetHexY/description",
-          "source": "Signed Y-hex offset used only when calculating the item's sprite draw order",
-          "source_sha256": "1568ed6a50aeee085fbf83dabca6e96034f65a486d59d95cfb818dce6da758d2",
-          "status": "current",
-          "translation_source_locator": "/symbols/@id=script.property.Item.DrawOrderOffsetHexY/description"
+          "locator": "/symbols/@id=script.enum-value.ItemProperty.DrawOrderSubLayer/description",
+          "source": "Fine ordering inside the item's primary draw-order layer",
+          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
+          "status": "current"
         },
         {
           "locator": "/symbols/@id=script.enum-value.ItemProperty.Elevation/description",
@@ -4624,13 +4616,6 @@
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
           "status": "current",
           "translation_source_locator": "/symbols/@id=script.property.Item.ShootThru/description"
-        },
-        {
-          "locator": "/symbols/@id=script.enum-value.ItemProperty.Stackable/description",
-          "source": "Allows equal items to merge into one entity whose Count is greater than one",
-          "source_sha256": "3036c696ec060285e47db805bfc290ea3c3bf1b79739bd4f7b10169c4ee48fb0",
-          "status": "current",
-          "translation_source_locator": "/symbols/@id=script.property.Item.Stackable/description"
         },
         {
           "locator": "/symbols/@id=script.enum-value.ItemProperty.Static/description",
@@ -5332,6 +5317,60 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.All/description",
+          "source": "Draw every map layer.",
+          "source_sha256": "a47a19821619e99fba94cb0daf1972b965997dec13252d48a296ee374f352ec4",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.Critters/description",
+          "source": "Draw critters.",
+          "source_sha256": "cab5a6ba6fa641ff1131abe7b821512e91c34543192cfa4b581bfcd803136b13",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.Fast/description",
+          "source": "Draw the fast-rendered layer.",
+          "source_sha256": "16f46db44232b60ce0c394516826f964fd9d31f973a56f240e3f0e7eef10523f",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.Items/description",
+          "source": "Draw map items.",
+          "source_sha256": "ae64220944b642488b958dbaa27b3647cbf4de45641be248d5cad0782debced8",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.None/description",
+          "source": "Draw none of the optional map layers.",
+          "source_sha256": "ffc984ee057d713dd146969375689b92ebb84566cb654be9cf831284dc08b800",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.Roof/description",
+          "source": "Draw roof tiles.",
+          "source_sha256": "40d88b130fe287b4d0221f10c388d0c98702575b5fa150f5b750bf269da5adfd",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.Scenery/description",
+          "source": "Draw scenery objects.",
+          "source_sha256": "9c61599aa9278262fa6d227040d7f53a32291f232ee25b843684f918c81be49b",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.Tiles/description",
+          "source": "Draw ground tiles.",
+          "source_sha256": "bd0dc7bd4123b4dc07af18817ba1d7c47dd7155a5d288bd6323ec5971d8df470",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.MapLayers.Walls/description",
+          "source": "Draw wall objects.",
+          "source_sha256": "a2ac373df799587ec0c60ab7a1fdecf9e317dd92617063e0d59ca5fd0c8e140d",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.enum-value.MapProperty.CritterIds/description",
           "source": "Persistent identifiers of the non-player critters owned by this map",
           "source_sha256": "383b430c8c33bf1885c300520c17fd38067ff56b78d668e11ac9244035dd8e8f",
@@ -5731,6 +5770,36 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.enum-value.ScrollDirection.Down/description",
+          "source": "Scroll toward the lower edge.",
+          "source_sha256": "9974eaec0daf81e13ac0fc579b18b5beacdbf4d261227703120d4132708b4065",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.ScrollDirection.Left/description",
+          "source": "Scroll toward the left edge.",
+          "source_sha256": "ac1781a0b591bcdc09108659400e78706b40da0be808bd538ae6425f287c9481",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.ScrollDirection.None/description",
+          "source": "No manual-scroll direction is active.",
+          "source_sha256": "0e9261e39da9f0af6874b1842d932b2d641c75575c9f79e1bd2aae1e5ffff6fe",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.ScrollDirection.Right/description",
+          "source": "Scroll toward the right edge.",
+          "source_sha256": "84a0780e27b62779d3ab1315db133bd781b1f1831c1edc21bd009251091ccb97",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.ScrollDirection.Up/description",
+          "source": "Scroll toward the upper edge.",
+          "source_sha256": "146682c343668d8bd840188d86a43d3bf27bd3ae3d939f39e1346442cc5b19cf",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.enum-value.TransparentEggSlot.Primary/description",
           "source": "First transparency-egg mask evaluated for map sprites.",
           "source_sha256": "dcdf82b43d59446534a5018029e9e3c9620009052567735fb4dbbb8e4d82892c",
@@ -6031,6 +6100,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.enum.MapLayers/description",
+          "source": "The layers a map view draws. The mapper hides one to work on another, so the visible set is editor state\nthe view is told about - a value that changes while the tool runs is not something anyone configures",
+          "source_sha256": "ab89b67baf3a0faa8ffce401659addd55e0e17cf8cc5be948cbd49571916bc6e",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.enum.MapProperty/description",
           "source": "Generated identifiers for properties exported by the Map script entity. Values are assigned in export order and are intended for property metadata and change notifications.",
           "source_sha256": "981bf30448cd795ccfda7a4191df4f741977fac3d1031a50aa9fb3b9e5b18019",
@@ -6064,6 +6139,12 @@
           "locator": "/symbols/@id=script.enum.RenderPrimitiveType/description",
           "source": "Vertex assembly topology used when submitting primitive draw buffers",
           "source_sha256": "314827843004fb519fffb12f5f8403b69cf1c8d367d5742b777c1d0d734fc605",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum.ScrollDirection/description",
+          "source": "The manual-scroll intent a view is currently under. Input decides it, the view consumes it, and the two\nnever share a field: a direction is a per-frame intent, not a value anyone configures",
+          "source_sha256": "deb545adbc94d2ce8b627efa2d2496b6a787d9e0e0c768965512ea2f6cf150c5",
           "status": "current"
         },
         {
@@ -6565,12 +6646,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.event.server.Game.OnCritterItemTransferIn/description",
-          "source": "Runs before a stackable-item transfer into a critter inventory is committed; exposes the source item, destination stack, and transfer count",
-          "source_sha256": "7c19a0a311f0b3363b35f6da2271c90ff8548335348a5aa2265f61ab26168240",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=script.event.server.Game.OnCritterLoad/description",
           "source": "Runs after a persistent critter is loaded and enters server ownership",
           "source_sha256": "c3a9bf95c2f39cb85aca37c355808e2059cdd58148bce21df5ab4592ab0808b9",
@@ -6820,18 +6895,6 @@
           "locator": "/symbols/@id=script.method.client.Critter.ChangeDir/description",
           "source": "Changes the local facing direction of this map critter through the normal client presentation path; throws when the critter is off-map",
           "source_sha256": "570398191867870fc4792c34b57c2a541395db31a1f969b9a8c4d7ce17108812",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.client.Critter.CountItem%234ee2c4b446f28b4f/description",
-          "source": "Sums stack counts for visible inventory items whose prototype matches the supplied prototype",
-          "source_sha256": "c89016a20114133aa56082e05dc52fbb359580ecb5018d120bbbee6f1bc3491c",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.client.Critter.CountItem%2376cf1cb69552d1b1/description",
-          "source": "Sums stack counts for visible inventory items with the requested prototype id, or for every item when the id is empty",
-          "source_sha256": "44b073516d6e238bbeb222a020f85dabd90c822f3fb0c9daa81c9d25dc2e55c3",
           "status": "current"
         },
         {
@@ -7256,8 +7319,8 @@
         },
         {
           "locator": "/symbols/@id=script.method.client.Game.ChangeLanguage/description",
-          "source": "Loads the named language pack, makes it current, and updates the client Language setting",
-          "source_sha256": "88d247dc26c1badf6a7d86aaca61a8dda0a8495ffd43780649f84e7d4806b513",
+          "source": "Loads the named language pack and makes it current without changing the configured startup language",
+          "source_sha256": "76190974123d18f8fdd99a4b761314121f332ac0165225eb1b2afa2a837904b1",
           "status": "current"
         },
         {
@@ -7507,6 +7570,30 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.client.Game.GetMusicVolume/description",
+          "source": "Returns the live music-volume percentage owned by the audio manager",
+          "source_sha256": "d063922abfe23cf36236c1079f8c15956a85bc5b5b45d3d7bd5cbb9e4fd166e3",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.GetPing/description",
+          "source": "Returns the most recently measured client-server round-trip time in milliseconds",
+          "source_sha256": "4801c6a7cb5f77b53f83baf47806149d1b1679ab89d28b3c06ee398f96df4823",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.GetSoundNames/description",
+          "source": "Returns the source-backed audio resource paths indexed by Audio.SoundFileExtensions",
+          "source_sha256": "6dc3591e4a8b0244dddedf4645133e3e5e8165c27af90f5a5471d4f14f263354",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.GetSoundVolume/description",
+          "source": "Returns the live sound-effect volume percentage owned by the audio manager",
+          "source_sha256": "f8b92523d44f46dda93cdf8a13a4121813a805a683cf3f81008d6b29648a7d40",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.client.Game.GetSpriteSize/description",
           "source": "Returns the current sprite size for a client-local handle, or a zero size when the handle is unknown",
           "source_sha256": "d1022814d291930b7591d81bf1cfa597453d6ac6a694db3c3e464e07bcd54fa0",
@@ -7570,6 +7657,12 @@
           "locator": "/symbols/@id=script.method.client.Game.HasCurPlayer/description",
           "source": "Returns whether the client currently has a replicated Player view",
           "source_sha256": "08c50da92f60d7621b42f6aa0b9634cd425e9fe25610abdc2d6e4be135b77046",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.IsAlwaysOnTop/description",
+          "source": "Reports whether the client window currently stays above other windows",
+          "source_sha256": "c4b909960b91b36d940c0d195ff17a87fc21818637d419b34a8bf5b5aa02a37e",
           "status": "current"
         },
         {
@@ -7681,9 +7774,15 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.client.Game.PlaySound/description",
-          "source": "Starts a named sound through the client sound resource catalog and returns whether playback was accepted",
-          "source_sha256": "92f5a0d2f536be655a6f6e2fab5a7140c593f0cd635d6061f5600637a101d0a6",
+          "locator": "/symbols/@id=script.method.client.Game.PlaySound%231aa5e922f54f38a5/description",
+          "source": "Starts the exact baked audio resource with initial attenuation and pan and returns its lifetime handle, or zero on failure",
+          "source_sha256": "e58597871c214ca0d1b7e72095f3ee99adb9ade7c6286df64c5d4a3ad2384ec4",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.PlaySound%23fac885e1d1fb5d17/description",
+          "source": "Starts the exact baked audio resource and returns its non-reused lifetime handle, or zero when no live sound starts",
+          "source_sha256": "41b80d3eb859ec2e7d4695c366dc34fd53b0cc961f525ec558ab5deb68939ab0",
           "status": "current"
         },
         {
@@ -7747,12 +7846,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.client.Game.RefreshAlwaysOnTop/description",
-          "source": "Reapplies the current AlwaysOnTop setting to the client window",
-          "source_sha256": "bce9cbe3e8b742c6332b32ae23dabc6b0a017a29a658056da0e00b9ecaeeeb4e",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=script.method.client.Game.RemoveCacheEntry/description",
           "source": "Removes the named client cache entry when present",
           "source_sha256": "dc5024f70d8b16cb00c43303e1248b1c94e0cf772b79c0a95cd9a0a70c96e717",
@@ -7780,6 +7873,18 @@
           "locator": "/symbols/@id=script.method.client.Game.SaveText/description",
           "source": "Creates parent directories and truncates the target file before writing the supplied text bytes; write and directory failures throw",
           "source_sha256": "3440e88dd91852342a3cf3ebfcc691ddfafb873055293653e5ba047d1527071c",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.ScreenSize/description",
+          "source": "Returns the current logical screen size",
+          "source_sha256": "968aa8219b319efe1a9aeb63557690108de86f84f9b9a96343e9bb1a535fc12c",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.SetAlwaysOnTop/description",
+          "source": "Enables or disables the client window's always-on-top mode",
+          "source_sha256": "aecdee852ba9f8bd9edb55282236fbb220a241bc7c129577a86fcd02ab3adbf2",
           "status": "current"
         },
         {
@@ -7831,6 +7936,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.client.Game.SetMusicVolume/description",
+          "source": "Changes the live music-volume percentage without mutating startup settings",
+          "source_sha256": "8d88ccf12fdc3d9868cd76cd4e5520215d9cf68d7ea9fedd37587cfc9a5f3f75",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.client.Game.SetParticleScale/description",
           "source": "Changes the scale of a loaded particle sprite and returns false for an unknown handle or non-particle sprite",
           "source_sha256": "4ee74bce3d66361d3a3e3db26a66c169b4ada2d07116b85aa9961a870fdcce4f",
@@ -7846,6 +7957,12 @@
           "locator": "/symbols/@id=script.method.client.Game.SetScreenKeyboard/description",
           "source": "Enables or disables the active input backend's on-screen keyboard",
           "source_sha256": "bb638295b68a6f0f90edabcc1c753ca402b612c2c3acaad228e1c8de3223ca03",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Game.SetSoundVolume/description",
+          "source": "Changes the live sound-effect volume percentage without mutating startup settings",
+          "source_sha256": "52ae1b6995ada3fc96832117dcf98cd2cef9a1237c37e6c7b30f214597770ff6",
           "status": "current"
         },
         {
@@ -7963,6 +8080,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.client.Game.UpdateSound/description",
+          "source": "Updates attenuation and pan for a live sound handle and returns false after that sound has ended",
+          "source_sha256": "0057312d93a1004e028f7149375df9e75e180e2e77d0472248c711a2d7c84810",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.client.ImGui.Image/description",
           "source": "Draws a client sprite in an ImGui layout slot at the requested positive size and UV range; partial UV drawing requires an atlas sprite, while a missing sprite leaves the slot blank",
           "source_sha256": "4d6d01bcf5874139cec4648b7fed7dc524b4d2383ea2a94aa853dedba0d39cd6",
@@ -7975,13 +8098,7 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.client.Item.Clone%2343d6383393a16fcc/description",
-          "source": "Creates a standalone client-side clone, overrides its stack count, and does not insert it into a map or inventory",
-          "source_sha256": "cb4dbf788318d7c955726dfb480fd5178405cde2e1e2b446172c7d5aa4e1f6d5",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.client.Item.Clone%239b8dad54da3da661/description",
+          "locator": "/symbols/@id=script.method.client.Item.Clone/description",
           "source": "Creates a standalone client-side clone with the same id, prototype, and property values without inserting it into a map or inventory",
           "source_sha256": "7876ef10ae0377f31006d11698f21f3e0c423ca065f76f7daff5e85edfa9c9e1",
           "status": "current"
@@ -8275,6 +8392,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.client.Map.GetManualScroll/description",
+          "source": "Returns the manual-scroll direction flags currently consumed by this map view",
+          "source_sha256": "228806237f7cba7a3b2a841009d6cb3822115fbfa40dd487c4e15037406349db",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.client.Map.GetPath%2311a78e57794a1f73/description",
           "source": "Finds movement directions between valid hexes, optionally stopping the endpoint cut hexes short; returns an empty array when no movement or path is available",
           "source_sha256": "73877b069154140458df6ed8654fba7fa8fade40cd03e12d21350ee3f0f05da3",
@@ -8314,6 +8437,12 @@
           "locator": "/symbols/@id=script.method.client.Map.GetVisibleHexes/description",
           "source": "Returns every map hex currently selected for drawing by this view",
           "source_sha256": "405236e72866f39de76e9df74279e73d7e1f02bf1b494b0e7f924f1fe6a41224",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Map.GetVisibleLayers/description",
+          "source": "Returns the set of layers currently visible in this map view",
+          "source_sha256": "736f71b53bbf0b66e5fe692549decded5cb111a877ffca9964ea878c17880007",
           "status": "current"
         },
         {
@@ -8402,14 +8531,20 @@
         },
         {
           "locator": "/symbols/@id=script.method.client.Map.SetExtraScrollOffset/description",
-          "source": "Sets an additional floating-point scroll offset applied by this map view",
-          "source_sha256": "12d9301d22a38404e7ee9a2c7d8656bec3fb3f3d80baa76aa4863fe1236be060",
+          "source": "Sets a script-owned transient camera offset applied on top of ordinary map scrolling",
+          "source_sha256": "0da194bf52e5983d9ff55dab4f85f3ccfc868dad8a588ba3cf5aee70f72be785",
           "status": "current"
         },
         {
           "locator": "/symbols/@id=script.method.client.Map.SetHiddenRoof/description",
           "source": "Sets the hex used by this map view's roof-hiding logic",
           "source_sha256": "1b3197ec931f796a5fd946aae4eecc736094a3b9ea024e6182487e7122cb398e",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Map.SetManualScroll/description",
+          "source": "Replaces the manual-scroll direction flags consumed by this map view",
+          "source_sha256": "a60d39b67eaae51899e3d82ff067c0bef39798e64773c45064918a87c4fd2cea",
           "status": "current"
         },
         {
@@ -8434,6 +8569,18 @@
           "locator": "/symbols/@id=script.method.client.Map.SetTransparentEgg%23d4f73ea0d2898f79/description",
           "source": "Configures a transparent-egg slot around an on-map critter's current sprite bounds, or clears the slot when the critter is absent, foreign, or not drawable",
           "source_sha256": "458357f0cf52776c71dd6802047e4997d88498000bb77c814bff59944f69ddc4",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Map.SetVisibleLayers/description",
+          "source": "Replaces the set of layers visible in this map view",
+          "source_sha256": "21d4d1661087088874996cfaf76755294c917eb128ba371abfaf39c2a52ead51",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.AndroidBuild/description",
+          "source": "Reports whether this binary targets Android",
+          "source_sha256": "3db581a240a4a9044c0bb2836762ab57eb407acf4e1286399c233ca10e68e14f",
           "status": "current"
         },
         {
@@ -8503,9 +8650,27 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.common.Game.CurrentLanguage/description",
+          "source": "Returns the language pack currently owned by this Engine instance",
+          "source_sha256": "f18efaaf80322525d0ca917530b0bbe5c132cc7a8e0ba7fb89695dc49c69b6a6",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.DebugBuild/description",
+          "source": "Reports whether this is a native Debug build",
+          "source_sha256": "c85c7ecd83da496d15d8cd7ac0fe1e512e471d52ebcf8584264c0e3302815ac8",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.common.Game.DecodeUtf8/description",
           "source": "Decodes the first UTF-8 code point from the supplied text, writes the consumed byte count, and returns the Unicode scalar value",
           "source_sha256": "6f3475b6d2717497d0c3e36bf36f8aec12c04704f7177deae64016512c5fe31f",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.DesktopBuild/description",
+          "source": "Reports whether this binary targets a desktop platform",
+          "source_sha256": "b68f13b813a20241d166ad7e57864e70fbf9fa30569b225834cef05ee7094535",
           "status": "current"
         },
         {
@@ -8647,6 +8812,24 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.common.Game.GitBranch/description",
+          "source": "Returns the source branch recorded when this binary was built",
+          "source_sha256": "55f097b06cf5bfd651a6cf5db369fff40369862be6db3d8c28361873f67a46d2",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.GitCommit/description",
+          "source": "Returns the source revision recorded when this binary was built",
+          "source_sha256": "c163ff4503d0a6c3d00f63404758925ed1bd0dab708b7cff486b140094ad458f",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.IOsBuild/description",
+          "source": "Reports whether this binary targets iOS",
+          "source_sha256": "576b2fc5372bd082e05efc448171454a4b45f5678d54fcb31196575a68f4a9eb",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.common.Game.ImGui/description",
           "source": "Returns the Engine ImGui script facade during an active ImGui frame; throws when no context or frame scope is available",
           "source_sha256": "fbd04aa4518d9827fe168152d2a12303a5078f08e1f4a54090cb37b2bb12f60e",
@@ -8665,9 +8848,39 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.common.Game.LinuxBuild/description",
+          "source": "Reports whether this binary targets Linux",
+          "source_sha256": "26909169e37bbe36e7538e86a4c829554f67fce544206d906805e6be2dbf1336",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.common.Game.Log/description",
           "source": "Writes the supplied text as one Engine log message",
           "source_sha256": "d007f4620b8a9644ef1c7d995e6900a80db91390d7f72ec4a4d244ed32a3c183",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.MacOsBuild/description",
+          "source": "Reports whether this binary targets macOS",
+          "source_sha256": "035078f5d159423872f7211633c168ab9c0abf50bdef8b52bb6b338f7753109b",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.MapDirCount/description",
+          "source": "Returns the compile-time number of movement directions for the configured map geometry",
+          "source_sha256": "7e74cf87e212b4d16ddcab7070cf610e39d4bd4bcaf24c490c8c2371da7f31cf",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.MapHexagonal/description",
+          "source": "Reports whether the configured map geometry is hexagonal",
+          "source_sha256": "29a8cd2af651efa8d450c829717c0841db4682702895180b03e1598c85dda4eb",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.MapSquare/description",
+          "source": "Reports whether the configured map geometry is square",
+          "source_sha256": "716e4726bf2580d735bab82f23421827a4a1f1caef34fde17cce853e946a1dd9",
           "status": "current"
         },
         {
@@ -8893,6 +9106,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.common.Game.TabletBuild/description",
+          "source": "Reports whether this binary targets a tablet or mobile platform",
+          "source_sha256": "d8d447085b6c1fa34623079d958bfb29b4e06ec8b789e858476ea261f42088a2",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.common.Game.TraceHexLine%238955c6e7c8318b5a/description",
           "source": "Traces up to a nonnegative number of in-bounds hexes toward a target with angular and pixel offsets, excluding the start hex and stopping when the tracer cannot advance",
           "source_sha256": "8d2fdeeed6c45bfea3b1ef3d33fad32b987b9a35bc81b76836cc7741554a7453",
@@ -8914,6 +9133,18 @@
           "locator": "/symbols/@id=script.method.common.Game.UnpackTime/description",
           "source": "Decomposes a high-resolution time point into local calendar and subsecond fields",
           "source_sha256": "4e62b9c1823abc43bf543096624466511760a7170ebbe3e01c1cc1fa0bdd03e7",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.WebBuild/description",
+          "source": "Reports whether this binary targets the Web platform",
+          "source_sha256": "877a71eb9b580f1cc5dca93228e37c8d5ed3fd9a30958db33233c440fd659fe0",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.WindowsBuild/description",
+          "source": "Reports whether this binary targets Windows",
+          "source_sha256": "ddde059a2e58d894900c6cf1813e5d265e756f6885414f80abf48fd4c45f6c0d",
           "status": "current"
         },
         {
@@ -10340,8 +10571,8 @@
         },
         {
           "locator": "/symbols/@id=script.method.mapper.Game.AddItem%23f08c1b76d0bf34c1/description",
-          "source": "Creates an item from the supplied prototype id on a valid hex of the currently shown Mapper map and returns its editable client view",
-          "source_sha256": "0c5c2021b18298f99221984026784e7343e275bc697d295ae288ca75aad2708e",
+          "source": "Creates an item from the supplied prototype id on a valid hex of the currently shown Mapper map",
+          "source_sha256": "b87cf9e940ade02090b9248005e21d6535de04a0056fafb14acd414fb0c4b022",
           "status": "current"
         },
         {
@@ -10483,6 +10714,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.mapper.Game.GetVisibleMapLayers/description",
+          "source": "Returns the map layers currently visible in the Mapper viewport",
+          "source_sha256": "f5bf58a32a924503bfdbdf8097a9b67bfb1992a7442a1f771154ead14e3d3976",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.mapper.Game.IsMapperHexOverlayVisible/description",
           "source": "Returns whether the Mapper-wide hex overlay is visible",
           "source_sha256": "f667c86bf1cfadfaad9d1e57afff3c97a2a2d1906db7f6f325c95d94006ff052",
@@ -10597,6 +10834,18 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.mapper.Game.SetMouseScroll/description",
+          "source": "Configures whether edge-driven mouse scrolling is enabled in fullscreen and windowed Mapper modes",
+          "source_sha256": "251f1938e88e68883eac09d1abdcd9e12145da789396bb2dd443685319ea522e",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.mapper.Game.SetVisibleMapLayers/description",
+          "source": "Replaces the map layers visible in the Mapper viewport and applies the visibility state",
+          "source_sha256": "c2c3b23a59aeffd005c2fc362f3091b10998a02425253de20df53a6cccf72774",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.mapper.Game.ShowMap/description",
           "source": "Makes the supplied loaded map the map currently shown by the Mapper",
           "source_sha256": "35736580af13347a0ba580bd65e08d9b1e92f01b815837c2fccd7762084cfe08",
@@ -10657,13 +10906,13 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Critter.AddItem%236ec8ddf0df24ef8b/description",
+          "locator": "/symbols/@id=script.method.server.Critter.AddItem%236029176d1f44719d/description",
           "source": "SyncScope: requires self; creates and attaches a new inventory item under self's cover",
           "source_sha256": "977e780a5bab468f190e646b8b229b3aa2635b7d582b22b4f45c98d010e8174e",
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Critter.AddItem%23ec4fbc5515e08a6f/description",
+          "locator": "/symbols/@id=script.method.server.Critter.AddItem%23e8b1d5e540061d17/description",
           "source": "SyncScope: requires self; creates and attaches a new inventory item under self's cover",
           "source_sha256": "977e780a5bab468f190e646b8b229b3aa2635b7d582b22b4f45c98d010e8174e",
           "status": "current"
@@ -10684,42 +10933,6 @@
           "locator": "/symbols/@id=script.method.server.Critter.ChangeMovingSpeed/description",
           "source": "SyncScope: requires self; changes current movement speed",
           "source_sha256": "54b5d524cb609a4fe04e3e025a0ec8dcde035eff96ae169adffa19d3e5d01775",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Critter.CountItem%234ee2c4b446f28b4f/description",
-          "source": "SyncScope: requires self; counts matching inventory items under self's inventory cover",
-          "source_sha256": "c5366cdb6713fa6a75c7b853f5cefc108afe17e93752be86f1651a6b7c4fb28c",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Critter.CountItem%2376cf1cb69552d1b1/description",
-          "source": "SyncScope: requires self; counts matching inventory items under self's inventory cover",
-          "source_sha256": "c5366cdb6713fa6a75c7b853f5cefc108afe17e93752be86f1651a6b7c4fb28c",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Critter.DestroyItem%2326ca271deb00c7af/description",
-          "source": "SyncScope: requires self; destroys matching inventory item count under self's holder cover",
-          "source_sha256": "c512d5c0508c9deb465f3bcd79cb701ae89920928f9f8a7e7b415af5dbb250ef",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Critter.DestroyItem%23978a393a4a080f2f/description",
-          "source": "SyncScope: requires self; destroys matching inventory items under self's holder cover",
-          "source_sha256": "c82b81cf54eecf139aa81dae1bd61d3aa1fd481f6c3e7ed81b3ffd64f0ee6b15",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Critter.DestroyItem%23bfe9277442704d41/description",
-          "source": "SyncScope: requires self; destroys matching inventory item count under self's holder cover",
-          "source_sha256": "c512d5c0508c9deb465f3bcd79cb701ae89920928f9f8a7e7b415af5dbb250ef",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Critter.DestroyItem%23d9df41ed759d2571/description",
-          "source": "SyncScope: requires self; destroys matching inventory items under self's holder cover",
-          "source_sha256": "c82b81cf54eecf139aa81dae1bd61d3aa1fd481f6c3e7ed81b3ffd64f0ee6b15",
           "status": "current"
         },
         {
@@ -11047,6 +11260,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.server.Entity.GetRefCount/description",
+          "source": "A reference-leak diagnostic: every script wrapper and in-flight native pin is counted, so only a difference\nmeasured around a controlled sequence of calls means anything",
+          "source_sha256": "27650121b0c576045ec40a6189271d610b143de37a683bee73cb1cc5dafa2923",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.server.Entity.IsPersistent/description",
           "source": "SyncScope: requires self; reads persistence flag only",
           "source_sha256": "230511b95599fb8b98345d41e76686293a7f2e634052aa36ee6016cb11bfa99e",
@@ -11233,6 +11452,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.server.Game.CloneItem/description",
+          "source": "Clones the complete live item and returns the new item with synchronization cover",
+          "source_sha256": "af7252b1266b83c22c2dc49d5358c94ac2d007180f35220204c0bfcf95a3467d",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.server.Game.CreateCritter%23151d7b0fa45c079e/description",
           "source": "SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use",
           "source_sha256": "c356fcb0d0a2caf1b50ad302a23dbb8094a2593d27a4f62d2923b9c86b965aa3",
@@ -11254,6 +11479,24 @@
           "locator": "/symbols/@id=script.method.server.Game.CreateCritter%23e8d3f028fa79075f/description",
           "source": "SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use",
           "source_sha256": "c356fcb0d0a2caf1b50ad302a23dbb8094a2593d27a4f62d2923b9c86b965aa3",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.server.Game.CreateItem%2327766bb940021b1f/description",
+          "source": "Creates an item with integer property overrides applied before OnItemInit and returns it with synchronization cover",
+          "source_sha256": "5d044e07c3c0798aabfbcd748aa9592d5262addd6ee64198cdceeca6ae544434",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.server.Game.CreateItem%236029176d1f44719d/description",
+          "source": "Creates an item from the supplied prototype descriptor and returns it with synchronization cover",
+          "source_sha256": "5a340df363ae0caa4d0223191d0b246e5342992c2321217b2473318380c67aaf",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.server.Game.CreateItem%23ba49673cbfedbc07/description",
+          "source": "Creates an item from the supplied prototype id and returns it with synchronization cover",
+          "source_sha256": "8668419e3e6c962eba132603f26f7a07cf05aa92bc51202f1584b19a9656ef3c",
           "status": "current"
         },
         {
@@ -11443,15 +11686,9 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Game.DestroyItem%2381454288b8dbf6b1/description",
+          "locator": "/symbols/@id=script.method.server.Game.DestroyItem/description",
           "source": "SyncScope: requires item + current item parent when item is non-null; destroys the item subtree",
           "source_sha256": "5e945c26cdcd18c012540ce485ca000fd866aacc2feb392820b078888bedf9f0",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Game.DestroyItem%239161ec2a1d9e60a9/description",
-          "source": "SyncScope: requires item + current item parent when item is non-null; full-count destroy removes the item subtree",
-          "source_sha256": "61b62b47fa7b44476dca6787f121c8540c7061c93f26cc987ceeacbe1926f6d3",
           "status": "current"
         },
         {
@@ -11803,12 +12040,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Game.MoveItem%2301b24a3b95a72d0e/description",
-          "source": "SyncScope: requires item + current item parent + destination container item",
-          "source_sha256": "799c2e3d833a4d6b6937d9ce970259b9af282afbfab7191d5abb967133bc90bb",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=script.method.server.Game.MoveItem%232ed0d82a6f587a26/description",
           "source": "SyncScope: requires item + current item parent + destination container item",
           "source_sha256": "799c2e3d833a4d6b6937d9ce970259b9af282afbfab7191d5abb967133bc90bb",
@@ -11821,21 +12052,9 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Game.MoveItem%239956c3b95ef7bc5f/description",
-          "source": "SyncScope: requires item + current item parent + destination critter",
-          "source_sha256": "bfc0dcefd03b037db7e95c3f496b25c0a984c9f95b19c5351a1b3a5aef5417e4",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.method.server.Game.MoveItem%239eccef0918f1fa83/description",
-          "source": "SyncScope: requires item + current item parent + destination map",
-          "source_sha256": "6073e20f0ef4397b5283f7e7a0a98788c8fc0966a15fd3330e06bcc6705bb4c8",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=script.method.server.Game.MoveItem%23c26f82c316789816/description",
-          "source": "SyncScope: requires item + current item parent + destination critter",
-          "source_sha256": "bfc0dcefd03b037db7e95c3f496b25c0a984c9f95b19c5351a1b3a5aef5417e4",
+          "source": "Moves the complete item to the destination critter and returns it, or null if the move removes it",
+          "source_sha256": "0ab1b7cc8f41b4f167bfccaa7f2634bed699a5e2541de35e9018a8d058883ea0",
           "status": "current"
         },
         {
@@ -11893,6 +12112,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.server.Game.SyncWiden/description",
+          "source": "Widens the current synchronization cover in place to include the supplied live entities",
+          "source_sha256": "1e2beb0e7732b1638916b5062dd91fe9c8ea298571889d8ef9e47d8fe60eb347",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.server.Game.SystemCall%235f9bd54717eb40b8/description",
           "source": "SyncScope: external process call only; requires no entity cover but must not run under unrelated entity locks",
           "source_sha256": "a75ede9a8335aad4b5a1c74111ea7dc850cbcbf93941e13796791111831fdfe3",
@@ -11923,13 +12148,13 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Item.AddItem%234fb12d5afc16cf97/description",
+          "locator": "/symbols/@id=script.method.server.Item.AddItem%23bfe6263d4ff550ad/description",
           "source": "SyncScope: requires self; creates and attaches a new inner item under the container cover",
           "source_sha256": "71f56a01a88398af7056d2da5a024b2d85f7492ea1649e68d4a98536151fc7ff",
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Item.AddItem%237cfa2f0fd27518f9/description",
+          "locator": "/symbols/@id=script.method.server.Item.AddItem%23c6fbcb98959420b1/description",
           "source": "SyncScope: requires self; creates and attaches a new inner item under the container cover",
           "source_sha256": "71f56a01a88398af7056d2da5a024b2d85f7492ea1649e68d4a98536151fc7ff",
           "status": "current"
@@ -12073,25 +12298,25 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Map.AddItem%232d1b78e701c59093/description",
+          "locator": "/symbols/@id=script.method.server.Map.AddItem%233b5f3b7a0ad0569d/description",
           "source": "SyncScope: requires self; creates and attaches a new map item under the map cover",
           "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Map.AddItem%2366143f02aa67f0a1/description",
+          "locator": "/symbols/@id=script.method.server.Map.AddItem%234c836c86ebb331f9/description",
           "source": "SyncScope: requires self; creates and attaches a new map item under the map cover",
           "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Map.AddItem%23ceb12274c8e146ea/description",
+          "locator": "/symbols/@id=script.method.server.Map.AddItem%2393da72a5ec69c371/description",
           "source": "SyncScope: requires self; creates and attaches a new map item under the map cover",
           "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.server.Map.AddItem%23db03aa08dd7b9ba1/description",
+          "locator": "/symbols/@id=script.method.server.Map.AddItem%23dd69e509a0195144/description",
           "source": "SyncScope: requires self; creates and attaches a new map item under the map cover",
           "source_sha256": "397d3020a4496056d3c9a2a6e891669897edcdc121e31c89651460d9bed01bcb",
           "status": "current"
@@ -12919,12 +13144,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.property.Item.Count/description",
-          "source": "Positive quantity represented by this item; non-stackable items must have a value of one",
-          "source_sha256": "c78ee980dcbe70e4abd56ae705d04b0e83e9e1770d37722775660c83e77e6ddb",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=script.property.Item.CritterId/description",
           "source": "Identifier of the owning critter while Ownership is CritterInventory; zero otherwise",
           "source_sha256": "13163e321142cdc5a2132d01d1196e72b7881953b23a53297d7b9456720b3d56",
@@ -12973,9 +13192,9 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.property.Item.DrawOrderOffsetHexY/description",
-          "source": "Signed Y-hex offset used only when calculating the item's sprite draw order",
-          "source_sha256": "1568ed6a50aeee085fbf83dabca6e96034f65a486d59d95cfb818dce6da758d2",
+          "locator": "/symbols/@id=script.property.Item.DrawOrderSubLayer/description",
+          "source": "Fine ordering inside the item's primary draw-order layer",
+          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
           "status": "current"
         },
         {
@@ -13162,12 +13381,6 @@
           "locator": "/symbols/@id=script.property.Item.ShootThru/description",
           "source": "Allows projectile traces through every hex occupied by the item",
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=script.property.Item.Stackable/description",
-          "source": "Allows equal items to merge into one entity whose Count is greater than one",
-          "source_sha256": "3036c696ec060285e47db805bfc290ea3c3bf1b79739bd4f7b10169c4ee48fb0",
           "status": "current"
         },
         {
@@ -13519,9 +13732,9 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.ref-field.client.MapSpriteHolder.DrawOrderHyOffset/description",
-          "source": "Vertical hex offset applied to draw-order sorting when ProtoId is empty",
-          "source_sha256": "4281a245958c1ae38c83a3643fc7c5f1f19d7bfb7f18e0f5934606b2d0d58166",
+          "locator": "/symbols/@id=script.ref-field.client.MapSpriteHolder.DrawOrderSubLayer/description",
+          "source": "Fine ordering within DrawOrder used when ProtoId is empty",
+          "source_sha256": "bf909dec6a1fc9d6da5f9bc3c597b06796a5ca59e0ecd54b2cdaa5592862d7fe",
           "status": "current"
         },
         {
@@ -14353,9 +14566,21 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.client.Audio.MixRate/description",
+          "source": "Sample rate the engine mixes at before handing the stream to the device, which resamples if it runs at another one",
+          "source_sha256": "0b0886890f0a433af20732dc2253d38e2126e4d62158b1baef6deb6468a87f60",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.client.Audio.MusicVolume/description",
           "source": "Music volume percentage",
           "source_sha256": "a61fef5f2d0be048ec94ff7b652357f01d7300d1927622bc1e9322a6c9ea73e8",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Audio.SoundFileExtensions/description",
+          "source": "Source extensions the sound-name index accepts; every baked payload is Ogg Vorbis whatever the extension says",
+          "source_sha256": "02e3b0c2a286769135e815f9825d49f9f30953592d8160bb65b91a28ef599d22",
           "status": "current"
         },
         {
@@ -14389,21 +14614,9 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.client.Client.HelpInfo/description",
-          "source": "If true, help information is shown",
-          "source_sha256": "23f2842809c8b9b6ca71a1b0de48c15519fb0be6af19c82df137dc5fb905bbb3",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.client.Client.Language/description",
           "source": "Language setting",
           "source_sha256": "d29c9ab6ebd304db97654cb01d0c8d60d72fc608aab0fc6498f4e4be2b60696f",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Client.SoundNotify/description",
-          "source": "If true, sound notifications are enabled",
-          "source_sha256": "f7984b2ede81e5652a61d0ec3a353ce2ba954f8be1e143d2c1716fb4f06c4505",
           "status": "current"
         },
         {
@@ -14419,21 +14632,9 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.client.Client.WinNotify/description",
-          "source": "If true, Windows notifications are enabled",
-          "source_sha256": "ef1f1f1697c049fd3b7a14127f138967527f6eaf3b71505f41222a5f6fc9f7d7",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.client.ClientNetwork.DebugNet/description",
           "source": "If true, network debugging is enabled",
           "source_sha256": "75aeb4feff001b54ae2388ec4f30783fe59ec762dec8fe15909babb1dd739d0d",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.ClientNetwork.Ping/description",
-          "source": "Network ping (read only)",
-          "source_sha256": "1d5ba933a3178a8e0bb2a1740f43de4a71ef6174c20295ac9fb7f1d5ee44a72d",
           "status": "current"
         },
         {
@@ -14503,12 +14704,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.client.Hex.RoofAlpha/description",
-          "source": "Roof alpha value",
-          "source_sha256": "43e6389d6d2861c202167d7e22208634fc3b8280a2cf6495087933f14e8065e0",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.client.Hex.ScrollBlockSize/description",
           "source": "Blocked hexes around scroll block line",
           "source_sha256": "16d641f978d639554bf6a739688cf4b3c94872fa26f35abf3d82d139a9b41e5f",
@@ -14521,99 +14716,9 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollKeybDown/description",
-          "source": "Keyboard map scroll down (read only)",
-          "source_sha256": "5c9fbc6ca32a1b7eae342f6d6e98156727ae29b58a691e125893a95ffca04cf0",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollKeybLeft/description",
-          "source": "Keyboard map scroll left (read only)",
-          "source_sha256": "78d45bb7c32c0962baeb8a22fa370bcb5f49df9b2c9821d4e92f4cefbd8523c9",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollKeybRight/description",
-          "source": "Keyboard map scroll right (read only)",
-          "source_sha256": "78bc8edf6bf9a90b1e5ce5ea081aac533b1da9f536d76f3d28b6088a2044af67",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollKeybUp/description",
-          "source": "Keyboard map scroll up (read only)",
-          "source_sha256": "38753942d609533e90d9bcd54d1d409867e4a90e5c369241bcee12408de89dbf",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollMouseDown/description",
-          "source": "Mouse map scroll down (read only)",
-          "source_sha256": "f41aa53217216218ba748ae3d72f4e30f97fedf8e9d36c12dc79529b75604987",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollMouseLeft/description",
-          "source": "Mouse map scroll left (read only)",
-          "source_sha256": "96524e6b3710ad0b0f14fb4ff9adaa227d8bfc89ccc4a37b2260282a36fe083e",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollMouseRight/description",
-          "source": "Mouse map scroll right (read only)",
-          "source_sha256": "e2801ba2e119dde76e2967fd9ae1dfc86d5c72f89267f36c2e0941de74be6644",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ScrollMouseUp/description",
-          "source": "Mouse map scroll up (read only)",
-          "source_sha256": "1a7ace60ce2ebab80ed5d7b2ef14fc35eb6c15893c951db300a0c22f50fce9a9",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.client.Hex.ScrollSpeed/description",
           "source": "Scroll speed in pixels per second",
           "source_sha256": "c9431351dd200fd48c7d0a024009d0e2ff42a5c196a3d29ee2471d888b5cf4b9",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ShowCrit/description",
-          "source": "If true, critters are shown",
-          "source_sha256": "abae839b996658f2793920c6d9a3a2e8bc133d6bbdfdb899e66ffe35f1438907",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ShowFast/description",
-          "source": "If true, fast mode is enabled",
-          "source_sha256": "7a01e34d9adced22a6752f793cf29ccf079af615853bf989bce5344c78d274ee",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ShowItem/description",
-          "source": "If true, items are shown",
-          "source_sha256": "3eac2e0121e25819f5c2a2ba5e0f60b91f2803b3fcf98498b2a28cd683336a05",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ShowRoof/description",
-          "source": "If true, roofs are shown",
-          "source_sha256": "8d98d50dd9d478ee11c4d33d119a776839e1c26b59f67d29b3de05a86119f5b9",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ShowScen/description",
-          "source": "If true, scenery is shown",
-          "source_sha256": "73f782cf4c6c913efb2275816d08e9a62faacc953c668515f98f243a31b01f48",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ShowTile/description",
-          "source": "If true, tiles are shown",
-          "source_sha256": "6829be3cd08145b27a1d77f8fd7a064e428b7b822d99ee610d768916bcd06f52",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Hex.ShowWall/description",
-          "source": "If true, walls are shown",
-          "source_sha256": "73d977bc5b6692899190c35b056ebb2f8782859ce80e8c08361a455da4479c5c",
           "status": "current"
         },
         {
@@ -14641,12 +14746,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.client.Input.DoubleClickTime/description",
-          "source": "Double-click time in milliseconds",
-          "source_sha256": "84747669ed696543bd81d816df79411ea27f6ae978baf5662f656fb4a06fee79",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.client.Mapper.ParticlePreviewEffect/description",
           "source": "Particle resource to preview after opening the start map",
           "source_sha256": "f056beb30603da0d573afc7d04da1339a2f20703e1f98478b0ea68e6e4280c62",
@@ -14668,12 +14767,6 @@
           "locator": "/symbols/@id=setting.client.Mapper.ParticlePreviewSeed/description",
           "source": "Seed used when the selected runtime supports seeded startup preview",
           "source_sha256": "522587314a3d65317692f42eec018bcda62441efdc2dbc2d4f6c37d0e82d8adc",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.client.Mapper.SplitTilesCollection/description",
-          "source": "If true, tiles collection is split",
-          "source_sha256": "14dc767c2e31e5f251dd079e2075886cb30c409bfc85b1c062c0b90b5e139363",
           "status": "current"
         },
         {
@@ -14845,9 +14938,51 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.AngelScript.AttributedFunctionDirectCallAllowedNamespaces/description",
+          "source": "AngelScript namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher",
+          "source_sha256": "02ea8d110e30b4507cd141bc298f6d73c687fdd0056052f126d75b2a4f98caa3",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.AngelScript.DebuggerBindHost/description",
+          "source": "AngelScript debugger TCP bind host",
+          "source_sha256": "105a78df920b5eff592a7b61b87549eafae8dc678d5a81fa84a1d60ce54be218",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.AngelScript.DebuggerEnabled/description",
+          "source": "If true, AngelScript debugger endpoint is enabled",
+          "source_sha256": "023502e5be8c2b3ce899fbedf31537d51473f6e2933db0ec53fc530caf732ab3",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.AngelScript.ExtraDirectCallBlockingAttributes/description",
+          "source": "Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls in addition to the engine's built-in dispatcher-bound list",
+          "source_sha256": "65c5c19e2ca50c78b03fddafc1504dbf59a764d5e23a8415ac949aa5f2db059a",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.AngelScript.MutableGlobalsAllowedNamespaces/description",
+          "source": "AngelScript namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)",
+          "source_sha256": "45e5cb643af7e6546dce72772afdfe5cff2dd965e7fe859eca742e0f46d97677",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.AngelScript.OverrunReportTime/description",
+          "source": "Time in milliseconds to report AngelScript execution or entity-lock wait overrun, 0 to disable",
+          "source_sha256": "2f940020ef7475c5be65a3b8f1773996fcec7643ca58c8b9325eea9e8c8f4a04",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.Baking.AllowRepeatedProtoParents/description",
           "source": "If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached",
           "source_sha256": "bc93f96eda5667f24ca75c3b5450b23d990f2480d850bdedbc330ef483cdf114",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Baking.AudioVorbisQuality/description",
+          "source": "Vorbis VBR quality audio baking encodes with, from -0.1 (smallest) to 1.0 (largest)",
+          "source_sha256": "c22df8f9f16f9d00527cc400585e58ee2f6c86b5ac6efde4a44d7c966fc9be69",
           "status": "current"
         },
         {
@@ -14875,12 +15010,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Baking.ClientResourceEntries/description",
-          "source": "Client resource entries (read only)",
-          "source_sha256": "a0a3bfb1cfc40e6bc4b1a7afb38496f28688f07acfce7f570609179e07653365",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.common.Baking.ClientResources/description",
           "source": "Client resources directory",
           "source_sha256": "dc13e0a37be9983970e884a4a1e6734f64ea8329b275c48e048cb0ccc98607d0",
@@ -14893,15 +15022,15 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Baking.IgnoreMissingBakerWarning/description",
-          "source": "If true, missing baker warning is suppressed when stale baked resources already exist",
-          "source_sha256": "ec1017b11204e5843a1750ef038f0023c2ed5850aaf480862c56213709edf388",
+          "locator": "/symbols/@id=setting.common.Baking.IgnoreInputDirs/description",
+          "source": "Resource pack input directories left out of every pack, relative to the config declaring the pack; each must be an input of some pack",
+          "source_sha256": "69e78a580d1cc450cf72ed45169ce82c5ab36fc3e4fee8688df61d0b336b5450",
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Baking.MapperResourceEntries/description",
-          "source": "Mapper resource entries (read only)",
-          "source_sha256": "e3f18c1a1cdbc1ef54fb186c5d83e810a902368a7e9c43488a167f2fabb827aa",
+          "locator": "/symbols/@id=setting.common.Baking.IgnoreMissingBakerWarning/description",
+          "source": "If true, missing baker warning is suppressed when stale baked resources already exist",
+          "source_sha256": "ec1017b11204e5843a1750ef038f0023c2ed5850aaf480862c56213709edf388",
           "status": "current"
         },
         {
@@ -14941,12 +15070,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Baking.ServerResourceEntries/description",
-          "source": "Server resource entries (read only)",
-          "source_sha256": "d54e0a505d5104f86d8a924c6da64bf083776c2bee08a088f30be2302687f57b",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.common.Baking.ServerResources/description",
           "source": "Server resources directory",
           "source_sha256": "6adc8d3d036c22236ced92bf4220e2208b7ce1cd338009818220607f67ac2c43",
@@ -14971,24 +15094,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Common.CommandLine/description",
-          "source": "Command line used to start the game (read only)",
-          "source_sha256": "ee750c1f19ea959e13d93c01b7a81afe0c2e789b0916e53c034fd560c63cb3c7",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Common.CommandLineArgs/description",
-          "source": "Command line arguments used to start the game (read only)",
-          "source_sha256": "abe058e4ac0d8c763100da31656aab91e67976b37e0614a07fb8513cde537089",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Common.DebugBuild/description",
-          "source": "If true, debug build is used, otherwise release build (read only)",
-          "source_sha256": "de8713df47563f9890897eedb3e8bfa03f5099c41e121b85529cd6eb57efdf2b",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.common.Common.GameName/description",
           "source": "Game name, used in logs and window title",
           "source_sha256": "75a486c1d1e7dba9804fc9503a233d738fd39a69d7db1a239d4d6b3b78b1c0f0",
@@ -14998,18 +15103,6 @@
           "locator": "/symbols/@id=setting.common.Common.GameVersion/description",
           "source": "Game version, used in logs and window title",
           "source_sha256": "21b6c6a6ccd530ca9f1b91014c55e19d66336de1e4b39ce8391fb016542532c6",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Common.GitBranch/description",
-          "source": "Git branch name (if present)",
-          "source_sha256": "a01939c6dcc275af80ca61cc04f4b88bddf806d8f0b0e052b50332ceaf1fa659",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Common.GitCommit/description",
-          "source": "Git commit hash (if present)",
-          "source_sha256": "9d1347ba6c9f606d0c1dbff06c14ed5768ab79c6de761a9705bdf8b029d77222",
           "status": "current"
         },
         {
@@ -15055,12 +15148,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Geometry.MapDirCount/description",
-          "source": "Directions count (read only)",
-          "source_sha256": "59ac0a50abe2232a0f8686bd9a195da0686b74b3b8d3dde04d51ae19bebbedf2",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.common.Geometry.MapFreeMovement/description",
           "source": "If true, free movement on the map is enabled",
           "source_sha256": "5d4560a0b24ef8621e5072659792ec8db6820d64018093b39076685fb78db6a9",
@@ -15085,12 +15172,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Geometry.MapHexagonal/description",
-          "source": "Hexagonal map grid (read only)",
-          "source_sha256": "766997ec79bb22e8d6302974d7faddbec2f4ccf42c46af536517f62a0e20470b",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.common.Geometry.MapRoofElevation/description",
           "source": "Roof tile 3D elevation, applied to every roof tile (a roof is just a tile lifted in 3D so it draws above the walls). Replaces the old 2D MapRoofOffs* raise; the flat tile/roof XY offset now lives on the BaseTile prototype Offset",
           "source_sha256": "484ce993b69c8e743d162f73987b5b4585f8c34b765fe942ebeca40e66e2ef23",
@@ -15103,12 +15184,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Geometry.MapSquare/description",
-          "source": "Square map grid (read only)",
-          "source_sha256": "e738917f86b00f4e4eca65784f5edcaab5c1a9429c757d10cfbc29f6c62a56bb",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.common.Geometry.MapTileStep/description",
           "source": "Tile step value",
           "source_sha256": "fa24e159750e2ce5d1a47bac3b06ed5c27983abd4fce3947483e4eba47429d25",
@@ -15118,6 +15193,102 @@
           "locator": "/symbols/@id=setting.common.Geometry.MaxPathFindLength/description",
           "source": "Maximum pathfinding length",
           "source_sha256": "0af7be618ba6559feb5a36e61c808a64a73e2fc66f69e78e1a44e9e6c264fcf2",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.AdditionalFiles/description",
+          "source": "Analyzer configuration file paths passed to the script compilation as AdditionalFiles",
+          "source_sha256": "3fe5c2fff1bcb263d74bfcbbe11e12183864029b760da9600dd4e0fe260927fc",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.AnalysisLevel/description",
+          "source": "Analysis level of the generated managed project, empty keeps the SDK default",
+          "source_sha256": "86b62e749432fcb52427d5d0cf9e11961ab8b94c9fb660d416989bc2b9b0e2fe",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.AnalysisMode/description",
+          "source": "Analysis mode of the generated managed project, empty keeps the SDK default",
+          "source_sha256": "0677da7b23c97052a65b673871d49b6e0e93464643e8888217f4a39ac98e65ad",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.AnalyzerPackages/description",
+          "source": "Roslyn analyzer NuGet packages as 'name,version' entries, version is mandatory and must be exact",
+          "source_sha256": "800cfac78cc552ecbf254431b075aabd031db416a72577aaba1cd22d28dbbc7f",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.Analyzers/description",
+          "source": "Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build",
+          "source_sha256": "22f0ea497d4c1f5f2c6e6f510723f769eef94995187eb103264684b153c9b2a2",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.Assemblies/description",
+          "source": "Managed script assemblies to build",
+          "source_sha256": "23726bf8ad6ca5993edcd8a2944060a6f29a195f0788016e38bcd73b6695bf8d",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.BakerDryRun/description",
+          "source": "If true, managed baker writes stub markers instead of compiling assemblies",
+          "source_sha256": "d00367ffd07cb131f486ae411542a076d6c09eb00338f2414c5da519bb426558",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.DeepTrackEntityWrappers/description",
+          "source": "If true, every managed entity wrapper is also tracked weakly so shutdown can name the wrappers that still hold a native entity reference; costs a dictionary write per wrapper, while the live wrapper count shutdown reports is always kept",
+          "source_sha256": "45e85cf0088313e8edd5772f232059f2c27f5bdef65e9baf64262b418c41f5bd",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.Dirs/description",
+          "source": "Managed script source directories, top-level .cs files of each are compiled in place",
+          "source_sha256": "6671ace21111298582b86636c049bb7437a0c1c1ea13d835c53701f08f06b3ba",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.ExtraReferences/description",
+          "source": "Extra managed assembly references as 'assembly,target,reference' entries",
+          "source_sha256": "84437271dda887f1e2665b6218e84a66413e3d99264e4eeccd1295ff36606b5f",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.ExtraSources/description",
+          "source": "Extra managed source files as 'assembly,target,path' entries",
+          "source_sha256": "bc7d93fcaf111366f70de7fbdc16ddb2d06b0d93288e1f5ff5d23968182c2bc4",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.GeneratedDir/description",
+          "source": "Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)",
+          "source_sha256": "074d425c006b4246222e111ece975a2cafbe7a8039b80244bb5289676eb4e72a",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.MsBuild/description",
+          "source": "Managed msbuild command",
+          "source_sha256": "b58d126e674f2f05d81720694ba4a8eb61369ab01e915594ca5286c7ce24eb51",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.OverrunReportTime/description",
+          "source": "Time in milliseconds to report managed script execution or entity-lock wait overrun, 0 to disable",
+          "source_sha256": "7caa7c7c060a941c955c47847dc2ce87009fff7b77088025c3a4eecf3f828c4d",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.ProjectName/description",
+          "source": "Managed project base name",
+          "source_sha256": "b683583d33aeadbc31c49a8cae5f98382efefe99ecc9b2a348dfdc5de6cb5ea3",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.TargetFramework/description",
+          "source": "Managed project target framework",
+          "source_sha256": "ba83b843eb1acfced86fd1a2fc0ef7ad35468b874125266cdb5845e03c5bc141",
           "status": "current"
         },
         {
@@ -15244,54 +15415,6 @@
           "locator": "/symbols/@id=setting.common.Network.WebSocketPort/description",
           "source": "WebSockets port for server listen and client connect",
           "source_sha256": "d092eaab9ccc4d12eab1f66a683f35c5443f29838d8901f864a65905f4f3d7ef",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.AndroidBuild/description",
-          "source": "Android build (read only)",
-          "source_sha256": "abb7050d5f9c7f180a5d2e592770b59baeed5315d65b171f3793946deb3cf933",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.DesktopBuild/description",
-          "source": "Desktop build (read only)",
-          "source_sha256": "f609ccb57b90564b9a12889d6658de558d563ce8f4367ee65c578e341a3d7777",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.IOsBuild/description",
-          "source": "iOS build (read only)",
-          "source_sha256": "66537c333ee169a5e71d4908e19cea2ef00c7e99255e04e77c7921468e79cecd",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.LinuxBuild/description",
-          "source": "Linux build (read only)",
-          "source_sha256": "1e424daa160ba95e78d673eb71e95e50d9bf25fcc8b2144fa144895e570a8089",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.MacOsBuild/description",
-          "source": "macOS build (read only)",
-          "source_sha256": "a482e192a5b7b93d1bf3f513428c0fc82e8fccf2e0ff63b4c540e4cc4b2ebcd1",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.TabletBuild/description",
-          "source": "Tablet build (read only)",
-          "source_sha256": "b36b800addbb0bf2a17162a5fdcb99fda9a23bc98a9e41ab30badb3a9b992f72",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.WebBuild/description",
-          "source": "Web build (read only)",
-          "source_sha256": "e9830bdc7f3b54933572348bf5ee043663342908ebf98a736e980e8c51ab79ff",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Platform.WindowsBuild/description",
-          "source": "Windows build (read only)",
-          "source_sha256": "cae5a8b5d0d6e303678690f3bb1a7284aebddac9520b035f1730d793c3f2cc98",
           "status": "current"
         },
         {
@@ -15601,102 +15724,6 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=setting.common.Script.AttributedFunctionDirectCallAllowedNamespaces/description",
-          "source": "Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher",
-          "source_sha256": "49f35eb8dd53a325013831339c5097e9b9e7dab55c7764fa6ef6394d598548b8",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.DebuggerBindHost/description",
-          "source": "Debugger TCP bind host",
-          "source_sha256": "48dd21c129ed3a1cc459400a050a5322e9f0be8854b7c3bbe994c4cbf61105f4",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.DebuggerEnabled/description",
-          "source": "If true, AngelScript debugger endpoint is enabled",
-          "source_sha256": "023502e5be8c2b3ce899fbedf31537d51473f6e2933db0ec53fc530caf732ab3",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ExtraDirectCallBlockingAttributes/description",
-          "source": "Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].",
-          "source_sha256": "c12e821646744b878c3d82922d3011f441a4760fc843f3282848cac5651080e1",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptAnalyzers/description",
-          "source": "Roslyn analyzer project paths referenced by the generated managed project, so their diagnostics run in the script build",
-          "source_sha256": "22f0ea497d4c1f5f2c6e6f510723f769eef94995187eb103264684b153c9b2a2",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptAssemblies/description",
-          "source": "Managed script assemblies to build",
-          "source_sha256": "23726bf8ad6ca5993edcd8a2944060a6f29a195f0788016e38bcd73b6695bf8d",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptBakerDryRun/description",
-          "source": "If true, managed baker writes stub markers instead of compiling assemblies",
-          "source_sha256": "d00367ffd07cb131f486ae411542a076d6c09eb00338f2414c5da519bb426558",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptDirs/description",
-          "source": "Managed script source directories, top-level .cs files of each are compiled in place",
-          "source_sha256": "6671ace21111298582b86636c049bb7437a0c1c1ea13d835c53701f08f06b3ba",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptExtraReferences/description",
-          "source": "Extra managed assembly references as 'assembly,target,reference' entries",
-          "source_sha256": "84437271dda887f1e2665b6218e84a66413e3d99264e4eeccd1295ff36606b5f",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptExtraSources/description",
-          "source": "Extra managed source files as 'assembly,target,path' entries",
-          "source_sha256": "bc7d93fcaf111366f70de7fbdc16ddb2d06b0d93288e1f5ff5d23968182c2bc4",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptGeneratedDir/description",
-          "source": "Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)",
-          "source_sha256": "074d425c006b4246222e111ece975a2cafbe7a8039b80244bb5289676eb4e72a",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptMsBuild/description",
-          "source": "Managed msbuild command",
-          "source_sha256": "b58d126e674f2f05d81720694ba4a8eb61369ab01e915594ca5286c7ce24eb51",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptProjectName/description",
-          "source": "Managed project base name",
-          "source_sha256": "b683583d33aeadbc31c49a8cae5f98382efefe99ecc9b2a348dfdc5de6cb5ea3",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.ManagedScriptTargetFramework/description",
-          "source": "Managed project target framework",
-          "source_sha256": "ba83b843eb1acfced86fd1a2fc0ef7ad35468b874125266cdb5845e03c5bc141",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.MutableGlobalsAllowedNamespaces/description",
-          "source": "Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)",
-          "source_sha256": "2d6f0a8b5f08a43052cc4a8ef7dfac2362ee694eaef1e21fe38ff3f815bc3c9d",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Script.OverrunReportTime/description",
-          "source": "Time in milliseconds to report script execution or entity-lock wait overrun, 0 to disable",
-          "source_sha256": "c1cf25bb80c155d52cd1558fe28a0a71152a9b138cf0a69d2731b46f25671a7c",
-          "status": "current"
-        },
-        {
           "locator": "/symbols/@id=setting.common.SpriteMesh.AlphaThreshold/description",
           "source": "Minimum alpha excluded from sprite mesh geometry (0-254)",
           "source_sha256": "e7599cc283b523d8f063a402dac1f53cb6b340f7b1e79268a2a101e0eb23ce33",
@@ -15808,12 +15835,6 @@
           "locator": "/symbols/@id=setting.server.Critter.CritterSlotSendData/description",
           "source": "Critter slot send data flags",
           "source_sha256": "e344f617f1d57a27cdf05e2ddac30377ec2aeb9552091d36bce2070ed3b91588",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.server.Critter.MaxAddUnstackableItems/description",
-          "source": "Maximum number of unstackable items to add",
-          "source_sha256": "f234c779898ee64bc6bb66cfcd780a030f41e79a11794f16d65dc4c9f1efc72b",
           "status": "current"
         },
         {
@@ -16132,27 +16153,27 @@
     },
     "audio": {
       "source_model": "Docs/generated/audio.json",
-      "entry_count": 103,
-      "current_count": 103,
+      "entry_count": 99,
+      "current_count": 99,
       "missing_count": 0,
       "complete": true,
       "entries": [
         {
           "locator": "/decoding_rules/@id=audio.decoding.acm-shape/name",
-          "source": "ACM playback shape",
-          "source_sha256": "9fd1f9b9c195206dc4c88806b7f1d2d97bb1293478ea36a6c56909bf459fe563",
+          "source": "Baked payload verification",
+          "source_sha256": "fefbcdac09cac0cd39e133f8a33daf31439e6fc8c9e992a511f9e7a46b12a303",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.acm-shape/rationale",
-          "source": "These values are assigned by playback role after CACMUnpacker runs.",
-          "source_sha256": "97f0ed90cb1ae281b7314c50379fe583ac6e806cd83219d7607a04b3ce71a4d7",
+          "source": "The bake boundary catches malformed native input and encoder output before the client attempts playback; runtime then reads channel and sample-rate metadata from the verified stream.",
+          "source_sha256": "4cba660fd70825985577fbe15976a4da17a2d92fe8210842b3cb8564d012d4dc",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.acm-shape/requirement",
-          "source": "Expect ACM effects to decode as mono and ACM music as stereo signed 16-bit samples at 22050 Hz.",
-          "source_sha256": "e72232b0fbae85e49f2e576180ed9526d22cd870a26edb410da7d80b6d21d5aa",
+          "source": "Reject a generated or passthrough payload unless libvorbisfile opens it as a valid Vorbis stream.",
+          "source_sha256": "8fdd455081884b21460ba1b53da58a7554256c8e7f75fcfc96c360cc31355bbc",
           "status": "current"
         },
         {
@@ -16163,8 +16184,8 @@
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.callback-mixing/rationale",
-          "source": "The SDL stream callback asks SoundManager to fill output while game-thread play/stop operations can add or erase sounds.",
-          "source_sha256": "1e459fdd31cf24392a5a2ab3d83d97a0e8d29289f2ca4d0121b90ffcdc6b8822",
+          "source": "The SDL stream callback asks AudioManager to fill output while game-thread play/stop/update operations can add, mutate, or erase sounds.",
+          "source_sha256": "e87406a1f7948edaeacfc789378d2429079dad7877343fd4e56cd8c8ecf78bf1",
           "status": "current"
         },
         {
@@ -16181,8 +16202,8 @@
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.device-conversion/rationale",
-          "source": "SoundManager does not require authored assets to match one fixed hardware format.",
-          "source_sha256": "265aa26a42a5988f3117626de147b0eee6ecc33231612634e144ce24e4866722",
+          "source": "AudioManager does not require authored assets to match one fixed hardware format.",
+          "source_sha256": "b42172ab0a9a682ea75a263dbd0f59bb16f347747f2d85f9e8e3ee305678d0e0",
           "status": "current"
         },
         {
@@ -16199,8 +16220,8 @@
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.ogg-streaming/rationale",
-          "source": "SoundManager uses a platform-sized streaming portion and clears OggStream when the first read reaches EOF.",
-          "source_sha256": "21d15ea6a0db632aacb8f147ab649995f0c9b451c384f4a5fa4cfb2839b2ff00",
+          "source": "AudioManager uses a platform-sized streaming portion and clears OggStream when the first read reaches EOF.",
+          "source_sha256": "a47f404aca0732fde8c086505bcb6c4a47b2eb5da1e8804421db71c42a768998",
           "status": "current"
         },
         {
@@ -16211,20 +16232,20 @@
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.unsupported-extension/name",
-          "source": "Unsupported extension limitation",
-          "source_sha256": "53cf32ac508aeb900f91b352aa76cdc764236c80064e9b1cefb997f379f2fc91",
+          "source": "Single runtime decoder",
+          "source_sha256": "5b9b06e4f6d3124ddc44a239f98fc36339ae136e6555b724262c887a38f59af1",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.unsupported-extension/rationale",
-          "source": "This is a documented implementation limitation, not support for arbitrary audio formats; callers and content validation must keep unsupported suffixes out.",
-          "source_sha256": "c4cf1dd10dfe5e3b6ebcc2bd394866aa11ad19a1f30658286f1f0aea71c4f766",
+          "source": "Unsupported source extensions never enter the Audio baker, and runtime has no suffix dispatch that could silently accept an empty or differently encoded payload.",
+          "source_sha256": "20fab6cdca2c737ae22fb250b444a1d99966a020544244c4cd53a66c3e6fcc2a",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.unsupported-extension/requirement",
-          "source": "Author only wav, acm, or ogg paths. The current loader has no fallback rejection branch, so another explicit suffix bypasses all decoders and can enqueue an empty sound while returning success.",
-          "source_sha256": "4f551e7a9ba5d689234fa91a39625ebedd576a04f2604fdeb48c8db371546480",
+          "source": "Route authored audio through AudioBaker and let AudioManager decode every resulting resource as Ogg Vorbis regardless of its preserved source suffix.",
+          "source_sha256": "646a45ff55a8465476fbe755dd45fdf1ecb4b24302806848a4445dd405b98725",
           "status": "current"
         },
         {
@@ -16235,14 +16256,14 @@
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.wav-chunk-order/rationale",
-          "source": "The loader is a focused sequential reader, not a general RIFF chunk walker.",
-          "source_sha256": "a5f9bd371fe8bfcf49e74d390549fa8c4f9676268cbcf744a6d5258ceb637f67",
+          "source": "Real exports commonly insert metadata chunks or reorder fmt and data, so the baker validates chunk bounds instead of prescribing a narrow sequence.",
+          "source_sha256": "eac39f0e8f280b754122c565b0d32c0064febc72ca466d7380c111e677044c53",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.wav-chunk-order/requirement",
-          "source": "Place RIFF, WAVE, fmt, optional fact, and data in the exact order expected by LoadWav.",
-          "source_sha256": "e2b79bc69f668ef27f56ac2dba045c100175dd63a05a33859cf527bb7c420bea",
+          "source": "Provide RIFF/WAVE with one usable fmt chunk and a non-empty data chunk; AudioBaker walks chunks in any order, skips unknown chunks, and respects odd-byte padding.",
+          "source_sha256": "bd0f91b29f0162379d7b86eacd74b6255a12d217ad816e2e7444c25dab346833",
           "status": "current"
         },
         {
@@ -16253,14 +16274,14 @@
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.wav-pcm-width/rationale",
-          "source": "LoadWav maps only those two widths to AppAudio formats before device conversion.",
-          "source_sha256": "354d257d10096cb408b0520eec859674d065f43121968cf01b57ea090800f215",
+          "source": "AudioBaker converts each supported sample to signed 16-bit before Vorbis encoding and rejects truncated frames or inconsistent format metadata.",
+          "source_sha256": "d6ab241991cc8858dc5523af88af8b843c85a2e858b4bdd5efefe4cfc679f921",
           "status": "current"
         },
         {
           "locator": "/decoding_rules/@id=audio.decoding.wav-pcm-width/requirement",
-          "source": "Author WAV as uncompressed PCM with either 8-bit unsigned or 16-bit signed samples; channel count and sample rate may vary and are converted by the frontend.",
-          "source_sha256": "b3935d7faa81031b8bc2eb800b86f5654eba2a04a8515f3ba804efc15bbcc1ed",
+          "source": "Author WAV as PCM at 8, 16, 24, or 32 bits or IEEE float at 32 bits; channel count and sample rate must be positive and block alignment must match the declared frame shape.",
+          "source_sha256": "c209fb7b136493078280cca676fd4cf16de89787cf1e4ce35c7bcb98e1d94a58",
           "status": "current"
         },
         {
@@ -16271,50 +16292,50 @@
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.client-index/rationale",
-          "source": "Game.PlaySound resolves through the prebuilt name map rather than scanning the filesystem on each call.",
-          "source_sha256": "18ec4c7a5685a36f1e9779bcaf32a64776aa86c881a768b723a9d9345abd8969",
+          "source": "The manager exposes this source-backed path catalog, while Game.PlaySound itself receives the exact selected resource path and performs no concept or variant resolution.",
+          "source_sha256": "6bc4541de1a6475cc1a308e48bb2e1da165bd015119df60779d584a5b764a815",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.client-index/requirement",
-          "source": "Call ResourceManager.IndexFiles after client resources are available; it indexes every wav, acm, and ogg path for effect-name lookup.",
-          "source_sha256": "bdad551f64bbf8a94943a913e9eee7ba2ad35e45834ea897cb25ab1ef0997e10",
+          "source": "Call AudioManager.IndexFiles after client resources are available; it records every path whose suffix occurs in Audio.SoundFileExtensions.",
+          "source_sha256": "0028b2d0619df33ecf866146bfe00b9e9cedb1511e1113dc98e086472f1afef2",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.effect-identity/name",
-          "source": "Effect identity",
-          "source_sha256": "aa08b7d30ad971c340f00ad97c2cb6d697c7a4226287c8495ea46d328db04a7e",
+          "source": "Exact authored path identity",
+          "source_sha256": "3accb014c1ce0c0702afe89545df39f0adc8bfce8df1fa8bf3d66bd5aa783467",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.effect-identity/rationale",
-          "source": "PlaySound erases the caller suffix and lowercases the name before querying ResourceManager's identically normalized index.",
-          "source_sha256": "a4dfc90c1cd4cac82ccd0b618596c39ad1968cf685801762bfd950d8dcaa2da4",
+          "source": "AudioBaker preserves the authored path while replacing WAV bytes with Vorbis, and AudioManager reads that path directly without lowercasing or replacing the extension.",
+          "source_sha256": "667667777284a9c250ad959c4d5924bc1c96c9e8aa15ec54166dc22bd471362d",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.effect-identity/requirement",
-          "source": "Treat an effect identity as the lowercase resource path with its final extension removed.",
-          "source_sha256": "5cf6f6af66eabf3277c62c96cd06615ad8690ffc258e671d36f229699f673739",
+          "source": "Pass the exact baked resource path, including its authored extension, to Game.PlaySound and Game.PlayMusic.",
+          "source_sha256": "9f498fb99a2485c19d9cdfb59389be6ca205eaaad3ae3d06e7a0b5561892231f",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.extension-precedence/name",
-          "source": "Duplicate-stem precedence",
-          "source_sha256": "5f9fb5fb453e5143370fc92cc5601cd345a28dcd5397105ac1d3de9b4c5bedb0",
+          "source": "Source extension and payload separation",
+          "source_sha256": "ad2d9706726c04c81f9563edb0ef5b7a3005381271be567fd8bb2251ad3c6768",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.extension-precedence/rationale",
-          "source": "ResourceManager uses map::emplace while iterating the fixed extension array, so later formats do not replace an existing stem.",
-          "source_sha256": "fb9dd59942797a1e07d9d3f75e7626a64c23b7cfc6dcb5bce2b9749e531b25e7",
+          "source": "Preserving authored paths avoids rewriting project references while one runtime decoder and one package payload format remove platform-dependent format behavior.",
+          "source_sha256": "db6d09c5501fd5c5b1a82f2d345411bba14912378f346d3b41c5f29a8d2a18f9",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.extension-precedence/requirement",
-          "source": "Do not ship multiple wav/acm/ogg resources with the same normalized effect stem; when they collide, the first indexed extension wins in wav, acm, ogg order.",
-          "source_sha256": "458662251cf709f82d1fff1552aa5d0d3277a16a6cad7ebcceb05ca0f8b9021d",
+          "source": "Treat a .wav suffix in baked resources as source identity, not runtime codec identity; all runtime bytes are Ogg Vorbis and .ogg sources remain .ogg.",
+          "source_sha256": "baf1f10a81b21f922da5dd44509ac8546ea92b7d36c737c89e76e1f15437c959",
           "status": "current"
         },
         {
@@ -16325,8 +16346,8 @@
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.music-path/rationale",
-          "source": "PlayMusic forwards the supplied filename directly to SoundManager.Load.",
-          "source_sha256": "abdc5ada64959dc91cb0fc8d1e730ece02771fceff93ef6ec39d87ff82b1cfdb",
+          "source": "PlayMusic forwards the supplied filename directly to AudioManager.Load.",
+          "source_sha256": "2c847ff97eb74471c47d4e9b689d098f28af3bd04add40e0257c2e22eb27a7bb",
           "status": "current"
         },
         {
@@ -16337,50 +16358,26 @@
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.raw-copy/name",
-          "source": "Raw-copy delivery",
-          "source_sha256": "d5f46e3acc69fdf12991069f043eda10394f8bc9c31491de07daa020bf10a453",
+          "source": "AudioBaker delivery",
+          "source_sha256": "5dcbaf6226f87ec434f593d869324a4e606b41248a343f905c9bb17222b9a124",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.raw-copy/rationale",
-          "source": "There is no dedicated audio baker; runtime decoders require the original bytes and relative path.",
-          "source_sha256": "b6e5fb7c11ed7fdfc450284de97f841691bffdc03eccdf9b2b8578b475b585e0",
+          "source": "Audio resources no longer use RawCopy: WAV is normalized and encoded while an already-native Ogg is verified and copied without another lossy pass.",
+          "source_sha256": "02d3956c921a7296511527b851d144fc2562abd21496f2e2a85c5ae8bcc007d2",
           "status": "current"
         },
         {
           "locator": "/delivery_rules/@id=audio.delivery.raw-copy/requirement",
-          "source": "Keep acm, ogg, and wav in Baking.RawCopyFileExtensions and include RawCopy in every resource pack that owns runtime audio.",
-          "source_sha256": "d45a4f51d3715fea82e5f01abf878eeeb3f186a1772e89659f25a3f8462cba1a",
+          "source": "Include the Audio baker in each resource pack that owns runtime audio; it accepts the configured wav and ogg inputs and writes a verified Ogg Vorbis payload.",
+          "source_sha256": "ffc71600f6d1106e5517a1057446a88198ed999a6f8712ed38f65f2147ffb66d",
           "status": "current"
         },
         {
           "locator": "/description",
-          "source": "Source-backed contract for FOnline audio resource delivery, decoding, playback, mixing, script entry points, and validation boundaries.",
-          "source_sha256": "d785b3e0e6ac53de635886ea67c320cac5bce9223e9a23e511d142830702f244",
-          "status": "current"
-        },
-        {
-          "locator": "/formats/@id=audio.format.acm/name",
-          "source": "Legacy Fallout ACM",
-          "source_sha256": "7972040f50150e3748bcc7bbcd77244d07fbe689bb783c2e21af9e0af54806ca",
-          "status": "current"
-        },
-        {
-          "locator": "/formats/@id=audio.format.acm/rationale",
-          "source": "ACM compatibility exists for classic Fallout assets, but its playback shape is fixed by SoundManager instead of inferred from a modern container.",
-          "source_sha256": "78fd0deeb4f1afe073407976abf479b6bd33a4c13ad304c939e60c5d2e5219b9",
-          "status": "current"
-        },
-        {
-          "locator": "/formats/@id=audio.format.acm/requirement",
-          "source": "Supply an Interplay ACM stream accepted by CACMUnpacker; the stock playback contract treats effects as mono and music as stereo signed 16-bit audio at 22050 Hz.",
-          "source_sha256": "19c2f8687aa0790e8226988605bc2fb7de05b804a52fad38a80544d2eeade9d6",
-          "status": "current"
-        },
-        {
-          "locator": "/formats/@id=audio.format.acm/role",
-          "source": "Legacy effects and music decoded fully before playback",
-          "source_sha256": "68f156bf15129fb1e95a8b6ac63a297d7ee8b9dfbf9f13032fdcba5b2500313a",
+          "source": "Source-backed contract for FOnline audio baking, runtime decoding, playback handles, placement, mixing, script entry points, and validation boundaries.",
+          "source_sha256": "0f5a2ac07cca4b7711523b5970448354471a09551ce56079a20c3db85f756137",
           "status": "current"
         },
         {
@@ -16391,20 +16388,20 @@
         },
         {
           "locator": "/formats/@id=audio.format.ogg/rationale",
-          "source": "The implementation uses libvorbisfile callbacks over the engine FileSystem and does not provide a generic Ogg-codec dispatch layer.",
-          "source_sha256": "dfebe7ff5d449d541fa9bdee2f9fe02ba0f42e623b375f0badeaf44001687885",
+          "source": "Every runtime payload is Vorbis even when its preserved authored path ends in .wav, so runtime dispatch never trusts the suffix as a codec declaration.",
+          "source_sha256": "0a7893878a1bd7ef7a0d8e7e0ebb8df63cc42502c3a809342905161d0d04b64d",
           "status": "current"
         },
         {
           "locator": "/formats/@id=audio.format.ogg/requirement",
-          "source": "Use an Ogg bitstream containing Vorbis audio; SoundManager decodes signed 16-bit interleaved data and retains the decoder only when more than the first chunk remains.",
-          "source_sha256": "c66a59cd07bba0028df82b0e4027ad64a4eae3261766841405a83c350b0ee098",
+          "source": "Use an Ogg bitstream containing Vorbis audio; AudioBaker verifies and copies an authored .ogg without lossy re-encoding, and AudioManager streams every baked audio resource through libvorbisfile.",
+          "source_sha256": "df6ec237243edbe7fdfec18e40ddedc93859ec2f9ee50d64cbca3493725ef4ea",
           "status": "current"
         },
         {
           "locator": "/formats/@id=audio.format.ogg/role",
-          "source": "Modern effects or streaming music",
-          "source_sha256": "f4532ebcf705e0e3982013f78638f05ab6f2e264d7ee537e11184705948c035f",
+          "source": "Native runtime payload and lossless passthrough authoring input",
+          "source_sha256": "e024b0674ace88636cbbd1577571123b4f33db721a97b588480d9af60ae76fbf",
           "status": "current"
         },
         {
@@ -16415,38 +16412,38 @@
         },
         {
           "locator": "/formats/@id=audio.format.wav/rationale",
-          "source": "The stock loader is deliberately narrower than the general WAV family and rejects compression, unsupported sample widths, and unexpected chunk order.",
-          "source_sha256": "f3a7fc35b5733dece887794692d39f705d8d2619fb1ac8c8dce2040330a4c3e4",
+          "source": "AudioBaker normalizes supported WAV samples to interleaved signed 16-bit PCM and encodes one checked Ogg Vorbis resource at the authored path.",
+          "source_sha256": "13ce3d7e96611dfd3878bf6216ff50c137c7b0b4830628934caf97dc1a3350c1",
           "status": "current"
         },
         {
           "locator": "/formats/@id=audio.format.wav/requirement",
-          "source": "Use a RIFF/WAVE file with an immediate fmt chunk, optional fact chunk, an immediate data chunk, PCM format tag 1, and 8-bit unsigned or 16-bit signed samples.",
-          "source_sha256": "d367dcb4ae8a432e0c606266020a083f82c6c612e20a50441a7141c4be65d134",
+          "source": "Use RIFF/WAVE PCM at 8, 16, 24, or 32 bits, or IEEE float at 32 bits; chunks may appear in any order and unknown chunks are skipped with RIFF padding respected.",
+          "source_sha256": "0f8740ec9bbceb71a4195701e6c74162c0ad0a02804e2ce9fb105194a91f32a1",
           "status": "current"
         },
         {
           "locator": "/formats/@id=audio.format.wav/role",
-          "source": "Short effects or music decoded fully before playback",
-          "source_sha256": "0159dc8dad7cf896ffe798059b82a2d2d57de859598149ca494adafdbb73c146",
+          "source": "Authoring input converted to the runtime Ogg Vorbis payload",
+          "source_sha256": "d247a6140ce8a86d0fcb53cbe7d0780b8aea1afda57163597996c0bc05e6832c",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.default-acm/name",
-          "source": "Missing extension fallback",
-          "source_sha256": "70325de89a85882c2d3842afe332ab3009bdf63ba7842d4cb50ab69445872a59",
+          "source": "Stereo pan law",
+          "source_sha256": "685a502d511f5a66a98ad817c8f8ba8d6183d9d9b7a5c10dbe91ab6115aa2abd",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.default-acm/rationale",
-          "source": "The default extension belongs to SoundManager.Load, while PlaySound normalizes before Load.",
-          "source_sha256": "96532b5d03a7ae22d09fb6ca8b4925a0a006c2034961c7a2c18e54e129a7f638",
+          "source": "AudioManager applies pan to the per-callback mix buffer rather than decoded storage, so later placement updates do not compound an earlier pan and loud samples are not boosted into clipping.",
+          "source_sha256": "144eecd224ab21401facb61235f57830eecf0a71d292f18acae5b6dbf8cd28ce",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.default-acm/requirement",
-          "source": "An exact music path without an extension receives .acm; effect lookup ignores the caller extension and resolves by indexed stem.",
-          "source_sha256": "295f6b95c32cc32f5a74e8e9860926293751c4fa3d0e26493e9a306e13ea84b1",
+          "source": "Pass pan in the range -1 through 1 for the stock balance law: negative attenuates the right channel, positive attenuates the left, and the near channel stays at unity.",
+          "source_sha256": "7e3b77971fb31c6ffc7efafe40e4d285d85284cecb4c9c6141b51ef1943f9050",
           "status": "current"
         },
         {
@@ -16457,14 +16454,14 @@
         },
         {
           "locator": "/playback_rules/@id=audio.playback.disabled-success/rationale",
-          "source": "Inactive playback and zero effect volume intentionally return success without loading a resource.",
-          "source_sha256": "b388ed116459a10676bdfeddd2fed08edd6b507d506d94483445445c0431a033",
+          "source": "A disabled device is a normal player state, so music reports no refusal and effects report only that no live sound exists; baker validation owns resource correctness.",
+          "source_sha256": "d964d1bac0a2f3fcf9db0143889882874d8507bb29d96d49f0ce782fa3cf04a6",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.disabled-success/requirement",
-          "source": "Do not use a true PlaySound or PlayMusic result as resource-existence proof when audio is disabled, unavailable, or effect volume is zero.",
-          "source_sha256": "07cf6d0936f4c9ff89dff6e6e85854842d5a280709b0522c85e080f2e2232322",
+          "source": "Do not use PlayMusic true or a PlaySound handle as resource-existence proof when audio is disabled or unavailable; PlayMusic remains a successful no-op while PlaySound returns handle zero.",
+          "source_sha256": "6f187c92beba04e8db3abf5b87f90578e5208649374a6d91de7d859781822b42",
           "status": "current"
         },
         {
@@ -16475,68 +16472,68 @@
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-api/rationale",
-          "source": "The script method delegates to SoundManager.PlaySound with the indexed resource-name map.",
-          "source_sha256": "710dce06b4b05dd935a1a0ba6bc049750fbe5246d7f48dde836632d9b363c8f7",
+          "source": "The script method delegates the exact resource path to AudioManager and exposes the non-reused lifetime handle returned when the sound enters the mixer list.",
+          "source_sha256": "716b54726a22200fe6a6c66d0990f26b9c503e405f000390ef7998aed1c6c6e9",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-api/requirement",
-          "source": "Use Game.PlaySound on the client for non-music playback and inspect its bool result when audio is active and SoundVolume is nonzero.",
-          "source_sha256": "a5c216c38a257490c69f485b88be26a3bfd427778cfdf609f135055678e62198",
+          "source": "Use Game.PlaySound on the client for non-music playback and retain its uint32 handle when the sound must be placed again; zero means no live sound was started.",
+          "source_sha256": "fc60975d048d8bcaa827413af4b9b9162a743f0d74da25357b72a1621baef6d4",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-base-first/name",
-          "source": "Base effect before variants",
-          "source_sha256": "947b177c5516d06affd07845d9f9c0520a433cbdf91e33295b89450f96f2ef2a",
+          "source": "Exact effect path",
+          "source_sha256": "eb54ba3985cc166acacebdd0bb41e96d5a97d54244b9658d22a0a7cce463a8c4",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-base-first/rationale",
-          "source": "Variant discovery runs only after the base lookup misses.",
-          "source_sha256": "53a9425d0d314c752787f0536e07296654b5332f3d2c5a527aa5980b19514274",
+          "source": "Variant policy belongs to the embedding project; AudioManager performs no stem normalization, suffix fallback, or catalog convention.",
+          "source_sha256": "d2d0b7a11378cc6f4fda28e29539e31085487d982752d048ffb34422f1f5ceee",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-base-first/requirement",
-          "source": "If the normalized base effect exists, play it directly and do not select numbered alternatives.",
-          "source_sha256": "567dc52dbec67375058c9484b89825d334b58c4600ca19a2575caa938a148317",
+          "source": "Resolve project concepts and numbered variants before Game.PlaySound, then pass the exact selected resource path including its authored suffix.",
+          "source_sha256": "29b27e83b893bce4b7cddfde939a3e79ed616c839411a0ea52fc51dd8eb5228c",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-contiguous-variants/name",
-          "source": "Contiguous numbered variants",
-          "source_sha256": "b351e6f9b141995f652286643b65b1e6fa43c63d0dcc17eae378cfdaa5dbd70c",
+          "source": "Placed sound start",
+          "source_sha256": "fd8d331ec3bcf6064485ab8c6badea2cb1a27cb289d9b094d724d1cdfe2bed5a",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-contiguous-variants/rationale",
-          "source": "SoundManager counts consecutive map hits and chooses uniformly from 1 through count.",
-          "source_sha256": "07d5a3dec70fbbb014e2154e64b75719f8133da7526fb9e1d5142ebec384c63f",
+          "source": "Placement is a caller-owned projection onto mixer attenuation and stereo balance, while distance curves and listener selection remain project policy.",
+          "source_sha256": "11d0c088b22b670ce255b88a17dd490489874489f4928c4448f2374c65fba5e8",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.effect-contiguous-variants/requirement",
-          "source": "To randomize an absent base effect, provide a contiguous one-based sequence NAME_1 through NAME_N; discovery stops at the first missing suffix.",
-          "source_sha256": "9077914079f235e3cd8f0ef23f5799a87428d12e25c2aa191ccd934eaaa44d24",
+          "source": "Use the Game.PlaySound overload with attenuation and pan to start a placed sound; attenuation at or below zero returns handle zero before file I/O.",
+          "source_sha256": "4b4ea9e91e2a09dab9e96621fda3d2923e856b6dcecb57914661ec0c3e5f12e1",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.global-mix/name",
-          "source": "No stock spatial source",
-          "source_sha256": "5246cd36280674905c0cf5658896679a38a28196ab687541532e516532a1f3af",
+          "source": "Placed sound update",
+          "source_sha256": "460ba5d590b32648ae3a8542ff699a3b0538a6019aed749a39599934b9689f47",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.global-mix/rationale",
-          "source": "The stock playback object has no world position, radius, pan, or per-instance volume field.",
-          "source_sha256": "5bf9c63cacfac99c85fdfa0ecf76dc420f789f6f5a4028b74bccabbaf7138271",
+          "source": "The update runs under the audio-device lock, so the mixer observes one placement pair and a completed sound cannot be revived through a stale handle.",
+          "source_sha256": "e52f2ff09747ea8cd03229e068ba2bd9c612f920cc233e0d9bc7dec0b8c27aa4",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.global-mix/requirement",
-          "source": "Treat every SoundManager sound as a global client mix input; implement listener selection, distance policy, or recipient filtering in project code.",
-          "source_sha256": "42caada19373ba27243d1408a8d52d43e3887abad67df39540a46c74f22a7c2a",
+          "source": "Call Game.UpdateSound with a live handle to replace attenuation and pan as the source or listener moves; false means the handle is zero, audio is inactive, or playback already finished.",
+          "source_sha256": "a0ff0d2d997303ba48cf2c0949baa5696bc90d33f1d33ecb51b3355bea08a43b",
           "status": "current"
         },
         {
@@ -16547,8 +16544,8 @@
         },
         {
           "locator": "/playback_rules/@id=audio.playback.music-api/rationale",
-          "source": "The script entry point owns the empty-name stop convention before delegating to SoundManager.",
-          "source_sha256": "ee2fcde006d697aa2da00a27e73673ad319f86caf938e88e21286a45d8b33fd7",
+          "source": "The script entry point owns the empty-name stop convention before delegating to AudioManager.",
+          "source_sha256": "b7afef8a191b2109baa8813bbb6b4a26c6d9b5acf4895bc03ebf1655246d4895",
           "status": "current"
         },
         {
@@ -16583,14 +16580,14 @@
         },
         {
           "locator": "/playback_rules/@id=audio.playback.separate-volumes/rationale",
-          "source": "SoundManager selects a volume by IsMusic and AppAudio normalizes the clamped percentage before SDL mixing.",
-          "source_sha256": "9cb3e178a4b9589363dd8cd4eae33d1cc29ed1e47d876b9b877e05125b6cd549",
+          "source": "AudioManager owns live volume state because Engine settings are immutable, selects it by IsMusic, and AppAudio normalizes the clamped percentage before SDL mixing.",
+          "source_sha256": "83f0e956903ecc70bc2164419e91fab93d1afd237374cef78c58f161c3dc307c",
           "status": "current"
         },
         {
           "locator": "/playback_rules/@id=audio.playback.separate-volumes/requirement",
-          "source": "Control effects with Audio.SoundVolume and music with Audio.MusicVolume; the frontend clamps each mix operation to 0 through 100.",
-          "source_sha256": "6c6fbe5d462575a45f05f4fc0df135ca0e5285f63dc6058df1230043134af660",
+          "source": "Use Audio.SoundVolume and Audio.MusicVolume as startup defaults, then Game.SetSoundVolume and Game.SetMusicVolume for live changes; the frontend clamps each mix operation to 0 through 100.",
+          "source_sha256": "6515f83a317b2fdcba5b043a05d6defd1f2c7bc669b51744c6dcd8bed621d0d3",
           "status": "current"
         },
         {
@@ -16601,8 +16598,8 @@
         },
         {
           "locator": "/playback_rules/@id=audio.playback.single-music/rationale",
-          "source": "SoundManager.PlayMusic calls StopMusic before Load, so a failed replacement does not restore the previous track.",
-          "source_sha256": "0205a4990a9b21c8c105c11ecb2568f695f632c3e19b5ed5a5e6ee7f7f2c6aab",
+          "source": "AudioManager.PlayMusic calls StopMusic before Load, so a failed replacement does not restore the previous track.",
+          "source_sha256": "6028a62c50f459389f5406c698aa2ad239ee2fdde430bd113f3d08df3f2b34d1",
           "status": "current"
         },
         {
@@ -16614,31 +16611,31 @@
         {
           "locator": "/scope/excluded",
           "source": [
-            "project sound catalogs, path conventions, music state machines, ambient selection, and spatialization policy",
-            "recording, voice chat, capture devices, DSP graphs, buses, ducking, and per-source gain",
+            "project sound catalogs, concept-to-path mappings, variant selection, music state machines, ambient selection, and spatialization policy",
+            "recording, voice chat, capture devices, DSP graphs, buses, ducking, and authored attenuation curves",
             "audio mastering targets, loudness policy, licensing, attribution, and source provenance",
             "Effekseer sound nodes, which are not supported by the FOnline Effekseer runtime",
             "video containers and video-associated audio"
           ],
-          "source_sha256": "2077b9c6256c453c02997d293e0e346172648444df87150778a0d8bbc5e0f2c4",
+          "source_sha256": "1196f8ba7cc41884fe77fd20999e3447cfbe832109f52f7047bafbaa4235c20f",
           "status": "current"
         },
         {
           "locator": "/scope/included",
           "source": [
-            "WAV, ACM, and Ogg Vorbis resource formats accepted by the stock client",
-            "RawCopyBaker delivery and ResourceManager sound-name indexing",
-            "SoundManager decoding, conversion, streaming, mixing, repeat, and stop behavior",
-            "Game.PlaySound and Game.PlayMusic client script entry points",
+            "WAV authoring and Ogg Vorbis native resource inputs accepted by AudioBaker",
+            "AudioBaker delivery and AudioManager resource-path indexing",
+            "AudioManager decoding, conversion, streaming, mixing, placement, repeat, and stop behavior",
+            "Game.PlaySound, Game.UpdateSound, and Game.PlayMusic client script entry points",
             "Audio settings, headless behavior, diagnostics, and project validation boundaries"
           ],
-          "source_sha256": "200b0bfbba73f5c4440aae5e3cb32e8147024f13cbcbaa9a012e1914700a2cdd",
+          "source_sha256": "ee7d938dc9fbbbfb9e8d6fd2e78afe47750135de7b64cdad73b403869b03074a",
           "status": "current"
         },
         {
           "locator": "/scope/support_note",
-          "source": "The three current decoders and client playback behavior are revision-pinned while focused native decoder fixtures and a versioned compatibility policy are still missing.",
-          "source_sha256": "befdd1136efa95de876f969409629855fc6d1da958d9bff3ea2f1fbfe1f13ac1",
+          "source": "Authored WAV and native Ogg inputs, the baked Ogg payload, sound handles, placement updates, and client playback behavior are revision-pinned by focused baker and mixer tests.",
+          "source_sha256": "49ed941bf15dd10810cc4c19d4d8b07ff60d2edbe82c93ee38c75f6afdd3d617",
           "status": "current"
         },
         {
@@ -16649,14 +16646,14 @@
         },
         {
           "locator": "/validation_rules/@id=audio.validation.decoder-diagnostics/rationale",
-          "source": "The loaders report format-specific failure boundaries instead of substituting silence as a valid resource.",
-          "source_sha256": "864aa6e43dc3976cdc1da7e8e1d6d1486b7572cbd2b78ba0c13c05e16620fe77",
+          "source": "WAV and passthrough Ogg are rejected at bake time, while a resource that exists but cannot decode at runtime logs and enters the debugger instead of becoming silent success.",
+          "source_sha256": "1c6419235429cf947b3190dfe7a83c01b86309839c1acd332f766a55a6f9a24e",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=audio.validation.decoder-diagnostics/requirement",
-          "source": "Treat false playback results and RIFF, PCM, ACM, Ogg, or conversion log lines as authoring failures; reject unsupported suffixes in content validation because the runtime currently has no diagnostic for them.",
-          "source_sha256": "3134736658f43e576951768b1ab167b74112f3eabec1558890c758cf61ffcab2",
+          "source": "Treat AudioBaker exceptions and Ogg open/decode/device-conversion diagnostics as authoring or packaging failures; do not bless a zero playback handle as content validation.",
+          "source_sha256": "02c368a5026bb90220fc6e7b53d52f8b9d6861046dc4efacf13a9ac65e389d39",
           "status": "current"
         },
         {
@@ -16667,14 +16664,14 @@
         },
         {
           "locator": "/validation_rules/@id=audio.validation.generated-reference/rationale",
-          "source": "The generated model rejects extension, decoder, chunk-size, default, setting, and headless drift before prose can silently become stale.",
-          "source_sha256": "59a87b36395a29e4e251bad747c00389688ece383485c690e063e403cf3c9130",
+          "source": "The generated model rejects source-extension, runtime-codec, chunk-size, setting, handle, test-inventory, and headless drift before prose can silently become stale.",
+          "source_sha256": "7dfb02c4be2646fb5658f64ef20a28d570486b9e4fdc89cbaf7170924847c80b",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=audio.validation.generated-reference/requirement",
-          "source": "Regenerate and check the audio model whenever SoundManager, ResourceManager, AppAudio, settings, raw-copy delivery, or script entry points change.",
-          "source_sha256": "6361dcf1fe9fd0e32f0cd60de821f1ad7ba7a9f74092328151c48038acded086",
+          "source": "Regenerate and check the audio model whenever AudioBaker, AudioManager, AppAudio, settings, package delivery, or script entry points change.",
+          "source_sha256": "8d30cf8fa06c364ee5c6b2c3d32d4f412826a8b9844d8c8ec3825c0ecc75a65a",
           "status": "current"
         },
         {
@@ -16697,20 +16694,20 @@
         },
         {
           "locator": "/validation_rules/@id=audio.validation.native-test-gap/name",
-          "source": "Focused native test gap",
-          "source_sha256": "6561359e298d46cc64b1c035d274683f253d03c65f67780138f7c77ea82160d5",
+          "source": "Focused native coverage",
+          "source_sha256": "70e466cbdb5850c13ab17f93eac174f76305b20a97e18b9e006e64a62434dcf3",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=audio.validation.native-test-gap/rationale",
-          "source": "RawCopyBaker and broad client tests do not execute the codec and callback contract documented here.",
-          "source_sha256": "c366f062c2b75fcb006ba4a66194ea639388d5919a12e8d62e4d00551da8d065",
+          "source": "These suites execute the codec and callback contract directly; a visible client is still required to prove a real platform device and audible output.",
+          "source_sha256": "81824f762b265629ce04c7f2da83e80bcb9e7c78be0d1c07da5e38b082c5b140",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=audio.validation.native-test-gap/requirement",
-          "source": "Keep the absence of focused SoundManager decoder/playback fixtures visible until tests cover valid and invalid WAV, ACM, Ogg, variant, repeat, and replacement behavior.",
-          "source_sha256": "f13baf930b617b9a23ac21352bccdbc0eec55533c751acf8208a5e544abaa83b",
+          "source": "Run Test_AudioBaker and Test_AudioManager for WAV/Ogg baking, passthrough, invalid inputs, panning, placed playback, live updates, handle expiry, and mixer output.",
+          "source_sha256": "a56771434fee8712a3496f113d5ae500050b3a5a807ba8dd2c7fafbbe15fb5a2",
           "status": "current"
         },
         {
@@ -16721,8 +16718,8 @@
         },
         {
           "locator": "/validation_rules/@id=audio.validation.project-boundary/rationale",
-          "source": "The engine supplies decoding and a global client mixer, not a complete game audio design or asset-governance system.",
-          "source_sha256": "adab3c496bd3658d34f27a0708ccf27a45aee263728ad635c2cef2925129c155",
+          "source": "The engine supplies baking, runtime decoding, a client mixer, and placement parameters, not a complete game audio design or asset-governance system.",
+          "source_sha256": "0df4f1e721fb282c0f39b8575c05a95470ca7909fd5896f64ca85b1f591cedef",
           "status": "current"
         },
         {
@@ -16733,20 +16730,20 @@
         },
         {
           "locator": "/validation_rules/@id=audio.validation.raw-copy/name",
-          "source": "Baking gate",
-          "source_sha256": "d905114953d5e179f6bdd935c2cba97fc556ea0dfed3ba1c743984efc7e9e5c9",
+          "source": "Audio baking gate",
+          "source_sha256": "2f6be07bc719de41b5fd99464e4f618fe461206e126e6826e1ff9a1815936c21",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=audio.validation.raw-copy/rationale",
-          "source": "Documentation checks can prove configured extension coverage but cannot prove an embedding project's resource-pack wiring.",
-          "source_sha256": "a0db17e8f7438ae83ddfd92e8c07a66ff42d78859c192df1708b2071256f1695",
+          "source": "Focused tests prove conversion and passthrough, while an embedding-project bake proves that its pack actually selects Audio and ships the resources consumed by its scripts.",
+          "source_sha256": "ef498d31fa14956d338ac263c919b340ff7e2f98cc2c7f5defafc44f5b34d66d",
           "status": "current"
         },
         {
           "locator": "/validation_rules/@id=audio.validation.raw-copy/requirement",
-          "source": "Bake a pack containing representative audio and verify the expected relative paths and original bytes reach client resources.",
-          "source_sha256": "7da65838c176e2d41ab6556e6a46b38ad4f1564f5766b96d31066139064ac329",
+          "source": "Bake representative PCM/float WAV and native Ogg inputs, verify authored paths are preserved, inspect the audio counters, and open every output as Vorbis.",
+          "source_sha256": "d658f335199dc52da465788f24b5b17eb0b62ab470c62574076059da8bdfc191",
           "status": "current"
         },
         {
@@ -16763,8 +16760,8 @@
         },
         {
           "locator": "/validation_rules/@id=audio.validation.visible-client/requirement",
-          "source": "On every claimed platform, use a visible client with audio enabled to play one asset per format, a numbered effect family, a replacement track, delayed and immediate repeats, and volume endpoints.",
-          "source_sha256": "47d8af326bce55b060e49c11088c08677c9aa8297d79124c2e845c48be04be42",
+          "source": "On every claimed platform, use a visible client with audio enabled to play baked WAV-path and native-Ogg-path resources, move a placed sound, replace music, exercise delayed and immediate repeats, and test volume endpoints.",
+          "source_sha256": "9dd60203010a2d9a841e7559991e7e5f0732c46160b72bd1014e4ff696d3a3b3",
           "status": "current"
         }
       ]
@@ -21254,8 +21251,8 @@
     },
     "map-format": {
       "source_model": "Docs/generated/map-format.json",
-      "entry_count": 211,
-      "current_count": 211,
+      "entry_count": 209,
+      "current_count": 209,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -21716,12 +21713,6 @@
           "status": "current"
         },
         {
-          "locator": "/properties/@id=map-format.property.Item.Count/description",
-          "source": "Positive quantity represented by this item; non-stackable items must have a value of one",
-          "source_sha256": "c78ee980dcbe70e4abd56ae705d04b0e83e9e1770d37722775660c83e77e6ddb",
-          "status": "current"
-        },
-        {
           "locator": "/properties/@id=map-format.property.Item.CritterId/description",
           "source": "Identifier of the owning critter while Ownership is CritterInventory; zero otherwise",
           "source_sha256": "13163e321142cdc5a2132d01d1196e72b7881953b23a53297d7b9456720b3d56",
@@ -21770,9 +21761,9 @@
           "status": "current"
         },
         {
-          "locator": "/properties/@id=map-format.property.Item.DrawOrderOffsetHexY/description",
-          "source": "Signed Y-hex offset used only when calculating the item's sprite draw order",
-          "source_sha256": "1568ed6a50aeee085fbf83dabca6e96034f65a486d59d95cfb818dce6da758d2",
+          "locator": "/properties/@id=map-format.property.Item.DrawOrderSubLayer/description",
+          "source": "Fine ordering inside the item's primary draw-order layer",
+          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
           "status": "current"
         },
         {
@@ -21959,12 +21950,6 @@
           "locator": "/properties/@id=map-format.property.Item.ShootThru/description",
           "source": "Allows projectile traces through every hex occupied by the item",
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
-          "status": "current"
-        },
-        {
-          "locator": "/properties/@id=map-format.property.Item.Stackable/description",
-          "source": "Allows equal items to merge into one entity whose Count is greater than one",
-          "source_sha256": "3036c696ec060285e47db805bfc290ea3c3bf1b79739bd4f7b10169c4ee48fb0",
           "status": "current"
         },
         {
@@ -26151,8 +26136,8 @@
     },
     "prototype-format": {
       "source_model": "Docs/generated/prototype-format.json",
-      "entry_count": 192,
-      "current_count": 192,
+      "entry_count": 190,
+      "current_count": 190,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -26523,12 +26508,6 @@
           "status": "current"
         },
         {
-          "locator": "/properties/@id=prototype-format.property.Item.Count/description",
-          "source": "Positive quantity represented by this item; non-stackable items must have a value of one",
-          "source_sha256": "c78ee980dcbe70e4abd56ae705d04b0e83e9e1770d37722775660c83e77e6ddb",
-          "status": "current"
-        },
-        {
           "locator": "/properties/@id=prototype-format.property.Item.CritterId/description",
           "source": "Identifier of the owning critter while Ownership is CritterInventory; zero otherwise",
           "source_sha256": "13163e321142cdc5a2132d01d1196e72b7881953b23a53297d7b9456720b3d56",
@@ -26577,9 +26556,9 @@
           "status": "current"
         },
         {
-          "locator": "/properties/@id=prototype-format.property.Item.DrawOrderOffsetHexY/description",
-          "source": "Signed Y-hex offset used only when calculating the item's sprite draw order",
-          "source_sha256": "1568ed6a50aeee085fbf83dabca6e96034f65a486d59d95cfb818dce6da758d2",
+          "locator": "/properties/@id=prototype-format.property.Item.DrawOrderSubLayer/description",
+          "source": "Fine ordering inside the item's primary draw-order layer",
+          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
           "status": "current"
         },
         {
@@ -26766,12 +26745,6 @@
           "locator": "/properties/@id=prototype-format.property.Item.ShootThru/description",
           "source": "Allows projectile traces through every hex occupied by the item",
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
-          "status": "current"
-        },
-        {
-          "locator": "/properties/@id=prototype-format.property.Item.Stackable/description",
-          "source": "Allows equal items to merge into one entity whose Count is greater than one",
-          "source_sha256": "3036c696ec060285e47db805bfc290ea3c3bf1b79739bd4f7b10169c4ee48fb0",
           "status": "current"
         },
         {
@@ -28283,8 +28256,8 @@
         },
         {
           "locator": "/runtime_methods/@id=text-format.runtime.change-language/behavior",
-          "source": "Loads langName into the current client pack and writes the Language setting.",
-          "source_sha256": "e5b1e235f728699c206da9284c8e19c22a5de5c489c5e9b664ccd8c5fc2f2538",
+          "source": "Loads langName into the current client pack and updates the engine-owned current-language state without mutating the configured Client.Language setting.",
+          "source_sha256": "67ea5e78e3b5084452126c0ca155774dd1153d66f0eb15bd4b0a3ba4ec5aac73",
           "status": "current"
         },
         {
@@ -28343,8 +28316,8 @@
         },
         {
           "locator": "/runtime_methods/@id=text-format.runtime.get-language/behavior",
-          "source": "Returns the current Engine Language setting as a strong LanguageName wrapper.",
-          "source_sha256": "b503225a2f95703dac3144181eff51fb559735f2d53361c1db7f57fc84a31684",
+          "source": "Returns the engine instance's current language as a strong LanguageName wrapper; the configured Client.Language value is only the startup default.",
+          "source_sha256": "5e96cdcfe275dde5719a8b787e3226b8bae922e9b1fde94c5c53d34c66058c37",
           "status": "current"
         },
         {
@@ -28367,8 +28340,8 @@
         },
         {
           "locator": "/runtime_methods/@id=text-format.runtime.server-boundary/behavior",
-          "source": "The server loads one pack for Settings.Language and exposes presence and count queries.",
-          "source_sha256": "7c087128c84ed6c6341adec4a40d41cbabd34ea71d5325a09e76b27100ff0b7f",
+          "source": "The server loads one pack from the configured Client.Language startup value and exposes presence and count queries.",
+          "source_sha256": "3454ae43ddcafaaab70d9b4bb5be1037595305b2b9962bef1a53d619e499f648",
           "status": "current"
         },
         {
@@ -28692,8 +28665,8 @@
         },
         {
           "locator": "/decoding_rules/@id=video.decoding.no-container-audio/rationale",
-          "source": "VideoClip links Theora packet decoding only, while fullscreen pairing starts SoundManager music from the path after a vertical bar.",
-          "source_sha256": "2bc1a0e90be54ca28c8d572d39c1b2752fc015319ad3e206cfe7702be26367e8",
+          "source": "VideoClip links Theora packet decoding only, while fullscreen pairing starts AudioManager music from the path after a vertical bar.",
+          "source_sha256": "c77253e54760b1cbbbfdb5726a38c1138170cf6a09fe35af3429588fc1bd2c09",
           "status": "current"
         },
         {
@@ -29076,8 +29049,8 @@
         },
         {
           "locator": "/fullscreen_rules/@id=video.fullscreen.music-pair/rationale",
-          "source": "PlayVideo splits the request, loads the first component, and uses only names[1] for SoundManager music.",
-          "source_sha256": "7cc6e54c366a4ed6298ec93b9b7e8ba24b3ab72eda23c9e9d080450cf72a8636",
+          "source": "PlayVideo splits the request, loads the first component, and uses only names[1] for AudioManager music.",
+          "source_sha256": "e67914521428338a7d69b3e5ac0e6a43df4d082ea1afe010fa1d92f8191a6482",
           "status": "current"
         },
         {

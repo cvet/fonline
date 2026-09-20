@@ -61,22 +61,18 @@ public:
     auto operator=(ItemManager&&) noexcept = delete;
     ~ItemManager() = default;
 
-    auto CreateItem(hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>;
-    auto CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>;
-    auto SplitItem(ptr<Item> item, int32_t count) -> nptr<Item>;
-    auto AddItemContainer(ptr<Item> cont, hstring pid, int32_t count, const any_t& stack_id) -> nptr<Item>;
-    auto AddItemCritter(ptr<Critter> cr, hstring pid, int32_t count) -> nptr<Item>;
-    void SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count);
-    void SetItemCritter(ptr<Critter> cr, hstring pid, int32_t count);
+    auto CreateItem(hstring pid, nptr<const Properties> props) -> ptr<Item>;
+    auto CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, nptr<const Properties> props) -> ptr<Item>;
+    auto CloneItem(ptr<Item> source) -> ptr<Item>;
     void DestroyItem(ptr<Item> item);
-    auto MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) -> nptr<Item>;
-    auto MoveItem(ptr<Item> item, int32_t count, ptr<Map> to_map, mpos to_hex) -> nptr<Item>;
-    auto MoveItem(ptr<Item> item, int32_t count, ptr<Item> to_cont, const any_t& stack_id) -> nptr<Item>;
+    auto MoveItem(ptr<Item> item, ptr<Critter> to_cr) -> nptr<Item>;
+    auto MoveItem(ptr<Item> item, ptr<Map> to_map, mpos to_hex) -> nptr<Item>;
+    auto MoveItem(ptr<Item> item, ptr<Item> to_cont, const any_t& stack_id) -> nptr<Item>;
 
 private:
     auto GetItemHolder(ptr<Item> item) -> ptr<Entity>;
     void RemoveItemHolder(ptr<Item> item, ptr<Entity> holder);
-    void RestoreSplitItem(ptr<Item> item, ptr<Item> splitted_item);
+    auto GetMoveSourceHolder(ptr<Item> item) -> nptr<Entity>;
 
     ptr<ServerEngine> _engine;
 };

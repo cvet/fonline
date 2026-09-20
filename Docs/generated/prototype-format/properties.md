@@ -153,9 +153,6 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 <a id="entry-prototype-format-property-item-corner-9383a06c1f"></a>
 - [`entry-prototype-format-property-item-corner-9383a06c1f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-corner-9383a06c1f)
 
-<a id="entry-prototype-format-property-item-count-64aa4941c6"></a>
-- [`entry-prototype-format-property-item-count-64aa4941c6`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-count-64aa4941c6)
-
 <a id="entry-prototype-format-property-item-critterid-d326a60244"></a>
 - [`entry-prototype-format-property-item-critterid-d326a60244`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-critterid-d326a60244)
 
@@ -180,8 +177,8 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 <a id="entry-prototype-format-property-item-drawmultihexmesh-0948bebba1"></a>
 - [`entry-prototype-format-property-item-drawmultihexmesh-0948bebba1`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-drawmultihexmesh-0948bebba1)
 
-<a id="entry-prototype-format-property-item-draworderoffsethexy-dfe1725f48"></a>
-- [`entry-prototype-format-property-item-draworderoffsethexy-dfe1725f48`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-draworderoffsethexy-dfe1725f48)
+<a id="entry-prototype-format-property-item-drawordersublayer-ab0c5b2569"></a>
+- [`entry-prototype-format-property-item-drawordersublayer-ab0c5b2569`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-drawordersublayer-ab0c5b2569)
 
 <a id="entry-prototype-format-property-item-elevation-8bd1e0f4b7"></a>
 - [`entry-prototype-format-property-item-elevation-8bd1e0f4b7`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-elevation-8bd1e0f4b7)
@@ -275,9 +272,6 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 
 <a id="entry-prototype-format-property-item-shootthru-b7cd48fca5"></a>
 - [`entry-prototype-format-property-item-shootthru-b7cd48fca5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-shootthru-b7cd48fca5)
-
-<a id="entry-prototype-format-property-item-stackable-7c665f0124"></a>
-- [`entry-prototype-format-property-item-stackable-7c665f0124`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-stackable-7c665f0124)
 
 <a id="entry-prototype-format-property-item-static-facb8f116d"></a>
 - [`entry-prototype-format-property-item-static-facb8f116d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-static-facb8f116d)

@@ -36,6 +36,7 @@
 #include "Test_BakerHelpers.h"
 
 #if FO_MANAGED_SCRIPTING
+#include "ManagedAssemblyReferences.h"
 #include "ManagedRuntime.h"
 #include "ManagedScriptBackend.h"
 #include "ManagedScriptBaker.h"
@@ -138,7 +139,7 @@ public:
 
         for (uint32_t attempt = 0; attempt < 100; attempt++) {
             std::error_code ec;
-            std::filesystem::path candidate = base_dir / fs_make_path(strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt));
+            std::filesystem::path candidate = base_dir / fs::make_path(strex("FOnlineManagedScriptBakerTest_{}_{}", stamp, attempt));
 
             if (std::filesystem::create_directory(candidate, ec) && !ec) {
                 _path = candidate;
@@ -227,25 +228,18 @@ static auto WriteFakeManagedMsBuildScript(const std::filesystem::path& dir) -> s
     WriteTextFile(script_path, R"(@echo off
 if not defined FO_FAKE_MSBUILD_ROOT exit /b 1
 echo %* | findstr /C:"-verbosity:quiet" >nul || exit /b 2
+if defined FO_FAKE_MSBUILD_FAIL (
+    echo error CS0000: fake compile failure
+    exit /b 3
+)
+echo fake-msbuild-output
 set "ROOT=%FO_FAKE_MSBUILD_ROOT%"
-mkdir "%ROOT%\ServerAssemblies" 2>nul
-mkdir "%ROOT%\ClientAssemblies" 2>nul
-mkdir "%ROOT%\MapperAssemblies" 2>nul
-> "%ROOT%\ServerAssemblies\TestPack.Server.dll" echo entry-Server
-> "%ROOT%\ServerAssemblies\SharedDependency.dll" echo helper-Server
-> "%ROOT%\ServerAssemblies\FOnline.ManagedHost.dll" echo host-Server
-> "%ROOT%\ServerAssemblies\TestPack.Server.pdb" echo pdb-Server
-> "%ROOT%\ServerAssemblies\TestPack.Server.deps.json" echo deps-Server
-> "%ROOT%\ClientAssemblies\TestPack.Client.dll" echo entry-Client
-> "%ROOT%\ClientAssemblies\SharedDependency.dll" echo helper-Client
-> "%ROOT%\ClientAssemblies\FOnline.ManagedHost.dll" echo host-Client
-> "%ROOT%\ClientAssemblies\TestPack.Client.pdb" echo pdb-Client
-> "%ROOT%\ClientAssemblies\TestPack.Client.deps.json" echo deps-Client
-> "%ROOT%\MapperAssemblies\TestPack.Mapper.dll" echo entry-Mapper
-> "%ROOT%\MapperAssemblies\SharedDependency.dll" echo helper-Mapper
-> "%ROOT%\MapperAssemblies\FOnline.ManagedHost.dll" echo host-Mapper
-> "%ROOT%\MapperAssemblies\TestPack.Mapper.pdb" echo pdb-Mapper
-> "%ROOT%\MapperAssemblies\TestPack.Mapper.deps.json" echo deps-Mapper
+for %%T in (Server Client Mapper) do (
+    mkdir "%ROOT%\%%TAssemblies" 2>nul
+    copy /Y "%FO_FAKE_MSBUILD_FIXTURES%\%%TAssemblies\*.dll" "%ROOT%\%%TAssemblies\" >nul || exit /b 4
+    > "%ROOT%\%%TAssemblies\TestPack.%%T.pdb" echo pdb-%%T
+    > "%ROOT%\%%TAssemblies\TestPack.%%T.deps.json" echo deps-%%T
+)
 exit /b 0
 )");
 #else
@@ -258,34 +252,22 @@ case " $* " in
     *" -verbosity:quiet "*) ;;
     *) exit 2 ;;
 esac
-mkdir -p "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies" "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies" "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies"
-printf 'entry-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.dll"
-printf 'helper-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/SharedDependency.dll"
-printf 'host-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/FOnline.ManagedHost.dll"
-printf 'pdb-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.pdb"
-printf 'deps-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.deps.json"
-printf 'entry-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/TestPack.Client.dll"
-printf 'helper-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/SharedDependency.dll"
-printf 'host-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/FOnline.ManagedHost.dll"
-printf 'pdb-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/TestPack.Client.pdb"
-printf 'deps-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/TestPack.Client.deps.json"
-printf 'entry-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/TestPack.Mapper.dll"
-printf 'helper-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/SharedDependency.dll"
-printf 'host-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/FOnline.ManagedHost.dll"
-printf 'pdb-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/TestPack.Mapper.pdb"
-printf 'deps-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/TestPack.Mapper.deps.json"
+if [ -n "$FO_FAKE_MSBUILD_FAIL" ]; then
+    echo "error CS0000: fake compile failure"
+    exit 3
+fi
+echo fake-msbuild-output
+for target in Server Client Mapper; do
+    mkdir -p "$FO_FAKE_MSBUILD_ROOT/${target}Assemblies"
+    cp "$FO_FAKE_MSBUILD_FIXTURES/${target}Assemblies/"*.dll "$FO_FAKE_MSBUILD_ROOT/${target}Assemblies/" || exit 4
+    printf 'pdb-%s\n' "$target" > "$FO_FAKE_MSBUILD_ROOT/${target}Assemblies/TestPack.${target}.pdb"
+    printf 'deps-%s\n' "$target" > "$FO_FAKE_MSBUILD_ROOT/${target}Assemblies/TestPack.${target}.deps.json"
+done
 )");
     std::filesystem::permissions(script_path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 #endif
 
     return script_path;
-}
-
-static auto BytesToText(const vector<uint8_t>& data) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return string {data.begin(), data.end()};
 }
 
 static auto MakeManagedGeneratedCs(string_view body) -> string
@@ -299,6 +281,222 @@ static auto MakeManagedGeneratedCs(string_view body) -> string
                  "// clang-format off\n\n{}",
         body)
         .str();
+}
+
+struct ManagedAssemblyImageShape
+{
+    bool Pe32Plus {};
+    bool LargeHeaps {};
+    uint32_t TypeRefRows {};
+};
+
+static void AppendU16(vector<uint8_t>& out, uint32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    out.emplace_back(numeric_cast<uint8_t>(value & 0xFF));
+    out.emplace_back(numeric_cast<uint8_t>((value >> 8) & 0xFF));
+}
+
+static void AppendU32(vector<uint8_t>& out, uint32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    AppendU16(out, value & 0xFFFF);
+    AppendU16(out, value >> 16);
+}
+
+static void AppendIndex(vector<uint8_t>& out, uint32_t value, bool wide)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (wide) {
+        AppendU32(out, value);
+    }
+    else {
+        AppendU16(out, value);
+    }
+}
+
+static void PadToFour(vector<uint8_t>& out)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    while (out.size() % 4 != 0) {
+        out.emplace_back(0);
+    }
+}
+
+static void WriteU32At(vector<uint8_t>& out, size_t offset, uint32_t value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 0; i < 4; i++) {
+        out[offset + i] = numeric_cast<uint8_t>((value >> (i * 8)) & 0xFF);
+    }
+}
+
+// Builds the smallest PE image the metadata reader accepts: one section holding the CLI header and a metadata
+// root with the tables and strings streams, laid out per ECMA-335 independently of the reader's own code
+static auto MakeManagedAssemblyImage(string_view name, const vector<string>& references, ManagedAssemblyImageShape shape = {}) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8_t> strings {0};
+
+    auto add_string = [&strings](string_view value) -> uint32_t {
+        uint32_t offset = numeric_cast<uint32_t>(strings.size());
+        strings.insert(strings.end(), value.begin(), value.end());
+        strings.emplace_back(0);
+        return offset;
+    };
+
+    uint32_t name_index = add_string(name);
+    vector<uint32_t> reference_indices;
+
+    for (const string& reference : references) {
+        reference_indices.emplace_back(add_string(reference));
+    }
+
+    PadToFour(strings);
+
+    uint32_t reference_rows = numeric_cast<uint32_t>(references.size());
+    bool wide_resolution_scope = std::max(reference_rows, shape.TypeRefRows) >= (uint32_t {1} << 14);
+    vector<uint8_t> tables;
+    AppendU32(tables, 0);
+    tables.emplace_back(2);
+    tables.emplace_back(0);
+    tables.emplace_back(numeric_cast<uint8_t>(shape.LargeHeaps ? 0x07 : 0x00));
+    tables.emplace_back(1);
+    uint64_t valid = (uint64_t {1} << 0x00) | (uint64_t {1} << 0x20) | (uint64_t {1} << 0x23) | (shape.TypeRefRows != 0 ? uint64_t {1} << 0x01 : 0);
+    AppendU32(tables, numeric_cast<uint32_t>(valid & 0xFFFFFFFF));
+    AppendU32(tables, numeric_cast<uint32_t>(valid >> 32));
+    AppendU32(tables, 0);
+    AppendU32(tables, 0);
+    AppendU32(tables, 1);
+
+    if (shape.TypeRefRows != 0) {
+        AppendU32(tables, shape.TypeRefRows);
+    }
+
+    AppendU32(tables, 1);
+    AppendU32(tables, reference_rows);
+
+    // Module: Generation, Name, Mvid, EncId, EncBaseId
+    AppendU16(tables, 0);
+    AppendIndex(tables, name_index, shape.LargeHeaps);
+    AppendIndex(tables, 0, shape.LargeHeaps);
+    AppendIndex(tables, 0, shape.LargeHeaps);
+    AppendIndex(tables, 0, shape.LargeHeaps);
+
+    // TypeRef: ResolutionScope coded index, TypeName, TypeNamespace
+    for (uint32_t row = 0; row < shape.TypeRefRows; row++) {
+        AppendIndex(tables, 0, wide_resolution_scope);
+        AppendIndex(tables, name_index, shape.LargeHeaps);
+        AppendIndex(tables, 0, shape.LargeHeaps);
+    }
+
+    // Assembly: HashAlgId, four version parts, Flags, PublicKey, Name, Culture
+    AppendU32(tables, 0x8004);
+
+    for (int32_t part = 0; part < 4; part++) {
+        AppendU16(tables, 1);
+    }
+
+    AppendU32(tables, 0);
+    AppendIndex(tables, 0, shape.LargeHeaps);
+    AppendIndex(tables, name_index, shape.LargeHeaps);
+    AppendIndex(tables, 0, shape.LargeHeaps);
+
+    // AssemblyRef: four version parts, Flags, PublicKeyOrToken, Name, Culture, HashValue
+    for (uint32_t reference_index : reference_indices) {
+        for (int32_t part = 0; part < 4; part++) {
+            AppendU16(tables, 1);
+        }
+
+        AppendU32(tables, 0);
+        AppendIndex(tables, 0, shape.LargeHeaps);
+        AppendIndex(tables, reference_index, shape.LargeHeaps);
+        AppendIndex(tables, 0, shape.LargeHeaps);
+        AppendIndex(tables, 0, shape.LargeHeaps);
+    }
+
+    PadToFour(tables);
+
+    constexpr uint32_t metadata_headers_size = 64;
+    vector<uint8_t> metadata;
+    AppendU32(metadata, 0x424A5342);
+    AppendU16(metadata, 1);
+    AppendU16(metadata, 1);
+    AppendU32(metadata, 0);
+    AppendU32(metadata, 12);
+    string_view version = "v4.0.30319";
+    metadata.insert(metadata.end(), version.begin(), version.end());
+    PadToFour(metadata);
+    AppendU16(metadata, 0);
+    AppendU16(metadata, 2);
+    AppendU32(metadata, metadata_headers_size);
+    AppendU32(metadata, numeric_cast<uint32_t>(tables.size()));
+    metadata.insert(metadata.end(), {'#', '~', 0, 0});
+    AppendU32(metadata, metadata_headers_size + numeric_cast<uint32_t>(tables.size()));
+    AppendU32(metadata, numeric_cast<uint32_t>(strings.size()));
+    metadata.insert(metadata.end(), {'#', 'S', 't', 'r', 'i', 'n', 'g', 's', 0, 0, 0, 0});
+    REQUIRE(metadata.size() == metadata_headers_size);
+    metadata.insert(metadata.end(), tables.begin(), tables.end());
+    metadata.insert(metadata.end(), strings.begin(), strings.end());
+
+    constexpr uint32_t section_rva = 0x2000;
+    constexpr uint32_t section_file_offset = 0x200;
+    constexpr uint32_t cli_header_size = 72;
+    vector<uint8_t> section;
+    AppendU32(section, cli_header_size);
+    AppendU16(section, 2);
+    AppendU16(section, 5);
+    AppendU32(section, section_rva + cli_header_size);
+    AppendU32(section, numeric_cast<uint32_t>(metadata.size()));
+    section.resize(cli_header_size, 0);
+    section.insert(section.end(), metadata.begin(), metadata.end());
+
+    uint32_t optional_header_size = shape.Pe32Plus ? 240 : 224;
+    size_t optional_header_offset = 0x80 + 24;
+    vector<uint8_t> image(section_file_offset, 0);
+    image[0] = 'M';
+    image[1] = 'Z';
+    WriteU32At(image, 0x3C, 0x80);
+    WriteU32At(image, 0x80, 0x00004550);
+    image[0x84] = 0x4C;
+    image[0x85] = 0x01;
+    image[0x86] = 1;
+    image[0x80 + 20] = numeric_cast<uint8_t>(optional_header_size & 0xFF);
+    image[optional_header_offset] = 0x0B;
+    image[optional_header_offset + 1] = numeric_cast<uint8_t>(shape.Pe32Plus ? 0x02 : 0x01);
+    size_t directory_count_offset = optional_header_offset + (shape.Pe32Plus ? 108 : 92);
+    WriteU32At(image, directory_count_offset, 16);
+    WriteU32At(image, directory_count_offset + 4 + 14 * 8, section_rva);
+    WriteU32At(image, directory_count_offset + 8 + 14 * 8, cli_header_size);
+
+    size_t section_header_offset = optional_header_offset + optional_header_size;
+    image[section_header_offset] = '.';
+    image[section_header_offset + 1] = 't';
+    WriteU32At(image, section_header_offset + 8, numeric_cast<uint32_t>(section.size()));
+    WriteU32At(image, section_header_offset + 12, section_rva);
+    WriteU32At(image, section_header_offset + 16, numeric_cast<uint32_t>(section.size()));
+    WriteU32At(image, section_header_offset + 20, section_file_offset);
+
+    image.insert(image.end(), section.begin(), section.end());
+    return image;
+}
+
+static void WriteBinaryFile(const std::filesystem::path& path, const vector<uint8_t>& data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::filesystem::create_directories(path.parent_path());
+
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    REQUIRE(file.good());
+    auto data_chars = make_ptr(data.data()).reinterpret_as<const char>();
+    file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
 }
 
 #endif
@@ -325,6 +523,169 @@ TEST_CASE("Managed runtime resources are restored into a content-addressed cache
     auto restored_again = RestoreManagedRuntimeResources(resources, cache_root.string());
     REQUIRE(restored_again == restored);
     CHECK(ReadTextFile(restored_corelib) == "managed-corelib\n");
+#endif
+}
+
+TEST_CASE("Managed assembly references are read from the metadata tables")
+{
+#if FO_MANAGED_SCRIPTING
+    bool pe32_plus = GENERATE(false, true);
+    bool large_heaps = GENERATE(false, true);
+    // 0x4000 type references widen the ResolutionScope coded index, which shifts every table after TypeRef
+    uint32_t type_ref_rows = GENERATE(uint32_t {0}, uint32_t {3}, uint32_t {0x4000});
+    vector<string> references {"System.Runtime", "System.Collections", "Unit.Helper"};
+    vector<uint8_t> image = MakeManagedAssemblyImage("Unit.Scripts", references, ManagedAssemblyImageShape {.Pe32Plus = pe32_plus, .LargeHeaps = large_heaps, .TypeRefRows = type_ref_rows});
+
+    ManagedAssemblyIdentity identity = ReadManagedAssemblyIdentity(image);
+
+    CHECK(identity.Name == "Unit.Scripts");
+    CHECK(identity.References == references);
+    CHECK(ReadManagedAssemblyIdentity(MakeManagedAssemblyImage("Leaf", {})).References.empty());
+#endif
+}
+
+TEST_CASE("Managed assembly reader rejects images that are not managed assemblies")
+{
+#if FO_MANAGED_SCRIPTING
+    vector<uint8_t> image = MakeManagedAssemblyImage("Unit.Scripts", {"System.Runtime"});
+
+    SECTION("Truncated")
+    {
+        for (size_t length : {size_t {0}, size_t {0x40}, size_t {0x100}, size_t {0x248}, image.size() - 8}) {
+            vector<uint8_t> truncated {image.begin(), image.begin() + numeric_cast<ptrdiff_t>(length)};
+            CHECK_THROWS_AS(ReadManagedAssemblyIdentity(truncated), ManagedAssemblyReferencesException);
+        }
+    }
+
+    SECTION("NativePe")
+    {
+        // A zero CLR runtime header directory is how a native DLL answers
+        size_t directory_count_offset = 0x80 + 24 + 92;
+        std::fill_n(image.begin() + numeric_cast<ptrdiff_t>(directory_count_offset + 4 + 14 * 8), 8, uint8_t {0});
+        CHECK_THROWS_WITH(ReadManagedAssemblyIdentity(image), Catch::Matchers::ContainsSubstring("native PE"));
+    }
+
+    SECTION("Text")
+    {
+        string_view text = "entry-Server\n";
+        CHECK_THROWS_AS(ReadManagedAssemblyIdentity(vector<uint8_t> {text.begin(), text.end()}), ManagedAssemblyReferencesException);
+    }
+#endif
+}
+
+TEST_CASE("Managed runtime selection follows assembly references")
+{
+#if FO_MANAGED_SCRIPTING
+    map<string, ManagedAssemblyIdentity> runtime {
+        {"System.Private.CoreLib", ManagedAssemblyIdentity {.Name = "System.Private.CoreLib", .References = {}}},
+        {"System.Runtime", ManagedAssemblyIdentity {.Name = "System.Runtime", .References = {"System.Private.CoreLib", "System.Private.Uri"}}},
+        {"System.Private.Uri", ManagedAssemblyIdentity {.Name = "System.Private.Uri", .References = {"System.Private.CoreLib"}}},
+        {"System.Linq", ManagedAssemblyIdentity {.Name = "System.Linq", .References = {"System.Collections"}}},
+        {"System.Collections", ManagedAssemblyIdentity {.Name = "System.Collections", .References = {"System.Linq"}}},
+        {"System.Xml", ManagedAssemblyIdentity {.Name = "System.Xml", .References = {"System.Private.CoreLib"}}},
+        {"Renamed.File", ManagedAssemblyIdentity {.Name = "Other.Assembly", .References = {}}},
+        {"mscorlib", ManagedAssemblyIdentity {.Name = "mscorlib", .References = {"System.Runtime", "System.Security.Permissions"}}},
+    };
+    vector<string> lookups;
+
+    auto find_runtime_assembly = [&](string_view name) -> optional<ManagedAssemblyIdentity> {
+        lookups.emplace_back(name);
+        auto it = runtime.find(name);
+        return it != runtime.end() ? optional<ManagedAssemblyIdentity> {it->second} : std::nullopt;
+    };
+
+    SECTION("ClosureOverPackAndRuntime")
+    {
+        vector<ManagedAssemblyIdentity> pack {
+            ManagedAssemblyIdentity {.Name = "Scripts.Server", .References = {"System.Runtime", "Unit.Helper", "System.Linq"}},
+            ManagedAssemblyIdentity {.Name = "Unit.Helper", .References = {"System.Runtime"}},
+        };
+
+        set<string> selected = CollectReferencedRuntimeAssemblies(pack, find_runtime_assembly);
+
+        // A pack assembly is never looked up in the runtime, a cycle ends, and an unreferenced library stays out
+        CHECK(selected == set<string> {"System.Collections", "System.Linq", "System.Private.CoreLib", "System.Private.Uri", "System.Runtime"});
+        CHECK(std::ranges::count(lookups, "Unit.Helper") == 0);
+        CHECK(std::ranges::count(lookups, "System.Runtime") == 1);
+    }
+
+    SECTION("CoreLibWithoutReferences")
+    {
+        CHECK(CollectReferencedRuntimeAssemblies({}, find_runtime_assembly) == set<string> {"System.Private.CoreLib"});
+    }
+
+    SECTION("MissingCoreLib")
+    {
+        runtime.erase("System.Private.CoreLib");
+        CHECK_THROWS_WITH(CollectReferencedRuntimeAssemblies({}, find_runtime_assembly), Catch::Matchers::ContainsSubstring("does not publish CoreLib"));
+    }
+
+    SECTION("UnresolvedReference")
+    {
+        vector<ManagedAssemblyIdentity> pack {ManagedAssemblyIdentity {.Name = "Scripts.Client", .References = {"System.Runtime", "Missing.Library"}}};
+        CHECK_THROWS_WITH(CollectReferencedRuntimeAssemblies(pack, find_runtime_assembly), Catch::Matchers::ContainsSubstring("satisfied neither") && Catch::Matchers::ContainsSubstring("Missing.Library") && Catch::Matchers::ContainsSubstring("Scripts.Client"));
+    }
+
+    SECTION("FacadeForwardsOutsideTheRuntime")
+    {
+        vector<ManagedAssemblyIdentity> pack {ManagedAssemblyIdentity {.Name = "NetStandard.Helper", .References = {"mscorlib"}}};
+        CHECK(CollectReferencedRuntimeAssemblies(pack, find_runtime_assembly) == set<string> {"System.Private.CoreLib", "System.Private.Uri", "System.Runtime", "mscorlib"});
+    }
+
+    SECTION("FileDefinesAnotherAssembly")
+    {
+        vector<ManagedAssemblyIdentity> pack {ManagedAssemblyIdentity {.Name = "Scripts.Client", .References = {"Renamed.File"}}};
+        CHECK_THROWS_WITH(CollectReferencedRuntimeAssemblies(pack, find_runtime_assembly), Catch::Matchers::ContainsSubstring("another assembly"));
+    }
+
+    SECTION("CoreLibDefinesAnotherAssembly")
+    {
+        runtime.at("System.Private.CoreLib").Name = "Wrong.CoreLib";
+        CHECK_THROWS_WITH(CollectReferencedRuntimeAssemblies({}, find_runtime_assembly), Catch::Matchers::ContainsSubstring("CoreLib file defines another assembly"));
+    }
+#endif
+}
+
+TEST_CASE("Managed assembly reader reads every published class library")
+{
+#if FO_MANAGED_SCRIPTING
+    // The synthetic images share the reader's reading of ECMA-335, so the real runtime is the independent check
+    optional<std::filesystem::path> runtime_dir = FindManagedRuntimeDirectory();
+    REQUIRE(runtime_dir.has_value());
+
+    map<string, ManagedAssemblyIdentity> class_libraries;
+
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(*runtime_dir / "lib" / "netcoreapp")) {
+        if (entry.path().extension() != ".dll") {
+            continue;
+        }
+
+        INFO(entry.path().string());
+        optional<string> image = fs::read_file(fs::path_to_string(entry.path()));
+        REQUIRE(image.has_value());
+        ManagedAssemblyIdentity identity = ReadManagedAssemblyIdentity(vector<uint8_t>(image->begin(), image->end()));
+        CHECK(identity.Name == strex("{}", entry.path().stem().string()).str());
+        class_libraries.emplace(identity.Name, std::move(identity));
+    }
+
+    REQUIRE(class_libraries.contains("System.Private.CoreLib"));
+    CHECK(class_libraries.at("System.Private.CoreLib").References.empty());
+    REQUIRE(class_libraries.contains("System.Runtime"));
+    CHECK(std::ranges::count(class_libraries.at("System.Runtime").References, "System.Private.CoreLib") == 1);
+
+    auto find_runtime_assembly = [&class_libraries](string_view name) -> optional<ManagedAssemblyIdentity> {
+        auto it = class_libraries.find(name);
+        return it != class_libraries.end() ? optional<ManagedAssemblyIdentity> {it->second} : std::nullopt;
+    };
+
+    // Every class library selected at once: the facades' references into unpublished packages must not fail it
+    vector<ManagedAssemblyIdentity> everything;
+
+    for (const auto& [name, identity] : class_libraries) {
+        everything.emplace_back(ManagedAssemblyIdentity {.Name = strex("Unit.Root.{}", name).str(), .References = {name}});
+    }
+
+    CHECK(CollectReferencedRuntimeAssemblies(everything, find_runtime_assembly).size() == class_libraries.size());
 #endif
 }
 
@@ -386,6 +747,7 @@ TEST_CASE("ManagedScriptBaker")
     std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
     std::filesystem::path managed_reference = managed_source_dir / "References" / "ManagedDependency.dll";
     std::filesystem::path managed_analyzer = managed_source_dir / "Analyzers" / "ManagedAnalyzer.csproj";
+    std::filesystem::path banned_symbols = managed_source_dir / "Analyzers" / "BannedSymbols.txt";
     std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
@@ -395,6 +757,7 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
     WriteTextFile(managed_reference, "managed-reference\n");
     WriteTextFile(managed_analyzer, "<Project />\n");
+    WriteTextFile(banned_symbols, "M:System.Environment.Exit(System.Int32);Process lifetime is not the script layer's decision.\n");
 
     std::filesystem::path server_source = script_dir / "ServerOnly.cs";
     std::filesystem::path client_source = script_dir / "ClientOnly.cs";
@@ -437,12 +800,12 @@ TEST_CASE("ManagedScriptBaker")
 
     TestRig rig;
     rig.Settings.ApplyConfigAtPath("ManagedRoot.fomain", temp_dir.Path().string());
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {"ManagedSupport/CoreScripts", "Scripts/Managed"});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, "Scripts/Managed");
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptExtraSources,
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {"ManagedSupport/CoreScripts", "Scripts/Managed"});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, "Scripts/Managed");
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ExtraSources,
         vector<string> {
             "UnitManaged,Server,Scripts/Managed/ServerOnly.cs",
             "UnitManaged,Client,Scripts/Managed/ClientOnly.cs",
@@ -450,15 +813,21 @@ TEST_CASE("ManagedScriptBaker")
             "UnitManaged,All,Scripts/Managed/Shared.cs",
             "UnitManaged,All,Scripts/Managed/Tilde~1.cs",
         });
-    OverrideSetting(rig.Settings.ManagedScriptExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core"});
-    OverrideSetting(rig.Settings.ManagedScriptAnalyzers, vector<string> {"ManagedSupport/Analyzers/ManagedAnalyzer.csproj"});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.ManagedScript.ExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core"});
+    OverrideSetting(rig.Settings.ManagedScript.Analyzers, vector<string> {"ManagedSupport/Analyzers/ManagedAnalyzer.csproj"});
+    OverrideSetting(rig.Settings.ManagedScript.AnalyzerPackages, vector<string> {"Unit.Analyzer,1.2.3", "Unit.Banned.Analyzer,4.5.6"});
+    OverrideSetting(rig.Settings.ManagedScript.AdditionalFiles, vector<string> {"ManagedSupport/Analyzers/BannedSymbols.txt"});
+    OverrideSetting(rig.Settings.ManagedScript.AnalysisLevel, "10.0");
+    OverrideSetting(rig.Settings.ManagedScript.AnalysisMode, "All");
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitProject");
     rig.AddBakedFile("Metadata.fometa-server",
         MakeMetadataBlob({
             {"Entity", {{"ManagedInner", "HasProtos"}, {"ManagedGlobal"}}},
             {"EntityHolder", {{"Server", "Critter", "ManagedInner", "ManagedEntry"}, {"Server", "Game", "ManagedGlobal", "ManagedGlobal"}}},
             {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
-            {"Property", {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
+            {"Property",
+                {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "int8", "ManagedInt8", "Mutable"}, {"Critter", "Server", "uint8", "ManagedUInt8", "Mutable"}, {"Critter", "Server", "int32", "ManagedInt32", "Mutable"}, {"Critter", "Server", "uint32", "ManagedUInt32", "Mutable"}, {"Critter", "Server", "int64", "ManagedInt64", "Mutable"}, {"Critter", "Server", "uint64", "ManagedUInt64", "Mutable"}, {"Critter", "Server", "float32", "ManagedFloat32", "Mutable"}, {"Critter", "Server", "float64", "ManagedFloat64", "Mutable"}, {"Critter", "Server", "bool", "ManagedBool", "Mutable"}, {"Critter", "Server", "CritterCondition", "ManagedEnum", "Mutable"}, {"Critter", "Server", "bool", "ManagedProbe", "Component"},
+                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
         }));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
@@ -484,9 +853,9 @@ TEST_CASE("ManagedScriptBaker")
 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-    CHECK(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.dll"));
-    CHECK(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.dll"));
-    CHECK(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-server/TestPack.Server.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-client/TestPack.Client.dll"));
+    CHECK(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.dll"));
 
     CHECK_FALSE(std::filesystem::exists(temp_dir.Path() / "UnitManaged.csproj"));
     CHECK_FALSE(std::filesystem::exists(temp_dir.Path() / "UnitManaged.Server.gen.csproj"));
@@ -558,9 +927,27 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("Obsolete.gen.cs") != string::npos);
     CHECK(unified_project.find("<ProjectReference Include=\"FOnline.ManagedHost.gen.csproj\" />") != string::npos);
 
+    // Every target keeps its portable PDB inside the assembly, so script frames carry file and line wherever it runs
+    for (string_view target : {"Server", "Client", "Mapper"}) {
+        CHECK(unified_project.find(strex("== '{}|AnyCPU' \">\n    <DebugType>embedded</DebugType>", target).str()) != string::npos);
+    }
+
+    // The analysis profile: level and mode as properties, analyzer packages as private package references,
+    // and the analyzer configuration file as an AdditionalFiles item beside them
+    CHECK(unified_project.find("<EnableNETAnalyzers>true</EnableNETAnalyzers>") != string::npos);
+    CHECK(unified_project.find("<AnalysisLevel>10.0</AnalysisLevel>") != string::npos);
+    CHECK(unified_project.find("<AnalysisMode>All</AnalysisMode>") != string::npos);
+    CHECK(unified_project.find("<PackageReference Include=\"Unit.Analyzer\" Version=\"1.2.3\" PrivateAssets=\"all\" />") != string::npos);
+    CHECK(unified_project.find("<PackageReference Include=\"Unit.Banned.Analyzer\" Version=\"4.5.6\" PrivateAssets=\"all\" />") != string::npos);
+    CHECK(unified_project.find("<AdditionalFiles Include=\"../../ManagedSupport/Analyzers/BannedSymbols.txt\" />") != string::npos);
+
     string managed_host_project = ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj");
     CHECK(managed_host_project.find("<AssemblyName>FOnline.ManagedHost</AssemblyName>") != string::npos);
     CHECK(managed_host_project.find("ManagedHost/ManagedLoadContextHost.cs") != string::npos);
+    CHECK(managed_host_project.find("<DebugType>embedded</DebugType>") != string::npos);
+    // The profile covers the script project only; the host compiles engine-owned source
+    CHECK(managed_host_project.find("<AnalysisMode>") == string::npos);
+    CHECK(managed_host_project.find("<PackageReference") == string::npos);
 
     string server_enums = ReadTextFile(script_dir / "ServerEnums.gen.cs");
     CHECK(server_enums.find("// <auto-generated />") == 0);
@@ -581,11 +968,22 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Game\",\n                \"ManagedSteps\",\n                IntPtr.Zero)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Game\",\n                \"ManagedSteps\",\n                IntPtr.Zero,\n                value)") != string::npos);
     CHECK(server_entities.find("public static ushort ManagedNarrowLimit") != string::npos);
-    CHECK(server_entities.find("return (ushort)global::FOnline.Game.GetAsInt(\n                (global::FOnline.GameProperty)(") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Game.SetAsInt(\n                (global::FOnline.GameProperty)(") != string::npos);
+    CHECK(server_entities.find("return global::FOnline.Native.GetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
     CHECK(server_entities.find("public short ManagedSkill") != string::npos);
-    CHECK(server_entities.find("return (short)GetAsInt(\n                (global::FOnline.CritterProperty)(") != string::npos);
-    CHECK(server_entities.find("SetAsInt(\n                (global::FOnline.CritterProperty)(") != string::npos);
+    CHECK(server_entities.find("return (short)global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.SetEntityValueAsInt(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
+    for (string_view scalar_type : {"sbyte", "byte", "short"}) {
+        CHECK(server_entities.find(strex("return ({})global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ", scalar_type).str()) != string::npos);
+    }
+
+    for (string_view scalar_type : {"int", "uint", "long", "ulong", "float", "double", "bool", "CritterCondition"}) {
+        CHECK(server_entities.find(strex("global::FOnline.Native.GetPropertyValue<{}>(_entityPtr, ", scalar_type).str()) != string::npos);
+    }
+
+    CHECK(server_entities.find("bool HasManagedProbe\n    {\n        get\n        {\n            return global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<CritterCondition>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr)") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(\n                \"Critter\",\n                \"ManagedCheckpointEntries\",\n                _entityPtr,\n                value)") != string::npos);
@@ -602,7 +1000,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static void Destroy<T>(System.Collections.Generic.List<T>? entities) where T : Entity") != string::npos);
     CHECK(server_entities.find("DestroyEntity(entities[__i]);") != string::npos);
     CHECK(server_entities.find("public static ManagedGlobal AddManagedGlobal()") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\", 0UL)") != string::npos);
+    CHECK(server_entities.find("global::FOnline.Native.CreateInnerEntity(IntPtr.Zero, \"ManagedGlobal\", IntPtr.Zero)") != string::npos);
     CHECK(server_entities.find("public static bool HasManagedGlobals()") != string::npos);
     CHECK(server_entities.find("public static System.Collections.Generic.List<ManagedGlobal> GetManagedGlobals()") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetInnerEntityAt(IntPtr.Zero, \"ManagedGlobal\", __i)") != string::npos);
@@ -672,10 +1070,12 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("third = (int)__args[0];") == string::npos);
 
     string client_settings = ReadTextFile(script_dir / "ClientSettings.gen.cs");
-    CHECK(client_settings.find("public static List<int> View_GlobalDayColorTime") != string::npos);
+    CHECK(client_settings.find("    public static class View\n    {\n") != string::npos);
+    CHECK(client_settings.find("public static List<int> GlobalDayColorTime") != string::npos);
+    CHECK(client_settings.find("View_GlobalDayColor") == string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingIntList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColorTime\"") != string::npos);
-    CHECK(client_settings.find("public static List<byte> View_GlobalDayColor") != string::npos);
+    CHECK(client_settings.find("public static List<byte> GlobalDayColor\n") != string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingByteList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColor\"") != string::npos);
 
@@ -687,10 +1087,12 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_voidAsync();") != string::npos);
     CHECK(server_types.find("public delegate global::System.Threading.Tasks.Task Callback_bool") == string::npos);
     CHECK(server_types.find("public partial struct hstring") != string::npos);
+    CHECK(server_types.find("public System.IntPtr Value;") != string::npos);
+    CHECK(server_types.find("LayoutKind.Sequential, Size = 8") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {
-        string types = ReadTextFile(script_dir / fs_make_path(strex("{}Types.gen.cs", target).str()));
+        string types = ReadTextFile(script_dir / fs::make_path(strex("{}Types.gen.cs", target).str()));
         CHECK(types.find("public partial struct hdir") != string::npos);
         CHECK(types.find("public sbyte value;") != string::npos);
         CHECK(types.find("public hdir(") == string::npos);
@@ -713,6 +1115,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("return (ushort)__result;") != string::npos);
     CHECK(server_entities.find("public partial class Entity : System.IEquatable<Entity>") != string::npos);
     CHECK(server_entities.find("private readonly bool[]? _backendAlive;") != string::npos);
+    CHECK(server_entities.find("            if (_backendAlive != null && _backendAlive[0]) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
     CHECK(server_entities.find("Entity wrapper belongs to a different managed backend") != string::npos);
     CHECK(server_entities.find("return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue && _backend == other._backend;") != string::npos);
     CHECK(server_entities.find("public static bool operator ==(Entity? left, Entity? right)") != string::npos);
@@ -735,9 +1138,9 @@ TEST_CASE("ManagedScriptBaker")
     REQUIRE_NOTHROW(no_work_baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     CHECK(rig.Outputs.empty());
-    CHECK(checked_output_paths.contains("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll"));
-    CHECK(checked_output_paths.contains("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll"));
-    CHECK(checked_output_paths.contains("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-server/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-client/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/Assemblies-mapper/FOnline.ManagedHost.dll"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.csproj"));
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.sln"));
@@ -758,7 +1161,7 @@ TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable 
     std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
     std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
     std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
-    std::filesystem::path bake_output = absolute_output ? temp_dir.Path() / fs_make_path("External Bake & Данные") : std::filesystem::path {fs_make_path("Relocated Bake & Данные")};
+    std::filesystem::path bake_output = absolute_output ? temp_dir.Path() / fs::make_path("External Bake & Данные") : std::filesystem::path {fs::make_path("Relocated Bake & Данные")};
 
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
@@ -768,12 +1171,12 @@ TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable 
     ScopedCurrentPath current_path(temp_dir.Path());
 
     TestRig rig;
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {fs_path_to_string(core_scripts_dir), fs_path_to_string(script_dir)});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, fs_path_to_string(script_dir));
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
-    OverrideSetting(rig.Settings.BakeOutput, fs_path_to_string(bake_output));
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {fs::path_to_string(core_scripts_dir), fs::path_to_string(script_dir)});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, fs::path_to_string(script_dir));
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.Baking.BakeOutput, fs::path_to_string(bake_output));
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
@@ -782,7 +1185,7 @@ TEST_CASE("ManagedScriptBaker project output preserves absolute and relocatable 
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     string project = ReadTextFile(script_dir / "UnitProject.gen.csproj");
-    string expected_root = absolute_output ? strex("{}/External Bake &amp; Данные", fs_path_to_string(temp_dir.Path())).str() : "$(FOnlineBakeRoot)/Relocated Bake &amp; Данные";
+    string expected_root = absolute_output ? strex("{}/External Bake &amp; Данные", fs::path_to_string(temp_dir.Path())).str() : "$(FOnlineBakeRoot)/Relocated Bake &amp; Данные";
 
     for (string_view target : array<string_view, 3> {"Server", "Client", "Mapper"}) {
         string expected_output = strex("<OutputPath>{}/TestPack/Assemblies/{}Assemblies/</OutputPath>", expected_root, target).str();
@@ -813,12 +1216,12 @@ TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisi
     ScopedCurrentPath current_path(temp_dir.Path());
 
     TestRig rig;
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitCollision");
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitCollision");
     rig.AddBakedFile("Metadata.fometa-server",
         MakeMetadataBlob({
             {"RefType", {{"CollisionRoute", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "CheckpointIndex", "string", "0"}}},
@@ -829,6 +1232,94 @@ TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisi
     ManagedScriptBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
     REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed dynamic RefType property name collision"));
+#endif
+}
+
+TEST_CASE("ManagedScriptBaker rebakes when an editorconfig above the sources changes")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+    std::filesystem::path editor_config = temp_dir.Path() / ".editorconfig";
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    WriteTextFile(editor_config, "root = true\n");
+
+    // An .editorconfig above the sources must move the bake stamp. Its write time is set rather than
+    // rewritten, because two writes can land inside one filesystem timestamp tick
+    auto future_time = std::filesystem::last_write_time(editor_config) + std::chrono::hours(24);
+    std::filesystem::last_write_time(editor_config, future_time);
+
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitEditorConfig");
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    vector<uint64_t> stamps;
+    ManagedScriptBaker baker(rig.MakeContext("TestPack", [&stamps](string_view path, uint64_t write_time) {
+        ignore_unused(path);
+        stamps.emplace_back(write_time);
+        return false;
+    }));
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    REQUIRE(!stamps.empty());
+    CHECK(std::ranges::max(stamps) == fs::last_write_time(strex("{}", editor_config.string()).str()));
+#endif
+}
+
+TEST_CASE("ManagedScriptBaker rejects an analyzer package without an exact version")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
+    std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitPackages");
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    // A wildcard version, a range and a missing one each make the reported rule set depend on the day the
+    // build ran, so the baker refuses them instead of emitting a project whose analysis silently drifts
+    string_view rejected_entry = GENERATE("Unit.Analyzer,1.2.*", "Unit.Analyzer,[1.2.3,2.0.0)", "Unit.Analyzer,", "Unit.Analyzer", ",1.2.3");
+    OverrideSetting(rig.Settings.ManagedScript.AnalyzerPackages, vector<string> {string(rejected_entry)});
+
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Analyzer package"));
 #endif
 }
 
@@ -852,50 +1343,195 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
     WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
     WriteTextFile(shared_source, "namespace Demo { public static class Shared {} }\n");
-    WriteTextFile(managed_runtime_dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll", "managed-corelib\n");
-    WriteTextFile(managed_runtime_dir / "lib" / "netcoreapp" / "coreclr.dll", "native-coreclr\n");
-    WriteTextFile(managed_runtime_dir / "runtime.manifest", "0000000000000000000000000000000000000000000000000000000000000000  lib/netcoreapp/System.Private.CoreLib.dll\n");
+
+    // Each target reaches System.Runtime, only the client reaches System.Linq, and nothing reaches System.Xml
+    std::filesystem::path fixtures_dir = temp_dir.Path() / "MsBuildFixtures";
+    map<string, vector<uint8_t>> fixture_images {
+        {"ServerAssemblies/TestPack.Server.dll", MakeManagedAssemblyImage("TestPack.Server", {"System.Runtime", "SharedDependency"})},
+        {"ClientAssemblies/TestPack.Client.dll", MakeManagedAssemblyImage("TestPack.Client", {"System.Runtime", "System.Linq", "SharedDependency"})},
+        {"MapperAssemblies/TestPack.Mapper.dll", MakeManagedAssemblyImage("TestPack.Mapper", {"System.Runtime"})},
+    };
+
+    for (string_view target : {"Server", "Client", "Mapper"}) {
+        fixture_images.emplace(strex("{}Assemblies/SharedDependency.dll", target).str(), MakeManagedAssemblyImage("SharedDependency", {"System.Private.CoreLib"}));
+        fixture_images.emplace(strex("{}Assemblies/FOnline.ManagedHost.dll", target).str(), MakeManagedAssemblyImage("FOnline.ManagedHost", {"System.Runtime"}));
+    }
+
+    for (const auto& [fixture_path, fixture_image] : fixture_images) {
+        WriteBinaryFile(fixtures_dir / fs::make_path(fixture_path), fixture_image);
+    }
+
+    std::filesystem::path class_library_dir = managed_runtime_dir / "lib" / "netcoreapp";
+    map<string, string> manifest_lines;
+
+    for (string_view assembly_name : {"System.Linq", "System.Private.CoreLib", "System.Runtime", "System.Xml"}) {
+        vector<string> references = assembly_name == "System.Private.CoreLib" ? vector<string> {} : vector<string> {"System.Private.CoreLib"};
+
+        if (assembly_name == "System.Linq") {
+            references.emplace_back("System.Runtime");
+        }
+
+        WriteBinaryFile(class_library_dir / fs::make_path(strex("{}.dll", assembly_name)), MakeManagedAssemblyImage(assembly_name, references));
+        manifest_lines.emplace(assembly_name, strex("{}  lib/netcoreapp/{}.dll\n", string(64, numeric_cast<char>('a' + manifest_lines.size())), assembly_name).str());
+    }
+
+    string runtime_manifest;
+
+    for (const string& manifest_line : manifest_lines | std::views::values) {
+        runtime_manifest += manifest_line;
+    }
+
+    WriteTextFile(class_library_dir / "coreclr.dll", "native-coreclr\n");
+    WriteTextFile(managed_runtime_dir / "runtime.manifest", runtime_manifest);
 
     ScopedCurrentPath current_path(temp_dir.Path());
     // The fake msbuild helper is a spawned child process; env is the legitimate channel to parameterize it
     ScopedEnvVar msbuild_root {"FO_FAKE_MSBUILD_ROOT", fake_msbuild_root.string()};
+    ScopedEnvVar msbuild_fixtures {"FO_FAKE_MSBUILD_FIXTURES", fixtures_dir.string()};
     ScopedEnvVar managed_runtime {"FO_MANAGED_RUNTIME", managed_runtime_dir.string()};
 
     TestRig rig;
-    OverrideSetting(rig.Settings.BakeOutput, string {"Baking"});
-    OverrideSetting(rig.Settings.ManagedScriptDirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
-    OverrideSetting(rig.Settings.ManagedScriptGeneratedDir, script_dir.string());
-    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
-    OverrideSetting(rig.Settings.ManagedScriptExtraSources, vector<string> {strex("UnitManaged,All,{}", shared_source.string()).str()});
-    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
-    OverrideSetting(rig.Settings.ManagedScriptMsBuild, fake_msbuild.string());
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ExtraSources, vector<string> {strex("UnitManaged,All,{}", shared_source.string()).str()});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.ManagedScript.MsBuild, fake_msbuild.string());
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
 
-    ManagedScriptBaker baker(rig.MakeContext());
-    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    vector<string> log_messages;
+    logging::set_callback("managed-script-baker-compiler-output-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { log_messages.emplace_back(message); });
+    auto remove_log_callback = scope_exit([]() noexcept { logging::set_callback("managed-script-baker-compiler-output-test", {}); });
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/TestPack.Server.dll")).find("entry-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/SharedDependency.dll")).find("helper-Server") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.deps.json"));
+    auto logged = [&log_messages](string_view text) { return std::ranges::any_of(log_messages, [text](const string& message) { return message.find(text) != string::npos; }); };
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/TestPack.Client.dll")).find("entry-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/SharedDependency.dll")).find("helper-Client") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.deps.json"));
+    // The compiler runs without a console of its own, so its output must reach the log or a failed bake explains nothing
+    SECTION("CompilerFailureReachesTheLog")
+    {
+        ScopedEnvVar fail_compile {"FO_FAKE_MSBUILD_FAIL", "1"};
+        ManagedScriptBaker failing_baker(rig.MakeContext());
+        REQUIRE_THROWS_WITH(failing_baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("compilation failed"));
+        CHECK(logged("error CS0000: fake compile failure"));
+    }
 
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/SharedDependency.dll")).find("helper-Mapper") != string::npos);
-    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.pdb"));
-    CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.deps.json"));
-    CHECK(BytesToText(rig.Outputs.at("ManagedRuntime/lib/netcoreapp/System.Private.CoreLib.dll")) == "managed-corelib\n");
-    CHECK(rig.Outputs.contains("ManagedRuntime/runtime.manifest"));
-    CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/coreclr.dll"));
+    SECTION("AssemblyDirectoryIsOneSpelling")
+    {
+        // One spelling for both readers: a bake-output fallback that matches nothing leaves every annotated
+        // script function unverified whenever an incremental bake skips the up-to-date script pack
+        for (string_view target : {"Server", "Client", "Mapper"}) {
+            INFO(target);
+            CHECK(MakeManagedAssemblyResourceDir(target) == strex("Assemblies/Assemblies-{}", strex(target).lower()).str());
+        }
+
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        for (string_view target : {"Server", "Client", "Mapper"}) {
+            INFO(target);
+            CHECK(rig.Outputs.contains(strex("{}/{}.dll", MakeManagedAssemblyResourceDir(target), strex("TestPack.{}", target)).str()));
+        }
+    }
+
+    SECTION("CompiledAssembliesArePacked")
+    {
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(logged("fake-msbuild-output"));
+
+        for (string_view target : {"Server", "Client", "Mapper"}) {
+            string target_lower = strex(target).lower().str();
+
+            for (string_view assembly_name : {strex("TestPack.{}", target).str(), string {"SharedDependency"}, string {"FOnline.ManagedHost"}}) {
+                INFO(target << " " << assembly_name);
+                CHECK(rig.Outputs.at(strex("Assemblies/Assemblies-{}/{}.dll", target_lower, assembly_name).str()) == fixture_images.at(strex("{}Assemblies/{}.dll", target, assembly_name).str()));
+            }
+
+            CHECK_FALSE(rig.Outputs.contains(strex("Assemblies/Assemblies-{}/TestPack.{}.pdb", target_lower, target).str()));
+            CHECK_FALSE(rig.Outputs.contains(strex("Assemblies/Assemblies-{}/TestPack.{}.deps.json", target_lower, target).str()));
+        }
+
+        // The payload is the union of every target's closure, and the manifest lists exactly what shipped
+        for (string_view assembly_name : {"System.Linq", "System.Private.CoreLib", "System.Runtime"}) {
+            CHECK(rig.GetOutputText(strex("ManagedRuntime/lib/netcoreapp/{}.dll", assembly_name).str()) == ReadTextFile(class_library_dir / fs::make_path(strex("{}.dll", assembly_name).str())));
+        }
+
+        CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/System.Xml.dll"));
+        CHECK_FALSE(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/coreclr.dll"));
+        CHECK(rig.GetOutputText("ManagedRuntime/runtime.manifest") == manifest_lines.at("System.Linq") + manifest_lines.at("System.Private.CoreLib") + manifest_lines.at("System.Runtime"));
+    }
+
+    SECTION("UpToDateTargetShipsItsBakedAssemblies")
+    {
+        // The mapper is not rebuilt, so its selection has to come from the assembly its earlier bake left in the pack
+        WriteBinaryFile(fake_msbuild_root / "Assemblies-mapper" / "TestPack.Mapper.dll", MakeManagedAssemblyImage("TestPack.Mapper", {"System.Xml"}));
+        ManagedScriptBaker baker(rig.MakeContext("TestPack", [](string_view path, uint64_t) { return !path.starts_with("Assemblies/Assemblies-mapper/"); }));
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/TestPack.Mapper.dll"));
+        CHECK(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/System.Xml.dll"));
+        CHECK(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/System.Linq.dll"));
+        CHECK(rig.GetOutputText("ManagedRuntime/runtime.manifest").find("System.Xml.dll") != string::npos);
+    }
+
+    SECTION("DiscoveryDeclaresOnlyTheSelectedPayload")
+    {
+        // The on-demand data source learns the pack's files from this pass, so it must name what a bake would ship
+        for (const auto& [fixture_path, fixture_image] : fixture_images) {
+            constexpr string_view build_dir_suffix = "Assemblies/";
+            size_t separator = fixture_path.find(build_dir_suffix);
+            string baked_dir = strex("Assemblies-{}", strex(fixture_path.substr(0, separator)).lower()).str();
+            WriteBinaryFile(fake_msbuild_root / fs::make_path(baked_dir) / fs::make_path(fixture_path.substr(separator + build_dir_suffix.size())), fixture_image);
+        }
+
+        set<string> declared_paths;
+        shared_ptr<BakingContext> context = rig.MakeContext("TestPack", [&declared_paths](string_view path, uint64_t) {
+            declared_paths.emplace(path);
+            return false;
+        });
+        context->OutputDiscovery = true;
+        ManagedScriptBaker baker(std::move(context));
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        CHECK_FALSE(logged("fake-msbuild-output"));
+        CHECK(rig.Outputs.empty());
+        CHECK(declared_paths.contains("ManagedRuntime/runtime.manifest"));
+        CHECK(declared_paths.contains("ManagedRuntime/lib/netcoreapp/System.Linq.dll"));
+        CHECK(declared_paths.contains("ManagedRuntime/lib/netcoreapp/System.Runtime.dll"));
+        CHECK_FALSE(declared_paths.contains("ManagedRuntime/lib/netcoreapp/System.Xml.dll"));
+    }
+
+    SECTION("UnresolvedPackReferenceFailsTheBake")
+    {
+        WriteBinaryFile(fixtures_dir / "ServerAssemblies" / "TestPack.Server.dll", MakeManagedAssemblyImage("TestPack.Server", {"System.Runtime", "Missing.Library"}));
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Missing.Library") && Catch::Matchers::ContainsSubstring("TestPack.Server"));
+    }
+
+    SECTION("AssemblyFileNameMustMatchItsIdentity")
+    {
+        WriteBinaryFile(fixtures_dir / "ServerAssemblies" / "Alias.dll", MakeManagedAssemblyImage("Real.Name", {}));
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Alias.dll") && Catch::Matchers::ContainsSubstring("Real.Name"));
+    }
+
+    SECTION("DuplicateRuntimeManifestAssemblyFailsTheBake")
+    {
+        WriteTextFile(managed_runtime_dir / "runtime.manifest", runtime_manifest + manifest_lines.at("System.Runtime"));
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Duplicate Managed runtime payload assembly") && Catch::Matchers::ContainsSubstring("System.Runtime"));
+    }
+
+    SECTION("InvalidRuntimeManifestDigestFailsTheBake")
+    {
+        string invalid_manifest = runtime_manifest;
+        invalid_manifest.front() = 'g';
+        WriteTextFile(managed_runtime_dir / "runtime.manifest", invalid_manifest);
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Invalid Managed runtime payload digest"));
+    }
 #endif
 }
 

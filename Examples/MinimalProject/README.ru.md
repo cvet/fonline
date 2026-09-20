@@ -3,9 +3,7 @@ permalink: /Examples/MinimalProject/README.ru.html
 locale: ru
 document_id: minimal-project-readme
 ---
-
 <!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"799fea6770f5d2181da542f6fb7487ba088c594b8c22e9b636c4dbcce6e13631"} -->
-
 # Минимальный проект FOnline
 
 Это принадлежащий движку исполняемый starter и opt-in проект проверки. Он

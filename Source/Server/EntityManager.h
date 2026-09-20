@@ -110,11 +110,13 @@ public:
         return it->second.template dyn_cast<const T>();
     }
 
+    void InitEntityIdBoundary();
     void LoadEntities();
     auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>;
     auto LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>;
     auto LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>;
     auto LoadItem(ident_t item_id, bool& is_error) noexcept -> refcount_nptr<Item>;
+    auto LoadItems(const vector<ident_t>& item_ids, bool& is_error) noexcept -> vector<refcount_nptr<Item>>;
 
     void CallInit(ptr<Location> loc, bool first_time);
     void CallInit(ptr<Map> map, bool first_time);
@@ -138,6 +140,7 @@ public:
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> ptr<CustomEntity>;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> ptr<CustomEntity>;
     auto LoadCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
+    auto LoadCustomEntities(ptr<Entity> holder, hstring type_name, const vector<ident_t>& ids, bool& is_error) noexcept -> vector<refcount_nptr<CustomEntity>>;
     auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<CustomEntity>;
     void DestroyCustomEntity(ptr<CustomEntity> entity);
     void ForEachCustomEntityView(ptr<CustomEntity> entity, const function<void(ptr<Player> player, bool owner)>& callback);
@@ -154,7 +157,11 @@ private:
 
     void LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept;
     void LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bool& is_error) noexcept;
+    auto RestoreItem(ident_t item_id, const AnyData::Document& item_doc, hstring item_pid, bool& is_error) noexcept -> refcount_nptr<Item>;
+    auto RestoreCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, const AnyData::Document& doc, hstring pid, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
+    auto LoadEntityDocs(hstring type_name, hstring collection_name, const vector<ident_t>& ids, bool expect_proto, bool& is_error) const noexcept -> vector<tuple<AnyData::Document, hstring>>;
+    auto ParseEntityDoc(hstring type_name, hstring collection_name, ident_t id, AnyData::Document doc, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
     auto StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Document;
 
     auto ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>;

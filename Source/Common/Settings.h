@@ -44,6 +44,7 @@ class ConfigFile;
 struct ResourcePackInfo
 {
     string Name {};
+    string ConfigDir {};
     vector<string> InputDirs {};
     vector<string> InputFiles {};
     vector<string> IncludePatterns {};
@@ -71,6 +72,10 @@ public:
     auto operator=(BaseSettings&&) noexcept -> BaseSettings& = delete;
 
     [[nodiscard]] auto GetResourcePacks() const -> const_span<ResourcePackInfo>;
+    [[nodiscard]] auto GetServerResourcePacks() const -> vector<string>;
+    [[nodiscard]] auto GetClientResourcePacks() const -> vector<string>;
+    [[nodiscard]] auto GetMapperResourcePacks() const -> vector<string>;
+    [[nodiscard]] auto GetResourcePackDeclarations() const -> string;
     [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
     [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
     [[nodiscard]] auto FindSettingValue(string_view name) const -> nptr<const string>;
@@ -83,17 +88,23 @@ protected:
     map<string, string> _settingValues {};
 };
 
-#define SETTING_GROUP(name, ...) \
-    struct name : __VA_ARGS__ \
+// A group owns its settings as a nested aggregate named after it, so a setting is addressed as Settings.Group.Name
+// and two groups may share a short name
+#define SETTING_GROUP(group, ...) \
+    struct group##Settings : __VA_ARGS__ \
     { \
-        name() = default; \
-        name(const name&) = delete; \
-        name(name&&) noexcept = default; \
-        auto operator=(const name&) -> name& = delete; \
-        auto operator=(name&&) noexcept -> name& = delete
-#define SETTING_GROUP_END() }
-#define FIXED_SETTING(type, group, name, ...) const type name = {}
-#define VARIABLE_SETTING(type, group, name, ...) type name = {}
+        group##Settings() = default; \
+        group##Settings(const group##Settings&) = delete; \
+        group##Settings(group##Settings&&) noexcept = default; \
+        auto operator=(const group##Settings&) -> group##Settings& = delete; \
+        auto operator=(group##Settings&&) noexcept -> group##Settings& = delete; \
+        struct group##Group \
+        {
+#define SETTING_GROUP_END(group) \
+    } \
+    group {}; \
+    }
+#define SETTING(type, group, name, ...) const type name = {}
 #include "Settings.inc"
 
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
@@ -132,7 +143,10 @@ private:
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
     void AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir);
     void AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir);
+    void ApplyIgnoreInputDirs();
 
+    // As the configs declare them; the packs in effect are these minus Baking.IgnoreInputDirs
+    vector<ResourcePackInfo> _declaredResourcePacks {};
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};
     any_t _emptySetting {};

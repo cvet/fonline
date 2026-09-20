@@ -7,9 +7,7 @@ permalink: /Docs/ru/how-to/release/operations.html
 ---
 
 # Эксплуатация релиза
-
-<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"7bd7eb5601ca1b568ac494031f5299be55b2c9c066bb4922fb913fb827b79a07"} -->
-
+<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"e477cc4cbfab3218cb4dcd3d3b80050ff7fec9505aaa29942ee85889c9934388"} -->
 Это руководство описывает переиспользуемый жизненный цикл сервера FOnline: готовность, развёртывание, остановку и откат. [Упаковка и выпуск](packaging.md) владеет артефактами; [Persistence](../../explanation/persistence/) — механикой базы данных; [резервное копирование и восстановление](backup-and-recovery.md) — нейтральной к провайдеру процедурой восстановления. Игра владеет инфраструктурой, политикой данных, целевыми показателями и инцидентами.
 
 ## Решение о rollout
@@ -33,13 +31,13 @@ Engine создаёт бинарные файлы, но не создаёт се
 
 Неизменяемая единица релиза содержит принятый серверный бинарный файл, запечённые ресурсы и конфигурацию, клиентские пакеты, нативные updater payloads и manifest. Храните изменяемое состояние отдельно, если это требуется для атомарной замены или сохранения возможности отката.
 
-Необязательный health-файл получает имя от executable и остаётся в рабочем
-каталоге. Read-only `Common.UserWritablePath` разрешается до открытия log или
-config из `--UserWritablePath` либо marker `INSTALLED` рядом с executable; если
-путь непустой, под ним размещаются log, cache, resource overlay, self-updated
-binaries и server database. Задавайте working directory и любое переопределение
-writable path явно: разные среды запуска не обязаны выбирать одинаковые
-расположения.
+Необязательный health-файл получает имя от executable и размещается под тем же
+writable root, что и log. Read-only `Common.UserWritablePath` разрешается до
+открытия log или config из `--UserWritablePath` либо marker `INSTALLED`
+рядом с executable; если путь непустой, под ним размещаются log,
+health-файл, cache, resource overlay, self-updated binaries и server database.
+Задавайте working directory и любое переопределение writable path явно:
+разные среды запуска не обязаны выбирать одинаковые расположения.
 
 ## Выберите серверный процесс
 

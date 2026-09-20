@@ -5,9 +5,7 @@ locale: ru
 document_id: first-client-tutorial
 permalink: /Docs/ru/tutorials/first-client.html
 ---
-
 <!-- docs-translation: {"document_id":"first-client-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-client.md","source_sha256":"c96b9ffeaf641a1f2dc5af3b1d520d649740af3814044c84026f85cdde0f66c0"} -->
-
 # Первый игровой клиент
 
 Соберите и запустите настольный клиент, подключённый к серверу примера

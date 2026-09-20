@@ -66,8 +66,8 @@ namespace
             // _hashes (member) must outlive _collectionKeyTypes/_collectionNames in the base class,
             // because the hstrings registered below hold pointers into _hashes._hashStorage
             InitializeCollections({
-                {_hashes.ToHashedString("test_collection"), DataBaseKeyType::IntId},
-                {_hashes.ToHashedString("test_string_collection"), DataBaseKeyType::String},
+                {_hashes.to_hashed_string("test_collection"), DataBaseKeyType::IntId},
+                {_hashes.to_hashed_string("test_string_collection"), DataBaseKeyType::String},
             });
             StartCommitThread();
         }
@@ -374,7 +374,7 @@ namespace
             return &settings;
         }
 
-        HashStorage _hashes {};
+        hash_storage _hashes {};
         DataBaseStringKeyEscaping _stringKeyEscaping {};
         mutable mutex _collectionsLocker {};
         mutable mutex _callbackLocker {};
@@ -465,10 +465,10 @@ namespace
             auto unique_suffix = std::chrono::steady_clock::now().time_since_epoch().count();
             string dir_name = strex("lf-db-tests-{}-{}", test_name, unique_suffix).str();
 
-            _dir = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name)};
+            _dir = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
             std::filesystem::create_directories(_dir);
-            _pendingPath = fs_path_to_string(_dir / "DbPendingChanges.oplog");
-            _committedPath = fs_path_to_string(_dir / "DbPendingChanges-committed.oplog");
+            _pendingPath = fs::path_to_string(_dir / "DbPendingChanges.oplog");
+            _committedPath = fs::path_to_string(_dir / "DbPendingChanges-committed.oplog");
         }
 
         ~ScopedRecoveryLogs()
@@ -508,28 +508,85 @@ namespace
 
     void ConfigureRecoverySettings(GlobalSettings& settings, string_view oplog_path)
     {
-        *FixedSettingForOverride(settings.OpLogEnabled) = true;
-        *FixedSettingForOverride(settings.OpLogPath) = string(oplog_path);
-        *FixedSettingForOverride(settings.ReconnectRetryPeriod) = 20;
-        *FixedSettingForOverride(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
-        *FixedSettingForOverride(settings.PanicShutdownTimeout) = 1;
+        *FixedSettingForOverride(settings.DataBase.OpLogEnabled) = true;
+        *FixedSettingForOverride(settings.DataBase.OpLogPath) = string(oplog_path);
+        *FixedSettingForOverride(settings.DataBase.ReconnectRetryPeriod) = 20;
+        *FixedSettingForOverride(settings.DataBase.PanicOpLogSizeThreshold) = 1024 * 1024;
+        *FixedSettingForOverride(settings.DataBase.PanicShutdownTimeout) = 1;
     }
 
     void WriteRecoveryLogs(const ScopedRecoveryLogs& recovery_logs, string_view pending_content, string_view committed_content = {})
     {
-        REQUIRE(fs_write_file(recovery_logs.PendingPath(), pending_content));
-        REQUIRE(fs_write_file(recovery_logs.CommittedPath(), committed_content));
+        REQUIRE(fs::write_file(recovery_logs.PendingPath(), pending_content));
+        REQUIRE(fs::write_file(recovery_logs.CommittedPath(), committed_content));
     }
 
     void CheckRecoveryLogsCleared(const ScopedRecoveryLogs& recovery_logs)
     {
-        auto pending_content = fs_read_file(recovery_logs.PendingPath());
-        auto committed_content = fs_read_file(recovery_logs.CommittedPath());
+        auto pending_content = fs::read_file(recovery_logs.PendingPath());
+        auto committed_content = fs::read_file(recovery_logs.CommittedPath());
 
         REQUIRE(pending_content.has_value());
         REQUIRE(committed_content.has_value());
         CHECK(pending_content->empty());
         CHECK(committed_content->empty());
+    }
+
+    // A backend answers a batch read as it answers the same ids one at a time: in request order, empty for a
+    // missing record, a copy for a repeated id, and all of it counted as one request
+    void CheckBatchReadMatchesSingleReads(DataBase& db, hstring int_collection, hstring string_collection, size_t record_count)
+    {
+        vector<DataBaseKey> int_ids;
+
+        for (size_t i = 0; i < record_count; i++) {
+            DataBaseKey id {ident_t {numeric_cast<int64_t>(1001 + i)}};
+            db.Insert(int_collection, id, MakeDoc({{"value", numeric_cast<int64_t>(i)}}));
+            int_ids.emplace_back(id);
+        }
+
+        // Keys the file and hex encodings rewrite must still come back under the id they were requested by
+        vector<DataBaseKey> string_ids {string("plain"), string("steam:user-123"), string("steam% user/Привет")};
+
+        for (size_t i = 0; i < string_ids.size(); i++) {
+            db.Insert(string_collection, string_ids[i], MakeDoc({{"value", numeric_cast<int64_t>(i)}}));
+        }
+
+        db.WaitCommitChanges();
+
+        vector<DataBaseKey> requested_int_ids(int_ids.rbegin(), int_ids.rend());
+        requested_int_ids.insert(requested_int_ids.begin() + 1, DataBaseKey {ident_t {999999}});
+        requested_int_ids.emplace_back(int_ids.front());
+
+        size_t requests_before = db.GetDbRequestsPerMinute();
+        auto int_docs = db.GetMany(int_collection, requested_int_ids);
+        size_t requests_after = db.GetDbRequestsPerMinute();
+
+        CHECK(requests_after - requests_before == 1);
+        REQUIRE(int_docs.size() == requested_int_ids.size());
+        CHECK(int_docs[1].Empty());
+        REQUIRE_FALSE(int_docs.back().Empty());
+        CHECK(int_docs.back()["value"].AsInt64() == 0);
+
+        for (size_t i = 0; i < requested_int_ids.size(); i++) {
+            auto single_doc = db.Get(int_collection, requested_int_ids[i]);
+            REQUIRE(int_docs[i].Empty() == single_doc.Empty());
+
+            if (!single_doc.Empty()) {
+                CHECK(int_docs[i]["value"].AsInt64() == single_doc["value"].AsInt64());
+            }
+        }
+
+        vector<DataBaseKey> requested_string_ids {string_ids[2], DataBaseKey {string("missing")}, string_ids[0], string_ids[1]};
+        auto string_docs = db.GetMany(string_collection, requested_string_ids);
+
+        REQUIRE(string_docs.size() == 4);
+        REQUIRE_FALSE(string_docs[0].Empty());
+        CHECK(string_docs[0]["value"].AsInt64() == 2);
+        CHECK(string_docs[1].Empty());
+        REQUIRE_FALSE(string_docs[2].Empty());
+        CHECK(string_docs[2]["value"].AsInt64() == 0);
+        REQUIRE_FALSE(string_docs[3].Empty());
+        CHECK(string_docs[3]["value"].AsInt64() == 1);
     }
 
 #if FO_HAVE_SQLITE
@@ -543,9 +600,9 @@ namespace
         // engine allocator for the backend created later
         InitializeSQLiteRuntime();
 
-        REQUIRE(fs_create_directories(fs_path_to_string(storage_dir)));
+        REQUIRE(fs::create_directories(fs::path_to_string(storage_dir)));
 
-        string db_path = fs_path_to_string(storage_dir / "Storage.sqlite");
+        string db_path = fs::path_to_string(storage_dir / "Storage.sqlite");
         sqlite3* db = nullptr;
         REQUIRE(sqlite3_open_v2(db_path.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr) == SQLITE_OK);
 
@@ -570,9 +627,9 @@ namespace
 TEST_CASE("DataBaseCommitOperationsPreserveOrder")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     db.Insert(collection, record_id, MakeDoc({{"a", 1}}));
@@ -591,9 +648,9 @@ TEST_CASE("DataBaseCommitOperationsPreserveOrder")
 TEST_CASE("DataBaseSnapshotDrainsAndBlocksNewProducers")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     db.StartCommitChanges();
@@ -659,9 +716,9 @@ TEST_CASE("DataBaseSnapshotDrainsAndBlocksNewProducers")
 TEST_CASE("DataBaseRejectsNonFiniteFloatUpdates")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
@@ -677,9 +734,9 @@ TEST_CASE("DataBaseRejectsNonFiniteFloatUpdates")
 TEST_CASE("DataBaseRejectsNonFiniteFloatDocuments")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
 
     AnyData::Document plain_doc;
     plain_doc.Assign("value", std::numeric_limits<float64_t>::infinity());
@@ -701,9 +758,9 @@ TEST_CASE("DataBaseRejectsNonFiniteFloatDocuments")
 TEST_CASE("DataBaseGetDocumentAppliesConcurrentPendingChange")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
@@ -721,9 +778,9 @@ TEST_CASE("DataBaseGetDocumentAppliesConcurrentPendingChange")
 TEST_CASE("DataBaseGetDocumentAppliesSameRecordChangesUnderLoad")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     constexpr size_t worker_count = 4;
@@ -783,9 +840,9 @@ TEST_CASE("DataBaseGetDocumentAppliesSameRecordChangesUnderLoad")
 TEST_CASE("DataBaseGetDocumentAppliesCommittedChangeCompletedDuringRead")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
@@ -819,9 +876,9 @@ TEST_CASE("DataBaseGetDocumentAppliesCommittedChangeCompletedDuringRead")
 TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChanges")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t target_id = ident_t {1001};
     ident_t other_id = ident_t {1002};
 
@@ -841,9 +898,9 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChanges")
 TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t target_id = ident_t {1001};
 
     constexpr size_t worker_count = 4;
@@ -904,12 +961,99 @@ TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChangesUnderLoad")
     db.ClearChanges();
 }
 
+TEST_CASE("DataBaseGetDocumentsKeepsRequestOrderAndReadsEachRecordOnce")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    db.PrimeRecord(collection, ident_t {1001}, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, ident_t {1002}, MakeDoc({{"value", 2}}));
+
+    auto docs = db.GetDocuments(collection, {ident_t {1002}, ident_t {1999}, ident_t {1001}, ident_t {1002}});
+
+    REQUIRE(docs.size() == 4);
+    CHECK(docs[0]["value"].AsInt64() == 2);
+    CHECK(docs[1].Empty());
+    CHECK(docs[2]["value"].AsInt64() == 1);
+    CHECK(docs[3]["value"].AsInt64() == 2);
+    CHECK(db.GetRecordReadCount(ident_t {1001}) == 1);
+    CHECK(db.GetRecordReadCount(ident_t {1002}) == 1);
+    CHECK(db.GetDocuments(collection, {}).empty());
+}
+
+TEST_CASE("DataBaseGetDocumentsAppliesPendingChangesPerRecord")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    db.PrimeRecord(collection, ident_t {1001}, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, ident_t {1002}, MakeDoc({{"value", 2}}));
+    db.Update(collection, ident_t {1001}, "value", numeric_cast<int64_t>(10));
+    db.Delete(collection, ident_t {1002});
+    db.Insert(collection, ident_t {1003}, MakeDoc({{"value", 3}}));
+
+    auto docs = db.GetDocuments(collection, {ident_t {1001}, ident_t {1002}, ident_t {1003}});
+
+    REQUIRE(docs.size() == 3);
+    CHECK(docs[0]["value"].AsInt64() == 10);
+    CHECK(docs[1].Empty());
+    REQUIRE(!docs[2].Empty());
+    CHECK(docs[2]["value"].AsInt64() == 3);
+
+    db.ClearChanges();
+}
+
+TEST_CASE("DataBaseGetDocumentsRereadsOnlyRecordsCommittedDuringRead")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+    ident_t committed_id = ident_t {1001};
+    ident_t blocked_id = ident_t {1002};
+
+    db.PrimeRecord(collection, committed_id, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, blocked_id, MakeDoc({{"value", 2}}));
+    db.StartCommitChanges();
+    db.BlockRecordRead(blocked_id);
+
+    std::promise<vector<AnyData::Document>> docs_promise;
+    auto docs_future = docs_promise.get_future();
+    std::thread reader {[&] {
+        try {
+            docs_promise.set_value(db.GetDocuments(collection, {committed_id, blocked_id}));
+        }
+        catch (...) {
+            docs_promise.set_exception(std::current_exception());
+        }
+    }};
+
+    // The first record is already read when the batch stalls on the second, so its commit lands mid-batch
+    db.WaitUntilBlockedReadEntered();
+    db.Update(collection, committed_id, "value", numeric_cast<int64_t>(10));
+    db.WaitCommitChanges();
+    db.UnblockRecordRead();
+
+    auto docs = docs_future.get();
+    reader.join();
+
+    REQUIRE(docs.size() == 2);
+    CHECK(docs[0]["value"].AsInt64() == 10);
+    CHECK(docs[1]["value"].AsInt64() == 2);
+    CHECK(db.GetRecordReadCount(committed_id) >= 2);
+    CHECK(db.GetRecordReadCount(blocked_id) == 1);
+}
+
 TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
 
     constexpr size_t thread_count = 4;
     constexpr size_t records_per_thread = 8;
@@ -952,9 +1096,9 @@ TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
 TEST_CASE("DataBaseSlowReadDoesNotBlockOtherReads")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t blocked_id = ident_t {1001};
     ident_t free_id = ident_t {1002};
 
@@ -1004,7 +1148,7 @@ TEST_CASE("DataBaseSlowReadDoesNotBlockOtherReads")
 TEST_CASE("DataBaseRestorePendingDeleteIsIdempotent")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-delete"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
@@ -1016,7 +1160,7 @@ TEST_CASE("DataBaseRestorePendingDeleteIsIdempotent")
         db.InitializeOpLogs();
 
         REQUIRE_NOTHROW(db.RestorePendingChanges());
-        CHECK(db.SnapshotRecord(hashes.ToHashedString("test_collection"), ident_t {1001}).Empty());
+        CHECK(db.SnapshotRecord(hashes.to_hashed_string("test_collection"), ident_t {1001}).Empty());
     }
 
     CheckRecoveryLogsCleared(recovery_logs);
@@ -1025,13 +1169,13 @@ TEST_CASE("DataBaseRestorePendingDeleteIsIdempotent")
 TEST_CASE("DataBaseRestorePendingInsertSkipsEqualDocument")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-insert-same"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_collection 1001 {\"value\":1}\n");
 
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -1051,13 +1195,13 @@ TEST_CASE("DataBaseRestorePendingInsertSkipsEqualDocument")
 TEST_CASE("DataBaseRestorePendingInsertDetectsConflict")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-insert-conflict"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_collection 1001 {\"value\":1}\n");
 
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -1071,13 +1215,13 @@ TEST_CASE("DataBaseRestorePendingInsertDetectsConflict")
 TEST_CASE("DataBaseRestorePendingUpdateSkipsAlreadyAppliedPatch")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-update-same"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "update test_collection 1001 {\"value\":1}\n");
 
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -1098,13 +1242,13 @@ TEST_CASE("DataBaseRestorePendingUpdateSkipsAlreadyAppliedPatch")
 TEST_CASE("DataBaseRestorePendingUpdateAppliesPatch")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-update-apply"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "update test_collection 1001 {\"value\":3,\"added\":9}\n");
 
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     {
         TestDataBase db {settings};
         db.SetStrictRecordSemantics();
@@ -1200,11 +1344,11 @@ TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidHexStringKey")
 TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"stop-after-spill"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
 
     {
         TestDataBase db {settings};
@@ -1240,7 +1384,7 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
         CHECK(elapsed < std::chrono::milliseconds {250});
     }
 
-    auto pending_content = fs_read_file(recovery_logs.PendingPath());
+    auto pending_content = fs::read_file(recovery_logs.PendingPath());
     REQUIRE(pending_content.has_value());
     CHECK(!pending_content->empty());
 }
@@ -1248,9 +1392,9 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
 TEST_CASE("DataBaseSupportsStringKeys")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam:user-123")};
 
     db.StartCommitChanges();
@@ -1277,11 +1421,11 @@ TEST_CASE("DataBaseSupportsStringKeys")
 TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"json-string-ids"};
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
-    string connection_info = strex("JSON {}", fs_path_to_string(*recovery_logs.Dir())).str();
+    string connection_info = strex("JSON {}", fs::path_to_string(*recovery_logs.Dir())).str();
     DataBaseKey record_id {string("steam% user/Привет")};
 
     auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
@@ -1299,9 +1443,9 @@ TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
 TEST_CASE("DataBaseTypedGetAllIdsRejectCollectionTypeMismatch")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
-    hstring int_collection = hashes.ToHashedString("test_collection");
-    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    hash_storage hashes;
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
     auto collection_schemas = DataBaseCollectionSchemas {
         {int_collection, DataBaseKeyType::IntId},
         {string_collection, DataBaseKeyType::String},
@@ -1316,10 +1460,10 @@ TEST_CASE("DataBaseTypedGetAllIdsRejectCollectionTypeMismatch")
 TEST_CASE("DataBaseGetAllIdsRejectsBackendKeyTypeMismatch")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring int_collection = hashes.ToHashedString("test_collection");
-    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
 
     db.PrimeRecord(int_collection, DataBaseKey {string("wrong-type")}, MakeDoc({{"value", 1}}));
     db.PrimeRecord(string_collection, DataBaseKey {ident_t {1001}}, MakeDoc({{"value", 1}}));
@@ -1331,9 +1475,9 @@ TEST_CASE("DataBaseGetAllIdsRejectsBackendKeyTypeMismatch")
 TEST_CASE("DataBaseGetAllIdsRejectsInvalidUtf8BackendStringKey")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
-    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
     string invalid_key = string(1, static_cast<char>(0xC3));
 
     db.PrimeRecord(string_collection, DataBaseKey {invalid_key}, MakeDoc({{"value", 1}}));
@@ -1344,17 +1488,17 @@ TEST_CASE("DataBaseGetAllIdsRejectsInvalidUtf8BackendStringKey")
 TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"json-invalid-escaped-string-id"};
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
-    string storage_root = fs_path_to_string(*recovery_logs.Dir());
+    string storage_root = fs::path_to_string(*recovery_logs.Dir());
     string collection_dir = strex("{}/{}", storage_root, collection).str();
     string bad_doc_path = strex("{}/bad%zz.json", collection_dir).str();
     string connection_info = strex("JSON {}", storage_root).str();
 
-    REQUIRE(fs_create_directories(collection_dir));
-    REQUIRE(fs_write_file(bad_doc_path, "{\"value\":1}"));
+    REQUIRE(fs::create_directories(collection_dir));
+    REQUIRE(fs::write_file(bad_doc_path, "{\"value\":1}"));
 
     auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
@@ -1364,9 +1508,9 @@ TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
 TEST_CASE("DataBaseRejectsInvalidUtf8StringKeys")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings};
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey invalid_record_id {string(1, static_cast<char>(0xC3))};
 
     REQUIRE_THROWS_AS(db.Insert(collection, invalid_record_id, MakeDoc({{"value", 1}})), DataBaseException);
@@ -1375,9 +1519,9 @@ TEST_CASE("DataBaseRejectsInvalidUtf8StringKeys")
 TEST_CASE("DataBaseRelaxedStringKeysKeepRawBackendIds")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::Raw};
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam% user\n123")};
 
     db.StartCommitChanges();
@@ -1396,9 +1540,9 @@ TEST_CASE("DataBaseRelaxedStringKeysKeepRawBackendIds")
 TEST_CASE("DataBaseFileStringKeysEncodeBackendIds")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::File};
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam user/123")};
 
     db.StartCommitChanges();
@@ -1418,9 +1562,9 @@ TEST_CASE("DataBaseFileStringKeysEncodeBackendIds")
 TEST_CASE("DataBaseHexStringKeysEncodeBackendIds")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     TestDataBase db {settings, DataBaseStringKeyEscaping::Hex};
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam:user-123")};
 
     db.StartCommitChanges();
@@ -1440,11 +1584,11 @@ TEST_CASE("DataBaseHexStringKeysEncodeBackendIds")
 TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     {
@@ -1472,11 +1616,11 @@ TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
 TEST_CASE("DataBaseReconnectRestoresComplexDocumentFromOplog")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-complex-doc"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     ident_t record_id = ident_t {1001};
 
     {
@@ -1502,11 +1646,11 @@ TEST_CASE("DataBaseReconnectRestoresComplexDocumentFromOplog")
 TEST_CASE("DataBaseReconnectRestoresStringKeyChangesFromOplog")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam:user-123")};
 
     {
@@ -1534,11 +1678,11 @@ TEST_CASE("DataBaseReconnectRestoresStringKeyChangesFromOplog")
 TEST_CASE("DataBaseReconnectRestoresRelaxedStringKeysFromOplog")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-relaxed-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam% user\n123")};
 
     {
@@ -1570,11 +1714,11 @@ TEST_CASE("DataBaseReconnectRestoresRelaxedStringKeysFromOplog")
 TEST_CASE("DataBaseReconnectRestoresFileStringKeysFromOplog")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-file-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam% user/123")};
 
     {
@@ -1607,11 +1751,11 @@ TEST_CASE("DataBaseReconnectRestoresFileStringKeysFromOplog")
 TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-hex-string-key"};
     ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
-    hstring collection = hashes.ToHashedString("test_string_collection");
+    hstring collection = hashes.to_hashed_string("test_string_collection");
     DataBaseKey record_id {string("steam%:user-123")};
 
     {
@@ -1644,10 +1788,10 @@ TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
 TEST_CASE("JsonDataBaseStorageFollowsTheWritableRoot")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs writable_root_scope {"json-writable-root"};
-    string writable_root = fs_path_to_string(*writable_root_scope.Dir());
-    hstring collection = hashes.ToHashedString("test_collection");
+    string writable_root = fs::path_to_string(*writable_root_scope.Dir());
+    hstring collection = hashes.to_hashed_string("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     ident_t record_id = ident_t {2001};
 
@@ -1661,22 +1805,22 @@ TEST_CASE("JsonDataBaseStorageFollowsTheWritableRoot")
     db.StartCommitChanges();
     db.WaitCommitChanges();
 
-    CHECK(fs_exists(fs_path_to_string(*writable_root_scope.Dir() / "WorldData" / "test_collection" / "2001.json")));
-    CHECK_FALSE(fs_exists("WorldData"));
+    CHECK(fs::exists(fs::path_to_string(*writable_root_scope.Dir() / "WorldData" / "test_collection" / "2001.json")));
+    CHECK_FALSE(fs::exists("WorldData"));
 }
 
 TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs storage_dir_scope {"json-roundtrip"};
-    string storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
-    hstring collection = hashes.ToHashedString("test_collection");
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring collection = hashes.to_hashed_string("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     ident_t first_id = ident_t {1001};
     ident_t second_id = ident_t {1002};
     ident_t complex_id = ident_t {1003};
-    *FixedSettingForOverride(settings.JsonIndent) = 2;
+    *FixedSettingForOverride(settings.DataBase.JsonIndent) = 2;
     auto db = ConnectToDataBase(&settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
 
     db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
@@ -1699,7 +1843,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     CHECK(first_doc["other"].AsInt64() == 7);
     CheckComplexDoc(db.Get(collection, complex_id));
 
-    auto json_content = fs_read_file(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1001.json"));
+    auto json_content = fs::read_file(fs::path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1001.json"));
     REQUIRE(json_content.has_value());
     CHECK(json_content->find("\n  \"value\"") != string::npos);
 
@@ -1717,35 +1861,35 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     REQUIRE(ids.size() == 2);
     CHECK(std::ranges::find(ids, first_id) != ids.end());
     CHECK(std::ranges::find(ids, complex_id) != ids.end());
-    CHECK_FALSE(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
+    CHECK_FALSE(fs::exists(fs::path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
 }
 
 TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs storage_dir_scope {"json-errors"};
     auto storage_dir = *storage_dir_scope.Dir() / "storage";
     auto collection_dir = storage_dir / "test_collection";
-    hstring collection = hashes.ToHashedString("test_collection");
+    hstring collection = hashes.to_hashed_string("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     std::filesystem::create_directories(collection_dir);
 
-    auto db = ConnectToDataBase(&settings, strex("JSON {}", fs_path_to_string(storage_dir)).str(), collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, strex("JSON {}", fs::path_to_string(storage_dir)).str(), collection_schemas, {});
 
-    REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "0.json"), "{}"));
+    REQUIRE(fs::write_file(fs::path_to_string(collection_dir / "0.json"), "{}"));
     REQUIRE_THROWS_AS(db.GetAllIds(collection), DataBaseException);
 
     REQUIRE(std::filesystem::remove(collection_dir / "0.json"));
-    REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "1001.json"), "{"));
+    REQUIRE(fs::write_file(fs::path_to_string(collection_dir / "1001.json"), "{"));
     REQUIRE_THROWS_AS(db.Get(collection, ident_t {1001}), DataBaseException);
 }
 
 TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
-    hstring collection = hashes.ToHashedString("test_collection");
+    hash_storage hashes;
+    hstring collection = hashes.to_hashed_string("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     ident_t first_id = ident_t {1001};
     ident_t second_id = ident_t {1002};
@@ -1789,11 +1933,39 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     CHECK(ids.front() == first_id);
 }
 
+TEST_CASE("MemoryDataBaseBatchReadMatchesSingleReads")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{int_collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
+
+    db.StartCommitChanges();
+    CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 1100);
+}
+
+TEST_CASE("JsonDataBaseBatchReadMatchesSingleReads")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"json-batch-read"};
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{int_collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    auto db = ConnectToDataBase(&settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
+
+    db.StartCommitChanges();
+    CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 30);
+}
+
 TEST_CASE("DataBaseConnectionValidationAndMetrics")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
-    hstring collection = hashes.ToHashedString("test_collection");
+    hash_storage hashes;
+    hstring collection = hashes.to_hashed_string("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     ident_t record_id = ident_t {1001};
 
@@ -1820,10 +1992,10 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
 TEST_CASE("SQLiteDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs storage_dir_scope {"sqlite-roundtrip"};
-    string storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
-    hstring collection = hashes.ToHashedString("test_collection");
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring collection = hashes.to_hashed_string("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     ident_t first_id = ident_t {1001};
     ident_t second_id = ident_t {1002};
@@ -1865,17 +2037,17 @@ TEST_CASE("SQLiteDataBaseRoundTripsDocumentsAndIds")
     ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
-    CHECK(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "Storage.sqlite")));
+    CHECK(fs::exists(fs::path_to_string(*storage_dir_scope.Dir() / "storage" / "Storage.sqlite")));
 }
 
 TEST_CASE("SQLiteDataBasePersistsDocumentsAcrossReconnects")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs storage_dir_scope {"sqlite-reconnect"};
-    string storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
-    hstring int_collection = hashes.ToHashedString("test_collection");
-    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
     auto collection_schemas = DataBaseCollectionSchemas {
         {int_collection, DataBaseKeyType::IntId},
         {string_collection, DataBaseKeyType::String},
@@ -1936,10 +2108,10 @@ TEST_CASE("SQLiteDataBasePersistsDocumentsAcrossReconnects")
 TEST_CASE("SQLiteDataBaseSnapshotRoundTripsThroughBytes")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs storage_dir_scope {"sqlite-snapshot"};
-    string source_storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "source");
-    hstring collection = hashes.ToHashedString("test_collection");
+    string source_storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "source");
+    hstring collection = hashes.to_hashed_string("test_collection");
     auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     ident_t record_id = ident_t {1001};
     string source_connection = strex("DbSQLite {}", source_storage_dir).str();
@@ -1987,7 +2159,7 @@ TEST_CASE("SQLiteDataBaseSnapshotRoundTripsThroughBytes")
 
     {
         // The same bytes load into an unrelated storage
-        string other_storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "other");
+        string other_storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "other");
         auto other = ConnectToDataBase(&settings, strex("DbSQLite {}", other_storage_dir).str(), collection_schemas, {});
         other.RestoreSnapshot(snapshot_data);
 
@@ -2000,11 +2172,11 @@ TEST_CASE("SQLiteDataBaseSnapshotRoundTripsThroughBytes")
 TEST_CASE("SQLiteDataBaseRejectsCorruptedStoredKeys")
 {
     GlobalSettings settings {false};
-    HashStorage hashes;
+    hash_storage hashes;
     ScopedRecoveryLogs storage_dir_scope {"sqlite-corrupted-keys"};
-    string storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
-    hstring int_collection = hashes.ToHashedString("test_collection");
-    hstring string_collection = hashes.ToHashedString("test_string_collection");
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
     auto collection_schemas = DataBaseCollectionSchemas {
         {int_collection, DataBaseKeyType::IntId},
         {string_collection, DataBaseKeyType::String},
@@ -2036,6 +2208,37 @@ TEST_CASE("SQLiteDataBaseRejectsCorruptedStoredKeys")
         auto db = ConnectToDataBase(&settings, strex("DbSQLite {}", storage_dir).str(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllStringIds(string_collection), DataBaseException);
+    }
+}
+
+// More records than one statement binds, so the batch is split and still reads as a single request
+TEST_CASE("SQLiteDataBaseBatchReadMatchesSingleReads")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"sqlite-batch-read"};
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "storage");
+    hstring int_collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_string_collection");
+    auto collection_schemas = DataBaseCollectionSchemas {{int_collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    auto db = ConnectToDataBase(&settings, strex("DbSQLite {}", storage_dir).str(), collection_schemas, {});
+
+    db.StartCommitChanges();
+    CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 1100);
+}
+#endif
+
+#if FO_HAVE_MONGO
+TEST_CASE("MongoDataBaseCanBeCreatedAgainAfterAFailedStart")
+{
+    // The driver's init and cleanup are one-shot each. A database that cleaned up after failing to start left
+    // the next one in the process on freed handshake state, which is what a server stop and start does
+    GlobalSettings settings {false};
+    ptr<DataBaseSettings> db_settings = &settings;
+    string_view unreachable_uri = "mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200&connectTimeoutMS=200";
+
+    for (int32_t attempt = 0; attempt < 3; attempt++) {
+        CHECK_THROWS_AS(CreateMongoDataBase(db_settings, unreachable_uri, "lf_unit_tests", [] { }), DataBaseException);
     }
 }
 #endif

@@ -172,6 +172,14 @@ enum class CullModeType : uint8_t
 
 constexpr size_t EFFECT_CULL_MODES = 3;
 
+// The live window geometry a renderer draws into. It is not configuration: the configured entries name the size
+// to ask the platform for, while this follows the window the platform actually handed back and every resize after
+struct AppScreenState
+{
+    isize32 Size {};
+    bool Fullscreen {};
+};
+
 struct Vertex2D
 {
     float32_t PosX {};
@@ -579,7 +587,7 @@ public:
     [[nodiscard]] virtual auto GetViewPort() const -> irect32 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
 
-    virtual void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) = 0;
+    virtual void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) = 0;
     virtual void Present() = 0;
     virtual void SetRenderTarget(nptr<RenderTexture> tex) = 0;
     virtual void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept = 0;
@@ -600,7 +608,7 @@ public:
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return mat44 {1.0f}; }
 
-    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
+    void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t /*nearp*/, float32_t /*farp*/) noexcept override { }
@@ -635,7 +643,7 @@ public:
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return true; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
-    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
+    void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -668,7 +676,7 @@ public:
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
-    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
+    void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -701,7 +709,7 @@ public:
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
-    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
+    void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -734,7 +742,7 @@ public:
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
-    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
+    void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;

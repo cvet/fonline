@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"8fa973b06a1348b69be0832078a84b92d37095e88c375eafba72e9313daa484e"} -->
+<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"afb33398c17989bea54e62d73a4a485a43f36b9cc14df5259d834770d31532f1"} -->
 
 # Сгенерированный справочник audio
 
@@ -20,36 +20,36 @@ generated: true
 | Поле | Значение |
 | --- | --- |
 | Стабильность | <code>experimental</code> |
-| Политика поддержки | Три текущих декодера и поведение клиентского воспроизведения привязаны к ревизии, пока отсутствуют сфокусированные нативные fixture декодеров и версионированная политика совместимости. |
+| Политика поддержки | Авторские входы WAV и нативного Ogg, запечённый payload Ogg, handles звука, обновления позиционирования и поведение клиентского воспроизведения привязаны к ревизии сфокусированными тестами baker и mixer. |
 | Исходный манифест | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Digest контракта | <code>8f67b9dccbaeca5c9a535d8c9d30fca97aa634bd453d5e6f354ddf1db96bfeda</code> |
-| Runtime-форматы | <code>.wav</code>, <code>.acm</code>, <code>.ogg</code> |
-| Суффикс по умолчанию при его отсутствии | <code>acm</code> |
+| Digest контракта | <code>a5b3cb18613c5f67a6be38634f1e162fc652de55e57bf8b14482015ca92c9205</code> |
+| Runtime-форматы | <code>.ogg</code> |
+| Missing-suffix fallback | no |
 | Сторона выполнения | <code>client</code> |
-| Сфокусированные нативные audio-тесты | 0 |
+| Сфокусированные нативные audio-тесты | 2 |
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
-| [Форматы](formats.md) | 3 | Допустимые контейнеры/кодеки и роли источников. |
-| [Доставка](delivery.md) | 5 | Правила raw copy, индексирования, именования и конфликтов. |
+| [Форматы](formats.md) | 2 | Допустимые контейнеры/кодеки и роли источников. |
+| [Доставка](delivery.md) | 5 | Audio baking, authored paths, indexing, and payload rules. |
 | [Декодирование](decoding.md) | 7 | Ограничения форматов, streaming, преобразование и микширование. |
-| [Воспроизведение](playback.md) | 10 | Методы скриптов, варианты эффектов, музыка, повтор и громкость. |
+| [Воспроизведение](playback.md) | 10 | Script methods, sound handles, placement, music, repeat, and volume. |
 | [Проверка](validation.md) | 7 | Поведение при ошибках и границы проверки. |
 
 ## Граница
 
 Включено:
 
-- форматы ресурсов WAV, ACM и Ogg Vorbis, принимаемые штатным клиентом;
-- доставка через RawCopyBaker и индексирование имён звуков в ResourceManager;
-- декодирование, преобразование, streaming, микширование, повтор и остановка в SoundManager;
-- клиентские script entry points Game.PlaySound и Game.PlayMusic;
-- настройки аудио, headless-поведение, диагностика и границы проектной проверки.
+- авторские входы WAV и нативные ресурсы Ogg Vorbis, принимаемые AudioBaker
+- доставка через AudioBaker и индексирование путей ресурсов в AudioManager
+- декодирование, преобразование, streaming, микширование, позиционирование, повтор и остановка в AudioManager
+- клиентские script entry points Game.PlaySound, Game.UpdateSound и Game.PlayMusic
+- настройки аудио, headless-поведение, диагностика и границы проектной проверки
 
 Исключено:
 
-- проектные каталоги звуков, соглашения о путях, автоматы состояний музыки, выбор ambient и пространственная политика;
-- запись, голосовой чат, устройства захвата, DSP-графы, шины, ducking и per-source gain;
-- целевые параметры мастеринга, политика loudness, лицензирование, атрибуция и происхождение исходников;
-- звуковые узлы Effekseer, которые не поддерживаются средой выполнения Effekseer в FOnline;
-- видеоконтейнеры и связанный с видео звук.
+- проектные каталоги звуков, сопоставления понятий с путями, выбор вариантов, автоматы состояний музыки, выбор ambient и политика пространственного звука
+- запись, голосовой чат, устройства захвата, DSP-графы, шины, ducking и авторские кривые attenuation
+- целевые параметры мастеринга, политика loudness, лицензирование, атрибуция и происхождение исходников
+- звуковые узлы Effekseer, которые не поддерживаются средой выполнения Effekseer в FOnline
+- видеоконтейнеры и связанный с видео звук

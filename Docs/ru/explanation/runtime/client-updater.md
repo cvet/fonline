@@ -5,9 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"c125220bd50f495aeaa5c7437e1dca6aaa73ad286b70a2a8161567c0ca2118d1"} -->
-
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"ee4fc03c70ba0d1584f715a26162817a56bc816c5aed3457b61ada8d0f4f24d7"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -685,6 +683,8 @@ response. Подробная граница описана в
 constructor или headless variant нет. Splash UI общий, а terminal state доступен
 через `Updater::GetResult()` как `UpdaterResult`.
 
+`UpdaterResult::ConnectionFailed` отделяет недоступный или перезапускающийся server от дефекта self-update клиента. И неуспешный initial connect, и disconnect при незавершённых files заканчиваются этим состоянием. `ShowUpdaterFailure` всегда пишет terminal result в log и сообщает игроку, что server может быть offline/restarting, а `IsUpdaterFailureReportable()` подавляет crash report, чтобы обычная остановка server не создавала по отчёту на каждого client. Остальные updater failures остаются reportable; например, `MetadataMismatch` является deployment defect, хотя игроку тоже предлагается повторить позже.
+
 `CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())` разрешает binary update
 для Windows, Linux и macOS. Web не имеет сопоставимого module mechanism, Android
 включает runtime в APK, а iOS запрещает произвольный `dlopen`. При outdated
@@ -697,6 +697,7 @@ compatibility на этих платформах updater возвращает `P
 | Симптом | Первый сигнал и действие |
 |---------|--------------------------|
 | Host не находит runtime и fallback невозможен либо не удалась починка ресурсов | message box сообщает `Client update failed. Please install the latest full client package.` |
+| Server выключен, перезапускается или недоступен | message box `Can't connect to the server. It may be offline or restarting, please try again later.`, log `Client updater: connection failed`, затем terminal result `ConnectionFailed`; crash report намеренно не создаётся |
 | Поколение updater не совпадает | server log `Connected client X has outdated updater version Y`; старый client требует base package, generation 2+ просит latest full client package |
 | Gameplay version outdated на self-update platform | resource pass сообщает compatibility outdated, binaries mode stages runtime, показывает restart prompt, возвращает `ReloadRequested`; host продвигает файл и выходит |
 | Gameplay version outdated в Web/iOS/Android | message box `Client outdated, please update via your app store`, затем exit без native self-update |

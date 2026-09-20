@@ -57,9 +57,9 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
         for backend in backend_names:
             self.assertIn(f"| `{backend}` |", guide)
 
-        self.assertIn("else if (Settings.ForceMetal)", application)
-        self.assertIn("throw NotImplementedException(FO_LINE_STR);", application)
-        self.assertIn("else if (Settings.ForceSDLGpu)", application)
+        self.assertIn("else if (Settings.Render.ForceMetal)", application)
+        self.assertIn('throw AppInitException("Metal renderer is not available");', application)
+        self.assertIn("else if (Settings.Render.ForceSDLGpu)", application)
         self.assertIn("Direct Metal is a placeholder", guide)
         self.assertIn("does not retry another backend", guide)
 

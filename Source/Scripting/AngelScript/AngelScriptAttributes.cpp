@@ -113,7 +113,7 @@ static auto ReadInstructionValue(ptr<const AngelScript::asDWORD> instruction, si
 
     T value {};
     auto instruction_word = InstructionWordAt(instruction, word_offset);
-    MemCopy(&value, instruction_word, sizeof(value));
+    memory::copy(&value, instruction_word, sizeof(value));
     return value;
 }
 
@@ -598,7 +598,7 @@ void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vecto
 
     func->GetEngine()->SetFunctionUserDataCleanupCallback(CleanupScriptFunctionAttributes, AS_FUNC_ATTRIBUTES_USER_DATA);
 
-    auto user_data = SafeAlloc::MakeUnique<ScriptFunctionAttributeUserData>();
+    auto user_data = safe_alloc::make_unique<ScriptFunctionAttributeUserData>();
     user_data->Attributes = attributes;
 
     auto released_user_data = user_data.release();
@@ -1081,52 +1081,52 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
     return records;
 }
 
-void SerializeFunctionAttributeRecords(DataWriter& writer, const vector<ParsedFunctionAttributeRecord>& records)
+void SerializeFunctionAttributeRecords(data_writer& writer, const vector<ParsedFunctionAttributeRecord>& records)
 {
     FO_STACK_TRACE_ENTRY();
 
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(records.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(records.size()));
 
     for (const auto& record : records) {
-        writer.WriteString(record.Namespace);
-        writer.WriteString(record.ObjectType);
-        writer.WriteString(record.Name);
-        writer.Write<uint32_t>(record.OverloadIndex);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(record.Attributes.size()));
+        writer.write_string(record.Namespace);
+        writer.write_string(record.ObjectType);
+        writer.write_string(record.Name);
+        writer.write<uint32_t>(record.OverloadIndex);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(record.Attributes.size()));
 
         for (const auto& attr : record.Attributes) {
-            writer.WriteString(attr);
+            writer.write_string(attr);
         }
 
-        writer.WriteString(record.SourceFile);
-        writer.Write<uint32_t>(record.SourceLine);
+        writer.write_string(record.SourceFile);
+        writer.write<uint32_t>(record.SourceLine);
     }
 }
 
-auto DeserializeFunctionAttributeRecords(DataReader& reader) -> vector<ParsedFunctionAttributeRecord>
+auto DeserializeFunctionAttributeRecords(data_reader& reader) -> vector<ParsedFunctionAttributeRecord>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<ParsedFunctionAttributeRecord> records;
-    auto count = reader.Read<uint32_t>();
+    auto count = reader.read<uint32_t>();
     records.reserve(count);
 
     for (uint32_t i = 0; i < count; i++) {
         ParsedFunctionAttributeRecord record;
-        record.Namespace = reader.ReadString();
-        record.ObjectType = reader.ReadString();
-        record.Name = reader.ReadString();
-        record.OverloadIndex = reader.Read<uint32_t>();
+        record.Namespace = reader.read_string();
+        record.ObjectType = reader.read_string();
+        record.Name = reader.read_string();
+        record.OverloadIndex = reader.read<uint32_t>();
 
-        auto attrs_count = reader.Read<uint32_t>();
+        auto attrs_count = reader.read<uint32_t>();
         record.Attributes.reserve(attrs_count);
 
         for (uint32_t j = 0; j < attrs_count; j++) {
-            record.Attributes.emplace_back(reader.ReadString());
+            record.Attributes.emplace_back(reader.read_string());
         }
 
-        record.SourceFile = reader.ReadString();
-        record.SourceLine = reader.Read<uint32_t>();
+        record.SourceFile = reader.read_string();
+        record.SourceLine = reader.read<uint32_t>();
         records.emplace_back(std::move(record));
     }
 

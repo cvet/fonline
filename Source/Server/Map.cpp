@@ -49,7 +49,7 @@ Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<L
     _protoMap {proto},
     _staticMap {static_map},
     _mapSize {GetSize()},
-    _hexField {CreateHexField(_mapSize, engine->Settings->MapInstanceStaticGrid)},
+    _hexField {CreateHexField(_mapSize, engine->Settings->Server.MapInstanceStaticGrid)},
     _mapLocation {location}
 {
     FO_STACK_TRACE_ENTRY();
@@ -65,15 +65,33 @@ Map::~Map()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!IsEngineShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(_spectatorPlayers.empty(), "Server map has spectator players during destruction", GetId(), _spectatorPlayers.size());
-        FO_VERIFY_AND_CONTINUE(_critters.empty(), "Server map has critters during destruction", GetId(), _critters.size());
-        FO_VERIFY_AND_CONTINUE(_crittersMap.empty(), "Server map has critter map entries during destruction", GetId(), _crittersMap.size());
-        FO_VERIFY_AND_CONTINUE(_playerCritters.empty(), "Server map has player critters during destruction", GetId(), _playerCritters.size());
-        FO_VERIFY_AND_CONTINUE(_nonPlayerCritters.empty(), "Server map has non-player critters during destruction", GetId(), _nonPlayerCritters.size());
-        FO_VERIFY_AND_CONTINUE(_items.empty(), "Server map has items during destruction", GetId(), _items.size());
-        FO_VERIFY_AND_CONTINUE(_itemsMap.empty(), "Server map has item map entries during destruction", GetId(), _itemsMap.size());
+    FO_VERIFY_AND_CONTINUE(_spectatorPlayers.empty(), "Server map has spectator players during destruction", GetId(), _spectatorPlayers.size());
+    FO_VERIFY_AND_CONTINUE(_critters.empty(), "Server map has critters during destruction", GetId(), _critters.size());
+    FO_VERIFY_AND_CONTINUE(_crittersMap.empty(), "Server map has critter map entries during destruction", GetId(), _crittersMap.size());
+    FO_VERIFY_AND_CONTINUE(_playerCritters.empty(), "Server map has player critters during destruction", GetId(), _playerCritters.size());
+    FO_VERIFY_AND_CONTINUE(_nonPlayerCritters.empty(), "Server map has non-player critters during destruction", GetId(), _nonPlayerCritters.size());
+    FO_VERIFY_AND_CONTINUE(_items.empty(), "Server map has items during destruction", GetId(), _items.size());
+    FO_VERIFY_AND_CONTINUE(_itemsMap.empty(), "Server map has item map entries during destruction", GetId(), _itemsMap.size());
+}
+
+void Map::ClearAllAssociations() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    {
+        scoped_lock locker {_spectatorLock};
+
+        _spectatorPlayers.clear();
     }
+
+    _critters.clear();
+    _crittersMap.clear();
+    _playerCritters.clear();
+    _nonPlayerCritters.clear();
+    _items.clear();
+    _itemsMap.clear();
 }
 
 auto Map::CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
@@ -81,10 +99,10 @@ auto Map::CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDime
     FO_STACK_TRACE_ENTRY();
 
     if (static_grid) {
-        return SafeAlloc::MakeUnique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
 
-    return SafeAlloc::MakeUnique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+    return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
 }
 
 auto Map::GetName() const noexcept -> string_view
@@ -173,6 +191,35 @@ auto Map::GetCritters() const noexcept -> const_span<ptr<Critter>>
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _critters;
+}
+
+auto Map::GetCritters(CritterFindType find_type) -> vector<ptr<Critter>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    bool find_players = is_enum_set(find_type, CritterFindType::Players);
+    bool find_npc = is_enum_set(find_type, CritterFindType::Npc);
+    span<ptr<Critter>> source = _critters;
+
+    if (find_players && !find_npc) {
+        source = _playerCritters;
+    }
+    else if (find_npc && !find_players) {
+        source = _nonPlayerCritters;
+    }
+
+    vector<ptr<Critter>> critters;
+    critters.reserve(source.size());
+
+    for (ptr<Critter> cr : source) {
+        if (cr->CheckFind(find_type)) {
+            critters.emplace_back(cr);
+        }
+    }
+
+    return critters;
 }
 
 auto Map::GetPlayerCritters() noexcept -> span<ptr<Critter>>
@@ -487,7 +534,7 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
     FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
     EnsureEntitySynced(item);
-    auto map_holder = refcount_ptr<Map>::from_add_ref(this);
+    auto map_holder = refcount_ptr<Map>::from_addref(this);
     auto item_holder = item.hold_ref();
     ignore_unused(map_holder);
     ignore_unused(item_holder);
@@ -607,7 +654,7 @@ void Map::RemoveItem(ident_t item_id)
     FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Lookup failed in items map");
     auto item = it->second;
     EnsureEntitySynced(item);
-    auto map_holder = refcount_ptr<Map>::from_add_ref(this);
+    auto map_holder = refcount_ptr<Map>::from_addref(this);
     auto item_holder = item.hold_ref();
     ignore_unused(map_holder);
     ignore_unused(item_holder);
@@ -708,7 +755,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
         FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
         FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
-        auto map_holder = refcount_ptr<Map>::from_add_ref(this);
+        auto map_holder = refcount_ptr<Map>::from_addref(this);
         auto item_holder = item.hold_ref();
         ignore_unused(map_holder);
         ignore_unused(item_holder);
@@ -807,7 +854,7 @@ void Map::ChangeViewItem(ptr<Item> item)
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
     FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
     FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
-    auto map_holder = refcount_ptr<Map>::from_add_ref(this);
+    auto map_holder = refcount_ptr<Map>::from_addref(this);
     auto item_holder = item.hold_ref();
     ignore_unused(map_holder);
     ignore_unused(item_holder);

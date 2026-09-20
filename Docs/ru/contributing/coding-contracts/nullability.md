@@ -7,9 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/nullability.html
 ---
 
 # Nullable-типы
-
-<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"d470241cfd4460deb302e55cccce9bcaa56e384f3b4059e0f2600638e8bb2874"} -->
-
+<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"95cf505d200719834ffcc408d89734cc6f4d3dcb18f652d2f357c83d0422ae19"} -->
 > Документация принадлежит движку. Эта страница задает переиспользуемый
 > контракт компилятора, runtime и native-границы. Анализаторы проекта могут
 > вводить более строгую политику авторинга, но не являются частью контракта
@@ -134,7 +132,7 @@ transient-null окна поля или boundary-helper-а, который пр�
 преобразование в `ptr` проверяет non-null в точке преобразования. Owning
 wrappers неявно дают borrow, но получение владения и narrowing nullable-owner
 остаются явными (`hold_ref`, `adopt_unique_ptr`, `make_unique_del_ptr`,
-`take_not_null`, `SafeAlloc::MakeShared`). `.as_ptr()` и `.as_nptr()` полезны
+`take_not_null`, `safe_alloc::make_shared`). `.as_ptr()` и `.as_nptr()` полезны
 для ясности или overload resolution, но не обязательны.
 
 Не делайте nullable пару `pointer + size` ради пустого буфера. Принимайте
@@ -424,15 +422,15 @@ bool ok    = maybeItem == null || maybeItem.IsReady();              // narrowed 
 bool both  = Other() && maybeItem != null && maybeItem.IsReady();   // narrowed after the check
 bool tail  = maybeItem != null && Other() && maybeItem.IsReady();   // still narrowed at the tail
 // the narrowing covers the WHOLE right operand, not just an adjacent term:
-bool cmp   = maybeItem != null && maybeItem.Count == wanted;        // maybeItem.Count narrowed
-if (maybeItem != null && maybeItem.Count > 0 && Other()) { ... }    // narrowed across the compound
+bool cmp   = maybeItem != null && maybeItem.Id == wanted;           // maybeItem.Id narrowed
+if (maybeItem != null && maybeItem.Id > 0 && Other()) { ... }       // narrowed across the compound
 // every checked local in the chain narrows in the later operands, not just the nearest:
-if (a != null && b != null && a.Count == b.Count) { ... }          // both a and b narrowed
-if (a == null || b == null || a.Count != b.Count) { return; }      // both narrowed past the ||s
+if (a != null && b != null && a.Id == b.Id) { ... }                 // both a and b narrowed
+if (a == null || b == null || a.Id != b.Id) { return; }             // both narrowed past the ||s
 
 // 6) Ternary branches narrow when the condition is a null-check
-int n = maybeItem != null ? maybeItem.Count : 0;         // then-branch narrowed
-int m = maybeItem == null ? 0 : maybeItem.Count;         // else-branch narrowed
+int n = maybeItem != null ? maybeItem.Id : 0;            // then-branch narrowed
+int m = maybeItem == null ? 0 : maybeItem.Id;            // else-branch narrowed
 ```
 
 Smart-cast намеренно не сужает class fields и globals, результаты методов,

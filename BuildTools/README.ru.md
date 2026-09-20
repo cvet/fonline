@@ -5,9 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"00c27249ac81bd73167507f13407acc81da39f0efa5a39e467cb5d8c04757918"} -->
-
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"7c7fb24100fea8bdb7d3aac4651ab9ea33c5b2fbe2a39a216ad0757ad3bc8373"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -110,7 +108,7 @@ enum, atlas, cache и bundled-descriptor anchors и строит
 Руководство по authoring находится в
 [форматы шрифтов и компоновка текста](../Docs/ru/how-to/content/font-format.md).
 
-Доставка WAV/ACM/Ogg, лимиты decoder, identities эффектов и нумерованные
+Запекание WAV/Ogg, runtime decoding Vorbis, playback handles/spatial updates, identities эффектов и нумерованные
 варианты, музыка по точному пути, repeat timing, frontend mixing и поведение
 silent/headless версионируются в `AudioInterface.json`; `docs_audio.py` выводит
 живые resource, decoder, frontend, setting и test evidence и строит
@@ -194,7 +192,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs_effect_format.py` проверяет `EffectFormatInterface.json` по effect baker, render-effect/runtime/cache/script API, backend conventions, project limits и tests, затем записывает/проверяет `Docs/generated/effect-format.json` вместе со страницами syntax, render-state, resource, baking, runtime и validation.
 - `docs_image_format.py` проверяет `ImageFormatInterface.json` по ImageBaker, FOFRM/import sources, стандартному client factory/sheet/atlas/cache behavior и tests, затем записывает/проверяет `Docs/generated/image-format.json`, канонические английские страницы в `Docs/en/reference/image-format/` и совместимые маршруты в `Docs/generated/image-format/`.
 - `docs_particle_format.py` проверяет `ParticleFormatInterface.json` по raw-copy settings, SPARK XML/registry/descriptors, Engine renderer, ParticleEditor, client runtime, script/model integrations и tests, затем записывает/проверяет `Docs/generated/particle-format.json` вместе со страницами XML, object, renderer, tooling, runtime, integration и validation.
-- `docs_audio.py` проверяет `AudioInterface.json` по raw-copy settings, resource indexing, декодированию WAV/ACM/Ogg, script playback, frontend conversion/mixing, headless behavior и native-test inventory, затем записывает/проверяет `Docs/generated/audio.json` вместе со страницами format, delivery, decoding, playback и validation.
+- `docs_audio.py` проверяет `AudioInterface.json` по conversion/passthrough `AudioBaker`, indexing и Vorbis decoding `AudioManager`, script playback handles/spatial updates, frontend conversion/mixing, headless behavior и native-test inventory, затем записывает/проверяет `Docs/generated/audio.json` вместе со страницами format, delivery, decoding, playback и validation.
 - `docs_video.py` проверяет `VideoInterface.json` по raw-copy settings, декодированию Ogg/Theora, fullscreen queue/input/music/drawing, embedded script playback, renderer behavior, dependencies и native-test inventory, затем записывает/проверяет `Docs/generated/video.json` вместе со страницами format, delivery, decoding, fullscreen, embedded и validation.
 - `docs_ai_control_protocol.py` проверяет `AiControlProtocol.json` по reference client и запускаемому sample, затем записывает/проверяет `Docs/generated/ai-control-protocol.json` вместе со страницами wire, method, command/event, security и integration/validation.
 - `docs_package.py` проверяет документационную модель package и исполняемый parser `package.py`, затем записывает/проверяет `Docs/generated/package.json` вместе со страницами package reference.

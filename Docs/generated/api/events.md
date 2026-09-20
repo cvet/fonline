@@ -280,9 +280,6 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 <a id="symbol-script-event-server-game-oncritteritemmoved-629adbbf94"></a>
 - [`symbol-script-event-server-game-oncritteritemmoved-629adbbf94`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritteritemmoved-629adbbf94)
 
-<a id="symbol-script-event-server-game-oncritteritemtransferin-f16c17ba85"></a>
-- [`symbol-script-event-server-game-oncritteritemtransferin-f16c17ba85`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritteritemtransferin-f16c17ba85)
-
 <a id="symbol-script-event-server-game-oncritterload-d49eb36a1a"></a>
 - [`symbol-script-event-server-game-oncritterload-d49eb36a1a`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterload-d49eb36a1a)
 

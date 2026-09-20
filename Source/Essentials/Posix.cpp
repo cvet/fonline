@@ -161,7 +161,7 @@ auto posix::fork_into_background() noexcept -> bool // NOLINT(clang-diagnostic-m
         return false;
     }
     else if (pid != 0) {
-        ExitApp(true);
+        exit_app(true);
     }
 
     ::close(STDIN_FILENO);
@@ -579,6 +579,19 @@ auto posix::load_library(const string& path) noexcept -> nptr<void>
 #if FO_LINUX || FO_MAC
     auto path_cstr = make_ptr(path.c_str());
     return ::dlopen(path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
+#else
+    ignore_unused(path);
+    return nullptr;
+#endif
+}
+
+auto posix::load_pinned_library(const string& path) noexcept -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_LINUX || FO_MAC
+    auto path_cstr = make_ptr(path.c_str());
+    return ::dlopen(path_cstr.get(), RTLD_LAZY | RTLD_LOCAL | RTLD_NODELETE);
 #else
     ignore_unused(path);
     return nullptr;

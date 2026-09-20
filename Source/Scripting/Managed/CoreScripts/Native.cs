@@ -13,6 +13,14 @@ public delegate void PropertySetter<TEntity, TValue>(TEntity entity, ref TValue 
 public delegate void PropertySetterWithProperty<TEntity, TProperty, TValue>(TEntity entity, TProperty property,
                                                                             ref TValue value);
 
+// An engine failure an internal call handed to script as a message; the engine keeps the native exception behind it
+internal sealed class NativeCallException : InvalidOperationException
+{
+    public NativeCallException(string message) : base(message)
+    {
+    }
+}
+
 internal static class Native
 {
     // The generated non-nullable members prove the pointer before they wrap it -- a property that reads a
@@ -22,7 +30,7 @@ internal static class Native
         where T : Entity
     {
         T? entity = WrapEntity<T>(entityPtr);
-        Game.Verify(entity != null, "Entity pointer must not be null");
+        Invariant.Verify(entity != null, "Entity pointer must not be null");
         return entity;
     }
 
@@ -30,7 +38,7 @@ internal static class Native
     // value the callee produced; an empty one would mean the call did not run to the end
     internal static T UnboxArg<T>(object? value)
     {
-        Game.Verify(value != null, "Mutable argument must be written by the call");
+        Invariant.Verify(value != null, "Mutable argument must be written by the call");
         return (T)value;
     }
 
@@ -65,6 +73,7 @@ internal static class Native
                                            null)!;
     }
 
+    [CallableByEngine]
     internal static EventResult InvokeEvent(Delegate handler, bool hasExplicitResult, object?[] args)
     {
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasExplicitResult);
@@ -90,7 +99,7 @@ internal static class Native
                     task.GetAwaiter().GetResult();
                 }
                 else {
-                    Game.ObserveInvokeTask(task);
+                    ScriptExceptions.ObserveTask(task);
                 }
 
                 return EventResult.ContinueChain;
@@ -103,11 +112,12 @@ internal static class Native
             return EventResult.ContinueChain;
         }
         catch (Exception ex) {
-            Game.RecordManagedException(UnwrapInvocationException(ex), true);
+            ScriptExceptions.Record(ex, true);
             return EventResult.StopChain;
         }
     }
 
+    [CallableByEngine]
     internal static object? InvokeCallback(Delegate handler, object?[] args)
     {
         MethodInfo delegateInvoke = handler.GetType().GetMethod("Invoke") ??
@@ -139,28 +149,30 @@ internal static class Native
             }
 
             // Task-returning script functions are registered as native void callbacks. Waiting here would
-            // block the script pump that must fire Game.YieldAsync's completion event, so let the callback
+            // block the script pump that must fire ScriptTask.Delay's completion event, so let the callback
             // continue asynchronously and retain deferred exception accounting.
             if (task.IsCompleted) {
                 task.GetAwaiter().GetResult();
             }
             else {
-                Game.ObserveInvokeTask(task);
+                ScriptExceptions.ObserveTask(task);
             }
 
             return null;
         }
         catch (Exception ex) {
-            Game.RecordManagedException(UnwrapInvocationException(ex), false);
+            ScriptExceptions.Record(ex, false);
             throw;
         }
     }
 
+    [CallableByEngine]
     internal static void PumpContinuations()
     {
         ScriptSynchronizationContext.Pump();
     }
 
+    [CallableByEngine]
     internal static void ShutdownContinuations()
     {
         ScriptSynchronizationContext.Shutdown();
@@ -252,22 +264,131 @@ internal static class Native
         return result;
     }
 
-    private static Exception UnwrapInvocationException(Exception ex)
+    // Called by the engine when a script exception reaches native code
+    [CallableByEngine]
+    internal static object?[] DescribeException(Exception exception)
     {
-        TargetInvocationException? invocation = ex as TargetInvocationException;
-        return invocation != null && invocation.InnerException != null ? invocation.InnerException : ex;
+        DescribeException(exception, out string summary, out string? nativeError, out long[] frames);
+        return new object?[] { summary, nativeError, frames };
     }
 
+    // Frames run from the innermost cause outwards as runtime method handle and IL offset pairs, which the engine
+    // resolves the same way as live frames
+    private static void DescribeException(Exception exception, out string summary, out string? nativeError,
+                                          out long[] frames)
+    {
+        List<Exception> chain = new List<Exception>();
+
+        CollectExceptionChain(exception, chain);
+
+        System.Text.StringBuilder text = new System.Text.StringBuilder();
+
+        foreach (Exception cause in chain) {
+            if (IsExceptionWrapper(cause)) {
+                continue;
+            }
+
+            if (text.Length != 0) {
+                text.Append(" ---> ");
+            }
+
+            text.Append(cause.GetType().FullName).Append(": ").Append(cause.Message);
+        }
+
+        List<long> frameValues = new List<long>();
+        long previousHandle = 0;
+
+        // StackTrace is implemented in CoreLib, but naming it references System.Diagnostics.StackTrace, whose
+        // implementation brings System.Reflection.Metadata and its dependencies into every runtime payload
+        Assembly coreLib = typeof(object).Assembly;
+        Type stackTraceType = coreLib.GetType("System.Diagnostics.StackTrace", true)!;
+        Type stackFrameType = coreLib.GetType("System.Diagnostics.StackFrame", true)!;
+        MethodInfo getFrames = stackTraceType.GetMethod("GetFrames", Type.EmptyTypes)!;
+        MethodInfo getMethod = stackFrameType.GetMethod("GetMethod", Type.EmptyTypes)!;
+        MethodInfo getILOffset = stackFrameType.GetMethod("GetILOffset", Type.EmptyTypes)!;
+
+        for (int i = chain.Count - 1; i >= 0; i--) {
+            object stackTrace = Activator.CreateInstance(stackTraceType, chain[i], false)!;
+            Array stackFrames = (Array)getFrames.Invoke(stackTrace, null)!;
+
+            for (int j = 0; j < stackFrames.Length; j++) {
+                object stackFrame = stackFrames.GetValue(j)!;
+                long handle = GetMethodHandle((MethodBase?)getMethod.Invoke(stackFrame, null));
+
+                // A wrapping exception is thrown from the frame that caught its cause, which the cause already lists
+                if (handle == 0 || (j == 0 && handle == previousHandle)) {
+                    continue;
+                }
+
+                frameValues.Add(handle);
+                frameValues.Add((int)getILOffset.Invoke(stackFrame, null)!);
+                previousHandle = handle;
+            }
+        }
+
+        summary = text.ToString();
+        Exception unwrapped = exception;
+
+        while (IsExceptionWrapper(unwrapped) && unwrapped.InnerException is Exception inner) {
+            unwrapped = inner;
+        }
+
+        nativeError = unwrapped is NativeCallException nativeCause ? nativeCause.Message : null;
+        frames = frameValues.ToArray();
+    }
+
+    private static void CollectExceptionChain(Exception exception, List<Exception> chain)
+    {
+        chain.Add(exception);
+
+        if (exception is AggregateException aggregate) {
+            foreach (Exception inner in aggregate.InnerExceptions) {
+                CollectExceptionChain(inner, chain);
+            }
+        }
+        else if (exception.InnerException is Exception inner) {
+            CollectExceptionChain(inner, chain);
+        }
+    }
+
+    // Dynamic methods have no runtime handle, so their frames cannot be resolved by the engine
+    private static long GetMethodHandle(MethodBase? method)
+    {
+        if (method == null) {
+            return 0;
+        }
+
+        try {
+            return method.MethodHandle.Value.ToInt64();
+        }
+        catch (InvalidOperationException) {
+            return 0;
+        }
+    }
+
+    private static bool IsExceptionWrapper(Exception exception)
+    {
+        if (exception.InnerException == null) {
+            return false;
+        }
+
+        return exception is TargetInvocationException ||
+               (exception is AggregateException aggregate && aggregate.InnerExceptions.Count == 1);
+    }
+
+    [CallableByEngine]
     internal static bool IsList(object value)
     {
         return value is IList;
     }
 
+    [CallableByEngine]
     internal static bool IsDictionary(object value)
     {
         return value is IDictionary;
     }
 
+    [CallableByEngine]
     internal static bool IsDelegate(object value)
     {
         return value is Delegate;
@@ -319,6 +440,13 @@ internal static class Native
         return "[" + name + "]";
     }
 
+    [CallableByEngine]
+    internal static string DescribeScriptEntry(object entry)
+    {
+        return ScriptEntryNames.Describe(entry);
+    }
+
+    [CallableByEngine]
     internal static string GetDelegateKey(Delegate handler)
     {
         if (handler == null) {
@@ -339,33 +467,39 @@ internal static class Native
 
             key += method.Module.ModuleVersionId.ToString();
             key += ":";
-            key += method.MetadataToken.ToString();
+            key += method.MetadataToken.ToString(System.Globalization.CultureInfo.InvariantCulture);
             key += ":";
             key += method.DeclaringType != null ? method.DeclaringType.FullName : string.Empty;
             key += ":";
             key += method.Name;
             key += ":";
-            key += target != null ? RuntimeHelpers.GetHashCode(target).ToString() : "static";
+            key += target != null
+                     ? RuntimeHelpers.GetHashCode(target).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                     : "static";
         }
 
         return key;
     }
 
+    [CallableByEngine]
     internal static int GetListCount(object value)
     {
         return ((IList)value).Count;
     }
 
+    [CallableByEngine]
     internal static object? GetListItem(object value, int index)
     {
         return ((IList)value)[index];
     }
 
+    [CallableByEngine]
     internal static int GetDictionaryCount(object value)
     {
         return ((IDictionary)value).Count;
     }
 
+    [CallableByEngine]
     internal static object GetDictionaryKey(object value, int index)
     {
         int i = 0;
@@ -377,9 +511,10 @@ internal static class Native
             i++;
         }
 
-        throw new IndexOutOfRangeException();
+        throw new ArgumentOutOfRangeException(nameof(index));
     }
 
+    [CallableByEngine]
     internal static object? GetDictionaryValue(object value, int index)
     {
         int i = 0;
@@ -391,30 +526,35 @@ internal static class Native
             i++;
         }
 
-        throw new IndexOutOfRangeException();
+        throw new ArgumentOutOfRangeException(nameof(index));
     }
 
+    [CallableByEngine]
     internal static object CreateList(Type elementType)
     {
         return Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType))!;
     }
 
+    [CallableByEngine]
     internal static void AddListItem(object list, object value)
     {
         ((IList)list).Add(value);
     }
 
+    [CallableByEngine]
     internal static object CreateDictionary(Type keyType, Type valueType)
     {
         return Activator.CreateInstance(typeof(Dictionary<, >).MakeGenericType(keyType, valueType))!;
     }
 
+    [CallableByEngine]
     internal static object CreateDictionaryOfList(Type keyType, Type elementType)
     {
         Type listType = typeof(List<>).MakeGenericType(elementType);
         return Activator.CreateInstance(typeof(Dictionary<, >).MakeGenericType(keyType, listType))!;
     }
 
+    [CallableByEngine]
     internal static void AddDictionaryItem(object dictionary, object key, object value)
     {
         ((IDictionary)dictionary).Add(key, value);
@@ -428,17 +568,33 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern void Log(string text);
 
-    [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern string GetHashStr(ulong value);
+    // Reports a handled script exception through the engine exception reporter, with its frames in the native stack trace
+    internal static void ReportException(Exception exception)
+    {
+        DescribeException(exception, out string summary, out string? nativeError, out long[] frames);
+        ReportExceptionInternal(summary, nativeError, frames);
+    }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern ulong GetHash(string text);
+    private static extern void ReportExceptionInternal(string summary, string? nativeError, long[] frames);
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern string GetHashStr(System.IntPtr value);
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern string GetHashStrFromHash(ulong value);
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern System.IntPtr GetHash(string text);
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    internal static extern System.IntPtr ResolveHash(ulong hash);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern long GetEntityId(IntPtr entityPtr);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern ulong GetEntityProtoId(IntPtr entityPtr);
+    internal static extern IntPtr GetEntityProtoId(IntPtr entityPtr);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern void AddRefEntity(IntPtr entityPtr);
@@ -487,10 +643,10 @@ internal static class Native
     // returns the proto entity pointer for `typeName`/`protoIdHash` (IntPtr.Zero if unknown), or whether it
     // exists. Backs the baker-generated Game.GetProto<X> / CheckProto<X> wrappers for custom HasProtos entities.
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr GetProtoEntity(string typeName, ulong protoIdHash);
+    internal static extern IntPtr GetProtoEntity(string typeName, IntPtr protoId);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern bool CheckProtoEntity(string typeName, ulong protoIdHash);
+    internal static extern bool CheckProtoEntity(string typeName, IntPtr protoId);
 
     // Plural proto enumeration (count + by-index) backing the generated Game.GetProto<X>s()/Get<X>s().
     [MethodImpl(MethodImplOptions.InternalCall)]
@@ -502,7 +658,7 @@ internal static class Native
     // Entity-holder accessors (managed equivalent of AngelScript CustomEntity_Add/HasAny/GetOne/GetAll),
     // backing generated Add<X>/Has<X>s/Get<X>/Get<X>s methods for metadata EntityHolder entries.
     [MethodImpl(MethodImplOptions.InternalCall)]
-    internal static extern IntPtr CreateInnerEntity(IntPtr holderPtr, string entryName, ulong protoIdHash);
+    internal static extern IntPtr CreateInnerEntity(IntPtr holderPtr, string entryName, IntPtr protoId);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern bool HasInnerEntities(IntPtr holderPtr, string entryName);
@@ -567,6 +723,30 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     internal static extern int FireEvent(string ownerType, string eventName, IntPtr entityPtr, object?[] args);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static T GetPropertyValue<T>(IntPtr entityPtr, int propIndex)
+        where T : unmanaged
+    {
+        T value = default;
+        ThrowNativeError(
+            GetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? GetPropertyValueInternal(IntPtr entityPtr, int propIndex, ref byte value, int size);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void SetPropertyValue<T>(IntPtr entityPtr, int propIndex, T value)
+        where T : unmanaged
+    {
+        ThrowNativeError(
+            SetPropertyValueInternal(entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? SetPropertyValueInternal(IntPtr entityPtr, int propIndex, ref byte value, int size);
+
     internal static object GetProperty(string ownerType, string propertyName, IntPtr entityPtr)
     {
         string ? error;
@@ -616,7 +796,7 @@ internal static class Native
     private static void ThrowNativeError(string? error)
     {
         if (error != null) {
-            throw new InvalidOperationException(error);
+            throw new NativeCallException(error);
         }
     }
 

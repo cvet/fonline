@@ -5,9 +5,7 @@ locale: ru
 document_id: api-change-management
 permalink: /Docs/ru/contributing/contract-change-management.html
 ---
-
-<!-- docs-translation: {"document_id":"api-change-management","locale":"ru","source_path":"Docs/en/contributing/contract-change-management.md","source_sha256":"a17acfa6e661ce1503ce9ab7c07054728bb4862cc567c08beeab84f081453d8a"} -->
-
+<!-- docs-translation: {"document_id":"api-change-management","locale":"ru","source_path":"Docs/en/contributing/contract-change-management.md","source_sha256":"36c2126f621391f6b8472a6ad6c7e119febc14f381ec276525488819b8d46526"} -->
 # Управление изменениями генерируемых контрактов
 
 > Руководство для сопровождающих движок. Используйте эту страницу, чтобы сравнивать между ревизиями генерируемые контракты native API, CMake, основного и вспомогательного BuildTools CLI, package, native extensions, форматов prototype, map, model, text, effect, image, particle и font, audio, video и протокола AiControl и принимать решения по изменениям, чувствительным к совместимости, до слияния.
@@ -60,7 +58,7 @@ breaking; затем используйте baseline stability, чтобы ре�
 | Image format | [generated/image-format.json](../../generated/image-format.json) | IDs source format, FOFRM field, filename option, baking, runtime и validation `image-format.*` | Контракт baker и default client имеет статус `experimental`; private container entries имеют статус `internal`, а project asset catalogs, licenses, pack precedence, visual policy и acceptance остаются вне модели |
 | Particle format | [generated/particle-format.json](../../generated/particle-format.json) | IDs backend/format, registered object/family, XML, renderer, tooling, runtime, integration и validation `particle-format.*` | Контракт `.spark`/`.spk`, `.efkproj`/`.efk` и интеграции Engine имеет статус `experimental`; производные записи native coverage остаются `internal`, а project catalogs, settings, effects, textures, models, budgets и visual acceptance остаются вне модели |
 | Font format | [generated/font-format.json](../../generated/font-format.json) | IDs descriptor format/field, binding, layout, rendering и validation `font-format.*` | Контракт FOFNT/BMFont и client text pipeline имеет статус `experimental`; cache internals остаются `internal`, а project slot assignment, glyph coverage, typography и visual acceptance остаются вне модели |
-| Audio | [generated/audio.json](../../generated/audio.json) | IDs format, delivery, decoding, playback и validation `audio.*` | Доставка WAV/ACM/Ogg и client playback имеют статус `experimental`; записи documentation/test gap остаются `internal`, а project catalogs, spatial/music policy, mastering, licensing и audible acceptance остаются вне модели |
+| Audio | [generated/audio.json](../../generated/audio.json) | IDs format, delivery, decoding, playback и validation `audio.*` | Baking WAV/Ogg, runtime decoding Vorbis и client playback имеют статус `experimental`; записи documentation/test gap остаются `internal`, а project catalogs, spatial/music policy, mastering, licensing и audible acceptance остаются вне модели |
 | Video | [generated/video.json](../../generated/video.json) | IDs format, delivery, decoding, fullscreen, embedded и validation `video.*` | Ogg/Theora и client presentation имеют статус `experimental`; missing fixture и loop risk остаются явными, а project cinematics, subtitles, policy, assets, provenance, budgets и visible acceptance остаются вне модели |
 | AiControl protocol | [generated/ai-control-protocol.json](../../generated/ai-control-protocol.json) | IDs transport, method, command/event, security, integration и validation `ai-control-protocol.*` | Повторно используемые wire и control protocol имеют статус `experimental`; game-specific schemas, actions, administrator tools и MCP namespaces остаются проектными |
 

@@ -100,7 +100,7 @@ class BakingPipelineDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(field, settings_header)
             self.assertIn(f"`{field}`", guide)
-        self.assertIn("Resource pack name not specifed", settings_source)
+        self.assertIn("Resource pack name not specified", settings_source)
         self.assertIn("Resource pack can be common or server, client or mapper only", settings_source)
         self.assertIn("bakers at the same order may run concurrently", guide)
         self.assertIn("do not edit baked output as source", guide)

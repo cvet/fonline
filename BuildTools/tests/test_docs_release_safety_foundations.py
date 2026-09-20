@@ -23,16 +23,15 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
 
         self.assertIn('wstring path = wstring(L"\\\"").append(buf)', service)
         self.assertIn('append(L" --server-service")', service)
-        self.assertIn('LogToFile(GetExeLogFileName()', application)
-        self.assertIn('if (!settings.UserWritablePath.empty())', application)
-        self.assertIn('fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName())', application)
-        self.assertIn('fs_make_path(_healthFileName)', server)
+        self.assertIn('logging::to_file(fs::make_writable_path(ResolveWritableRoot(args), GetExeLogFileName())', application)
+        self.assertIn('fs::make_writable_path(Settings->Common.UserWritablePath, health_file_name)', server)
+        self.assertIn('fs::make_path(_healthFileName)', server)
 
         for marker in (
             "quoted executable path, the current command line, and `--server-service`",
             "`--server-service-delete` removes the registration",
-            "moves below the resolved `Client.UserWritablePath`",
-            "health file uses an executable-derived name and remains in the working directory",
+            "roots the log, health file, cache, resource overlay",
+            "health file uses an executable-derived name below the same writable root",
         ):
             self.assertIn(marker, guide)
 
@@ -69,7 +68,7 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn('"$TARGET_ENV{"', settings)
         self.assertIn('"$TARGET_FILE{"', settings)
         self.assertIn('(!_bakingMode && (is_target_env || is_target_file))', settings)
-        self.assertIn('WriteLog("Unknown setting {} = {}", key, value)', baker)
+        self.assertIn('logging::write("Unknown setting {} = {}", key, value)', baker)
         self.assertIn("ANDROID_RELEASE_STORE_PASSWORD_ENV", packager)
         self.assertIn("ANDROID_RELEASE_KEY_PASSWORD_ENV", packager)
         self.assertNotIn("resolve_build_host_config_value", packager)

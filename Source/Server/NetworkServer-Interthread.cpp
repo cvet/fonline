@@ -77,7 +77,7 @@ auto NetworkServer::StartInterthreadServer(ptr<ServerNetworkSettings> settings, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<InterthreadServer>(settings, std::move(callback));
+    return safe_alloc::make_unique<InterthreadServer>(settings, std::move(callback));
 }
 
 NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send) :
@@ -133,21 +133,15 @@ void NetworkServerConnection_Interthread::DisconnectImpl()
 }
 
 InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
-    _virtualPort {numeric_cast<uint16_t>(settings->ServerPort)}
+    _virtualPort {numeric_cast<uint16_t>(settings->Network.ServerPort)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    scoped_lock locker {InterthreadListenersLocker};
-
-    if (InterthreadListeners.count(_virtualPort) != 0) {
-        throw NetworkServerException("Port is busy", _virtualPort);
-    }
-
     auto connection_registry = GetConnectionRegistry();
     // The registry hands the listener out by copy, so the move-only connection callback travels behind a shared owner
-    auto shared_callback = SafeAlloc::MakeShared<NewConnectionCallback>(std::move(callback));
-    InterthreadListeners.emplace(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(shared_callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
-        auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
+    auto shared_callback = safe_alloc::make_shared<NewConnectionCallback>(std::move(callback));
+    bool added = AddInterthreadListener(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(shared_callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
+        auto conn = safe_alloc::make_shared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
 
         if (connection_registry_->TrackConnection(conn)) {
             (*callback_)(conn);
@@ -155,16 +149,17 @@ InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewCon
 
         return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
     });
+
+    if (!added) {
+        throw NetworkServerException("Port is busy", _virtualPort);
+    }
 }
 
 void InterthreadServer::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    scoped_lock locker {InterthreadListenersLocker};
-
-    FO_VERIFY_AND_THROW(InterthreadListeners.count(_virtualPort) != 0, "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort, InterthreadListeners.size());
-    InterthreadListeners.erase(_virtualPort);
+    FO_VERIFY_AND_THROW(RemoveInterthreadListener(_virtualPort), "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort);
 }
 
 FO_END_NAMESPACE

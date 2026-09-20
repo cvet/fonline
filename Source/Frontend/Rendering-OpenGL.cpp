@@ -222,6 +222,7 @@ static auto ErrCodeToString(GLenum err_code) -> string
 struct OpenGL_Renderer::Context
 {
     nptr<GlobalSettings> Settings {};
+    nptr<const AppScreenState> Screen {};
     bool RenderDebug {};
     bool ForceGlslEsProfile {};
     nptr<SDL_Window> SdlWindow {};
@@ -355,20 +356,21 @@ static auto WebGlContextHandleAsSdlContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE conte
 
 OpenGL_Renderer::OpenGL_Renderer() = default;
 
-void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>();
+    _ctx = safe_alloc::make_unique<Context>();
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    WriteLog("Used OpenGL rendering");
+    logging::write("Used OpenGL rendering");
 
     _ctx->Settings = &settings;
-    _ctx->RenderDebug = settings.RenderDebug;
-    _ctx->ForceGlslEsProfile = settings.ForceGlslEsProfile;
+    _ctx->Screen = screen;
+    _ctx->RenderDebug = settings.Render.RenderDebug;
+    _ctx->ForceGlslEsProfile = settings.Render.ForceGlslEsProfile;
     _ctx->SdlWindow = window.reinterpret_as<SDL_Window>();
 
     // Create context
@@ -379,7 +381,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     bool make_current = SDL_GL_MakeCurrent(_ctx->SdlWindow.get(), _ctx->GlContext);
     FO_VERIFY_AND_THROW(make_current, "OpenGL context could not be made current", SDL_GetError());
 
-    if (settings.VSync) {
+    if (settings.Render.VSync) {
         if (!SDL_GL_SetSwapInterval(-1)) {
             SDL_GL_SetSwapInterval(1);
         }
@@ -487,7 +489,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
         if (!has_ext) {
             string msg = critical ? "Critical" : "Not critical";
-            WriteLog("OpenGL extension '{}' not supported. {}", ext_name, msg);
+            logging::write("OpenGL extension '{}' not supported. {}", ext_name, msg);
             if (critical) {
                 extension_errors++;
             }
@@ -507,7 +509,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     // Map framebuffer_object_ext to framebuffer_object
 #if !FO_OPENGL_ES
     if (GL_HAS_CTX(framebuffer_object_ext, _ctx.get()) && !GL_HAS_CTX(framebuffer_object, _ctx.get())) {
-        WriteLog("Map framebuffer_object_ext pointers");
+        logging::write("Map framebuffer_object_ext pointers");
         _ctx->OGL_framebuffer_object = true;
         glGenFramebuffers = glGenFramebuffersEXT;
         glGenRenderbuffers = glGenRenderbuffersEXT;
@@ -539,7 +541,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 #endif
 
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_ctx->BaseFrameBufObj));
-    _ctx->BaseFrameBufSize = {settings.ScreenWidth, settings.ScreenHeight};
+    _ctx->BaseFrameBufSize = screen->Size;
 
     // Shared bump-allocated uniform buffer (see the Context field comment)
     if (GL_HAS_CTX(uniform_buffer_object, _ctx.get())) {
@@ -563,8 +565,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     atlas_h = std::min(max_viewport_size[1], atlas_h);
     FO_VERIFY_AND_THROW(atlas_w >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas width is below the required minimum", AppRender::MIN_ATLAS_SIZE);
     FO_VERIFY_AND_THROW(atlas_h >= AppRender::MIN_ATLAS_SIZE, "OpenGL texture atlas height is below the required minimum", AppRender::MIN_ATLAS_SIZE);
-    const_cast<int32_t&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<int32_t&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    AppRender::MAX_ATLAS_WIDTH = atlas_w;
+    AppRender::MAX_ATLAS_HEIGHT = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
@@ -574,7 +576,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
 
     if (max_uniform_components < 1024) {
-        WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
+        logging::write("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
 #endif
 
@@ -669,7 +671,7 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, _ctx);
+    auto opengl_tex = safe_alloc::make_unique<OpenGL_Texture>(size, linear_filtered, with_depth, _ctx);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
@@ -722,7 +724,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, _ctx);
+    auto opengl_dbuf = safe_alloc::make_unique<OpenGL_DrawBuffer>(is_static, _ctx);
 
     return std::move(opengl_dbuf);
 }
@@ -732,7 +734,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, _ctx);
+    auto opengl_effect = safe_alloc::make_unique<OpenGL_Effect>(usage, name, loader, _ctx);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
@@ -955,7 +957,7 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         _ctx->BaseFrameBufObjBinded = true;
 
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width), numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / back_buf_aspect : numeric_cast<float32_t>(_ctx->BaseFrameBufSize.width) / screen_aspect);
 
@@ -963,8 +965,8 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         vp_oy = (_ctx->BaseFrameBufSize.height - fit_height) / 2;
         vp_width = fit_width;
         vp_height = fit_height;
-        screen_width = _ctx->Settings->ScreenWidth;
-        screen_height = _ctx->Settings->ScreenHeight;
+        screen_width = _ctx->Screen->Size.width;
+        screen_height = _ctx->Screen->Size.height;
     }
 
     _ctx->ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
@@ -1484,14 +1486,14 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         auto main_texture_size = main_tex_buf->MainTexSize;
         auto main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     // Every shader-required block must be rewritten each draw: a stale binding points into the shared
@@ -1552,7 +1554,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             const auto& buf_value = buf.value();
             size_t aligned_offset = (scratch.size() + alignment - 1) & ~(alignment - 1);
             scratch.resize(aligned_offset + sizeof(buf_value));
-            MemCopy(scratch.data() + aligned_offset, &buf_value, sizeof(buf_value));
+            memory::copy(scratch.data() + aligned_offset, &buf_value, sizeof(buf_value));
             block_offsets[block_index] = aligned_offset;
             block_sizes[block_index] = sizeof(buf_value);
             block_index++;

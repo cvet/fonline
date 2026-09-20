@@ -5,9 +5,7 @@ locale: ru
 document_id: font-format-guide
 permalink: /Docs/ru/how-to/content/font-format.html
 ---
-
 <!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"40b691afb97e7264162953a58b48a42f1e52b25f53282ed366d8200f0adb2340"} -->
-
 # Форматы шрифтов и компоновка текста
 
 FOnline отрисовывает растровые шрифты, описанные текстовым форматом Engine

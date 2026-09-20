@@ -78,10 +78,8 @@ public:
     [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInvItems() noexcept -> vector<ptr<Item>>;
     [[nodiscard]] auto GetInvItems() const noexcept -> vector<ptr<const Item>>;
-    [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>;
-    [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32_t;
     [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>&;
     [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool;
     [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;
@@ -134,6 +132,7 @@ public:
     void ChangeDir(mdir dir);
     void LockMapTransfers() noexcept;
     void UnlockMapTransfers() noexcept;
+    void ClearAllAssociations() noexcept;
 
     void Broadcast_Property(NetProperty type, ptr<const Property> prop, ptr<const ServerEntity> entity);
     void Broadcast_Action(CritterAction action, int32_t action_data, nptr<const Item> item);

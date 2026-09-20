@@ -4,9 +4,7 @@ document_id: generated-native-extension-roles
 locale: ru
 generated: true
 ---
-
 <!-- docs-translation: {"document_id":"generated-native-extension-roles","locale":"ru","source_path":"Docs/en/reference/native-extension/roles.md","source_sha256":"9b60349f9f88a22fb2da3f0e9f60ebf4b394a37889cf0ae212f5705ef8e55d22"} -->
-
 # Роли нативных расширений
 
 > Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/NativeExtensionInterface.json`, затем выполните `python BuildTools/docs_native_extension.py --write`.

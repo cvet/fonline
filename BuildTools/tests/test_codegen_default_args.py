@@ -112,7 +112,7 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
         ret_wrapper,
         ret_container_element_wrapper,
         receiver_wrapper,
-        ret_provides_cover,
+        ret_cover_markers,
     ) = _codegen.parse_export_method_signature(
         "FO_SCRIPT_API string Client_Game_FormatTags(nptr<ClientEngine> client, string_view text, nptr<CritterView> talker = nullptr)",
         {"void", "bool", "int32", "string", "Game", "Critter"},
@@ -123,11 +123,38 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
     assert not ret_wrapper
     assert ret_container_element_wrapper == ""
     assert receiver_wrapper
-    assert not ret_provides_cover
+    assert not ret_cover_markers
     assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
         ("string", "text", False, None),
         ("Critter", "talker", True, "null"),
     ]
+
+
+def test_parse_export_method_signature_reads_upward_accessor_markers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _codegen,
+        "game_entities_info",
+        {
+            "Critter": _codegen.EntityInfo("Critter", "CritterView", False, False, False, False, False, True, []),
+            "Map": _codegen.EntityInfo("Map", "MapView", False, False, False, False, False, True, []),
+        },
+    )
+
+    parsed = _codegen.parse_export_method_signature(
+        "FO_SCRIPT_API FO_RETURNS_PARENT nptr<Map> Server_Critter_GetMap(ptr<Critter> self)",
+        {"void", "Critter", "Map"},
+        ["Critter", "Map"],
+    )
+
+    assert parsed[3] == "Map"
+    assert parsed[9] == {"FO_RETURNS_PARENT"}
+
+    with pytest.raises(AssertionError):
+        _codegen.parse_export_method_signature(
+            "FO_SCRIPT_API FO_PROVIDES_COVER FO_RETURNS_ANCESTOR nptr<Map> Server_Critter_GetMap(ptr<Critter> self)",
+            {"void", "Critter", "Map"},
+            ["Critter", "Map"],
+        )
 
 
 def test_parse_method_args_normalizes_value_type_defaults(monkeypatch: pytest.MonkeyPatch) -> None:

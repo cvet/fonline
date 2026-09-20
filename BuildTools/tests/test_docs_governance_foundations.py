@@ -24,7 +24,7 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
     def test_contract_guide_covers_every_live_comparator_domain(self) -> None:
         guide = CONTRACT_GUIDE.read_text(encoding="utf-8")
 
-        self.assertEqual(len(docs_contract_diff.DOMAIN_ORDER), 18)
+        self.assertEqual(len(docs_contract_diff.DOMAIN_ORDER), 17)
         self.assertEqual(set(docs_contract_diff.DOMAIN_ORDER), set(docs_contract_diff.MODEL_FILES))
         for domain in docs_contract_diff.DOMAIN_ORDER:
             model_name = docs_contract_diff.MODEL_FILES[domain]
@@ -33,7 +33,7 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
         for marker in (
             "BuildTools/docs_ai_control_protocol.py --write",
             "`ai-control-protocol`",
-            "all eighteen canonical models",
+            "all seventeen canonical models",
             "github.event.pull_request.base.sha",
             "github.event.before",
         ):

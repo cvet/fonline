@@ -152,8 +152,8 @@ void ServerConnection::InBufAccessor::Unlock() noexcept
 ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection) :
     _settings {settings},
     _netConnection {std::move(net_connection)},
-    _inBuf(_settings->NetBufferSize),
-    _outBuf(_settings->NetBufferSize)
+    _inBuf(_settings->Network.NetBufferSize),
+    _outBuf(_settings->Network.NetBufferSize)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -161,18 +161,18 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
         RecordDisconnectReason(DisconnectReason::ClientClosed);
-        WriteLog("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
+        logging::write("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
         AsyncReceiveData({});
     };
 
-    if (_settings->MaxMessageSize != 0) {
-        _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->MaxMessageSize));
+    if (_settings->ServerNetwork.MaxMessageSize != 0) {
+        _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->ServerNetwork.MaxMessageSize));
     }
-    if (_settings->MaxBufferedInputSize != 0) {
-        _inBuf.SetMaxBufLen(numeric_cast<size_t>(_settings->MaxBufferedInputSize));
+    if (_settings->ServerNetwork.MaxBufferedInputSize != 0) {
+        _inBuf.SetMaxBufLen(numeric_cast<size_t>(_settings->ServerNetwork.MaxBufferedInputSize));
     }
 
-    WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+    logging::write("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
 
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 }
@@ -269,14 +269,14 @@ auto ServerConnection::IsInactive(nanotime time) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _settings->InactivityDisconnectTime != 0 && time - _activity.LastActivityTime >= std::chrono::milliseconds {_settings->InactivityDisconnectTime};
+    return _settings->ServerNetwork.InactivityDisconnectTime != 0 && time - _activity.LastActivityTime >= std::chrono::milliseconds {_settings->ServerNetwork.InactivityDisconnectTime};
 }
 
 auto ServerConnection::IsLoginTimedOut(nanotime time) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _settings->LoginTimeout != 0 && time - _activity.LastLoginProgressTime >= std::chrono::milliseconds {_settings->LoginTimeout};
+    return _settings->ServerNetwork.LoginTimeout != 0 && time - _activity.LastLoginProgressTime >= std::chrono::milliseconds {_settings->ServerNetwork.LoginTimeout};
 }
 
 auto ServerConnection::NeedPing(nanotime time) const noexcept -> bool
@@ -337,7 +337,7 @@ void ServerConnection::RegisterPingRequest(nanotime time) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ClientPingTime};
+    _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ServerNetwork.ClientPingTime};
     _activity.PingAnswerReceived = false;
 }
 
@@ -345,7 +345,7 @@ void ServerConnection::RegisterPingAnswer(nanotime time) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ClientPingTime};
+    _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ServerNetwork.ClientPingTime};
     _activity.PingAnswerReceived = true;
 }
 
@@ -401,8 +401,8 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
     auto raw_buf = _outBuf.GetData();
     vector<uint8_t> send_buf;
 
-    if (!_settings->DisableZlibCompression) {
-        _compressor.Compress(raw_buf, send_buf);
+    if (!_settings->Network.DisableZlibCompression) {
+        _compressor.compress(raw_buf, send_buf);
     }
     else {
         send_buf.assign(raw_buf.begin(), raw_buf.end());
@@ -410,7 +410,7 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 
     _outBuf.DiscardWriteBuf(raw_buf.size());
 
-    FO_VERIFY_AND_THROW(!send_buf.empty(), "Server connection encoded an empty outgoing packet from a non-empty output buffer", raw_buf.size(), _settings->DisableZlibCompression);
+    FO_VERIFY_AND_THROW(!send_buf.empty(), "Server connection encoded an empty outgoing packet from a non-empty output buffer", raw_buf.size(), _settings->Network.DisableZlibCompression);
     return send_buf;
 }
 
@@ -431,7 +431,7 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
             }
             catch (const NetBufferException& ex) {
                 if (!_inputOverflowed.exchange(true, std::memory_order_relaxed)) {
-                    ReportExceptionAndContinue(ex);
+                    exceptions::report_and_continue(ex);
                 }
             }
         }

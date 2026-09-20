@@ -3,9 +3,7 @@ permalink: /Examples/MinimalMultiplayer/README.ru.html
 locale: ru
 document_id: minimal-multiplayer-readme
 ---
-
 <!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"ad90b82633801cdc08ce4ac47dcd8ca34b2497da81a3d371b7aa12c004d6258d"} -->
-
 # Минимальный многопользовательский проект FOnline
 
 Отдельный первый игровой проект после

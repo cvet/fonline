@@ -144,14 +144,14 @@ namespace VerifyMacro
             }
             else {
                 uint32_t oversized = std::numeric_limits<uint32_t>::max();
-                MemCopy(malformed.data() + sizeof(uint32_t) + 3 * sizeof(uint8_t), &oversized, sizeof(oversized));
+                memory::copy(malformed.data() + sizeof(uint32_t) + 3 * sizeof(uint8_t), &oversized, sizeof(oversized));
             }
 
-            auto source = SafeAlloc::MakeUnique<MemoryDataSource>("MalformedBytecode");
+            auto source = safe_alloc::make_unique<MemoryDataSource>("MalformedBytecode");
             source->AddFile("ContainerTest.fos-bin-server", malformed);
             FileSystem resources;
             resources.AddCustomSource(std::move(source));
-            ScriptSettings settings;
+            AngelScriptSettings settings;
             AngelScriptBackend backend(&settings);
             backend.RegisterMetadata(&compiler_engine);
             CHECK_THROWS(backend.LoadBinaryScripts(resources));
@@ -226,7 +226,7 @@ TEST_CASE("AngelScript mutable globals are disallowed")
 #if FO_ANGELSCRIPT_SCRIPTING
     using namespace BakerTests;
 
-    // Defaults: ScriptSettings::MutableGlobalsAllowedSourcePaths is empty, so no path is exempt.
+    // Defaults: AngelScriptSettings::MutableGlobalsAllowedNamespaces is empty, so no namespace is exempt.
     // The gate must fire for any non-const module-level global
     TestRig rig;
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());

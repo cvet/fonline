@@ -131,7 +131,7 @@ public:
                 }
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
                 ++it;
             }
         }
@@ -194,7 +194,7 @@ private:
             return;
         }
 
-        _editors.emplace_back(SafeAlloc::MakeUnique<SparkParticleEditor>(asset_path, _mapper->Settings, &_mapper->MapsFileSys, &_mapper->Resources, [this](string_view saved_path) {
+        _editors.emplace_back(safe_alloc::make_unique<SparkParticleEditor>(asset_path, _mapper->Settings, &_mapper->MapsFileSys, &_mapper->Resources, [this](string_view saved_path) {
             (void)_mapper->Resources.ReindexDataSources();
             _mapper->SprMngr.InvalidateSpriteResource(strex(saved_path).change_file_extension("spk"));
             _mapper->AddMess(strex("SPARK particle source saved: {}", saved_path));
@@ -232,7 +232,7 @@ auto CreateSparkParticleSubEditor(ptr<MapperEngine> mapper) -> unique_ptr<Partic
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<SparkParticleSubEditor>(mapper);
+    return safe_alloc::make_unique<SparkParticleSubEditor>(mapper);
 }
 
 static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resources, vector<unique_ptr<RenderTexture>>& loaded_textures) -> ParticleTextureLoader
@@ -245,7 +245,7 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
         auto file = baked_resources->ReadFile(path);
 
         if (!file) {
-            WriteLog("SPARK particle editor could not read sprite resource '{}'", path);
+            logging::write("SPARK particle editor could not read sprite resource '{}'", path);
             return {nullptr, {}};
         }
 
@@ -391,7 +391,7 @@ SparkParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> sett
     RawResources {raw_resources},
     EffectMngr {settings, baked_resources, &GetApp()->Render},
     GameTime {settings},
-    ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateSparkParticleEditorTextureLoader(baked_resources, LoadedTextures)},
+    ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateSparkParticleEditorTextureLoader(baked_resources, LoadedTextures), [settings]() FO_DEFERRED { return settings->Render.DrawWireframe; }},
     Particle {ParticleMngr.CreateParticle(strex(asset_path).change_file_extension("spk"))}
 {
     FO_STACK_TRACE_ENTRY();
@@ -401,14 +401,14 @@ SparkParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> sett
     }
     else {
         LoadError = strex("Failed to load SPARK particle preview for '{}'", asset_path);
-        WriteLog("SPARK particle editor: failed to load preview for '{}'", asset_path);
+        logging::write("SPARK particle editor: failed to load preview for '{}'", asset_path);
     }
 }
 
 SparkParticleEditor::SparkParticleEditor(SparkParticleEditor&&) noexcept = default;
 
 SparkParticleEditor::SparkParticleEditor(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources, function<void(string_view)> on_saved) :
-    _impl {SafeAlloc::MakeUnique<Impl>(asset_path, settings, raw_resources, baked_resources)},
+    _impl {safe_alloc::make_unique<Impl>(asset_path, settings, raw_resources, baked_resources)},
     _assetPath {asset_path},
     _windowTitle {strex("SPARK Particle Editor - {}###SparkParticleEditor_{}", asset_path, asset_path)},
     _closePopupTitle {strex("Unsaved SPARK particle changes###SparkParticleEditorClose_{}", asset_path)},
@@ -572,7 +572,7 @@ void SparkParticleEditor::DrawContent()
     float32_t frame_width = numeric_cast<float32_t>(draw_width);
     float32_t frame_height = numeric_cast<float32_t>(draw_height);
     float32_t frame_ratio = frame_width / frame_height;
-    float32_t proj_height = frame_height * (1.0f / _impl->Settings->ModelProjFactor);
+    float32_t proj_height = frame_height * (1.0f / _impl->Settings->Render.ModelProjFactor);
     float32_t proj_width = proj_height * frame_ratio;
 
     mat44 proj = GetApp()->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
@@ -647,7 +647,7 @@ auto SparkParticleEditor::SaveChanges() -> bool
 
     if (!saver->save(path, base_system.get(), path)) {
         _saveError = strex("Failed to save particle source '{}'", _assetPath);
-        WriteLog(LogType::Error, "SPARK particle editor failed to save '{}'", _assetPath);
+        logging::write(logging::type::error, "SPARK particle editor failed to save '{}'", _assetPath);
         return false;
     }
 

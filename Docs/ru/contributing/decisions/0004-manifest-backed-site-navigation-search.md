@@ -5,9 +5,7 @@ locale: ru
 document_id: adr-manifest-backed-site-navigation-search
 permalink: /Docs/ru/contributing/decisions/0004-manifest-backed-site-navigation-search.html
 ---
-
 <!-- docs-translation: {"document_id":"adr-manifest-backed-site-navigation-search","locale":"ru","source_path":"Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md","source_sha256":"101041e8482c80bf60bd0a221a3ea5eedd5ecab70c696e3c6c985b0b7e7d40df"} -->
-
 # ADR-0004: навигация и поиск сайта на основе манифеста
 
 - Статус: принято

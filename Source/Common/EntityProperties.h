@@ -154,12 +154,6 @@ public:
     // Persistent identifiers of the items directly contained by this item
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, InnerItemIds);
-    // Allows equal items to merge into one entity whose Count is greater than one
-    ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(bool, Stackable);
-    // Positive quantity represented by this item; non-stackable items must have a value of one
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(int32_t, Count);
     // Sprite resource used to render the item on a map
     ///@ ExportProperty Common Mutable PublicSync Persistent Resource
     FO_ENTITY_PROPERTY(hstring, PicMap);
@@ -271,9 +265,9 @@ public:
     // Renders the item in a flat map pass instead of the normal depth-sorted item pass
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, DrawFlatten);
-    // Signed Y-hex offset used only when calculating the item's sprite draw order
+    // Fine ordering inside the item's primary draw-order layer
     ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(int8_t, DrawOrderOffsetHexY);
+    FO_ENTITY_PROPERTY(int8_t, DrawOrderSubLayer);
     // Maps the legacy Item property name IsNoHighlight to NoHighlight during Engine migration lookup
     ///@ MigrationRule Property Item IsNoHighlight NoHighlight
     // Prevents the client from applying normal item highlight presentation

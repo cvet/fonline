@@ -1016,7 +1016,7 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["CalculateModelDescriptionLinkBounds", "Model description link geometry and bounds do not match", "writer.Write<uint8_t>(has_geometry"]
+          "anchors": ["CalculateModelDescriptionLinkBounds", "Model description link geometry and bounds do not match", "writer.write<uint8_t>(has_geometry"]
         },
         {
           "path": "Source/Client/ModelInformation.cpp",

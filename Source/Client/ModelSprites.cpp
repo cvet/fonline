@@ -101,7 +101,7 @@ auto ModelSprite::IsDirectDraw() const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _factory->_settings->ModelDirectDraw;
+    return _factory->_settings->Render.ModelDirectDraw;
 }
 
 auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
@@ -217,11 +217,11 @@ void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 
     const auto& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
-    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
     mat44 proj_base = scene_ortho * cam_view;
     mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
 
-    _model->DrawInScene(proj, settings.ModelProjFactor);
+    _model->DrawInScene(proj, settings.Render.ModelProjFactor);
 }
 
 void ModelSprite::SetupFrame(isize32 frame_size)
@@ -347,9 +347,10 @@ void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds>
 ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
     _settings {settings},
-    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(
+    _modelMngr {safe_alloc::make_unique<ModelManager>(
         settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
-        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.ToHashedString(path)); }, //
+        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.to_hashed_string(path)); }, //
+        [spr_mngr]() mutable FO_DEFERRED { return spr_mngr->IsDrawWireframe(); }, //
         [spr_mngr]() mutable FO_DEFERRED {
             nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
@@ -380,7 +381,7 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     model->PrepareFrameLayout();
     isize32 draw_size = model->GetDrawSize();
     auto model_owner = model.take_not_null();
-    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
+    auto model_spr = safe_alloc::make_shared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
     model_spr->ApplyFrameCrop(draw_size, model_spr->_model->GetSpriteBounds());
 
     return model_spr;
@@ -401,8 +402,8 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
             result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
         }
         else {
-            BreakIntoDebugger();
-            WriteLog("Texture '{}' not found", path);
+            break_into_debugger();
+            logging::write("Texture '{}' not found", path);
             _loadedMeshTextures[path] = nullptr;
         }
     }
@@ -419,7 +420,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
     model_spr->GetModel()->PrepareFrameLayout();
-    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->ModelSpriteMaxTextureWidth, _settings->ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
+    isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->Render.ModelSpriteMaxTextureWidth, _settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     isize32 render_frame_size = model_spr->_requestedFrameSize.value_or(model_spr->GetModel()->GetDrawSize());
     ModelSpriteFramePlacement start_placement = ClampModelSpriteFramePlacement({.Size = render_frame_size, .Pivot = model_spr->GetModel()->GetFramePivot()}, max_logical_frame);
     render_frame_size = start_placement.Size;

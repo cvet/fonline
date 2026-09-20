@@ -5,9 +5,7 @@ locale: ru
 document_id: documentation-snippet-validation
 permalink: /Docs/ru/contributing/documentation/snippets.html
 ---
-
-<!-- docs-translation: {"document_id":"documentation-snippet-validation","locale":"ru","source_path":"Docs/en/contributing/documentation/snippets.md","source_sha256":"1a1aee5a2fdf362e267d27f8dcffa3e8fa3ef6859b2712657cf3f32c45bcee3e"} -->
-
+<!-- docs-translation: {"document_id":"documentation-snippet-validation","locale":"ru","source_path":"Docs/en/contributing/documentation/snippets.md","source_sha256":"bdf4d5a6636dac970558ce75253cf03f37099dad96708e36a9e9722393848442"} -->
 # Проверка фрагментов документации
 
 Это руководство определяет проверяемый контракт для fenced-примеров в
@@ -42,7 +40,7 @@ permalink: /Docs/ru/contributing/documentation/snippets.html
 | `bash` | `bash-parse` | Статические проверки и настоящий parser Bash в режиме `bash -n` |
 | `powershell` | `powershell-parse` | Статические проверки и языковой parser PowerShell |
 | `cmake` | `cmake-parse` | Полные вызовы команд, комментарии, строки и сбалансированные аргументы |
-| `cpp`, `angelscript`, `glsl` | `c-family-parse` | Строки, комментарии и сбалансированные круглые, квадратные и фигурные скобки |
+| `cpp`, `csharp`, `angelscript`, `glsl` | `c-family-parse` | Строки, комментарии и сбалансированные круглые, квадратные и фигурные скобки |
 | `ini` | `ini-parse` | Секции, присваивания, продолжения и структура встроенных vertex/fragment shader |
 | `json` | `json-parse` | Строгий JSON parser Python |
 | `python` | `python-parse` | Parser AST Python |
@@ -55,7 +53,7 @@ permalink: /Docs/ru/contributing/documentation/snippets.html
 отчёт сохраняет `template: true`, чтобы грамматический шаблон нельзя было
 принять за проверенную конкретную команду.
 
-C-family harness доказывает лексическую структуру, а не корректность типов C++
+C-family harness доказывает лексическую структуру, а не корректность типов C++, C#
 или AngelScript. Если фрагмент обещает компиляцию, baking, запуск или runtime-
 результат, ему всё ещё нужен названный в руководстве владеющий тест исходника
 или примера. Snippet gate не пропускает испорченную документацию, но не

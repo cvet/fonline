@@ -55,7 +55,7 @@ struct FindPathInput
     mpos ToHex {};
     ipos16 ToHexOffset {};
     msize MapSize {};
-    int32_t MaxLength {}; // Maximum BFS depth (from engine Settings.MaxPathFindLength)
+    int32_t MaxLength {}; // Maximum BFS depth (from engine Settings.Geometry.MaxPathFindLength)
     int32_t Cut {}; // Stop BFS when within this distance of target; 0 = must reach exact target
     int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check in BFS
     bool FreeMovement {}; // Use LineTracer optimization for control steps and continuous end offset

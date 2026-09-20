@@ -5,9 +5,7 @@ locale: ru
 document_id: tools
 permalink: /Docs/ru/reference/tools/
 ---
-
-<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"ff678da2fd20c02eb8e92fba1f2cac86a1438f4077f3a13397a45b4f84531722"} -->
-
+<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"d838d0682a0b4b00bf01359a1f6731518025d1123a11c6ecf4da09c92ae8c26c"} -->
 # Инструменты
 
 > Документация движка. Эта страница сопоставляет переиспользуемые инструменты из `Source/Tools/` с точками входа приложений. Конкретные игровые content pipelines, project-specific command lines и release automation принадлежат документации встраивающего проекта, если они явно не отмечены как примеры.
@@ -98,6 +96,7 @@ permalink: /Docs/ru/reference/tools/
 - `Source/Tools/MetadataBaker.*` - разбирает metadata tags и создает metadata resources для runtime registration;
 - `Source/Tools/ConfigBaker.*` - выпекает configuration resources;
 - `Source/Tools/RawCopyBaker.*` - копирует выбранные resources без преобразования;
+- `Source/Tools/AudioBaker.*` - проверяет Ogg/Vorbis и преобразует поддерживаемые WAV inputs в общий runtime Vorbis payload, сохраняя authored paths;
 - `Source/Tools/ImageBaker.*` - импортирует image/sprite/frame formats, включая классические Fallout formats и PNG/TGA;
 - `Source/Tools/EffectBaker.*` - выпекает shader/effect sources и shader stages;
 - `Source/Tools/ParticleBaker.*` - преобразует native SPARK XML `.spark` в загружаемый из memory `.spk` и компилирует Effekseer XML `.efkproj` в проверенные raw `.efk` (`SKFE`) resources. Авторские runtime binaries `.spk`/`.efk` отклоняются;
@@ -108,12 +107,13 @@ permalink: /Docs/ru/reference/tools/
 - `Source/Tools/ModelMeshBaker.*` - при включенной 3D support выпекает текущую FBX/OBJ hierarchy, meshes, skinning, materials и animation data; см. [Формат моделей](../../how-to/content/model-format.md);
 - `Source/Tools/ModelInfoBaker.*` - при включенной 3D support проверяет и выпекает composition `.fo3d` и общую таблицу длительностей model animation; см. [Формат моделей](../../how-to/content/model-format.md) и [Анимация моделей](../../how-to/content/model-animation.md);
 - `Source/Tools/AngelScriptBaker.*` - при включенной AngelScript support компилирует и выпекает AngelScript bytecode resources.
+- `Source/Tools/ManagedScriptBaker.*` - при включенной Managed scripting генерирует C# API/project и собирает target-specific managed assemblies.
 
 Семантика tuple, speed, alias, metadata и typed lookup анимаций описана в [анимации моделей](../../how-to/content/model-animation.md). Per-frame offsets 2D sprites и зависящие от движения walk/run cycles описаны в [корневом движении спрайтов](../../how-to/content/sprite-root-motion.md). Подробный порядок baking, settings, запись outputs и validation принадлежат [конвейеру baking](../../explanation/content-pipeline/baking.md).
 
 FOFNT и AngelCode BMFont descriptors не имеют собственного editor или dedicated baker в движке. Они создаются внешними средствами, копируются `RawCopyBaker` и разбираются клиентом; связанные images проходят обычный image pipeline. Синтаксис descriptor, владение `.bmfc`, binding/layout behavior и validation описаны в [форматах шрифтов и компоновке текста](../../how-to/content/font-format.md).
 
-Для audio также нет dedicated editor или transcoding baker в движке. Создавайте WAV/ACM/Ogg внешними средствами, копируйте runtime bytes через `RawCopyBaker` и используйте раздел [Audio](../../how-to/content/audio.md) для требований к format, naming, playback и audible validation.
+Для audio нет dedicated editor, но есть `AudioBaker`. Создавайте поддерживаемые WAV или Ogg/Vorbis внешними средствами; baker проверяет native Ogg, преобразует WAV в общий Vorbis payload и сохраняет authored resource path. Требования к format, playback handles, spatial updates, mixing и audible validation описаны в разделе [Audio](../../how-to/content/audio.md).
 
 Video также полагается на внешние authoring tools. `RawCopyBaker` копирует `.ogv` без transcoding, а клиент декодирует Theora в Ogg. Точные paths, authoring limits, хранение whole resource in memory, fullscreen/embedded presentation, отдельный sound и visible validation описаны в разделе [Video](../../how-to/content/video.md).
 
@@ -223,7 +223,7 @@ Editor не имеет Engine CMake option или target и не являетс�
 - Particle source formats, baking и runtime factories: `Source/Tools/ParticleEditor.*`, [Формат и runtime частиц](../../how-to/content/particle-format.md).
 - Particle Preview, SPARK editor, закрепленный Effekseer editor и visible review: [Инструменты создания частиц](../../how-to/tools/particle-authoring.md).
 - Создание font descriptor и runtime binding: внешние bitmap-font tools, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md).
-- Создание и playback audio: внешние audio tools, `Source/Tools/RawCopyBaker.*`, `Source/Client/SoundManager.*`, `Source/Frontend/Application.*`, [Audio](../../how-to/content/audio.md).
+- Создание и playback audio: внешние audio tools, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*`, `Source/Frontend/Application.*`, [Audio](../../how-to/content/audio.md).
 - Создание и playback video: внешние video tools, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*`, [Video](../../how-to/content/video.md).
 - Wiring application targets: [Applications](../applications.md) и [конвейер BuildTools](../cmake-and-buildtools/pipeline.md).
 

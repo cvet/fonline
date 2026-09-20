@@ -42,7 +42,9 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        _renderer.Init(*settings, nullptr);
+        _screen.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
+        _screen.Fullscreen = settings->Render.Fullscreen;
+        _renderer.Init(*settings, &_screen, nullptr);
     }
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override { return _renderTarget; }
@@ -91,6 +93,7 @@ public:
 
 private:
     Null_Renderer _renderer;
+    AppScreenState _screen {};
     nptr<RenderTexture> _renderTarget {};
 };
 
@@ -212,11 +215,11 @@ class StubAppAudio final : public IAppAudio
 public:
     [[nodiscard]] auto IsEnabled() const -> bool override { return false; }
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
+    auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
     {
         FO_STACK_TRACE_ENTRY();
 
-        ignore_unused(format, channels, rate, buf);
+        ignore_unused(channels, rate, buf);
         return false;
     }
 
@@ -248,7 +251,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        _state.Size = {settings->ScreenWidth, settings->ScreenHeight};
+        _state.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
     }
 
     [[nodiscard]] auto GetSize() const -> isize32 override { return _state.Size; }
@@ -345,7 +348,7 @@ auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<StubAppWindow>(&settings);
+    return safe_alloc::make_unique<StubAppWindow>(&settings);
 }
 
 FO_END_NAMESPACE

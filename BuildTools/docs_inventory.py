@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 DEFAULT_OUTPUT = "Docs/generated/source-inventory.json"
-SETTING_RE = re.compile(r"^(?:FIXED|VARIABLE)_SETTING\(", re.MULTILINE)
+SETTING_RE = re.compile(r"^SETTING\(", re.MULTILINE)
 
 
 def _relative_paths(root: Path, paths: list[Path]) -> list[str]:

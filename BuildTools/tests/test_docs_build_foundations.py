@@ -98,6 +98,7 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
             fields,
             [
                 "Name",
+                "ConfigDir",
                 "InputDirs",
                 "InputFiles",
                 "IncludePatterns",

@@ -97,6 +97,7 @@ public:
     void ProcessVisibleCritters(ptr<Critter> cr);
     void ProcessVisibleItems(ptr<Critter> cr);
     void ViewMap(ptr<Player> view_player, ptr<Map> map);
+    void ClearStaticMaps() noexcept;
 
 private:
     auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;

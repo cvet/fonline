@@ -45,14 +45,14 @@ HexView::HexView(ptr<MapView> map) :
     FO_STACK_TRACE_ENTRY();
 }
 
-auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
+auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
 
     ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    auto mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
+    auto mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid, sub_layer);
 
     _mapSpr = mspr;
     SetupSprite(mspr);
@@ -63,7 +63,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     return _mapSpr;
 }
 
-auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
+auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -75,7 +75,7 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
     auto& entry = _extraMapSpr->emplace_back();
 
     ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second);
+    entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second, sub_layer);
 
     auto map_spr = entry.first;
     FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");
@@ -143,7 +143,7 @@ void HexView::StartFade(uint8_t from_alpha)
 
     nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
 
-    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->FadingDuration};
+    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration};
     _fadeFromAlpha = from_alpha;
     _fading = true;
 
@@ -156,7 +156,7 @@ void HexView::EvaluateCurAlpha()
 
     if (_fading) {
         nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
-        int32_t fading_duration = _map->GetEngine()->Settings->FadingDuration;
+        int32_t fading_duration = _map->GetEngine()->Settings->View.FadingDuration;
         int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
         float32_t t = fading_duration == 0 ? 1.0f : 1.0f - numeric_cast<float32_t>(fading_remaining) / numeric_cast<float32_t>(fading_duration);
 

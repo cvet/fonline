@@ -44,6 +44,139 @@
 
 FO_BEGIN_NAMESPACE
 
+// Reports whether this binary targets the Web platform
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WebBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WEB != 0;
+}
+
+// Reports whether this binary targets Windows
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WindowsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0;
+}
+
+// Reports whether this binary targets Linux
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_LinuxBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_LINUX != 0;
+}
+
+// Reports whether this binary targets macOS
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MacOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_MAC != 0;
+}
+
+// Reports whether this binary targets Android
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_AndroidBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0;
+}
+
+// Reports whether this binary targets iOS
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_IOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_IOS != 0;
+}
+
+// Reports whether this binary targets a desktop platform
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DesktopBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0 || FO_LINUX != 0 || FO_MAC != 0;
+}
+
+// Reports whether this binary targets a tablet or mobile platform
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_TabletBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0 || FO_IOS != 0;
+}
+
+// Reports whether the configured map geometry is hexagonal
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapHexagonal(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::HEXAGONAL_GEOMETRY;
+}
+
+// Reports whether the configured map geometry is square
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapSquare(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::SQUARE_GEOMETRY;
+}
+
+// Returns the compile-time number of movement directions for the configured map geometry
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API int32_t Common_Game_MapDirCount(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::MAP_DIR_COUNT;
+}
+
+// Reports whether this is a native Debug build
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DebugBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_DEBUG != 0;
+}
+
+// Returns the language pack currently owned by this Engine instance
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_CurrentLanguage(ptr<BaseEngine> engine)
+{
+    return engine->GetCurLangName();
+}
+
+// Returns the source branch recorded when this binary was built
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitBranch(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_GIT_BRANCH);
+}
+
+// Returns the source revision recorded when this binary was built
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitCommit(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_BUILD_HASH);
+}
+
 // Development-only debugger trap; intentionally not an embedding-project compatibility contract
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
 // Triggers the platform debugger break primitive for the current process
@@ -52,7 +185,7 @@ FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
-    BreakIntoDebugger();
+    break_into_debugger();
 }
 
 // Writes the supplied text as one Engine log message
@@ -61,7 +194,7 @@ FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
 {
     ignore_unused(engine);
 
-    WriteLog("{}", text);
+    logging::write("{}", text);
 }
 
 // Requests application shutdown and marks the eventual process result as success or failure according to the argument
@@ -145,7 +278,7 @@ FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, string_vie
     ignore_unused(engine);
 
     size_t decode_length = text.length();
-    uint32_t ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    uint32_t ch = utf8::decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
 
     length = numeric_cast<int32_t>(decode_length);
     return ch;
@@ -158,7 +291,7 @@ FO_SCRIPT_API string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs
     ignore_unused(engine);
 
     char buf[4];
-    size_t len = utf8::Encode(ucs, buf);
+    size_t len = utf8::encode(ucs, buf);
     return {buf, len};
 }
 
@@ -679,7 +812,7 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timesp
 ///@ ExportMethod
 FO_SCRIPT_API LanguageName Common_Game_GetLanguage(ptr<BaseEngine> engine)
 {
-    return LanguageName {engine->Hashes.ToHashedString(engine->Settings->Language)};
+    return LanguageName {engine->Hashes.to_hashed_string(engine->GetCurLangName())};
 }
 
 // Schedules a repeating time event on this Engine instance, with its first firing after delay and later firings at repeat, and returns its id

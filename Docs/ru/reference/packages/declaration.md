@@ -4,9 +4,7 @@ document_id: generated-package-declaration
 locale: ru
 generated: true
 ---
-
 <!-- docs-translation: {"document_id":"generated-package-declaration","locale":"ru","source_path":"Docs/en/reference/packages/declaration.md","source_sha256":"c4b279fec1814e88588d32d9f3d865af926dec6cf52307f0daa5e33398407d36"} -->
-
 # Грамматика объявления пакетов
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/PackageInterface.json` или `BuildTools/package.py`, затем выполните `python BuildTools/docs_package.py --write`.

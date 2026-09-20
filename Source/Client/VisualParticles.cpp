@@ -100,15 +100,15 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
     return nullptr;
 }
 
-ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider) :
-    _impl {SafeAlloc::MakeUnique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings})},
+ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
+    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings, .DrawWireframe = std::move(draw_wireframe)})},
     _settings {settings},
     _gameTime {game_time}
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_settings->Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
+    if (_settings->Render.Animation3dFPS != 0) {
+        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
     }
 }
 
@@ -148,7 +148,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     auto backend = _impl->FindBackend(ext);
 
     if (!backend) {
-        WriteLog("Particle resource '{}' has an unsupported extension", name);
+        logging::write("Particle resource '{}' has an unsupported extension", name);
         return {};
     }
 
@@ -234,20 +234,20 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
     // The box corners are projected through the map camera tilt and then grown by the billboard radius, which is a
     // view-plane length the tilt must not touch; an effect that showed no particle falls back to a default square
     optional<ParticleBounds3D> baked = GetBakedBounds();
-    float32_t proj_factor = settings.ModelProjFactor;
+    float32_t proj_factor = settings.Render.ModelProjFactor;
     ParticleSpriteFrame layout;
 
     if (!baked) {
-        layout.DrawSize = {settings.DefaultParticleDrawWidth, settings.DefaultParticleDrawHeight};
-        layout.Offset = {0, settings.DefaultParticleDrawHeight / 4};
+        layout.DrawSize = {settings.Render.DefaultParticleDrawWidth, settings.Render.DefaultParticleDrawHeight};
+        layout.Offset = {0, settings.Render.DefaultParticleDrawHeight / 4};
         layout.ProjHeight = numeric_cast<float32_t>(layout.DrawSize.height) / proj_factor;
         layout.ProjWidth = numeric_cast<float32_t>(layout.DrawSize.width) / proj_factor;
         layout.World = glm::translate(mat44 {1.0f}, vec3 {layout.ProjWidth / 2.0f, layout.ProjHeight / 4.0f, 0.0f});
         return layout;
     }
 
-    float32_t cos_a = std::cos(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
-    float32_t sin_a = std::sin(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    float32_t cos_a = std::cos(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    float32_t sin_a = std::sin(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT);
     float32_t min_x = std::numeric_limits<float32_t>::max();
     float32_t max_x = std::numeric_limits<float32_t>::lowest();
     float32_t min_y = std::numeric_limits<float32_t>::max();
@@ -320,7 +320,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         .ViewOffset = view_offset,
         .LookDirectionAngle = look_dir_angle,
         .Scale = _scale,
-        .MapCameraAngle = _particleMngr->_settings->MapCameraAngle,
+        .MapCameraAngle = _particleMngr->_settings->Geometry.MapCameraAngle,
         .TiltInProjection = tilt_in_proj,
     };
 

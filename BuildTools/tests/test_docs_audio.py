@@ -30,57 +30,68 @@ class AudioDocumentationTests(unittest.TestCase):
         self.assertEqual(self.model, second)
         self.assertEqual(self.model["schema_version"], docs_audio.SCHEMA_VERSION)
         outputs = self.model["outputs"]
-        self.assertEqual(outputs["indexed_extensions"], ["wav", "acm", "ogg"])
-        self.assertEqual(outputs["decoder_extensions"], ["wav", "acm", "ogg"])
-        self.assertEqual(outputs["default_extension"], "acm")
-        self.assertEqual(outputs["wav"]["sample_bits"], [8, 16])
-        self.assertEqual(outputs["acm"]["sample_rate"], 22050)
+        self.assertEqual(outputs["indexed_extensions"], ["wav", "ogg"])
+        self.assertEqual(outputs["baker_extensions"], ["wav", "ogg"])
+        self.assertEqual(outputs["decoder_extensions"], ["ogg"])
+        self.assertFalse(outputs["missing_suffix_fallback"])
+        self.assertEqual(outputs["wav"]["format_tags"], [1, 3])
+        self.assertEqual(outputs["wav"]["sample_bits"], [8, 16, 24, 32])
         self.assertEqual(outputs["ogg"]["native_stream_chunk_bytes"], 65536)
         self.assertEqual(outputs["ogg"]["web_stream_chunk_bytes"], 131072)
         self.assertEqual(outputs["mix_volume_range"], [0, 100])
+        self.assertTrue(outputs["play_sound_returns_handle"])
+        self.assertTrue(outputs["placed_sound_updates"])
         self.assertFalse(outputs["headless_audio_enabled"])
-        self.assertFalse(outputs["unsupported_extension_rejected"])
-        self.assertEqual(outputs["native_test_files"], [])
-        self.assertEqual(self.model["summary"]["entry_count"], 32)
+        self.assertTrue(outputs["unsupported_extension_rejected"])
+        self.assertTrue(outputs["authored_extension_preserved"])
+        self.assertEqual(
+            outputs["native_test_files"],
+            [
+                "Source/Tests/Test_AudioBaker.cpp",
+                "Source/Tests/Test_AudioManager.cpp",
+            ],
+        )
+        self.assertEqual(self.model["summary"]["entry_count"], 31)
 
-    def test_runtime_formats_are_present_in_raw_copy_defaults(self) -> None:
+    def test_audio_uses_the_audio_baker_instead_of_raw_copy(self) -> None:
         outputs = self.model["outputs"]
-        self.assertLessEqual(
-            set(outputs["decoder_extensions"]), set(outputs["raw_copy_extensions"])
+        self.assertTrue(
+            set(outputs["baker_extensions"]).isdisjoint(outputs["raw_copy_extensions"])
         )
         self.assertEqual(
             outputs["audio_settings"],
             {"DisableAudio": False, "SoundVolume": 100, "MusicVolume": 100},
         )
 
-    def test_unsupported_extension_limitation_is_explicit(self) -> None:
-        source = (ENGINE_ROOT / "Source/Client/SoundManager.cpp").read_text(
+    def test_baker_and_runtime_decoder_boundary_is_explicit(self) -> None:
+        baker = (ENGINE_ROOT / "Source/Tools/AudioBaker.cpp").read_text(
+            encoding="utf-8"
+        )
+        manager = (ENGINE_ROOT / "Source/Client/AudioManager.cpp").read_text(
             encoding="utf-8"
         )
 
-        load_begin = source.index("auto SoundManager::Load(")
-        load_end = source.index("auto SoundManager::LoadWav", load_begin)
-        load = source[load_begin:load_end]
-        enqueue = load.index("_playingSounds.emplace_back")
-        self.assertNotIn("Unsupported sound format", load)
-        self.assertIn("if (ext == \"wav\"", load[:enqueue])
-        self.assertIn("if (ext == \"acm\"", load[:enqueue])
-        self.assertIn("if (ext == \"ogg\"", load[:enqueue])
+        self.assertIn('{"wav"}', baker)
+        self.assertIn("ext == NATIVE_EXTENSION", baker)
+        self.assertIn("VerifyVorbisStream", baker)
+        self.assertIn("ov_open_callbacks", manager)
+        self.assertNotIn('ext == "wav"', manager)
 
-    def test_effect_identity_variants_and_music_path_are_pinned(self) -> None:
-        sound = (ENGINE_ROOT / "Source/Client/SoundManager.cpp").read_text(
+    def test_exact_paths_handles_and_placement_are_pinned(self) -> None:
+        audio = (ENGINE_ROOT / "Source/Client/AudioManager.cpp").read_text(
             encoding="utf-8"
         )
-        resources = (ENGINE_ROOT / "Source/Client/ResourceManager.cpp").read_text(
+        scripts = (
+            ENGINE_ROOT / "Source/Scripting/ClientGlobalScriptMethods.cpp"
+        ).read_text(
             encoding="utf-8"
         )
 
-        self.assertIn('{"wav", "acm", "ogg"}', resources)
-        self.assertIn("erase_file_extension().lower()", resources)
-        self.assertIn("erase_file_extension().lower()", sound)
-        self.assertIn("sound_name, count + 1", sound)
-        self.assertIn("_randomGenerator.next_between(1, count)", sound)
-        self.assertIn("return Load(fname, true, repeat_time)", sound)
+        self.assertIn("_resources->ReadFile(fname)", audio)
+        self.assertIn("auto AudioManager::PlaySound", audio)
+        self.assertIn("auto AudioManager::UpdateSound", audio)
+        self.assertIn("return Load(fname, true, repeat_time, 1.0f, 0.0f) != 0", audio)
+        self.assertIn("Client_Game_UpdateSound", scripts)
 
     def test_manifest_entries_keep_live_source_anchors(self) -> None:
         for collection in docs_audio.COLLECTION_KINDS:
@@ -115,8 +126,9 @@ class AudioDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(heading, guide)
         self.assertIn("not a resource-existence check", guide)
-        self.assertIn("first missing number", guide)
-        self.assertIn("no focused native `SoundManager`", guide)
+        self.assertIn("exact baked resource path", guide)
+        self.assertIn("`Game.UpdateSound`", guide)
+        self.assertIn("`Test_AudioBaker`", guide)
         self.assertIn("licenses", guide)
 
     def test_changed_derived_manifest_values_are_rejected(self) -> None:
@@ -139,33 +151,33 @@ class AudioDocumentationTests(unittest.TestCase):
 
         self.assertEqual(set(pages), set(docs_audio.OUTPUT_PATHS))
         self.assertIn(
-            "Runtime formats | <code>.wav</code>, <code>.acm</code>, "
-            "<code>.ogg</code>",
+            "Runtime formats | <code>.ogg</code>",
             pages["Docs/en/reference/audio/index.md"],
         )
         self.assertIn("audio.format.wav", pages["Docs/en/reference/audio/formats.md"])
         self.assertIn(
-            "Duplicate-stem precedence", pages["Docs/en/reference/audio/delivery.md"]
+            "Source extension and payload separation",
+            pages["Docs/en/reference/audio/delivery.md"],
         )
         self.assertIn("Ogg streaming", pages["Docs/en/reference/audio/decoding.md"])
         self.assertIn(
-            "Contiguous numbered variants",
+            "Placed sound update",
             pages["Docs/en/reference/audio/playback.md"],
         )
         self.assertIn(
-            "no focused native decoder/playback fixture",
+            "Test_AudioBaker and Test_AudioManager",
             pages["Docs/en/reference/audio/validation.md"],
         )
         self.assertIn(
-            "Доставка raw copy",
+            "Доставка через AudioBaker",
             pages["Docs/ru/reference/audio/delivery.md"],
         )
         self.assertIn(
-            "Устаревшие эффекты и музыка, полностью декодируемые",
+            "Авторский вход, преобразуемый",
             pages["Docs/ru/reference/audio/formats.md"],
         )
         self.assertIn(
-            "Сейчас нет сфокусированного нативного fixture",
+            "Test_AudioBaker и Test_AudioManager",
             pages["Docs/ru/reference/audio/validation.md"],
         )
         self.assertNotIn(

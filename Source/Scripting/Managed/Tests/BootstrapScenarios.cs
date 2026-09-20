@@ -63,8 +63,16 @@ internal static class BootstrapScenarios
                 }
             }
             else if (OwnershipProbe.Initialized != 1 ||
-                     !Native.RegisteredFunctions.SequenceEqual(new[] { "OwnershipProbe::Registered" }) ||
-                     !Native.RegisteredRemoteCalls.SequenceEqual(new[] { "RemoteProbe" })) {
+                     !Native.RegisteredFunctions
+                          .Where(name => name.StartsWith("OwnershipProbe::", StringComparison.Ordinal))
+                          .SequenceEqual(new[] {
+                              "OwnershipProbe::NativeEntry:CallableFromNative",
+                              "OwnershipProbe::Registered:BootstrapHandler",
+                          }) ||
+                     // Reflection does not order types across an assembly, and the naming probes declare
+                     // remote calls of their own, so the registered set is compared sorted
+                     !Native.RegisteredRemoteCalls.OrderBy(name => name, StringComparer.Ordinal)
+                          .SequenceEqual(new[] { "AsyncRemote", "RemoteProbe", "VoidRemote" })) {
                 throw new InvalidOperationException(
                     "Managed initialization and registrations depend on the working directory");
             }
@@ -108,6 +116,18 @@ internal static class OwnershipProbe
 
     [BootstrapHandler]
     public static void Registered()
+    {
+    }
+
+    // Native code reaches it by name, so it is published in the global function map
+    [CallableFromNative]
+    public static void NativeEntry()
+    {
+    }
+
+    // ScriptFunc.Invoke finds it by reflection; nothing is published for it
+    [CallableByName]
+    public static void NamedOnly()
     {
     }
 

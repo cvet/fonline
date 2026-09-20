@@ -7,9 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/smart-pointers.html
 ---
 
 # Умные указатели
-
-<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"4fd60f2e817a1c1b0da43bab015e10323067cac06e084689feb06c34b12894d5"} -->
-
+<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"7a3112e49c059a2dcc8810339ed00d0b80f22bf043a9c33001ef6ebb3ee0c004"} -->
 > Документация движка. Эта страница определяет словарь native C++-указателей
 > из `Source/Essentials/SmartPointers.h`: владение, nullability, правила
 > миграции и требования к проверке.
@@ -143,7 +141,7 @@ intrusive-refcountable, и borrowed `nptr<U>` для mixin/interface без refc
 `hold_ref()` / `try_hold_ref()` для intrusive refs,
 `adopt_unique_ptr(ptr<T>)` для scalar unique adoption,
 `make_unique_del_ptr(...)` для custom deleter, `take_not_null()` для narrowing
-nullable owner и `SafeAlloc::MakeShared(...)` / domain factory для shared
+nullable owner и `safe_alloc::make_shared(...)` / domain factory для shared
 ownership. Неявного перехода `ptr<T>` / `nptr<T>` в owner нет.
 
 Если суженный `ptr<T>` действительно сосуществует с nullable в одной области,
@@ -235,7 +233,7 @@ moved-from или resettable состояния. Typed C array/buffer индек
 `shared_ptr<T>` и `weak_ptr<T>` являются собственными shared-ownership типами
 движка, без `std::shared_ptr` внутри. Atomic control block владеет объектом через
 strong count и собой через weak count; объект размещён в той же allocation
-через `SafeAlloc::MakeShared()`, а virtual destruction hook не требует полного
+через `safe_alloc::make_shared()`, а virtual destruction hook не требует полного
 pointee type у holder. Типы с `shared_from_this()` / `weak_from_this()`
 наследуются от `enable_shared_from_this<T>`; factory подключает embedded weak
 reference после construction, поэтому использовать его в constructor нельзя.

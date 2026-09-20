@@ -16,8 +16,14 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-audio-disableaudio-32a243de6a"></a>
 - [`symbol-setting-client-audio-disableaudio-32a243de6a`](../../en/reference/script-api/settings.md#symbol-setting-client-audio-disableaudio-32a243de6a)
 
+<a id="symbol-setting-client-audio-mixrate-4e7471513e"></a>
+- [`symbol-setting-client-audio-mixrate-4e7471513e`](../../en/reference/script-api/settings.md#symbol-setting-client-audio-mixrate-4e7471513e)
+
 <a id="symbol-setting-client-audio-musicvolume-114a8484f5"></a>
 - [`symbol-setting-client-audio-musicvolume-114a8484f5`](../../en/reference/script-api/settings.md#symbol-setting-client-audio-musicvolume-114a8484f5)
+
+<a id="symbol-setting-client-audio-soundfileextensions-2b0680be5d"></a>
+- [`symbol-setting-client-audio-soundfileextensions-2b0680be5d`](../../en/reference/script-api/settings.md#symbol-setting-client-audio-soundfileextensions-2b0680be5d)
 
 <a id="symbol-setting-client-audio-soundvolume-768f001fe6"></a>
 - [`symbol-setting-client-audio-soundvolume-768f001fe6`](../../en/reference/script-api/settings.md#symbol-setting-client-audio-soundvolume-768f001fe6)
@@ -41,23 +47,14 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-client-forceembeddedruntime-40af77bdba"></a>
 - [`symbol-setting-client-client-forceembeddedruntime-40af77bdba`](../../en/reference/script-api/settings.md#symbol-setting-client-client-forceembeddedruntime-40af77bdba)
 
-<a id="symbol-setting-client-client-helpinfo-bdc23e6736"></a>
-- [`symbol-setting-client-client-helpinfo-bdc23e6736`](../../en/reference/script-api/settings.md#symbol-setting-client-client-helpinfo-bdc23e6736)
-
 <a id="symbol-setting-client-client-language-1ff7f1a4bb"></a>
 - [`symbol-setting-client-client-language-1ff7f1a4bb`](../../en/reference/script-api/settings.md#symbol-setting-client-client-language-1ff7f1a4bb)
-
-<a id="symbol-setting-client-client-soundnotify-281592b5a8"></a>
-- [`symbol-setting-client-client-soundnotify-281592b5a8`](../../en/reference/script-api/settings.md#symbol-setting-client-client-soundnotify-281592b5a8)
 
 <a id="symbol-setting-client-client-updaterinfodelay-0fc0e5f047"></a>
 - [`symbol-setting-client-client-updaterinfodelay-0fc0e5f047`](../../en/reference/script-api/settings.md#symbol-setting-client-client-updaterinfodelay-0fc0e5f047)
 
 <a id="symbol-setting-client-client-updaterinfopos-2eaf87eabe"></a>
 - [`symbol-setting-client-client-updaterinfopos-2eaf87eabe`](../../en/reference/script-api/settings.md#symbol-setting-client-client-updaterinfopos-2eaf87eabe)
-
-<a id="symbol-setting-client-client-winnotify-fa68e5db67"></a>
-- [`symbol-setting-client-client-winnotify-fa68e5db67`](../../en/reference/script-api/settings.md#symbol-setting-client-client-winnotify-fa68e5db67)
 
 <a id="group-setting-client-clientnetwork-e57fba69e1"></a>
 - [`group-setting-client-clientnetwork-e57fba69e1`](../../en/reference/script-api/settings.md#group-setting-client-clientnetwork-e57fba69e1)
@@ -68,9 +65,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-client-clientnetwork-debugnet-d974b7bb2e"></a>
 - [`symbol-setting-client-clientnetwork-debugnet-d974b7bb2e`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-debugnet-d974b7bb2e)
-
-<a id="symbol-setting-client-clientnetwork-ping-b32257ffc9"></a>
-- [`symbol-setting-client-clientnetwork-ping-b32257ffc9`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-ping-b32257ffc9)
 
 <a id="symbol-setting-client-clientnetwork-pingperiod-decb196246"></a>
 - [`symbol-setting-client-clientnetwork-pingperiod-decb196246`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-pingperiod-decb196246)
@@ -119,62 +113,14 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-hex-fullscreenmousescroll-7629a54695"></a>
 - [`symbol-setting-client-hex-fullscreenmousescroll-7629a54695`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-fullscreenmousescroll-7629a54695)
 
-<a id="symbol-setting-client-hex-roofalpha-41657d843b"></a>
-- [`symbol-setting-client-hex-roofalpha-41657d843b`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-roofalpha-41657d843b)
-
 <a id="symbol-setting-client-hex-scrollblocksize-e09c64acf8"></a>
 - [`symbol-setting-client-hex-scrollblocksize-e09c64acf8`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollblocksize-e09c64acf8)
 
 <a id="symbol-setting-client-hex-scrollfixeddt-2d02873cfc"></a>
 - [`symbol-setting-client-hex-scrollfixeddt-2d02873cfc`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollfixeddt-2d02873cfc)
 
-<a id="symbol-setting-client-hex-scrollkeybdown-b6fda1e032"></a>
-- [`symbol-setting-client-hex-scrollkeybdown-b6fda1e032`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollkeybdown-b6fda1e032)
-
-<a id="symbol-setting-client-hex-scrollkeybleft-b6216e5849"></a>
-- [`symbol-setting-client-hex-scrollkeybleft-b6216e5849`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollkeybleft-b6216e5849)
-
-<a id="symbol-setting-client-hex-scrollkeybright-b07cda7c39"></a>
-- [`symbol-setting-client-hex-scrollkeybright-b07cda7c39`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollkeybright-b07cda7c39)
-
-<a id="symbol-setting-client-hex-scrollkeybup-4bf8024877"></a>
-- [`symbol-setting-client-hex-scrollkeybup-4bf8024877`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollkeybup-4bf8024877)
-
-<a id="symbol-setting-client-hex-scrollmousedown-e5431409e6"></a>
-- [`symbol-setting-client-hex-scrollmousedown-e5431409e6`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollmousedown-e5431409e6)
-
-<a id="symbol-setting-client-hex-scrollmouseleft-8037608f62"></a>
-- [`symbol-setting-client-hex-scrollmouseleft-8037608f62`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollmouseleft-8037608f62)
-
-<a id="symbol-setting-client-hex-scrollmouseright-cca00654cd"></a>
-- [`symbol-setting-client-hex-scrollmouseright-cca00654cd`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollmouseright-cca00654cd)
-
-<a id="symbol-setting-client-hex-scrollmouseup-3f4260a9f1"></a>
-- [`symbol-setting-client-hex-scrollmouseup-3f4260a9f1`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollmouseup-3f4260a9f1)
-
 <a id="symbol-setting-client-hex-scrollspeed-d92b064256"></a>
 - [`symbol-setting-client-hex-scrollspeed-d92b064256`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-scrollspeed-d92b064256)
-
-<a id="symbol-setting-client-hex-showcrit-79a357dc65"></a>
-- [`symbol-setting-client-hex-showcrit-79a357dc65`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-showcrit-79a357dc65)
-
-<a id="symbol-setting-client-hex-showfast-4c10b8401e"></a>
-- [`symbol-setting-client-hex-showfast-4c10b8401e`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-showfast-4c10b8401e)
-
-<a id="symbol-setting-client-hex-showitem-37cb228888"></a>
-- [`symbol-setting-client-hex-showitem-37cb228888`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-showitem-37cb228888)
-
-<a id="symbol-setting-client-hex-showroof-57bd37aaae"></a>
-- [`symbol-setting-client-hex-showroof-57bd37aaae`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-showroof-57bd37aaae)
-
-<a id="symbol-setting-client-hex-showscen-b3a3767ade"></a>
-- [`symbol-setting-client-hex-showscen-b3a3767ade`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-showscen-b3a3767ade)
-
-<a id="symbol-setting-client-hex-showtile-c58bccd856"></a>
-- [`symbol-setting-client-hex-showtile-c58bccd856`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-showtile-c58bccd856)
-
-<a id="symbol-setting-client-hex-showwall-0a730b3a7f"></a>
-- [`symbol-setting-client-hex-showwall-0a730b3a7f`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-showwall-0a730b3a7f)
 
 <a id="symbol-setting-client-hex-windowedmousescroll-7a9fbf0d06"></a>
 - [`symbol-setting-client-hex-windowedmousescroll-7a9fbf0d06`](../../en/reference/script-api/settings.md#symbol-setting-client-hex-windowedmousescroll-7a9fbf0d06)
@@ -195,9 +141,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-input-disablegamepad-83af04e168"></a>
 - [`symbol-setting-client-input-disablegamepad-83af04e168`](../../en/reference/script-api/settings.md#symbol-setting-client-input-disablegamepad-83af04e168)
 
-<a id="symbol-setting-client-input-doubleclicktime-95d907a66f"></a>
-- [`symbol-setting-client-input-doubleclicktime-95d907a66f`](../../en/reference/script-api/settings.md#symbol-setting-client-input-doubleclicktime-95d907a66f)
-
 <a id="group-setting-client-mapper-c7a5b1fe95"></a>
 - [`group-setting-client-mapper-c7a5b1fe95`](../../en/reference/script-api/settings.md#group-setting-client-mapper-c7a5b1fe95)
 
@@ -216,9 +159,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-client-mapper-particlepreviewseed-db72c9569f"></a>
 - [`symbol-setting-client-mapper-particlepreviewseed-db72c9569f`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-particlepreviewseed-db72c9569f)
-
-<a id="symbol-setting-client-mapper-splittilescollection-78fa7b7987"></a>
-- [`symbol-setting-client-mapper-splittilescollection-78fa7b7987`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-splittilescollection-78fa7b7987)
 
 <a id="symbol-setting-client-mapper-starthexx-1ee5ec8cbf"></a>
 - [`symbol-setting-client-mapper-starthexx-1ee5ec8cbf`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-starthexx-1ee5ec8cbf)
@@ -318,6 +258,31 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-web-verticalposfactor-8919a9416f"></a>
 - [`symbol-setting-client-web-verticalposfactor-8919a9416f`](../../en/reference/script-api/settings.md#symbol-setting-client-web-verticalposfactor-8919a9416f)
 
+<a id="group-setting-common-angelscript-d2900d7f25"></a>
+- [`group-setting-common-angelscript-d2900d7f25`](../../en/reference/script-api/settings.md#group-setting-common-angelscript-d2900d7f25)
+
+## <code>AngelScript</code> (common)
+
+Continue with the [canonical reference](../../en/reference/script-api/settings.md).
+
+<a id="symbol-setting-common-angelscript-attributedfunctiondirectcallallowednamespaces-f9282535a2"></a>
+- [`symbol-setting-common-angelscript-attributedfunctiondirectcallallowednamespaces-f9282535a2`](../../en/reference/script-api/settings.md#symbol-setting-common-angelscript-attributedfunctiondirectcallallowednamespaces-f9282535a2)
+
+<a id="symbol-setting-common-angelscript-debuggerbindhost-e941af1154"></a>
+- [`symbol-setting-common-angelscript-debuggerbindhost-e941af1154`](../../en/reference/script-api/settings.md#symbol-setting-common-angelscript-debuggerbindhost-e941af1154)
+
+<a id="symbol-setting-common-angelscript-debuggerenabled-dfef49136b"></a>
+- [`symbol-setting-common-angelscript-debuggerenabled-dfef49136b`](../../en/reference/script-api/settings.md#symbol-setting-common-angelscript-debuggerenabled-dfef49136b)
+
+<a id="symbol-setting-common-angelscript-extradirectcallblockingattributes-c1aa6b4536"></a>
+- [`symbol-setting-common-angelscript-extradirectcallblockingattributes-c1aa6b4536`](../../en/reference/script-api/settings.md#symbol-setting-common-angelscript-extradirectcallblockingattributes-c1aa6b4536)
+
+<a id="symbol-setting-common-angelscript-mutableglobalsallowednamespaces-c55a17f77a"></a>
+- [`symbol-setting-common-angelscript-mutableglobalsallowednamespaces-c55a17f77a`](../../en/reference/script-api/settings.md#symbol-setting-common-angelscript-mutableglobalsallowednamespaces-c55a17f77a)
+
+<a id="symbol-setting-common-angelscript-overrunreporttime-892a0b9f92"></a>
+- [`symbol-setting-common-angelscript-overrunreporttime-892a0b9f92`](../../en/reference/script-api/settings.md#symbol-setting-common-angelscript-overrunreporttime-892a0b9f92)
+
 <a id="group-setting-common-baking-797a51abd4"></a>
 - [`group-setting-common-baking-797a51abd4`](../../en/reference/script-api/settings.md#group-setting-common-baking-797a51abd4)
 
@@ -327,6 +292,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-baking-allowrepeatedprotoparents-97cd61d621"></a>
 - [`symbol-setting-common-baking-allowrepeatedprotoparents-97cd61d621`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-allowrepeatedprotoparents-97cd61d621)
+
+<a id="symbol-setting-common-baking-audiovorbisquality-56d92616a4"></a>
+- [`symbol-setting-common-baking-audiovorbisquality-56d92616a4`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-audiovorbisquality-56d92616a4)
 
 <a id="symbol-setting-common-baking-bakelanguages-a90a38931a"></a>
 - [`symbol-setting-common-baking-bakelanguages-a90a38931a`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-bakelanguages-a90a38931a)
@@ -340,20 +308,17 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-cacheresources-cd5fff4a62"></a>
 - [`symbol-setting-common-baking-cacheresources-cd5fff4a62`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-cacheresources-cd5fff4a62)
 
-<a id="symbol-setting-common-baking-clientresourceentries-d7e54c80c9"></a>
-- [`symbol-setting-common-baking-clientresourceentries-d7e54c80c9`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-clientresourceentries-d7e54c80c9)
-
 <a id="symbol-setting-common-baking-clientresources-95068886ad"></a>
 - [`symbol-setting-common-baking-clientresources-95068886ad`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-clientresources-95068886ad)
 
 <a id="symbol-setting-common-baking-forcebaking-70ea452460"></a>
 - [`symbol-setting-common-baking-forcebaking-70ea452460`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-forcebaking-70ea452460)
 
+<a id="symbol-setting-common-baking-ignoreinputdirs-26831c8a1d"></a>
+- [`symbol-setting-common-baking-ignoreinputdirs-26831c8a1d`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-ignoreinputdirs-26831c8a1d)
+
 <a id="symbol-setting-common-baking-ignoremissingbakerwarning-9c19e984a5"></a>
 - [`symbol-setting-common-baking-ignoremissingbakerwarning-9c19e984a5`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-ignoremissingbakerwarning-9c19e984a5)
-
-<a id="symbol-setting-common-baking-mapperresourceentries-5b8b1a3ad9"></a>
-- [`symbol-setting-common-baking-mapperresourceentries-5b8b1a3ad9`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-mapperresourceentries-5b8b1a3ad9)
 
 <a id="symbol-setting-common-baking-modelattachmentmaxextent-fe9708a7d0"></a>
 - [`symbol-setting-common-baking-modelattachmentmaxextent-fe9708a7d0`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-modelattachmentmaxextent-fe9708a7d0)
@@ -372,9 +337,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-baking-rawcopyfileextensions-d940fab20a"></a>
 - [`symbol-setting-common-baking-rawcopyfileextensions-d940fab20a`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-rawcopyfileextensions-d940fab20a)
-
-<a id="symbol-setting-common-baking-serverresourceentries-95f8ff8bc2"></a>
-- [`symbol-setting-common-baking-serverresourceentries-95f8ff8bc2`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-serverresourceentries-95f8ff8bc2)
 
 <a id="symbol-setting-common-baking-serverresources-a26d5fb8d9"></a>
 - [`symbol-setting-common-baking-serverresources-a26d5fb8d9`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-serverresources-a26d5fb8d9)
@@ -395,26 +357,11 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-common-asynclogwrite-8e19fe00c1"></a>
 - [`symbol-setting-common-common-asynclogwrite-8e19fe00c1`](../../en/reference/script-api/settings.md#symbol-setting-common-common-asynclogwrite-8e19fe00c1)
 
-<a id="symbol-setting-common-common-commandline-baea3e0bfe"></a>
-- [`symbol-setting-common-common-commandline-baea3e0bfe`](../../en/reference/script-api/settings.md#symbol-setting-common-common-commandline-baea3e0bfe)
-
-<a id="symbol-setting-common-common-commandlineargs-d82334ed3f"></a>
-- [`symbol-setting-common-common-commandlineargs-d82334ed3f`](../../en/reference/script-api/settings.md#symbol-setting-common-common-commandlineargs-d82334ed3f)
-
-<a id="symbol-setting-common-common-debugbuild-64756f5331"></a>
-- [`symbol-setting-common-common-debugbuild-64756f5331`](../../en/reference/script-api/settings.md#symbol-setting-common-common-debugbuild-64756f5331)
-
 <a id="symbol-setting-common-common-gamename-30a49525a3"></a>
 - [`symbol-setting-common-common-gamename-30a49525a3`](../../en/reference/script-api/settings.md#symbol-setting-common-common-gamename-30a49525a3)
 
 <a id="symbol-setting-common-common-gameversion-f0d7a8abd7"></a>
 - [`symbol-setting-common-common-gameversion-f0d7a8abd7`](../../en/reference/script-api/settings.md#symbol-setting-common-common-gameversion-f0d7a8abd7)
-
-<a id="symbol-setting-common-common-gitbranch-785e50c0b5"></a>
-- [`symbol-setting-common-common-gitbranch-785e50c0b5`](../../en/reference/script-api/settings.md#symbol-setting-common-common-gitbranch-785e50c0b5)
-
-<a id="symbol-setting-common-common-gitcommit-e958b26ab9"></a>
-- [`symbol-setting-common-common-gitcommit-e958b26ab9`](../../en/reference/script-api/settings.md#symbol-setting-common-common-gitcommit-e958b26ab9)
 
 <a id="symbol-setting-common-common-packaged-c8c19fc0e2"></a>
 - [`symbol-setting-common-common-packaged-c8c19fc0e2`](../../en/reference/script-api/settings.md#symbol-setting-common-common-packaged-c8c19fc0e2)
@@ -444,9 +391,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-geometry-mapdataprefix-ccc93b6d1a"></a>
 - [`symbol-setting-common-geometry-mapdataprefix-ccc93b6d1a`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-mapdataprefix-ccc93b6d1a)
 
-<a id="symbol-setting-common-geometry-mapdircount-98e6923b25"></a>
-- [`symbol-setting-common-geometry-mapdircount-98e6923b25`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-mapdircount-98e6923b25)
-
 <a id="symbol-setting-common-geometry-mapfreemovement-8e982fc4b4"></a>
 - [`symbol-setting-common-geometry-mapfreemovement-8e982fc4b4`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-mapfreemovement-8e982fc4b4)
 
@@ -459,23 +403,72 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-geometry-maphexwidth-52b0adc5a6"></a>
 - [`symbol-setting-common-geometry-maphexwidth-52b0adc5a6`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-maphexwidth-52b0adc5a6)
 
-<a id="symbol-setting-common-geometry-maphexagonal-648839a033"></a>
-- [`symbol-setting-common-geometry-maphexagonal-648839a033`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-maphexagonal-648839a033)
-
 <a id="symbol-setting-common-geometry-maproofelevation-4182761e14"></a>
 - [`symbol-setting-common-geometry-maproofelevation-4182761e14`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-maproofelevation-4182761e14)
 
 <a id="symbol-setting-common-geometry-mapsmoothpath-5ce931bfc3"></a>
 - [`symbol-setting-common-geometry-mapsmoothpath-5ce931bfc3`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-mapsmoothpath-5ce931bfc3)
 
-<a id="symbol-setting-common-geometry-mapsquare-73070b1fc3"></a>
-- [`symbol-setting-common-geometry-mapsquare-73070b1fc3`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-mapsquare-73070b1fc3)
-
 <a id="symbol-setting-common-geometry-maptilestep-6eb35cfd35"></a>
 - [`symbol-setting-common-geometry-maptilestep-6eb35cfd35`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-maptilestep-6eb35cfd35)
 
 <a id="symbol-setting-common-geometry-maxpathfindlength-a08551c618"></a>
 - [`symbol-setting-common-geometry-maxpathfindlength-a08551c618`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-maxpathfindlength-a08551c618)
+
+<a id="group-setting-common-managedscript-73a9d4606a"></a>
+- [`group-setting-common-managedscript-73a9d4606a`](../../en/reference/script-api/settings.md#group-setting-common-managedscript-73a9d4606a)
+
+## <code>ManagedScript</code> (common)
+
+Continue with the [canonical reference](../../en/reference/script-api/settings.md).
+
+<a id="symbol-setting-common-managedscript-additionalfiles-e6d6238d1c"></a>
+- [`symbol-setting-common-managedscript-additionalfiles-e6d6238d1c`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-additionalfiles-e6d6238d1c)
+
+<a id="symbol-setting-common-managedscript-analysislevel-bce88f2eac"></a>
+- [`symbol-setting-common-managedscript-analysislevel-bce88f2eac`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-analysislevel-bce88f2eac)
+
+<a id="symbol-setting-common-managedscript-analysismode-ae79c0363e"></a>
+- [`symbol-setting-common-managedscript-analysismode-ae79c0363e`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-analysismode-ae79c0363e)
+
+<a id="symbol-setting-common-managedscript-analyzerpackages-8d2ae9a176"></a>
+- [`symbol-setting-common-managedscript-analyzerpackages-8d2ae9a176`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-analyzerpackages-8d2ae9a176)
+
+<a id="symbol-setting-common-managedscript-analyzers-4a971dfc2c"></a>
+- [`symbol-setting-common-managedscript-analyzers-4a971dfc2c`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-analyzers-4a971dfc2c)
+
+<a id="symbol-setting-common-managedscript-assemblies-da91a38091"></a>
+- [`symbol-setting-common-managedscript-assemblies-da91a38091`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-assemblies-da91a38091)
+
+<a id="symbol-setting-common-managedscript-bakerdryrun-4deada73d4"></a>
+- [`symbol-setting-common-managedscript-bakerdryrun-4deada73d4`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-bakerdryrun-4deada73d4)
+
+<a id="symbol-setting-common-managedscript-deeptrackentitywrappers-bbf6341b48"></a>
+- [`symbol-setting-common-managedscript-deeptrackentitywrappers-bbf6341b48`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-deeptrackentitywrappers-bbf6341b48)
+
+<a id="symbol-setting-common-managedscript-dirs-05c5da2dcc"></a>
+- [`symbol-setting-common-managedscript-dirs-05c5da2dcc`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-dirs-05c5da2dcc)
+
+<a id="symbol-setting-common-managedscript-extrareferences-da43f416e4"></a>
+- [`symbol-setting-common-managedscript-extrareferences-da43f416e4`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-extrareferences-da43f416e4)
+
+<a id="symbol-setting-common-managedscript-extrasources-aca9485dbc"></a>
+- [`symbol-setting-common-managedscript-extrasources-aca9485dbc`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-extrasources-aca9485dbc)
+
+<a id="symbol-setting-common-managedscript-generateddir-36d017e3cc"></a>
+- [`symbol-setting-common-managedscript-generateddir-36d017e3cc`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-generateddir-36d017e3cc)
+
+<a id="symbol-setting-common-managedscript-msbuild-3f0ba2d551"></a>
+- [`symbol-setting-common-managedscript-msbuild-3f0ba2d551`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-msbuild-3f0ba2d551)
+
+<a id="symbol-setting-common-managedscript-overrunreporttime-5735c4c2d7"></a>
+- [`symbol-setting-common-managedscript-overrunreporttime-5735c4c2d7`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-overrunreporttime-5735c4c2d7)
+
+<a id="symbol-setting-common-managedscript-projectname-a78932f585"></a>
+- [`symbol-setting-common-managedscript-projectname-a78932f585`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-projectname-a78932f585)
+
+<a id="symbol-setting-common-managedscript-targetframework-daea779031"></a>
+- [`symbol-setting-common-managedscript-targetframework-daea779031`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-targetframework-daea779031)
 
 <a id="group-setting-common-network-2eb56a077e"></a>
 - [`group-setting-common-network-2eb56a077e`](../../en/reference/script-api/settings.md#group-setting-common-network-2eb56a077e)
@@ -546,37 +539,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-network-websocketport-4961a50a5b"></a>
 - [`symbol-setting-common-network-websocketport-4961a50a5b`](../../en/reference/script-api/settings.md#symbol-setting-common-network-websocketport-4961a50a5b)
-
-<a id="group-setting-common-platform-e070a993e6"></a>
-- [`group-setting-common-platform-e070a993e6`](../../en/reference/script-api/settings.md#group-setting-common-platform-e070a993e6)
-
-## <code>Platform</code> (common)
-
-Continue with the [canonical reference](../../en/reference/script-api/settings.md).
-
-<a id="symbol-setting-common-platform-androidbuild-d0b291ae05"></a>
-- [`symbol-setting-common-platform-androidbuild-d0b291ae05`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-androidbuild-d0b291ae05)
-
-<a id="symbol-setting-common-platform-desktopbuild-eb5260c762"></a>
-- [`symbol-setting-common-platform-desktopbuild-eb5260c762`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-desktopbuild-eb5260c762)
-
-<a id="symbol-setting-common-platform-iosbuild-3cc923c794"></a>
-- [`symbol-setting-common-platform-iosbuild-3cc923c794`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-iosbuild-3cc923c794)
-
-<a id="symbol-setting-common-platform-linuxbuild-0f16cc4f7e"></a>
-- [`symbol-setting-common-platform-linuxbuild-0f16cc4f7e`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-linuxbuild-0f16cc4f7e)
-
-<a id="symbol-setting-common-platform-macosbuild-36ba7763e8"></a>
-- [`symbol-setting-common-platform-macosbuild-36ba7763e8`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-macosbuild-36ba7763e8)
-
-<a id="symbol-setting-common-platform-tabletbuild-6f2a7a06d1"></a>
-- [`symbol-setting-common-platform-tabletbuild-6f2a7a06d1`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-tabletbuild-6f2a7a06d1)
-
-<a id="symbol-setting-common-platform-webbuild-d07254caa1"></a>
-- [`symbol-setting-common-platform-webbuild-d07254caa1`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-webbuild-d07254caa1)
-
-<a id="symbol-setting-common-platform-windowsbuild-4fc9622d68"></a>
-- [`symbol-setting-common-platform-windowsbuild-4fc9622d68`](../../en/reference/script-api/settings.md#symbol-setting-common-platform-windowsbuild-4fc9622d68)
 
 <a id="group-setting-common-render-c4641bbc76"></a>
 - [`group-setting-common-render-c4641bbc76`](../../en/reference/script-api/settings.md#group-setting-common-render-c4641bbc76)
@@ -738,61 +700,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-render-windowresizable-00e3ea991d"></a>
 - [`symbol-setting-common-render-windowresizable-00e3ea991d`](../../en/reference/script-api/settings.md#symbol-setting-common-render-windowresizable-00e3ea991d)
 
-<a id="group-setting-common-script-bd0522902a"></a>
-- [`group-setting-common-script-bd0522902a`](../../en/reference/script-api/settings.md#group-setting-common-script-bd0522902a)
-
-## <code>Script</code> (common)
-
-Continue with the [canonical reference](../../en/reference/script-api/settings.md).
-
-<a id="symbol-setting-common-script-attributedfunctiondirectcallallowednamespaces-fdc0163f71"></a>
-- [`symbol-setting-common-script-attributedfunctiondirectcallallowednamespaces-fdc0163f71`](../../en/reference/script-api/settings.md#symbol-setting-common-script-attributedfunctiondirectcallallowednamespaces-fdc0163f71)
-
-<a id="symbol-setting-common-script-debuggerbindhost-8511249239"></a>
-- [`symbol-setting-common-script-debuggerbindhost-8511249239`](../../en/reference/script-api/settings.md#symbol-setting-common-script-debuggerbindhost-8511249239)
-
-<a id="symbol-setting-common-script-debuggerenabled-ddd3011b48"></a>
-- [`symbol-setting-common-script-debuggerenabled-ddd3011b48`](../../en/reference/script-api/settings.md#symbol-setting-common-script-debuggerenabled-ddd3011b48)
-
-<a id="symbol-setting-common-script-extradirectcallblockingattributes-9e96cec5eb"></a>
-- [`symbol-setting-common-script-extradirectcallblockingattributes-9e96cec5eb`](../../en/reference/script-api/settings.md#symbol-setting-common-script-extradirectcallblockingattributes-9e96cec5eb)
-
-<a id="symbol-setting-common-script-managedscriptanalyzers-a9e3766db3"></a>
-- [`symbol-setting-common-script-managedscriptanalyzers-a9e3766db3`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptanalyzers-a9e3766db3)
-
-<a id="symbol-setting-common-script-managedscriptassemblies-615affd4da"></a>
-- [`symbol-setting-common-script-managedscriptassemblies-615affd4da`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptassemblies-615affd4da)
-
-<a id="symbol-setting-common-script-managedscriptbakerdryrun-1c738cb52e"></a>
-- [`symbol-setting-common-script-managedscriptbakerdryrun-1c738cb52e`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptbakerdryrun-1c738cb52e)
-
-<a id="symbol-setting-common-script-managedscriptdirs-de5a5fb0ee"></a>
-- [`symbol-setting-common-script-managedscriptdirs-de5a5fb0ee`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptdirs-de5a5fb0ee)
-
-<a id="symbol-setting-common-script-managedscriptextrareferences-91760e6308"></a>
-- [`symbol-setting-common-script-managedscriptextrareferences-91760e6308`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptextrareferences-91760e6308)
-
-<a id="symbol-setting-common-script-managedscriptextrasources-ea6131fe62"></a>
-- [`symbol-setting-common-script-managedscriptextrasources-ea6131fe62`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptextrasources-ea6131fe62)
-
-<a id="symbol-setting-common-script-managedscriptgenerateddir-7a89a388d6"></a>
-- [`symbol-setting-common-script-managedscriptgenerateddir-7a89a388d6`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptgenerateddir-7a89a388d6)
-
-<a id="symbol-setting-common-script-managedscriptmsbuild-7652549d81"></a>
-- [`symbol-setting-common-script-managedscriptmsbuild-7652549d81`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptmsbuild-7652549d81)
-
-<a id="symbol-setting-common-script-managedscriptprojectname-b18164691a"></a>
-- [`symbol-setting-common-script-managedscriptprojectname-b18164691a`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscriptprojectname-b18164691a)
-
-<a id="symbol-setting-common-script-managedscripttargetframework-d2d974e9f8"></a>
-- [`symbol-setting-common-script-managedscripttargetframework-d2d974e9f8`](../../en/reference/script-api/settings.md#symbol-setting-common-script-managedscripttargetframework-d2d974e9f8)
-
-<a id="symbol-setting-common-script-mutableglobalsallowednamespaces-fdc2dbca3d"></a>
-- [`symbol-setting-common-script-mutableglobalsallowednamespaces-fdc2dbca3d`](../../en/reference/script-api/settings.md#symbol-setting-common-script-mutableglobalsallowednamespaces-fdc2dbca3d)
-
-<a id="symbol-setting-common-script-overrunreporttime-ca2ce25eae"></a>
-- [`symbol-setting-common-script-overrunreporttime-ca2ce25eae`](../../en/reference/script-api/settings.md#symbol-setting-common-script-overrunreporttime-ca2ce25eae)
-
 <a id="group-setting-common-spritemesh-39dac5afe3"></a>
 - [`group-setting-common-spritemesh-39dac5afe3`](../../en/reference/script-api/settings.md#group-setting-common-spritemesh-39dac5afe3)
 
@@ -877,9 +784,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-server-critter-critterslotsenddata-3b5a888cf7"></a>
 - [`symbol-setting-server-critter-critterslotsenddata-3b5a888cf7`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-critterslotsenddata-3b5a888cf7)
-
-<a id="symbol-setting-server-critter-maxaddunstackableitems-c73700669e"></a>
-- [`symbol-setting-server-critter-maxaddunstackableitems-c73700669e`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-maxaddunstackableitems-c73700669e)
 
 <a id="group-setting-server-database-adfe86dfe9"></a>
 - [`group-setting-server-database-adfe86dfe9`](../../en/reference/script-api/settings.md#group-setting-server-database-adfe86dfe9)

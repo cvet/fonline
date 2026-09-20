@@ -5,9 +5,7 @@ document_id: ai-control-sample-readme
 locale: ru
 permalink: /Examples/AiControlSample/README.ru.html
 ---
-
 <!-- docs-translation: {"document_id":"ai-control-sample-readme","locale":"ru","source_path":"Examples/AiControlSample/README.md","source_sha256":"d11c363a4d4954befcc3510e2435a5b3191e269e96b50533e77624835ccd273f"} -->
-
 # Образец протокола AiControl
 
 Этот запускаемый пример демонстрирует независимый от проекта контракт

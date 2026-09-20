@@ -5,9 +5,7 @@ locale: ru
 document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
-
 <!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"bc7e1036eb863a02825bc08b0915ae4b0c3e77062726d7e0a7034a14810c9d23"} -->
-
 # Процесс перевода документации
 
 В документации FOnline английский язык служит каноническим источником, а

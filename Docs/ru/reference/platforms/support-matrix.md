@@ -7,9 +7,7 @@ permalink: /Docs/ru/reference/platforms/support-matrix.html
 ---
 
 # Матрица поддержки
-
 <!-- docs-translation: {"document_id":"support-matrix","locale":"ru","source_path":"Docs/en/reference/platforms/support-matrix.md","source_sha256":"d356552b3da1aa91e0a16896da15f00e8113d95f2a259a0c730f454458d4efa4"} -->
-
 Эта страница определяет, что документация текущего канала (`current`) FOnline
 может называть поддерживаемым. Она разделяет наличие возможности в исходниках,
 обязательную компиляцию в CI, автоматические процессные smoke-тесты и приёмку

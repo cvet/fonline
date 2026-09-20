@@ -12,7 +12,6 @@ $Text russ = "Проводник"
 $Name = TutorialSupply
 $Text engl = "Signal cache"
 $Text russ = "Сигнальный контейнер"
-Stackable = True
 
 [ProtoLocation]
 $Name = TutorialLocation

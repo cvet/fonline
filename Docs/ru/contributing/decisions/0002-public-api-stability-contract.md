@@ -5,9 +5,7 @@ locale: ru
 document_id: adr-public-api-stability-contract
 permalink: /Docs/ru/contributing/decisions/0002-public-api-stability-contract.html
 ---
-
-<!-- docs-translation: {"document_id":"adr-public-api-stability-contract","locale":"ru","source_path":"Docs/en/contributing/decisions/0002-public-api-stability-contract.md","source_sha256":"9156c64fbce8dc21a3b0470be96e18f2ec3b33b1f11dfa231aaa3bfb9018398d"} -->
-
+<!-- docs-translation: {"document_id":"adr-public-api-stability-contract","locale":"ru","source_path":"Docs/en/contributing/decisions/0002-public-api-stability-contract.md","source_sha256":"664b3ee699d8df18d02744182d1d93e447ef99d4ec654318695139785c7ca417"} -->
 # ADR-0002: контракт стабильности публичного API
 
 - Статус: принято
@@ -52,7 +50,7 @@ FOnline предоставляет игровым проектам много п
 
 Без корректного scope-контракта неаннотированные символы остаются `internal (default)`. Корректный scope-контракт применяет проверенную метку, только пока совпадают оба пина инвентаря; любое добавление или удаление символа либо изменение стабильного ID останавливает генерацию до обновления пинов владельцем. Точное объявление символа может переопределить scope, а пересекающиеся exact/family declarations остаются недопустимыми. Явный tag `internal` фиксирует проверенное решение, не повышая статус символа. Для `stable` и `experimental` требуется `Since`; для `deprecated` требуются версия объявления устаревшим, существующая замена и цель удаления.
 
-Contract tags не заменяют проверку владельцем. Текущее scope-объявление классифицирует все 2 472 сгенерированных символа как привязанные к ревизии `experimental` с версии `2022.1.0.wip`, а вспомогательный метод разработки `Game.BreakIntoDebugger` сохраняет явный статус `internal`. Это делает интеграционную поверхность пригодной для использования и отслеживания изменений, не заявляя широкой совместимости `stable`.
+Contract tags не заменяют проверку владельцем. Текущее scope-объявление классифицирует все 2 527 сгенерированных символов как привязанные к ревизии `experimental` с версии `2022.1.0.wip`, а вспомогательный метод разработки `Game.BreakIntoDebugger` сохраняет явный статус `internal`. Это делает интеграционную поверхность пригодной для использования и отслеживания изменений, не заявляя широкой совместимости `stable`.
 
 ### Домены контрактов
 

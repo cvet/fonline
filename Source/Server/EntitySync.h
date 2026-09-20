@@ -207,6 +207,8 @@ public:
     void Activate() noexcept;
     void Deactivate() noexcept;
     void SyncEntities(const_span<ptr<ServerEntity>> entities);
+    // Keeps the live held set and adds `extras`; held entries that are gone are dropped on the way
+    void WidenEntities(const_span<ptr<ServerEntity>> extras);
     void SyncEntity(nptr<ServerEntity> entity);
     void EnsureEntitySynced(nptr<ServerEntity> entity);
     void Release() noexcept;
@@ -231,6 +233,9 @@ private:
     // One all-or-nothing state-mutex transaction, retried until it lands; TSA cannot follow the
     // try-lock/roll-back batch, hence FO_TSA_NO_ANALYSIS
     void FO_TSA_NO_ANALYSIS EnsureEntitySyncedImpl(ptr<ServerEntity> entity);
+    // Takes a request that only adds already covered entities to the held set in place, without the release that
+    // would hand a contended ancestor to the next queued job; false leaves the context untouched
+    auto TryRetainCoveredRequest(const_span<ptr<ServerEntity>> requested) -> bool;
 
     // Cover and intention marks are taken in one ascending-address pass, because a single total order over
     // their union is what makes the mixed acquire cycle-free; replaces the whole held set

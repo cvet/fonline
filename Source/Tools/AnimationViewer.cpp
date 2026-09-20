@@ -482,7 +482,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 
     // Which critter property feeds which model layer is game-specific, so `Render.ModelLayerProperties`
     // declares the mapping and a prototype is dressed here without game knowledge in the engine
-    const auto& mapping = _engine->Settings->ModelLayerProperties;
+    const auto& mapping = _engine->Settings->Render.ModelLayerProperties;
 
     if (mapping.empty()) {
         return;
@@ -494,7 +494,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         auto sep = pair_text.find('=');
 
         if (sep == string::npos) {
-            WriteLog("Animation viewer: bad Render.ModelLayerProperties entry, expected <PropertyName>=<LayerIndex>: {}", pair_text);
+            logging::write("Animation viewer: bad Render.ModelLayerProperties entry, expected <PropertyName>=<LayerIndex>: {}", pair_text);
             continue;
         }
 
@@ -507,7 +507,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
         }
 
         if (!strex(index_text).is_number()) {
-            WriteLog("Animation viewer: bad layer index in Render.ModelLayerProperties: {}", pair_text);
+            logging::write("Animation viewer: bad layer index in Render.ModelLayerProperties: {}", pair_text);
             continue;
         }
 
@@ -575,12 +575,12 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
     if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
         auto model = model_spr->GetModel();
 
-        auto flags = looped ? ModelAnimFlags::None : CombineEnum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
+        auto flags = looped ? ModelAnimFlags::None : combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
 
         // Instant playback drops the cross-fade, which is what lets the prewarm open on the idle pose
         // instead of a blend from the bind pose
         if (instant) {
-            flags = CombineEnum(flags, ModelAnimFlags::NoSmooth);
+            flags = combine_enum(flags, ModelAnimFlags::NoSmooth);
         }
 
         auto layers = _modelLayers.empty() ? nptr<const int32_t> {} : nptr<const int32_t> {_modelLayers.data()};
@@ -593,7 +593,7 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
     ignore_unused(looped, instant);
 #endif
 
-    auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.ToHashedString(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
+    auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.to_hashed_string(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
 
     if (frames) {
         _previewSprite = frames->MakeCopy();
@@ -819,7 +819,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
             // Matches CritterHexView::GetNameTextPos, whose offsets are game pixels and therefore scale
             // by the full on-screen zoom rather than the residual draw scale
             ipos32 name_top = to_screen({view_local.x + view_local.width / 2, view_local.y});
-            int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->NameOffset + _protoNameOffset) * _zoom);
+            int32_t name_y = name_top.y + iround<int32_t>(numeric_cast<float32_t>(_engine->Settings->CritterView.NameOffset + _protoNameOffset) * _zoom);
             add_segment({0, name_y}, {PREVIEW_SIZE.width, name_y}, NAME_POINT_COLOR);
         }
     }

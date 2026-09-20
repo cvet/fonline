@@ -389,7 +389,7 @@ void ParticleViewer::SelectParticle(string_view path)
     }
     catch (const std::exception& ex) {
         _selectionError = strex("Failed to load: {}", ex.what()).str();
-        WriteLog("ParticleViewer: failed to load '{}': {}", _selectedPath, ex.what());
+        logging::write("ParticleViewer: failed to load '{}': {}", _selectedPath, ex.what());
         return;
     }
 
@@ -454,7 +454,7 @@ void ParticleViewer::PanBy(fpos32 screen_delta)
     // Pass the inverse of the camera move to the effect as emitter motion, so world-space particles trail as if the
     // emitter (a moving critter) had travelled through them instead of the whole view sliding rigidly
     if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>()) {
-        float32_t px_per_world_unit = _engine->Settings->ModelProjFactor * _zoom;
+        float32_t px_per_world_unit = _engine->Settings->Render.ModelProjFactor * _zoom;
 
         if (px_per_world_unit > 0.0f) {
             vec3 world_move = {-screen_delta.x / px_per_world_unit, screen_delta.y / px_per_world_unit, 0.0f};
@@ -472,10 +472,10 @@ void ParticleViewer::RenderPreview()
     }
 
     // Scope the wireframe overlay to the preview render only: the particle backends draw quad edges while
-    // Render.DrawWireframe is set, and restoring it right after keeps a hosting mapper scene unaffected
-    bool prev_draw_wireframe = _engine->Settings->DrawWireframe;
-    _engine->Settings->DrawWireframe = _showWireframe;
-    auto wireframe_guard = scope_exit([&]() noexcept { _engine->Settings->DrawWireframe = prev_draw_wireframe; });
+    // the renderer is asked to overlay it, and restoring it right after keeps a hosting mapper scene unaffected
+    bool prev_draw_wireframe = _sprMngr->IsDrawWireframe();
+    _sprMngr->SetDrawWireframe(_showWireframe);
+    auto wireframe_guard = scope_exit([&]() noexcept { _sprMngr->SetDrawWireframe(prev_draw_wireframe); });
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
         // Nearest filtering, because ImGui presents the target scaled by the display's DPI scale and a

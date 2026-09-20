@@ -7,9 +7,7 @@ permalink: /Docs/ru/contributing/third-party/
 ---
 
 # Сопровождение ThirdParty
-
 <!-- docs-translation: {"document_id":"third-party-maintenance","locale":"ru","source_path":"Docs/en/contributing/third-party/index.md","source_sha256":"3839ff5618e027a2e0ce71b9a242381315ccd50f2f43918e65ab4feeb933ad39"} -->
-
 Этот документ определяет переиспользуемый процесс движка для вендорных зависимостей в `ThirdParty/`. Проектные комплектные библиотеки принадлежат подключающему проекту; их выбор, интеграция, доставка и сопровождение описаны в разделе [Проектные зависимости](../../how-to/native-extensions/project-dependencies.md), а точный реестр и релизные свидетельства должны храниться в самом проекте.
 
 ## Владение

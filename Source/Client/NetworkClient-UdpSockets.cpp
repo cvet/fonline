@@ -76,7 +76,7 @@ auto NetworkClientConnection::CreateUdpSocketsConnection(ptr<ClientNetworkSettin
 {
     FO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MakeUnique<NetworkClientConnection_UdpSockets>(settings);
+    return safe_alloc::make_unique<NetworkClientConnection_UdpSockets>(settings);
 }
 
 NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<ClientNetworkSettings> settings) :
@@ -89,9 +89,9 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
         throw NetworkClientException("Socket startup failed for UDP transport");
     }
 
-    _requestHost = _settings->ServerHost;
+    _requestHost = _settings->ClientNetwork.ServerHost;
     _remoteHost = _requestHost;
-    _remotePort = numeric_cast<uint16_t>(_settings->ServerPort + _settings->UdpPortOffset);
+    _remotePort = numeric_cast<uint16_t>(_settings->Network.ServerPort + _settings->Network.UdpPortOffset);
 
     random_generator salt_generator;
     _clientSalt = (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 24) | //
@@ -99,8 +99,8 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
         (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 8) | //
         (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 0);
 
-    auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
-    auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));
+    auto packet_capacity = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 0)) * 2;
+    auto net_capacity = numeric_cast<size_t>(std::max(_settings->Network.NetBufferSize, 0));
     _packetBuf.resize(std::max(packet_capacity, net_capacity));
 
     if (!_socket.bind("0.0.0.0", 0, false)) {
@@ -108,7 +108,7 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
     }
 
     _connectStartTime = nanotime::now();
-    WriteLog("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
+    logging::write("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
 }
 
 NetworkClientConnection_UdpSockets::~NetworkClientConnection_UdpSockets()
@@ -213,11 +213,11 @@ auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     FO_STACK_TRACE_ENTRY();
 
     UdpTransportOptions options;
-    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 256));
-    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->UdpWindowSize, 0)), options.MaxPayload);
-    options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->UdpResendTimeout, 1));
-    options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->UdpConnectRetry, 1));
-    options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->UdpRedundancy, 0));
+    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 256));
+    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->Network.UdpWindowSize, 0)), options.MaxPayload);
+    options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->Network.UdpResendTimeout, 1));
+    options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectRetry, 1));
+    options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->Network.UdpRedundancy, 0));
     return options;
 }
 
@@ -249,7 +249,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
                 _remotePort = port;
                 _isConnecting = false;
                 _isConnected = true;
-                WriteLog("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
+                logging::write("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
             }
 
             continue;
@@ -293,10 +293,10 @@ void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->UdpConnectTimeout, _settings->UdpConnectRetry));
+    uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectTimeout, _settings->Network.UdpConnectRetry));
 
     if (_connectStartTime != nanotime::zero && now - _connectStartTime >= std::chrono::milliseconds {connect_timeout_ms}) {
-        WriteLog("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
+        logging::write("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
         Disconnect();
         return;
     }

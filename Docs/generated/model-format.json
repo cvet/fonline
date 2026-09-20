@@ -1455,7 +1455,7 @@
           "anchors": [
             "CalculateModelDescriptionLinkBounds",
             "Model description link geometry and bounds do not match",
-            "writer.Write<uint8_t>(has_geometry"
+            "writer.write<uint8_t>(has_geometry"
           ]
         },
         {
@@ -1568,5 +1568,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "f6b988ffdcc8e32bca13a9318482407410733edf7ddeb44fc30a4af53e3faa84"
+  "contract_digest": "d4dac97de23a3960a8fe62548f084177090b9e133570a286a15409334b093319"
 }

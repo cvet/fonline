@@ -4,9 +4,7 @@ document_id: generated-cmake-stages
 locale: ru
 generated: true
 ---
-
 <!-- docs-translation: {"document_id":"generated-cmake-stages","locale":"ru","source_path":"Docs/en/reference/cmake/stages.md","source_sha256":"8a3e4f5553d052c65ff5636d5fe51b0da4f352e782b46b32114d50376b14c011"} -->
-
 # Стадии и hooks проекта CMake
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/cmake/ProjectInterface.json`, затем выполните `python BuildTools/docs_cmake.py --write`.

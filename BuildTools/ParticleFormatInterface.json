@@ -2622,7 +2622,7 @@
         {
           "path": "Source/Client/ParticleSprites.cpp",
           "anchors": [
-            "settings.ModelProjFactor"
+            "settings.Render.ModelProjFactor"
           ]
         }
       ]

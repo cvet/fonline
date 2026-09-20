@@ -4,9 +4,7 @@ document_id: generated-package-payloads
 locale: ru
 generated: true
 ---
-
 <!-- docs-translation: {"document_id":"generated-package-payloads","locale":"ru","source_path":"Docs/en/reference/packages/payloads.md","source_sha256":"2259f56560c71831cd27254572cccc9315bdcdc940d231520d640c8e37ea2667"} -->
-
 # Содержимое пакетов и артефакты
 
 > Сгенерированный справочник. Не редактируйте эту страницу напрямую. Обновите `BuildTools/PackageInterface.json` или `BuildTools/package.py`, затем выполните `python BuildTools/docs_package.py --write`.

@@ -138,12 +138,12 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
     if not isinstance(raw, dict):
         raise ValueError("sources must be an object")
     file_fields = (
-        "sound_manager",
-        "sound_manager_header",
-        "resource_manager",
+        "audio_manager",
+        "audio_manager_header",
+        "audio_baker",
+        "audio_baker_header",
         "client_global_scripts",
         "settings",
-        "raw_copy_baker",
         "application",
         "application_headless",
     )
@@ -163,7 +163,7 @@ def _quoted_values(text: str) -> list[str]:
 
 def _derive_raw_copy_extensions(settings_text: str) -> list[str]:
     match = re.search(
-        r"FIXED_SETTING\(vector<string>,\s*Baking,\s*RawCopyFileExtensions,"
+        r"SETTING\(vector<string>,\s*Baking,\s*RawCopyFileExtensions,"
         r"(?P<values>.*?)\);",
         settings_text,
         re.DOTALL,
@@ -184,7 +184,7 @@ def _derive_audio_settings(settings_text: str) -> dict[str, object]:
         ("MusicVolume", "int32_t"),
     ):
         match = re.search(
-            rf"VARIABLE_SETTING\({value_type},\s*Audio,\s*{setting},\s*([^)]+)\)",
+            rf"SETTING\({value_type},\s*Audio,\s*{setting},\s*([^)]+)\)",
             settings_text,
         )
         if match is None:
@@ -197,11 +197,24 @@ def _derive_audio_settings(settings_text: str) -> dict[str, object]:
     return result
 
 
-def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]:
-    sound_text = (root / str(sources["sound_manager"])).read_text(encoding="utf-8")
-    resource_text = (root / str(sources["resource_manager"])).read_text(
-        encoding="utf-8"
+def _derive_sound_file_extensions(settings_text: str) -> list[str]:
+    match = re.search(
+        r"SETTING\(vector<string>,\s*Audio,\s*SoundFileExtensions,"
+        r"(?P<values>.*?)\);",
+        settings_text,
+        re.DOTALL,
     )
+    if match is None:
+        raise ValueError("unable to derive Audio.SoundFileExtensions")
+    values = _quoted_values(match.group("values"))
+    if not values:
+        raise ValueError("Audio.SoundFileExtensions is empty")
+    return values
+
+
+def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]:
+    sound_text = (root / str(sources["audio_manager"])).read_text(encoding="utf-8")
+    baker_text = (root / str(sources["audio_baker"])).read_text(encoding="utf-8")
     settings_text = (root / str(sources["settings"])).read_text(encoding="utf-8")
     application_text = (root / str(sources["application"])).read_text(
         encoding="utf-8"
@@ -210,61 +223,34 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         encoding="utf-8"
     )
 
-    index_match = re.search(
-        r"sound_extensions\s*=\s*\{(?P<values>[^}]+)\}", resource_text
-    )
-    default_match = re.search(
-        r'if \(ext\.empty\(\)\) \{\s*ext = "([^"]+)"', sound_text, re.DOTALL
-    )
     web_portion = re.search(
         r"#if FO_WEB\s*_streamingPortion = (0x[0-9A-Fa-f]+)", sound_text
     )
     native_portion = re.search(
         r"#else\s*_streamingPortion = (0x[0-9A-Fa-f]+)", sound_text
     )
-    wav_tag = re.search(r"WFormatTag != ([0-9]+)", sound_text)
-    wav_bits = [
-        int(value)
-        for value in re.findall(
-            r"case ([0-9]+):\s*sound->OriginalFormat = AppAudio::AUDIO_FORMAT_",
-            sound_text,
-        )
-    ]
-    acm_rate = re.search(r"sound->OriginalRate = ([0-9]+);", sound_text)
+    native_extension = re.search(
+        r'NATIVE_EXTENSION\s*=\s*"([A-Za-z0-9]+)"',
+        (root / str(sources["audio_baker_header"])).read_text(encoding="utf-8"),
+    )
+    baker_loader = re.search(r'AddLoader\([^;]+\{"([A-Za-z0-9]+)"\}\);', baker_text)
     clamp_match = re.search(
         r"std::clamp\(volume,\s*([0-9]+),\s*([0-9]+)\)", application_text
     )
     if None in (
-        index_match,
-        default_match,
         web_portion,
         native_portion,
-        wav_tag,
-        acm_rate,
+        native_extension,
+        baker_loader,
         clamp_match,
     ):
         raise ValueError("unable to derive the complete audio runtime contract")
 
-    indexed_extensions = _quoted_values(index_match.group("values"))
-    dispatch_extensions = list(
-        dict.fromkeys(re.findall(r'ext == "([A-Za-z0-9]+)"', sound_text))
-    )
-    if indexed_extensions != dispatch_extensions:
-        raise ValueError(
-            "ResourceManager index extensions and SoundManager dispatch extensions differ"
-        )
-
     raw_copy_extensions = _derive_raw_copy_extensions(settings_text)
-    missing_raw_copy = [
-        extension
-        for extension in indexed_extensions
-        if extension not in raw_copy_extensions
-    ]
-    if missing_raw_copy:
-        raise ValueError(
-            "audio extensions missing from Baking.RawCopyFileExtensions: "
-            + ", ".join(missing_raw_copy)
-        )
+    indexed_extensions = _derive_sound_file_extensions(settings_text)
+    baker_extensions = [baker_loader.group(1), native_extension.group(1)]
+    if indexed_extensions != baker_extensions:
+        raise ValueError("Audio.SoundFileExtensions and AudioBaker extensions differ")
 
     native_test_root = root / str(sources["native_test_directory"])
     native_test_files = sorted(
@@ -273,7 +259,6 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         if re.search(r"(audio|sound)", path.name, re.IGNORECASE)
     )
 
-    unsupported_extension_rejected = "Unsupported sound format" in sound_text
     if "return false;" not in headless_text.split(
         "auto AppAudio::IsEnabled() const -> bool", maxsplit=1
     )[1].split("}", maxsplit=1)[0]:
@@ -281,20 +266,15 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
 
     return {
         "indexed_extensions": indexed_extensions,
-        "decoder_extensions": dispatch_extensions,
+        "baker_extensions": baker_extensions,
+        "decoder_extensions": [native_extension.group(1)],
         "raw_copy_extensions": raw_copy_extensions,
-        "default_extension": default_match.group(1),
+        "missing_suffix_fallback": False,
         "wav": {
             "container": "RIFF/WAVE",
-            "format_tag": int(wav_tag.group(1)),
-            "sample_bits": wav_bits,
-            "compression": "PCM",
-        },
-        "acm": {
-            "sample_format": "signed-16",
-            "sound_channels": 1,
-            "music_channels": 2,
-            "sample_rate": int(acm_rate.group(1)),
+            "format_tags": [1, 3],
+            "sample_bits": [8, 16, 24, 32],
+            "compression": "PCM or IEEE float",
         },
         "ogg": {
             "codec": "Vorbis",
@@ -307,11 +287,12 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
             int(clamp_match.group(1)),
             int(clamp_match.group(2)),
         ],
-        "effect_variant_suffix_start": 1,
-        "effect_variant_selection": "contiguous",
+        "play_sound_returns_handle": True,
+        "placed_sound_updates": True,
         "runtime_side": "client",
         "headless_audio_enabled": False,
-        "unsupported_extension_rejected": unsupported_extension_rejected,
+        "unsupported_extension_rejected": True,
+        "authored_extension_preserved": True,
         "native_test_files": native_test_files,
     }
 
@@ -585,7 +566,10 @@ def _render_index(model: dict[str, object]) -> str:
                     for item in outputs["decoder_extensions"]
                 ),
             ),
-            ("Default missing suffix", docs_cli._code(outputs["default_extension"])),
+            (
+                "Missing-suffix fallback",
+                "yes" if outputs["missing_suffix_fallback"] else "no",
+            ),
             ("Runtime side", docs_cli._code(outputs["runtime_side"])),
             (
                 "Focused native audio tests",
@@ -605,7 +589,7 @@ def _render_index(model: dict[str, object]) -> str:
             (
                 "[Delivery](delivery.md)",
                 str(summary["delivery_rule_count"]),
-                "Raw-copy, indexing, naming, and collision rules.",
+                "Audio baking, authored paths, indexing, and payload rules.",
             ),
             (
                 "[Decoding](decoding.md)",
@@ -615,7 +599,7 @@ def _render_index(model: dict[str, object]) -> str:
             (
                 "[Playback](playback.md)",
                 str(summary["playback_rule_count"]),
-                "Script methods, effect variants, music, repeat, and volume.",
+                "Script methods, sound handles, placement, music, repeat, and volume.",
             ),
             (
                 "[Validation](validation.md)",

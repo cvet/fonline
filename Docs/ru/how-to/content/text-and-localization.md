@@ -5,9 +5,7 @@ locale: ru
 document_id: text-and-localization-guide
 permalink: /Docs/ru/how-to/content/text-and-localization.html
 ---
-
-<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"cc1d603826f4d875e3a621bd133d327832be407bef94506d1007df9aeb342a72"} -->
-
+<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"530625de381a099a604b158b2f7f8fa695508cdd1c2f76f44ac6ac44579a06c6"} -->
 # Текст и локализация
 
 Это руководство описывает переиспользуемый контракт FOnline Engine для
@@ -210,14 +208,14 @@ $Text [Language] [Key2] [Key3] = Value
 | `Game.GetText(langName, key)` | client, mapper | Использует текущий пакет при пустом или текущем `langName`; иначе загружает и кеширует указанный язык и возвращает его первый вариант. Для отсутствующего непустого языка runtime fallback не применяется. |
 | `Game.GetTextCount(key)` | server, client, mapper | Возвращает количество вариантов или ноль при отсутствии. |
 | `Game.IsTextPresent(key)` | server, client, mapper | Сообщает, существует ли хотя бы один вариант. |
-| `Game.ChangeLanguage(langName)` | client, mapper | Заменяет текущий пакет и записывает `Client.Language`. |
+| `Game.ChangeLanguage(langName)` | client, mapper | Заменяет текущий runtime-пакет; immutable startup setting не меняется. |
 
-При запуске клиент загружает `Client.Language`. `Game.ChangeLanguage` не
+При запуске клиент загружает `Client.Language`, затем текущий язык становится live state движка и доступен через `Game.CurrentLanguage` / `Game.GetLanguage()`. `Game.ChangeLanguage` не
 проверяет идентификатор и не вызывает callback игры для обновления GUI.
 Подключаемый проект владеет списком разрешённых языков, политикой сохранения и
 последовательностью обновления или перестроения интерфейса.
 
-Сервер загружает один пакет для `Settings.Language`. Скриптам доступны только
+Сервер загружает один пакет из startup setting `Client.Language`, затем владеет тем же current-language state. Скриптам доступны только
 проверка наличия и подсчёт; server-side overload `Game.GetText` не входит в
 контракт Engine.
 

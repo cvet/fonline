@@ -8,13 +8,16 @@
     <NoWarn>$(NoWarn);CS8981</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../CoreScripts/ScriptInvoke.cs" Link="ScriptInvoke.cs" />
+    <Compile Include="../CoreScripts/ScriptFunc.cs" Link="ScriptFunc.cs" />
+    <Compile Include="../CoreScripts/ScriptExceptions.cs" Link="ScriptExceptions.cs" />
+    <Compile Include="../CoreScripts/Enums.cs" Link="Enums.cs" />
     <Compile Include="../CoreScripts/ValueTypeExtensions.cs" Link="ValueTypeExtensions.cs" />
-    <Compile Include="../CoreScripts/Verify.cs" Link="Verify.cs" />
+    <Compile Include="../CoreScripts/Invariant.cs" Link="Invariant.cs" />
     <Compile Include="../CoreScripts/ScriptFuncRegistration.cs" Link="ScriptFuncRegistration.cs" />
     <Compile Include="../CoreScripts/Initializator.cs" Link="Initializator.cs" />
     <Compile Include="../CoreScripts/RemoteCallScriptFuncs.cs" Link="RemoteCallScriptFuncs.cs" />
     <Compile Include="../CoreScripts/Attributes.cs" Link="Attributes.cs" />
     <Compile Include="../CoreScripts/ScriptSynchronizationContext.cs" Link="ScriptSynchronizationContext.cs" />
+    <Compile Include="../CoreScripts/ScriptEntryNames.cs" Link="ScriptEntryNames.cs" />
   </ItemGroup>
 </Project>

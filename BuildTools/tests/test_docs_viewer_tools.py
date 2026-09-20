@@ -66,11 +66,11 @@ class ViewerToolsDocumentationTests(unittest.TestCase):
                 ENGINE_ROOT / f"Source/Applications/{viewer}App.cpp"
             ).read_text(encoding="utf-8")
             for marker in (
-                "SafeAlloc::MakeRefCounted<ClientEngine>",
+                "safe_alloc::make_refcounted<ClientEngine>",
                 "BakerDataSource",
-                "AddPacksSource(settings.ClientResources",
-                "AddPacksSource(settings.ClientResources, "
-                "settings.MapperResourceEntries)",
+                "AddPacksSource(settings.Baking.ClientResources",
+                "AddPacksSource(settings.Baking.ClientResources, "
+                "settings.GetMapperResourcePacks())",
                 "FrameAdvance()",
                 "SetFillViewport(true)",
                 "SaveSettings()",
@@ -149,8 +149,8 @@ class ViewerToolsDocumentationTests(unittest.TestCase):
             )
         )
 
-        self.assertIn('strex("Software\\\\FOnline\\\\{}"', settings)
-        self.assertIn("Platform::GetUserDataBase()", settings)
+        self.assertIn('strex("Software\\\\{}\\\\{}"', settings)
+        self.assertIn("platform::get_user_data_base()", settings)
 
         targets = {
             target["name"]: target for target in package["targets"]

@@ -104,8 +104,8 @@ class DocumentationNativeCodingContractsTests(unittest.TestCase):
         ):
             self.assertIn(marker, header)
             self.assertIn(marker.replace("class ", ""), guide)
-        self.assertIn("MakeShared", memory)
-        self.assertIn("SafeAlloc::MakeShared", guide)
+        self.assertIn("make_shared", memory)
+        self.assertIn("safe_alloc::make_shared", guide)
         self.assertIn("does not currently ship a whole-tree", guide)
         self.assertNotIn("Tools/SmartPointerAudit", guide)
         self.assertIn("Do not reintroduce the removed permissive `FO_STRICT_*`", guide)

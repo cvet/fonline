@@ -272,6 +272,11 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
 		$<$<CONFIG:San_Thread>:-fsanitize=thread>
 		$<$<CONFIG:San_DataFlow>:-fsanitize=dataflow>
 		$<$<CONFIG:San_Address_Undefined>:-fsanitize=address$<COMMA>undefined>)
+
+	# Mono pins objects by conservatively scanning real thread stacks and never sees ASan fake frames, so a managed
+	# reference held only in an instrumented native local is moved under it (see Docs/Testing.md)
+	AddCompileOptionsList(
+		$<$<AND:$<BOOL:${FO_MANAGED_SCRIPTING}>,$<CONFIG:San_Address,San_Address_Undefined>>:-fsanitize-address-use-after-return=never>)
 endif()
 
 SetValue(expr_MemorySanitizerConfigs $<CONFIG:San_Memory,San_MemoryWithOrigins>)
@@ -448,6 +453,12 @@ if(WIN32)
 
 	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		AddCompileOptionsList(/MP /Zc:preprocessor)
+	endif()
+
+	# MSBuild builds /m projects at once and each runs its own /MP compilers, so a cold build starts cores x cores cl.exe;
+	# MultiToolTask with an enforced count caps the whole build at the core count
+	if(CMAKE_GENERATOR MATCHES "Visual Studio")
+		list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=true" "EnforceProcessCountAcrossBuilds=true")
 	endif()
 
 	AddLinkOptionsList(

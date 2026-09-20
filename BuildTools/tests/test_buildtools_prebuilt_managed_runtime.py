@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -13,6 +14,12 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import buildtools as _buildtools  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def no_workspace_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    # CI jobs configure the cache for the whole job, and these tests exercise the build it would otherwise replace
+    monkeypatch.delenv(_buildtools.WORKSPACE_CACHE_VAR, raising=False)
 
 
 def make_published_tree(root: Path, triplet: str) -> Path:
@@ -43,7 +50,7 @@ def test_prebuilt_runtime_is_adopted_instead_of_being_built(tmp_path: Path, monk
 
     workspace = tmp_path / "workspace"
     assert (workspace / "output" / "mono" / "windows.x64.Release" / "lib" / "libmonosgen-2.0.a").is_file()
-    assert (workspace / "READY_v10.0.11_windows.x64.Release_mono_runtime_corelib_libs_native_nogl").is_file()
+    assert (workspace / f"READY_v10.0.11_windows.x64.Release{_buildtools.MONO_WINDOWS_SOURCE_MARKER_SUFFIX}").is_file()
 
 
 def test_prebuilt_runtime_accepts_a_single_triplet_tree(tmp_path: Path) -> None:
@@ -71,6 +78,14 @@ def test_windows_target_without_a_prebuilt_runtime_is_refused_off_windows(tmp_pa
         _buildtools.setup_mono("windows", "x64", "Release", env)
 
 
+def test_mono_cmake_args_enable_overridable_allocators(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_buildtools.os, "name", "nt")
+    assert _buildtools.resolve_mono_cmake_args() == [f"/p:CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}"]
+    monkeypatch.setattr(_buildtools.os, "name", "posix")
+    assert _buildtools.resolve_mono_cmake_args() == [f"-p:CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}"]
+    assert _buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE == "-DENABLE_OVERRIDABLE_ALLOCATORS=1"
+
+
 def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
     # The suffix is the cache key for an already-prepared host, so a rename that reaches only one of
     # the two places leaves runners serving a runtime built the old way
@@ -81,6 +96,7 @@ def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
         _buildtools.MONO_ANDROID_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_APPLE_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_LINUX_SOURCE_MARKER_SUFFIX,
+        _buildtools.MONO_WINDOWS_SOURCE_MARKER_SUFFIX,
         _buildtools.MONO_SUBSET_MARKER_SUFFIX,
     ):
         assert f"READY_${{FO_MONO_RUNTIME_VERSION}}_${{FO_MONO_TRIPLET}}{suffix})" in stage, suffix
@@ -88,7 +104,7 @@ def test_ready_marker_suffixes_match_the_cmake_stage() -> None:
 
 @pytest.mark.skipif(shutil.which("cmake") is None, reason="CMake is required")
 @pytest.mark.parametrize("target,flags", [
-    ("linux", ["FO_LINUX"]), ("windows", []), ("browser", ["FO_WEB"]), ("android", ["FO_ANDROID"]),
+    ("linux", ["FO_LINUX"]), ("windows", ["FO_WINDOWS"]), ("browser", ["FO_WEB"]), ("android", ["FO_ANDROID"]),
     ("osx", ["FO_MAC"]), ("ios", ["FO_IOS"]), ("iossimulator", ["FO_IOS"]),
 ])
 def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, flags: list[str]) -> None:
@@ -112,6 +128,8 @@ def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, 
 
 @pytest.mark.parametrize("target,legacy_apple_patch", [
     ("linux", False),
+    pytest.param("windows", False, marks=pytest.mark.skipif(os.name != "nt", reason="setup-mono refuses a Windows runtime on another host")),
+    ("browser", False),
     ("android", False), ("osx", False), ("ios", False), ("iossimulator", False),
     ("osx", True), ("ios", True), ("iossimulator", True),
 ])
@@ -121,7 +139,12 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     runtime = workspace / "runtime"
     runtime.mkdir(parents=True)
     triplet = f"{target}.x64.Release"
-    previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + ("_apple_sources" if legacy_apple_patch else "")
+    if target == "browser":
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_wasmglue"
+    elif legacy_apple_patch:
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_apple_sources"
+    else:
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX
     (workspace / "CLONED_v10.0.11").touch()
     for phase in ("BUILT", "READY"):
         (workspace / f"{phase}_v10.0.11_{triplet}{previous_suffix}").touch()
@@ -132,13 +155,15 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     def reject_clone(*args, **kwargs):
         raise AssertionError("source patch invalidation must retain the cloned source")
 
-    def build(_command, path, **kwargs):
+    def build(command, path, **kwargs):
         calls.append("build")
         assert path == runtime and kwargs["target_os"] == target
+        assert f"{'/p:' if os.name == 'nt' else '-p:'}CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}" in command
         out = runtime / "artifacts/obj/mono" / triplet / "out/lib"
         out.mkdir(parents=True)
         (out / "libmonosgen-2.0.a").write_text("patched runtime", encoding="utf-8")
-        framework = runtime / ".dotnet/shared/Microsoft.NETCore.App/10.0.11"
+        rid = f"{'win' if target == 'windows' else target}-x64"
+        framework = runtime / "artifacts/bin" / f"microsoft.netcore.app.runtime.{rid}" / "Release/runtimes" / rid / "lib/net10.0"
         framework.mkdir(parents=True)
         (framework / "System.Runtime.dll").write_text("framework", encoding="utf-8")
         corelib = runtime / "artifacts/bin/mono" / triplet / "IL/System.Private.CoreLib.dll"
@@ -146,10 +171,21 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         corelib.write_text("patched corelib", encoding="utf-8")
 
     monkeypatch.setattr(_buildtools, "clone_git_repo", reject_clone)
-    for name in ("patch_runtime_zlib_warning_level", "patch_runtime_linux_signal_actions", "patch_runtime_apple_sources", "patch_runtime_ios_sources", "patch_runtime_android_sources", "patch_runtime_android_x86_atomics"):
+    patch_names = (
+        "patch_runtime_zlib_warning_level",
+        "patch_runtime_browser_asm_compiler",
+        "patch_runtime_linux_signal_actions",
+        "patch_runtime_apple_sources",
+        "patch_runtime_ios_sources",
+        "patch_runtime_android_sources",
+        "patch_runtime_android_x86_atomics",
+        "patch_runtime_windows_embedded_debug_info",
+    )
+    for name in patch_names:
         monkeypatch.setattr(_buildtools, name, lambda path, name=name: calls.append(name))
     monkeypatch.setattr(_buildtools, "run_runtime_build", build)
     monkeypatch.setattr(_buildtools, "copy_interop_shim_libraries", lambda *args: calls.append("publish"))
+    monkeypatch.setattr(_buildtools, "copy_browser_runtime_glue", lambda *args: None)
     resolve = _buildtools.resolve_mono_marker_suffix
     with monkeypatch.context() as old_markers:
         old_markers.setattr(_buildtools, "resolve_mono_marker_suffix", lambda _target: previous_suffix)
@@ -157,8 +193,10 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     assert calls == [] and archive.read_text() == "archive"
     _buildtools.setup_mono(target, "x64", "Release", env)
     assert archive.read_text() == "patched runtime"
-    expected_patch = (["patch_runtime_linux_signal_actions"] if target == "linux" else
+    expected_patch = (["patch_runtime_browser_asm_compiler"] if target == "browser" else
+                      ["patch_runtime_linux_signal_actions"] if target == "linux" else
                       ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics"] if target == "android" else
+                      ["patch_runtime_windows_embedded_debug_info"] if target == "windows" else
                       ["patch_runtime_apple_sources"])
     if target in ("ios", "iossimulator"):
         expected_patch.append("patch_runtime_ios_sources")
@@ -202,6 +240,43 @@ def test_mono_patch_fails_loudly_when_the_anchor_moves(tmp_path: Path) -> None:
 
     with pytest.raises(SystemExit):
         _buildtools.patch_runtime_sources(tmp_path)
+
+
+def test_browser_mono_inherits_the_identified_c_compiler_for_asm(tmp_path: Path) -> None:
+    cmake_lists = tmp_path / "src/mono/mono/utils/CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    cmake_lists.write_text(
+        "elseif(HOST_WASM)\n"
+        '    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+        '    set (CMAKE_ASM_COMPILER_TARGET "${CMAKE_C_COMPILER_TARGET}")\n'
+        "    enable_language(ASM)\n"
+        "endif()\n",
+        encoding="utf-8",
+    )
+
+    _buildtools.patch_runtime_browser_asm_compiler(tmp_path)
+    patched = cmake_lists.read_text(encoding="utf-8")
+
+    assert 'set (CMAKE_ASM_COMPILER_ID "${CMAKE_C_COMPILER_ID}")' in patched
+    assert "(FOnline Patch) Generic ASM uses the already identified Emscripten C compiler" in patched
+    assert patched.index("CMAKE_ASM_COMPILER_ID") < patched.index("enable_language(ASM)")
+
+    _buildtools.patch_runtime_browser_asm_compiler(tmp_path)
+    assert cmake_lists.read_text(encoding="utf-8") == patched
+
+
+@pytest.mark.parametrize("anchor_count", [0, 2])
+def test_browser_mono_asm_patch_requires_a_unique_anchor(tmp_path: Path, anchor_count: int) -> None:
+    cmake_lists = tmp_path / "src/mono/mono/utils/CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    anchor = 'elseif(HOST_WASM)\n    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+    original = anchor * anchor_count
+    cmake_lists.write_text(original, encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="unique anchor not found"):
+        _buildtools.patch_runtime_browser_asm_compiler(tmp_path)
+
+    assert cmake_lists.read_text(encoding="utf-8") == original
 
 
 def test_mono_linux_signal_actions_are_initialized_for_msan(tmp_path: Path) -> None:
@@ -308,6 +383,105 @@ def test_zlib_warning_patch_requires_a_unique_anchor(tmp_path: Path, anchor_coun
     assert wrapper.read_text(encoding="utf-8") == original
 
 
+WINDOWS_CONFIGURE_COMPILER = (
+    "if (MSVC)\n"
+    "  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX,ASM_MASM>:/Zi>) # enable debugging information\n"
+    "endif (MSVC)\n"
+)
+WINDOWS_MONO_CMAKE_LISTS = (
+    "cmake_minimum_required(VERSION 3.20)\nproject(mono C)\n"
+    'set(CMAKE_C_FLAGS "")\nset(CMAKE_C_FLAGS_DEBUG "/Zi /Ob0 /Od /RTC1")\nset(MSVC ON)\n'
+    "if(MSVC)\n"
+    '  if(CMAKE_BUILD_TYPE STREQUAL "Release")\n'
+    "    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Zi>) # enable debugging information\n"
+    "  endif()\n"
+    "endif()\n"
+    "add_library(mono STATIC mono.c)\n"
+)
+
+
+def write_windows_runtime_debug_info_fixture(root: Path) -> None:
+    native = root / "eng" / "native"
+    native.mkdir(parents=True)
+    (native / "configurecompiler.cmake").write_text(WINDOWS_CONFIGURE_COMPILER, encoding="utf-8")
+    mono = root / "src" / "mono"
+    mono.mkdir(parents=True)
+    (mono / "CMakeLists.txt").write_text(WINDOWS_MONO_CMAKE_LISTS, encoding="utf-8")
+    (mono / "mono.c").write_text("int mono_probe;\n", encoding="utf-8")
+    libs = root / "src" / "native" / "libs"
+    libs.mkdir(parents=True)
+    (libs / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.20)\nproject(LibsNative C)\n"
+        'set(CMAKE_C_FLAGS "")\nset(CMAKE_C_FLAGS_DEBUG "/Zi /Ob0 /Od /RTC1")\nset(MSVC ON)\n'
+        'include("${CMAKE_CURRENT_LIST_DIR}/../../../eng/native/configurecompiler.cmake")\n'
+        "add_library(native STATIC native.c)\n",
+        encoding="utf-8",
+    )
+    (libs / "native.c").write_text("int native_probe;\n", encoding="utf-8")
+    (root / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.20)\nproject(RuntimeDebugInfo C)\n"
+        "add_subdirectory(src/mono)\nadd_subdirectory(src/native/libs)\n",
+        encoding="utf-8",
+    )
+
+
+def runtime_debug_info_sources(root: Path) -> dict[Path, str]:
+    paths = (root / "eng/native/configurecompiler.cmake", root / "src/mono/CMakeLists.txt")
+    return {path: path.read_text(encoding="utf-8") for path in paths}
+
+
+@pytest.mark.skipif(shutil.which("cmake") is None or shutil.which("ninja") is None, reason="CMake and Ninja are required")
+def test_windows_runtime_objects_embed_their_debug_info_in_every_configuration(tmp_path: Path) -> None:
+    # A /Zi object keeps its debug info in a compiler PDB the published archive does not carry, so each
+    # consumer link reports LNK4099 for it; /Z7 is the format that survives the archive
+    write_windows_runtime_debug_info_fixture(tmp_path)
+
+    def debug_info_flags(name: str, config: str) -> dict[str, list[str]]:
+        build = tmp_path / f"{name}-{config}"
+        result = subprocess.run(
+            ["cmake", "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={config}", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"],
+            capture_output=True, text=True, check=True,
+        )
+        assert "warning" not in result.stderr.lower(), result.stderr
+        commands = json.loads((build / "compile_commands.json").read_text())
+        return {Path(entry["file"]).name: [flag for flag in entry["command"].split() if flag in ("/Zi", "/Z7")] for entry in commands}
+
+    for config in ("Debug", "Release"):
+        for source, flags in debug_info_flags("original", config).items():
+            assert "/Zi" in flags, (source, config, flags)
+
+    _buildtools.patch_runtime_windows_embedded_debug_info(tmp_path)
+    patched = runtime_debug_info_sources(tmp_path)
+    _buildtools.patch_runtime_windows_embedded_debug_info(tmp_path)
+    assert runtime_debug_info_sources(tmp_path) == patched
+    assert "$<$<COMPILE_LANGUAGE:ASM_MASM>:/Zi>" in patched[tmp_path / "eng/native/configurecompiler.cmake"]
+
+    for config in ("Debug", "Release"):
+        flags = debug_info_flags("patched", config)
+        assert set(flags) == {"mono.c", "native.c"}
+        for source, source_flags in flags.items():
+            assert source_flags and set(source_flags) == {"/Z7"}, (source, config, source_flags)
+
+
+@pytest.mark.parametrize("moved", ["configurecompiler", "mono-release", "mono-debug"])
+def test_windows_debug_info_patch_requires_every_anchor_before_writing(tmp_path: Path, moved: str) -> None:
+    write_windows_runtime_debug_info_fixture(tmp_path)
+    configure_compiler = tmp_path / "eng/native/configurecompiler.cmake"
+    mono = tmp_path / "src/mono/CMakeLists.txt"
+
+    if moved == "configurecompiler":
+        configure_compiler.write_text(WINDOWS_CONFIGURE_COMPILER.replace("C,CXX,ASM_MASM", "C,CXX"), encoding="utf-8")
+    elif moved == "mono-release":
+        mono.write_text(WINDOWS_MONO_CMAKE_LISTS.replace(":/Zi>", ":/Z7>"), encoding="utf-8")
+    else:
+        mono.write_text(WINDOWS_MONO_CMAKE_LISTS.replace('if(CMAKE_BUILD_TYPE STREQUAL "Release")', 'if(CMAKE_BUILD_TYPE MATCHES "Release")'), encoding="utf-8")
+
+    originals = runtime_debug_info_sources(tmp_path)
+    with pytest.raises(SystemExit, match="unique anchor not found"):
+        _buildtools.patch_runtime_windows_embedded_debug_info(tmp_path)
+    assert runtime_debug_info_sources(tmp_path) == originals
+
+
 def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     env = setup_mono_env(tmp_path, "")
     runtime = Path(env["FO_WORKSPACE"]) / "runtime"
@@ -324,6 +498,7 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
         assert runtime_root == runtime
         assert target_os == "linux"
         assert "list(REMOVE_ITEM fo_zlib_compile_options" in wrapper.read_text(encoding="utf-8")
+        assert f"{'/p:' if os.name == 'nt' else '-p:'}CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}" in args
         calls.append(args)
 
     monkeypatch.setattr(_buildtools, "run_marker_step", run_build_only)
@@ -333,13 +508,6 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
     assert len(calls) == 1
 
 
-def test_framework_versions_sort_numerically_with_release_after_preview() -> None:
-    versions = ["9.0.0", "10.0.0-preview.10", "10.0.0-preview.2", "10.0.0", "10.0.11"]
-    assert sorted(versions, key=_buildtools.runtime_framework_version_key) == [
-        "9.0.0", "10.0.0-preview.2", "10.0.0-preview.10", "10.0.0", "10.0.11"
-    ]
-
-
 def test_runtime_revision_uses_a_distinct_ready_marker(tmp_path: Path) -> None:
     tree = make_published_tree(tmp_path / "prebuilt", "windows.x64.Release")
     env = setup_mono_env(tmp_path, tree)
@@ -347,31 +515,37 @@ def test_runtime_revision_uses_a_distinct_ready_marker(tmp_path: Path) -> None:
     env["FO_DOTNET_RUNTIME"] = "v10.0.12"
     _buildtools.setup_mono("windows", "x64", "Release", env)
     markers = sorted(path.name for path in (tmp_path / "workspace").glob("READY_*"))
-    assert markers == [
-        "READY_v10.0.11_windows.x64.Release_mono_runtime_corelib_libs_native_nogl",
-        "READY_v10.0.12_windows.x64.Release_mono_runtime_corelib_libs_native_nogl",
-    ]
+    suffix = _buildtools.MONO_WINDOWS_SOURCE_MARKER_SUFFIX
+    assert markers == [f"READY_v10.0.11_windows.x64.Release{suffix}", f"READY_v10.0.12_windows.x64.Release{suffix}"]
 
 
-@pytest.mark.parametrize("missing_corelib", [False, True])
-def test_publish_replaces_old_files_only_after_input_validation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing_corelib: bool) -> None:
+@pytest.mark.parametrize("missing", [None, "corelib", "class_libraries"])
+@pytest.mark.parametrize("target,rid", [("linux", "linux-x64"), ("browser", "browser-wasm"), ("android", "android-arm64")])
+def test_publish_takes_target_class_libraries_and_replaces_old_files_only_after_input_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: str | None, target: str, rid: str,
+) -> None:
     env = setup_mono_env(tmp_path, "")
     workspace = Path(env["FO_WORKSPACE"])
     runtime = workspace / "runtime"
-    triplet = "linux.x64.Release"
+    arch = rid.split("-", 1)[1]
+    triplet = f"{target}.{arch}.Release"
     output = workspace / "output" / "mono" / triplet
     output.mkdir(parents=True)
     (output / "removed-library.so").write_text("stale", encoding="utf-8")
     inputs = runtime / "artifacts" / "obj" / "mono" / triplet / "out"
     inputs.mkdir(parents=True)
     (inputs / "current-library.so").write_text("current", encoding="utf-8")
-    frameworks = runtime / ".dotnet" / "shared" / "Microsoft.NETCore.App"
-    for version in ("9.0.0", "10.0.0-preview.2", "10.0.0"):
-        folder = frameworks / version
-        folder.mkdir(parents=True)
-        (folder / "System.Runtime.dll").write_text(version, encoding="utf-8")
+    # The SDK dotnet/runtime builds itself with carries a host-OS shared framework that must never be published
+    sdk_framework = runtime / ".dotnet" / "shared" / "Microsoft.NETCore.App" / "10.0.9"
+    sdk_framework.mkdir(parents=True)
+    (sdk_framework / "System.Runtime.dll").write_text("host sdk", encoding="utf-8")
+    (sdk_framework / "System.Net.Http.dll").write_text("host sdk", encoding="utf-8")
+    if missing != "class_libraries":
+        pack = runtime / "artifacts" / "bin" / f"microsoft.netcore.app.runtime.{rid}" / "Release" / "runtimes" / rid / "lib" / "net10.0"
+        pack.mkdir(parents=True)
+        (pack / "System.Runtime.dll").write_text("target", encoding="utf-8")
     corelib = runtime / "artifacts" / "bin" / "mono" / triplet / "IL" / "System.Private.CoreLib.dll"
-    if not missing_corelib:
+    if missing != "corelib":
         corelib.parent.mkdir(parents=True)
         corelib.write_text("mono corelib", encoding="utf-8")
 
@@ -381,13 +555,17 @@ def test_publish_replaces_old_files_only_after_input_validation(tmp_path: Path, 
 
     monkeypatch.setattr(_buildtools, "run_marker_step", run_publish_only)
     monkeypatch.setattr(_buildtools, "copy_interop_shim_libraries", lambda *args: None)
-    if missing_corelib:
-        with pytest.raises(SystemExit, match="System.Private.CoreLib not found"):
-            _buildtools.setup_mono("linux", "x64", "Release", env)
+    monkeypatch.setattr(_buildtools, "copy_browser_runtime_glue", lambda *args: None)
+    if missing is not None:
+        match = "System.Private.CoreLib not found" if missing == "corelib" else f"{rid} runtime pack"
+        with pytest.raises(SystemExit, match=match):
+            _buildtools.setup_mono(target, arch, "Release", env)
         assert (output / "removed-library.so").is_file()
     else:
-        _buildtools.setup_mono("linux", "x64", "Release", env)
+        _buildtools.setup_mono(target, arch, "Release", env)
+        netcoreapp = output / "lib" / "netcoreapp"
         assert not (output / "removed-library.so").exists()
         assert (output / "current-library.so").is_file()
-        assert (output / "lib" / "netcoreapp" / "System.Runtime.dll").read_text() == "10.0.0"
-        assert (output / "lib" / "netcoreapp" / "System.Private.CoreLib.dll").read_text() == "mono corelib"
+        assert sorted(path.name for path in netcoreapp.iterdir()) == ["System.Private.CoreLib.dll", "System.Runtime.dll"]
+        assert (netcoreapp / "System.Runtime.dll").read_text() == "target"
+        assert (netcoreapp / "System.Private.CoreLib.dll").read_text() == "mono corelib"

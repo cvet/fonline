@@ -51,7 +51,7 @@ namespace
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"test_collection:Int"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int"});
 
         return settings;
     }
@@ -190,7 +190,7 @@ namespace EntityOps
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -2;
@@ -257,8 +257,8 @@ namespace EntityOps
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item item2 = cr.AddItem("TestItem2".hstr(), 1);
+        Item item1 = cr.AddItem("TestItem".hstr());
+        Item item2 = cr.AddItem("TestItem2".hstr());
         if (item1 is null || item2 is null) return -2;
 
         // Both items should be in critter's inventory
@@ -781,7 +781,7 @@ namespace EntityOps
             return -4;
         }
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -5;
@@ -829,7 +829,7 @@ namespace EntityOps
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
 
-        Item item = cr.AddItem("TestItem".hstr(), 1);
+        Item item = cr.AddItem("TestItem".hstr());
         if (item is null) {
             Game.DestroyCritter(cr);
             return -2;
@@ -1012,8 +1012,8 @@ namespace EntityOps
         if (cr is null) return -1;
 
         // Add items of different types
-        Item item1 = cr.AddItem("TestItem".hstr(), 1);
-        Item item2 = cr.AddItem("TestItem2".hstr(), 1);
+        Item item1 = cr.AddItem("TestItem".hstr());
+        Item item2 = cr.AddItem("TestItem2".hstr());
         if (item1 is null || item2 is null) return -2;
 
         // Items should have different proto ids
@@ -1024,7 +1024,11 @@ namespace EntityOps
         if (allItems.length() < 2) return -4;
 
         // Destroy one type
-        cr.DestroyItem("TestItem".hstr());
+        array<Item> destroyedItems = cr.GetItems("TestItem".hstr());
+
+        for (uint i = 0; i < destroyedItems.length(); i++) {
+            Game.DestroyItem(destroyedItems[i]);
+        }
 
         // Check remaining
         array<Item> remaining = cr.GetItems();
@@ -1928,17 +1932,17 @@ namespace EntityOps
     {
         auto metadata_blob = MakeEntityOpsMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring coverage_proto_type = proto_engine.Hashes.ToHashedString("CoverageProtoTarget");
-        hstring coverage_fixed_type = proto_engine.Hashes.ToHashedString("CoverageFixed");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring coverage_proto_type = proto_engine.Hashes.to_hashed_string("CoverageProtoTarget");
+        hstring coverage_fixed_type = proto_engine.Hashes.to_hashed_string("CoverageFixed");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
@@ -1946,7 +1950,7 @@ namespace EntityOps
         auto coverage_fixed_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_fixed_type, "CoverageFixedOne");
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("EntityOpsItem.fopro-bin-server", item_blob);
@@ -1994,7 +1998,7 @@ namespace EntityOps
     {
         auto metadata_blob = MakeEntityOpsMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -2002,7 +2006,7 @@ namespace EntityOps
 
         auto script_blob = MakeConstGlobalMismatchScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityOpsConstGlobalMismatch.fos-bin-server", script_blob);
 
@@ -2030,7 +2034,7 @@ namespace EntityOps
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -2049,7 +2053,7 @@ namespace EntityOps
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.ToHashedString(name); }
+    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
 
 #define RUN_SCRIPT_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("EntityOps::" func_name)); \
@@ -2060,10 +2064,10 @@ namespace EntityOps
 #define RUN_SCRIPT_FUNC_THROWS(func_name, expected_message) \
     auto func = server->FindFunc<void>(get_func("EntityOps::" func_name)); \
     REQUIRE(func); \
-    auto prev_callback = GetExceptionCallback(); \
+    auto prev_callback = exceptions::get_callback(); \
     string message; \
-    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
-    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
+    exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); }); \
+    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); }); \
     CHECK_FALSE(func.Call()); \
     INFO(message); \
     CHECK(message.find(expected_message) != string::npos)
@@ -2074,16 +2078,16 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
     string message;
     std::mutex message_locker;
 
-    auto prev_callback = GetExceptionCallback();
-    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) {
+    auto prev_callback = exceptions::get_callback();
+    exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) {
         std::scoped_lock locker(message_locker);
 
         message += msg;
         message += '\n';
     });
-    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeConstGlobalMismatchResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeConstGlobalMismatchResources());
     bool server_shutdown = false;
     auto shutdown = scope_exit([&server, &server_shutdown]() noexcept {
         safe_call([&server, &server_shutdown] {

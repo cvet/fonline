@@ -5,9 +5,7 @@ document_id: native-extension-sample-readme
 ---
 
 # Пример native-расширения FOnline
-
 <!-- docs-translation: {"document_id":"native-extension-sample-readme","locale":"ru","source_path":"Examples/NativeExtensionSample/README.md","source_sha256":"2b20525120004086efe0011fdd84e8deba8279546849a9e4907a715309b335dc"} -->
-
 Этот принадлежащий движку проект показывает полный путь проектного C++-расширения без игровых сервисов и сторонних SDK. Он отделён от минимального starter-проекта, чтобы границы владения native-кодом и совместимости оставались явными.
 
 Пример доказывает следующее:

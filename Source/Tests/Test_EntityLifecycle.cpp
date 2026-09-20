@@ -147,8 +147,8 @@ namespace
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
 
                 const_span<uint8_t> data = encoded_data;
-                if (!_settings->DisableZlibCompression) {
-                    _decompressor.Decompress(encoded_data, _unpackedData);
+                if (!_settings->Network.DisableZlibCompression) {
+                    _decompressor.decompress(encoded_data, _unpackedData);
                     data = _unpackedData;
                 }
 
@@ -161,9 +161,9 @@ namespace
                     uint32_t signature {};
                     uint32_t message_size {};
                     NetMessage message {};
-                    MemCopy(&signature, data.data() + offset, sizeof(signature));
-                    MemCopy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
-                    MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+                    memory::copy(&signature, data.data() + offset, sizeof(signature));
+                    memory::copy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
+                    memory::copy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
 
                     FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
                     FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
@@ -178,7 +178,7 @@ namespace
                         FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(EngineInfoMessage), "Truncated outgoing info message", message_size);
 
                         EngineInfoMessage info_message {};
-                        MemCopy(&info_message, data.data() + offset + header_size, sizeof(info_message));
+                        memory::copy(&info_message, data.data() + offset + header_size, sizeof(info_message));
                         _lastSentInfoMessage.store(info_message, std::memory_order_relaxed);
                         _sentInfoMessageCount.fetch_add(1, std::memory_order_relaxed);
                     }
@@ -210,7 +210,7 @@ namespace
         std::atomic<size_t> _sentInfoMessageCount {};
         std::atomic<size_t> _sentDisconnectCount {};
         std::atomic<EngineInfoMessage> _lastSentInfoMessage {};
-        StreamDecompressor _decompressor {};
+        stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
         std::atomic<size_t> _sentTrackedMessageCount {};
         std::atomic<NetMessage> _firstSentTrackedMessage {};
@@ -553,12 +553,12 @@ namespace EntityLifecycle
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.Write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.Write<uint32_t>(uint32_t {0}); // hashes_count
-        writer.Write<uint32_t>(uint32_t {0}); // cr_count
-        writer.Write<uint32_t>(uint32_t {0}); // item_count
+        auto writer = data_writer(map_data);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0}); // hashes_count
+        writer.write<uint32_t>(uint32_t {0}); // cr_count
+        writer.write<uint32_t>(uint32_t {0}); // item_count
         return map_data;
     }
 
@@ -570,24 +570,24 @@ namespace EntityLifecycle
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -597,17 +597,17 @@ namespace EntityLifecycle
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
@@ -615,7 +615,7 @@ namespace EntityLifecycle
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityLifecycleCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("EntityLifecycleItem.fopro-bin-server", item_blob);
@@ -648,7 +648,7 @@ namespace EntityLifecycle
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 
     static auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>
@@ -672,9 +672,9 @@ namespace EntityLifecycle
     static auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
 
-        return SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        return safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
     }
 
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>;
@@ -701,7 +701,7 @@ namespace EntityLifecycle
     {
         FO_STACK_TRACE_ENTRY();
 
-        NetOutBuffer packet {numeric_cast<size_t>(server->Settings->NetBufferSize)};
+        NetOutBuffer packet {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
         packet.StartMsg(NetMessage::SendStopCritterMove);
         packet.Write(map_id);
         packet.Write(cr_id);
@@ -771,7 +771,7 @@ TEST_CASE("EntityInitEvents")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CritterInitEventFires")
     {
@@ -797,7 +797,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
 
         int32_t calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetItemInitCalls"), calls));
@@ -832,7 +832,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func.Call(1));
 
         size_t initial_item_count = server->EntityMngr.GetItemsCount();
-        REQUIRE_THROWS_AS(server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr), ItemManagerException);
+        REQUIRE_THROWS_AS(server->ItemMngr.CreateItem(fn("TestItem"), nullptr), ItemManagerException);
         CHECK(server->EntityMngr.GetItemsCount() == initial_item_count);
 
         int32_t calls = 0;
@@ -889,7 +889,7 @@ TEST_CASE("EntityInitEvents")
         REQUIRE(set_mode_func.Call(1));
 
         size_t initial_item_count = server->EntityMngr.GetItemsCount();
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
         ident_t item_id = item->GetId();
 
         server->ItemMngr.DestroyItem(item);
@@ -1148,7 +1148,7 @@ TEST_CASE("EntityManagerCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetEntitiesReturnsCorrectCollections")
     {
@@ -1160,7 +1160,7 @@ TEST_CASE("EntityManagerCppApi")
 
         size_t after_critter_item_count = server->EntityMngr.GetItemsCount();
 
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
 
         CHECK(server->EntityMngr.GetItemsCount() == after_critter_item_count + 1);
 
@@ -1213,7 +1213,7 @@ TEST_CASE("EntityManagerCppApi")
 
     SECTION("GetEntityFindsCreatedItem")
     {
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr);
 
         ident_t item_id = item->GetId();
         auto found = server->EntityMngr.GetItem(item_id);
@@ -1283,7 +1283,7 @@ TEST_CASE("CritterCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CritterStateChecks")
     {
@@ -1325,22 +1325,18 @@ TEST_CASE("CritterCppApi")
 
         CHECK_FALSE(cr->HasItems());
 
-        auto item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        REQUIRE(static_cast<bool>(item1));
+        auto item1 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
         CHECK(cr->HasItems());
 
-        auto item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        REQUIRE(static_cast<bool>(item2));
+        auto item2 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
+        CHECK(item2->GetId() != item1->GetId());
 
         vector<ptr<Item>> inv_items = cr->GetInvItems();
-        CHECK(inv_items.size() >= 2);
+        CHECK(inv_items.size() == 2);
 
         // Find by pid
-        auto found = cr->GetInvItemByPid(fn("TestItem"));
+        auto found = cr->GetItemByPidInvPriority(fn("TestItem"));
         CHECK(static_cast<bool>(found));
-
-        // Count by pid
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) >= 2);
 
         // Find by id
         auto found_by_id = cr->GetInvItem(item1->GetId());
@@ -1410,7 +1406,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    const auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GlobalMapGroupIdsReportEveryMemberWithAStableRevision")
     {
@@ -1489,7 +1485,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
     SECTION("InitialInfoLeavesTheGlobalGroupFanOutToTheScript")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "GlobalGroupInitialInfo");
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
@@ -1525,7 +1521,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
     SECTION("SendGlobalMapGroupInfoRequiresTheCallerToCoverEveryGroupMember")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "GlobalGroupFanOut");
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
@@ -1624,13 +1620,13 @@ TEST_CASE("ItemCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("ItemCreationAndDestruction")
     {
         // Hold a ref so the item survives DestroyItem (which drops the manager's last reference and
         // frees it) and the post-destroy IsDestroyed() check reads a valid object
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr).hold_ref();
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), nullptr).hold_ref();
 
         CHECK(item->GetId() != ident_t {});
         CHECK(item->GetProtoId() == fn("TestItem"));
@@ -1644,32 +1640,11 @@ TEST_CASE("ItemCppApi")
     {
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
-        auto item = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 5);
-        REQUIRE(static_cast<bool>(item));
+        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
         CHECK(cr->HasItems());
 
-        server->ItemMngr.SubItemCritter(cr, fn("TestItem"), 3);
-        // Still has 2 items
-        CHECK(cr->HasItems());
-
-        server->ItemMngr.SubItemCritter(cr, fn("TestItem"), 2);
+        server->ItemMngr.DestroyItem(item);
         CHECK_FALSE(cr->HasItems());
-
-        server->CrMngr.DestroyCritter(cr);
-    }
-
-    SECTION("ItemSetCount")
-    {
-        auto cr = server->CreateCritter(fn("TestCritter"), false);
-
-        server->ItemMngr.SetItemCritter(cr, fn("TestItem"), 10);
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) == 10);
-
-        server->ItemMngr.SetItemCritter(cr, fn("TestItem"), 3);
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) == 3);
-
-        server->ItemMngr.SetItemCritter(cr, fn("TestItem"), 0);
-        CHECK(cr->CountInvItemByPid(fn("TestItem")) == 0);
 
         server->CrMngr.DestroyCritter(cr);
     }
@@ -1678,11 +1653,8 @@ TEST_CASE("ItemCppApi")
     {
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
-        auto item1 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        auto item2 = server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-
-        REQUIRE(static_cast<bool>(item1));
-        REQUIRE(static_cast<bool>(item2));
+        auto item1 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
+        auto item2 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
 
         // Different item instances
         CHECK(item1->GetId() != item2->GetId());
@@ -1715,7 +1687,7 @@ TEST_CASE("LocationCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CreateAndDestroyLocation")
     {
@@ -1751,6 +1723,57 @@ TEST_CASE("LocationCppApi")
         vector<ptr<Map>> maps = loc->GetMaps();
         CHECK(maps.empty());
 
+        server->MapMngr.DestroyLocation(loc);
+    }
+
+    // The find type is honoured as a whole: the player/NPC half picks the map partition, the dead/alive half still filters it
+    SECTION("MapCrittersByFindTypeHonourWholeFindType")
+    {
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto player_cr = server->CreateCritter(fn("TestCritter"), true);
+        auto npc = server->CreateCritter(fn("TestCritter"), false);
+        auto dead_npc = server->CreateCritter(fn("TestCritter"), false);
+        server->MapMngr.TransferToMap(player_cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(npc, map, mpos {24, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(dead_npc, map, mpos {28, 20}, mdir {}, std::nullopt);
+        dead_npc->SetCondition(CritterCondition::Dead);
+
+        auto contains = [](const vector<ptr<Critter>>& critters, ptr<Critter> cr) { return std::ranges::find(critters, cr) != critters.end(); };
+
+        CHECK(contains(map->GetCritters(CritterFindType::Players), player_cr.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::Players), npc.get()));
+        CHECK(contains(map->GetCritters(CritterFindType::NonDeadNpc), npc.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::NonDeadNpc), dead_npc.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::NonDeadNpc), player_cr.get()));
+        CHECK(contains(map->GetCritters(CritterFindType::DeadNpc), dead_npc.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::DeadNpc), npc.get()));
+        CHECK(map->GetCritters(CritterFindType::DeadPlayers).empty());
+        CHECK(map->GetCritters(CritterFindType::Any).size() == map->GetCritters().size());
+        CHECK(map->GetCritters(CritterFindType::NonDead).size() + 1 == map->GetCritters().size());
+        CHECK(map->GetCritters(CritterFindType::Dead).size() == 1);
+        CHECK(contains(map->GetCritters(CritterFindType::Dead), dead_npc.get()));
+
+        CritterFindType players_and_npc = combine_enum(CritterFindType::Players, CritterFindType::Npc);
+        size_t expected_players_and_npc = 0;
+
+        for (ptr<Critter> cr : map->GetCritters()) {
+            if (cr->CheckFind(players_and_npc)) {
+                expected_players_and_npc++;
+            }
+        }
+
+        CHECK(map->GetCritters(players_and_npc).size() == expected_players_and_npc);
+
+        player_cr->UnmarkIsForPlayer();
+        CHECK(contains(map->GetCritters(CritterFindType::NonDeadNpc), player_cr.get()));
+        CHECK_FALSE(contains(map->GetCritters(CritterFindType::Players), player_cr.get()));
+
+        server->CrMngr.DestroyCritter(dead_npc);
+        server->CrMngr.DestroyCritter(player_cr);
+        server->CrMngr.DestroyCritter(npc);
         server->MapMngr.DestroyLocation(loc);
     }
 }
@@ -1813,7 +1836,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         }
     });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("LoginPlayerToNewRecordAllocatesNonZeroId")
     {
@@ -1841,8 +1864,8 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto registered_player = CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref();
         ident_t registered_id = registered_player->GetId();
         auto net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
-        auto candidate = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto candidate = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
         server->RequireCurrentSyncContext()->SyncEntity(candidate);
 
         CHECK_THROWS_WITH(server->EntityMngr.RegisterPlayer(candidate, registered_id), Catch::Matchers::ContainsSubstring("Player id is already registered"));
@@ -1898,7 +1921,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(6));
 
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, test_connection, "FailingReconnectNext");
         small_vector<ptr<ServerEntity>, 2> reconnect_cover {player, not_logged_in_player};
         server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
@@ -1914,7 +1937,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("LoginPlayerToExistentRecordKeepsHardDisconnectForCompletionFailure")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto not_logged_in_player = CreatePreparedNotLoggedInPlayer(server, test_connection, "MissingRecord");
 
         CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(not_logged_in_player, ident_t {999999}), Catch::Matchers::ContainsSubstring("Player data not found"));
@@ -2127,7 +2150,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("DetachPlayerCritterResendsPreviousChosenAsOrdinaryCritter")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "ChosenDetach");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2171,7 +2194,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMoveDetach");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2230,7 +2253,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("StopMoveFailedReconciliationSendsAuthoritativePosition")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMoveCorrection");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2288,7 +2311,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("StopMoveKeepsPassableHexWhenOffsetRoundsIntoBlockedNeighbour")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMoveBlockedOffset");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2352,7 +2375,7 @@ TEST_CASE("PlayerRegistrationCppApi")
     // into a passable neighbour still has to advance the logical hex instead of piling up as a sub-hex offset
     SECTION("StopMoveNormalizesOffsetIntoPassableNeighbour")
     {
-        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMovePassableOffset");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
@@ -2430,7 +2453,7 @@ TEST_CASE("CritterManagerCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetNonPlayerCritters")
     {
@@ -2461,9 +2484,10 @@ TEST_CASE("CritterManagerCppApi")
     {
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
-        server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
-        server->ItemMngr.AddItemCritter(cr, fn("TestItem"), 1);
+        for (int32_t i = 0; i < 3; i++) {
+            (void)server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(fn("TestItem"), nullptr), true);
+        }
+
         CHECK(cr->HasItems());
 
         server->CrMngr.DestroyInventory(cr);
@@ -2493,7 +2517,7 @@ TEST_CASE("ProtoAccessCppApi")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("GetProtoCritter")
     {
@@ -2552,7 +2576,7 @@ TEST_CASE("ScriptFunctionCalls")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     SECTION("CallFuncWithReturnValue")
     {

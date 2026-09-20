@@ -5,9 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-
 <!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"4cd0f52678a178f1a7664a8df5eabe17f0709873328ef7f0b91ca8906d8be4c0"} -->
-
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым

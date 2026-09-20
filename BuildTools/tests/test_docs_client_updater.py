@@ -37,7 +37,7 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
         for switch in (
             "--ClientLibPath",
             "--ClientLibCompatibilityVersion",
-            "--ForceEmbeddedRuntime",
+            "--Client.ForceEmbeddedRuntime",
         ):
             self.assertIn(switch, host)
             self.assertIn(f"`{switch}`", guide)

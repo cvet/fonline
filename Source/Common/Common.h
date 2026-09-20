@@ -44,13 +44,13 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2523 InventorySha256=f4c63e9c4e35f497c25c2ee77c6579e0d36b24a83d0ed8018af0fa068aab66ad
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2527 InventorySha256=83fce2d573f640a94c33cc93cbbb2d19358fccda69493c0dfaae20c0878d9ccf
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 53
+///@ MigrationRule Version 0 0 58
 
-extern auto IsPackaged() -> bool;
-extern auto GetPackagedRuntimeName() -> string;
+auto IsPackaged() -> bool;
+auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
@@ -239,7 +239,7 @@ public:
                 cb._unsubscribeCallback();
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -272,7 +272,7 @@ public:
                 throw GenericException("Some of subscriber still subscribed", _subscriberCallbacks.size());
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -597,10 +597,18 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
-// Synchronization-cover markers for script exports. Both expand to nothing: the compiler never sees them, codegen
+// Synchronization-cover markers for script exports. All expand to nothing: the compiler never sees them, codegen
 // does
 #define FO_REQUIRES_COVER
 #define FO_PROVIDES_COVER
+#define FO_RETURNS_PARENT
+#define FO_RETURNS_ANCESTOR
+
+// The raw synchronization surface, marked where it is exported: naming these in the analyzer would let a
+// rename here disarm a rule with nothing left to notice it
+#define FO_COVER_PRIMITIVE
+#define FO_COVER_PROBE
+#define FO_SINGLETON_LOCK
 
 struct ArgDesc
 {
@@ -640,16 +648,43 @@ struct MethodDesc
     // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
     // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
     bool ReturnProvidesCover {};
+
+    // An upward accessor: it returns the receiver's sync-hierarchy parent (FO_RETURNS_PARENT) or some ancestor
+    // (FO_RETURNS_ANCESTOR). The receiver's own cover does not reach it; cover declared with that reach does
+    bool ReturnIsParent {};
+    bool ReturnIsAncestor {};
+
+    // The raw surface script code never reaches for directly: the primitive that replaces the held set, the
+    // question about what is held, and the singleton bucket lock
+    bool IsCoverPrimitive {};
+    bool IsCoverProbe {};
+    bool IsSingletonLock {};
 };
 
 struct StructLayoutDesc
 {
-    unique_del_ptr<void> (*CreateNative)() {};
-    void (*CopyNative)(ptr<void>, ptr<const void>) {};
+    using CreateNativeFunc = unique_del_ptr<void> (*)();
+    using CopyNativeFunc = void (*)(ptr<void>, ptr<const void>);
+
+    CreateNativeFunc CreateNative {};
+    CopyNativeFunc CopyNative {};
     size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };
+
+template<typename T>
+auto CreateNativeValue() -> unique_del_ptr<void>
+{
+    auto value = safe_alloc::make_unique<T>();
+    return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
+}
+
+template<typename T>
+void CopyNativeValue(ptr<void> dst, ptr<const void> src)
+{
+    *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>();
+}
 
 struct RefTypeDesc
 {
@@ -935,8 +970,14 @@ private:
 
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
-extern mutex InterthreadListenersLocker;
-extern map<uint16_t, copyable_function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadListener = copyable_function<InterthreadDataCallback(InterthreadDataCallback)>;
+
+// One table for the process, keyed by virtual port, so an embedded client finds the server running beside it.
+// Listeners are handed out by copy and called outside the table's lock
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool;
+auto RemoveInterthreadListener(uint16_t port) -> bool;
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
+auto HasInterthreadListener(uint16_t port) -> bool;
 
 // Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers
 ///@ ExportEnum
@@ -1124,6 +1165,48 @@ enum class MultihexGenerationType : uint8_t
 ///@ EnumValueDoc MultihexGenerationType None // Disables Mapper coalescing of item placements into a multihex mesh.
 ///@ EnumValueDoc MultihexGenerationType SameSibling // Coalesces spatially adjacent compatible sibling items into one incrementally grown multihex mesh.
 ///@ EnumValueDoc MultihexGenerationType AnyUnique // Coalesces compatible same-prototype items into distinct full-map groups without requiring adjacency.
+
+// The manual-scroll intent a view is currently under. Input decides it, the view consumes it, and the two
+// never share a field: a direction is a per-frame intent, not a value anyone configures
+///@ ExportEnum
+enum class ScrollDirection : uint8_t
+{
+    None = 0,
+    Left = 0x01,
+    Right = 0x02,
+    Up = 0x04,
+    Down = 0x08,
+};
+///@ EnumValueDoc ScrollDirection None // No manual-scroll direction is active.
+///@ EnumValueDoc ScrollDirection Left // Scroll toward the left edge.
+///@ EnumValueDoc ScrollDirection Right // Scroll toward the right edge.
+///@ EnumValueDoc ScrollDirection Up // Scroll toward the upper edge.
+///@ EnumValueDoc ScrollDirection Down // Scroll toward the lower edge.
+
+// The layers a map view draws. The mapper hides one to work on another, so the visible set is editor state
+// the view is told about - a value that changes while the tool runs is not something anyone configures
+///@ ExportEnum
+enum class MapLayers : uint8_t
+{
+    None = 0,
+    Items = 0x01,
+    Scenery = 0x02,
+    Walls = 0x04,
+    Critters = 0x08,
+    Tiles = 0x10,
+    Roof = 0x20,
+    Fast = 0x40,
+    All = 0x7F,
+};
+///@ EnumValueDoc MapLayers None // Draw none of the optional map layers.
+///@ EnumValueDoc MapLayers Items // Draw map items.
+///@ EnumValueDoc MapLayers Scenery // Draw scenery objects.
+///@ EnumValueDoc MapLayers Walls // Draw wall objects.
+///@ EnumValueDoc MapLayers Critters // Draw critters.
+///@ EnumValueDoc MapLayers Tiles // Draw ground tiles.
+///@ EnumValueDoc MapLayers Roof // Draw roof tiles.
+///@ EnumValueDoc MapLayers Fast // Draw the fast-rendered layer.
+///@ EnumValueDoc MapLayers All // Draw every map layer.
 
 class AnimationResolver
 {

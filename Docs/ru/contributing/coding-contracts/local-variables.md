@@ -7,9 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/local-variables.html
 ---
 
 # Локальные переменные
-
 <!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"9f1a122dc5f4c825be8e7fa3e4619403edb0de33977834e9925209add1cdd88b"} -->
-
 Этот документ определяет узкие правила собственного C++-кода для явного
 написания локальных типов, избыточного верхнеуровневого `const` и диагностики
 использования после перемещения.

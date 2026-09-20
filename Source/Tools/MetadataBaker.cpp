@@ -36,9 +36,6 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto GetServerSettings() -> unordered_set<string>;
-extern auto GetClientSettings() -> unordered_set<string>;
-
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
@@ -74,7 +71,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     }
 
     for (const auto& config_path : _context->Settings->GetAppliedConfigs()) {
-        max_write_time = std::max(max_write_time, fs_last_write_time(config_path));
+        max_write_time = std::max(max_write_time, fs::last_write_time(config_path));
     }
 
     if (filtered_files.empty()) {
@@ -124,7 +121,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
                 throw;
             }
 
-            WriteLog("Metadata error: {}", ex.what());
+            logging::write("Metadata error: {}", ex.what());
             errors++;
         }
     }
@@ -205,7 +202,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
                     normalized_line += ch;
                 }
 
-                ctx.NormalizedLines.emplace_back(SafeAlloc::MakeUnique<string>(std::move(normalized_line)));
+                ctx.NormalizedLines.emplace_back(safe_alloc::make_unique<string>(std::move(normalized_line)));
                 line = *ctx.NormalizedLines.back();
             }
 
@@ -267,21 +264,21 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
     // Serialize data behind the fixed header, so the layout version is readable without walking the sections
     vector<uint8_t> data = MakeMetadataHeader(MakeMetadataVersion(ctx));
-    DataWriter writer(data);
+    data_writer writer(data);
 
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(ctx.ResultTags.size()));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(ctx.ResultTags.size()));
 
     for (const auto& [tag_name, tag_values] : ctx.ResultTags) {
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_name.size()));
-        writer.WriteStringBytes(tag_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(tag_values.size()));
+        writer.write<uint16_t>(numeric_cast<uint16_t>(tag_name.size()));
+        writer.write_string_bytes(tag_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(tag_values.size()));
 
         for (const auto& tag_value : tag_values) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(tag_value.size()));
+            writer.write<uint32_t>(numeric_cast<uint32_t>(tag_value.size()));
 
             for (const auto& tag_value_part : tag_value) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(tag_value_part.size()));
-                writer.WriteStringBytes(tag_value_part);
+                writer.write<uint16_t>(numeric_cast<uint16_t>(tag_value_part.size()));
+                writer.write_string_bytes(tag_value_part);
             }
         }
     }
@@ -326,7 +323,7 @@ auto MetadataBaker::MakeMetadataVersion(const TagsParsingContext& ctx) const -> 
         }
     }
 
-    uint64_t metadata_hash = fs_hash_data(make_const_span(metadata_source));
+    uint64_t metadata_hash = fs::hash_data(make_const_span(metadata_source));
     return strex("{:016x}", metadata_hash).str();
 }
 
@@ -568,7 +565,7 @@ void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
             continue;
         }
 
-        hstring hname = ctx.Meta.Hashes.ToHashedString(name);
+        hstring hname = ctx.Meta.Hashes.to_hashed_string(name);
         auto flags = span(tag_desc.Tokens).subspan(2);
         bool is_global = std::ranges::any_of(flags, [](auto&& f) { return f == "Global"; });
         bool has_protos = std::ranges::any_of(flags, [](auto&& f) { return f == "HasProtos"; });
@@ -618,9 +615,9 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
         auto target = tag_desc.Tokens[0];
 
         auto holder_entity_name = tag_desc.Tokens[1];
-        hstring holder_entity_hname = ctx.Meta.Hashes.ToHashedString(holder_entity_name);
+        hstring holder_entity_hname = ctx.Meta.Hashes.to_hashed_string(holder_entity_name);
         auto target_entity_name = tag_desc.Tokens[2];
-        hstring target_entity_hname = ctx.Meta.Hashes.ToHashedString(target_entity_name);
+        hstring target_entity_hname = ctx.Meta.Hashes.to_hashed_string(target_entity_name);
         auto entry_name = tag_desc.Tokens[3];
         auto flags = span(tag_desc.Tokens).subspan(4);
         bool has_no_sync = std::ranges::any_of(flags, [](auto&& f) { return f == "NoSync"; });
@@ -702,7 +699,7 @@ void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid FixedType codegen tag: flags are not supported", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
-        hstring hname = ctx.Meta.Hashes.ToHashedString(name);
+        hstring hname = ctx.Meta.Hashes.to_hashed_string(name);
 
         if (ctx.Meta.IsValidEntityType(hname) || ctx.Meta.IsFixedType(hname)) {
             throw MetadataBakerException("Invalid FixedType codegen tag: duplicate fixed type", tag_desc.SourceFile, tag_desc.LineNumber, name);
@@ -961,7 +958,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
 
         auto ref_type_it = ctx.RefTypes.find(string(entity_name));
 
-        if (ref_type_it == ctx.RefTypes.end() && !ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.ToHashedString(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
+        if (ref_type_it == ctx.RefTypes.end() && !ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.to_hashed_string(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
             if (ctx.Meta.IsValidBaseType(entity_name)) {
                 throw MetadataBakerException("Invalid Property codegen tag: only RefType supports script metadata properties", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
             }
@@ -1101,7 +1098,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             continue;
         }
 
-        if (!ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.ToHashedString(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
+        if (!ctx.Meta.IsValidEntityType(ctx.Meta.Hashes.to_hashed_string(entity_name)) && !ctx.Meta.IsFixedType(entity_name)) {
             throw MetadataBakerException("Invalid Property codegen tag: unknown entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
         }
 
@@ -1265,7 +1262,7 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
         }
 
         auto entity_name = tokens[1];
-        hstring entity_hname = ctx.Meta.Hashes.ToHashedString(entity_name);
+        hstring entity_hname = ctx.Meta.Hashes.to_hashed_string(entity_name);
 
         if (!ctx.Meta.IsValidEntityType(entity_hname)) {
             throw MetadataBakerException("Invalid Event codegen tag: invalid entity type", tag_desc.SourceFile, tag_desc.LineNumber, entity_hname);
@@ -1273,7 +1270,7 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 
         EntityEventDesc event_desc;
         auto event_name = tokens[2];
-        event_desc.Name = ctx.Meta.Hashes.ToHashedString(event_name);
+        event_desc.Name = ctx.Meta.Hashes.to_hashed_string(event_name);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(entity_name);
@@ -1367,7 +1364,7 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
         }
 
         RemoteCallDesc recote_call_desc;
-        recote_call_desc.Name = ctx.Meta.Hashes.ToHashedString(remote_call_name);
+        recote_call_desc.Name = ctx.Meta.Hashes.to_hashed_string(remote_call_name);
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(remote_call_name);
@@ -1488,31 +1485,6 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
     FO_STACK_TRACE_ENTRY();
 
     vector<vector<string>> result_tag_setting;
-    auto known_settings = ctx.Target == "Server" ? GetServerSettings() : GetClientSettings();
-
-    auto resolve_setting_name = [&](const CodeGenTagDesc& tag_desc, string_view name) -> string {
-        if (name.find('.') != string_view::npos) {
-            return string(name);
-        }
-
-        vector<string> matches;
-
-        for (const auto& setting_name : known_settings) {
-            if (setting_name == name || setting_name.ends_with(strex(".{}", name))) {
-                matches.emplace_back(setting_name);
-            }
-        }
-
-        if (matches.empty()) {
-            return string(name);
-        }
-
-        if (matches.size() != 1) {
-            throw MetadataBakerException("Invalid Setting codegen tag: ambiguous setting name", tag_desc.SourceFile, tag_desc.LineNumber, name);
-        }
-
-        return std::move(matches.front());
-    };
 
     for (const auto& tag_desc : ctx.CodeGenTags[METADATA_SETTING_SECTION]) {
         if (tag_desc.Tokens.size() < 3) {
@@ -1550,7 +1522,13 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
             raw_name += token;
         }
 
-        string name = resolve_setting_name(tag_desc, raw_name);
+        // A setting is named by its group, so the tag carries the whole name and nothing here guesses the
+        // group from a bare one - that guess is what made a short name global across every group
+        if (raw_name.find('.') == string::npos) {
+            throw MetadataBakerException("Invalid Setting codegen tag: expected the Group.Name form", tag_desc.SourceFile, tag_desc.LineNumber, raw_name);
+        }
+
+        string name = std::move(raw_name);
 
         if (!ctx.Meta.IsValidBaseType(type_str)) {
             throw MetadataBakerException("Invalid Setting codegen tag: invalid type", tag_desc.SourceFile, tag_desc.LineNumber, type_str);
@@ -1624,26 +1602,9 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             return value;
         };
 
-        auto rule_tokens = span(tag_desc.Tokens);
-        auto qualifier = std::ranges::find(rule_tokens, "BeforeVersion");
-        string version_property;
-        string before_version;
+        auto last_arg_begin = tag_desc.Tokens.size() - 1;
 
-        if (qualifier != rule_tokens.end()) {
-            size_t qualifier_index = static_cast<size_t>(qualifier - rule_tokens.begin());
-
-            if (rule_tokens[0] != "Property" || qualifier_index < 4 || qualifier_index + 2 >= rule_tokens.size()) {
-                throw MetadataBakerException("Invalid property migration version qualifier", tag_desc.SourceFile, tag_desc.LineNumber);
-            }
-
-            version_property = merge_dotted_tokens(rule_tokens.subspan(qualifier_index + 1, rule_tokens.size() - qualifier_index - 2));
-            before_version = rule_tokens.back();
-            rule_tokens = rule_tokens.first(qualifier_index);
-        }
-
-        auto last_arg_begin = rule_tokens.size() - 1;
-
-        while (last_arg_begin > 2 && rule_tokens[last_arg_begin - 1] == ".") {
+        while (last_arg_begin > 2 && tag_desc.Tokens[last_arg_begin - 1] == ".") {
             last_arg_begin -= 2;
         }
 
@@ -1653,40 +1614,16 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
 
         string rule_name = string(tag_desc.Tokens[0]);
         string extra_info = string(tag_desc.Tokens[1]);
-        string target = merge_dotted_tokens(rule_tokens.subspan(2, last_arg_begin - 2));
-        string replacement = merge_dotted_tokens(rule_tokens.subspan(last_arg_begin));
+        string target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
+        string replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
 
         ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
-
-        if (!version_property.empty()) {
-            ctx.Meta.RegisterPropertyMigrationBeforeVersion(extra_info, target, version_property, before_version);
-        }
-
-        // A `MigrationRule Property` rewrites an obsolete stored name onto its replacement when loading stored data
-        if (rule_name == "Property") {
-            auto registrar = ctx.Meta.GetPropertyRegistrar(extra_info);
-
-            if (registrar) {
-                auto live_prop = registrar->FindProperty(target);
-
-                if (live_prop && version_property.empty()) {
-                    WriteLog(LogType::Warning, "Property migration rule shares its old name with a live property: {}.{} is registered as {} while stored values migrate to {}", extra_info, target, live_prop->GetViewTypeName(), replacement);
-                }
-            }
-        }
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(rule_name);
         tag_tokens.emplace_back(extra_info);
         tag_tokens.emplace_back(target);
         tag_tokens.emplace_back(replacement);
-
-        if (!version_property.empty()) {
-            tag_tokens.emplace_back("BeforeVersion");
-            tag_tokens.emplace_back(version_property);
-            tag_tokens.emplace_back(before_version);
-        }
-
         result_tag_migration_rule.emplace_back(std::move(tag_tokens));
     }
 

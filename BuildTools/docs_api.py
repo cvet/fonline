@@ -511,8 +511,8 @@ def _append_setting_symbols(
             symbol["declared_target"] = tag.target.lower()
             symbol["group"] = tag.group_name
             symbol["type"] = setting_type
-            symbol["setting_kind"] = "fixed" if setting.kind == "fix" else "variable"
-            symbol["mutability"] = "startup-fixed" if setting.kind == "fix" else "runtime-variable"
+            symbol["setting_kind"] = "read-only"
+            symbol["mutability"] = "read-only"
             symbol["default_values"] = list(setting.init_values)
             symbol["command_line_redacted_by_default"] = any(
                 token in setting.name.lower() for token in secret_tokens

@@ -5,9 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"8a519724edb8d787421626374f54ac8d105b13327bab2847be98bc69676690e5"} -->
-
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"07223083cdf25be178f30049b61df8d2ecbf32cded7261782a916a2d640c6917"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -234,8 +232,8 @@ aspect-fit mapping.
 - смешивать audio;
 - lock/unlock устройства вокруг critical sections.
 
-Поддерживаемые WAV/ACM/Ogg profiles, raw-copy delivery, поиск effects/music,
-streaming, repeat, volume, return values и audible validation описаны в
+Поддерживаемые WAV/Ogg authoring profiles, AudioBaker delivery, поиск effects/music,
+playback handles/spatial updates, repeat, volume и audible validation описаны в
 [Audio](../../how-to/content/audio.md) и сгенерированном
 [audio reference](../../reference/audio/index.md). Здесь описана platform
 abstraction, а не правила authoring звука конкретной игры.
@@ -491,7 +489,7 @@ draw buffer, atlas или baked resource.
 | `Null` | `Render.NullRenderer` или headless/stub path | Реализованный CPU-only backend проверки без видимого GPU output. |
 | `OpenGL` | `Render.ForceOpenGL` или последний automatic GPU choice | Реализованный native OpenGL/OpenGL ES/WebGL; render targets перевёрнуты. |
 | `Direct3D` | `Render.ForceDirect3D` или первый automatic Windows choice | Реализованный Direct3D 11; render targets не перевёрнуты. |
-| `Metal` | `Render.ForceMetal` | Прямой Metal — placeholder: enum/platform flag существуют, но force приводит к `NotImplementedException`, класса `Metal_Renderer` нет. |
+| `Metal` | `Render.ForceMetal` | Прямой Metal — placeholder: enum/platform flag существуют, но force приводит к `AppInitException`, класса `Metal_Renderer` нет. |
 | `Vulkan` | `Render.ForceVulkan` или automatic choice перед OpenGL, если более ранний backend не создан | Реализованный dynamically loaded Vulkan; render targets не перевёрнуты. |
 | `SDLGpu` | `Render.ForceSDLGpu`, при необходимости `Render.SDLGpuDriver` | Реализованный явный SDL_GPU поверх Vulkan/Metal/D3D12; render targets не перевёрнуты. |
 
@@ -555,7 +553,7 @@ OpenGL — основной путь WebAssembly/WebGL; изменения пр�
 
 `FO_HAVE_METAL`, `RenderType::Metal`, `Render.ForceMetal` и SDL Metal window flag
 присутствуют, но direct `Metal_Renderer` не реализован. Поэтому
-`Render.ForceMetal = True` немедленно вызывает `NotImplementedException`; такую
+`Render.ForceMetal = True` немедленно вызывает `AppInitException`; такую
 конфигурацию нельзя рекламировать или считать release evidence.
 
 Metal driver SDL_GPU — другой, реализованный backend. Используйте

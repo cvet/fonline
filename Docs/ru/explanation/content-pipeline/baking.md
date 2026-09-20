@@ -5,9 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"c35f86b59d7c89889e7792991b0976ee0fbbb5b0a120b106986db781216a3e34"} -->
-
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0a4ae9021081d7aa5e45cf5dcf9a7b47958b9d03c803d726d27ee3c8ace033ff"} -->
 # Конвейер запекания ресурсов
 
 Этот документ описывает конвейер запекания ресурсов Engine: где он подключён, какие исходники определяют поведение baker-ов и как проверять изменения. Общая карта инструментов приведена в разделе [Tools](../../../Tools.md).
@@ -39,6 +37,8 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 - `Source/Tools/ConfigBaker.cpp`
 - `Source/Tools/RawCopyBaker.h`
 - `Source/Tools/RawCopyBaker.cpp`
+- `Source/Tools/AudioBaker.h`
+- `Source/Tools/AudioBaker.cpp`
 - `Source/Tools/ImageBaker.h`
 - `Source/Tools/ImageBaker.cpp`
 - `Source/Tools/SpriteMeshing.h`
@@ -83,6 +83,7 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
@@ -126,8 +127,8 @@ permalink: /Docs/ru/explanation/content-pipeline/baking.html
 
 `BuildTools/cmake/stages/ScriptsAndBaking.cmake` определяет `AddBakingTarget` как проверяемый helper project interface и использует его для создания стандартных команд запекания после появления application targets.
 
-- `BakeResources` создаётся вызовом `AddBakingTarget(BakeResources)` и запускает baker с `-ForceBaking False`.
-- `ForceBakeResources` создаётся вызовом `AddBakingTarget(ForceBakeResources FORCE)` и запускает его с `-ForceBaking True`.
+- `BakeResources` создаётся вызовом `AddBakingTarget(BakeResources)` и запускает baker с `-Baking.ForceBaking False`.
+- `ForceBakeResources` создаётся вызовом `AddBakingTarget(ForceBakeResources FORCE)` и запускает его с `-Baking.ForceBaking True`.
 - Обе стандартные цели передают главный конфигурационный файл проекта через `-ApplyConfig <FO_MAIN_CONFIG>` и используют subconfig `NONE` по умолчанию.
 - Каждая цель, созданная через `AddBakingTarget`, работает из `FO_OUTPUT_PATH`, зависит от `ForceCodeGeneration` и записывает `Baking/Resources.build-hash` через `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
 - `CompileAngelScript` и `CompileManagedScripts` зависят от `ForceCodeGeneration`, поэтому metadata и generated code не могут отстать от любого скриптового backend или запуска baker-а.
@@ -140,7 +141,7 @@ AddBakingTarget(Game_PublicResources
     COMMENT "Bake public resources")
 ```
 
-Полная сигнатура: `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`. По умолчанию `SUB_CONFIG` равен `NONE`, `COMMENT` равен `Bake resources`, а `FORCE` переключает `-ForceBaking` с `False` на `True`. Неизвестные аргументы и ключи без значений останавливают конфигурацию. Имя дополнительной цели и соответствующий subconfig принадлежат встраивающему проекту.
+Полная сигнатура: `AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])`. По умолчанию `SUB_CONFIG` равен `NONE`, `COMMENT` равен `Bake resources`, а `FORCE` переключает `-Baking.ForceBaking` с `False` на `True`. Неизвестные аргументы и ключи без значений останавливают конфигурацию. Имя дополнительной цели и соответствующий subconfig принадлежат встраивающему проекту.
 
 Финальные имена application targets и их зависимости задаются проектом и preset-ом. Не следует выдавать имена одного проекта за универсальный интерфейс Engine.
 
@@ -250,7 +251,7 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 
 ## Проектирование resource pack в игре
 
-`Settings.h/.cpp` определяют поля `[ResourcePack]`: `Name`, `InputDirs`, `InputFiles`, `IncludePatterns`, `ExcludePatterns`, `ServerOnly`, `ClientOnly`, `MapperOnly`, `Bakers`. Имя обязательно; одновременно может быть истинным не более одного side-only флага; относительные inputs разрешаются от каталога declaring config; порядок секций сохраняется.
+`Settings.h/.cpp` определяют состояние `[ResourcePack]`: авторские `Name`, `InputDirs`, `InputFiles`, `IncludePatterns`, `ExcludePatterns`, `ServerOnly`, `ClientOnly`, `MapperOnly`, `Bakers` и вычисляемый `ConfigDir` объявившего файла. Имя обязательно; одновременно может быть истинным не более одного side-only флага; относительные inputs разрешаются от `ConfigDir`; порядок секций сохраняется.
 
 Зрелые проекты и независимый TLA сходятся на следующих практиках. Это рекомендации, а не дополнительный синтаксис Engine:
 
@@ -273,6 +274,7 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 | `Metadata` | `MetadataBaker` | 1 | всегда |
 | `Config` | `ConfigBaker` | 2 | всегда |
 | `RawCopy` | `RawCopyBaker` | 4 | всегда |
+| `Audio` | `AudioBaker` | 4 | всегда |
 | `Image` | `ImageBaker` | 4 | всегда |
 | `Effect` | `EffectBaker` | 4 | всегда |
 | `Text` | `TextBaker` | 4 | всегда |
@@ -371,10 +373,10 @@ Model pipeline разделён на извлечение source, compatibility 
 - [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - `NextX`/`NextY` и movement phase;
 - [Particle Format](../../how-to/content/particle-format.md) и [particle reference](../../reference/particle-format/index.md) — SPARK/Effekseer;
 - [Font Formats](../../how-to/content/font-format.md) и [font reference](../../reference/font-format/index.md) — descriptors и layout;
-- [Audio](../../how-to/content/audio.md), [audio reference](../../reference/audio/index.md), [Video](../../how-to/content/video.md), [video reference](../../reference/video/index.md) — raw-copy delivery и runtime decoding;
+- [Audio](../../how-to/content/audio.md), [audio reference](../../reference/audio/index.md), [Video](../../how-to/content/video.md), [video reference](../../reference/video/index.md) — audio baking и video raw-copy/runtime decoding;
 - [Effect Format](../../how-to/content/effect-format.md) и [effect reference](../../reference/effect-format/index.md) — `.fofx`, SPIR-V и backend resources.
 
-Audio `.wav`/`.acm`/`.ogg`, video `.ogv` и bitmap-font descriptors не имеют отдельных baker-ов: `RawCopyBaker` сохраняет bytes/path, а изображения fonts обрабатывает `ImageBaker`. `EffectBaker` компилирует pass через glslang в native `-spv`, cross-compiled forms и opt-in SDL_GPU `-spv_sdl`/MSL. `[EffectInfo]` обслуживает GL/D3D/Vulkan, `[EffectInfoSdl]` хранит per-stage slots/counts; превышение 4 UBO или 16 samplers на stage, storage resources, duplicate/missing bindings и unused declarations являются hard errors.
+Audio имеет отдельный `AudioBaker`: PCM/IEEE-float `.wav` нормализуется в signed 16-bit PCM и кодируется в Vorbis, а `.ogg` проверяется и проходит без смены logical path. Runtime использует единый Vorbis decoder и не принимает legacy ACM. Video `.ogv` и bitmap-font descriptors остаются raw-copy ресурсами, а изображения fonts обрабатывает `ImageBaker`. `EffectBaker` компилирует pass через glslang в native `-spv`, cross-compiled forms и opt-in SDL_GPU `-spv_sdl`/MSL. `[EffectInfo]` обслуживает GL/D3D/Vulkan, `[EffectInfoSdl]` хранит per-stage slots/counts; превышение 4 UBO или 16 samplers на stage, storage resources, duplicate/missing bindings и unused declarations являются hard errors.
 
 `SpriteMesh.*` управляет polygonal sprite generation: `Enabled`, `AlphaThreshold`, `MaxTriangles`, `AreaSavingsWeight`. Все четыре значения объявляются проектом даже при disabled; threshold находится в `0..254`, triangle budget положителен, weight finite и non-negative. `SpriteMeshing` владеет mask/contours/candidates/triangulation/validation/scoring, а `ImageBaker` — decode, animation/shared frames, padding/cropping, serialization и report.
 
@@ -471,6 +473,7 @@ Focused coverage находится в `Source/Tests/`:
 - `Test_ConfigBaker.cpp`
 - `Test_MetadataBaker.cpp`
 - `Test_RawCopyBaker.cpp`
+- `Test_AudioBaker.cpp`
 - `Test_ImageBaker.cpp`
 - `Test_EffectBaker.cpp`
 - `Test_ProtoBaker.cpp`

@@ -5,9 +5,7 @@ document_id: map-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/map-format.html
 ---
-
 <!-- docs-translation: {"document_id":"map-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/map-format.md","source_sha256":"cd72eed704aecb3db0397d7385e5f7a206d556694f195cb7a35270869ed5c853"} -->
-
 # Формат карт FOnline
 
 Это руководство определяет переиспользуемый контракт движка для авторских файлов `.fomap`. Оно описывает исходный синтаксис, идентичность карт и размещений, переопределения свойств, владение предметами, цикл загрузки и сохранения в Mapper, раздельное запекание для сторон и начальное создание runtime-сущностей.

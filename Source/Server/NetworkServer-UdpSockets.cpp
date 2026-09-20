@@ -107,13 +107,13 @@ auto NetworkServer::StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, N
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Listen UDP connections on port {}", settings->ServerPort + settings->UdpPortOffset);
+    logging::write("Listen UDP connections on port {}", settings->Network.ServerPort + settings->Network.UdpPortOffset);
 
-    if (settings->RejectUdpConnections) {
-        WriteLog(LogType::Warning, "UDP connect packets are rejected, clients will fall back to TCP after timeout");
+    if (settings->ServerNetwork.RejectUdpConnections) {
+        logging::write(logging::type::warning, "UDP connect packets are rejected, clients will fall back to TCP after timeout");
     }
 
-    return SafeAlloc::MakeUnique<NetworkServer_UdpSockets>(settings, std::move(callback));
+    return safe_alloc::make_unique<NetworkServer_UdpSockets>(settings, std::move(callback));
 }
 
 NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ptr<ServerNetworkSettings> settings, string host, uint16_t port, uint32_t session_id) :
@@ -218,12 +218,12 @@ auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     FO_STACK_TRACE_ENTRY();
 
     UdpTransportOptions options;
-    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 256));
-    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->UdpWindowSize, 0)), options.MaxPayload);
-    options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->UdpResendTimeout, 1));
-    options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->UdpConnectRetry, 1));
-    options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->UdpRedundancy, 0));
-    options.MaxReorderAhead = numeric_cast<uint32_t>(std::max(_settings->MaxUdpReorderAhead, 0));
+    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 256));
+    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->Network.UdpWindowSize, 0)), options.MaxPayload);
+    options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->Network.UdpResendTimeout, 1));
+    options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectRetry, 1));
+    options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->Network.UdpRedundancy, 0));
+    options.MaxReorderAhead = numeric_cast<uint32_t>(std::max(_settings->ServerNetwork.MaxUdpReorderAhead, 0));
     return options;
 }
 
@@ -253,12 +253,12 @@ NetworkServer_UdpSockets::NetworkServer_UdpSockets(ptr<ServerNetworkSettings> se
     if (!net_sockets::startup()) {
         throw NetworkServerException("Socket startup failed for UDP transport");
     }
-    if (!_socket.bind("0.0.0.0", numeric_cast<uint16_t>(_settings->ServerPort + _settings->UdpPortOffset))) {
+    if (!_socket.bind("0.0.0.0", numeric_cast<uint16_t>(_settings->Network.ServerPort + _settings->Network.UdpPortOffset))) {
         throw NetworkServerException("Can't bind UDP server socket");
     }
 
-    auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
-    auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));
+    auto packet_capacity = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 0)) * 2;
+    auto net_capacity = numeric_cast<size_t>(std::max(_settings->Network.NetBufferSize, 0));
     _packetBuf.resize(std::max(packet_capacity, net_capacity));
     _runThread = run_thread("Network-Udp", [this] { Run(); });
 }
@@ -299,7 +299,7 @@ void NetworkServer_UdpSockets::Run()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto tick = std::chrono::milliseconds {std::max(_settings->UdpSendUpdateInterval, 1)};
+    auto tick = std::chrono::milliseconds {std::max(_settings->Network.UdpSendUpdateInterval, 1)};
 
     while (!_stopped) {
         try {
@@ -310,7 +310,7 @@ void NetworkServer_UdpSockets::Run()
             TickConnections(nanotime::now());
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }
@@ -338,8 +338,8 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
         }
 
         if (packet.Type == UdpPacketType::Connect) {
-            if (_settings->RejectUdpConnections) {
-                WriteLog("Reject UDP connect packet from {}:{}", host, port);
+            if (_settings->ServerNetwork.RejectUdpConnections) {
+                logging::write("Reject UDP connect packet from {}:{}", host, port);
                 continue;
             }
 
@@ -392,7 +392,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
                 session_id = GenerateSessionId();
             }
 
-            connection = SafeAlloc::MakeShared<NetworkServerConnection_UdpSockets>(_settings, host, port, session_id);
+            connection = safe_alloc::make_shared<NetworkServerConnection_UdpSockets>(_settings, host, port, session_id);
             _sessions.emplace(session_id, connection);
             _endpointToSession.emplace(endpoint_key, session_id);
             is_new_connection = true;
