@@ -262,7 +262,7 @@ static thread_local ManagedThreadAttachmentCache ManagedFrameWorkerThreadAttachm
 class ManagedThreadAttachment final
 {
 public:
-    explicit ManagedThreadAttachment(ptr<MonoDomain> domain, ManagedThreadAttachmentMode mode = ManagedThreadAttachmentMode::PreserveExisting)
+    explicit ManagedThreadAttachment(ptr<MonoDomain> domain, ManagedThreadAttachmentMode mode = ManagedThreadAttachmentMode::CacheForThread)
     {
         FO_STACK_TRACE_ENTRY();
 

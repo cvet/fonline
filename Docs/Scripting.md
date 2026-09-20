@@ -310,14 +310,18 @@ callback with its state so `ScriptEntryNames` can find that method, and the name
 overran, so an entry that stays under the threshold costs one clock read. A run that ends in an exception is
 reported through the exception.
 
-Every native-to-managed entry also owns a bounded Mono thread attachment. A worker that was
-not already running managed code ordinarily attaches immediately before the callback and
-detaches before it returns to the native scheduler. The recurring backend frame pump instead
-caches one attachment for the lifetime of its worker thread, enters GC-unsafe mode only while
-it invokes managed code, and parks GC-safe between frames. This avoids creating a finalizable
-managed `Thread` object every frame while ensuring a worker parked on an engine lock cannot
-block a later stop-the-world collection. Reentrant calls use the cached or inherited
-attachment and leave its ownership unchanged.
+Every native-to-managed entry also owns a Mono thread attachment, and a thread attaches once.
+The first entry on a worker registers it with the runtime and caches that attachment for the
+lifetime of the thread; every later entry only enters GC-unsafe mode around the managed call
+and parks GC-safe again on the way out, so a worker parked on an engine lock cannot block a
+later stop-the-world collection. Reentrant calls use the cached or inherited attachment and
+leave its ownership unchanged. Attaching per entry instead is what this did until a parallel
+gameplay run measured 717771 attach/detach pairs, 127697 of them on one server pool thread:
+each pair creates a finalizable managed `Thread` object and allocates a handle stack, and it
+returns the thread to the registration window where a stop-the-world may fail to suspend it.
+SGen marks such a thread skipped, and its assertion in `sgen_client_scan_thread_data` rejects
+a skipped thread that still owns a non-empty handle stack, because the collector may then move
+an object and leave that handle stale — which surfaced as heap corruption elsewhere entirely.
 The worker that first initializes the Mono VM is the one exception: `mono_jit_init_version`
 implicitly attaches its native caller, so the initialization scope explicitly adopts and
 releases that attachment after loading the first backend.
