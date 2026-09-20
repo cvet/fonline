@@ -363,7 +363,10 @@ uncleared and is included in the report; this sweep does not prove such an objec
 `GC.WaitForPendingFinalizers()`, alternating because a finalized wrapper can drop the last
 reference to another one. The pass limit bounds repeated collections; a separate five-second budget
 bounds the finalizer waits. The runtime wait executes on an engine-requested pool task so a blocked
-finalizer cannot park the shutdown thread indefinitely. A timeout is reported as a managed failure;
+finalizer cannot park the shutdown thread indefinitely. The browser runtime is the exception: it has
+neither a thread pool nor a finalizer thread, so queuing the task aborts the process and the wait
+returns at once; there the pass runs once, inline, finalizers follow as main-thread jobs after the
+shutdown returns, and the live-wrapper count is reported but not verified. A timeout is reported as a managed failure;
 it does not cancel the finalizer or take its native reference away. This is not a deadline for a
 stop-the-world GC itself. `mono_domain_finalize` is not used: it belongs to domain unloading, and on the
 root domain it answered with a timeout and then took the runtime down. The wait ends on the

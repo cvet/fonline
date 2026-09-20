@@ -1198,9 +1198,14 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
             logging::write("Managed wrapper tracking: {}, collected in {}", report, collect_duration);
         }
 
+#if FO_WEB
+        // Browser finalizers run as main-thread jobs after the shutdown returns, so the count is not final here
+        ignore_unused(outstanding);
+#else
         // Not a gate: what a wrapper still holds does not stop the rest of the shutdown, but it is a native entity
         // reference nobody gave back, and the report is the only place it is visible
         FO_VERIFY_AND_CONTINUE(outstanding <= 0, "Managed entity wrappers outlived the script backend", outstanding, report);
+#endif
     });
 }
 

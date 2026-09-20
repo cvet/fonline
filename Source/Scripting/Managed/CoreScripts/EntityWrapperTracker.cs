@@ -88,6 +88,14 @@ internal static class EntityWrapperTracker
 
         for (int pass = 0; pass < passLimit; pass++) {
             GC.Collect();
+
+            // The browser runtime has neither a thread pool nor a finalizer thread: queuing a pool task aborts it,
+            // and finalizers run as main-thread jobs after this call returns, so one inline pass is all there is
+            if (OperatingSystem.IsBrowser()) {
+                GC.WaitForPendingFinalizers();
+                break;
+            }
+
             long remaining = deadline - Environment.TickCount64;
 
             // The runtime wait has no timeout; keep it off the engine teardown thread

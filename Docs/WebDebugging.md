@@ -221,6 +221,13 @@ link are specific to the browser and easy to break by "simplifying" them:
   the query string makes the client check that transport under every condition it has to survive once scripts
   start and log `INTEROP-TRANSPORT` lines with a closing summary; this is the 32-bit qualification of the
   managed bridge, and the nightly web combat pipeline test requires it to pass (see [Testing](Testing.md)).
+- **Nothing on the managed side may queue a thread-pool task.** The single-threaded runtime schedules pool
+  work through `mono_main_thread_schedule_background_job`, and in this embedding the callback it receives
+  for `ThreadPool.BackgroundJobHandler` is null, so the first `Task.Run` dies on `g_assert (cb)` in
+  `mono-threads-wasm.c` and every later call into the module reports `program has already aborted!`. The
+  one engine use was the shutdown's finalizer wait, which now runs inline under `OperatingSystem.IsBrowser()`;
+  there is no finalizer thread either, so `GC.WaitForPendingFinalizers()` returns at once and finalizers run
+  as main-thread jobs afterwards.
 - **Nothing on the managed side may memory-map a file.** `AssemblyName.GetAssemblyName` does, so
   `ManagedLoadContextHost` takes the assembly's simple name from its file name instead, which the baker
   guarantees by rejecting a packed assembly named after anything but itself. Excluding `SystemNative_MMap`
