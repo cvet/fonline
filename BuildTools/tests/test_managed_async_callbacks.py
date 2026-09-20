@@ -501,8 +501,8 @@ def build_probe(dotnet, output, probe_source):
                                            'internal static void Log(string text) => Console.WriteLine("ENGINE_RECORDED " + text);')
             source = replace_internal_call(source, "private static extern void ReportExceptionInternal(string summary, string? nativeError, long[] frames);",
                                            'private static void ReportExceptionInternal(string summary, string? nativeError, long[] frames) => Log(summary);')
-            source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(Action continuation);",
-                                           "private static string? RunScriptContinuationInternal(Action continuation) { continuation(); return null; }")
+            source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(IntPtr backend, Action continuation);",
+                                           "private static string? RunScriptContinuationInternal(IntPtr backend, Action continuation) { continuation(); return null; }")
         (output / name).write_text(source, encoding="utf-8")
     (output / "Probe.csproj").write_text(PROJECT, encoding="utf-8")
     (output / "Program.cs").write_text(probe_source, encoding="utf-8")

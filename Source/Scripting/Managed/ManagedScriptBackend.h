@@ -54,7 +54,6 @@ public:
     [[nodiscard]] auto GetMetadata() const noexcept -> nptr<EngineMetadata> { return _meta; }
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> nptr<Entity>;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
-    [[nodiscard]] auto GetAliveFlagObject() const -> void*;
     [[nodiscard]] auto GetAbi() const -> nptr<const ManagedAbiRuntimeState>;
     [[nodiscard]] auto GetAbi() -> nptr<ManagedAbiRuntimeState>;
     [[nodiscard]] auto GetCaches() const -> nptr<ManagedBackendCaches>;
@@ -72,8 +71,7 @@ private:
     auto CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>;
     void ReleaseLoadScope() noexcept;
     void InvokeInitializator(void* assembly, const char* method_name);
-    void CreateAliveFlag();
-    void ReleaseAliveFlag();
+    void UnbindBackend();
     void EnableDeepEntityWrapperTracking();
     void ClearScriptStatics() noexcept;
     void FinalizeManagedObjects() noexcept;
@@ -85,10 +83,10 @@ private:
     vector<nptr<void>> _images {};
     vector<nptr<void>> _continuationPumps {};
     vector<nptr<void>> _continuationShutdowns {};
+    vector<nptr<void>> _backendUnbinds {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _persistentGcHandles {};
     uint32_t _loadScopeGcHandle {};
-    uint32_t _aliveFlagGcHandle {};
     unique_nptr<ManagedAbiRuntimeState> _abi {};
     unique_nptr<ManagedBackendCaches> _caches {};
 };

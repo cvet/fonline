@@ -43,8 +43,7 @@ internal static class EntityWrapperTracker
     // Whether this run can name what it counts: the static cleanup says more when it can
     internal static bool IsDeepTracking => DeepTrackingEnabled;
 
-    // Switched on by the engine while it loads the assemblies, never asked for from a static constructor:
-    // those run while the initializator walks every type, long before there is an active backend to ask
+    // Switched on by the engine, which reads ManagedScript.DeepTrackEntityWrappers once while it loads the assemblies
     [CallableByEngine]
     internal static void EnableDeepWrapperTracking()
     {

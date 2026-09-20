@@ -3135,7 +3135,7 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public bool Equals(Entity? other)\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue && _backend == other._backend;\n";
+    out << CS_INDENT << "    return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue;\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public override bool Equals(object? obj)\n";
     out << CS_INDENT << "{\n";
@@ -3143,10 +3143,7 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public override int GetHashCode()\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    unchecked\n";
-    out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        return (_backend.GetHashCode() * 397) ^ _entityPtrValue.GetHashCode();\n";
-    out << CS_INDENT << "    }\n";
+    out << CS_INDENT << "    return _entityPtrValue.GetHashCode();\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public static bool operator ==(Entity? left, Entity? right)\n";
     out << CS_INDENT << "{\n";
@@ -3157,8 +3154,6 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "    return !(left == right);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "private IntPtr _entityPtrValue;\n";
-    out << CS_INDENT << "private readonly bool[]? _backendAlive;\n";
-    out << CS_INDENT << "private readonly IntPtr _backend;\n";
     out << CS_INDENT << "private readonly long _trackerId;\n\n";
     out << CS_INDENT << "protected IntPtr _entityPtr\n";
     out << CS_INDENT << "{\n";
@@ -3167,11 +3162,8 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "        if (_entityPtrValue == IntPtr.Zero) {\n";
     out << CS_INDENT << "            return IntPtr.Zero;\n";
     out << CS_INDENT << "        }\n\n";
-    out << CS_INDENT << "        if (_backendAlive == null || !_backendAlive[0]) {\n";
+    out << CS_INDENT << "        if (!global::FOnline.Native.IsBackendAlive) {\n";
     out << CS_INDENT << "            throw new ObjectDisposedException(GetType().Name, \"The entity's managed backend is no longer alive\");\n";
-    out << CS_INDENT << "        }\n\n";
-    out << CS_INDENT << "        if (global::FOnline.Native.GetBackend() != _backend) {\n";
-    out << CS_INDENT << "            throw new InvalidOperationException(\"Entity wrapper belongs to a different managed backend\");\n";
     out << CS_INDENT << "        }\n\n";
     out << CS_INDENT << "        return _entityPtrValue;\n";
     out << CS_INDENT << "    }\n";
@@ -3184,8 +3176,6 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    _entityPtrValue = entityPtr;\n";
     out << CS_INDENT << "    if (entityPtr != IntPtr.Zero) {\n";
-    out << CS_INDENT << "        _backendAlive = global::FOnline.Native.GetBackendAliveFlag();\n";
-    out << CS_INDENT << "        _backend = global::FOnline.Native.GetBackend();\n";
     out << CS_INDENT << "        global::FOnline.Native.AddRefEntity(entityPtr);\n";
     out << CS_INDENT << "        _trackerId = global::FOnline.EntityWrapperTracker.Register(this, entityPtr);\n";
     out << CS_INDENT << "    }\n";
@@ -3199,7 +3189,7 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "~Entity()\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    if (_entityPtrValue != IntPtr.Zero) {\n";
-    out << CS_INDENT << "        if (_backendAlive != null && _backendAlive[0]) {\n";
+    out << CS_INDENT << "        if (global::FOnline.Native.IsBackendAlive) {\n";
     out << CS_INDENT << "            global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
     out << CS_INDENT << "        }\n\n";
     out << CS_INDENT << "        _entityPtrValue = IntPtr.Zero;\n";
