@@ -718,7 +718,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "    _entityPtr = entityPtr;\n";
                 out << CS_INDENT << "}\n\n";
 
-                const array<pair<string_view, bool>, 4> handler_kinds {{
+                array<pair<string_view, bool>, 4> handler_kinds {{
                     {delegate_name, false},
                     {async_delegate_name, false},
                     {result_delegate_name, true},
@@ -881,6 +881,15 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "        }\n";
                     out << CS_INDENT << "        object?[] __args = new object?[] { " << boxed_list << " };\n";
                     out << CS_INDENT << "        result = (int)global::FOnline.Native.InvokeEvent(handler, hasExplicitResult, __args);\n";
+
+                    for (size_t i = 0; i < event.Args.size(); i++) {
+                        if (!event.Args[i].Type.IsMutable) {
+                            continue;
+                        }
+
+                        out << CS_INDENT << "        global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, " << abi_event->Args[i].Offset << "), global::FOnline.Native.UnboxArg<" << MakeCsTypeName(event.Args[i].Type) << ">(__args[" << i + (desc->IsGlobal ? 0 : 1) << "]));\n";
+                    }
+
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "    catch (Exception ex)\n";
                     out << CS_INDENT << "    {\n";
@@ -1750,7 +1759,7 @@ static auto MakeManagedMsBuildCommand(string_view msbuild_path) -> string
     }
 
 #if FO_WINDOWS
-    const string extension = strex("{}", std::filesystem::path(msbuild_path).extension().string()).str();
+    string extension = strex("{}", std::filesystem::path(msbuild_path).extension().string()).str();
 
     if (extension == ".cmd" || extension == ".bat") {
         return strex("call \"{}\"", msbuild_path).str();

@@ -77,6 +77,17 @@ struct ManagedAbiSlot
     uint16_t Offset {};
 };
 
+// Packed managed frames may begin at any byte address; native callees require aligned, typed argument storage
+struct ManagedAbiNativeFrame
+{
+    span<uint8_t> PackedFrame {};
+    const_span<ManagedAbiSlot> Args {};
+    ManagedAbiSlot Ret {};
+    array<size_t, MAX_CALL_ARGS> ArgOffsets {};
+    size_t ResultOffset {};
+    alignas(std::max_align_t) array<uint8_t, MANAGED_ABI_SCALAR_FRAME_CAPACITY + (MAX_CALL_ARGS + 1) * alignof(std::max_align_t)> Storage {};
+};
+
 struct ManagedAbiMethodEntry
 {
     int32_t Id {};
@@ -141,22 +152,26 @@ struct ManagedAbiCallbackLayout
     uint16_t ResultOffset {};
 };
 
-[[nodiscard]] auto IsManagedAbiScalarType(const ComplexTypeDesc& type) noexcept -> bool;
-[[nodiscard]] auto IsManagedAbiFixedValueType(const ComplexTypeDesc& type) noexcept -> bool;
-[[nodiscard]] auto IsManagedAbiFixedPropertyValue(const BaseTypeDesc& type) noexcept -> bool;
-[[nodiscard]] auto ManagedAbiSlotSize(const BaseTypeDesc& type) noexcept -> uint16_t;
-[[nodiscard]] auto ManagedAbiKindFromBaseType(const BaseTypeDesc& type) noexcept -> ManagedAbiValueKind;
-[[nodiscard]] auto ManagedAbiKindFromTypeName(string_view type_name) noexcept -> ManagedAbiValueKind;
-[[nodiscard]] auto IsManagedAbiDynamicRefType(const BaseTypeDesc& type) noexcept -> bool;
-[[nodiscard]] auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept -> bool;
-[[nodiscard]] auto CollectManagedAbiWrapperClasses(const EngineMetadata& meta) -> vector<string>;
-[[nodiscard]] auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> string;
-[[nodiscard]] auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> ManagedAbiCallbackLayout;
-[[nodiscard]] auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name) -> ManagedAbiManifest;
-[[nodiscard]] auto FindManagedAbiMethod(const ManagedAbiManifest& abi, string_view owner, string_view name, size_t owner_index) -> nptr<const ManagedAbiMethodEntry>;
-[[nodiscard]] auto FindManagedAbiEvent(const ManagedAbiManifest& abi, string_view owner, string_view name) -> nptr<const ManagedAbiEventEntry>;
-[[nodiscard]] auto FindManagedAbiSetting(const ManagedAbiManifest& abi, string_view name) -> nptr<const ManagedAbiSettingEntry>;
-[[nodiscard]] auto FindManagedAbiInnerEntry(const ManagedAbiManifest& abi, string_view owner, string_view entry_name) -> nptr<const ManagedAbiInnerEntry>;
+auto BuildManagedAbiNativeFrame(span<uint8_t> frame, const_span<ManagedAbiSlot> args, ManagedAbiSlot ret = {}) -> ManagedAbiNativeFrame;
+auto GetManagedAbiNativeFrameArg(ManagedAbiNativeFrame& frame, size_t index) -> ptr<void>;
+auto GetManagedAbiNativeFrameResult(ManagedAbiNativeFrame& frame) -> nptr<void>;
+void CopyBackManagedAbiNativeFrame(const ManagedAbiNativeFrame& frame);
+auto IsManagedAbiScalarType(const ComplexTypeDesc& type) noexcept -> bool;
+auto IsManagedAbiFixedValueType(const ComplexTypeDesc& type) noexcept -> bool;
+auto IsManagedAbiFixedPropertyValue(const BaseTypeDesc& type) noexcept -> bool;
+auto ManagedAbiSlotSize(const BaseTypeDesc& type) noexcept -> uint16_t;
+auto ManagedAbiKindFromBaseType(const BaseTypeDesc& type) noexcept -> ManagedAbiValueKind;
+auto ManagedAbiKindFromTypeName(string_view type_name) noexcept -> ManagedAbiValueKind;
+auto IsManagedAbiDynamicRefType(const BaseTypeDesc& type) noexcept -> bool;
+auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept -> bool;
+auto CollectManagedAbiWrapperClasses(const EngineMetadata& meta) -> vector<string>;
+auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> string;
+auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> ManagedAbiCallbackLayout;
+auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name) -> ManagedAbiManifest;
+auto FindManagedAbiMethod(const ManagedAbiManifest& abi, string_view owner, string_view name, size_t owner_index) -> nptr<const ManagedAbiMethodEntry>;
+auto FindManagedAbiEvent(const ManagedAbiManifest& abi, string_view owner, string_view name) -> nptr<const ManagedAbiEventEntry>;
+auto FindManagedAbiSetting(const ManagedAbiManifest& abi, string_view name) -> nptr<const ManagedAbiSettingEntry>;
+auto FindManagedAbiInnerEntry(const ManagedAbiManifest& abi, string_view owner, string_view entry_name) -> nptr<const ManagedAbiInnerEntry>;
 
 FO_END_NAMESPACE
 

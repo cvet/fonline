@@ -212,6 +212,8 @@ namespace LastFrontier
     {
         var failures = new List<string>();
 
+        CheckConditionalCycles(failures);
+
         Check(failures, "annotation on an entity parameter is silent", @"
 namespace LastFrontier
 {
@@ -1751,7 +1753,46 @@ namespace LastFrontier
         }
     }
 
-    private static ImmutableArray<Diagnostic> Run(string source)
+    private static void CheckConditionalCycles(List<string> failures)
+    {
+        string calls = string.Join(" ", Enumerable.Range(0, 11).Select(i => $"_ = Candidate{i}(cr, flag);"));
+        string helpers = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(0, 11).Select(
+                i =>
+                    $"static Task Candidate{i}(Critter cr, bool flag) {{ if (flag) {{ {calls} }} return Task.CompletedTask; }}"));
+        string source = Preamble + @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+" + helpers + @"
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            await Pause();
+            await Candidate0(cr, false);
+            cr.SendGroupInfo();
+        }
+    }
+}";
+
+        try {
+            ImmutableArray<Diagnostic> reported = Run(source, TimeSpan.FromSeconds(10));
+
+            if (reported.Length != 1 || reported[0].Id != "FOSYNC009") {
+                failures.Add("Conditional cyclic helpers must not re-prove cover after an await");
+            }
+        }
+        catch (TimeoutException) {
+            failures.Add("Conditional cyclic helpers exceeded the analysis time budget");
+        }
+    }
+
+    private static ImmutableArray<Diagnostic> Run(string source, TimeSpan? timeout = null)
     {
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty)
             .Split(System.IO.Path.PathSeparator)
@@ -1776,6 +1817,8 @@ namespace LastFrontier
         CompilationWithAnalyzers withAnalyzers =
             compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new SyncCoverAnalyzer()));
 
-        return withAnalyzers.GetAnalyzerDiagnosticsAsync().GetAwaiter().GetResult();
+        var diagnostics = withAnalyzers.GetAnalyzerDiagnosticsAsync();
+
+        return (timeout.HasValue ? diagnostics.WaitAsync(timeout.Value) : diagnostics).GetAwaiter().GetResult();
     }
 }

@@ -160,6 +160,8 @@ Callbacks and first writes to prototype-backed storage may have their own alloca
 before measuring and keep callback behavior checks separate from the allocation assertion. Inner-entity tests
 assert visit counts linear in n rather than Count+n×At recrawls.
 
+`Managed ABI native frames align packed slots and copy back only outputs` passes a deliberately unaligned frame with mixed-width arguments through `ManagedAbiNativeFrame`. It checks native argument/result alignment, value preservation, selective mutable/result write-back, buffer boundaries, and rejection of invalid indices and truncated frames.
+
 `CoreScripts/InteropProbe.cs` is the reusable interop benchmark; it is engine-owned and measures whatever surface
 the embedding project feeds it. `InteropProbe.Recorder` times batches the caller writes inline (so the measured
 code keeps its own cover and call shape), drops three warm-up batches, subtracts a caller-measured empty-loop

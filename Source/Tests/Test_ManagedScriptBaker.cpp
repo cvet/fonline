@@ -37,6 +37,7 @@
 
 #if FO_MANAGED_SCRIPTING
 #include "ManagedAssemblyReferences.h"
+#include "ManagedInteropAbi.h"
 #include "ManagedRuntime.h"
 #include "ManagedScriptBackend.h"
 #include "ManagedScriptBaker.h"
@@ -224,7 +225,7 @@ static auto WriteFakeManagedMsBuildScript(const std::filesystem::path& dir) -> s
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    const std::filesystem::path script_path = dir / "FakeManagedMsBuild.cmd";
+    std::filesystem::path script_path = dir / "FakeManagedMsBuild.cmd";
     WriteTextFile(script_path, R"(@echo off
 if not defined FO_FAKE_MSBUILD_ROOT exit /b 1
 echo %* | findstr /C:"-verbosity:quiet" >nul || exit /b 2
@@ -733,6 +734,55 @@ TEST_CASE("Managed scripting releases adopted persistent GC handles during backe
     backend_shutdown = true;
 
     CHECK(mono_gchandle_get_target(gc_handle) == nullptr);
+#endif
+}
+
+TEST_CASE("Managed ABI native frames align packed slots and copy back only outputs")
+{
+#if FO_MANAGED_SCRIPTING
+    alignas(std::max_align_t) array<uint8_t, 40> bytes {};
+    span<uint8_t> packed {bytes.data() + 1, 32};
+    array<ManagedAbiSlot, 3> args {{
+        {.Kind = ManagedAbiValueKind::UInt8, .Size = 1, .Offset = 0},
+        {.Kind = ManagedAbiValueKind::Float64, .Mutable = true, .Size = 8, .Offset = 1},
+        {.Kind = ManagedAbiValueKind::Handle, .Size = MANAGED_ABI_HANDLE_SLOT_SIZE, .Offset = 9},
+    }};
+    ManagedAbiSlot ret {.Kind = ManagedAbiValueKind::Int64, .Size = 8, .Offset = 17};
+    float64_t input = 12.5;
+    uint64_t handle = 0x12345678;
+    packed[0] = 7;
+    memory::copy(packed.data() + 1, &input, sizeof(input));
+    memory::copy(packed.data() + 9, &handle, sizeof(handle));
+
+    ManagedAbiNativeFrame frame = BuildManagedAbiNativeFrame(packed, args, ret);
+
+    for (size_t i = 0; i < args.size(); i++) {
+        REQUIRE(reinterpret_cast<uintptr_t>(GetManagedAbiNativeFrameArg(frame, i).get()) % alignof(std::max_align_t) == 0);
+    }
+
+    REQUIRE(reinterpret_cast<uintptr_t>(GetManagedAbiNativeFrameResult(frame).get()) % alignof(std::max_align_t) == 0);
+    CHECK(*GetManagedAbiNativeFrameArg(frame, 0).reinterpret_as<uint8_t>() == 7);
+    CHECK(*GetManagedAbiNativeFrameArg(frame, 1).reinterpret_as<float64_t>() == input);
+    CHECK(*GetManagedAbiNativeFrameArg(frame, 2).reinterpret_as<uint64_t>() == handle);
+    *GetManagedAbiNativeFrameArg(frame, 0).reinterpret_as<uint8_t>() = 99;
+    *GetManagedAbiNativeFrameArg(frame, 1).reinterpret_as<float64_t>() = -25.0;
+    *GetManagedAbiNativeFrameResult(frame).reinterpret_as<int64_t>() = -123456789;
+    CopyBackManagedAbiNativeFrame(frame);
+
+    float64_t rewritten = 0;
+    int64_t result = 0;
+    memory::copy(&rewritten, packed.data() + 1, sizeof(rewritten));
+    memory::copy(&result, packed.data() + 17, sizeof(result));
+    CHECK(packed[0] == 7);
+    CHECK(rewritten == -25.0);
+    CHECK(result == -123456789);
+    CHECK(bytes.front() == 0);
+    CHECK(bytes.back() == 0);
+
+    ManagedAbiNativeFrame event_frame = BuildManagedAbiNativeFrame(packed, args);
+    CHECK_FALSE(GetManagedAbiNativeFrameResult(event_frame));
+    CHECK_THROWS(GetManagedAbiNativeFrameArg(frame, args.size()));
+    CHECK_THROWS(BuildManagedAbiNativeFrame(packed.first(2), args));
 #endif
 }
 

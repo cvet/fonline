@@ -47,6 +47,65 @@ auto GetMapperSettingsTyped() -> vector<pair<string, string>>;
 static void MixHash(uint64_t& hash, string_view text) noexcept;
 static void MixHash(uint64_t& hash, uint64_t value) noexcept;
 
+auto BuildManagedAbiNativeFrame(span<uint8_t> frame, const_span<ManagedAbiSlot> args, ManagedAbiSlot ret) -> ManagedAbiNativeFrame
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(args.size() <= MAX_CALL_ARGS, "Managed frame argument count exceeds bridge limit", args.size());
+    ManagedAbiNativeFrame native_frame {.PackedFrame = frame, .Args = args, .Ret = ret};
+    size_t offset = 0;
+    auto copy_slot = [&](const ManagedAbiSlot& slot) {
+        size_t aligned_offset = (offset + alignof(std::max_align_t) - 1) / alignof(std::max_align_t) * alignof(std::max_align_t);
+        FO_VERIFY_AND_THROW(numeric_cast<size_t>(slot.Offset) + slot.Size <= frame.size(), "Managed slot exceeds frame size", slot.Offset, slot.Size, frame.size());
+        FO_VERIFY_AND_THROW(aligned_offset + slot.Size <= native_frame.Storage.size(), "Managed native frame exceeds storage capacity");
+
+        if (slot.Size != 0) {
+            memory::copy(native_frame.Storage.data() + aligned_offset, frame.data() + slot.Offset, slot.Size);
+        }
+
+        offset = aligned_offset + slot.Size;
+        return aligned_offset;
+    };
+
+    for (size_t i = 0; i < args.size(); i++) {
+        native_frame.ArgOffsets[i] = copy_slot(args[i]);
+    }
+
+    native_frame.ResultOffset = copy_slot(ret);
+    return native_frame;
+}
+
+auto GetManagedAbiNativeFrameArg(ManagedAbiNativeFrame& frame, size_t index) -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(index < frame.Args.size(), "Managed frame argument index is out of range", index, frame.Args.size());
+    return frame.Storage.data() + frame.ArgOffsets[index];
+}
+
+auto GetManagedAbiNativeFrameResult(ManagedAbiNativeFrame& frame) -> nptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return frame.Ret.Size != 0 ? frame.Storage.data() + frame.ResultOffset : nullptr;
+}
+
+void CopyBackManagedAbiNativeFrame(const ManagedAbiNativeFrame& frame)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 0; i < frame.Args.size(); i++) {
+        const ManagedAbiSlot& slot = frame.Args[i];
+
+        if (slot.Mutable && slot.Size != 0) {
+            memory::copy(frame.PackedFrame.data() + slot.Offset, frame.Storage.data() + frame.ArgOffsets[i], slot.Size);
+        }
+    }
+    if (frame.Ret.Size != 0) {
+        memory::copy(frame.PackedFrame.data() + frame.Ret.Offset, frame.Storage.data() + frame.ResultOffset, frame.Ret.Size);
+    }
+}
+
 static void MixHash(uint64_t& hash, uint64_t value) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();

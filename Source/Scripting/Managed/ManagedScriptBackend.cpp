@@ -3423,14 +3423,15 @@ static auto NativeFireEventIndexed(int32_t event_id, void* entity_ptr, void* fra
             args_data[0] = make_ptr(&self_entity).void_cast();
         }
 
-        uint8_t* frame_bytes = static_cast<uint8_t*>(frame);
+        ManagedAbiNativeFrame native_frame = BuildManagedAbiNativeFrame({static_cast<uint8_t*>(frame), entry.FrameSize}, entry.Args);
 
         for (size_t i = 0; i < entry.Args.size(); i++) {
             const ManagedAbiSlot& slot = entry.Args[i];
+            ptr<void> arg_data = GetManagedAbiNativeFrameArg(native_frame, i);
 
             // A handle slot holds the pointer itself, so the slot is the Entity* / ref pointer storage the call reads
-            ValidateManagedFrameHandle(slot, entry.Event->Args[i], frame_bytes + slot.Offset, entry.Owner, entry.Name);
-            args_data[i + first_event_arg] = frame_bytes + slot.Offset;
+            ValidateManagedFrameHandle(slot, entry.Event->Args[i], arg_data.reinterpret_as<const uint8_t>().get(), entry.Owner, entry.Name);
+            args_data[i + first_event_arg] = arg_data.get();
         }
 
         small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
@@ -3442,7 +3443,9 @@ static auto NativeFireEventIndexed(int32_t event_id, void* entity_ptr, void* fra
 
         FuncCallData call {.Accessor = &MANAGED_DATA_ACCESSOR};
         call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
-        return static_cast<int32_t>(entity->FireEvent(entry.Name, call));
+        int32_t result = static_cast<int32_t>(entity->FireEvent(entry.Name, call));
+        CopyBackManagedAbiNativeFrame(native_frame);
+        return result;
     }
     catch (const std::exception& ex) {
         *error = MakeManagedNativeError(ex);
@@ -4107,12 +4110,15 @@ static auto NativeCallMethodIndexed(int32_t method_id, void* entity_ptr, void* f
             throw ScriptSystemException("Managed ref type target is null", entry.Owner, method->Name);
         }
 
-        uint8_t* frame_bytes = static_cast<uint8_t*>(frame);
+        FO_VERIFY_AND_THROW(method->Args.size() + first_method_arg <= MAX_CALL_ARGS, "Managed method argument count exceeds bridge limit", entry.Owner, method->Name);
+        ManagedAbiNativeFrame native_frame = BuildManagedAbiNativeFrame({static_cast<uint8_t*>(frame), entry.FrameSize}, entry.Args, entry.Ret);
 
         for (size_t i = 0; i < method->Args.size(); i++) {
+            ptr<void> arg_data = GetManagedAbiNativeFrameArg(native_frame, i);
+
             // A handle slot holds the pointer itself, so the slot is the Entity* / ref pointer storage the call reads
-            ValidateManagedFrameHandle(entry.Args[i], method->Args[i], frame_bytes + entry.Args[i].Offset, entry.Owner, method->Name);
-            args_data[i + first_method_arg] = frame_bytes + entry.Args[i].Offset;
+            ValidateManagedFrameHandle(entry.Args[i], method->Args[i], arg_data.reinterpret_as<const uint8_t>().get(), entry.Owner, method->Name);
+            args_data[i + first_method_arg] = arg_data.get();
         }
 
         small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
@@ -4126,10 +4132,11 @@ static auto NativeCallMethodIndexed(int32_t method_id, void* entity_ptr, void* f
         call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
 
         if (method->Ret) {
-            call.RetData = frame_bytes + entry.ResultOffset;
+            call.RetData = GetManagedAbiNativeFrameResult(native_frame);
         }
 
         method->Call(call);
+        CopyBackManagedAbiNativeFrame(native_frame);
         return nullptr;
     }
     catch (const std::exception& ex) {
