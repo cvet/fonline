@@ -61,7 +61,7 @@ struct ClientAppData
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
 
-static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result) noexcept;
+static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result, string& session_marker) noexcept;
 static void ReportPreviousUncleanSession(string_view marker_path) noexcept;
 static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
@@ -70,9 +70,13 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Resolved by the run once settings are loaded; declared here so that the teardown below can name its parts
+    // in the marker. Empty when the run never got that far, and then the teardown records nothing
+    string session_marker;
+
     // The host carries on in this process after the call: nothing started here may still be running, or be
     // killed holding a lock when the host exits, so the set is torn down before control goes back
-    auto join_before_return = scope_exit([]() noexcept { global_data::destroy(); });
+    auto join_before_return = scope_exit([&session_marker]() noexcept { DestroyGlobalDataRecordingTeardown(session_marker); });
 
     // The host reads the result strings after the call, when the global data they came from is already
     // gone. The host never unloads this library (see its TryLoadRuntime), so storage it owns outlives the read
@@ -81,7 +85,7 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
 
     CommandLineArgs args {argc, argv};
     auto result = make_nptr(runtime_result);
-    RunClientRuntime(args, result);
+    RunClientRuntime(args, result, session_marker);
 
     if (result) {
         CaptureClientRuntimeResultStrings(*result, published_runtime_path, published_compatibility_version);
@@ -117,8 +121,8 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     return true;
 }
 
-// A marker left behind means the previous run never reached its clean exit. Reported, not thrown: this
-// run is healthy, and the exception object is what carries the stage into the crash reporter
+// Reported, not thrown: this run is healthy. A previous process still alive is its own report, since it holds the
+// client files and breaks the next update; one that is gone never finished its exit
 static void ReportPreviousUncleanSession(string_view marker_path) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -129,15 +133,27 @@ static void ReportPreviousUncleanSession(string_view marker_path) noexcept
         return;
     }
 
-    logging::write("Client runtime DLL: previous session did not exit cleanly, stage {}, build {}, started {}", previous->StageName, previous->BuildHash, previous->StartedAt);
+    string_view teardown_set = !previous->TeardownSet.empty() ? string_view {previous->TeardownSet} : string_view {"none"};
 
-    safe_call([&] {
-        ClientSessionException ex("Previous client session did not exit cleanly", previous->StageName, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
-        exceptions::report_and_continue(ex);
-    });
+    if (previous->StillRunning) {
+        logging::write("Client runtime DLL: previous client process {} is still running, stage {}, teardown {}, build {}, started {}", previous->Pid, previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
+
+        safe_call([&] {
+            ClientSessionException ex("Previous client process is still running", previous->StageName, teardown_set, previous->Pid, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
+            exceptions::report_and_continue(ex);
+        });
+    }
+    else {
+        logging::write("Client runtime DLL: previous session did not exit cleanly, stage {}, teardown {}, build {}, started {}", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
+
+        safe_call([&] {
+            ClientSessionException ex("Previous client session did not exit cleanly", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
+            exceptions::report_and_continue(ex);
+        });
+    }
 }
 
-static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result) noexcept
+static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result, string& session_marker) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -148,10 +164,6 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         runtime_result->RequestedRuntimePath = nullptr;
         runtime_result->RequestedCompatibilityVersion = nullptr;
     }
-
-    // Outside the try, because the stages recorded below it run after the catch as well. Resolved once
-    // settings are loaded, then handed to the host: only the runtime can answer where the client writes
-    string session_marker;
 
     try {
         logging::write("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);

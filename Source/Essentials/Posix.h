@@ -52,6 +52,9 @@ namespace posix
     };
 
     auto get_current_process_id() noexcept -> int32_t;
+    // The start time of a process that is still running, in the kernel's own units; none once it has exited, is a
+    // zombie, or cannot be read. With the id it names one process for good, since ids are reused
+    auto get_running_process_start_time(int32_t pid) noexcept -> optional<uint64_t>;
     auto get_executable_path() noexcept -> optional<string>;
     // Read from the user database, not $HOME: a service or a web runtime has none, and answering "none"
     // sends the caller back to a directory it may not be allowed to write
