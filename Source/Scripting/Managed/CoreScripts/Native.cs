@@ -69,6 +69,19 @@ internal static class Native
         BoundBackend = IntPtr.Zero;
     }
 
+    // An orderly teardown clears the script statics and collects while the backend is still bound, so a finalizer
+    // running in that window cannot tell a dropped resource from one its owner held until the engine stopped
+    private static volatile bool BackendTearingDown;
+
+    internal static bool IsBackendTearingDown => BackendTearingDown;
+
+    // Called by the engine as the first step of backend teardown, before the statics are cleared
+    [CallableByEngine]
+    internal static void BeginBackendTeardown()
+    {
+        BackendTearingDown = true;
+    }
+
     // The generated non-nullable members prove the pointer before they wrap it -- a property that reads a
     // component the entity has, an element of a list built from live pointers. A null here would mean the
     // native side broke that contract, so it is an invariant failure rather than a value to hand back
