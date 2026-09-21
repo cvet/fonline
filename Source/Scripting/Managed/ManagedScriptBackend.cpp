@@ -39,6 +39,7 @@
 #include "EngineBase.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
+#include "ManagedAssemblyReferences.h"
 #include "ManagedInteropAbi.h"
 #include "ManagedPInvokeTable.h"
 #include "ManagedRuntime.h"
@@ -429,6 +430,7 @@ static auto NativeGetHashStr(void* value) -> MonoString*;
 static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoString*;
 static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*;
 static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*;
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*;
 static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*;
 static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> mono_bool;
 static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name) -> int32_t;
@@ -1754,6 +1756,27 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
     }
     catch (const std::exception& ex) {
         return MakeManagedNativeError(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed dynamic assembly load error output is null");
+    *error = nullptr;
+
+    try {
+        FO_VERIFY_AND_THROW(image != nullptr, "Managed dynamic assembly image is null");
+
+        return ResolveBoundBackend(backend_ptr)->LoadDynamicAssembly(image, symbols).reinterpret_as<MonoObject>().get();
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return nullptr;
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -4623,6 +4646,7 @@ static void RegisterInternalCalls()
     FO_STACK_TRACE_ENTRY();
 
     mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
+    mono_add_internal_call("FOnline.Native::LoadDynamicAssemblyInternal", reinterpret_cast<const void*>(NativeLoadDynamicAssembly));
     mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
     mono_add_internal_call("FOnline.Native::ReportExceptionInternal", reinterpret_cast<const void*>(NativeReportException));
     mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
@@ -8267,6 +8291,41 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     // Armed here rather than asked for from the tracker's static constructor: those run while the initializator
     // walks every type, long before there is an active backend to ask
     EnableDeepEntityWrapperTracking();
+}
+
+auto ManagedScriptBackend::LoadDynamicAssembly(ptr<void> image, nptr<void> symbols) -> ptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The host refuses a taken name before loading, so the name is read here, from the image itself
+    ptr<MonoArray> image_array = image.reinterpret_as<MonoArray>();
+    const_span<uint8_t> image_data {mono_array_addr(image_array.get(), uint8_t, 0), mono_array_length(image_array.get())};
+    string assembly_name = ReadManagedAssemblyIdentity(image_data).Name;
+
+    scoped_lock load_locker {ManagedAssemblyLoadLocker};
+
+    FO_VERIFY_AND_THROW(_loadScopeGcHandle != 0, "Managed load scope is not created");
+    nptr<MonoImage> host_image = _managedHostImage.reinterpret_as<MonoImage>();
+    FO_VERIFY_AND_THROW(host_image, "Managed load-context host image is not loaded");
+
+    MonoClass* host_class = mono_class_from_name(host_image.get(), MANAGED_HOST_NAMESPACE.data(), MANAGED_HOST_CLASS_NAME.data());
+    MonoMethod* load_method = host_class != nullptr ? mono_class_get_method_from_name(host_class, "LoadDynamicAssembly", 4) : nullptr;
+    FO_VERIFY_AND_THROW(load_method != nullptr, "Managed load-context host method not found", "LoadDynamicAssembly");
+
+    MonoString* managed_assembly_name = mono_string_new(GetDomainOrThrow(_domain.get()), assembly_name.c_str());
+    FO_VERIFY_AND_THROW(managed_assembly_name != nullptr, "Can't create Managed dynamic assembly name", assembly_name);
+
+    // Read after the allocation above, which may have moved the scope
+    MonoObject* load_scope = mono_gchandle_get_target(_loadScopeGcHandle);
+    FO_VERIFY_AND_THROW(load_scope != nullptr, "Managed load-context scope was collected");
+
+    void* load_args[] = {load_scope, managed_assembly_name, image.get(), symbols.get()};
+    MonoObject* exception = nullptr;
+    MonoObject* assembly = mono_runtime_invoke(load_method, nullptr, load_args, &exception);
+    ThrowIfManagedException(this, exception, "Managed dynamic assembly load failed");
+    FO_VERIFY_AND_THROW(assembly != nullptr, "Managed load-context host returned a null assembly", assembly_name);
+
+    return assembly;
 }
 
 void ManagedScriptBackend::BindRequiredStuff()

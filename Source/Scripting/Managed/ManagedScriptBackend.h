@@ -60,6 +60,8 @@ public:
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
+    // Managed byte arrays in, a managed Assembly out: code compiled after the bake joins this backend's load context
+    auto LoadDynamicAssembly(ptr<void> image, nptr<void> symbols) -> ptr<void>;
     void BindRequiredStuff();
     void Process() override;
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);

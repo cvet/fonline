@@ -620,6 +620,41 @@ Managed bake-output assembly discovery returns an empty set only for absent path
 
 Exported value metadata records the native size and fixed field layout, including stub metadata used by baking; generated native registration requires the type to be trivially copyable. Managed interop copies value types as bytes and validates the managed size against metadata. Property storage converts nested hash values between stored hashes and runtime intern handles. Native calls use aligned argument storage, including for mutable arguments and results. Layout registration rejects a field size total that differs from the native type before publishing the layout.
 
+### Code loaded after the bake
+
+`FOnline.DynamicAssemblies` (`Source/Scripting/Managed/CoreScripts/DynamicAssemblies.cs`) loads an assembly compiled
+after the bake into the running backend and runs its entries. It is the engine half of fixing a live game without a
+rebuild: compiling the source, and deciding who may send it, belong to the embedding project.
+
+- `Load(image, symbols)` hands the PE image and an optional portable PDB to the `Native.LoadDynamicAssembly` internal
+  call. `ManagedScriptBackend::LoadDynamicAssembly` reads the assembly name from the image with
+  `ReadManagedAssemblyIdentity` (`Source/Scripting/Managed/ManagedAssemblyReferences.*`) before anything is loaded, then,
+  under the process-wide assembly load lock, asks `ManagedLoadContextHost.LoadDynamicAssembly` to load it into the
+  backend's own `AssemblyLoadContext`. The loaded code therefore binds to the backend's script assembly, shares its
+  statics and generated wrappers, and may reference an assembly loaded the same way earlier. It reaches the engine
+  through the entry assembly's `Native`, so every internal call it makes carries the backend that assembly is bound to.
+- The name must start with `FOnline.Dynamic.` and be new to the backend; the host refuses otherwise, before loading. A
+  stream load never reuses an assembly already loaded (Mono loads it with `no_invoke_search_hook`), so a second image
+  under a taken name would load beside the first, and Mono answers a reference from the context's loaded assemblies
+  before it asks `Load`. A reused name could therefore capture references to a pack assembly or to a class library
+  the context has not opened yet; the prefix keeps dynamic names clear of both.
+- The context is not collectible, so every loaded assembly stays for the life of the process. `ScriptStaticCleanup`
+  walks each loaded dynamic assembly as well as the entry assembly when scripting shuts down, since statics there root
+  entity wrappers exactly as script statics do.
+- `RunEntryAsync(MethodInfo)` runs a static method without parameters as a script entry of its own through
+  `Native.RunScriptContinuation`, that is, `RunManagedScriptEntry` and `BaseEngine::RunScriptContext`. On a server the
+  entry gets its own nested sync context: what it locks or releases stays inside it, and because entity locks belong to
+  the thread, the entities its caller covers stay accessible. The overrun report names the entry method
+  (`INamedScriptEntry` in `ScriptEntryNames.cs`). A `Task` result is awaited and a `Task<T>` answers with its value,
+  read through the declared return type because an async method's task is a state machine box. The caller receives the
+  exception the entry threw rather than the reflection wrapper. `async void` and methods with parameters are refused.
+- `ScriptsVersionId` is the MVID of the backend's entry assembly, so a caller can refuse code compiled against another
+  build of the scripts.
+
+`BuildTools/tests/test_managed_dynamic_assemblies.py` compiles the production host and CoreScripts under the .NET SDK
+and covers results, exceptions, chained references, refused names and static cleanup. The embedded-Mono path is
+covered end to end by the embedding project's gameplay suite (Last Frontier: `dynamic_assemblies`).
+
 ### Managed continuation scheduling
 
 Each backend loads its core scripts into a separate entry assembly in its own non-collectible load context. `ScriptSynchronizationContext` therefore owns a separate managed continuation queue for each backend, including multiple embedded clients in one process. Native callback and event entry installs an invocation context; `Post` only queues managed work and never dereferences a native engine from a ThreadPool thread. `BaseEngine::FrameAdvance` pumps that backend after releasing the frame-property lock on server, client, and mapper. Each resumed continuation enters `BaseEngine::RunScriptContext` for the backend its assembly is bound to; on the server this creates a fresh nested entity-sync context. A suspended method must reacquire and revalidate its entities before using them again. This also covers late Task continuation registration and nested awaits, which cannot safely rely on inline `TaskCompletionSource` completion. `ConfigureAwait(false)` and manually dispatched ThreadPool work deliberately bypass this context and must not call engine APIs. The engine does not detect such a call on every path: the bound backend answers "which engine" on any thread, so only a server entity access fails there (its sync check reports `Entity access without sync`). Embedding projects keep these APIs out of script code statically (Last Frontier bans them in `Scripts/BannedSymbols.txt`).
