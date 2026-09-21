@@ -39,13 +39,13 @@
 
 FO_BEGIN_NAMESPACE
 
-void InitNativeScripting(ptr<EngineMetadata> meta, const ScriptSettings& settings, const FileSystem& resources, NativeScripts::Detail::RegisterModulesFn registerModules, bool isBaker)
+void InitNativeScripting(ptr<EngineMetadata> meta, const FileSystem& resources, NativeScripts::Detail::RegisterModulesFn registerModules, bool isBaker)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(resources);
 
-    auto native_backend = SafeAlloc::MakeUnique<NativeScriptBackend>(settings);
+    auto native_backend = safe_alloc::make_unique<NativeScriptBackend>();
     ptr<NativeScriptBackend> native_backend_ptr = native_backend;
 
     if (nptr<ScriptSystem> script_sys = meta.dyn_cast<ScriptSystem>(); script_sys) {

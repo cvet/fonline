@@ -291,7 +291,7 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             WORKING_DIRECTORY ${FO_TESTS_OUTPUT}
             OUTPUT_NAME ${target}
             TESTING_APP 1
-            LINK_LIBS BakerLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless
+            LINK_LIBS BakerLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless $<$<BOOL:${FO_NATIVE_SCRIPTING}>:NativeScriptSynth>
             DEPENDS ${FO_GEN_DEPENDENCIES}
             EXTRA_SOURCES ${testBuildSources})
 

@@ -108,6 +108,31 @@ struct NativeScriptModuleInit
     string SourceFileName;
 };
 
+// Role folders a user module may live under, in dispatch order.
+[[nodiscard]] auto GetNativeScriptRoles() -> const vector<string>&;
+
+// One scanned `.cppm` / `.ixx`: the module it declares plus every initializer it exports.
+struct NativeScriptModuleScan
+{
+    string Module;
+    vector<NativeScriptModuleInit> Inits;
+};
+
+// Scan one user module's source text against the authoring contract: an `export module
+// NativeScripts.User.<Role>.<Name>;` declaration whose role matches `expected_role`, a matching
+// `import NativeApi.<Role>;`, and at least one exported `void <Name>(const ModuleInitContext&)`.
+// Comments are stripped first, so a commented-out declaration does not count. `source_path` only names
+// the file in the diagnostics; `file_name` is recorded on each init entry for the dispatcher comment.
+// Every contract violation throws `NativeScriptSynthException`.
+[[nodiscard]] auto ScanNativeScriptModuleSource(string_view source, string_view source_path, string_view file_name, string_view expected_role) -> NativeScriptModuleScan;
+
+// Walk `native_scripts_dir` recursively and return the scanned init entries bucketed by role. Every
+// recognized role is present in the map (with a possibly-empty vector) so the caller can emit a
+// dispatcher for each one uniformly — engine startup glue forward-declares
+// `RegisterNativeScriptModules_<Role>` unconditionally and the symbol must always resolve. Entries are
+// sorted for deterministic dispatch order, and duplicate module or initializer names throw.
+[[nodiscard]] auto ScanNativeScriptModules(const std::filesystem::path& native_scripts_dir) -> unordered_map<string, vector<NativeScriptModuleInit>>;
+
 // Synthesize `NativeBindings-<Target>.cpp` — the per-role
 // dispatcher body that imports each user module and calls its
 // init function. Emitted by `LF_NativeScriptSynth` (which scans the

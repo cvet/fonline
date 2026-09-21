@@ -46,7 +46,7 @@ FO_BEGIN_NAMESPACE
 class NativeScriptBackend final : public ScriptSystemBackend
 {
 public:
-    explicit NativeScriptBackend(const ScriptSettings& settings);
+    NativeScriptBackend() = default;
     NativeScriptBackend(const NativeScriptBackend&) = delete;
     NativeScriptBackend(NativeScriptBackend&&) noexcept = delete;
     auto operator=(const NativeScriptBackend&) -> NativeScriptBackend& = delete;
@@ -77,7 +77,6 @@ public:
     [[nodiscard]] auto AllocateScriptFunc() -> ScriptFuncDesc& { return _scriptFuncs.emplace_back(); }
 
 private:
-    ptr<const ScriptSettings> _settings;
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};
     nptr<BaseEngine> _engine {};

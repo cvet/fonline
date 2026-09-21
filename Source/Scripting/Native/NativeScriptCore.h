@@ -467,6 +467,8 @@ namespace NativeScripts
             constexpr size_t arg_offset = IsGlobal ? size_t {0} : size_t {1};
             return FO_NAMESPACE Entity::EventCallbackData {
                 .Callback = [handler = std::move(handler)](FO_NAMESPACE FuncCallData& call) noexcept -> FO_NAMESPACE Entity::EventResult {
+                    // An event with no arguments never reads the call data
+                    FO_NAMESPACE ignore_unused(call);
                     handler(Detail::NativeReadArg<WrapperArgs>(call.ArgsData[arg_offset + I])...);
                     return FO_NAMESPACE Entity::EventResult::ContinueChain;
                 },
@@ -545,6 +547,8 @@ namespace NativeScripts
             constexpr size_t arg_offset = IsGlobal ? size_t {0} : size_t {1};
             return FO_NAMESPACE Entity::EventCallbackData {
                 .Callback = [handler = std::move(handler)](FO_NAMESPACE FuncCallData& call) noexcept -> FO_NAMESPACE Entity::EventResult {
+                    // An event with no arguments never reads the call data
+                    FO_NAMESPACE ignore_unused(call);
                     handler(Detail::NativeReadArg<WrapperArgs>(call.ArgsData[arg_offset + I])...);
                     return FO_NAMESPACE Entity::EventResult::ContinueChain;
                 },
@@ -956,7 +960,7 @@ namespace NativeScripts
         // so AS-bound inbound handlers can decode native-originated calls.
         //
         // - arithmetic types (bool, int*, uint*, float*) → raw bytes via
-        //   `writer.Write<T>(value)`.
+        //   `writer.write<T>(value)`.
         // - `string` / `string_view` → `int32_t` length + raw bytes (no
         //   null terminator).
         // - `hstring` → `hstring::hash_t` (uint64) as raw bytes.
@@ -965,21 +969,21 @@ namespace NativeScripts
         // types, structs go through more elaborate encodings on the AS
         // side and would need matching native support.
         template<typename T>
-        void WriteRemoteCallArg(FO_NAMESPACE DataWriter& writer, const T& arg)
+        void WriteRemoteCallArg(FO_NAMESPACE data_writer& writer, const T& arg)
         {
             using bare = std::remove_cvref_t<T>;
             if constexpr (std::is_arithmetic_v<bare>) {
-                writer.template Write<bare>(arg);
+                writer.template write<bare>(arg);
             }
             else if constexpr (std::is_same_v<bare, FO_NAMESPACE hstring>) {
-                writer.template Write<FO_NAMESPACE hstring::hash_t>(arg.as_hash());
+                writer.template write<FO_NAMESPACE hstring::hash_t>(arg.as_hash());
             }
             else if constexpr (FO_NAMESPACE vector_collection<bare>) {
                 // AS wire format for array args: int32_t count followed by
                 // count * element-encoded-bytes. Recurse element-wise so
                 // nested encodings (string elements, hstring elements) use
                 // the same per-type rules.
-                writer.template Write<int32_t>(FO_NAMESPACE numeric_cast<int32_t>(arg.size()));
+                writer.template write<int32_t>(FO_NAMESPACE numeric_cast<int32_t>(arg.size()));
                 for (const auto& elem : arg) {
                     WriteRemoteCallArg(writer, elem);
                 }
@@ -989,7 +993,7 @@ namespace NativeScripts
                 // count * (key + value) encoded pairs. Same recursion as
                 // vector; key + value types follow the regular per-type
                 // encoding rules.
-                writer.template Write<int32_t>(FO_NAMESPACE numeric_cast<int32_t>(arg.size()));
+                writer.template write<int32_t>(FO_NAMESPACE numeric_cast<int32_t>(arg.size()));
                 for (const auto& kv : arg) {
                     WriteRemoteCallArg(writer, kv.first);
                     WriteRemoteCallArg(writer, kv.second);
@@ -1001,8 +1005,8 @@ namespace NativeScripts
                 // length + bytes`, matching AS's wire format for the
                 // `string` arg type.
                 FO_NAMESPACE string_view sv {arg};
-                writer.template Write<int32_t>(FO_NAMESPACE numeric_cast<int32_t>(sv.length()));
-                writer.WriteStringBytes(sv);
+                writer.template write<int32_t>(FO_NAMESPACE numeric_cast<int32_t>(sv.length()));
+                writer.write_string_bytes(sv);
             }
             else {
                 static_assert(!std::is_same_v<bare, bare>,
@@ -1019,31 +1023,31 @@ namespace NativeScripts
         // decode identically — same byte layout, same hstring hash
         // resolution path.
         template<typename T>
-        [[nodiscard]] auto ReadRemoteCallArg(FO_NAMESPACE DataReader& reader, FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> T
+        [[nodiscard]] auto ReadRemoteCallArg(FO_NAMESPACE data_reader& reader, FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> T
         {
             using bare = std::remove_cvref_t<T>;
             if constexpr (std::is_arithmetic_v<bare>) {
-                return reader.template Read<bare>();
+                return reader.template read<bare>();
             }
             else if constexpr (std::is_same_v<bare, FO_NAMESPACE hstring>) {
-                const auto hash = reader.template Read<FO_NAMESPACE hstring::hash_t>();
-                return engine->Hashes.ResolveHash(hash);
+                const auto hash = reader.template read<FO_NAMESPACE hstring::hash_t>();
+                return engine->Hashes.resolve_hash(hash);
             }
             else if constexpr (std::is_same_v<bare, FO_NAMESPACE string>) {
-                const auto len = reader.template Read<int32_t>();
+                const auto len = reader.template read<int32_t>();
                 FO_STRONG_ASSERT(len >= 0, "Remote call string length is negative", len);
                 const size_t size = FO_NAMESPACE numeric_cast<size_t>(len);
                 if (size == 0) {
                     return {};
                 }
-                const FO_NAMESPACE nptr<const char> bytes = reader.template ReadPtr<char>(size);
+                const FO_NAMESPACE nptr<const char> bytes = reader.template read_ptr<char>(size);
                 return FO_NAMESPACE string {bytes.get(), size};
             }
             else if constexpr (FO_NAMESPACE vector_collection<bare>) {
                 // AS wire format for array args: int32_t count followed by
                 // count * element-encoded-bytes. Mirror `WriteRemoteCallArg`'s
                 // element-wise recursion to decode.
-                const auto count = reader.template Read<int32_t>();
+                const auto count = reader.template read<int32_t>();
                 FO_STRONG_ASSERT(count >= 0, "Remote call array length is negative", count);
                 bare result;
                 result.reserve(FO_NAMESPACE numeric_cast<size_t>(count));
@@ -1056,7 +1060,7 @@ namespace NativeScripts
                 // AS wire format for dict args: int32_t count followed by
                 // count * (key + value) encoded pairs. Mirror
                 // `WriteRemoteCallArg`'s element-wise recursion.
-                const auto count = reader.template Read<int32_t>();
+                const auto count = reader.template read<int32_t>();
                 FO_STRONG_ASSERT(count >= 0, "Remote call dictionary length is negative", count);
                 bare result;
                 for (int32_t i = 0; i < count; ++i) {
@@ -1074,7 +1078,7 @@ namespace NativeScripts
         }
 
         template<typename... Args>
-        [[nodiscard]] auto ReadRemoteCallArgs(FO_NAMESPACE DataReader& reader, FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> std::tuple<Args...>
+        [[nodiscard]] auto ReadRemoteCallArgs(FO_NAMESPACE data_reader& reader, FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine) -> std::tuple<Args...>
         {
             std::tuple<Args...> args;
             [&]<size_t... Indexes>(std::index_sequence<Indexes...>) {
@@ -1109,7 +1113,7 @@ namespace NativeScripts
     void SendRemoteCall(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, FO_NAMESPACE ptr<FO_NAMESPACE Entity> caller, const Args&... args)
     {
         FO_NAMESPACE vector<uint8_t> data;
-        FO_NAMESPACE DataWriter writer {data};
+        FO_NAMESPACE data_writer writer {data};
         (Detail::WriteRemoteCallArg(writer, args), ...);
         engine->SendRemoteCall(engine->Hashes.to_hashed_string(name), caller, data);
     }
@@ -1147,9 +1151,9 @@ namespace NativeScripts
         engine->SetRemoteCallHandler(
             hashed,
             [engine, handler = std::move(handler)](FO_NAMESPACE hstring, FO_NAMESPACE nptr<FO_NAMESPACE Entity> caller, FO_NAMESPACE span<uint8_t> data) FO_DEFERRED {
-                FO_NAMESPACE DataReader reader {data};
+                FO_NAMESPACE data_reader reader {data};
                 std::tuple<Args...> args = Detail::ReadRemoteCallArgs<Args...>(reader, engine);
-                reader.VerifyEnd();
+                reader.verify_end();
                 std::apply([&](auto&&... a) { handler(caller, std::forward<decltype(a)>(a)...); }, std::move(args));
             },
             FO_NAMESPACE BaseEngine::RemoteCallHandlerMode::OverrideFallback);

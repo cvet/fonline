@@ -50,7 +50,243 @@
 
 #if FO_NATIVE_SCRIPTING
 
+// The one heavyweight standard header the engine deliberately keeps out of BasicCore.h: only the module
+// scanner below needs it, and pulling <regex> into every translation unit costs more than it saves
+#include <regex>
+
 FO_BEGIN_NAMESPACE
+
+// `export module <Path.Components>;`
+static const std::regex MODULE_NAME_REGEX {R"(\bexport\s+module\s+([A-Za-z_][\w.]*)\s*;)"};
+
+// `import NativeApi.<Role>;` (optionally re-exported). User modules must import the API that matches
+// their source folder and declared role
+static const std::regex NATIVE_API_IMPORT_REGEX {R"(\b(?:export\s+)?import\s+NativeApi\.([A-Za-z_]\w*)\s*;)"};
+
+// `export void <Name>(... ModuleInitContext ... &)` — tolerates `const &` / east-const / namespace
+// qualification variants on the parameter
+static const std::regex MODULE_INIT_REGEX {R"(\bexport\s+void\s+([A-Za-z_]\w*)\s*\([^)]*ModuleInitContext[^)]*&[^)]*\))"};
+
+static auto StripComments(string_view src) -> string;
+static auto DetectRoleFromModuleName(string_view module_name) -> string;
+
+auto GetNativeScriptRoles() -> const vector<string>&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static const vector<string> roles {"Common", "Server", "Client", "Mapper", "Baker"};
+    return roles;
+}
+
+auto ScanNativeScriptModuleSource(string_view source, string_view source_path, string_view file_name, string_view expected_role) -> NativeScriptModuleScan
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string clean = StripComments(source);
+    string module_name;
+    std::cmatch module_match;
+
+    if (std::regex_search(clean.data(), clean.data() + clean.size(), module_match, MODULE_NAME_REGEX)) {
+        module_name = string {module_match[1].first, module_match[1].second};
+    }
+
+    if (module_name.empty()) {
+        throw NativeScriptSynthException("Native script module has no `export module ...;` declaration", source_path);
+    }
+
+    const string role = DetectRoleFromModuleName(module_name);
+
+    if (role.empty()) {
+        throw NativeScriptSynthException("Native script module name must match `NativeScripts.User.<Role>.<Name>`", source_path, module_name);
+    }
+
+    if (role != expected_role) {
+        throw NativeScriptSynthException("Native script module role doesn't match its source folder", source_path, role, expected_role);
+    }
+
+    std::cmatch import_match;
+
+    if (!std::regex_search(clean.data(), clean.data() + clean.size(), import_match, NATIVE_API_IMPORT_REGEX)) {
+        throw NativeScriptSynthException("Native script module must import its role API", source_path, strex("NativeApi.{}", expected_role));
+    }
+
+    const string imported_role {import_match[1].first, import_match[1].second};
+
+    if (imported_role != expected_role) {
+        throw NativeScriptSynthException("Native script API import doesn't match its source folder", source_path, imported_role, expected_role);
+    }
+
+    NativeScriptModuleScan result;
+    result.Module = module_name;
+    const auto begin = std::cregex_iterator(clean.data(), clean.data() + clean.size(), MODULE_INIT_REGEX);
+    const auto end = std::cregex_iterator();
+
+    for (auto it = begin; it != end; ++it) {
+        const auto& match = *it;
+        string fn_name {match[1].first, match[1].second};
+        result.Inits.push_back(NativeScriptModuleInit {module_name, std::move(fn_name), string {file_name}});
+    }
+
+    if (result.Inits.empty()) {
+        throw NativeScriptSynthException("Native script module has no exported `void ...(const ModuleInitContext&)` initializer", source_path, module_name);
+    }
+
+    return result;
+}
+
+auto ScanNativeScriptModules(const std::filesystem::path& native_scripts_dir) -> unordered_map<string, vector<NativeScriptModuleInit>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_map<string, vector<NativeScriptModuleInit>> result;
+
+    for (const auto& role : GetNativeScriptRoles()) {
+        result[role] = {};
+    }
+
+    if (native_scripts_dir.empty() || !std::filesystem::exists(native_scripts_dir)) {
+        return result;
+    }
+
+    unordered_map<string, string> module_sources;
+    unordered_map<string, string> init_sources;
+
+    for (const auto& role : GetNativeScriptRoles()) {
+        const auto role_dir = native_scripts_dir / std::filesystem::path {role.c_str()};
+
+        if (!std::filesystem::exists(role_dir)) {
+            continue;
+        }
+
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(role_dir)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+
+            const auto ext = entry.path().extension();
+
+            if (ext != ".cppm" && ext != ".ixx") {
+                continue;
+            }
+
+            const string source_path {entry.path().string()};
+            std::ifstream file {entry.path(), std::ios::binary};
+
+            if (!file) {
+                throw NativeScriptSynthException("Unable to read native script module", source_path);
+            }
+
+            const string source {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+            const string file_name {entry.path().filename().string()};
+            auto scan = ScanNativeScriptModuleSource(source, source_path, file_name, role);
+            const auto [module_it, module_inserted] = module_sources.emplace(scan.Module, source_path);
+
+            if (!module_inserted) {
+                throw NativeScriptSynthException("Duplicate native script module name", scan.Module, module_it->second, source_path);
+            }
+
+            auto& bucket = result[role];
+
+            for (auto& init : scan.Inits) {
+                const auto [init_it, init_inserted] = init_sources.emplace(init.Function, source_path);
+
+                if (!init_inserted) {
+                    throw NativeScriptSynthException("Duplicate native script initializer name", init.Function, init_it->second, source_path);
+                }
+
+                bucket.push_back(std::move(init));
+            }
+        }
+    }
+
+    for (auto& [role, modules] : result) {
+        ignore_unused(role);
+        std::ranges::sort(modules, [](const NativeScriptModuleInit& lhs, const NativeScriptModuleInit& rhs) { return std::tie(lhs.Module, lhs.Function, lhs.SourceFileName) < std::tie(rhs.Module, rhs.Function, rhs.SourceFileName); });
+    }
+
+    return result;
+}
+
+// Strip C-style block + line comments so a commented-out `export module ...;` or module init signature
+// does not pollute the scan
+static auto StripComments(string_view src) -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    string out;
+    out.reserve(src.size());
+    bool in_line = false;
+    bool in_block = false;
+
+    for (size_t i = 0; i < src.size(); ++i) {
+        const char c = src[i];
+
+        if (in_line) {
+            if (c == '\n') {
+                in_line = false;
+                out.push_back(c);
+            }
+
+            continue;
+        }
+
+        if (in_block) {
+            if (c == '*' && i + 1 < src.size() && src[i + 1] == '/') {
+                in_block = false;
+                ++i;
+            }
+
+            continue;
+        }
+
+        if (c == '/' && i + 1 < src.size()) {
+            if (src[i + 1] == '/') {
+                in_line = true;
+                ++i;
+                continue;
+            }
+
+            if (src[i + 1] == '*') {
+                in_block = true;
+                ++i;
+                continue;
+            }
+        }
+
+        out.push_back(c);
+    }
+
+    return out;
+}
+
+// `NativeScripts.User.<Role>.<Name>` → "<Role>" (empty when the module name doesn't fit the shape)
+static auto DetectRoleFromModuleName(string_view module_name) -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    constexpr string_view PREFIX = "NativeScripts.User.";
+
+    if (!module_name.starts_with(PREFIX)) {
+        return "";
+    }
+
+    const string_view tail = module_name.substr(PREFIX.size());
+    const size_t dot = tail.find('.');
+
+    if (dot == string_view::npos) {
+        return "";
+    }
+
+    const string_view role_part = tail.substr(0, dot);
+
+    for (const auto& role : GetNativeScriptRoles()) {
+        if (role_part == role) {
+            return role;
+        }
+    }
+
+    return "";
+}
 
 // Map a codegen meta type to a C++ type usable in the native wrapper
 // surface. Mirrors `_native_meta_to_cpp` in codegen.py — see that
@@ -798,6 +1034,9 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         if (dot == string::npos) {
             continue;
         }
+        // Engine settings live in per-group structs on GlobalSettings, and the metadata name carries that
+        // group: `Baking.BakeOutput` reads as `engine->Settings->Baking.BakeOutput`
+        const string group_name = setting_name.substr(0, dot);
         const string field_name = setting_name.substr(dot + 1);
         string symbol = setting_name;
         std::ranges::replace(symbol, '.', '_');
@@ -825,12 +1064,14 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
             continue;
         }
 
-        // Inline body: `engine->Settings-><Field>`.
+        // Inline body: `engine->Settings-><Group>.<Field>`.
         settings_body += "[[nodiscard]] inline auto ";
         settings_body += symbol;
         settings_body += "(::FO_NAMESPACE_NAME::ptr<::FO_NAMESPACE_NAME::BaseEngine> engine) noexcept -> ";
         settings_body += cpp_type;
         settings_body += " { return engine->Settings->";
+        settings_body += group_name;
+        settings_body += ".";
         settings_body += field_name;
         settings_body += "; }\n";
         setting_emit.emplace_back(std::move(symbol), cpp_type);
@@ -1572,7 +1813,7 @@ auto SynthesizeNativeApiModule(string_view target, const EngineMetadata& meta, s
     // Universal base set — these live in Common.h or its direct
     // dependencies (Essentials/ExtendedTypes.h, Common/Geometry.h,
     // TimeRelated.h, NetBuffer.h) which every role compiles.
-    const array<string_view, 19> common_re_exports {"vector", "map", "unordered_map", "set", "unordered_set", "string", "string_view", "hstring", "strex", "strvex", "any_t", "timespan", "DataReader", "DataWriter", "BaseEngine", "Entity", "GlobalSettings", "EngineMetadata", "numeric_cast"};
+    const array<string_view, 19> common_re_exports {"vector", "map", "unordered_map", "set", "unordered_set", "string", "string_view", "hstring", "strex", "strvex", "any_t", "timespan", "data_reader", "data_writer", "BaseEngine", "Entity", "GlobalSettings", "EngineMetadata", "numeric_cast"};
     for (const string_view name : common_re_exports) {
         add_fo(name);
     }
@@ -1676,6 +1917,20 @@ auto SynthesizeNativeApiModule(string_view target, const EngineMetadata& meta, s
         body += name;
         body += ";\n";
     }
+    body += "\n";
+    body += "    // Comparison operators for engine types are free function templates declared in the\n";
+    body += "    // global module fragment, so an importer cannot reach them through ADL alone. Without\n";
+    body += "    // these, even a map lookup keyed by an engine string fails to compile in a user module.\n";
+    body += "    using ::FO_NAMESPACE_NAME::operator==;\n";
+    body += "    using ::FO_NAMESPACE_NAME::operator<=>;\n";
+    body += "\n";
+    body += "    // Logging is the one free-function surface a user module reaches for directly: a\n";
+    body += "    // Baker-role module has no Game wrapper to log through, because the bake session has\n";
+    body += "    // no runtime engine behind it.\n";
+    body += "    namespace logging\n";
+    body += "    {\n";
+    body += "        using ::FO_NAMESPACE_NAME::logging::write;\n";
+    body += "    }\n";
     body += "}\n";
     body += "\n";
     body += "// Sentinel constants for compile-time validation in importer TUs.\n";

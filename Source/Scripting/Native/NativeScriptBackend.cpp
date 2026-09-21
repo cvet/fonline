@@ -39,12 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-NativeScriptBackend::NativeScriptBackend(const ScriptSettings& settings) :
-    _settings {&settings}
-{
-    FO_STACK_TRACE_ENTRY();
-}
-
 NativeScriptBackend::~NativeScriptBackend()
 {
     FO_NO_STACK_TRACE_ENTRY();

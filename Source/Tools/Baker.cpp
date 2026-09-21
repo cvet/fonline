@@ -632,13 +632,13 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
             // instances; dispatching from those would run Common/Baker
             // initializers repeatedly and concurrently. Wait until the metadata
             // pack is baked and mounted so dynamic user types are available.
-            native_script_engine = SafeAlloc::MakeUnique<BakerServerEngine>(baking_output);
+            native_script_engine = safe_alloc::make_unique<BakerServerEngine>(baking_output);
             native_script_engine->MapScriptTypes(native_script_engine);
 
             extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
             extern void RegisterNativeScriptModules_Baker(const NativeScripts::ModuleInitContextBase&);
             InitNativeScripting(
-                native_script_engine, *_settings, baking_output,
+                native_script_engine, baking_output,
                 [](const NativeScripts::ModuleInitContextBase& ctx) {
                     RegisterNativeScriptModules_Common(ctx);
                     RegisterNativeScriptModules_Baker(ctx);

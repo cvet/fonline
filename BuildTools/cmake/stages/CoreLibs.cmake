@@ -46,7 +46,11 @@ if(FO_BUILD_COMMON_LIB)
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
         LINK_LIBS EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
 
-    TargetIncludeDirectories(CommonLib PUBLIC "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
+    # Backend headers self-guard on their feature macro, so the startup glue can include them
+    # unconditionally — but only if the directory is on the include path in every configuration
+    TargetIncludeDirectories(CommonLib PUBLIC
+        "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Native")
 endif()
 
 if(FO_ANGELSCRIPT_SCRIPTING)

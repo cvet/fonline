@@ -2096,7 +2096,7 @@ def parse_user_tags(valid_types: set[str]) -> None:
             continue
 
         group_name = setting_name.split('.', 1)[0]
-        entry = SettingsEntry(kind='Value', value_type=value_type, name=setting_name,
+        entry = SettingsEntry(value_type=value_type, name=setting_name,
                               init_values=[], comment=tag_meta.comment)
         codegen_tags['ExportSettings'].append(ExportSettingsTag(
             group_name, target, [entry], [], tag_meta.comment, True))
@@ -3222,7 +3222,7 @@ def append_user_remote_call_registration(helper_lines: list[str], register_lines
         # Each block emits one Register{In|Out}boundRemoteCall call.
         body_lines.append('{')
         body_lines.append('    RemoteCallDesc desc;')
-        body_lines.append('    desc.Name = meta->Hashes.ToHashedString("' + rc.name + '");')
+        body_lines.append('    desc.Name = meta->Hashes.to_hashed_string("' + rc.name + '");')
         body_lines.append('    desc.SubsystemHint = "native";')
         body_lines.append('    desc.Args = {' + args_init + '};')
         if is_inbound:

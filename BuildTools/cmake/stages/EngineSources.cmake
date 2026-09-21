@@ -624,3 +624,8 @@ if(FO_MANAGED_SCRIPTING)
     AppendList(FO_TESTS_SOURCE
         "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp")
 endif()
+
+if(FO_NATIVE_SCRIPTING)
+    AppendList(FO_TESTS_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_NativeScriptSynth.cpp")
+endif()

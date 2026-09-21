@@ -378,7 +378,7 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
     // Empty dispatchers remain available when a role has no user modules.
     extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
     extern void RegisterNativeScriptModules_Server(const NativeScripts::ModuleInitContextBase&);
-    InitNativeScripting(this, *Settings, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
+    InitNativeScripting(this, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
         RegisterNativeScriptModules_Common(ctx);
         RegisterNativeScriptModules_Server(ctx);
     });

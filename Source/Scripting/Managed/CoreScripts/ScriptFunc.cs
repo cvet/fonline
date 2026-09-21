@@ -26,7 +26,7 @@ public static class ScriptFunc
     // ScriptExceptions, because this caller has already returned
     public static void Invoke(string funcName, params object?[]? args)
     {
-        object?[] invokeArgs = args ?? Array.Empty < object ?>();
+        object?[] invokeArgs = args ?? Array.Empty<object?>();
         MethodInfo? method = FindInvokeMethod(funcName, invokeArgs);
 
         if (method == null) {
@@ -43,7 +43,7 @@ public static class ScriptFunc
     // needs the work finished before it reads the resulting state must await this instead
     public static async Task InvokeAsync(string funcName, params object?[]? args)
     {
-        object?[] invokeArgs = args ?? Array.Empty < object ?>();
+        object?[] invokeArgs = args ?? Array.Empty<object?>();
         MethodInfo? method = FindInvokeMethod(funcName, invokeArgs);
 
         if (method == null) {
@@ -63,7 +63,7 @@ public static class ScriptFunc
     // that matches no admin function is an expected answer; a failure inside the function still propagates
     public static bool TryInvokeAdmin(string funcName, params object?[]? args)
     {
-        object?[] invokeArgs = args ?? Array.Empty < object ?>();
+        object?[] invokeArgs = args ?? Array.Empty<object?>();
         MethodInfo? method = FindAdminCallMethod(funcName, invokeArgs);
 
         if (method == null) {

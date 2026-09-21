@@ -70,223 +70,8 @@
 #include "NativeScriptSynth.h"
 
 #include <filesystem>
-#include <fstream>
-#include <regex>
 
 FO_USING_NAMESPACE();
-
-// Role names recognized in `NativeScripts.User.<Role>.<Name>`
-// module declarations. Order matters — dispatcher emission
-// iterates this list so per-role artifacts come out in a stable
-// order regardless of filesystem traversal.
-static const vector<string> kNativeScriptRoles {"Common", "Server", "Client", "Mapper", "Baker"};
-
-// Strip C-style block + line comments so commented-out
-// `export module ...;` / module init signatures don't pollute the
-// scan.
-static auto StripComments(string_view src) -> string
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    string out;
-    out.reserve(src.size());
-    bool in_line = false;
-    bool in_block = false;
-    for (size_t i = 0; i < src.size(); ++i) {
-        const char c = src[i];
-        if (in_line) {
-            if (c == '\n') {
-                in_line = false;
-                out.push_back(c);
-            }
-            continue;
-        }
-        if (in_block) {
-            if (c == '*' && i + 1 < src.size() && src[i + 1] == '/') {
-                in_block = false;
-                ++i;
-            }
-            continue;
-        }
-        if (c == '/' && i + 1 < src.size()) {
-            if (src[i + 1] == '/') {
-                in_line = true;
-                ++i;
-                continue;
-            }
-            if (src[i + 1] == '*') {
-                in_block = true;
-                ++i;
-                continue;
-            }
-        }
-        out.push_back(c);
-    }
-    return out;
-}
-
-// `export module <Path.Components>;`
-static const std::regex kModuleNameRegex {R"(\bexport\s+module\s+([A-Za-z_][\w.]*)\s*;)"};
-
-// `import NativeApi.<Role>;` (optionally re-exported). User modules must
-// import the API that matches their source folder and declared role.
-static const std::regex kNativeApiImportRegex {R"(\b(?:export\s+)?import\s+NativeApi\.([A-Za-z_]\w*)\s*;)"};
-
-// `export void <Name>(... ModuleInitContext ... &)` — tolerates
-// `const &` / east-const / namespace qualification variants on
-// the parameter.
-static const std::regex kModuleInitRegex {R"(\bexport\s+void\s+([A-Za-z_]\w*)\s*\([^)]*ModuleInitContext[^)]*&[^)]*\))"};
-
-// `NativeScripts.User.<Role>.<Name>` → "<Role>" (empty if the
-// module name doesn't fit the expected shape).
-static auto DetectRoleFromModuleName(string_view module_name) -> string
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    constexpr string_view kPrefix = "NativeScripts.User.";
-    if (!module_name.starts_with(kPrefix)) {
-        return "";
-    }
-    string_view tail = module_name.substr(kPrefix.size());
-    const size_t dot = tail.find('.');
-    if (dot == string_view::npos) {
-        return "";
-    }
-    const string_view role_part = tail.substr(0, dot);
-    for (const auto& role : kNativeScriptRoles) {
-        if (role_part == role) {
-            return role;
-        }
-    }
-    return "";
-}
-
-// Read a `.cppm` / `.ixx` file, scan for module declaration +
-// init function definitions, and return the module name plus one
-// `NativeScriptModuleInit` per initializer. The caller already knows
-// the role from the source directory it is scanning.
-struct ScanResult
-{
-    string Module;
-    vector<NativeScriptModuleInit> Inits;
-};
-static auto ScanUserModule(const std::filesystem::path& path, string_view expected_role) -> ScanResult
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::ifstream f {path, std::ios::binary};
-    if (!f) {
-        throw NativeScriptSynthException("Unable to read native script module", string {path.string()});
-    }
-
-    string src {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
-    const string clean = StripComments(src);
-
-    string module_name;
-    std::cmatch module_match;
-    if (std::regex_search(clean.data(), clean.data() + clean.size(), module_match, kModuleNameRegex)) {
-        module_name = string {module_match[1].first, module_match[1].second};
-    }
-    if (module_name.empty()) {
-        throw NativeScriptSynthException("Native script module has no `export module ...;` declaration", string {path.string()});
-    }
-
-    const string role = DetectRoleFromModuleName(module_name);
-    if (role.empty()) {
-        throw NativeScriptSynthException("Native script module name must match `NativeScripts.User.<Role>.<Name>`", string {path.string()}, module_name);
-    }
-    if (role != expected_role) {
-        throw NativeScriptSynthException("Native script module role doesn't match its source folder", string {path.string()}, role, expected_role);
-    }
-
-    std::cmatch import_match;
-    if (!std::regex_search(clean.data(), clean.data() + clean.size(), import_match, kNativeApiImportRegex)) {
-        throw NativeScriptSynthException("Native script module must import its role API", string {path.string()}, strex("NativeApi.{}", expected_role));
-    }
-    const string imported_role {import_match[1].first, import_match[1].second};
-    if (imported_role != expected_role) {
-        throw NativeScriptSynthException("Native script API import doesn't match its source folder", string {path.string()}, imported_role, expected_role);
-    }
-
-    // `path.filename().string()` is a std::string; materialize as
-    // engine `string` (SafeAllocator) for the struct field.
-    const string file_name {path.filename().string()};
-
-    ScanResult result;
-    result.Module = module_name;
-    auto begin = std::cregex_iterator(clean.data(), clean.data() + clean.size(), kModuleInitRegex);
-    const auto end = std::cregex_iterator();
-    for (auto it = begin; it != end; ++it) {
-        const auto& m = *it;
-        string fn_name {m[1].first, m[1].second};
-        result.Inits.push_back(NativeScriptModuleInit {module_name, std::move(fn_name), file_name});
-    }
-    if (result.Inits.empty()) {
-        throw NativeScriptSynthException("Native script module has no exported `void ...(const ModuleInitContext&)` initializer", string {path.string()}, module_name);
-    }
-
-    return result;
-}
-
-// Walk `nativeScriptsDir` recursively, scan every `.cppm` /
-// `.ixx`, return module-init entries bucketed by role. Each
-// recognized role is present in the map (with possibly-empty
-// vector) so the caller can emit a dispatcher for every role
-// uniformly — engine startup glue forward-declares
-// `RegisterNativeScriptModules_<Role>` unconditionally and the
-// symbol must always resolve.
-static auto ScanUserModules(const std::filesystem::path& native_scripts_dir) -> unordered_map<string, vector<NativeScriptModuleInit>>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    unordered_map<string, vector<NativeScriptModuleInit>> result;
-    for (const auto& role : kNativeScriptRoles) {
-        result[role] = {};
-    }
-    if (native_scripts_dir.empty() || !std::filesystem::exists(native_scripts_dir)) {
-        return result;
-    }
-
-    unordered_map<string, string> module_sources;
-    unordered_map<string, string> init_sources;
-
-    for (const auto& role : kNativeScriptRoles) {
-        const auto role_dir = native_scripts_dir / std::filesystem::path {role.c_str()};
-        if (!std::filesystem::exists(role_dir)) {
-            continue;
-        }
-
-        for (auto& entry : std::filesystem::recursive_directory_iterator(role_dir)) {
-            if (!entry.is_regular_file()) {
-                continue;
-            }
-            const auto ext = entry.path().extension();
-            if (ext != ".cppm" && ext != ".ixx") {
-                continue;
-            }
-
-            auto scan = ScanUserModule(entry.path(), role);
-            const string source_path {entry.path().string()};
-            const auto [module_it, module_inserted] = module_sources.emplace(scan.Module, source_path);
-            if (!module_inserted) {
-                throw NativeScriptSynthException("Duplicate native script module name", scan.Module, module_it->second, source_path);
-            }
-
-            auto& bucket = result[role];
-            for (auto& init : scan.Inits) {
-                const auto [init_it, init_inserted] = init_sources.emplace(init.Function, source_path);
-                if (!init_inserted) {
-                    throw NativeScriptSynthException("Duplicate native script initializer name", init.Function, init_it->second, source_path);
-                }
-                bucket.push_back(std::move(init));
-            }
-        }
-    }
-    for (auto& [_role, modules] : result) {
-        std::ranges::sort(modules, [](const NativeScriptModuleInit& lhs, const NativeScriptModuleInit& rhs) { return std::tie(lhs.Module, lhs.Function, lhs.SourceFileName) < std::tie(rhs.Module, rhs.Function, rhs.SourceFileName); });
-    }
-    return result;
-}
 
 // Writes `body` to `<output_dir>/<file_name>` in binary mode (so line
 // endings match codegen.py's output regardless of host platform).
@@ -300,16 +85,16 @@ static void WriteOutput(string_view output_dir, string_view file_name, string_vi
     const string dir = strex(path).extract_dir().str();
 
     if (!dir.empty()) {
-        const bool dir_ok = fs_create_directories(dir);
+        const bool dir_ok = fs::create_directories(dir);
         FO_VERIFY_AND_THROW(dir_ok, "Failed to create the native script synthesis output directory", dir);
     }
 
-    std::ofstream file {std::filesystem::path {fs_make_path(path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream file {std::filesystem::path {fs::make_path(path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(file, "Failed to open the native script synthesis output file", path);
     file.write(body.data(), static_cast<std::streamsize>(body.size()));
     FO_VERIFY_AND_THROW(file, "Failed to write the native script synthesis output file", path, body.size());
 
-    WriteLog("NativeScriptSynth: emitted {} ({} bytes)", file_name, body.size());
+    logging::write("NativeScriptSynth: emitted {} ({} bytes)", file_name, body.size());
 }
 
 // Per-target `EngineMetadata` populated by the matching stub
@@ -354,12 +139,12 @@ static auto BuildMetadata(string_view target) -> unique_ptr<EngineMetadata>
     FO_STACK_TRACE_ENTRY();
 
     if (target == "Client") {
-        return SafeAlloc::MakeUnique<StandaloneClientMetadata>();
+        return safe_alloc::make_unique<StandaloneClientMetadata>();
     }
     if (target == "Mapper") {
-        return SafeAlloc::MakeUnique<StandaloneMapperMetadata>();
+        return safe_alloc::make_unique<StandaloneMapperMetadata>();
     }
-    return SafeAlloc::MakeUnique<StandaloneServerMetadata>();
+    return safe_alloc::make_unique<StandaloneServerMetadata>();
 }
 
 // Build the Common-target allowlist: for each entity registered
@@ -445,12 +230,20 @@ static void MergeSettings(EngineMetadata& recipient, const EngineMetadata& donor
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto& donor_initial_values = donor.GetGameSettingsInitialValues();
+
     for (const auto& [name, type_ptr] : donor.GetGameSettings()) {
         if (recipient.GetGameSettings().contains(name)) {
             continue;
         }
-        recipient.RegisterGameSetting(name, *type_ptr);
+
+        // Registration writes the type and the initial value together, so a setting without one means the
+        // donor metadata is already inconsistent
+        const auto initial_value_it = donor_initial_values.find(name);
+        FO_STRONG_ASSERT(initial_value_it != donor_initial_values.end(), "Game setting has no recorded initial value", name);
+        recipient.RegisterGameSetting(name, *type_ptr, initial_value_it->second);
     }
+
     for (const auto& name : donor.GetExportedGameSettings()) {
         if (recipient.IsExportedGameSetting(name)) {
             continue;
@@ -486,15 +279,15 @@ int main(int argc, char** argv)
         // `RegisterNativeScriptModules_<Role>` symbols still
         // resolve at engine link time).
         if (argc < 2) {
-            WriteLog("Usage: LF_NativeScriptSynth <output_dir> [<native_scripts_dir>]");
-            ExitApp(false);
+            logging::write("Usage: LF_NativeScriptSynth <output_dir> [<native_scripts_dir>]");
+            exit_app(false);
         }
 
         const string output_dir = argv[1];
         const string native_scripts_dir = argc >= 3 ? string {argv[2]} : string {};
-        WriteLog("NativeScriptSynth: output dir = {}", output_dir);
+        logging::write("NativeScriptSynth: output dir = {}", output_dir);
         if (!native_scripts_dir.empty()) {
-            WriteLog("NativeScriptSynth: native scripts dir = {}", native_scripts_dir);
+            logging::write("NativeScriptSynth: native scripts dir = {}", native_scripts_dir);
         }
 
         // Build per-target metadata via the matching stub
@@ -589,19 +382,20 @@ int main(int argc, char** argv)
         // `RegisterNativeScriptModules_<Role>` symbol still
         // resolves). This was codegen.py's last native-scripting
         // output — moving it here completes the codegen retirement.
-        const auto role_modules = ScanUserModules(std::filesystem::path {fs_make_path(native_scripts_dir)});
-        for (const auto& role : kNativeScriptRoles) {
+        const auto role_modules = ScanNativeScriptModules(std::filesystem::path {fs::make_path(native_scripts_dir)});
+
+        for (const auto& role : GetNativeScriptRoles()) {
             const auto it = role_modules.find(role);
             const auto& modules = it != role_modules.end() ? it->second : vector<NativeScriptModuleInit> {};
             const string bindings_name = "NativeBindings-" + role + ".cpp";
             WriteOutput(output_dir, bindings_name, SynthesizeNativeBindings(role, modules));
         }
 
-        WriteLog("NativeScriptSynth: done");
-        ExitApp(true);
+        logging::write("NativeScriptSynth: done");
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
