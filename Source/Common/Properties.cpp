@@ -2982,20 +2982,18 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
 
     _registeredPropertiesLookup.emplace(prop->_propName, ptr<const Property> {prop});
 
-    if (!prop->IsDisabled()) {
-        if (!prop->IsVirtual()) {
-            if (prop->IsPlainData()) {
-                FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while finalizing registrar", prop->GetName(), _typeName);
-                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop, .DataIndex = numeric_cast<uint32_t>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16_t>(prop->GetBaseSize()), .IsPlain = true});
-            }
-            else {
-                FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while finalizing registrar", prop->GetName(), _typeName);
-                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop, .DataIndex = numeric_cast<uint32_t>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
-            }
+    if (!prop->IsDisabled() && !prop->IsVirtual()) {
+        if (prop->IsPlainData()) {
+            FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while finalizing registrar", prop->GetName(), _typeName);
+            _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop, .DataIndex = numeric_cast<uint32_t>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16_t>(prop->GetBaseSize()), .IsPlain = true});
+        }
+        else {
+            FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while finalizing registrar", prop->GetName(), _typeName);
+            _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop, .DataIndex = numeric_cast<uint32_t>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
+        }
 
-            if (!prop->IsTemporary()) {
-                _textProperties.emplace_back(ptr<Property> {prop});
-            }
+        if (!prop->IsTemporary()) {
+            _textProperties.emplace_back(ptr<Property> {prop});
         }
 
         if (prop->IsBaseTypeHash() || prop->IsBaseTypeProtoReference() || prop->IsDictKeyHash()) {

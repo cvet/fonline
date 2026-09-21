@@ -2254,6 +2254,26 @@ TEST_CASE("PropertiesCompareData")
     }
 }
 
+TEST_CASE("PropertiesStoreAllDataSkipsVirtualHashProperties")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("VirtualHashEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto stored_prop = registrar.RegisterProperty({"Common", "hstring", "StoredTag", "Mutable", "Persistent", "PublicSync"});
+    auto virtual_prop = registrar.RegisterProperty({"Common", "hstring", "VirtualTag", "Virtual"});
+    CHECK(virtual_prop->IsVirtual());
+
+    Properties props(&registrar);
+    props.SetValue<hstring>(stored_prop, hashes.to_hashed_string("stored-tag"));
+
+    // A virtual property has no storage to serialize, so only the stored hash is collected
+    vector<uint8_t> all_data;
+    set<hstring> str_hashes;
+    REQUIRE_NOTHROW(props.StoreAllData(all_data, str_hashes));
+    CHECK(str_hashes.contains(hashes.to_hashed_string("stored-tag")));
+}
+
 TEST_CASE("PropertiesCustomAccessors")
 {
     hash_storage hashes {};

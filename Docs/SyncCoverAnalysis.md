@@ -365,6 +365,11 @@ either as the returned value or as an `if (!await …) return false;` at the top
 contract. In the embedding project that separated 93 provable parameters from 38 conditional ones that need a
 human. It is the same distinction FOSYNC009 itself has to make: source position is not control flow.
 
+Provider inference checks that a candidate runs on every returning path before inspecting its callees.
+Calls in conditional branches cannot prove the contract, and traversing their cyclic dependencies first can
+repeat an exponential amount of work. The analyzer self-tests include a dense conditional call cycle with
+a time limit and still require FOSYNC009 for the uncovered use after an await.
+
 ### An element of a covered collection is covered
 
 `[ProvidesCover]` on a collection means the acquisition reached its elements, because that is what the
