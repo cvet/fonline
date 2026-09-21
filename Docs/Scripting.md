@@ -329,12 +329,25 @@ releases that attachment after loading the first backend.
 before any other Mono call, so eglib `g_malloc` (metadata, runtime internals) uses the engine
 heap and terminate-on-OOM contract. Managed objects still live in SGen, which maps pages
 through `mono_valloc`.
+### Backend teardown
+
 Backend teardown keeps one attachment while it stops continuations, clears the script statics,
 releases persistent callback GC handles and global-function descriptors, collects, unbinds its entry
 assemblies (`Native.UnbindBackend`, after which `Native.IsBackendAlive` is false and a late finalizer keeps
 the reference it holds) and releases its managed assembly scope. Collection runs while the assembly images are
 still available for the core-method lookup and the engine is alive. Callback handles must be released
 before collection because a captured entity stays rooted by the handle even after its script static is cleared.
+
+**Teardown announces itself before it starts.** `BeginManagedTeardown` invokes `Native.BeginBackendTeardown`
+as the first step, so `Native.IsBackendTearingDown` is true for everything that follows. A finalizer needs
+that: the engine clears the statics and collects *while the backend is still bound*, which is exactly when a
+resource an owner held for the whole session becomes garbage, and `Native.IsBackendAlive` cannot separate that
+from a resource dropped mid-session, because the unbind is a later step. The unbind cannot move earlier -- the
+generated entity wrappers give their native references back in that same collection and need the backend bound.
+So a managed wrapper whose native resource has thread affinity (it cannot be released from the finalizer thread,
+only reported) checks `IsBackendTearingDown` and stays silent inside a teardown: the engine destroys the
+subsystem that owns those resources anyway, and demanding an explicit release at shutdown would be ceremony that
+every embedding project has to remember. The project's `Sprite` is the case this exists for.
 
 **Clearing the statics comes first**, because a wrapper's finalizer is the one path that gives
 its native entity reference back - the wrapper takes the reference in its constructor

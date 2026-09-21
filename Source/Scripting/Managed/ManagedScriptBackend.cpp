@@ -1068,6 +1068,29 @@ void ManagedScriptBackend::EnableDeepEntityWrapperTracking()
     ThrowIfManagedException(this, exception, "Enabling managed entity wrapper tracking failed");
 }
 
+// A finalizer reports a script resource nobody gave back, but at teardown the engine releases them all itself,
+// so every finalizer that follows is expected and must stay silent
+void ManagedScriptBackend::BeginManagedTeardown() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_domain) {
+        return;
+    }
+
+    safe_call([this] {
+        MonoMethod* begin_method = FindCoreScriptMethod(this, "Native", "BeginBackendTeardown", 0);
+
+        if (begin_method == nullptr) {
+            return;
+        }
+
+        MonoObject* exception = nullptr;
+        (void)mono_runtime_invoke(begin_method, nullptr, nullptr, &exception);
+        ThrowIfManagedException(this, exception, "Beginning managed backend teardown failed");
+    });
+}
+
 void ManagedScriptBackend::ClearScriptStatics() noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -7859,6 +7882,9 @@ ManagedScriptBackend::~ManagedScriptBackend()
         safe_call([this, &managed_teardown_complete] {
             MonoDomain* domain = GetDomainOrThrow(_domain.get());
             ManagedThreadAttachment managed_thread {domain};
+
+            // Announced before anything is taken apart, so every finalizer from here on knows it runs inside a teardown
+            BeginManagedTeardown();
 
             safe_call([this] {
                 for (nptr<void> shutdown : _continuationShutdowns) {
