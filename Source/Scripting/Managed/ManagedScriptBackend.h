@@ -75,6 +75,7 @@ private:
     void InvokeInitializator(void* assembly, const char* method_name);
     void UnbindBackend();
     void EnableDeepEntityWrapperTracking();
+    void BeginManagedTeardown() noexcept;
     void ClearScriptStatics() noexcept;
     void FinalizeManagedObjects() noexcept;
 

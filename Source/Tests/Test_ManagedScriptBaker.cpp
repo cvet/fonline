@@ -1253,12 +1253,9 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("\"GetSpeed\"") == string::npos);
     CHECK(server_types.find("Native.CallMethod(\n") == string::npos);
     CHECK(server_entities.find("public partial class Entity : System.IEquatable<Entity>") != string::npos);
-    // A wrapper type belongs to one load context, so a wrapper carries no backend of its own: the bound backend of its
-    // assembly answers whether it is alive, and identity is the entity pointer alone
-    CHECK(server_entities.find("_backendAlive") == string::npos);
-    CHECK(server_entities.find("_backend ") == string::npos);
-    CHECK(server_entities.find("        if (!global::FOnline.Native.IsBackendAlive) {\n") != string::npos);
+    CHECK(server_entities.find("        _trackerId = global::FOnline.EntityWrapperTracker.Register(this, entityPtr);\n") != string::npos);
     CHECK(server_entities.find("            if (global::FOnline.Native.IsBackendAlive) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
+    CHECK(server_entities.find("        global::FOnline.EntityWrapperTracker.Unregister(_trackerId);\n") != string::npos);
     CHECK(server_entities.find("return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue;") != string::npos);
     CHECK(server_entities.find("public static bool operator ==(Entity? left, Entity? right)") != string::npos);
     CHECK(server_entities.find("return _entityPtrValue.GetHashCode();") != string::npos);
