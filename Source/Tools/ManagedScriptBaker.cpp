@@ -183,6 +183,7 @@ static auto CollectManagedAssemblyFiles(const std::filesystem::path& dir) -> vec
 static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name);
 static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_output_dir, string_view target_name, string_view assembly_file_name);
 static void AppendProjectReferences(std::ostream& file, const std::filesystem::path& project_dir, const vector<string>& references, optional<string_view> condition);
+static auto IsManagedProjectReference(string_view reference) -> bool;
 
 ManagedScriptBaker::ManagedScriptBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
@@ -235,6 +236,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         string ResourcePath {};
         vector<std::filesystem::path> SourceFiles {};
         vector<string> References {};
+        uint64_t BakeStamp {};
         bool ShouldBake {};
     };
 
@@ -336,12 +338,15 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     for (TargetBakeTask& task : target_tasks) {
         uint64_t managed_bake_stamp = GetManagedBakeStamp(*_context, task.Target, task.SourceFiles, task.References, managed_host_source, analysis, managed_generated_dir, project_name);
         bool should_bake = !_context->BakeChecker || _context->BakeChecker(task.ResourcePath, managed_bake_stamp);
+        task.BakeStamp = managed_bake_stamp;
 
         if (_context->BakeChecker) {
             string host_resource_path = MakeManagedOutputAssemblyResourcePath(task.Target, MANAGED_HOST_ASSEMBLY_FILE_NAME);
             should_bake = _context->BakeChecker(host_resource_path, managed_bake_stamp) || should_bake;
 
-            for (const std::filesystem::path& assembly_disk_path : CollectManagedOutputAssemblies(managed_assemblies_output_dir, task.Target)) {
+            // What the previous bake shipped, not the build directory: that one lies inside the pack output and the
+            // sweep removes it after every bake, so an assembly beyond the entry and the host would go unclaimed
+            for (const std::filesystem::path& assembly_disk_path : CollectManagedAssemblyFiles(managed_assemblies_output_dir.parent_path() / fs::make_path(MakeManagedOutputAssemblyResourceDir(task.Target)))) {
                 string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
                 string output_resource_path = MakeManagedOutputAssemblyResourcePath(task.Target, output_file_name);
 
@@ -381,6 +386,13 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
                 string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
                 string resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
                 auto assembly_data = ReadFileBytes(assembly_disk_path);
+
+                // A package or project reference copied beside the entry assembly is known only now, and an output
+                // nobody claims is deleted as outdated at the end of the bake
+                if (_context->BakeChecker) {
+                    (void)_context->BakeChecker(resource_path, task.BakeStamp);
+                }
+
                 _context->WriteData(resource_path, assembly_data);
                 pack_assemblies.emplace_back(ReadManagedAssemblyIdentityFrom(resource_path, assembly_data));
 
@@ -999,7 +1011,15 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     auto project_path = project_dir / fs::make_path(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME));
     ostringstream file;
     file << GENERATED_XML_DISCLAIMER;
-    file << "<Project Sdk=\"Microsoft.NET.Sdk\">\n";
+    // The script project lives in the same directory, and restore writes project.assets.json into the intermediate
+    // directory of each project, so a shared one leaves whichever project restored last: the script build then runs
+    // without its package references (analyzer packages, copy-local assemblies). The directory has to be chosen
+    // before the SDK props are imported, hence the explicit imports
+    file << "<Project>\n";
+    file << "  <PropertyGroup>\n";
+    file << "    <BaseIntermediateOutputPath>obj/" << MANAGED_HOST_PROJECT_NAME << "/</BaseIntermediateOutputPath>\n";
+    file << "  </PropertyGroup>\n";
+    file << "  <Import Project=\"Sdk.props\" Sdk=\"Microsoft.NET.Sdk\" />\n";
     file << "  <PropertyGroup>\n";
     file << "    <Configuration Condition=\" '$(Configuration)' == '' \">" << MANAGED_TARGETS.front() << "</Configuration>\n";
     file << "    <Platform Condition=\" '$(Platform)' == '' \">AnyCPU</Platform>\n";
@@ -1029,6 +1049,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     file << "  <ItemGroup>\n";
     file << "    <Compile Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, source_file)) << "\" />\n";
     file << "  </ItemGroup>\n";
+    file << "  <Import Project=\"Sdk.targets\" Sdk=\"Microsoft.NET.Sdk\" />\n";
     file << "</Project>\n";
     WriteTextFileIfChanged(project_path, file.str(), "Can't create generated Managed host project file");
 }
@@ -1112,6 +1133,14 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
         file << "    <AssemblyName>" << EscapeXml(pack_name) << "." << EscapeXml(target) << "</AssemblyName>\n";
         file << "    <OutputPath>" << EscapeXml(assemblies_output_dir) << "/" << EscapeXml(target) << "Assemblies/</OutputPath>\n";
         file << "    <DefineConstants>TRACE;" << strex(target).upper().str() << "</DefineConstants>\n";
+
+        // A library copies nothing of the packages a referenced project depends on, and the entry assembly of this
+        // target does not load without them; satellite resources would only add same-named assemblies in subfolders
+        if (auto it = references.find(string(target)); it != references.end() && std::ranges::any_of(it->second, [](const string& reference) { return IsManagedProjectReference(reference); })) {
+            file << "    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>\n";
+            file << "    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>\n";
+        }
+
         file << "  </PropertyGroup>\n";
     }
 
@@ -1423,6 +1452,17 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
     for (const string& reference : references) {
         if (reference.find('/') != string::npos || reference.find('\\') != string::npos || reference.find(':') != string::npos || strex(reference).get_file_extension() == "dll") {
             merge_disk_file(reference);
+        }
+
+        // A referenced project compiles into the target, so the sources beside it are inputs of the bake as well
+        if (IsManagedProjectReference(reference)) {
+            std::error_code ec;
+
+            for (std::filesystem::directory_iterator it(std::filesystem::path {fs::make_path(reference)}.parent_path(), ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
+                if (it->is_regular_file() && it->path().extension() == ".cs") {
+                    merge_disk_file(fs::path_to_string(it->path()));
+                }
+            }
         }
     }
 
@@ -5142,7 +5182,14 @@ static void AppendProjectReferences(std::ostream& file, const std::filesystem::p
     for (const string& reference : references) {
         bool is_path_reference = reference.find('\\') != string::npos || reference.find('/') != string::npos || std::filesystem::path(fs::make_path(reference)).extension().string() == ".dll";
 
-        if (is_path_reference) {
+        // The referenced project builds as itself: the configuration and output path of the script bake belong to
+        // the script project, and would build the reference under a configuration it does not define
+        if (IsManagedProjectReference(reference)) {
+            std::filesystem::path reference_path = fs::make_path(reference);
+            auto project_path = reference_path.is_absolute() ? reference_path : std::filesystem::current_path() / reference_path;
+            file << "    <ProjectReference Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, project_path)) << "\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />\n";
+        }
+        else if (is_path_reference) {
             std::filesystem::path reference_path = fs::make_path(reference);
             auto hint_path = reference_path.is_absolute() ? reference_path : std::filesystem::current_path() / reference_path;
             file << "    <Reference Include=\"" << EscapeXml(reference_path.stem().string()) << "\">\n";
@@ -5155,6 +5202,13 @@ static void AppendProjectReferences(std::ostream& file, const std::filesystem::p
     }
 
     file << "  </ItemGroup>\n";
+}
+
+static auto IsManagedProjectReference(string_view reference) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(reference).get_file_extension() == "csproj";
 }
 
 FO_END_NAMESPACE

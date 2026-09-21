@@ -24,6 +24,13 @@ public static class DynamicAssemblies
         return assembly;
     }
 
+    // The client entry assembly this server hands out, from the distributed packs or, unpackaged, the bake output; a
+    // client fragment compiles against it and runs only on clients whose scripts carry the same version id
+    public static byte[] ReadClientScriptsImage()
+    {
+        return Native.ReadClientScriptsImage();
+    }
+
     // Runs a static method without parameters as a script entry of its own: on a server the cover it takes or releases
     // stays inside it and the caller's is left as it was. A Task result is awaited, and a Task<T> answers with its value
     public static async Task<object?> RunEntryAsync(MethodInfo entry)

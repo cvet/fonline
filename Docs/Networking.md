@@ -35,6 +35,9 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 `Source/Common/NetBuffer.h` defines the shared binary message layer:
 
 - `NetBuffer` — common storage, growth, encryption-key state, and raw copy support.
+- `NetworkClientConnection::IsTrustedChannel()` — whether no third party can read or alter what travels over the
+  client's channel. Only the in-process interthread channel answers yes today; scripts read it as
+  `Game.IsServerChannelTrusted()` before acting on something only the server may send, such as code.
 - `NetOutBuffer` — write/framing helper for outgoing messages.
 - `NetInBuffer` — read/framing helper for incoming messages.
 

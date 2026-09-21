@@ -312,6 +312,18 @@ internal static class Native
     private static extern Assembly? LoadDynamicAssemblyInternal(IntPtr backend, byte[] image, byte[]? symbols,
                                                                 out string? error);
 
+    internal static byte[] ReadClientScriptsImage()
+    {
+        string ? error;
+        byte[]? image = ReadClientScriptsImageInternal(BoundBackend, out error);
+        ThrowNativeError(error);
+        Invariant.Verify(image != null, "Client scripts image read must answer with an image or an error");
+        return image;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern byte[]? ReadClientScriptsImageInternal(IntPtr backend, out string? error);
+
     private static void CopyBackByRefArgs(Delegate handler, object?[] invokeArgs, object?[] args)
     {
         ParameterInfo[] parameters = handler.Method.GetParameters();

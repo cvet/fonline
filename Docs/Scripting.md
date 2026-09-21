@@ -282,7 +282,7 @@ project's public script API, but that namespace does not make them engine-owned.
 - `FO_ANGELSCRIPT_SCRIPTING` enables the `CompileAngelScript` command target.
 - The target runs the project AS compiler app (`${FO_DEV_NAME}_ASCompiler`) with the main config arguments.
 - `CompileAngelScript` depends on `ForceCodeGeneration`, so script-visible generated metadata is current before compilation.
-- `FO_MANAGED_SCRIPTING` enables managed runtime loading, adds the `Managed` resource baker, and wires `CompileManagedScripts` to the standalone `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`). The baker discovers `.cs` sources from the resource packs declared in the main config (the same ownership model as AngelScript sources) and reads script configuration from settings with plain defaults — project name `FOnline`, assembly list `FOnline`, `dotnet msbuild`, `net10.0`, source dirs `Engine/Source/Scripting/Managed/CoreScripts` plus `Scripts` (relative to the directory containing the root applied config), generated output in the build `GeneratedSource/Managed` tree unless `ManagedScript.GeneratedDir` points elsewhere; managed generated-dir overrides, extra sources, path references, and analyzers use the same config-relative rule; empty values are configuration errors, not fallbacks; the `ManagedScript.Assemblies` / `ExtraSources` / `ExtraReferences` / `MsBuild` / `TargetFramework` / `ProjectName` / `Dirs` / `GeneratedDir` / `Analyzers` / `AnalyzerPackages` / `AdditionalFiles` / `AnalysisLevel` / `AnalysisMode` / `BakerDryRun` settings (the `ManagedScript` group) are the override channel for tests and special tooling. The compiler runs as a child process with its output captured into the baker log, and on Windows through a hidden-window console, so a windowed host that bakes on startup (a server window, the mapper) opens no terminal and a failed compile still leaves its diagnostics in the log. Script settings are not read from environment variables; `FO_MANAGED_RUNTIME` is only a build/tooling override for locating the prepared runtime payload. Script-level metadata tags such as `///@ Enum`, `///@ Property`, `///@ RefType`, and `///@ Setting` can live in C# source files; build-time codegen skips them (`script_metadata_tags`) and `MetadataBaker` consumes them during resource baking.
+- `FO_MANAGED_SCRIPTING` enables managed runtime loading, adds the `Managed` resource baker, and wires `CompileManagedScripts` to the standalone `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`). The baker discovers `.cs` sources from the resource packs declared in the main config (the same ownership model as AngelScript sources) and reads script configuration from settings with plain defaults — project name `FOnline`, assembly list `FOnline`, `dotnet msbuild`, `net10.0`, source dirs `Engine/Source/Scripting/Managed/CoreScripts` plus `Scripts` (relative to the directory containing the root applied config), generated output in the build `GeneratedSource/Managed` tree unless `ManagedScript.GeneratedDir` points elsewhere; managed generated-dir overrides, extra sources, path references, and analyzers use the same config-relative rule; empty values are configuration errors, not fallbacks; the `ManagedScript.Assemblies` / `ExtraSources` / `ExtraReferences` (a `.csproj` among them becomes a project reference built under its own configuration, and the target naming it copies that project's package assemblies) / `MsBuild` / `TargetFramework` / `ProjectName` / `Dirs` / `GeneratedDir` / `Analyzers` / `AnalyzerPackages` / `AdditionalFiles` / `AnalysisLevel` / `AnalysisMode` / `BakerDryRun` settings (the `ManagedScript` group) are the override channel for tests and special tooling. The compiler runs as a child process with its output captured into the baker log, and on Windows through a hidden-window console, so a windowed host that bakes on startup (a server window, the mapper) opens no terminal and a failed compile still leaves its diagnostics in the log. Script settings are not read from environment variables; `FO_MANAGED_RUNTIME` is only a build/tooling override for locating the prepared runtime payload. Script-level metadata tags such as `///@ Enum`, `///@ Property`, `///@ RefType`, and `///@ Setting` can live in C# source files; build-time codegen skips them (`script_metadata_tags`) and `MetadataBaker` consumes them during resource baking.
 - `BakeResources` and `ForceBakeResources` also depend on code generation and run the project baker app.
 
 Script compilation and resource baking are adjacent but not identical. Script compilation produces bytecode/runtime inputs; baking packages resources and metadata for runtime consumption. See [BakingPipeline.md](BakingPipeline.md) for resource baking.
@@ -509,7 +509,7 @@ resolves per source file, so the file governing `Scripts/**` is the one above th
 beside the generated project. Because the project sets `TreatWarningsAsErrors`, promoting a rule to `warning`
 there makes it a hard failure — roll a new rule out by severity, not all at once.
 
-`Source/Scripting/Managed/ManagedHost/` owns the stateless bootstrap used before project code can be loaded. The baker emits `FOnline.ManagedHost.gen.csproj`, references it from the generated project, and packages `FOnline.ManagedHost.dll` beside every target entry assembly. Its source timestamp and output path participate in the managed bake check, so incremental baking rebuilds a missing or changed host and does not delete an unchanged host as stale output.
+`Source/Scripting/Managed/ManagedHost/` owns the stateless bootstrap used before project code can be loaded. The baker emits `FOnline.ManagedHost.gen.csproj`, references it from the generated project, and packages `FOnline.ManagedHost.dll` beside every target entry assembly. Its source timestamp and output path participate in the managed bake check, so incremental baking rebuilds a missing or changed host and does not delete an unchanged host as stale output. The host project restores and builds into an intermediate directory of its own (`obj/FOnline.ManagedHost/`), named before the SDK props are imported: it shares its directory with the script project, restore writes `project.assets.json` per intermediate directory, and a shared one left the script build with whichever project happened to restore last, that is, sometimes without its analyzer packages and copy-local assemblies.
 
 Native exported ref types are lightweight borrowed wrappers. When a ref type exports `__Factory`, the managed baker emits that factory as a static C# method and the backend invokes it without a receiver. The returned initial native reference belongs to the managed caller and must be balanced with `__Release()` after the object is detached from native users; borrowed wrappers retained across frames still require paired `__AddRef()` / `__Release()` calls.
 
@@ -651,9 +651,39 @@ rebuild: compiling the source, and deciding who may send it, belong to the embed
 - `ScriptsVersionId` is the MVID of the backend's entry assembly, so a caller can refuse code compiled against another
   build of the scripts.
 
+- `ReadClientScriptsImage()` answers, on a server, the client entry assembly that server hands out: from the client
+  resource packs the updater distributes (`Baking.ClientResources`) or, on an unpackaged server, from the bake output.
+  A fragment meant for clients compiles against it, and its MVID is what those clients report as `ScriptsVersionId`.
+
 `BuildTools/tests/test_managed_dynamic_assemblies.py` compiles the production host and CoreScripts under the .NET SDK
 and covers results, exceptions, chained references, refused names and static cleanup. The embedded-Mono path is
 covered end to end by the embedding project's gameplay suite (Last Frontier: `dynamic_assemblies`).
+
+### Compiling code after the bake
+
+`Source/Scripting/Managed/Compiler/` is an engine-owned library, `FOnline.ScriptCompiler`, that compiles C# fragments at
+run time with Roslyn (`Microsoft.CodeAnalysis.CSharp`, pinned to the version the .NET SDK that builds the scripts ships).
+It is not part of any target by default: an embedding project adds it to the targets that compile fragments through
+`ManagedScript.ExtraReferences` (Last Frontier: `FOnline,Server,Engine/Source/Scripting/Managed/Compiler/FOnline.ScriptCompiler.csproj`),
+and the script build then copies it and the Roslyn assemblies beside the entry assembly of those targets only. The class
+libraries Roslyn needs join the runtime payload through the usual reference closure, and a client package, which is
+selected again per target, does not carry them.
+
+- `DynamicScriptCompiler.CompileAsync(request)` compiles on a pool thread, since Roslyn needs seconds on its first run
+  and reads nothing of the engine. The request names the running script assembly, whose load context and the default
+  context supply the references together with the class libraries of the runtime directory, and optionally another
+  side's script image to compile against in its place.
+- A fragment is the body of `public static async Task<object> DynamicFragment.Run()`, or a single expression whose
+  value it returns; leading `using` lines are hoisted, the request's usings and preprocessor symbols are applied, and
+  `#line` keeps every diagnostic on the author's line (`fragment(line,column): error ...`).
+- The fragment reaches `private` and `internal` members of the scripts: the compiler imports all metadata and sets the
+  binder flag Roslyn keeps for its own scripting, and the fragment declares `IgnoresAccessChecksTo(<scripts>)`, which
+  embedded Mono honours at run time for internal and private access alike.
+- Every fragment gets a new `FOnline.Dynamic.<guid>` name, so `DynamicAssemblies.Load` accepts it.
+
+`BuildTools/tests/test_managed_script_compiler.py` compiles fragments with the production compiler against a stand-in
+script assembly: values, private members, errors and their lines, preprocessor symbols, hoisted usings, and another
+side's image.
 
 ### Managed continuation scheduling
 

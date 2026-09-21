@@ -431,6 +431,7 @@ static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoS
 static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*;
 static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*;
 static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*;
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*;
 static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*;
 static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> mono_bool;
 static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name) -> int32_t;
@@ -1773,6 +1774,30 @@ static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoA
         FO_VERIFY_AND_THROW(image != nullptr, "Managed dynamic assembly image is null");
 
         return ResolveBoundBackend(backend_ptr)->LoadDynamicAssembly(image, symbols).reinterpret_as<MonoObject>().get();
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return nullptr;
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed client scripts image error output is null");
+    *error = nullptr;
+
+    try {
+        ptr<ManagedScriptBackend> backend = ResolveBoundBackend(backend_ptr);
+        vector<uint8_t> image = backend->ReadClientScriptsImage();
+        MonoArray* array = mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), image.size());
+        FO_VERIFY_AND_THROW(array != nullptr, "Can't allocate Managed client scripts image", image.size());
+        memory::copy(mono_array_addr(array, uint8_t, 0), image.data(), image.size());
+        return array;
     }
     catch (const std::exception& ex) {
         *error = MakeManagedNativeError(ex);
@@ -4647,6 +4672,7 @@ static void RegisterInternalCalls()
 
     mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
     mono_add_internal_call("FOnline.Native::LoadDynamicAssemblyInternal", reinterpret_cast<const void*>(NativeLoadDynamicAssembly));
+    mono_add_internal_call("FOnline.Native::ReadClientScriptsImageInternal", reinterpret_cast<const void*>(NativeReadClientScriptsImage));
     mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
     mono_add_internal_call("FOnline.Native::ReportExceptionInternal", reinterpret_cast<const void*>(NativeReportException));
     mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
@@ -8326,6 +8352,37 @@ auto ManagedScriptBackend::LoadDynamicAssembly(ptr<void> image, nptr<void> symbo
     FO_VERIFY_AND_THROW(assembly != nullptr, "Managed load-context host returned a null assembly", assembly_name);
 
     return assembly;
+}
+
+auto ManagedScriptBackend::ReadClientScriptsImage() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<GlobalSettings> settings = GetBackendSettings(this);
+    FO_VERIFY_AND_THROW(settings, "Managed client scripts image requires engine settings");
+
+    // The packs the updater hands out are what clients run; an unpackaged server has only the bake output
+    FileSystem distributed;
+
+    for (const string& pack : settings->GetClientResourcePacks()) {
+        distributed.AddPackSource(settings->Baking.ClientResources, pack, true);
+    }
+
+    for (ManagedAssemblyResource& resource : CollectAssemblyResources(distributed, "Client")) {
+        if (IsManagedEntryAssemblyFileName(resource.FileName, "Client")) {
+            return std::move(resource.Data);
+        }
+    }
+
+    for (const std::filesystem::path& assembly_path : CollectBakeOutputAssemblyPaths(settings->Baking.BakeOutput, "Client")) {
+        if (IsManagedEntryAssemblyFileName(fs::path_to_string(assembly_path.filename()), "Client")) {
+            auto image = fs::read_file(fs::path_to_string(assembly_path));
+            FO_VERIFY_AND_THROW(image.has_value(), "Can't read Managed client scripts image", fs::path_to_string(assembly_path));
+            return vector<uint8_t>(image->begin(), image->end());
+        }
+    }
+
+    throw ScriptSystemException("Managed client scripts image is not available", settings->Baking.ClientResources, settings->Baking.BakeOutput);
 }
 
 void ManagedScriptBackend::BindRequiredStuff()

@@ -74,6 +74,7 @@ public:
     [[nodiscard]] auto GetPing() const noexcept -> int32_t { return _ping; }
     [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
     [[nodiscard]] auto GetServerMetadataVersion() const noexcept -> string_view { return _serverMetadataVersion; }
+    [[nodiscard]] auto IsTrustedChannel() const noexcept -> bool { return _netConnection && _netConnection->IsTrustedChannel(); }
 
     void SetMetadataVersion(string_view version);
     void SetConnectHandler(ConnectCallback handler);
