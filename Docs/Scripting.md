@@ -32,6 +32,7 @@ Read this page together with:
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
+- `Source/Scripting/Managed/ManagedScriptBackend.cpp`
 - `Source/Scripting/Managed/CoreScripts/*.cs`
 - `Source/Tools/ManagedScriptBaker.*`
 - `Source/Scripting/Native/.keepalive`
@@ -315,6 +316,35 @@ therefore be the answer for all of them and the handler for none. `ScriptSynchro
 callback with its state so `ScriptEntryNames` can find that method, and the name is resolved only for a run that
 overran, so an entry that stays under the threshold costs one clock read. A run that ends in an exception is
 reported through the exception.
+
+The overrun line names the entry and nothing below it, which is the whole answer only when the script
+itself is the cost. Usually it is not: a client handler overruns because of the engine call it made — a
+shader installed, a font bound, a GUI screen built, a model preloaded, a sound file read and decoded — and
+the line cannot say which. A Tracy build answers that instead. In a build where `FO_TRACY` is on, the
+managed backend installs a Mono profiler at runtime initialization and turns every script method into a
+Tracy zone, the way `AngelScriptBeginCall` already does for AngelScript, so a managed handler and the
+native zones its calls open read as one tree: `SoundManager.OnLoop` → `SoundManager.TryPlayMusic` →
+`AudioManager::PlayMusic` → `AudioManager::Load` → `FileSystem::ReadFile`. Three properties of the hook
+are worth knowing before changing it:
+
+- **The filter runs once per compiled method and never again**, so the profiler is created directly after
+  `mono_jit_init_version` and each game assembly's image is registered before anything in it runs. A method
+  already compiled keeps whatever hooks it was compiled with.
+- **Only the game assemblies are instrumented.** The filter admits a method whose class image was
+  registered and whose metadata token is non-zero — a generated wrapper has no token, and is runtime
+  plumbing rather than script code, the same distinction `MakeManagedStackFrame` draws when it drops a
+  `(wrapper ...)` frame. The runtime's own libraries would bury a capture and cost more than the work they
+  measure.
+- **`MONO_PROFILER_CALL_INSTRUMENTATION_TAIL_CALL` is deliberately not requested.** Mono eliminates a self
+  tail call by branching back to the method's own start block (`method-to-ir.c`), which raises
+  `method_tail_call` with no matching `method_enter`; closing a zone there would close the caller's. With
+  only `ENTER | LEAVE | EXCEPTION_LEAVE` the pair stays balanced, and because the JIT reports an inlined
+  callee as its caller, a leave closes the stack down to the method Mono names rather than by one.
+
+The method's zone label — full name, source file, declaration line — costs a Mono name allocation and a
+debug-info lookup, so it is resolved once per method into a table shared by every backend in the process
+and read under a shared lock afterwards: an exclusive one on each call would serialize the script threads
+and measure that instead of the game.
 
 Every native-to-managed entry also owns a Mono thread attachment, and a thread attaches once.
 The first entry on a worker registers it with the runtime and caches that attachment for the
