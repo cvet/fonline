@@ -192,6 +192,8 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
     MapperWindowFocused = SprMngr.IsWindowFocused();
+
+    FinishStartingUp();
 }
 
 void MapperEngine::Shutdown()

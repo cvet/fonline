@@ -300,7 +300,13 @@ Every such entry is measured against `ManagedScript.OverrunReportTime`, the mana
 or setter, and each continuation the script pump resumes. The measurements, the suppressions (a zero threshold, an
 attached debugger, engine start-up, `FO_DEBUG` builds) and the line shape are the AngelScript ones, so
 `Script execution overrun: <entry> (execution: ..., lock wait: ..., total: ...)` and `Script lock wait overrun`
-read alike from either backend. The entry is named the way dispatch by name spells a function, `Type::Method`: a
+read alike from either backend. The start-up suppression is `BaseEngine::IsStartingUp()`, which is true from the
+moment an engine exists; each one calls `FinishStartingUp()` exactly once when it begins to serve — the server at
+the end of `InitDoneJob`, the client at the end of `ClientEngine`'s constructor, and the mapper at the end of
+`MapperEngine`'s, since it builds on the client constructor and keeps coming up through its own body. There is no
+setter and no way back into the state, so a second call is a start path running twice and throws. A one-shot load
+— a shader compiled, a font bound, a GUI screen built, the 3D preload — is not a responsiveness failure because
+nothing is waiting on the frame yet, and a client that never finished start-up simply reported all of it. The entry is named the way dispatch by name spells a function, `Type::Method`: a
 lambda or local function carries the method that wrote it, and a continuation is named after the async method it
 resumes, with a ` (continuation)` suffix. An adapter delegate — a compiler-generated lambda whose closure holds one
 delegate and nothing else it could be running instead — is named after the handler it wraps, with a ` (via <adapter>)`
