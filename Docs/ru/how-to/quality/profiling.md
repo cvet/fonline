@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/quality/profiling.html
 ---
 
 # Профилирование
-<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"019e69120c4c67d07330f5a058926ea6b0f1e6e1928bbb1b1d2bc993f986ebcb"} -->
+<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"09882fe95db7a3c533154795132e183b81ced3bcfe1d45d355235cd80b51bdab"} -->
 > Документация движка о переиспользуемой интеграции Tracy, границах захвата
 > и сопоставимых измерениях производительности. Рабочие сцены, оркестрация
 > процессов и критерии приемки конкретной игры принадлежат игровому проекту.
@@ -335,6 +335,40 @@ Client captures показывают plot `Client FPS`. Server captures пока
 удаленные метрики loop time/loops per second. Текущая граница серверной
 статистики описана в
 [Server Runtime](../../explanation/runtime/server.md#инициализация-и-серверные-задания).
+
+## Зоны managed-скриптов
+
+При `FO_TRACY` backend Managed C# использует Mono profiler, чтобы представить
+каждый инструментированный метод игрового скрипта как Tracy zone с source file
+и строкой объявления. Нативные зоны Engine вложены под ней, поэтому строка
+журнала `Script execution overrun: GameScripts.Audio.OnLoop` указывает entry,
+который нужно найти, а capture показывает работу под ним:
+
+```text
+GameScripts.Audio.OnLoop
+  GameScripts.Audio.TryPlay
+    AudioManager::PlayMusic
+      AudioManager::Load
+        FileSystem::ReadFile
+```
+
+Компиляция представлена отдельной зоной `JIT` над компилируемым методом. Она не
+ограничена игровыми assemblies, поскольку первое выполнение handler оплачивает
+каждый достигнутый runtime method. Call zones, напротив, охватывают только
+зарегистрированные игровые assemblies; generated wrappers и frames runtime
+library намеренно отсутствуют. Поэтому inlined method может потреблять время
+без собственной именованной зоны.
+
+Выбирайте режим capture по вопросу. `Profiling_OnDemand` начинает запись после
+startup и обычно не содержит ни работы `OnStart*`, ни большей части first-use
+JIT. Для измерения startup используйте `Profiling_Total`. Инструментация методов
+также запрещает часть inlining и добавляет hooks входа/выхода, поэтому сильнее
+всего искажаются крошечные accessors. Call counts остаются точными; абсолютное
+время managed zones считайте верхней границей и сравнивайте одинаковые captures,
+а не напрямую с `RelWithDebInfo`.
+
+Lifecycle profiler hook, image filter, исключение tail call и общий cache
+metadata методов описаны в [Managed C# Scripting](../scripting/managed-csharp.md#диагностика-и-debugging).
 
 ## Добавление узкой инструментации
 

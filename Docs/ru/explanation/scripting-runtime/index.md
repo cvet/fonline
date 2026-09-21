@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"b898a1eeda7579880a077faa72320cd3ff8b2065f3c35df03e629fe9d724337a"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"962440b0ecc448e2d212d0a24aee81d8eb76a0278eda7a6f576aa400bcb82b84"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -112,6 +112,10 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 Таким образом, AngelScript используется в двух режимах: tooling mode во время компиляции и runtime mode. Одинаковый код метаданных и регистрации типов должен оставаться совместимым с обоими.
 
 Диагностика превышений времени использует `Script.OverrunReportTime` как независимый порог для двух измерений. `Script execution overrun` сообщает wall time за вычетом накопленного ожидания entity-lock в серверном контексте синхронизации, а `Script lock wait overrun` — саму составляющую contention. Оба сообщения содержат длительности исполнения, ожидания блокировок и полного wall time, поэтому вычислительно тяжёлая и ожидающая функции остаются раздельно искомыми и не теряют общую картину задержки. Не-серверные движки возвращают нулевое ожидание блокировок. Значение ноль по-прежнему отключает обе диагностики, а подключённый отладчик по-прежнему их подавляет.
+
+Managed entries используют соответствующий порог `ManagedScript.OverrunReportTime` и те же две формы сообщений. Оба backend подавляют эту диагностику, пока `BaseEngine::IsStartingUp()` возвращает true. Каждый Engine изначально находится в этом состоянии и ровно один раз вызывает `FinishStartingUp()`, когда начинает обслуживание: server — в конце `InitDoneJob`, client — в конце конструктора `ClientEngine`, а Mapper — в конце конструктора `MapperEngine`, поскольку продолжает инициализацию после общего client constructor. Setter и переход обратно в start-up отсутствуют; повторное завершение означает дублированный start path и бросает exception. Поэтому одноразовая загрузка shader, font, GUI, model и подобных ресурсов во время construction не выдаётся за responsiveness failure до того, как кто-либо вообще может ждать frame.
+
+Profiling-сборки также показывают зоны методов Managed C# и JIT через Mono. Контракт инструментации описан в [диагностике Managed C#](../../how-to/scripting/managed-csharp.md#диагностика-и-debugging), а чтение capture — в [профилировании](../../how-to/quality/profiling.md#зоны-managed-скриптов).
 
 AngelScript назначает IDs зарегистрированных object types лениво. Разные script contexts могут одновременно запросить один новый type, поэтому vendored runtime читает и инициализирует `asCTypeInfo::typeId` под reader/writer lock Engine и повторно читает значение после получения exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` запускает 16 native workers для 128 новых типов через публичный `asITypeInfo::GetTypeId()` и требует один одинаковый валидный ID для каждого типа.
 

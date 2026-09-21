@@ -430,8 +430,8 @@
       "english_path": "Docs/en/explanation/scripting-runtime/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/scripting-runtime/index.md",
-      "source_sha256": "b898a1eeda7579880a077faa72320cd3ff8b2065f3c35df03e629fe9d724337a",
-      "source_bytes": 32545,
+      "source_sha256": "962440b0ecc448e2d212d0a24aee81d8eb76a0278eda7a6f576aa400bcb82b84",
+      "source_bytes": 33646,
       "status": "current"
     },
     {
@@ -742,8 +742,8 @@
       "english_path": "Docs/en/how-to/quality/profiling.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/quality/profiling.md",
-      "source_sha256": "019e69120c4c67d07330f5a058926ea6b0f1e6e1928bbb1b1d2bc993f986ebcb",
-      "source_bytes": 20956,
+      "source_sha256": "09882fe95db7a3c533154795132e183b81ced3bcfe1d45d355235cd80b51bdab",
+      "source_bytes": 22601,
       "status": "current"
     },
     {
@@ -833,8 +833,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "80a602e98e4fad445eae5ad4394d1da125b886769f4c1a5fd376d2a3628f3c9f",
-      "source_bytes": 36590,
+      "source_sha256": "fe58d5395276a40f9b70cd5d3ee1ebb387d4278a612e0ba4ced145f7d66943fd",
+      "source_bytes": 37840,
       "status": "current"
     },
     {

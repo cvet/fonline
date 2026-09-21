@@ -335,6 +335,39 @@ removed loop-time/loops-per-second metrics. See
 [Server Runtime](../../explanation/runtime/server.md#initialization-and-server-jobs) for the current
 server statistics boundary.
 
+## Managed script zones
+
+With `FO_TRACY`, the Managed C# backend uses the Mono profiler to make each
+instrumented game-script method a Tracy zone carrying its source file and
+declaration line. Native Engine zones nest below it, so a log line such as
+`Script execution overrun: GameScripts.Audio.OnLoop` identifies the entry to
+find, while the capture identifies the work underneath it:
+
+```text
+GameScripts.Audio.OnLoop
+  GameScripts.Audio.TryPlay
+    AudioManager::PlayMusic
+      AudioManager::Load
+        FileSystem::ReadFile
+```
+
+Compilation is a separate `JIT` zone over the method being compiled. It is not
+restricted to game assemblies because a handler's first invocation pays for
+every runtime method it reaches. Call zones, by contrast, cover only registered
+game assemblies; generated wrappers and runtime-library frames are deliberately
+absent. An inlined method may therefore contribute time without a named zone.
+
+Choose the capture mode for the question. `Profiling_OnDemand` starts recording
+after startup and normally contains neither `OnStart*` work nor most first-use
+JIT. Use `Profiling_Total` when startup is the workload. Method instrumentation
+also prevents some inlining and adds an entry/leave hook, so tiny accessors are
+the most distorted zones. Call counts remain exact; treat absolute managed-zone
+times as an upper bound and compare like-for-like captures rather than comparing
+them directly with `RelWithDebInfo`.
+
+The profiler-hook lifecycle, image filter, tail-call exclusion, and shared method
+metadata cache are documented in [Managed C# Scripting](../scripting/managed-csharp.md#diagnostics-and-debugging).
+
 ## Add focused instrumentation
 
 Use existing zones before adding new ones. Most native Engine functions already

@@ -1267,6 +1267,15 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     FinalizeRegistration();
 }
 
+void BaseEngine::FinishStartingUp()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_startingUp, "Engine start-up is already finished");
+
+    _startingUp = false;
+}
+
 void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();

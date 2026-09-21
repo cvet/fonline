@@ -19,7 +19,7 @@
     "success_rate": 1.0,
     "top_1_rate": 0.850746,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.920398,
+    "mean_reciprocal_rank": 0.91791,
     "minimum_success_rate": 1.0
   },
   "passed_task_count": 28,
@@ -1462,14 +1462,14 @@
             "debugging"
           ],
           "max_rank": 3,
-          "rank": 2,
+          "rank": 3,
           "passed": true,
           "top_document_ids": [
+            "profiling",
             "generated-api-metadata",
             "debugging",
             "android-debugging",
-            "managed-csharp-scripting",
-            "profiling"
+            "managed-csharp-scripting"
           ]
         }
       ],
