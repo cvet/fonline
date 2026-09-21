@@ -1011,10 +1011,8 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     auto project_path = project_dir / fs::make_path(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME));
     ostringstream file;
     file << GENERATED_XML_DISCLAIMER;
-    // The script project lives in the same directory, and restore writes project.assets.json into the intermediate
-    // directory of each project, so a shared one leaves whichever project restored last: the script build then runs
-    // without its package references (analyzer packages, copy-local assemblies). The directory has to be chosen
-    // before the SDK props are imported, hence the explicit imports
+    // Restore must not overwrite the sibling script project's package assets; the SDK reads this directory in props,
+    // so choose a separate one before importing them
     file << "<Project>\n";
     file << "  <PropertyGroup>\n";
     file << "    <BaseIntermediateOutputPath>obj/" << MANAGED_HOST_PROJECT_NAME << "/</BaseIntermediateOutputPath>\n";

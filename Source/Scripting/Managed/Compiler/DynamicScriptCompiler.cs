@@ -99,7 +99,7 @@ public static class DynamicScriptCompiler
                                                 scriptsName,
                                                 assemblyName,
                                                 usings,
-                                                "return (object)(" + body.Trim() + ");",
+                                                "return (object)(" + body.Trim() + "\n);",
                                                 bodyLine);
 
             if (asValue.Succeeded) {
@@ -108,7 +108,7 @@ public static class DynamicScriptCompiler
 
             // An expression of type void or Task has no value to answer with, so it runs as a statement instead
             DynamicCompileResult asStatement =
-                Emit(request, references, scriptsName, assemblyName, usings, body.Trim() + ";", bodyLine);
+                Emit(request, references, scriptsName, assemblyName, usings, body.Trim() + "\n;", bodyLine);
             return asStatement.Succeeded ? asStatement : asValue;
         }
 
@@ -356,7 +356,7 @@ public static class DynamicScriptCompiler
     {
         string text = body.Trim();
 
-        if (text.Length == 0 || text.EndsWith(';') || text.EndsWith('}')) {
+        if (text.Length == 0 || text.EndsWith(';')) {
             return false;
         }
 

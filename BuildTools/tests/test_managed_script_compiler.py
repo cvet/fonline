@@ -116,6 +116,21 @@ internal static class Program
             Console.WriteLine("ERRORS succeeded=" + failed.Succeeded + " count=" + failed.Errors.Count + " first=" + failed.Errors[0]);
             return;
         }
+        if (kind == "initializers") {
+            object? array = await Execute(Compile("new[] { 1, 2 }"));
+            object? record = await Execute(Compile("new { Value = 42 }"));
+            Console.WriteLine("INITIALIZERS array=" + string.Join(",", (int[])(array ?? throw new InvalidOperationException("No array"))) +
+                              " object=" + record);
+            return;
+        }
+        if (kind == "comments") {
+            object? value = await Execute(Compile("World.Twice(21) // answer"));
+            object? plain = await Execute(Compile("World.Log.Add(\"comment\") // no return value"));
+            DynamicCompileResult failed = Compile("World.Missing // diagnostic");
+            Console.WriteLine("COMMENTS value=" + value + " void=" + (plain ?? "null") + " log=" + World.Log.Count);
+            Console.WriteLine("COMMENT_ERROR " + string.Join(" | ", failed.Errors));
+            return;
+        }
         if (kind == "name") {
             DynamicCompileResult first = Compile("1");
             DynamicCompileResult second = Compile("2");
@@ -189,6 +204,19 @@ def test_compile_errors_point_at_the_fragment_line(compiler_probe):
     output = run_probe(compiler_probe, "errors")
     assert "ERRORS succeeded=False count=1 first=fragment(2," in output
     assert "CS0103" in output
+
+
+def test_initializer_expressions_return_their_value(compiler_probe):
+    assert "INITIALIZERS array=1,2 object={ Value = 42 }" in run_probe(compiler_probe, "initializers")
+
+
+def test_expression_trailing_comments_do_not_hide_wrapper_syntax(compiler_probe):
+    output = run_probe(compiler_probe, "comments")
+    assert "COMMENTS value=42 void=null log=1" in output
+    assert "COMMENT_ERROR fragment(1," in output
+    assert "CS0117" in output
+    assert "CS1026" not in output
+    assert "CS1002" not in output
 
 
 def test_every_fragment_gets_a_new_prefixed_name(compiler_probe):

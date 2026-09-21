@@ -674,8 +674,9 @@ selected again per target, does not carry them.
   context supply the references together with the class libraries of the runtime directory, and optionally another
   side's script image to compile against in its place.
 - A fragment is the body of `public static async Task<object> DynamicFragment.Run()`, or a single expression whose
-  value it returns; leading `using` lines are hoisted, the request's usings and preprocessor symbols are applied, and
-  `#line` keeps every diagnostic on the author's line (`fragment(line,column): error ...`).
+  value it returns, including array and object initializers. An expression may end with a line comment; the generated
+  terminator stays on a separate line. Leading `using` lines are hoisted, the request's usings and preprocessor symbols
+  are applied, and `#line` keeps every diagnostic on the author's line (`fragment(line,column): error ...`).
 - The fragment reaches `private` and `internal` members of the scripts: the compiler imports all metadata and sets the
   binder flag Roslyn keeps for its own scripting, and the fragment declares `IgnoresAccessChecksTo(<scripts>)`, which
   embedded Mono honours at run time for internal and private access alike.
