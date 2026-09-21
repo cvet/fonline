@@ -1068,9 +1068,8 @@ void ManagedScriptBackend::EnableDeepEntityWrapperTracking()
     ThrowIfManagedException(this, exception, "Enabling managed entity wrapper tracking failed");
 }
 
-// A resource a script owns is given back deterministically while the engine runs, and its finalizer only reports the
-// ones nobody gave back. Teardown is not such a case: the engine clears the statics itself and destroys the subsystems
-// that hold the resources, so every finalizer that follows is expected and must stay silent
+// A finalizer reports a script resource nobody gave back, but at teardown the engine releases them all itself,
+// so every finalizer that follows is expected and must stay silent
 void ManagedScriptBackend::BeginManagedTeardown() noexcept
 {
     FO_STACK_TRACE_ENTRY();
