@@ -2213,7 +2213,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "23143aa9870f192b902daeba6827b2e529a849220eb308d0bf50040c7337008e",
+      "content_sha256": "87413dedb17d0dda1d4aabbe5ffeea1f9f26fed0a013e42754855e65d3cdd328",
       "byte_size": 3410
     },
     {
@@ -2332,8 +2332,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "e15b1cae2981dd0c1c95bddf2e6949ec0e20611200c389fa5626328b3a1e713a",
-      "byte_size": 704821
+      "content_sha256": "0ff26f7ebfed45e40bb070a1e1e46fe0b1efa1251c8295ae01e97d814f75f276",
+      "byte_size": 705605
     },
     {
       "id": "generated-api-migrations",
@@ -7252,8 +7252,8 @@
         "Docs/ru/reference/script-api/methods.md",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "d0d6a1c47f926a9d5711c704bdf82132b6e3f9a4f89a79282a6ec41c8ac88647",
-      "byte_size": 257902,
+      "content_sha256": "8ef4b4fda51f55779232ac36c865eb14bd4303225b57855a789c8074c826d5f5",
+      "byte_size": 258168,
       "redirect_to": "generated-api-methods"
     },
     {
@@ -11209,7 +11209,7 @@
         "Docs/generated/ai-control-protocol.json",
         "Docs/en/reference/ai-control-protocol/index.md"
       ],
-      "content_sha256": "f21685ce68a227eb7ceefba59f3b78b1f74b7c275aa173b6b4519f05dfc44c4c",
+      "content_sha256": "93dd1f1c588f39adcb802e0dc134e6c7e9205603eb7afa81836799e27612e3ae",
       "byte_size": 7369
     },
     {
@@ -12025,8 +12025,8 @@
         "Source/Tests/Test_ManagedScriptBaker.cpp",
         "BuildTools/tests/test_docs_managed_csharp.py"
       ],
-      "content_sha256": "6bd94b566e814f0455c8e41d2c3562f86edf0ea949cd20d41eb78a37936cc0ef",
-      "byte_size": 35904
+      "content_sha256": "80a602e98e4fad445eae5ad4394d1da125b886769f4c1a5fd376d2a3628f3c9f",
+      "byte_size": 36590
     },
     {
       "id": "map-format-guide",
@@ -12186,8 +12186,8 @@
         "Source/Server",
         "Source/Client"
       ],
-      "content_sha256": "f0422fc0390b1453f5a5cc5de4c5ff3342086419f91c8c70e3de256ae7f7fdd1",
-      "byte_size": 21605
+      "content_sha256": "22356556f108388af852d016e775b1870e89c58be75919161c18c531e6117252",
+      "byte_size": 22260
     },
     {
       "id": "minimal-multiplayer-readme",
@@ -14017,8 +14017,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "3cfa09d7e407e2ac79828801bd3fe44bcc041e1334c59ecfc20e845ad08e6ab3",
-      "byte_size": 2060961
+      "content_sha256": "de206246bef736425afb4eb85e095b0e69319e546780cb71129ccd6f9ab39d67",
+      "byte_size": 2062302
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14038,8 +14038,8 @@
       "id": "api_model",
       "path": "Docs/generated/api.json",
       "canonical_url": "https://fonline.ru/Docs/generated/api.json",
-      "content_sha256": "277951f8aaf87f18085058fec66b3b2b2baeb200eb9f05a06d3d76ce3e427cc2",
-      "byte_size": 3079029
+      "content_sha256": "54ccec7463cb685ea7a6b68d39a0c492df1dead2e29e7ed202ed275888d87b3a",
+      "byte_size": 3080904
     },
     {
       "id": "audio_reference",
@@ -14066,8 +14066,8 @@
       "id": "description_translation_status",
       "path": "Docs/generated/description-translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/description-translation-status.json",
-      "content_sha256": "cb6a4e9f9e068da416d21fb3b0e56e59996dd75991e4e35d98b6fb0743ecb873",
-      "byte_size": 1664003
+      "content_sha256": "9d78b15cc879f281a6870c9131e769f6d89b6ed1bb99dfc60cc00560c9a8fb34",
+      "byte_size": 1664419
     },
     {
       "id": "documentation_diagrams",
@@ -14199,7 +14199,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "23166abe232a3b7cd6f29ecc23eb81fe69d4e9ff226b8dd36678b5fd2c5ffbf8",
+      "content_sha256": "6c45621aa53c2f5ed0896459f7cd893e515f016d3620eab7b71d6e9f7f9a4416",
       "byte_size": 104632
     },
     {
@@ -14220,15 +14220,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "665b3c5dae1fa4db4d33ff4c7259215954e6e012ea52fc7d3b31ed040503c075",
-      "byte_size": 1220109
+      "content_sha256": "e28c472339f924c6b265ce02aa93136288cfa53c6fe4895d05f234b3134e582c",
+      "byte_size": 1220632
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "ce6dbe8af77ef80a700328ab590bb325ac611d9be67cececd525ccb225147603",
-      "byte_size": 1718958
+      "content_sha256": "d87c76341ef3f6bbf6ce20530973fc89db11849b1241ff731a7e584b3b897112",
+      "byte_size": 1719840
     }
   ]
 }

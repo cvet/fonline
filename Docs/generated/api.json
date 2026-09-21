@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2529,
-      "inventory_sha256": "621bafec6aee07ca2da7468ef223875bd22ab7d9baedfc9dcf430e7765dbc7c4",
+      "symbol_count": 2530,
+      "inventory_sha256": "e7d48961fd1ed4025d05559208ee49db3fda8ba32bf613ceb1af8d6807bfcc43",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,13 +70,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2529,
+    "symbol_count": 2530,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 57,
       "enum-value": 770,
       "event": 121,
-      "method": 989,
+      "method": 990,
       "migration-rule": 28,
       "property": 132,
       "ref-field": 41,
@@ -87,17 +87,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2528,
+      "experimental": 2529,
       "internal": 1
     },
     "explicit_contract_declaration_count": 2,
-    "explicit_contract_symbol_count": 2529,
+    "explicit_contract_symbol_count": 2530,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2528,
+      "experimental": 2529,
       "internal": 1
     },
-    "described_symbol_count": 2529,
+    "described_symbol_count": 2530,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 45,
@@ -48074,7 +48074,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 912
+        "line": 955
       },
       "contract": {
         "explicit": true,
@@ -48136,7 +48136,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 925
+        "line": 968
       },
       "contract": {
         "explicit": true,
@@ -48198,7 +48198,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 651
+        "line": 694
       },
       "contract": {
         "explicit": true,
@@ -48260,7 +48260,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 702
+        "line": 745
       },
       "contract": {
         "explicit": true,
@@ -48308,7 +48308,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 803
+        "line": 846
       },
       "contract": {
         "explicit": true,
@@ -48356,7 +48356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 961
+        "line": 1004
       },
       "contract": {
         "explicit": true,
@@ -48616,7 +48616,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 819
+        "line": 862
       },
       "contract": {
         "explicit": true,
@@ -49229,7 +49229,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 832
+        "line": 875
       },
       "contract": {
         "explicit": true,
@@ -49277,7 +49277,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 764
+        "line": 807
       },
       "contract": {
         "explicit": true,
@@ -49339,7 +49339,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 757
+        "line": 800
       },
       "contract": {
         "explicit": true,
@@ -49394,7 +49394,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 954
+        "line": 997
       },
       "contract": {
         "explicit": true,
@@ -49511,7 +49511,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 732
+        "line": 775
       },
       "contract": {
         "explicit": true,
@@ -49559,7 +49559,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 719
+        "line": 762
       },
       "contract": {
         "explicit": true,
@@ -49607,7 +49607,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 743
+        "line": 786
       },
       "contract": {
         "explicit": true,
@@ -49655,7 +49655,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 996
+        "line": 1039
       },
       "contract": {
         "explicit": true,
@@ -49743,7 +49743,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 810
+        "line": 853
       },
       "contract": {
         "explicit": true,
@@ -50011,6 +50011,75 @@
       ]
     },
     {
+      "id": "script.method.client.Map.GetPath#2f15d4b55a4ef07c",
+      "family_id": "script.method.client.Map.GetPath",
+      "kind": "method",
+      "name": "GetPath",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Map",
+      "signature": "mdir[] Map.GetPath(mpos fromHex, mpos toHex, int32 cut, callback(bool,Item) gagCallback)",
+      "description": "Finds movement directions between valid hexes while the callback may pass gag items; returns an empty array when no movement or path is available",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "line": 559
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "mdir[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "fromHex",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "toHex",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "cut",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "gagCallback",
+          "type": "callback(bool,Item)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.client.Map.GetPath#9abc1ca3612a809e",
       "family_id": "script.method.client.Map.GetPath",
       "kind": "method",
@@ -50091,7 +50160,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 559
+        "line": 602
       },
       "contract": {
         "explicit": true,
@@ -50153,7 +50222,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 594
+        "line": 637
       },
       "contract": {
         "explicit": true,
@@ -50215,7 +50284,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 985
+        "line": 1028
       },
       "contract": {
         "explicit": true,
@@ -50303,7 +50372,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 847
+        "line": 890
       },
       "contract": {
         "explicit": true,
@@ -50383,7 +50452,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 658
+        "line": 701
       },
       "contract": {
         "explicit": true,
@@ -50423,7 +50492,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 879
+        "line": 922
       },
       "contract": {
         "explicit": true,
@@ -50471,7 +50540,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 890
+        "line": 933
       },
       "contract": {
         "explicit": true,
@@ -50519,7 +50588,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 840
+        "line": 883
       },
       "contract": {
         "explicit": true,
@@ -50567,7 +50636,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 868
+        "line": 911
       },
       "contract": {
         "explicit": true,
@@ -50615,7 +50684,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 901
+        "line": 944
       },
       "contract": {
         "explicit": true,
@@ -50703,7 +50772,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 665
+        "line": 708
       },
       "contract": {
         "explicit": true,
@@ -50758,7 +50827,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 677
+        "line": 720
       },
       "contract": {
         "explicit": true,
@@ -50820,7 +50889,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 632
+        "line": 675
       },
       "contract": {
         "explicit": true,
@@ -50929,7 +50998,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 695
+        "line": 738
       },
       "contract": {
         "explicit": true,
@@ -50969,7 +51038,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 942
+        "line": 985
       },
       "contract": {
         "explicit": true,
@@ -51141,7 +51210,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 978
+        "line": 1021
       },
       "contract": {
         "explicit": true,
@@ -51333,7 +51402,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 771
+        "line": 814
       },
       "contract": {
         "explicit": true,
@@ -51402,7 +51471,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 778
+        "line": 821
       },
       "contract": {
         "explicit": true,

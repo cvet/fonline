@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4789,
-    "current_count": 4789,
+    "entry_count": 4790,
+    "current_count": 4790,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2531,
-      "current_count": 2531,
+      "entry_count": 2532,
+      "current_count": 2532,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -8401,6 +8401,12 @@
           "locator": "/symbols/@id=script.method.client.Map.GetPath%2311a78e57794a1f73/description",
           "source": "Finds movement directions between valid hexes, optionally stopping the endpoint cut hexes short; returns an empty array when no movement or path is available",
           "source_sha256": "73877b069154140458df6ed8654fba7fa8fade40cd03e12d21350ee3f0f05da3",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.client.Map.GetPath%232f15d4b55a4ef07c/description",
+          "source": "Finds movement directions between valid hexes while the callback may pass gag items; returns an empty array when no movement or path is available",
+          "source_sha256": "38ced14548115216f431ea5a129442fc4fa911ab198463222a39018f40edbe7b",
           "status": "current"
         },
         {

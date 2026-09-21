@@ -352,8 +352,8 @@
       "english_path": "Docs/en/explanation/maps-and-movement.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/maps-and-movement.md",
-      "source_sha256": "f0422fc0390b1453f5a5cc5de4c5ff3342086419f91c8c70e3de256ae7f7fdd1",
-      "source_bytes": 21605,
+      "source_sha256": "22356556f108388af852d016e775b1870e89c58be75919161c18c531e6117252",
+      "source_bytes": 22260,
       "status": "current"
     },
     {
@@ -833,8 +833,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "6bd94b566e814f0455c8e41d2c3562f86edf0ea949cd20d41eb78a37936cc0ef",
-      "source_bytes": 35904,
+      "source_sha256": "80a602e98e4fad445eae5ad4394d1da125b886769f4c1a5fd376d2a3628f3c9f",
+      "source_bytes": 36590,
       "status": "current"
     },
     {
@@ -1990,7 +1990,7 @@
       "english_path": "Docs/en/reference/public-contract/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/public-contract/index.md",
-      "source_sha256": "f21685ce68a227eb7ceefba59f3b78b1f74b7c275aa173b6b4519f05dfc44c4c",
+      "source_sha256": "93dd1f1c588f39adcb802e0dc134e6c7e9205603eb7afa81836799e27612e3ae",
       "source_bytes": 7369,
       "status": "current"
     },
@@ -2029,7 +2029,7 @@
       "english_path": "Docs/en/reference/script-api/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/index.md",
-      "source_sha256": "23143aa9870f192b902daeba6827b2e529a849220eb308d0bf50040c7337008e",
+      "source_sha256": "87413dedb17d0dda1d4aabbe5ffeea1f9f26fed0a013e42754855e65d3cdd328",
       "source_bytes": 3410,
       "status": "current"
     },
@@ -2055,8 +2055,8 @@
       "english_path": "Docs/en/reference/script-api/methods.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/methods.md",
-      "source_sha256": "e15b1cae2981dd0c1c95bddf2e6949ec0e20611200c389fa5626328b3a1e713a",
-      "source_bytes": 704821,
+      "source_sha256": "0ff26f7ebfed45e40bb070a1e1e46fe0b1efa1251c8295ae01e97d814f75f276",
+      "source_bytes": 705605,
       "status": "current"
     },
     {

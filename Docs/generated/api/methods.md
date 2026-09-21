@@ -810,6 +810,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-getpath-11a78e57794a1f73-b9e79282da"></a>
 - [`symbol-script-method-client-map-getpath-11a78e57794a1f73-b9e79282da`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getpath-11a78e57794a1f73-b9e79282da)
 
+<a id="symbol-script-method-client-map-getpath-2f15d4b55a4ef07c-0408c78291"></a>
+- [`symbol-script-method-client-map-getpath-2f15d4b55a4ef07c-0408c78291`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getpath-2f15d4b55a4ef07c-0408c78291)
+
 <a id="symbol-script-method-client-map-getpath-9abc1ca3612a809e-101f4bdae9"></a>
 - [`symbol-script-method-client-map-getpath-9abc1ca3612a809e-101f4bdae9`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getpath-9abc1ca3612a809e-101f4bdae9)
 

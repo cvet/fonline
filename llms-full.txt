@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: f21685ce68a227eb7ceefba59f3b78b1f74b7c275aa173b6b4519f05dfc44c4c
+Content SHA-256: 93dd1f1c588f39adcb802e0dc134e6c7e9205603eb7afa81836799e27612e3ae
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2529**
-- Symbols with source-backed descriptions: **2529**
+- Discovered symbols: **2530**
+- Symbols with source-backed descriptions: **2530**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2529**
+- Explicitly classified symbols: **2530**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3547,7 +3547,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 6bd94b566e814f0455c8e41d2c3562f86edf0ea949cd20d41eb78a37936cc0ef
+Content SHA-256: 80a602e98e4fad445eae5ad4394d1da125b886769f4c1a5fd376d2a3628f3c9f
 
 ---
 layout: default
@@ -3736,7 +3736,9 @@ Before any code or type initializer runs from an entry assembly, the backend cal
 
 At startup, baked assemblies are restored into content-hashed subdirectories under the writable `Cache/ManagedAssemblies/` root. Existing byte-identical files are reused, so concurrent in-process engine instances do not rewrite an assembly Mono already loaded. Missing managed assemblies are a supported empty-backend state for tests/tools that do not bake scripts; a configured gameplay project should treat that as a packaging or resource-selection failure.
 
-Shutdown closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, runs bounded collect/finalizer passes while the Engine and assembly images still exist, reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
+Shutdown first calls `BeginManagedTeardown`, which invokes `Native.BeginBackendTeardown` before any other cleanup and makes `Native.IsBackendTearingDown` true while the backend is still bound. This distinguishes a wrapper finalized during ordinary runtime from one made unreachable by teardown itself. A thread-affine wrapper that cannot release its native resource from the finalizer thread may suppress its leak report in the latter case because the owning Engine subsystem is about to be destroyed. `Native.IsBackendAlive` cannot make that distinction: unbinding deliberately remains later so entity wrappers collected during shutdown can still return their native references.
+
+Shutdown then closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, runs bounded collect/finalizer passes while the Engine and assembly images still exist, reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
 
 The single-threaded browser runtime has neither a usable managed thread pool nor a finalizer thread. Its shutdown therefore performs one inline collect/wait pass; `GC.WaitForPendingFinalizers()` returns immediately, finalizers run later as main-thread jobs, and the interim wrapper count is reported but not verified. Later posts cannot run against a disposed Engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
 
@@ -16960,7 +16962,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: f0422fc0390b1453f5a5cc5de4c5ff3342086419f91c8c70e3de256ae7f7fdd1
+Content SHA-256: 22356556f108388af852d016e775b1870e89c58be75919161c18c531e6117252
 
 ---
 layout: default
@@ -17147,6 +17149,16 @@ For multihex actors, `CheckHexWithMultihex()` checks the directional front arc a
 When gameplay code changes blocker semantics, update the callback provider and tests; do not bake game-specific blocking rules into the generic path algorithm.
 
 Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
+
+`DeferGag` is opt-in for each server or client search. `Map::CheckGagItem()` and
+`MapView::CheckGagItem()` require the field's `MovableWithGag` flag—set only
+when every movement blocker on that hex is a gag item—and a caller predicate
+that accepts every gag item there. `MapManager::FindPath()` and
+`MapView::FindPath()` return `Blocked` for the same hex when no predicate is
+supplied, so ordinary movement is unchanged. The client `Map.GetPath` and
+server `Map.GetPathLength` script overloads with a `gagCallback` expose the
+same choice; a caller can therefore distinguish a route sealed by a wall from
+one that passes a door it is allowed to open.
 
 ## Static item removal
 
@@ -25878,7 +25890,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 23143aa9870f192b902daeba6827b2e529a849220eb308d0bf50040c7337008e
+Content SHA-256: 87413dedb17d0dda1d4aabbe5ffeea1f9f26fed0a013e42754855e65d3cdd328
 
 ---
 title: Generated API Reference
@@ -25895,7 +25907,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 989 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 990 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 993 | Entities, enums, value types, reference types, fields, and methods. |
@@ -25906,25 +25918,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2529 |
-| Symbols with descriptions | 2529 |
+| Addressable symbols | 2530 |
+| Symbols with descriptions | 2530 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2529 |
+| Explicitly classified symbols | 2530 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2528 |
+| <code>experimental</code> | 2529 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2529 stable IDs with SHA-256 <code>621bafec6aee07ca2da7468ef223875bd22ab7d9baedfc9dcf430e7765dbc7c4</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2530 stable IDs with SHA-256 <code>e7d48961fd1ed4025d05559208ee49db3fda8ba32bf613ceb1af8d6807bfcc43</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 

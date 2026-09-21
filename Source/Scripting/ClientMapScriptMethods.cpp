@@ -555,6 +555,49 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView
     return result->DirSteps;
 }
 
+// Finds movement directions between valid hexes while the callback may pass gag items; returns an empty array when no movement or path is available
+///@ ExportMethod
+FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, mpos toHex, int32_t cut, ScriptFunc<bool, ptr<ItemView>> gagCallback)
+{
+    if (!self->GetSize().is_valid_pos(fromHex)) {
+        throw ScriptException("Invalid fromHex arg");
+    }
+    if (!self->GetSize().is_valid_pos(toHex)) {
+        throw ScriptException("Invalid toHex arg");
+    }
+    if (!gagCallback) {
+        throw ScriptException("Gag callback is not set");
+    }
+
+    if (GeometryHelper::GetDistance(fromHex, toHex) <= 1) {
+        if (GeometryHelper::GetDistance(fromHex, toHex) > 0 && cut == 0) {
+            return {GeometryHelper::GetHexDir(fromHex, toHex)};
+        }
+
+        return {};
+    }
+
+    mpos to_hex = toHex;
+    mpos init_to_hex = toHex;
+
+    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32_t>(cut))) {
+        return {};
+    }
+
+    if (cut > 0 && GeometryHelper::GetDistance(fromHex, init_to_hex) <= cut && GeometryHelper::GetDistance(fromHex, to_hex) <= 1) {
+        return {};
+    }
+
+    function<bool(ptr<const ItemHexView>)> gag_check = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<ItemView>>>(std::move(gagCallback))](ptr<const ItemHexView> gag) mutable { return gag_cb->Call(make_ptr(const_cast<ItemHexView*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+    auto result = self->FindPath(nullptr, fromHex, to_hex, -1, ipos16 {}, gag_check);
+
+    if (!result) {
+        return {};
+    }
+
+    return result->DirSteps;
+}
+
 // Returns the number of movement steps between valid hexes, optionally stopping cut hexes short; returns zero when cut removes the move or no path is available
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, mpos fromHex, mpos toHex, int32_t cut)

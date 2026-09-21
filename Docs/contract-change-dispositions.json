@@ -7152,6 +7152,18 @@
       "release_note": "Document compatibility version 60 as the indexed Managed interop transition in the scripting release notes.",
       "compatibility": "Older binaries, generated managed assemblies, and baked metadata are not mixed with version-60 artifacts; deploy them atomically.",
       "owner": "scripting-runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.a5b62d24aeeb5e29",
+      "baseline_contract_sha256": "315e1d5e969d4e87938a9fe11cf5095081823dd4514f9eb4744260113b911618",
+      "current_contract_sha256": "fe69768fc06e5ca8187a55832b50b0409e0030545b4cf97ffce839383f6c090b",
+      "classification": "breaking",
+      "rationale": "The reviewed native-codegen inventory grows by one experimental client Map.GetPath overload that exposes the existing gag-item path policy through a caller callback; every previous stable ID and signature is retained.",
+      "migration": "Existing callers require no source change. Projects adopting the overload must update Engine and project together, regenerate managed bindings, and fully rebake so the callback signature is present in metadata and assemblies.",
+      "release_note": "Document client gag-aware path search in the maps-and-movement guide and generated script API reference for this Engine revision.",
+      "compatibility": "The script surface change is additive and does not change save or network schemas, but generated bindings, assemblies, baked metadata, and Engine binaries must come from one coordinated revision.",
+      "owner": "native-api"
     }
   ]
 }

@@ -181,6 +181,7 @@ public:
         bool HasTransparentWall {};
         bool HasScenery {};
         bool MoveBlocked {};
+        bool MovableWithGag {};
         bool ShootBlocked {};
         bool LightBlocked {};
         bool HasRoof {};
@@ -216,6 +217,7 @@ public:
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
+    [[nodiscard]] auto CheckGagItem(mpos hex, const function<bool(ptr<const ItemHexView>)>& gag_callback) const -> bool;
 
     void EnableMapperMode();
     void SetScrollCheck(bool enabled);
@@ -227,7 +229,7 @@ public:
     void DrawMap();
     auto DrawEntitySprite(ptr<ClientEntity> entity, ptr<RenderEffect> effect, ucolor color, int32_t padding) -> bool;
 
-    auto FindPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}) -> optional<FindPathResult>;
+    auto FindPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}, const function<bool(ptr<const ItemHexView>)>& gag_callback = {}) -> optional<FindPathResult>;
     auto CutPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const -> bool;
     void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, nptr<vector<ptr<CritterHexView>>> critters, CritterFindType find_type, nptr<mpos> pre_block_hex, nptr<mpos> block_hex, nptr<vector<mpos>> hex_steps, bool check_shoot_blocks);
