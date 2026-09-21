@@ -232,6 +232,8 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     }
 
     _eventUnsubscriber += (*window->GetOnScreenSizeChanged()) += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
+
+    FinishStartingUp();
 }
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar) :
@@ -245,6 +247,9 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Start-up is not finished here: the mapper builds on this constructor and keeps coming up through
+    // its own body, so MapperEngine is what declares itself running
 }
 
 ClientEngine::~ClientEngine()

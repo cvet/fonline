@@ -182,7 +182,7 @@ public:
 
     // Scripts run single-threaded while the engine comes up and hold nobody back, so the responsiveness
     // budget that reports an overrunning call does not apply to them until it is serving
-    void SetStartingUp(bool starting_up) noexcept { _startingUp = starting_up; }
+    void FinishStartingUp();
     void SetCurLangName(string_view lang_name) { _curLangName = lang_name; }
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     auto CaptureRandomState() const -> random_generator::state_data;
@@ -213,7 +213,7 @@ protected:
 private:
     refcount_ptr<ScriptImGui> _imgui;
     string _curLangName {};
-    std::atomic_bool _startingUp {false};
+    std::atomic_bool _startingUp {true};
     mutable mutex _randomGeneratorLocker {};
     mutable random_generator _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {};
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};

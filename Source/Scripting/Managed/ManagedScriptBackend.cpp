@@ -67,6 +67,9 @@ FO_DISABLE_WARNINGS_PUSH()
 #include <mono/metadata/reflection.h>
 #include <mono/metadata/threads.h>
 #include <mono/utils/mono-publib.h>
+#if FO_TRACY
+#include <mono/metadata/profiler.h>
+#endif
 FO_DISABLE_WARNINGS_POP()
 
 // The published embedding headers omit this exported API. The unbalanced pair permits a worker to stay
@@ -398,6 +401,51 @@ struct ManagedWrapperClassEntry;
 struct ManagedDynamicFieldAccessors;
 struct ManagedCallbackPlan;
 
+#if FO_TRACY
+// Where a script method shows up in a capture, resolved once and read on every call after. An entry never
+// leaves the table, so its source locations are persistent and Tracy interns the name and the file once
+struct ManagedTracyMethodEntry
+{
+    static constexpr size_t FUNC_BUF_SIZE = 192;
+    static constexpr size_t FILE_BUF_SIZE = 192;
+
+    array<char, FUNC_BUF_SIZE> FuncBuf {};
+    array<char, FILE_BUF_SIZE> FileBuf {};
+    ___tracy_source_location_data SrcLoc {};
+    ___tracy_source_location_data JitSrcLoc {};
+};
+
+// Compiling a method and running it are reported through separate Mono events that share one thread and one
+// method pointer, so the kind travels with the zone and a call never closes a compilation
+enum class ManagedTracyZoneKind : uint8_t
+{
+    Call,
+    Jit,
+};
+
+// One runtime hosts every backend, so both tables are shared. Readers share the lock: an exclusive one on
+// every instrumented call would serialize the script threads and measure that instead of the game
+struct ManagedTracyData
+{
+    shared_mutex Locker {};
+    unordered_set<size_t> Images FO_TSA_GUARDED_BY(Locker) {};
+    unordered_map<size_t, ManagedTracyMethodEntry> MethodEntries FO_TSA_GUARDED_BY(Locker) {};
+};
+FO_GLOBAL_DATA(ManagedTracyData, ManagedTracy);
+
+// What an open zone was begun for, so a leave closes the frame Mono names rather than whichever one is on top
+struct ManagedTracyOpenZone
+{
+    nptr<MonoMethod> Method {};
+    ManagedTracyZoneKind Kind {};
+    TracyCZoneCtx Zone {};
+};
+
+// Zones belong to the thread whose managed frames they measure and carry no engine-owned state, the same
+// reason CurrentScriptEntry above is a thread-local
+static thread_local vector<ManagedTracyOpenZone> ManagedTracyZones {};
+#endif
+
 // Static free-function forward declarations, ordered high-level -> low-level
 
 // Backend binding and lifecycle
@@ -420,8 +468,26 @@ static auto DescribeManagedException(ptr<const ManagedScriptBackend> backend, Mo
 static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<ptr<MonoMethod>, int32_t>>;
 static auto MakeManagedExceptionLayer(const vector<pair<ptr<MonoMethod>, int32_t>>& frames) -> stack_trace::script_layer;
 static auto MakeManagedStackFrame(ptr<MonoMethod> method, int32_t il_offset) -> optional<stack_trace::frame>;
+static auto ReadManagedMethodFullName(ptr<MonoMethod> method, bool with_signature) -> string;
+static void NormalizeManagedMethodFullName(string& name);
 static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const stack_trace::native_frame_address> frames, stack_trace::script_layer& layer);
 static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool;
+
+// Script method profiling, mirroring what AngelScriptContext.cpp emits for script calls
+#if FO_TRACY
+static void InstallManagedTracyProfiler();
+static void RegisterManagedTracyImage(nptr<MonoImage> image);
+static auto ManagedTracyFilter(MonoProfiler* prof, MonoMethod* method) noexcept -> MonoProfilerCallInstrumentationFlags;
+static void ManagedTracyMethodEnter(MonoProfiler* prof, MonoMethod* method, MonoProfilerCallContext* context) noexcept;
+static void ManagedTracyMethodLeave(MonoProfiler* prof, MonoMethod* method, MonoProfilerCallContext* context) noexcept;
+static void ManagedTracyMethodExceptionLeave(MonoProfiler* prof, MonoMethod* method, MonoObject* exception) noexcept;
+static void ManagedTracyJitBegin(MonoProfiler* prof, MonoMethod* method) noexcept;
+static void ManagedTracyJitDone(MonoProfiler* prof, MonoMethod* method, MonoJitInfo* jinfo) noexcept;
+static void ManagedTracyJitFailed(MonoProfiler* prof, MonoMethod* method) noexcept;
+static void BeginManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind kind);
+static void EndManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind kind) noexcept;
+static auto GetManagedTracyMethodEntry(ptr<MonoMethod> method) -> ptr<const ManagedTracyMethodEntry>;
+#endif
 
 // Native ABI: logging, hashing, backend and prototype queries
 static void NativeLog(MonoString* text);
@@ -1508,22 +1574,14 @@ static auto MakeManagedStackFrame(ptr<MonoMethod> method, int32_t il_offset) -> 
     stack_trace::frame frame;
     frame.type = stack_trace::frame::frame_type::script;
 
-    if (char* full_name = mono_method_full_name(method.get(), 1); full_name != nullptr) {
-        // Mono spells a method "Namespace.Outer/Inner:Method (args)", while script code reads "Namespace.Outer.Inner.Method(args)"
-        string name {full_name};
-        mono_free(full_name);
+    string name = ReadManagedMethodFullName(method, true);
 
+    if (!name.empty()) {
         if (name.starts_with("(wrapper ")) {
             return std::nullopt;
         }
-        if (size_t separator = name.find(':'); separator != string::npos) {
-            name[separator] = '.';
-        }
-        if (size_t args_space = name.find(" ("); args_space != string::npos) {
-            name.erase(args_space, 1);
-        }
 
-        std::ranges::replace(name, '/', '.');
+        NormalizeManagedMethodFullName(name);
         frame.function.assign(name.data(), name.size());
     }
 
@@ -1541,6 +1599,36 @@ static auto MakeManagedStackFrame(ptr<MonoMethod> method, int32_t il_offset) -> 
     }
 
     return frame;
+}
+
+static auto ReadManagedMethodFullName(ptr<MonoMethod> method, bool with_signature) -> string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    char* full_name = mono_method_full_name(method.get(), with_signature ? 1 : 0);
+
+    if (full_name == nullptr) {
+        return {};
+    }
+
+    string name {full_name};
+    mono_free(full_name);
+    return name;
+}
+
+// Mono spells a method "Namespace.Outer/Inner:Method (args)", while script code reads "Namespace.Outer.Inner.Method(args)"
+static void NormalizeManagedMethodFullName(string& name)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (size_t separator = name.find(':'); separator != string::npos) {
+        name[separator] = '.';
+    }
+    if (size_t args_space = name.find(" ("); args_space != string::npos) {
+        name.erase(args_space, 1);
+    }
+
+    std::ranges::replace(name, '/', '.');
 }
 
 static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const stack_trace::native_frame_address> frames, stack_trace::script_layer& layer)
@@ -1563,6 +1651,239 @@ static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool
     const char* name = method != nullptr ? mono_method_get_name(method) : nullptr;
     return name != nullptr && string_view {name}.starts_with("runtime_invoke");
 }
+
+#if FO_TRACY
+// Script frames become Tracy zones the way AngelScriptBeginCall makes them, so a handler and the engine
+// zones under it read as one tree. Mono calls these from JIT-generated code, so none of them may unwind
+static void InstallManagedTracyProfiler()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    MonoProfilerHandle handle = mono_profiler_create(nullptr);
+    FO_VERIFY_AND_THROW(handle != nullptr, "Managed profiler handle is null");
+
+    mono_profiler_set_call_instrumentation_filter_callback(handle, &ManagedTracyFilter);
+    mono_profiler_set_method_enter_callback(handle, &ManagedTracyMethodEnter);
+    mono_profiler_set_method_leave_callback(handle, &ManagedTracyMethodLeave);
+    mono_profiler_set_method_exception_leave_callback(handle, &ManagedTracyMethodExceptionLeave);
+
+    // Compilation is not filtered by image: a handler's first run pays for everything it reaches, and
+    // without this that time is an unnamed gap inside the caller - what a one-shot overrun looks like
+    mono_profiler_set_jit_begin_callback(handle, &ManagedTracyJitBegin);
+    mono_profiler_set_jit_done_callback(handle, &ManagedTracyJitDone);
+    mono_profiler_set_jit_failed_callback(handle, &ManagedTracyJitFailed);
+}
+
+// Only the game assemblies are worth instrumenting, and registration precedes the first call into the
+// image: a method already compiled keeps whatever hooks it was compiled with
+static void RegisterManagedTracyImage(nptr<MonoImage> image)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!image) {
+        return;
+    }
+
+    scoped_lock lock {ManagedTracy->Locker};
+    ManagedTracy->Images.emplace(std::bit_cast<size_t>(image.get()));
+}
+
+static auto ManagedTracyFilter(MonoProfiler* prof, MonoMethod* method) noexcept -> MonoProfilerCallInstrumentationFlags
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prof);
+
+    if (method == nullptr) {
+        return MONO_PROFILER_CALL_INSTRUMENTATION_NONE;
+    }
+
+    // A generated wrapper carries no metadata token, and it is runtime plumbing rather than script code, the
+    // same distinction MakeManagedStackFrame draws when it drops a "(wrapper ...)" frame
+    if (mono_method_get_token(method) == 0) {
+        return MONO_PROFILER_CALL_INSTRUMENTATION_NONE;
+    }
+
+    MonoClass* method_class = mono_method_get_class(method);
+    MonoImage* image = method_class != nullptr ? mono_class_get_image(method_class) : nullptr;
+
+    if (image == nullptr) {
+        return MONO_PROFILER_CALL_INSTRUMENTATION_NONE;
+    }
+
+    {
+        shared_lock lock {ManagedTracy->Locker};
+
+        if (!ManagedTracy->Images.contains(std::bit_cast<size_t>(image))) {
+            return MONO_PROFILER_CALL_INSTRUMENTATION_NONE;
+        }
+    }
+
+    // Deliberately without TAIL_CALL: Mono raises method_tail_call for a self tail call with no matching
+    // method_enter, and closing a zone there would take down the caller's instead
+    return static_cast<MonoProfilerCallInstrumentationFlags>(MONO_PROFILER_CALL_INSTRUMENTATION_ENTER | MONO_PROFILER_CALL_INSTRUMENTATION_LEAVE | MONO_PROFILER_CALL_INSTRUMENTATION_EXCEPTION_LEAVE);
+}
+
+static void ManagedTracyMethodEnter(MonoProfiler* prof, MonoMethod* method, MonoProfilerCallContext* context) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prof, context);
+
+    BeginManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Call);
+}
+
+static void ManagedTracyMethodLeave(MonoProfiler* prof, MonoMethod* method, MonoProfilerCallContext* context) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prof, context);
+
+    EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Call);
+}
+
+static void ManagedTracyMethodExceptionLeave(MonoProfiler* prof, MonoMethod* method, MonoObject* exception) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prof, exception);
+
+    EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Call);
+}
+
+static void ManagedTracyJitBegin(MonoProfiler* prof, MonoMethod* method) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prof);
+
+    BeginManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Jit);
+}
+
+static void ManagedTracyJitDone(MonoProfiler* prof, MonoMethod* method, MonoJitInfo* jinfo) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prof, jinfo);
+
+    EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Jit);
+}
+
+static void ManagedTracyJitFailed(MonoProfiler* prof, MonoMethod* method) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(prof);
+
+    EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Jit);
+}
+
+static void BeginManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind kind)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!method) {
+        return;
+    }
+
+    ptr<const ManagedTracyMethodEntry> entry = GetManagedTracyMethodEntry(method);
+    ptr<const ___tracy_source_location_data> srcloc = kind == ManagedTracyZoneKind::Jit ? &entry->JitSrcLoc : &entry->SrcLoc;
+    TracyCZoneCtx tracy_zone = ___tracy_emit_zone_begin(srcloc.get(), 1);
+    ManagedTracyZones.emplace_back(ManagedTracyOpenZone {method, kind, tracy_zone});
+}
+
+// Closed down to the method Mono names rather than by one, because a frame the JIT inlined opened no zone.
+// The kind is matched too, because compiling a method and running it share its pointer
+static void EndManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind kind) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!method) {
+        return;
+    }
+
+    size_t depth = ManagedTracyZones.size();
+
+    while (depth > 0 && (ManagedTracyZones[depth - 1].Method != method || ManagedTracyZones[depth - 1].Kind != kind)) {
+        depth--;
+    }
+
+    if (depth == 0) {
+        return;
+    }
+
+    while (ManagedTracyZones.size() >= depth) {
+        ___tracy_emit_zone_end(ManagedTracyZones.back().Zone);
+        ManagedTracyZones.pop_back();
+    }
+}
+
+static auto GetManagedTracyMethodEntry(ptr<MonoMethod> method) -> ptr<const ManagedTracyMethodEntry>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    size_t method_key = std::bit_cast<size_t>(method.get());
+
+    {
+        shared_lock lock {ManagedTracy->Locker};
+
+        if (const auto it = ManagedTracy->MethodEntries.find(method_key); it != ManagedTracy->MethodEntries.end()) {
+            return &it->second;
+        }
+    }
+
+    // No parameter list and no comma: tracy-csvexport writes the hotspot table unquoted, so a comma inside
+    // a zone name silently shifts every column after it
+    string func_name = ReadManagedMethodFullName(method, false);
+    NormalizeManagedMethodFullName(func_name);
+    std::ranges::replace(func_name, ',', ';');
+
+    string file_name;
+    uint32_t line = 0;
+
+    // The declaration site is what a zone is labelled with, so the lookup asks for the method's first offset
+    if (mono_debug_enabled() != 0) {
+        if (MonoDebugMethodInfo* method_info = mono_debug_lookup_method(method.get()); method_info != nullptr) {
+            if (MonoDebugSourceLocation* location = mono_debug_method_lookup_location(method_info, 0); location != nullptr) {
+                if (location->source_file != nullptr) {
+                    file_name = location->source_file;
+                }
+
+                line = location->row;
+                mono_debug_free_source_location(location);
+            }
+        }
+    }
+
+    scoped_lock lock {ManagedTracy->Locker};
+
+    auto [it, inserted] = ManagedTracy->MethodEntries.emplace(method_key, ManagedTracyMethodEntry {});
+    ptr<ManagedTracyMethodEntry> entry = &it->second;
+
+    // A method first called on two threads at once is resolved twice, and the loser must not rewrite the
+    // buffers a reader is already in the middle of
+    if (inserted) {
+        auto safe_copy = [](auto& to, string_view from) {
+            size_t len = std::min(from.length(), to.size() - 1);
+            memory::copy(to.data(), from.data(), len);
+            to[len] = 0;
+        };
+
+        safe_copy(entry->FuncBuf, func_name);
+        safe_copy(entry->FileBuf, file_name);
+        entry->SrcLoc.name = nullptr;
+        entry->SrcLoc.function = entry->FuncBuf.data();
+        entry->SrcLoc.file = entry->FileBuf.data();
+        entry->SrcLoc.line = line;
+        entry->SrcLoc.color = 0;
+        // Tracy shows the name over the function, so compilation is told apart from execution at a glance
+        entry->JitSrcLoc = entry->SrcLoc;
+        entry->JitSrcLoc.name = "JIT";
+    }
+
+    return entry;
+}
+#endif
 
 ManagedScriptEntryScope::ManagedScriptEntryScope(nptr<MonoMethod> method) noexcept :
     _method {method},
@@ -8218,6 +8539,12 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
                 stack_trace::set_script_provider("Managed", &CollectManagedScriptStackLayers);
 
+#if FO_TRACY
+                // Before the game assemblies are loaded, because the filter decides a method's
+                // instrumentation while it is compiled and never again
+                InstallManagedTracyProfiler();
+#endif
+
 #if !FO_WEB
                 // mono_jit_init_version attaches its caller; adopt that attachment into this scope so the
                 // long-lived engine initialization worker is detached after the first backend is loaded
@@ -8298,6 +8625,10 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             if (image == nullptr) {
                 throw ScriptSystemException("Managed image is null for loaded entry assembly");
             }
+
+#if FO_TRACY
+            RegisterManagedTracyImage(make_nptr(image));
+#endif
 
             MonoClass* native_class = mono_class_from_name(image, "FOnline", "Native");
             FO_VERIFY_AND_THROW(native_class != nullptr, "Managed Native class not found in entry assembly");
