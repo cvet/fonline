@@ -851,7 +851,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern IntPtr CreateInnerEntityInternal(IntPtr backend, IntPtr holderPtr, int entryId, IntPtr protoId);
+    private static extern IntPtr CreateInnerEntityInternal(IntPtr backend, IntPtr holderPtr, int entryId,
+                                                           IntPtr protoId);
 
     internal static bool HasInnerEntities(IntPtr holderPtr, int entryId)
     {
@@ -878,8 +879,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern int FillInnerEntitiesInternal(IntPtr backend, IntPtr holderPtr, int entryId, ref IntPtr buffer, int capacity,
-                                                        out string? error);
+    private static extern int FillInnerEntitiesInternal(IntPtr backend, IntPtr holderPtr, int entryId,
+                                                        ref IntPtr buffer, int capacity, out string? error);
 
     internal static long GetAndResetInnerEntityVisits()
     {
@@ -912,14 +913,21 @@ internal static class Native
                                                 int registrationId)
     {
         string ? error;
-        long elapsedNs = ProbeCallbackTransportInternal(BoundBackend, handler, mode, iterations, ucoEntry, registrationId, out error);
+        long elapsedNs = ProbeCallbackTransportInternal(BoundBackend,
+                                                        handler,
+                                                        mode,
+                                                        iterations,
+                                                        ucoEntry,
+                                                        registrationId,
+                                                        out error);
         ThrowNativeError(error);
         return elapsedNs;
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern long ProbeCallbackTransportInternal(IntPtr backend, Delegate handler, int mode, int iterations,
-                                                              IntPtr ucoEntry, int registrationId, out string? error);
+    private static extern long ProbeCallbackTransportInternal(IntPtr backend, Delegate handler, int mode,
+                                                              int iterations, IntPtr ucoEntry, int registrationId,
+                                                              out string? error);
 
     // Calls one probe adapter over one transport, optionally from a native thread of its own, and returns how many
     // calls came back with a managed exception
@@ -928,7 +936,8 @@ internal static class Native
     {
         int faults;
         string ? error;
-        ProbeTransportScenarioInternal(BoundBackend, handler,
+        ProbeTransportScenarioInternal(BoundBackend,
+                                       handler,
                                        transport,
                                        adapterKind,
                                        iterations,
@@ -960,9 +969,10 @@ internal static class Native
                                                            out long nativeBytes);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void ProbeTransportScenarioInternal(IntPtr backend, Delegate handler, int transport, int adapterKind,
-                                                              int iterations, bool externalThread, IntPtr ucoEntry,
-                                                              int registrationId, out int faults, out string? error);
+    private static extern void ProbeTransportScenarioInternal(IntPtr backend, Delegate handler, int transport,
+                                                              int adapterKind, int iterations, bool externalThread,
+                                                              IntPtr ucoEntry, int registrationId, out int faults,
+                                                              out string? error);
 
     // Generic property accessors by index (mirror AngelScript Entity_GetValueAsInt/SetValueAsInt and
     // Entity_GetValueAsAny/SetValueAsAny); back the generated Entity.GetAs*/SetAs* wrappers.
@@ -977,7 +987,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern int GetEntityValueAsIntInternal(IntPtr backend, IntPtr entityPtr, int propIndex, out string? error);
+    private static extern int GetEntityValueAsIntInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                          out string? error);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void SetEntityValueAsInt(IntPtr entityPtr, int propIndex, int value)
@@ -986,7 +997,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? SetEntityValueAsIntInternal(IntPtr backend, IntPtr entityPtr, int propIndex, int value);
+    private static extern string? SetEntityValueAsIntInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                              int value);
 
     internal static string GetEntityValueAsAny(IntPtr entityPtr, int propIndex)
     {
@@ -997,7 +1009,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? GetEntityValueAsAnyInternal(IntPtr backend, IntPtr entityPtr, int propIndex, out string? error);
+    private static extern string? GetEntityValueAsAnyInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                              out string? error);
 
     internal static void SetEntityValueAsAny(IntPtr entityPtr, int propIndex, string value)
     {
@@ -1005,17 +1018,20 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? SetEntityValueAsAnyInternal(IntPtr backend, IntPtr entityPtr, int propIndex, string value);
+    private static extern string? SetEntityValueAsAnyInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                              string value);
 
     // The engine keeps entity event subscriptions on the entity and matches handlers as C# delegates do, so any
     // wrapper of the entity reaches the same subscriptions
-    internal static void SubscribeEvent(int eventId, IntPtr entityPtr, Delegate handler, bool hasExplicitResult, int priority)
+    internal static void SubscribeEvent(int eventId, IntPtr entityPtr, Delegate handler, bool hasExplicitResult,
+                                        int priority)
     {
         SubscribeEventInternal(BoundBackend, eventId, entityPtr, handler, hasExplicitResult, priority);
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void SubscribeEventInternal(IntPtr backend, int eventId, IntPtr entityPtr, Delegate handler, bool hasExplicitResult, int priority);
+    private static extern void SubscribeEventInternal(IntPtr backend, int eventId, IntPtr entityPtr, Delegate handler,
+                                                      bool hasExplicitResult, int priority);
 
     internal static void UnsubscribeEvent(int eventId, IntPtr entityPtr, Delegate handler)
     {
@@ -1023,7 +1039,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void UnsubscribeEventInternal(IntPtr backend, int eventId, IntPtr entityPtr, Delegate handler);
+    private static extern void UnsubscribeEventInternal(IntPtr backend, int eventId, IntPtr entityPtr,
+                                                        Delegate handler);
 
     internal static void UnsubscribeAllEvents(int eventId, IntPtr entityPtr)
     {
@@ -1042,7 +1059,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern int FireEventBoxedInternal(IntPtr backend, int eventId, IntPtr entityPtr, object?[] args, out string? error);
+    private static extern int FireEventBoxedInternal(IntPtr backend, int eventId, IntPtr entityPtr, object?[] args,
+                                                     out string? error);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int FireEventIndexed(int eventId, IntPtr entityPtr, ref byte frame, int frameSize)
@@ -1054,8 +1072,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern int FireEventIndexedInternal(IntPtr backend, int eventId, IntPtr entityPtr, ref byte frame, int frameSize,
-                                                       out string? error);
+    private static extern int FireEventIndexedInternal(IntPtr backend, int eventId, IntPtr entityPtr, ref byte frame,
+                                                       int frameSize, out string? error);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int EnumToInt32<TProp>(TProp prop)
@@ -1082,32 +1100,40 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? BindAbiInternal(IntPtr backend, ulong hash, int methodCount, int eventCount, int settingCount,
-                                                  int innerCount);
+    private static extern string? BindAbiInternal(IntPtr backend, ulong hash, int methodCount, int eventCount,
+                                                  int settingCount, int innerCount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static T GetPropertyValue<T>(IntPtr entityPtr, int propIndex)
         where T : unmanaged
     {
         T value = default;
-        ThrowNativeError(
-            GetPropertyValueInternal(BoundBackend, entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+        ThrowNativeError(GetPropertyValueInternal(BoundBackend,
+                                                  entityPtr,
+                                                  propIndex,
+                                                  ref Unsafe.As<T, byte>(ref value),
+                                                  Unsafe.SizeOf<T>()));
         return value;
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? GetPropertyValueInternal(IntPtr backend, IntPtr entityPtr, int propIndex, ref byte value, int size);
+    private static extern string? GetPropertyValueInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                           ref byte value, int size);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void SetPropertyValue<T>(IntPtr entityPtr, int propIndex, T value)
         where T : unmanaged
     {
-        ThrowNativeError(
-            SetPropertyValueInternal(BoundBackend, entityPtr, propIndex, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+        ThrowNativeError(SetPropertyValueInternal(BoundBackend,
+                                                  entityPtr,
+                                                  propIndex,
+                                                  ref Unsafe.As<T, byte>(ref value),
+                                                  Unsafe.SizeOf<T>()));
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? SetPropertyValueInternal(IntPtr backend, IntPtr entityPtr, int propIndex, ref byte value, int size);
+    private static extern string? SetPropertyValueInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                           ref byte value, int size);
 
     private const int PropertyListStackBytes = 512;
 
@@ -1120,7 +1146,8 @@ internal static class Native
         int elementSize = Unsafe.SizeOf<T>();
         Span<byte> stack = stackalloc byte[PropertyListStackBytes];
         int size;
-        ThrowNativeError(GetPropertyArrayInternal(BoundBackend, entityPtr,
+        ThrowNativeError(GetPropertyArrayInternal(BoundBackend,
+                                                  entityPtr,
                                                   propIndex,
                                                   ref MemoryMarshal.GetReference(stack),
                                                   stack.Length,
@@ -1137,7 +1164,8 @@ internal static class Native
         }
 
         int secondSize;
-        ThrowNativeError(GetPropertyArrayInternal(BoundBackend, entityPtr,
+        ThrowNativeError(GetPropertyArrayInternal(BoundBackend,
+                                                  entityPtr,
                                                   propIndex,
                                                   ref MemoryMarshal.GetReference(items),
                                                   items.Length,
@@ -1156,7 +1184,8 @@ internal static class Native
     {
         ArgumentNullException.ThrowIfNull(value);
         Span<byte> items = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(value));
-        ThrowNativeError(SetPropertyArrayInternal(BoundBackend, entityPtr,
+        ThrowNativeError(SetPropertyArrayInternal(BoundBackend,
+                                                  entityPtr,
                                                   propIndex,
                                                   ref MemoryMarshal.GetReference(items),
                                                   items.Length,
@@ -1164,12 +1193,13 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? GetPropertyArrayInternal(IntPtr backend, IntPtr entityPtr, int propIndex, ref byte buffer,
-                                                           int capacity, int elementSize, out int size);
+    private static extern string? GetPropertyArrayInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                           ref byte buffer, int capacity, int elementSize,
+                                                           out int size);
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? SetPropertyArrayInternal(IntPtr backend, IntPtr entityPtr, int propIndex, ref byte buffer, int size,
-                                                           int elementSize);
+    private static extern string? SetPropertyArrayInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                           ref byte buffer, int size, int elementSize);
 
     // Boxed bridge for the values no fixed layout carries: strings, dictionaries, arrays of strings and ref types.
     // The property travels as its registrar index, never as a pair of names
@@ -1182,7 +1212,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern object? GetPropertyInternal(IntPtr backend, IntPtr entityPtr, int propIndex, out string? error);
+    private static extern object? GetPropertyInternal(IntPtr backend, IntPtr entityPtr, int propIndex,
+                                                      out string? error);
 
     internal static void SetProperty(IntPtr entityPtr, int propIndex, object? value)
     {
@@ -1198,7 +1229,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void SetPropertyGetterInternal(IntPtr backend, string ownerType, string propertyName, Delegate getter);
+    private static extern void SetPropertyGetterInternal(IntPtr backend, string ownerType, string propertyName,
+                                                         Delegate getter);
 
     internal static void AddPropertySetter(string ownerType, string propertyName, Delegate setter)
     {
@@ -1206,7 +1238,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void AddPropertySetterInternal(IntPtr backend, string ownerType, string propertyName, Delegate setter);
+    private static extern void AddPropertySetterInternal(IntPtr backend, string ownerType, string propertyName,
+                                                         Delegate setter);
 
     internal static void AddPropertySetterWithProperty(string ownerType, string propertyName, Delegate setter)
     {
@@ -1214,7 +1247,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void AddPropertySetterWithPropertyInternal(IntPtr backend, string ownerType, string propertyName, Delegate setter);
+    private static extern void AddPropertySetterWithPropertyInternal(IntPtr backend, string ownerType,
+                                                                     string propertyName, Delegate setter);
 
     internal static void AddPropertyDeferredSetter(string ownerType, string propertyName, Delegate setter)
     {
@@ -1222,7 +1256,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void AddPropertyDeferredSetterInternal(IntPtr backend, string ownerType, string propertyName, Delegate setter);
+    private static extern void AddPropertyDeferredSetterInternal(IntPtr backend, string ownerType, string propertyName,
+                                                                 Delegate setter);
 
     internal static object CallMethodBoxed(int methodId, IntPtr entityPtr, object?[] args)
     {
@@ -1233,8 +1268,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern object? CallMethodBoxedInternal(IntPtr backend, int methodId, IntPtr entityPtr, object?[] args,
-                                                          out string? error);
+    private static extern object? CallMethodBoxedInternal(IntPtr backend, int methodId, IntPtr entityPtr,
+                                                          object?[] args, out string? error);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void CallMethodIndexed(int methodId, IntPtr entityPtr, ref byte frame, int frameSize)
@@ -1243,8 +1278,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern string? CallMethodIndexedInternal(IntPtr backend, int methodId, IntPtr entityPtr, ref byte frame,
-                                                            int frameSize);
+    private static extern string? CallMethodIndexedInternal(IntPtr backend, int methodId, IntPtr entityPtr,
+                                                            ref byte frame, int frameSize);
 
     // Mono inlines no method that makes a call unless told to, so the check is inlined and the throw is kept out
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1292,13 +1327,21 @@ internal static class Native
     // Registers a managed global script function into the engine's cross-backend function map under a named
     // marker attribute, so a consumer that resolves funcs by attribute (ScriptSystem::FindFunc) can invoke it.
     // paramTypeNames/returnTypeName are engine base-type names; the engine builds the matching signature.
-    internal static void RegisterGlobalScriptFunc(string fullName, string attributeName, string[] paramTypeNames, string returnTypeName, Delegate handler)
+    internal static void RegisterGlobalScriptFunc(string fullName, string attributeName, string[] paramTypeNames,
+                                                  string returnTypeName, Delegate handler)
     {
-        RegisterGlobalScriptFuncInternal(BoundBackend, fullName, attributeName, paramTypeNames, returnTypeName, handler);
+        RegisterGlobalScriptFuncInternal(BoundBackend,
+                                         fullName,
+                                         attributeName,
+                                         paramTypeNames,
+                                         returnTypeName,
+                                         handler);
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void RegisterGlobalScriptFuncInternal(IntPtr backend, string fullName, string attributeName, string[] paramTypeNames, string returnTypeName, Delegate handler);
+    private static extern void RegisterGlobalScriptFuncInternal(IntPtr backend, string fullName, string attributeName,
+                                                                string[] paramTypeNames, string returnTypeName,
+                                                                Delegate handler);
 
     // Registers a managed inbound remote-call handler (a [ServerRemoteCall]/[ClientRemoteCall]/[AdminRemoteCall]
     // method) with the engine. The engine matches `name` to the inbound remote-call metadata (subsystem "cs")
@@ -1312,7 +1355,8 @@ internal static class Native
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
-    private static extern void RegisterRemoteCallHandlerInternal(IntPtr backend, string name, int paramCount, Delegate handler);
+    private static extern void RegisterRemoteCallHandlerInternal(IntPtr backend, string name, int paramCount,
+                                                                 Delegate handler);
 
     // Serializes the boxed args (shared RemoteCallWire format) and sends the named outbound "cs" remote call to
     // the remote peer via the engine. `caller` is the entity the call is bound to (e.g. the Player).
@@ -1340,7 +1384,8 @@ internal static class Native
         where T : unmanaged
     {
         T value = default;
-        ThrowNativeError(GetSettingValueInternal(BoundBackend, settingId, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
+        ThrowNativeError(
+            GetSettingValueInternal(BoundBackend, settingId, ref Unsafe.As<T, byte>(ref value), Unsafe.SizeOf<T>()));
         return value;
     }
 

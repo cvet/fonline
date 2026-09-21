@@ -141,6 +141,11 @@ AUXILIARY_BUILD_TARGETS = ('effekseer-editor',)
 
 MANAGED_VALIDATION_CMAKE_ARGS = ('-DFO_MANAGED_SCRIPTING=ON', '-DFO_ANGELSCRIPT_SCRIPTING=OFF')
 
+# An embedder that ships the native backend disabled still needs it compiled somewhere, or the C++20 module
+# surface rots unnoticed. Clang with Ninja is the CI-reachable combination CMake can scan modules for; the
+# clang-cl cross toolchain the Windows jobs use is rejected by the native scripting configure gate
+NATIVE_SCRIPTING_VALIDATION_CMAKE_ARGS = ('-DFO_NATIVE_SCRIPTING=ON',)
+
 VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	**make_validation_target_set('linux', 'linux', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('linux-gcc', 'linux', COMMON_VALIDATION_TARGET_NAMES, compiler_name='gcc'),
@@ -158,6 +163,8 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
 	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
+	'native-scripting-server': make_validation_target('linux', 'server', 'Debug', cmake_args=NATIVE_SCRIPTING_VALIDATION_CMAKE_ARGS),
+	'native-scripting-client': make_validation_target('linux', 'client', 'Debug', cmake_args=NATIVE_SCRIPTING_VALIDATION_CMAKE_ARGS),
 	'managed-mac-client': make_validation_target('mac', 'client', 'Release', cmake_args=MANAGED_VALIDATION_CMAKE_ARGS),
 	'managed-ios-simulator-client': make_validation_target('ios', 'client', 'Release', cmake_args=MANAGED_VALIDATION_CMAKE_ARGS),
 	'managed-ios-device-client': make_validation_target('ios', 'client', 'Release', cmake_args=(*MANAGED_VALIDATION_CMAKE_ARGS, '-DPLATFORM=OS64', '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO')),
@@ -3745,7 +3752,9 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 		original, has_bom = read_text_strip_bom(path)
 		formatted = strip_text_bom(run_capture_text([clang_format, str(path)], log_command=False))
 		formatted = ensure_trailing_newline(normalize_line_endings(formatted, detect_line_ending(original)), detect_line_ending(original))
-		if path.suffix == '.fos':
+		# clang-format takes a nullable suffix for a ternary and tears it off its type. The repair predates
+		# the managed switch, so it kept the FOS name, but the syntax it fixes is the same in C#
+		if path.suffix in {'.cs', '.fos'}:
 			formatted = fix_fos_nullable_suffix(formatted)
 		if not differs_beyond_line_endings(original, formatted) and not has_bom:
 			continue

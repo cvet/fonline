@@ -129,6 +129,15 @@ struct EntityTypeDesc
     unordered_map<hstring, HolderEntryDesc> HolderEntries {};
     vector<MethodDesc> Methods {};
     vector<EntityEventDesc> Events {};
+    // C++ class names per role from `///@ ExportEntity <Name> <ServerClass>
+    // <ClientClass> [Flags...]`. NativeScriptSynth uses these when emitting
+    // the `fo::` re-export in `NativeApi.<Target>.cppm` — Server target
+    // imports `fo::ServerCritter` / `fo::Player`, Client/Mapper imports
+    // `fo::CritterView` / `fo::PlayerView`. Empty strings on entities
+    // without that pair (rare; mostly engine-only types) tell the baker
+    // to skip the per-role re-export for that entity.
+    string ServerClassName {};
+    string ClientClassName {};
 };
 
 class Entity

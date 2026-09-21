@@ -128,7 +128,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         }
 
         while (!task.IsCompleted) {
-            PostedContinuation ? continuation;
+            PostedContinuation? continuation;
 
             lock (SchedulerGate)
             {

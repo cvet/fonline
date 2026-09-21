@@ -42,6 +42,7 @@
 #include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
+#include "NativeScripting.h"
 #include "PropertiesSerializer.h"
 
 FO_BEGIN_NAMESPACE
@@ -369,6 +370,18 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
 #endif
 #if FO_MANAGED_SCRIPTING
     InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
+#endif
+
+#if FO_NATIVE_SCRIPTING
+    // NativeScriptSynth emits these per-role dispatchers from exported
+    // module init functions under FO_NATIVE_SCRIPTS_DIR/{Common,Server}/.
+    // Empty dispatchers remain available when a role has no user modules.
+    extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+    extern void RegisterNativeScriptModules_Server(const NativeScripts::ModuleInitContextBase&);
+    InitNativeScripting(this, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
+        RegisterNativeScriptModules_Common(ctx);
+        RegisterNativeScriptModules_Server(ctx);
+    });
 #endif
 
     return std::nullopt;

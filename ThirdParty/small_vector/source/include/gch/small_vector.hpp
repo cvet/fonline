@@ -1886,7 +1886,7 @@ namespace gch
 
       template <typename ForwardIt,
                 typename ItDiffT = typename std::iterator_traits<ForwardIt>::difference_type,
-                typename std::enable_if<(numeric_max<size_ty> () < numeric_max<ItDiffT> ()),
+                typename std::enable_if<((std::numeric_limits<size_ty>::max) () < (std::numeric_limits<ItDiffT>::max) ()),
                                         bool>::type = true>
       GCH_NODISCARD
       static GCH_CPP17_CONSTEXPR
@@ -1899,7 +1899,7 @@ namespace gch
 
       template <typename ForwardIt,
                 typename ItDiffT = typename std::iterator_traits<ForwardIt>::difference_type,
-                typename std::enable_if<! (numeric_max<size_ty> () < numeric_max<ItDiffT> ()),
+                typename std::enable_if<! ((std::numeric_limits<size_ty>::max) () < (std::numeric_limits<ItDiffT>::max) ()),
                                         bool>::type = false>
       GCH_NODISCARD
       static GCH_CPP17_CONSTEXPR

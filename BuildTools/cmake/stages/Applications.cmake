@@ -168,6 +168,39 @@ if(FO_BUILD_ASCOMPILER)
         WRITE_BUILD_HASH)
 endif()
 
+# Standalone native-API emitter — the SOLE generator of every native
+# scripting source file (codegen.py emits none). Builds against
+# `AppHeadless + NativeScriptSynth + CommonLib` plus the codegen-emitted
+# `MetadataRegistration-<Role>Stub.cpp` files (compiled under
+# `STUB_MODE=1` so they don't pull `Server.h`/`Client.h`/`Mapper.h`).
+# Output (to argv[1]): `NativeApi_ContextRpcMethods.h`,
+# `NativeApi.{Common,Server,Client,Mapper,Baker}.cppm`, and the
+# per-role `NativeBindings-<Role>.cpp` dispatchers (built by scanning
+# the user `.cppm` tree passed as argv[2]). See Docs/NativeScripting.md.
+if(FO_NATIVE_SCRIPTING AND FO_BUILD_BAKER)
+    SetValue(FO_NATIVE_SCRIPT_SYNTH_OUTPUT "${FO_BAKER_OUTPUT}")
+
+    # NOTE: depend on CodeGeneration only (not the full
+    # FO_GEN_DEPENDENCIES) because that list also contains
+    # NativeApiGeneration, which itself depends on this tool — a
+    # circular dep. The tool needs the MetadataRegistration stubs
+    # codegen.py emits, which CodeGeneration already produces.
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_NativeScriptSynth
+        "${FO_ENGINE_ROOT}/Source/Applications/NativeScriptSynthApp.cpp"
+        OUTPUT_DIR ${FO_NATIVE_SCRIPT_SYNTH_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_NativeScriptSynth
+        TESTING_APP 0
+        EXTRA_SOURCES
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
+            "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp"
+        LINK_LIBS AppHeadless NativeScriptSynth CommonLib
+        DEPENDS CodeGeneration
+        WRITE_BUILD_HASH)
+endif()
+
 if(FO_MANAGED_SCRIPTING AND FO_BUILD_BAKER_LIB)
     AddExecutableApplication(
         ${FO_DEV_NAME}_ManagedScriptBaker
@@ -258,7 +291,7 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             WORKING_DIRECTORY ${FO_TESTS_OUTPUT}
             OUTPUT_NAME ${target}
             TESTING_APP 1
-            LINK_LIBS BakerLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless
+            LINK_LIBS BakerLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless $<$<BOOL:${FO_NATIVE_SCRIPTING}>:NativeScriptSynth>
             DEPENDS ${FO_GEN_DEPENDENCIES}
             EXTRA_SOURCES ${testBuildSources})
 

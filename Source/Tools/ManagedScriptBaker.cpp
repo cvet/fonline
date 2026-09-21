@@ -1111,7 +1111,14 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
         file << "    <Optimize>true</Optimize>\n";
         file << "    <AssemblyName>" << EscapeXml(pack_name) << "." << EscapeXml(target) << "</AssemblyName>\n";
         file << "    <OutputPath>" << EscapeXml(assemblies_output_dir) << "/" << EscapeXml(target) << "Assemblies/</OutputPath>\n";
-        file << "    <DefineConstants>TRACE;" << strex(target).upper().str() << "</DefineConstants>\n";
+        // NATIVE_SCRIPTING lets script code guard the surface that only exists while the native backend is
+        // compiled in: its metadata registrations come from codegen, which skips the native tree when the
+        // backend is off, so the generated managed API loses those members with it
+        file << "    <DefineConstants>TRACE;" << strex(target).upper().str();
+#if FO_NATIVE_SCRIPTING
+        file << ";NATIVE_SCRIPTING";
+#endif
+        file << "</DefineConstants>\n";
         file << "  </PropertyGroup>\n";
     }
 

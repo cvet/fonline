@@ -1768,11 +1768,7 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
         FO_VERIFY_AND_THROW(engine, "Managed continuation requires an engine context");
         FO_VERIFY_AND_THROW(continuation != nullptr, "Managed continuation is null");
 
-        RunManagedScriptEntry(
-            backend, engine, [continuation] { return continuation; },
-            [&] {
-                InvokeManagedScriptDelegate(backend, continuation, "Managed continuation failed");
-            });
+        RunManagedScriptEntry(backend, engine, [continuation] { return continuation; }, [&] { InvokeManagedScriptDelegate(backend, continuation, "Managed continuation failed"); });
         return nullptr;
     }
     catch (const std::exception& ex) {
@@ -4555,7 +4551,10 @@ static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_
                 exceptions::report_and_continue(ex);
             }
         },
-        client_facade_call);
+        // A managed facade for a `.fos`-declared call claims the handler the AngelScript backend registered as
+        // a fallback. A managed-declared call registers as a fallback itself, so the native backend can take
+        // over a hot path through its own BindRemoteCall without the script-side contract changing
+        client_facade_call ? BaseEngine::RemoteCallHandlerMode::OverrideFallback : BaseEngine::RemoteCallHandlerMode::Fallback);
 }
 
 static void NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
