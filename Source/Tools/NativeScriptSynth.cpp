@@ -776,6 +776,12 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
 
 auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const EngineMetadata*(string_view target_name)>& target_meta_lookup, const function<bool(string_view target_name, string_view entity, string_view member)>& is_member_visible) -> string
 {
+    // Three-arg call — every target's wrapper bodies in one surface
+    return SynthesizeNativeApiSurface(meta, target_meta_lookup, is_member_visible, string_view {});
+}
+
+auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const EngineMetadata*(string_view target_name)>& target_meta_lookup, const function<bool(string_view target_name, string_view entity, string_view member)>& is_member_visible, string_view only_target) -> string
+{
     string body;
     body.reserve(8192);
 
@@ -1275,6 +1281,10 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
     };
 
     for (const auto& [target_name, guard] : kTargetGuards) {
+        if (!only_target.empty() && target_name != only_target) {
+            continue;
+        }
+
         body += "#if defined(";
         body += guard;
         body += ")\n";

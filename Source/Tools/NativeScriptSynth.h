@@ -94,6 +94,12 @@ FO_DECLARE_EXCEPTION(NativeScriptSynthException);
 // a callback that always returns true.
 [[nodiscard]] auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const EngineMetadata*(string_view target_name)>& target_meta_lookup, const function<bool(string_view target_name, string_view entity, string_view member)>& is_member_visible) -> string;
 
+// Four-arg variant emitting the wrapper bodies of one target only. Each role library compiles with its
+// own `NATIVE_SCRIPTS_TARGET_*` macro, so the other targets' bodies are preprocessed away anyway --
+// leaving them out keeps a role's module interface to the size it actually uses. An empty
+// `only_target` emits every target, which is what the three-arg overload does.
+[[nodiscard]] auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const EngineMetadata*(string_view target_name)>& target_meta_lookup, const function<bool(string_view target_name, string_view entity, string_view member)>& is_member_visible, string_view only_target) -> string;
+
 // Single user-`.cppm`-derived init entry — one per
 // `export void <Function>(const ModuleInitContext&)` the scanner
 // found, paired with the module name from the file's

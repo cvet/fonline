@@ -353,7 +353,6 @@ int main(int argc, char** argv)
             }
             return it->second.contains(string(member));
         };
-        const string native_api_surface = SynthesizeNativeApiSurface(*meta_server, target_meta_lookup, is_member_visible);
         WriteOutput(output_dir, "NativeApi_ContextRpcMethods.h", SynthesizeNativeApiContextRpcMethods(*meta_server));
 
         // Complete per-target module interfaces. Client/Mapper use their
@@ -369,6 +368,9 @@ int main(int argc, char** argv)
             else if (string_view {target} == "Mapper") {
                 target_meta = meta_mapper;
             }
+            // The surface is synthesized per target rather than once and shared: the role library
+            // compiles only its own target's bodies, and the rest would just be preprocessed away
+            const string native_api_surface = SynthesizeNativeApiSurface(*meta_server, target_meta_lookup, is_member_visible, target);
             const string stub_name = strex("NativeApi.{}.cppm", target).str();
             WriteOutput(output_dir, stub_name, SynthesizeNativeApiModule(target, *target_meta, native_api_surface));
         }
